@@ -201,7 +201,7 @@ function Temporada() {
             <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>🔥 TOP GOLEADORES</div>
             {analiticaGlobal.topGoleadores.map((j, i) => (
               <div key={j.id} style={rankingRow}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.nombre.toUpperCase()}</span></div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
                 <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{j.goles}</strong>
               </div>
             ))}
@@ -211,7 +211,7 @@ function Temporada() {
             <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981' }}>🛡️ TOP MUROS DEFENSIVOS (DUELOS)</div>
             {analiticaGlobal.topMuros.map((j, i) => (
               <div key={j.id} style={rankingRow}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.nombre.toUpperCase()}</span></div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
                 <div style={{ textAlign: 'right' }}>
                   <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>{j.eficaciaDefensiva.toFixed(0)}%</strong>
                   <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{j.duelosDefGan}/{j.duelosDefTot} Ganados</div>
@@ -225,7 +225,7 @@ function Temporada() {
             <div className="stat-label" style={{ marginBottom: '15px', color: '#00aaff' }}>⭐ TOP IMPACTO (RATING)</div>
             {analiticaGlobal.topMVP.map((j, i) => (
               <div key={j.id} style={rankingRow}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.nombre.toUpperCase()}</span></div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
                 <strong style={{ fontSize: '1.2rem', color: j.impactoGlobal > 0 ? 'var(--accent)' : '#ef4444' }}>{j.impactoGlobal > 0 ? '+' : ''}{j.impactoGlobal.toFixed(1)}</strong>
               </div>
             ))}

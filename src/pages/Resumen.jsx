@@ -16,6 +16,7 @@ function Resumen() {
   const [filtroPeriodo, setFiltroPeriodo] = useState('Todos');
   const [tipoMapa, setTipoMapa] = useState('calor');
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
+  const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
 
   const heatmapRef = useRef(null);
@@ -42,7 +43,7 @@ function Resumen() {
   const getNombreJugador = (id) => {
     if (!id) return 'SIN ASIGNAR / RIVAL';
     const j = jugadores.find(jug => jug.id == id);
-    return j ? `${j.dorsal} - ${j.nombre.toUpperCase()}` : 'DESCONOCIDO';
+    return j ? `${j.dorsal} - ${j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}` : 'DESCONOCIDO';
   };
 
   const getColorAccion = (acc) => {
@@ -85,8 +86,8 @@ function Resumen() {
     const statsJugadores = {};
     jugadores.forEach(j => {
       statsJugadores[j.id] = { 
-        id: j.id, nombre: j.nombre, dorsal: j.dorsal, eventos: [], 
-        remates: 0, goles: 0, perdidas: 0, rec: 0,
+        id: j.id, nombre: j.apellido, dorsal: j.dorsal, eventos: [], 
+        remates: 0, goles: 0, perdidas: 0, rec: 0, faltas: 0,
         duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0
       };
     });
@@ -98,8 +99,8 @@ function Resumen() {
         if (ev.accion?.includes('Remate')) statsJugadores[ev.id_jugador].remates++;
         if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
         if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
+        if (ev.accion === 'Falta cometida') statsJugadores[ev.id_jugador].faltas++;
         
-        // CÁLCULO DE DUELOS INDIVIDUALES
         if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo OFE Ganado') { statsJugadores[ev.id_jugador].duelosOfeGan++; statsJugadores[ev.id_jugador].duelosOfeTot++; }
@@ -108,8 +109,15 @@ function Resumen() {
     });
 
     const ranking = Object.values(statsJugadores)
-      .filter(j => j.eventos.length > 0)
-      .map(j => ({ ...j, impacto: calcularRatingJugador(j.eventos) }))
+      .filter(j => j.eventos.length > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
+      .map(j => {
+        const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
+        return { 
+          ...j, 
+          plusMinus: pm,
+          impacto: calcularRatingJugador(j.eventos, pm)
+        }
+      })
       .sort((a, b) => b.impacto - a.impacto);
 
     const eficaciaTiro = stats.propio.remates > 0 ? ((stats.propio.goles / stats.propio.remates) * 100).toFixed(0) : 0;
@@ -118,14 +126,28 @@ function Resumen() {
 
     return { 
       evFiltrados, stats, ranking, eficaciaTiro, balancePosesion,
-      xg: datosProcesados.xg, insights: datosProcesados.insights, 
+      xgPropio: datosProcesados.xgPropio, xgRival: datosProcesados.xgRival, 
+      insights: datosProcesados.insights, 
       posesiones: datosProcesados.posesiones, transiciones: datosProcesados.transiciones,
-      duelos: datosProcesados.duelos // <-- IMPORTAMOS DUELOS DEL ENGINE
+      duelos: datosProcesados.duelos,
+      quintetos: datosProcesados.quintetos,
+      plusMinusJugador: datosProcesados.plusMinusJugador
     };
   }, [eventosPartido, filtroPeriodo, jugadores]);
 
-  const evMapa = analitica?.evFiltrados.filter(ev => filtroAccionMapa === 'Todas' ? true : ev.accion?.includes(filtroAccionMapa)) || [];
+  // FILTRADO COMPUESTO DEL MAPA (Por Acción y por Equipo)
+  const evMapa = analitica?.evFiltrados.filter(ev => {
+    const pasaAccion = filtroAccionMapa === 'Todas' ? true : ev.accion?.includes(filtroAccionMapa);
+    const pasaEquipo = filtroEquipoMapa === 'Ambos' ? true : ev.equipo === filtroEquipoMapa;
+    return pasaAccion && pasaEquipo;
+  }) || [];
 
+  // FILTRO ESPECÍFICO PARA TRANSICIONES
+  const transicionesMapa = analitica?.transiciones.filter(t => 
+    filtroEquipoMapa === 'Ambos' ? true : t.recuperacion.equipo === filtroEquipoMapa
+  ) || [];
+
+  // 🚀 RENDERIZADO DEL HEATMAP
   useEffect(() => {
     if (tipoMapa !== 'calor') return;
     if (!heatmapRef.current) return;
@@ -155,14 +177,19 @@ function Resumen() {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
+      
       {/* CABECERA Y FILTROS GENERALES */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
-            <div className="stat-label">PARTIDO</div>
-            <select onChange={(e) => cargarPartido(e.target.value)} style={{ marginTop: '5px', width: '250px' }}>
+            <div className="stat-label">PARTIDO (COMPETICIÓN)</div>
+            <select onChange={(e) => cargarPartido(e.target.value)} style={{ marginTop: '5px', width: '350px' }}>
               <option value="">-- SELECCIONAR --</option>
-              {partidos.map(p => <option key={p.id} value={p.id}>{p.rival.toUpperCase()} // {p.fecha}</option>)}
+              {partidos.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.rival.toUpperCase()} // {p.categoria?.toUpperCase() || 'S/C'} ({p.competicion || 'Amistoso'})
+                </option>
+              ))}
             </select>
           </div>
           
@@ -203,28 +230,30 @@ function Resumen() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label">EXPECTATIVA DE GOL (xG)</div>
-                <div className="stat-value" style={{ color: '#fff' }}>{analitica.xg.toFixed(2)}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Calidad de oportunidades creadas</div>
+                <div className="stat-value" style={{ color: 'var(--accent)' }}>
+                  {analitica.xgPropio.toFixed(2)} <span style={{ fontSize: '1rem', color: '#ef4444' }}>| {analitica.xgRival.toFixed(2)}</span>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Propio | Rival</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label">EFICACIA DE TIRO</div>
                 <div className="stat-value" style={{ color: analitica.eficaciaTiro > 15 ? 'var(--accent)' : 'var(--text)' }}>{analitica.eficaciaTiro}%</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Goles / Remates Totales</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Goles / Remates Propios</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label">TRANSICIONES RÁPIDAS</div>
                 <div className="stat-value" style={{ color: analitica.transiciones.length > 3 ? 'var(--accent)' : 'var(--text-dim)' }}>{analitica.transiciones.length}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Recuperaciones seguidas de Remate</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Ataques directos post-robo</div>
              </div>
           </div>
 
-          {/* 3. ANÁLISIS TÁCTICO: OFENSIVA VS DEFENSIVA + DUELOS */}
+          {/* 3. ANÁLISIS TÁCTICO */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>PRODUCCIÓN OFENSIVA</div>
               <div style={kpiFila}><span>REMATES TOTALES</span><strong>{analitica.stats.propio.remates}</strong></div>
               <div style={kpiFila}><span>RECUPERACIONES</span><strong style={{color: 'var(--accent)'}}>{analitica.stats.propio.rec}</strong></div>
-              <div style={kpiFila}><span>POSESIONES (M. Analytics)</span><strong style={{color: 'var(--text)'}}>{analitica.posesiones.length}</strong></div>
+              <div style={kpiFila}><span>POSESIONES LOGRADAS</span><strong style={{color: 'var(--text)'}}>{analitica.posesiones.length}</strong></div>
             </div>
             
             <div className="bento-card">
@@ -234,7 +263,6 @@ function Resumen() {
               <div style={kpiFila}><span>FALTAS COMETIDAS</span><strong>{analitica.stats.propio.faltas}</strong></div>
             </div>
 
-            {/* NUEVO BLOQUE DE MICRO-CONFLICTOS */}
             <div className="bento-card" style={{ borderTop: '3px solid #0ea5e9' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#0ea5e9' }}>⚔️ FRICCIÓN Y DUELOS</div>
               <div style={kpiFila}>
@@ -250,28 +278,35 @@ function Resumen() {
                 </strong>
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '10px', lineHeight: 1.4 }}>
-                Unidades mínimas de conflicto. Un % defensivo bajo indica debilidad estructural en el 1v1.
+                Un % defensivo bajo indica debilidad estructural en el 1v1.
               </div>
             </div>
           </div>
 
-          {/* 4. ANÁLISIS ESPACIAL */}
+          {/* 4. ANÁLISIS ESPACIAL MULTI-CAPA */}
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-              <div className="stat-label">ANÁLISIS ESPACIAL (MAPA DE CALOR / PUNTOS)</div>
+              <div className="stat-label">ANÁLISIS ESPACIAL TÁCTICO</div>
               
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                  <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, background: filtroEquipoMapa === 'Propio' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
+                  <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, background: filtroEquipoMapa === 'Rival' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Rival' ? '#fff' : 'var(--text-dim)' }}>RIVAL</button>
+                  <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, background: filtroEquipoMapa === 'Ambos' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? '#aaa' : 'var(--text-dim)' }}>AMBOS</button>
+                </div>
+
                 <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} style={{ padding: '5px', fontSize: '0.8rem', width: 'auto' }}>
                   <option value="Todas">TODAS LAS ACCIONES</option>
                   <option value="Remate">SOLO REMATES</option>
                   <option value="Recuperación">SOLO RECUPERACIONES</option>
                   <option value="Pérdida">SOLO PÉRDIDAS</option>
-                  <option value="Duelo">SOLO DUELOS (FRICCIÓN)</option> {/* <-- NUEVO FILTRO */}
+                  <option value="Duelo">SOLO DUELOS (FRICCIÓN)</option>
                 </select>
 
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
-                  <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>HEATMAP PRO</button>
+                  <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>HEATMAP</button>
+                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES ⚡</button>
                 </div>
               </div>
             </div>
@@ -302,6 +337,36 @@ function Resumen() {
                   />
                 ))}
 
+                {tipoMapa === 'transiciones' && (
+                  <svg style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }}>
+                    <defs>
+                      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="var(--accent)" />
+                      </marker>
+                      <marker id="arrowhead-rival" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+                      </marker>
+                    </defs>
+                    {transicionesMapa.map((t, i) => {
+                      if (!t.recuperacion || !t.remate || t.recuperacion.zona_x == null || t.remate.zona_x == null) return null;
+                      const esPropio = t.recuperacion.equipo === 'Propio';
+                      const colorFlecha = esPropio ? 'var(--accent)' : '#ef4444';
+                      const arrowMarker = esPropio ? 'url(#arrowhead)' : 'url(#arrowhead-rival)';
+                      return (
+                        <g key={i}>
+                          <circle cx={`${t.recuperacion.zona_x}%`} cy={`${t.recuperacion.zona_y}%`} r="4" fill={colorFlecha} />
+                          <line 
+                            x1={`${t.recuperacion.zona_x}%`} y1={`${t.recuperacion.zona_y}%`} 
+                            x2={`${t.remate.zona_x}%`} y2={`${t.remate.zona_y}%`} 
+                            stroke={colorFlecha} strokeWidth="2" strokeDasharray="4 4"
+                            markerEnd={arrowMarker} opacity="0.8"
+                          />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                )}
+
                 {eventoSeleccionado && tipoMapa === 'puntos' && (
                   <div style={{ position: 'absolute', bottom: '15px', left: '50%', transform: 'translateX(-50%)', background: '#111', border: `1px solid ${getColorAccion(eventoSeleccionado.accion)}`, padding: '10px 20px', borderRadius: '6px', zIndex: 10, textAlign: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.8)', minWidth: '200px', pointerEvents: 'none' }}>
                     <div style={{ color: getColorAccion(eventoSeleccionado.accion), fontWeight: 800, fontSize: '0.8rem', textTransform: 'uppercase' }}>{eventoSeleccionado.accion}</div>
@@ -312,7 +377,7 @@ function Resumen() {
             </div>
           </div>
 
-          {/* 5. TOP PERFORMERS (CON DUELOS) */}
+          {/* 5. TOP PERFORMERS INDIVIDUALES */}
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px' }}>RENDIMIENTO INDIVIDUAL (TOP PERFORMERS)</div>
             <div className="table-wrapper" style={{ maxHeight: '300px' }}>
@@ -322,11 +387,12 @@ function Resumen() {
                     <th>#</th>
                     <th style={{ textAlign: 'left' }}>JUGADOR</th>
                     <th>RATING</th>
+                    <th>+/-</th>
                     <th>REMATES (G)</th>
                     <th style={{ color: '#10b981' }}>DUELOS DEF %</th>
                     <th style={{ color: '#0ea5e9' }}>DUELOS OFE %</th>
                     <th>REC</th>
-                    <th>PERD</th>
+                    <th style={{ color: '#ef4444' }}>FALTAS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -342,15 +408,75 @@ function Resumen() {
                             {j.impacto > 0 ? '+' : ''}{j.impacto.toFixed(1)}
                           </div>
                         </td>
+                        <td style={{ fontWeight: 800, color: j.plusMinus > 0 ? 'var(--accent)' : j.plusMinus < 0 ? '#ef4444' : 'var(--text-dim)' }}>
+                          {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
+                        </td>
                         <td>{j.remates} <span style={{ color: 'var(--accent)' }}>({j.goles})</span></td>
                         <td style={{ fontWeight: 800, color: defRatio > 50 ? '#10b981' : (defRatio !== '-' ? '#ef4444' : '#555') }}>{defRatio}{defRatio !== '-' && '%'}</td>
                         <td style={{ fontWeight: 800, color: ofeRatio > 50 ? '#0ea5e9' : (ofeRatio !== '-' ? '#ef4444' : '#555') }}>{ofeRatio}{ofeRatio !== '-' && '%'}</td>
                         <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
-                        <td style={{ color: '#ef4444' }}>{j.perdidas}</td>
+                        <td style={{ color: j.faltas > 2 ? '#ef4444' : 'var(--text-dim)' }}>{j.faltas}</td>
                       </tr>
                     )
                   })}
-                  {analitica.ranking.length === 0 && <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay registros en este periodo.</td></tr>}
+                  {analitica.ranking.length === 0 && <tr><td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay registros en este periodo.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 6. TOP QUINTETOS */}
+          <div className="bento-card">
+            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>RENDIMIENTO DE QUINTETOS (LÍNEAS DE 5)</div>
+            <div className="table-wrapper" style={{ maxHeight: '300px' }}>
+              <table>
+                <thead style={{ position: 'sticky', top: 0, background: 'var(--panel)', zIndex: 1 }}>
+                  <tr>
+                    <th style={{ textAlign: 'left' }}>QUINTETO EN CANCHA</th>
+                    <th style={{ color: '#00ff88' }}>GOLES A FAVOR</th>
+                    <th style={{ color: '#ef4444' }}>GOLES EN CONTRA</th>
+                    <th>BALANCE +/-</th>
+                    <th>DUELOS (Gan/Perd)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analitica.quintetos.sort((a, b) => (b.golesFavor - b.golesContra) - (a.golesFavor - a.golesContra)).map((q, idx) => {
+                    const diff = q.golesFavor - q.golesContra;
+                    
+                    // LÓGICA CORREGIDA PARA EL APELLIDO
+                    const nombresQuinteto = q.ids.map(id => {
+                      const jug = jugadores.find(j => j.id === id);
+                      if (!jug) return '?';
+                      
+                      // 1. Si tenés una columna "apellido" en la base de datos, la usa directo:
+                      if (jug.apellido) {
+                        return jug.apellido.toUpperCase();
+                      }
+                      
+                      // 2. Si solo tenés la columna "nombre" cargada como "APELLIDO Nombre", agarra la 1ra palabra:
+                      const partesNombre = jug.nombre.trim().split(' ');
+                      return partesNombre[0].toUpperCase();
+                    }).join(' - ');
+
+                    return (
+                      <tr key={idx} style={{ textAlign: 'center' }}>
+                        <td style={{ textAlign: 'left', fontWeight: 800, fontFamily: 'JetBrains Mono', color: '#fff', fontSize: '0.75rem', lineHeight: '1.4' }}>
+                          [{nombresQuinteto}]
+                        </td>
+                        <td style={{ fontWeight: 800, color: q.golesFavor > 0 ? '#00ff88' : '#555' }}>{q.golesFavor}</td>
+                        <td style={{ fontWeight: 800, color: q.golesContra > 0 ? '#ef4444' : '#555' }}>{q.golesContra}</td>
+                        <td>
+                          <div style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '4px', background: diff > 0 ? 'rgba(0,255,136,0.1)' : diff < 0 ? 'rgba(239,68,68,0.1)' : 'transparent', color: diff > 0 ? 'var(--accent)' : diff < 0 ? '#ef4444' : '#fff', fontWeight: 800 }}>
+                            {diff > 0 ? '+' : ''}{diff}
+                          </div>
+                        </td>
+                        <td style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>
+                          <span style={{ color: '#10b981' }}>{q.duelosGanados}</span> / <span style={{ color: '#ef4444' }}>{q.duelosPerdidos}</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {analitica.quintetos.length === 0 && <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay datos suficientes de quintetos en este partido.</td></tr>}
                 </tbody>
               </table>
             </div>

@@ -4,7 +4,8 @@ import TomaDatos from './pages/TomaDatos';
 import Resumen from './pages/Resumen';
 import JugadorPerfil from './pages/JugadorPerfil';
 import Temporada from './pages/Temporada';
-import Configuracion from './pages/Configuracion'; // <-- NUEVO IMPORT
+import Configuracion from './pages/Configuracion';
+import Rendimiento from './pages/Rendimiento';
 import './App.css';
 
 function App() {
@@ -16,10 +17,12 @@ function App() {
             VIRTUAL<span style={{ color: 'var(--accent)' }}>.STATS</span>
           </div>
           <NavLink to="/" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>INICIO</NavLink>
-          <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>GLOBAL TEMPORADA</NavLink>
-          <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>MATCH DASHBOARD</NavLink>
-          <NavLink to="/perfil-jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>SCOUTING JUGADOR</NavLink>
-          <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>MI CLUB / CONFIG</NavLink> {/* <-- BOTON NUEVO */}
+          <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>DASHBOARD GLOBAL</NavLink>
+          <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>DASHBOARD PARTIDO</NavLink>
+          <NavLink to="/perfil-jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>SCOUTING INDIVIDUAL</NavLink>
+          <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>RENDIMIENTO</NavLink>
+          <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>MI CLUB</NavLink>
+          
           <NavLink 
   to="/toma-datos" 
   className="nav-item" 
@@ -45,6 +48,7 @@ function App() {
             <Route path="/perfil-jugador" element={<JugadorPerfil />} />
             <Route path="/configuracion" element={<Configuracion />} /> {/* <-- RUTA NUEVA */}
             <Route path="/toma-datos" element={<TomaDatos />} />
+            <Route path="/rendimiento" element={<Rendimiento />} />
           </Routes>
         </main>
       </div>

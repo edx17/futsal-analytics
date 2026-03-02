@@ -106,8 +106,10 @@ function JugadorPerfil() {
             <div className="stat-label">SCOUTING DE JUGADOR</div>
             <select value={jugadorId} onChange={(e) => setJugadorId(e.target.value)} style={{ marginTop: '5px', width: '250px', borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 }}>
               <option value="">-- SELECCIONAR JUGADOR --</option>
-              {jugadores.map(j => <option key={j.id} value={j.id}>{j.dorsal} - {j.nombre.toUpperCase()}</option>)}
-            </select>
+             {jugadores.map(j => (
+    <option key={j.id} value={j.id}>{j.dorsal} - {j.apellido ? j.apellido.toUpperCase() + ', ' + j.nombre : j.nombre}</option>
+  ))}
+</select>
           </div>
           
           {jugadorId && (
@@ -135,7 +137,7 @@ function JugadorPerfil() {
           <div className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '30px', background: 'linear-gradient(90deg, #111 0%, #000 100%)', borderLeft: '4px solid var(--accent)' }}>
             <div style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--accent)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
             <div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff' }}>{jugadorSeleccionado.nombre}</div>
+              <div style={{ fontSize: '2rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff' }}>{jugadorSeleccionado.apellido}</div>
               <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', letterSpacing: '2px' }}>{partidoFiltro === 'Todos' ? 'MÉTRICAS ACUMULADAS' : 'MÉTRICAS DEL PARTIDO'}</div>
             </div>
             <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
