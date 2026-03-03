@@ -2,9 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 
-// IMPORTAMOS EL MOTOR ANALÍTICO EXTERNO
-import { calcularRatingJugador } from '../analytics/rating';
-import { calcularXGPartido } from '../analytics/xg';
+// IMPORTAMOS EL MOTOR ANALÍTICO GLOBAL AISLADO
+import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
 
 function Temporada() {
   const [partidos, setPartidos] = useState([]);
@@ -30,104 +29,12 @@ function Temporada() {
     obtenerDatosGlobales();
   }, []);
 
-  // 🧠 MOTOR ANALÍTICO GLOBAL DE TEMPORADA
   const analiticaGlobal = useMemo(() => {
-    if (!partidos || partidos.length === 0) return null;
-
-    const listaEventos = eventos || [];
-
-    const partidosFiltrados = partidos.filter(p => {
-      const pasaCategoria = filtroCategoria === 'Todas' || (p.categoria && p.categoria === filtroCategoria);
-      const pasaCompeticion = filtroCompeticion === 'Todas' || (p.competicion && p.competicion === filtroCompeticion);
-      return pasaCategoria && pasaCompeticion;
+    return analizarTemporadaGlobal(partidos, eventos, jugadores, {
+      categoria: filtroCategoria,
+      competicion: filtroCompeticion
     });
-
-    const idsPartidos = partidosFiltrados.map(p => p.id);
-    const evFiltrados = listaEventos.filter(ev => idsPartidos.includes(ev.id_partido));
-
-    const statsEquipo = {
-      partidosJugados: partidosFiltrados.length,
-      golesFavor: 0, golesContra: 0, asistenciasTotales: 0,
-      victorias: 0, empates: 0, derrotas: 0,
-      xgTotal: calcularXGPartido(evFiltrados.filter(e => e.equipo === 'Propio')),
-      remates: 0, recuperaciones: 0, perdidas: 0,
-      duelosDefGanados: 0, duelosDefTotales: 0
-    };
-
-    const historialPartidos = partidosFiltrados.map(p => {
-      const evPartido = evFiltrados.filter(e => e.id_partido === p.id);
-      const golesPropio = evPartido.filter(e => (e.accion === 'Remate - Gol' || e.accion === 'Gol') && e.equipo === 'Propio').length;
-      const golesRival = evPartido.filter(e => (e.accion === 'Remate - Gol' || e.accion === 'Gol') && e.equipo === 'Rival').length;
-      const xg = calcularXGPartido(evPartido.filter(e => e.equipo === 'Propio'));
-      
-      let resultado = 'E';
-      if (golesPropio > golesRival) { resultado = 'V'; statsEquipo.victorias++; }
-      else if (golesPropio < golesRival) { resultado = 'D'; statsEquipo.derrotas++; }
-      else { statsEquipo.empates++; }
-
-      statsEquipo.golesFavor += golesPropio;
-      statsEquipo.golesContra += golesRival;
-
-      return { ...p, rival: p.rival || 'Desconocido', fecha: p.fecha || 'Sin fecha', golesPropio, golesRival, resultado, xg };
-    });
-
-    evFiltrados.forEach(ev => {
-      const p = ev.equipo === 'Propio';
-      if (p && ev.accion?.includes('Remate')) statsEquipo.remates++;
-      if (p && ev.accion === 'Recuperación') statsEquipo.recuperaciones++;
-      if (p && ev.accion === 'Pérdida') statsEquipo.perdidas++;
-      if (p && ev.accion === 'Duelo DEF Ganado') { statsEquipo.duelosDefGanados++; statsEquipo.duelosDefTotales++; }
-      if (p && ev.accion === 'Duelo DEF Perdido') { statsEquipo.duelosDefTotales++; }
-      
-      // Contabiliza la asistencia a nivel equipo
-      if (p && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') && ev.id_asistencia) {
-        statsEquipo.asistenciasTotales++;
-      }
-    });
-
-    const statsJugadores = {};
-    jugadores.forEach(j => {
-      statsJugadores[j.id] = { ...j, eventos: [], goles: 0, asistencias: 0, rec: 0, perdidas: 0, duelosDefGan: 0, duelosDefTot: 0 };
-    });
-
-    evFiltrados.forEach(ev => {
-      if (ev.equipo === 'Propio') {
-        // Acciones del ejecutor
-        if (ev.id_jugador && statsJugadores[ev.id_jugador]) {
-          statsJugadores[ev.id_jugador].eventos.push(ev);
-          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_jugador].goles++;
-          if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
-          if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
-          if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
-          if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
-        }
-
-        // Asistencias del jugador
-        if (ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
-          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
-            statsJugadores[ev.id_asistencia].asistencias++;
-            // Le agregamos el evento al array de eventos del asistente para que no quede como 'inactivo' si solo tiene asistencias
-            statsJugadores[ev.id_asistencia].eventos.push({ ...ev, tipoVirtual: 'Asistencia' }); 
-          }
-        }
-      }
-    });
-
-    const jugadoresActivos = Object.values(statsJugadores).filter(j => j.eventos.length > 0);
-    jugadoresActivos.forEach(j => {
-      j.impactoGlobal = calcularRatingJugador(j.eventos.filter(e => !e.tipoVirtual)); // Pasamos solo los eventos reales al rating
-      j.eficaciaDefensiva = j.duelosDefTot > 0 ? (j.duelosDefGan / j.duelosDefTot) * 100 : 0;
-    });
-
-    const topGoleadores = [...jugadoresActivos].sort((a, b) => b.goles - a.goles).slice(0, 5);
-    const topAsistidores = [...jugadoresActivos].sort((a, b) => b.asistencias - a.asistencias).slice(0, 5); // TOP ASISTENCIAS
-    const topMVP = [...jugadoresActivos].sort((a, b) => b.impactoGlobal - a.impactoGlobal).slice(0, 5);
-    const topMuros = [...jugadoresActivos]
-      .filter(j => j.duelosDefTot >= 5)
-      .sort((a, b) => b.eficaciaDefensiva - a.eficaciaDefensiva).slice(0, 5);
-
-    return { statsEquipo, historialPartidos, topGoleadores, topAsistidores, topMVP, topMuros, evFiltrados };
-  }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]); 
+  }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
   const evMapa = analiticaGlobal?.evFiltrados.filter(ev => ev.equipo === 'Propio' && (!filtroAccionMapa || ev.accion?.includes(filtroAccionMapa))) || [];
 
@@ -185,7 +92,6 @@ function Temporada() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        {/* ROW 1: KPIs GLOBALES */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px', background: 'linear-gradient(180deg, #111 0%, #000 100%)', borderTop: '2px solid var(--accent)' }}>
                 <div className="stat-label">PARTIDOS JUGADOS</div>
@@ -216,8 +122,7 @@ function Temporada() {
             </div>
         </div>
 
-        {/* ROW 2: LEADERBOARDS (TOP 5) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>🔥 TOP GOLEADORES</div>
@@ -238,6 +143,19 @@ function Temporada() {
               </div>
             ))}
           </div>
+          
+          <div className="bento-card">
+            <div className="stat-label" style={{ marginBottom: '15px', color: '#c084fc' }}>🧠 TOP CREADORES (xGBuildup)</div>
+            {analiticaGlobal.topCreadores.map((j, i) => (
+              <div key={j.id} style={rankingRow}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
+                <div style={{ textAlign: 'right' }}>
+                  <strong style={{ fontSize: '1.2rem', color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</strong>
+                </div>
+              </div>
+            ))}
+            {analiticaGlobal.topCreadores.length === 0 && <div style={{color:'var(--text-dim)', fontSize:'0.8rem', marginTop:'10px'}}>Sin datos de creación.</div>}
+          </div>
 
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981' }}>🛡️ TOP MUROS DEF. (DUELOS)</div>
@@ -246,7 +164,6 @@ function Temporada() {
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
                 <div style={{ textAlign: 'right' }}>
                   <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>{j.eficaciaDefensiva.toFixed(0)}%</strong>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{j.duelosDefGan}/{j.duelosDefTot} Gan.</div>
                 </div>
               </div>
             ))}
@@ -262,9 +179,9 @@ function Temporada() {
               </div>
             ))}
           </div>
+
         </div>
 
-        {/* ROW 3: HISTORIAL DE FORMA Y MAPA GLOBAL */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           
           <div className="bento-card">

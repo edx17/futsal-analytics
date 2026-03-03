@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 
-// IMPORTAMOS EL MOTOR ANALÍTICO EXTERNO
+// IMPORTACIONES DEL MOTOR ANALÍTICO
 import { analizarPartido } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
+import { calcularCadenasValor } from '../analytics/posesiones';
 
 function Resumen() {
   const [partidos, setPartidos] = useState([]);
@@ -12,7 +13,6 @@ function Resumen() {
   const [partidoSeleccionado, setPartidoSeleccionado] = useState(null);
   const [eventosPartido, setEventosPartido] = useState([]);
   
-  // Filtros interactivos
   const [filtroPeriodo, setFiltroPeriodo] = useState('Todos');
   const [tipoMapa, setTipoMapa] = useState('calor');
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
@@ -57,7 +57,6 @@ function Resumen() {
     return colores[acc] || '#ffffff';
   };
 
-  // 🚀 MOTOR ANALÍTICO INTEGRADO
   const analitica = useMemo(() => {
     if (!eventosPartido.length) return null;
 
@@ -89,10 +88,13 @@ function Resumen() {
 
     const statsJugadores = {};
     jugadores.forEach(j => {
+      const { xgChain, xgBuildup } = calcularCadenasValor(datosProcesados.posesiones, j.id);
+      
       statsJugadores[j.id] = { 
         id: j.id, nombre: j.apellido, dorsal: j.dorsal, eventos: [], 
         remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
-        duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0
+        duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
+        xgChain, xgBuildup
       };
     });
 
@@ -121,7 +123,7 @@ function Resumen() {
     });
 
     const ranking = Object.values(statsJugadores)
-      .filter(j => j.eventos.length > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
+      .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
       .map(j => {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
         return { 
@@ -147,19 +149,16 @@ function Resumen() {
     };
   }, [eventosPartido, filtroPeriodo, jugadores]);
 
-  // FILTRADO COMPUESTO DEL MAPA (Por Acción y por Equipo)
   const evMapa = analitica?.evFiltrados.filter(ev => {
     const pasaAccion = filtroAccionMapa === 'Todas' ? true : ev.accion?.includes(filtroAccionMapa);
     const pasaEquipo = filtroEquipoMapa === 'Ambos' ? true : ev.equipo === filtroEquipoMapa;
     return pasaAccion && pasaEquipo;
   }) || [];
 
-  // FILTRO ESPECÍFICO PARA TRANSICIONES
   const transicionesMapa = analitica?.transiciones.filter(t => 
     filtroEquipoMapa === 'Ambos' ? true : t.recuperacion.equipo === filtroEquipoMapa
   ) || [];
 
-  // 🚀 RENDERIZADO DEL HEATMAP
   useEffect(() => {
     if (tipoMapa !== 'calor') return;
     if (!heatmapRef.current) return;
@@ -189,8 +188,6 @@ function Resumen() {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
-      
-      {/* CABECERA Y FILTROS GENERALES */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
@@ -222,7 +219,6 @@ function Resumen() {
       {partidoSeleccionado && analitica && (
         <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* 1. SCORE Y CONTEXTO */}
           <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', textAlign: 'center' }}>
             <div>
               {partidoSeleccionado.escudo_propio && <img src={partidoSeleccionado.escudo_propio} alt="club" style={escudoStyle} />}
@@ -238,7 +234,6 @@ function Resumen() {
             </div>
           </div>
 
-          {/* 2. PRODUCCIÓN OFENSIVA Y EFICACIA */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label">EXPECTATIVA DE GOL (xG)</div>
@@ -259,7 +254,6 @@ function Resumen() {
              </div>
           </div>
 
-          {/* 3. ANÁLISIS TÁCTICO */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>PRODUCCIÓN OFENSIVA</div>
@@ -296,7 +290,6 @@ function Resumen() {
             </div>
           </div>
 
-          {/* 4. ANÁLISIS ESPACIAL MULTI-CAPA */}
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div className="stat-label">ANÁLISIS ESPACIAL TÁCTICO</div>
@@ -326,7 +319,6 @@ function Resumen() {
             
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative' }}>
-                
                 <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', backgroundColor: 'var(--border)', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '1px solid var(--border)', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', left: 0, top: '25%', bottom: '25%', width: '15%', border: '1px solid var(--border)', borderLeft: 'none', borderRadius: '0 50% 50% 0', pointerEvents: 'none', zIndex: 0 }}></div>
@@ -390,7 +382,6 @@ function Resumen() {
             </div>
           </div>
 
-          {/* 5. TOP PERFORMERS INDIVIDUALES */}
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px' }}>RENDIMIENTO INDIVIDUAL (TOP PERFORMERS)</div>
             <div className="table-wrapper" style={{ maxHeight: '300px' }}>
@@ -403,6 +394,7 @@ function Resumen() {
                     <th>+/-</th>
                     <th>REMATES (G)</th>
                     <th style={{ color: '#00ff88' }}>ASIST</th>
+                    <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
                     <th style={{ color: '#10b981' }}>DUELOS DEF %</th>
                     <th style={{ color: '#0ea5e9' }}>DUELOS OFE %</th>
                     <th>REC</th>
@@ -427,6 +419,7 @@ function Resumen() {
                         </td>
                         <td>{j.remates} <span style={{ color: 'var(--accent)' }}>({j.goles})</span></td>
                         <td style={{ fontWeight: 800, color: j.asistencias > 0 ? '#00ff88' : 'var(--text-dim)' }}>{j.asistencias}</td>
+                        <td style={{ fontWeight: 800, color: j.xgBuildup > 0 ? '#c084fc' : 'var(--text-dim)' }}>{j.xgBuildup.toFixed(2)}</td>
                         <td style={{ fontWeight: 800, color: defRatio > 50 ? '#10b981' : (defRatio !== '-' ? '#ef4444' : '#555') }}>{defRatio}{defRatio !== '-' && '%'}</td>
                         <td style={{ fontWeight: 800, color: ofeRatio > 50 ? '#0ea5e9' : (ofeRatio !== '-' ? '#ef4444' : '#555') }}>{ofeRatio}{ofeRatio !== '-' && '%'}</td>
                         <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
@@ -434,13 +427,12 @@ function Resumen() {
                       </tr>
                     )
                   })}
-                  {analitica.ranking.length === 0 && <tr><td colSpan="10" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay registros en este periodo.</td></tr>}
+                  {analitica.ranking.length === 0 && <tr><td colSpan="11" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay registros en este periodo.</td></tr>}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* 6. TOP QUINTETOS */}
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>RENDIMIENTO DE QUINTETOS (LÍNEAS DE 5)</div>
             <div className="table-wrapper" style={{ maxHeight: '300px' }}>
@@ -461,11 +453,7 @@ function Resumen() {
                     const nombresQuinteto = q.ids.map(id => {
                       const jug = jugadores.find(j => j.id === id);
                       if (!jug) return '?';
-                      
-                      if (jug.apellido) {
-                        return jug.apellido.toUpperCase();
-                      }
-                      
+                      if (jug.apellido) return jug.apellido.toUpperCase();
                       const partesNombre = jug.nombre.trim().split(' ');
                       return partesNombre[0].toUpperCase();
                     }).join(' - ');
