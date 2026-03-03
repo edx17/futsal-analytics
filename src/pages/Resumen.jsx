@@ -191,7 +191,7 @@ function Resumen() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
-            <div className="stat-label">PARTIDO (COMPETICIÓN)</div>
+            <div className="stat-label">PARTIDO (CATEGORIA / COMPETICIÓN)</div>
             <select onChange={(e) => cargarPartido(e.target.value)} style={{ marginTop: '5px', width: '350px' }}>
               <option value="">-- SELECCIONAR --</option>
               {partidos.map(p => (
@@ -213,7 +213,7 @@ function Resumen() {
             </div>
           )}
         </div>
-        {partidoSeleccionado && <button onClick={() => window.print()} className="btn-action">EXPORTAR PDF</button>}
+        {partidoSeleccionado && <button onClick={() => window.print()} className="btn-action">EXPORTAR REPORTE</button>}
       </div>
 
       {partidoSeleccionado && analitica && (
@@ -243,7 +243,7 @@ function Resumen() {
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Propio | Rival</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
-                <div className="stat-label">EFICACIA DE TIRO</div>
+                <div className="stat-label">EFICACIA DE REMATE</div>
                 <div className="stat-value" style={{ color: analitica.eficaciaTiro > 15 ? 'var(--accent)' : 'var(--text)' }}>{analitica.eficaciaTiro}%</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Goles / Remates Propios</div>
              </div>
@@ -257,8 +257,8 @@ function Resumen() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>PRODUCCIÓN OFENSIVA</div>
-              <div style={kpiFila}><span>ASISTENCIAS TOTALES</span><strong style={{color: '#00ff88'}}>{analitica.stats.propio.asistencias}</strong></div>
               <div style={kpiFila}><span>REMATES TOTALES</span><strong>{analitica.stats.propio.remates}</strong></div>
+              <div style={kpiFila}><span>ASISTENCIAS TOTALES</span><strong style={{color: '#00ff88'}}>{analitica.stats.propio.asistencias}</strong></div>
               <div style={kpiFila}><span>RECUPERACIONES</span><strong style={{color: 'var(--accent)'}}>{analitica.stats.propio.rec}</strong></div>
               <div style={kpiFila}><span>POSESIONES LOGRADAS</span><strong style={{color: 'var(--text)'}}>{analitica.posesiones.length}</strong></div>
             </div>
@@ -266,20 +266,20 @@ function Resumen() {
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: '#ef4444' }}>RIESGO Y DISCIPLINA</div>
               <div style={kpiFila}><span>PERDIDAS DE BALÓN</span><strong style={{color: '#ef4444'}}>{analitica.stats.propio.perdidas}</strong></div>
-              <div style={kpiFila}><span>BALANCE (Rec - Pérdidas)</span><strong style={{color: analitica.balancePosesion > 50 ? 'var(--accent)' : '#ef4444'}}>{analitica.balancePosesion}%</strong></div>
+              <div style={kpiFila}><span>RECUPERACIONES / PERDIDAS)</span><strong style={{color: analitica.balancePosesion > 50 ? 'var(--accent)' : '#ef4444'}}>{analitica.balancePosesion}%</strong></div>
               <div style={kpiFila}><span>FALTAS COMETIDAS</span><strong>{analitica.stats.propio.faltas}</strong></div>
             </div>
 
             <div className="bento-card" style={{ borderTop: '3px solid #0ea5e9' }}>
-              <div className="stat-label" style={{ marginBottom: '15px', color: '#0ea5e9' }}>⚔️ FRICCIÓN Y DUELOS</div>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#0ea5e9' }}>DUELOS</div>
               <div style={kpiFila}>
-                <span>DUELOS DEF. GANADOS</span>
+                <span>DUELOS DEFENSIVOAS GANADOS</span>
                 <strong style={{color: analitica.duelos.defensivos.eficacia > 50 ? 'var(--accent)' : '#ef4444'}}>
                   {analitica.duelos.defensivos.ganados}/{analitica.duelos.defensivos.total} ({analitica.duelos.defensivos.eficacia.toFixed(0)}%)
                 </strong>
               </div>
               <div style={kpiFila}>
-                <span>DUELOS OFE. GANADOS</span>
+                <span>DUELOS OFENSIVOS GANADOS</span>
                 <strong style={{color: analitica.duelos.ofensivos.eficacia > 50 ? '#0ea5e9' : '#ef4444'}}>
                   {analitica.duelos.ofensivos.ganados}/{analitica.duelos.ofensivos.total} ({analitica.duelos.ofensivos.eficacia.toFixed(0)}%)
                 </strong>
@@ -292,7 +292,7 @@ function Resumen() {
 
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-              <div className="stat-label">ANÁLISIS ESPACIAL TÁCTICO</div>
+              <div className="stat-label">MAPEO TÁCTICO</div>
               
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
@@ -306,13 +306,13 @@ function Resumen() {
                   <option value="Remate">SOLO REMATES</option>
                   <option value="Recuperación">SOLO RECUPERACIONES</option>
                   <option value="Pérdida">SOLO PÉRDIDAS</option>
-                  <option value="Duelo">SOLO DUELOS (FRICCIÓN)</option>
+                  <option value="Duelo">SOLO DUELOS</option>
                 </select>
 
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>HEATMAP</button>
-                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES ⚡</button>
+                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
                 </div>
               </div>
             </div>
@@ -383,7 +383,7 @@ function Resumen() {
           </div>
 
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '20px' }}>RENDIMIENTO INDIVIDUAL (TOP PERFORMERS)</div>
+            <div className="stat-label" style={{ marginBottom: '20px' }}>RENDIMIENTO INDIVIDUAL</div>
             <div className="table-wrapper" style={{ maxHeight: '300px' }}>
               <table>
                 <thead style={{ position: 'sticky', top: 0, background: 'var(--panel)', zIndex: 1 }}>
@@ -393,7 +393,7 @@ function Resumen() {
                     <th>RATING</th>
                     <th>+/-</th>
                     <th>REMATES (G)</th>
-                    <th style={{ color: '#00ff88' }}>ASIST</th>
+                    <th style={{ color: '#00ff88' }}>ASISTENCIAS</th>
                     <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
                     <th style={{ color: '#10b981' }}>DUELOS DEF %</th>
                     <th style={{ color: '#0ea5e9' }}>DUELOS OFE %</th>
@@ -434,15 +434,15 @@ function Resumen() {
           </div>
 
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>RENDIMIENTO DE QUINTETOS (LÍNEAS DE 5)</div>
+            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>RENDIMIENTO POR QUINTETOS</div>
             <div className="table-wrapper" style={{ maxHeight: '300px' }}>
               <table>
                 <thead style={{ position: 'sticky', top: 0, background: 'var(--panel)', zIndex: 1 }}>
                   <tr>
-                    <th style={{ textAlign: 'left' }}>QUINTETO EN CANCHA</th>
-                    <th style={{ color: '#00ff88' }}>GOLES A FAVOR</th>
-                    <th style={{ color: '#ef4444' }}>GOLES EN CONTRA</th>
-                    <th>BALANCE +/-</th>
+                    <th style={{ textAlign: 'left' }}>QUINTETO</th>
+                    <th style={{ color: '#00ff88' }}>GF</th>
+                    <th style={{ color: '#ef4444' }}>GC</th>
+                    <th>BALANCE</th>
                     <th>DUELOS (Gan/Perd)</th>
                   </tr>
                 </thead>

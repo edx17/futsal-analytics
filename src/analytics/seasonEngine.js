@@ -2,6 +2,8 @@
 import { calcularRatingJugador } from './rating';
 import { calcularXGPartido } from './xg';
 import { generarPosesiones, calcularCadenasValor } from './posesiones';
+import { detectarTransiciones } from './transiciones';
+import { analizarPartido } from './engine'; // NUEVO: Importamos el motor individual
 
 export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
   if (!partidos || partidos.length === 0) return null;
@@ -20,16 +22,22 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
   const statsEquipo = {
     partidosJugados: partidosFiltrados.length,
     golesFavor: 0, golesContra: 0, asistenciasTotales: 0,
+    golesFavorPT: 0, golesFavorST: 0, golesContraPT: 0, golesContraST: 0, 
     victorias: 0, empates: 0, derrotas: 0,
     xgTotal: calcularXGPartido(evFiltrados.filter(e => e.equipo === 'Propio')),
+    xgRival: calcularXGPartido(evFiltrados.filter(e => e.equipo === 'Rival')),
     remates: 0, recuperaciones: 0, perdidas: 0,
+    recuperacionesAltas: 0, perdidasPeligrosas: 0, 
     duelosDefGanados: 0, duelosDefTotales: 0
   };
 
   const statsJugadores = {};
   jugadores.forEach(j => {
-    statsJugadores[j.id] = { ...j, eventos: [], goles: 0, asistencias: 0, rec: 0, perdidas: 0, duelosDefGan: 0, duelosDefTot: 0, xgChain: 0, xgBuildup: 0 };
+    statsJugadores[j.id] = { ...j, eventos: [], goles: 0, asistencias: 0, rec: 0, perdidas: 0, duelosDefGan: 0, duelosDefTot: 0, xgChain: 0, xgBuildup: 0, xgIndividual: 0 };
   });
+
+  // --- NUEVO: RECOLECTOR DE QUINTETOS GLOBALES ---
+  const quintetosGlobales = {};
 
   const historialPartidos = partidosFiltrados.map(p => {
     const evPartido = evFiltrados.filter(e => e.id_partido === p.id);
@@ -37,9 +45,26 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
     const golesRival = evPartido.filter(e => (e.accion === 'Remate - Gol' || e.accion === 'Gol') && e.equipo === 'Rival').length;
     const xg = calcularXGPartido(evPartido.filter(e => e.equipo === 'Propio'));
     
-    // --- INTEGRACIÓN DE CADENAS DE VALOR ---
     const evPropio = evPartido.filter(e => e.equipo === 'Propio');
     const posesionesPartido = generarPosesiones(evPropio);
+    
+    // Usamos tu motor de partido para extraer las líneas de este partido en concreto
+    try {
+      const datosPartido = analizarPartido(evPartido, 'Propio');
+      if (datosPartido && datosPartido.quintetos) {
+        datosPartido.quintetos.forEach(q => {
+          // Creamos una firma única (hash) ordenando los IDs para agrupar las mismas líneas
+          const hash = q.ids.slice().sort().join('-');
+          if (!quintetosGlobales[hash]) {
+            quintetosGlobales[hash] = { ids: q.ids, golesFavor: 0, golesContra: 0 };
+          }
+          quintetosGlobales[hash].golesFavor += q.golesFavor;
+          quintetosGlobales[hash].golesContra += q.golesContra;
+        });
+      }
+    } catch (error) {
+      console.warn("No se pudo extraer quinteto del partido", p.id);
+    }
     
     jugadores.forEach(j => {
       const { xgChain, xgBuildup } = calcularCadenasValor(posesionesPartido, j.id);
@@ -55,26 +80,62 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
     statsEquipo.golesFavor += golesPropio;
     statsEquipo.golesContra += golesRival;
 
-    return { ...p, rival: p.rival || 'Desconocido', fecha: p.fecha || 'Sin fecha', golesPropio, golesRival, resultado, xg };
+    const fechaCorta = p.fecha ? p.fecha.substring(0, 5) : 'S/F';
+
+    return { ...p, rival: p.rival || 'Desconocido', fechaCorta, fecha: p.fecha || 'Sin fecha', golesPropio, golesRival, resultado, xg };
   });
+
+  // Procesamos los quintetos para el Ranking
+  const topQuintetos = Object.values(quintetosGlobales)
+    .filter(q => q.ids && q.ids.length > 0)
+    .sort((a, b) => (b.golesFavor - b.golesContra) - (a.golesFavor - a.golesContra))
+    .slice(0, 5); // Tomamos los 5 mejores de la temporada
+
+  const evPropiosGlobales = evFiltrados.filter(e => e.equipo === 'Propio');
+  const transicionesGlobales = detectarTransiciones(evPropiosGlobales);
+  const transicionesLetales = transicionesGlobales.filter(t => t.remate.accion === 'Remate - Gol' || t.remate.accion === 'Gol');
 
   evFiltrados.forEach(ev => {
     const p = ev.equipo === 'Propio';
+    const esAtaque = ev.zona_x > 66;
+    const esDefensa = ev.zona_x < 33;
+    const esGol = ev.accion === 'Remate - Gol' || ev.accion === 'Gol';
     
+    if (esGol) {
+      if (p) {
+        if (ev.periodo === 'PT') statsEquipo.golesFavorPT++;
+        if (ev.periodo === 'ST') statsEquipo.golesFavorST++;
+      } else {
+        if (ev.periodo === 'PT') statsEquipo.golesContraPT++;
+        if (ev.periodo === 'ST') statsEquipo.golesContraST++;
+      }
+    }
+
     if (p) {
-      if (ev.accion?.includes('Remate')) statsEquipo.remates++;
-      if (ev.accion === 'Recuperación') statsEquipo.recuperaciones++;
-      if (ev.accion === 'Pérdida') statsEquipo.perdidas++;
+      if (ev.accion?.includes('Remate')) {
+        statsEquipo.remates++;
+        if (ev.id_jugador && statsJugadores[ev.id_jugador]) {
+          statsJugadores[ev.id_jugador].xgIndividual += calcularXGPartido([ev]);
+        }
+      }
+      if (ev.accion === 'Recuperación') {
+        statsEquipo.recuperaciones++;
+        if (esAtaque) statsEquipo.recuperacionesAltas++;
+      }
+      if (ev.accion === 'Pérdida') {
+        statsEquipo.perdidas++;
+        if (esDefensa) statsEquipo.perdidasPeligrosas++;
+      }
       if (ev.accion === 'Duelo DEF Ganado') { statsEquipo.duelosDefGanados++; statsEquipo.duelosDefTotales++; }
       if (ev.accion === 'Duelo DEF Perdido') { statsEquipo.duelosDefTotales++; }
       
-      if ((ev.accion === 'Remate - Gol' || ev.accion === 'Gol') && ev.id_asistencia) {
+      if (esGol && ev.id_asistencia) {
         statsEquipo.asistenciasTotales++;
       }
 
       if (ev.id_jugador && statsJugadores[ev.id_jugador]) {
         statsJugadores[ev.id_jugador].eventos.push(ev);
-        if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_jugador].goles++;
+        if (esGol) statsJugadores[ev.id_jugador].goles++;
         if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
         if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
         if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
@@ -82,7 +143,7 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
       }
 
       if (ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
-        if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
+        if (esGol) {
           statsJugadores[ev.id_asistencia].asistencias++;
           statsJugadores[ev.id_asistencia].eventos.push({ ...ev, tipoVirtual: 'Asistencia' }); 
         }
@@ -92,22 +153,24 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
 
   const jugadoresActivos = Object.values(statsJugadores).filter(j => j.eventos.length > 0 || j.xgChain > 0);
   
-jugadoresActivos.forEach(j => {
-    // Calculamos un PM global aproximado usando los goles del jugador como base si no hay sub-ins exactos
+  jugadoresActivos.forEach(j => {
     const pmGlobal = (j.goles + j.asistencias) - (j.perdidas * 0.5); 
     j.impactoGlobal = calcularRatingJugador(j, j.eventos.filter(e => !e.tipoVirtual), pmGlobal);
     j.eficaciaDefensiva = j.duelosDefTot > 0 ? (j.duelosDefGan / j.duelosDefTot) * 100 : 0;
   });
 
+  const matrizTalento = jugadoresActivos.map(j => ({
+    nombre: j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase(),
+    creacion: Number((j.xgBuildup + j.asistencias).toFixed(2)),
+    finalizacion: Number((j.goles + j.xgIndividual).toFixed(2)),
+    impacto: j.impactoGlobal 
+  })).filter(j => j.creacion > 0 || j.finalizacion > 0);
+
   const topGoleadores = [...jugadoresActivos].sort((a, b) => b.goles - a.goles).slice(0, 5);
   const topAsistidores = [...jugadoresActivos].sort((a, b) => b.asistencias - a.asistencias).slice(0, 5);
   const topMVP = [...jugadoresActivos].sort((a, b) => b.impactoGlobal - a.impactoGlobal).slice(0, 5);
-  const topMuros = [...jugadoresActivos]
-    .filter(j => j.duelosDefTot >= 5)
-    .sort((a, b) => b.eficaciaDefensiva - a.eficaciaDefensiva).slice(0, 5);
-  const topCreadores = [...jugadoresActivos]
-    .filter(j => j.xgBuildup > 0)
-    .sort((a, b) => b.xgBuildup - a.xgBuildup).slice(0, 5);
+  const topMuros = [...jugadoresActivos].filter(j => j.duelosDefTot >= 5).sort((a, b) => b.eficaciaDefensiva - a.eficaciaDefensiva).slice(0, 5);
+  const topCreadores = [...jugadoresActivos].filter(j => j.xgBuildup > 0).sort((a, b) => b.xgBuildup - a.xgBuildup).slice(0, 5);
 
-  return { statsEquipo, historialPartidos, topGoleadores, topAsistidores, topMVP, topMuros, topCreadores, evFiltrados };
+  return { statsEquipo, historialPartidos, topGoleadores, topAsistidores, topMVP, topMuros, topCreadores, evFiltrados, transicionesLetales, matrizTalento, topQuintetos };
 }

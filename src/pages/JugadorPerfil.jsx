@@ -117,7 +117,7 @@ function JugadorPerfil() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
-            <div className="stat-label">SCOUTING DE JUGADOR</div>
+            <div className="stat-label">RESUMEN INDIVIDUAL</div>
             <select value={jugadorId} onChange={(e) => setJugadorId(e.target.value)} style={{ marginTop: '5px', width: '250px', borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 }}>
               <option value="">-- SELECCIONAR JUGADOR --</option>
              {jugadores.map(j => (
@@ -168,12 +168,12 @@ function JugadorPerfil() {
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Algoritmo de rendimiento contextual</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center' }}>
-                <div className="stat-label">EFICACIA OFENSIVA</div>
+                <div className="stat-label">EFICACIA EN REMATES</div>
                 <div className="stat-value" style={{ color: '#fff' }}>{perfil.eficacia}%</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>{perfil.stats.goles} Goles / {perfil.stats.remates} Tiros</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center' }}>
-                <div className="stat-label">RATIO DE SEGURIDAD</div>
+                <div className="stat-label">RATIO DEFENSIVO</div>
                 <div className="stat-value" style={{ color: perfil.ratioSeguridad > 50 ? 'var(--accent)' : '#ef4444' }}>{perfil.ratioSeguridad}%</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Recuperaciones vs Pérdidas</div>
              </div>
@@ -197,7 +197,7 @@ function JugadorPerfil() {
             </div>
             
             <div className="bento-card">
-              <div className="stat-label" style={{ marginBottom: '15px', color: '#eab308' }}>MOTOR Y DEFENSA</div>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#eab308' }}>RADIOGRAFIA DEFENSIVA</div>
               <div style={kpiFila}><span>RECUPERACIONES</span><strong style={{color: 'var(--accent)'}}>{perfil.stats.recuperaciones}</strong></div>
               <div style={kpiSubFila}><span>↳ Presión Alta (Campo Rival)</span><strong style={{color:'#eab308'}}>{perfil.stats.recAltas}</strong></div>
               
