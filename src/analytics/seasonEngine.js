@@ -92,8 +92,10 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
 
   const jugadoresActivos = Object.values(statsJugadores).filter(j => j.eventos.length > 0 || j.xgChain > 0);
   
-  jugadoresActivos.forEach(j => {
-    j.impactoGlobal = calcularRatingJugador(j.eventos.filter(e => !e.tipoVirtual));
+jugadoresActivos.forEach(j => {
+    // Calculamos un PM global aproximado usando los goles del jugador como base si no hay sub-ins exactos
+    const pmGlobal = (j.goles + j.asistencias) - (j.perdidas * 0.5); 
+    j.impactoGlobal = calcularRatingJugador(j, j.eventos.filter(e => !e.tipoVirtual), pmGlobal);
     j.eficaciaDefensiva = j.duelosDefTot > 0 ? (j.duelosDefGan / j.duelosDefTot) * 100 : 0;
   });
 

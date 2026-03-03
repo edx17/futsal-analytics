@@ -129,7 +129,7 @@ function Resumen() {
         return { 
           ...j, 
           plusMinus: pm,
-          impacto: calcularRatingJugador(j.eventos, pm)
+          impacto: calcularRatingJugador(j, j.eventos, pm)
         }
       })
       .sort((a, b) => b.impacto - a.impacto);

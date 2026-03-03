@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 
+// IMPORTAMOS EL NUEVO MOTOR DE RATING
+import { calcularRatingJugador } from '../analytics/rating';
+
 function JugadorPerfil() {
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
@@ -38,9 +41,12 @@ function JugadorPerfil() {
     fetchEventosJugador();
   }, [jugadorId]);
 
+  // Identificamos al jugador seleccionado antes del useMemo para pasarlo al motor
+  const jugadorSeleccionado = useMemo(() => jugadores.find(j => j.id == jugadorId), [jugadores, jugadorId]);
+
   // --- MOTOR ANALÍTICO INDIVIDUAL ---
   const perfil = useMemo(() => {
-    if (!jugadorId || !eventos.length) return null;
+    if (!jugadorId || !eventos.length || !jugadorSeleccionado) return null;
 
     // Filtramos por partido si corresponde
     const evFiltrados = partidoFiltro === 'Todos' 
@@ -89,14 +95,14 @@ function JugadorPerfil() {
     const volumenAcciones = stats.recuperaciones + stats.perdidas;
     const ratioSeguridad = volumenAcciones > 0 ? ((stats.recuperaciones / volumenAcciones) * 100).toFixed(0) : 0;
 
-    // Rating según la fórmula del motor
-    const impactoCrudo = (stats.goles * 6) + (stats.remates * 1) + (stats.recAltas * 3) - (stats.perdidas * 3) - (stats.faltas * 1);
-    const impacto = evFiltrados.length > 0 ? (impactoCrudo / evFiltrados.length * 10).toFixed(1) : 0; // Multiplicado x10 para que sea más visual
+    // 🔥 NUEVO CÁLCULO DE RATING CONTEXTUALIZADO 🔥
+    // Creamos un proxy de Plus/Minus basado en sus aciertos y errores graves,
+    // y llamamos a la misma función universal que usan Resumen y Temporada.
+    const proxyPM = (stats.goles + stats.asistencias) - (stats.perdidasPeligrosas * 1.5);
+    const impacto = calcularRatingJugador(jugadorSeleccionado, evFiltrados, proxyPM);
 
     return { stats, evFiltrados, partidosJugados, eficacia, ratioSeguridad, impacto, vacio: false };
-  }, [eventos, partidoFiltro, jugadorId]);
-
-  const jugadorSeleccionado = jugadores.find(j => j.id == jugadorId);
+  }, [eventos, partidoFiltro, jugadorId, jugadorSeleccionado]);
 
   // --- DICCIONARIO Y COLORES ---
   const getColorAccion = (acc) => {
@@ -159,7 +165,7 @@ function JugadorPerfil() {
              <div className="bento-card" style={{ textAlign: 'center' }}>
                 <div className="stat-label">IMPACTO (RATING)</div>
                 <div className="stat-value" style={{ color: perfil.impacto > 0 ? 'var(--accent)' : '#ef4444' }}>{perfil.impacto > 0 ? '+' : ''}{perfil.impacto}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Algoritmo de rendimiento</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Algoritmo de rendimiento contextual</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center' }}>
                 <div className="stat-label">EFICACIA OFENSIVA</div>
