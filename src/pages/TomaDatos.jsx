@@ -22,8 +22,9 @@ function TomaDatos() {
   const [equipo, setEquipo] = useState('Propio');
   const [accion, setAccion] = useState('');
   
-  // --- ESTADO PARA SUBMENÚS (Remates y Tarjetas) ---
+  // --- ESTADOS PARA GOL Y ASISTENCIA ---
   const [menuActivo, setMenuActivo] = useState(null); 
+  const [autorGol, setAutorGol] = useState(null); // Guarda temporalmente quién hizo el gol
 
   // --- ESTADOS DE PLANTILLA Y EVENTOS ---
   const [modalCambio, setModalCambio] = useState(false);
@@ -112,43 +113,89 @@ function TomaDatos() {
     setPanelLateral({ activo: true, x, y });
     setPasoRegistro(1);
     setAccion('');
-    setMenuActivo(null); // Reseteamos el submenú al tocar la cancha
+    setAutorGol(null);
+    setMenuActivo(null);
   };
 
   const seleccionarAccion = (acc) => {
     setAccion(acc);
     setPasoRegistro(2);
-    setMenuActivo(null); // Cerramos el submenú tras seleccionar
+    setMenuActivo(null);
   };
 
   const guardarEventoFinal = async (jugadorId) => {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
-    const idAGuardar = jugadorId ? parseInt(jugadorId, 10) : null;
 
-    const nuevoEvento = {
-      id_partido: partido.id,
-      id_jugador: idAGuardar,
-      accion: accion,
-      zona_x: panelLateral.x,
-      zona_y: panelLateral.y,
-      equipo: equipo,
-      periodo: periodo,
-      minuto: minuto,
-      quinteto_activo: JSON.stringify(quintetoActual)
-    };
+    // 1. SI ES UN GOL Y ESTAMOS EN EL PASO 2: Guardar al autor y pedir asistencia
+    if (pasoRegistro === 2 && accion === 'Remate - Gol') {
+      setAutorGol(jugadorId);
+      setPasoRegistro(3); // Avanzamos al paso de asistencia
+      return;
+    }
 
-    setEventos(prev => [...prev, { ...nuevoEvento, id: Date.now() }]);
+    const eventosAInsertar = [];
+
+    // 2. SI ESTAMOS EN EL PASO 3 (Guardando Gol + Asistencia)
+    if (pasoRegistro === 3) {
+      // Evento A: El Gol
+      eventosAInsertar.push({
+        id_partido: partido.id,
+        id_jugador: autorGol ? parseInt(autorGol, 10) : null,
+        accion: 'Remate - Gol',
+        zona_x: panelLateral.x,
+        zona_y: panelLateral.y,
+        equipo: equipo,
+        periodo: periodo,
+        minuto: minuto,
+        quinteto_activo: JSON.stringify(quintetoActual)
+      });
+
+      // Evento B: La Asistencia (si no eligió "Sin Asistencia")
+      if (jugadorId) {
+        eventosAInsertar.push({
+          id_partido: partido.id,
+          id_jugador: parseInt(jugadorId, 10),
+          accion: 'Asistencia',
+          zona_x: panelLateral.x,
+          zona_y: panelLateral.y,
+          equipo: equipo,
+          periodo: periodo,
+          minuto: minuto,
+          quinteto_activo: JSON.stringify(quintetoActual)
+        });
+      }
+    } else {
+      // 3. FLUJO NORMAL PARA EL RESTO DE ACCIONES
+      eventosAInsertar.push({
+        id_partido: partido.id,
+        id_jugador: jugadorId ? parseInt(jugadorId, 10) : null,
+        accion: accion,
+        zona_x: panelLateral.x,
+        zona_y: panelLateral.y,
+        equipo: equipo,
+        periodo: periodo,
+        minuto: minuto,
+        quinteto_activo: JSON.stringify(quintetoActual)
+      });
+    }
+
+    // Actualizamos la UI inmediatamente
+    const nuevosEventosLocal = eventosAInsertar.map((ev, i) => ({ ...ev, id: Date.now() + i }));
+    setEventos(prev => [...prev, ...nuevosEventosLocal]);
 
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
+    setAutorGol(null);
     
-    await supabase.from('eventos').insert([nuevoEvento]);
+    // Impacto en base de datos
+    await supabase.from('eventos').insert(eventosAInsertar);
   };
 
   const cancelarRegistro = () => {
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
     setMenuActivo(null);
+    setAutorGol(null);
   };
 
   // --- LOGICA DE CAMBIOS ---
@@ -190,6 +237,7 @@ function TomaDatos() {
 
   const getColorAccion = (acc) => {
     if (acc.includes('Gol')) return '#00ff88';
+    if (acc === 'Asistencia') return '#06b6d4'; // Cyan para asistencias
     if (acc.includes('Ganado') || acc === 'Recuperación') return '#3b82f6';
     if (acc.includes('Perdido') || acc === 'Pérdida') return '#ef4444';
     if (acc === 'Tarjeta Roja') return '#991b1b';
@@ -198,7 +246,6 @@ function TomaDatos() {
     return '#888';
   };
 
-  // Componente de botón simplificado
   const BotonAccion = ({ label, color, span = 1, bold = false, onClick }) => (
     <button onClick={onClick} className="btn-action" style={{ 
       gridColumn: `span ${span}`, background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}`, 
@@ -209,7 +256,6 @@ function TomaDatos() {
     </button>
   );
 
-  // ESTILOS RESPONSIVE
   const containerStyle = esMovil ? { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)' } : { display: 'flex', height: '100dvh', background: 'var(--bg)' };
   const sidePanelStyle = esMovil ? { width: '100%', height: '50vh', borderTop: '1px solid var(--border)', background: 'var(--panel)', padding: '15px', overflowY: 'auto' } : { width: '320px', borderLeft: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', flexDirection: 'column', padding: '15px', overflowY: 'auto' };
 
@@ -239,13 +285,11 @@ function TomaDatos() {
             <div className="pitch-wrapper" style={{ width: '100%', maxWidth: esMovil ? '100%' : 'calc((100dvh - 120px) * 2)', aspectRatio: '2 / 1', position: 'relative' }}>
               <div ref={pitchRef} onClick={registrarToque} className="pitch-container" style={{ width: '100%', height: '100%', position: 'relative', cursor: 'crosshair', backgroundImage: 'radial-gradient(#1a1a1a 1px, transparent 1px)', backgroundSize: '15px 15px', overflow: 'hidden' }}>
                 
-                {/* LÍNEAS DE LA CANCHA */}
                 <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', backgroundColor: 'var(--border)', pointerEvents: 'none' }}></div>
                 <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '1px solid var(--border)', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}></div>
                 <div style={{ position: 'absolute', left: 0, top: '25%', bottom: '25%', width: '15%', border: '1px solid var(--border)', borderLeft: 'none', borderRadius: '0 50% 50% 0', pointerEvents: 'none' }}></div>
                 <div style={{ position: 'absolute', right: 0, top: '25%', bottom: '25%', width: '15%', border: '1px solid var(--border)', borderRight: 'none', borderRadius: '50% 0 0 50%', pointerEvents: 'none' }}></div>
 
-                {/* EVENTOS REGISTRADOS */}
                 {eventos.filter(e => e.zona_x !== null).map((ev) => (
                   <div key={ev.id} style={{ position: 'absolute', left: `${ev.zona_x}%`, top: `${ev.zona_y}%`, width: '14px', height: '14px', backgroundColor: getColorAccion(ev.accion), border: '2px solid #000', borderRadius: '2px', transform: 'translate(-50%, -50%)', zIndex: 10 }} />
                 ))}
@@ -267,22 +311,20 @@ function TomaDatos() {
           ) : (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-                <div className="stat-label">{pasoRegistro === 1 ? '1. ACCIÓN' : '2. JUGADOR'}</div>
+                <div className="stat-label">
+                  {pasoRegistro === 1 ? '1. ACCIÓN' : pasoRegistro === 2 ? '2. AUTOR DEL GOL' : '3. ASISTENCIA'}
+                </div>
                 <button onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
               </div>
 
               {pasoRegistro === 1 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* SELECTOR EQUIPO */}
                   <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
                     <button onClick={() => setEquipo('Propio')} style={{ flex: 1, padding: '10px', background: equipo === 'Propio' ? 'rgba(0,255,136,0.1)' : 'none', color: equipo === 'Propio' ? 'var(--accent)' : 'var(--text-dim)', border: 'none', fontWeight: 800 }}>MI EQUIPO</button>
                     <button onClick={() => setEquipo('Rival')} style={{ flex: 1, padding: '10px', background: equipo === 'Rival' ? 'rgba(255,255,255,0.05)' : 'none', color: equipo === 'Rival' ? '#fff' : 'var(--text-dim)', border: 'none', fontWeight: 800 }}>RIVAL</button>
                   </div>
 
-                  {/* BLOQUES JERÁRQUICOS */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    
-                    {/* BLOQUE 1: FINALIZACIÓN */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div className="stat-label" style={{ gridColumn: 'span 2', fontSize: '0.6rem' }}>🎯 FINALIZACIÓN</div>
                       <BotonAccion label="⚽ GOL" color="#00ff88" bold={true} span={2} onClick={() => seleccionarAccion('Remate - Gol')} />
@@ -299,7 +341,6 @@ function TomaDatos() {
                       )}
                     </div>
 
-                    {/* BLOQUE 2: POSESIÓN Y FRICCIÓN */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div className="stat-label" style={{ gridColumn: 'span 2', fontSize: '0.6rem' }}>⚔️ POSESIÓN Y FRICCIÓN</div>
                       <BotonAccion label="RECU." color="#eab308" onClick={() => seleccionarAccion('Recuperación')} />
@@ -310,7 +351,6 @@ function TomaDatos() {
                       <BotonAccion label="OFE (✕)" color="#f97316" onClick={() => seleccionarAccion('Duelo OFE Perdido')} />
                     </div>
 
-                    {/* BLOQUE 3: FALTAS Y TARJETAS */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div className="stat-label" style={{ gridColumn: 'span 2', fontSize: '0.6rem' }}>🛑 DISCIPLINA</div>
                       <BotonAccion label="FALTA" color="#ec4899" onClick={() => seleccionarAccion('Falta cometida')} />
@@ -326,7 +366,6 @@ function TomaDatos() {
                       )}
                     </div>
 
-                    {/* BLOQUE 4: BALÓN PARADO */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div className="stat-label" style={{ gridColumn: 'span 2', fontSize: '0.6rem' }}>🏳️ BFA</div>
                       <BotonAccion label="LATERAL" color="#06b6d4" onClick={() => seleccionarAccion('Lateral')} />
@@ -334,7 +373,8 @@ function TomaDatos() {
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : pasoRegistro === 2 ? (
+                // PASO 2: Selección del Autor de la Acción
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div className="stat-label" style={{ color: getColorAccion(accion) }}>{accion}</div>
                   {jugadoresActivos.map(j => (
@@ -344,6 +384,20 @@ function TomaDatos() {
                     </button>
                   ))}
                   <button onClick={() => guardarEventoFinal(null)} style={{ marginTop: '10px', background: 'none', border: '1px dashed #444', color: '#ffffff', padding: '10px', cursor: 'pointer' }}>SIN JUGADOR / RIVAL</button>
+                </div>
+              ) : (
+                // PASO 3: Selección de Asistencia (Aparece sólo tras marcar Gol)
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div className="stat-label" style={{ color: '#06b6d4', marginBottom: '5px' }}>¿QUIÉN DIO EL PASE PREVIO?</div>
+                  {jugadoresActivos
+                    .filter(j => j.id != autorGol) // Ocultamos al jugador que hizo el gol para evitar auto-asistencia
+                    .map(j => (
+                    <button key={j.id} onClick={() => guardarEventoFinal(j.id)} className="btn-action" style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid #06b6d4', padding: '15px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', color: '#fff' }}>
+                      <span>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span>
+                      <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>{j.dorsal}</span>
+                    </button>
+                  ))}
+                  <button onClick={() => guardarEventoFinal(null)} style={{ marginTop: '10px', background: 'none', border: '1px dashed #444', color: '#ffffff', padding: '10px', cursor: 'pointer' }}>JUGADA INDIVIDUAL (SIN ASISTENCIA)</button>
                 </div>
               )}
             </>

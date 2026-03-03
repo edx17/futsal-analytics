@@ -7,6 +7,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true, // Mantenlo en true para producción
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storageKey: 'futsal-stats-auth-v1'
   }
 });

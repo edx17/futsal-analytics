@@ -47,7 +47,7 @@ function Temporada() {
 
     const statsEquipo = {
       partidosJugados: partidosFiltrados.length,
-      golesFavor: 0, golesContra: 0,
+      golesFavor: 0, golesContra: 0, asistenciasTotales: 0,
       victorias: 0, empates: 0, derrotas: 0,
       xgTotal: calcularXGPartido(evFiltrados.filter(e => e.equipo === 'Propio')),
       remates: 0, recuperaciones: 0, perdidas: 0,
@@ -78,38 +78,55 @@ function Temporada() {
       if (p && ev.accion === 'Pérdida') statsEquipo.perdidas++;
       if (p && ev.accion === 'Duelo DEF Ganado') { statsEquipo.duelosDefGanados++; statsEquipo.duelosDefTotales++; }
       if (p && ev.accion === 'Duelo DEF Perdido') { statsEquipo.duelosDefTotales++; }
+      
+      // Contabiliza la asistencia a nivel equipo
+      if (p && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') && ev.id_asistencia) {
+        statsEquipo.asistenciasTotales++;
+      }
     });
 
     const statsJugadores = {};
     jugadores.forEach(j => {
-      statsJugadores[j.id] = { ...j, eventos: [], goles: 0, rec: 0, perdidas: 0, duelosDefGan: 0, duelosDefTot: 0 };
+      statsJugadores[j.id] = { ...j, eventos: [], goles: 0, asistencias: 0, rec: 0, perdidas: 0, duelosDefGan: 0, duelosDefTot: 0 };
     });
 
     evFiltrados.forEach(ev => {
-      if (ev.equipo === 'Propio' && ev.id_jugador && statsJugadores[ev.id_jugador]) {
-        statsJugadores[ev.id_jugador].eventos.push(ev);
-        if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_jugador].goles++;
-        if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
-        if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
-        if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
-        if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
+      if (ev.equipo === 'Propio') {
+        // Acciones del ejecutor
+        if (ev.id_jugador && statsJugadores[ev.id_jugador]) {
+          statsJugadores[ev.id_jugador].eventos.push(ev);
+          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_jugador].goles++;
+          if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
+          if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
+          if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
+          if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
+        }
+
+        // Asistencias del jugador
+        if (ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
+          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
+            statsJugadores[ev.id_asistencia].asistencias++;
+            // Le agregamos el evento al array de eventos del asistente para que no quede como 'inactivo' si solo tiene asistencias
+            statsJugadores[ev.id_asistencia].eventos.push({ ...ev, tipoVirtual: 'Asistencia' }); 
+          }
+        }
       }
     });
 
     const jugadoresActivos = Object.values(statsJugadores).filter(j => j.eventos.length > 0);
     jugadoresActivos.forEach(j => {
-      j.impactoGlobal = calcularRatingJugador(j.eventos);
+      j.impactoGlobal = calcularRatingJugador(j.eventos.filter(e => !e.tipoVirtual)); // Pasamos solo los eventos reales al rating
       j.eficaciaDefensiva = j.duelosDefTot > 0 ? (j.duelosDefGan / j.duelosDefTot) * 100 : 0;
     });
 
     const topGoleadores = [...jugadoresActivos].sort((a, b) => b.goles - a.goles).slice(0, 5);
+    const topAsistidores = [...jugadoresActivos].sort((a, b) => b.asistencias - a.asistencias).slice(0, 5); // TOP ASISTENCIAS
     const topMVP = [...jugadoresActivos].sort((a, b) => b.impactoGlobal - a.impactoGlobal).slice(0, 5);
-    // NUEVO RANKING: LOS MUROS DEFENSIVOS (Requiere mínimo 5 duelos totales para entrar al ranking)
     const topMuros = [...jugadoresActivos]
       .filter(j => j.duelosDefTot >= 5)
       .sort((a, b) => b.eficaciaDefensiva - a.eficaciaDefensiva).slice(0, 5);
 
-    return { statsEquipo, historialPartidos, topGoleadores, topMVP, topMuros, evFiltrados };
+    return { statsEquipo, historialPartidos, topGoleadores, topAsistidores, topMVP, topMuros, evFiltrados };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]); 
 
   const evMapa = analiticaGlobal?.evFiltrados.filter(ev => ev.equipo === 'Propio' && (!filtroAccionMapa || ev.accion?.includes(filtroAccionMapa))) || [];
@@ -180,6 +197,11 @@ function Temporada() {
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Peligro generado acumulado</div>
             </div>
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
+                <div className="stat-label">TOTAL ASISTENCIAS</div>
+                <div className="stat-value" style={{ color: '#00ff88' }}>{analiticaGlobal.statsEquipo.asistenciasTotales}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Pases de gol del equipo</div>
+            </div>
+            <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label">EFICACIA DEFENSIVA (DUELOS)</div>
                 <div className="stat-value" style={{ color: eficaciaGlobalDefensiva > 50 ? '#10b981' : '#ef4444' }}>{eficaciaGlobalDefensiva}%</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Basado en {analiticaGlobal.statsEquipo.duelosDefTotales} micro-conflictos</div>
@@ -195,7 +217,7 @@ function Temporada() {
         </div>
 
         {/* ROW 2: LEADERBOARDS (TOP 5) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
           
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>🔥 TOP GOLEADORES</div>
@@ -208,17 +230,27 @@ function Temporada() {
           </div>
 
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981' }}>🛡️ TOP MUROS DEFENSIVOS (DUELOS)</div>
+            <div className="stat-label" style={{ marginBottom: '15px', color: '#00ff88' }}>🎯 TOP ASISTIDORES</div>
+            {analiticaGlobal.topAsistidores.map((j, i) => (
+              <div key={j.id} style={rankingRow}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
+                <strong style={{ fontSize: '1.2rem', color: '#00ff88' }}>{j.asistencias}</strong>
+              </div>
+            ))}
+          </div>
+
+          <div className="bento-card">
+            <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981' }}>🛡️ TOP MUROS DEF. (DUELOS)</div>
             {analiticaGlobal.topMuros.map((j, i) => (
               <div key={j.id} style={rankingRow}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
                 <div style={{ textAlign: 'right' }}>
                   <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>{j.eficaciaDefensiva.toFixed(0)}%</strong>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{j.duelosDefGan}/{j.duelosDefTot} Ganados</div>
+                  <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{j.duelosDefGan}/{j.duelosDefTot} Gan.</div>
                 </div>
               </div>
             ))}
-            {analiticaGlobal.topMuros.length === 0 && <div style={{color:'var(--text-dim)', fontSize:'0.8rem', marginTop:'10px'}}>No hay jugadores con mínimo 5 duelos registrados.</div>}
+            {analiticaGlobal.topMuros.length === 0 && <div style={{color:'var(--text-dim)', fontSize:'0.8rem', marginTop:'10px'}}>No hay jugadores con mínimo 5 duelos.</div>}
           </div>
 
           <div className="bento-card">

@@ -22,7 +22,7 @@ function JugadorPerfil() {
     cargarCatalogos();
   }, []);
 
-  // 2. Cargar eventos cuando se elige un jugador
+  // 2. Cargar eventos cuando se elige un jugador (MODIFICADO PARA ASISTENCIAS)
   useEffect(() => {
     async function fetchEventosJugador() {
       if (!jugadorId) {
@@ -31,7 +31,7 @@ function JugadorPerfil() {
       }
       const { data } = await supabase.from('eventos')
         .select('*')
-        .eq('id_jugador', jugadorId)
+        .or(`id_jugador.eq.${jugadorId},id_asistencia.eq.${jugadorId}`)
         .order('id_partido', { ascending: false });
       setEventos(data || []);
     }
@@ -50,7 +50,7 @@ function JugadorPerfil() {
     if (!evFiltrados.length) return { vacio: true };
 
     const stats = {
-      goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0,
+      goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0,
       recuperaciones: 0, recAltas: 0, perdidas: 0, perdidasPeligrosas: 0,
       faltas: 0, xG: 0, amarillas: 0, rojas: 0
     };
@@ -65,15 +65,23 @@ function JugadorPerfil() {
       const esDefensa = zonaX < 33;
       const esCentroArea = zonaX > 80 && zonaY > 30 && zonaY < 70;
 
-      if (ev.accion === 'Remate - Gol') { stats.goles++; stats.remates++; stats.xG += (esCentroArea ? 0.25 : (esAtaque ? 0.12 : 0.05)); }
-      else if (ev.accion === 'Remate - Atajado') { stats.atajados++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
-      else if (ev.accion === 'Remate - Desviado') { stats.desviados++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
-      else if (ev.accion === 'Remate - Rebatido') { stats.rebatidos++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
-      else if (ev.accion === 'Recuperación') { stats.recuperaciones++; if (esAtaque) stats.recAltas++; }
-      else if (ev.accion === 'Pérdida') { stats.perdidas++; if (esDefensa) stats.perdidasPeligrosas++; }
-      else if (ev.accion === 'Falta cometida') stats.faltas++;
-      else if (ev.accion === 'Tarjeta Amarilla') stats.amarillas++;
-      else if (ev.accion === 'Tarjeta Roja') stats.rojas++;
+      // Evaluar Asistencia
+      if (ev.id_asistencia == jugadorId && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {
+        stats.asistencias++;
+      }
+
+      // Evaluar acciones como ejecutor principal
+      if (ev.id_jugador == jugadorId) {
+        if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { stats.goles++; stats.remates++; stats.xG += (esCentroArea ? 0.25 : (esAtaque ? 0.12 : 0.05)); }
+        else if (ev.accion === 'Remate - Atajado') { stats.atajados++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
+        else if (ev.accion === 'Remate - Desviado') { stats.desviados++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
+        else if (ev.accion === 'Remate - Rebatido') { stats.rebatidos++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
+        else if (ev.accion === 'Recuperación') { stats.recuperaciones++; if (esAtaque) stats.recAltas++; }
+        else if (ev.accion === 'Pérdida') { stats.perdidas++; if (esDefensa) stats.perdidasPeligrosas++; }
+        else if (ev.accion === 'Falta cometida') stats.faltas++;
+        else if (ev.accion === 'Tarjeta Amarilla') stats.amarillas++;
+        else if (ev.accion === 'Tarjeta Roja') stats.rojas++;
+      }
     });
 
     // Ratios Pro
@@ -92,7 +100,7 @@ function JugadorPerfil() {
 
   // --- DICCIONARIO Y COLORES ---
   const getColorAccion = (acc) => {
-    const col = { 'Remate - Gol': '#00ff88', 'Remate - Atajado': '#3b82f6', 'Remate - Desviado': '#888888', 'Remate - Rebatido': '#a855f7', 'Recuperación': '#eab308', 'Pérdida': '#ef4444' };
+    const col = { 'Remate - Gol': '#00ff88', 'Gol': '#00ff88', 'Remate - Atajado': '#3b82f6', 'Remate - Desviado': '#888888', 'Remate - Rebatido': '#a855f7', 'Recuperación': '#eab308', 'Pérdida': '#ef4444' };
     return col[acc] || '#fff';
   };
 
@@ -107,9 +115,9 @@ function JugadorPerfil() {
             <select value={jugadorId} onChange={(e) => setJugadorId(e.target.value)} style={{ marginTop: '5px', width: '250px', borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 }}>
               <option value="">-- SELECCIONAR JUGADOR --</option>
              {jugadores.map(j => (
-    <option key={j.id} value={j.id}>{j.dorsal} - {j.apellido ? j.apellido.toUpperCase() + ', ' + j.nombre : j.nombre}</option>
-  ))}
-</select>
+                <option key={j.id} value={j.id}>{j.dorsal} - {j.apellido ? j.apellido.toUpperCase() + ', ' + j.nombre : j.nombre}</option>
+              ))}
+            </select>
           </div>
           
           {jugadorId && (
@@ -170,6 +178,7 @@ function JugadorPerfil() {
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>RADIOGRAFÍA OFENSIVA</div>
               <div style={kpiFila}><span>EXPECTATIVA DE GOL (xG)</span><strong>{perfil.stats.xG.toFixed(2)}</strong></div>
+              <div style={kpiFila}><span>ASISTENCIAS</span><strong style={{color:'var(--accent)'}}>{perfil.stats.asistencias}</strong></div>
               <div style={kpiFila}><span>REMATES TOTALES</span><strong>{perfil.stats.remates}</strong></div>
               {perfil.stats.remates > 0 && (
                 <div style={{ paddingBottom: '12px', borderBottom: '1px solid #222' }}>

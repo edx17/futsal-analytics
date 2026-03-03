@@ -68,13 +68,17 @@ function Resumen() {
     const datosProcesados = analizarPartido(evFiltrados, 'Propio');
 
     const stats = { 
-      propio: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, rec: 0, faltas: 0 }, 
+      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, rec: 0, faltas: 0 }, 
       rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0 } 
     };
 
     evFiltrados.forEach(ev => {
       const p = ev.equipo === 'Propio';
-      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { p ? stats.propio.goles++ : stats.rival.goles++; p ? stats.propio.remates++ : stats.rival.remates++; }
+      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
+        p ? stats.propio.goles++ : stats.rival.goles++; 
+        p ? stats.propio.remates++ : stats.rival.remates++; 
+        if (p && ev.id_asistencia) stats.propio.asistencias++;
+      }
       else if (ev.accion === 'Remate - Atajado') { p ? stats.propio.atajados++ : stats.rival.atajados++; p ? stats.propio.remates++ : stats.rival.remates++; }
       else if (ev.accion === 'Remate - Desviado') { p ? stats.propio.desviados++ : stats.rival.desviados++; p ? stats.propio.remates++ : stats.rival.remates++; }
       else if (ev.accion === 'Remate - Rebatido') { p ? stats.propio.rebatidos++ : stats.rival.rebatidos++; p ? stats.propio.remates++ : stats.rival.remates++; }
@@ -87,24 +91,32 @@ function Resumen() {
     jugadores.forEach(j => {
       statsJugadores[j.id] = { 
         id: j.id, nombre: j.apellido, dorsal: j.dorsal, eventos: [], 
-        remates: 0, goles: 0, perdidas: 0, rec: 0, faltas: 0,
+        remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
         duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0
       };
     });
 
     evFiltrados.forEach(ev => {
-      if (ev.equipo === 'Propio' && ev.id_jugador && statsJugadores[ev.id_jugador]) {
-        statsJugadores[ev.id_jugador].eventos.push(ev);
-        if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_jugador].goles++;
-        if (ev.accion?.includes('Remate')) statsJugadores[ev.id_jugador].remates++;
-        if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
-        if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
-        if (ev.accion === 'Falta cometida') statsJugadores[ev.id_jugador].faltas++;
-        
-        if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
-        if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
-        if (ev.accion === 'Duelo OFE Ganado') { statsJugadores[ev.id_jugador].duelosOfeGan++; statsJugadores[ev.id_jugador].duelosOfeTot++; }
-        if (ev.accion === 'Duelo OFE Perdido') { statsJugadores[ev.id_jugador].duelosOfeTot++; }
+      if (ev.equipo === 'Propio') {
+        if (ev.id_jugador && statsJugadores[ev.id_jugador]) {
+          statsJugadores[ev.id_jugador].eventos.push(ev);
+          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_jugador].goles++;
+          if (ev.accion?.includes('Remate')) statsJugadores[ev.id_jugador].remates++;
+          if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
+          if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
+          if (ev.accion === 'Falta cometida') statsJugadores[ev.id_jugador].faltas++;
+          
+          if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
+          if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
+          if (ev.accion === 'Duelo OFE Ganado') { statsJugadores[ev.id_jugador].duelosOfeGan++; statsJugadores[ev.id_jugador].duelosOfeTot++; }
+          if (ev.accion === 'Duelo OFE Perdido') { statsJugadores[ev.id_jugador].duelosOfeTot++; }
+        }
+
+        if (ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
+          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
+            statsJugadores[ev.id_asistencia].asistencias++;
+          }
+        }
       }
     });
 
@@ -251,6 +263,7 @@ function Resumen() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>PRODUCCIÓN OFENSIVA</div>
+              <div style={kpiFila}><span>ASISTENCIAS TOTALES</span><strong style={{color: '#00ff88'}}>{analitica.stats.propio.asistencias}</strong></div>
               <div style={kpiFila}><span>REMATES TOTALES</span><strong>{analitica.stats.propio.remates}</strong></div>
               <div style={kpiFila}><span>RECUPERACIONES</span><strong style={{color: 'var(--accent)'}}>{analitica.stats.propio.rec}</strong></div>
               <div style={kpiFila}><span>POSESIONES LOGRADAS</span><strong style={{color: 'var(--text)'}}>{analitica.posesiones.length}</strong></div>
@@ -389,6 +402,7 @@ function Resumen() {
                     <th>RATING</th>
                     <th>+/-</th>
                     <th>REMATES (G)</th>
+                    <th style={{ color: '#00ff88' }}>ASIST</th>
                     <th style={{ color: '#10b981' }}>DUELOS DEF %</th>
                     <th style={{ color: '#0ea5e9' }}>DUELOS OFE %</th>
                     <th>REC</th>
@@ -412,6 +426,7 @@ function Resumen() {
                           {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
                         </td>
                         <td>{j.remates} <span style={{ color: 'var(--accent)' }}>({j.goles})</span></td>
+                        <td style={{ fontWeight: 800, color: j.asistencias > 0 ? '#00ff88' : 'var(--text-dim)' }}>{j.asistencias}</td>
                         <td style={{ fontWeight: 800, color: defRatio > 50 ? '#10b981' : (defRatio !== '-' ? '#ef4444' : '#555') }}>{defRatio}{defRatio !== '-' && '%'}</td>
                         <td style={{ fontWeight: 800, color: ofeRatio > 50 ? '#0ea5e9' : (ofeRatio !== '-' ? '#ef4444' : '#555') }}>{ofeRatio}{ofeRatio !== '-' && '%'}</td>
                         <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
@@ -419,7 +434,7 @@ function Resumen() {
                       </tr>
                     )
                   })}
-                  {analitica.ranking.length === 0 && <tr><td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay registros en este periodo.</td></tr>}
+                  {analitica.ranking.length === 0 && <tr><td colSpan="10" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay registros en este periodo.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -443,17 +458,14 @@ function Resumen() {
                   {analitica.quintetos.sort((a, b) => (b.golesFavor - b.golesContra) - (a.golesFavor - a.golesContra)).map((q, idx) => {
                     const diff = q.golesFavor - q.golesContra;
                     
-                    // LÓGICA CORREGIDA PARA EL APELLIDO
                     const nombresQuinteto = q.ids.map(id => {
                       const jug = jugadores.find(j => j.id === id);
                       if (!jug) return '?';
                       
-                      // 1. Si tenés una columna "apellido" en la base de datos, la usa directo:
                       if (jug.apellido) {
                         return jug.apellido.toUpperCase();
                       }
                       
-                      // 2. Si solo tenés la columna "nombre" cargada como "APELLIDO Nombre", agarra la 1ra palabra:
                       const partesNombre = jug.nombre.trim().split(' ');
                       return partesNombre[0].toUpperCase();
                     }).join(' - ');
