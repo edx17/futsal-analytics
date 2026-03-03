@@ -27,127 +27,122 @@ function TomaDatos() {
 
   // --- ESTADOS DE PLANTILLA Y EVENTOS ---
   const [modalCambio, setModalCambio] = useState(false);
+  const [jugadoresEnCancha, setJugadoresEnCancha] = useState([]);
+  const [jugadoresEnBanco, setJugadoresEnBanco] = useState([]);
   const [saleId, setSaleId] = useState('');
   const [entraId, setEntraId] = useState('');
-  const [activosEnCancha, setActivosEnCancha] = useState([]);
-  const [jugadoresPartido, setJugadoresPartido] = useState([]);
   const [eventos, setEventos] = useState([]);
 
-  // DETECTOR DE TAMAÑO DE PANTALLA
+  // Redirección de seguridad
   useEffect(() => {
-    const manejarResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', manejarResize);
-    return () => window.removeEventListener('resize', manejarResize);
+    if (!partido) navigate('/');
+  }, [partido, navigate]);
+
+  // Listener de Resize para Responsive
+  useEffect(() => {
+    const handleResize = () => setEsMovil(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // RELOJ
+  // Reloj
   useEffect(() => {
     let intervalo;
     if (relojCorriendo) {
       intervalo = setInterval(() => {
-        setSegundos(prev => {
-          if (prev >= 59) {
+        setSegundos(s => {
+          if (s === 59) {
             setMinuto(m => m + 1);
             return 0;
           }
-          return prev + 1;
+          return s + 1;
         });
       }, 1000);
     }
     return () => clearInterval(intervalo);
   }, [relojCorriendo]);
 
-  // CARGA INICIAL
+  // Carga inicial de datos
   useEffect(() => {
-    if (partido && partido.plantilla) obtenerDatosIniciales(partido.id, partido.plantilla);
+    async function cargarDatos() {
+      if (!partido) return;
+      try {
+        const plantel = typeof partido.plantilla === 'string' ? JSON.parse(partido.plantilla) : partido.plantilla;
+        const ids = plantel.map(p => p.id_jugador);
+        
+        const { data: dbJugadores } = await supabase.from('jugadores').select('*').in('id', ids);
+        
+        const mapJugadores = {};
+        dbJugadores.forEach(j => { mapJugadores[j.id] = j; });
+
+        const titulares = [];
+        const suplentes = [];
+        
+        plantel.forEach(p => {
+          const jFull = mapJugadores[p.id_jugador];
+          if (jFull) {
+            if (p.titular) titulares.push(jFull);
+            else suplentes.push(jFull);
+          }
+        });
+
+        setJugadoresEnCancha(titulares);
+        setJugadoresEnBanco(suplentes);
+
+        // Cargar eventos previos
+        const { data: dbEventos } = await supabase.from('eventos').select('*').eq('id_partido', partido.id);
+        if (dbEventos) setEventos(dbEventos);
+
+      } catch (e) {
+        console.error("Error parseando plantilla", e);
+      }
+    }
+    cargarDatos();
   }, [partido]);
 
-  async function obtenerDatosIniciales(idPartido, plantilla) {
-    const ids = plantilla.map(p => p.id_jugador);
-    const { data: dataJugadores } = await supabase.from('jugadores').select('*').in('id', ids);
-    if (dataJugadores) setJugadoresPartido(dataJugadores);
-
-    const titulares = plantilla.filter(p => p.titular).map(p => parseInt(p.id_jugador));
-    const { data: dataEventos } = await supabase.from('eventos').select('*').eq('id_partido', idPartido).order('id', { ascending: true });
-    
-    if (dataEventos) {
-      setEventos(dataEventos);
-      let activosActuales = [...titulares];
-      dataEventos.forEach(ev => {
-        if (ev.accion === 'Cambio' || ev.accion === 'Lesión') {
-          activosActuales = activosActuales.filter(id => id !== ev.id_jugador);
-          if (ev.id_receptor) activosActuales.push(ev.id_receptor);
-        }
-      });
-      setActivosEnCancha(activosActuales);
-    } else {
-      setActivosEnCancha(titulares);
-    }
-  }
-
-  if (!partido) {
-    return (
-      <div style={{ textAlign: 'center', marginTop: '100px' }}>
-        <div className="stat-label">ERROR</div>
-        <div className="stat-value" style={{ color: 'var(--danger)', fontSize: '1.5rem' }}>NO HAY PARTIDO ACTIVO</div>
-        <button onClick={() => navigate('/')} className="btn-action" style={{ marginTop: '20px' }}>VOLVER A INICIO</button>
-      </div>
-    );
-  }
-
-  const getColorAccion = (acc) => {
-    const colores = {
-      'Remate - Gol': '#00ff88', 'Remate - Atajado': '#3b82f6', 'Remate - Desviado': '#888888', 'Remate - Rebatido': '#a855f7',
-      'Recuperación': '#eab308', 'Pérdida': '#ef4444',
-      'Duelo DEF Ganado': '#10b981', 'Duelo DEF Perdido': '#dc2626',
-      'Duelo OFE Ganado': '#0ea5e9', 'Duelo OFE Perdido': '#f97316',
-      'Lateral': '#06b6d4', 'Córner': '#f97316', 'Falta cometida': '#ec4899',
-      'Tarjeta Amarilla': '#facc15', 'Tarjeta Roja': '#991b1b'
-    };
-    return colores[acc] || '#ffffff';
-  };
-
+  // --- LOGICA DE REGISTRO ---
   const registrarToque = (e) => {
-    if (panelLateral.activo || !pitchRef.current) return; 
+    if (!panelAbierto) return;
     const rect = pitchRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    let x = ((e.clientX - rect.left) / rect.width) * 100;
+    let y = ((e.clientY - rect.top) / rect.height) * 100;
+    x = Math.max(0, Math.min(100, x));
+    y = Math.max(0, Math.min(100, y));
+
     setPanelLateral({ activo: true, x, y });
-    setPanelAbierto(true);
     setPasoRegistro(1);
-    setMenuActivo(null);
+    setAccion('');
+    setMenuActivo(null); // Reseteamos el submenú al tocar la cancha
   };
 
   const seleccionarAccion = (acc) => {
     setAccion(acc);
     setPasoRegistro(2);
-    setMenuActivo(null);
+    setMenuActivo(null); // Cerramos el submenú tras seleccionar
   };
 
-  // 📸 GUARDADO CON FOTO DEL QUINTETO
-  const guardarEventoFinal = async (idJugadorSeleccionado) => {
-    let jId = equipo === 'Propio' ? (idJugadorSeleccionado ? parseInt(idJugadorSeleccionado) : null) : null;
-    let rId = equipo === 'Rival' && (accion === 'Falta cometida' || accion === 'Remate - Atajado') ? (idJugadorSeleccionado ? parseInt(idJugadorSeleccionado) : null) : null;
+  const guardarEventoFinal = async (jugadorId) => {
+    const quintetoActual = jugadoresEnCancha.map(j => j.id);
+    const idAGuardar = jugadorId ? parseInt(jugadorId, 10) : null;
 
     const nuevoEvento = {
-      id_partido: partido.id, 
-      id_jugador: jId, 
-      id_receptor: rId,
-      accion: accion, 
-      zona_x: panelLateral.x, 
-      zona_y: panelLateral.y, 
-      equipo: equipo, 
-      periodo: periodo, 
+      id_partido: partido.id,
+      id_jugador: idAGuardar,
+      accion: accion,
+      zona_x: panelLateral.x,
+      zona_y: panelLateral.y,
+      equipo: equipo,
+      periodo: periodo,
       minuto: minuto,
-      quinteto_activo: activosEnCancha // ACÁ SE GUARDA EL ARRAY DE IDs
+      quinteto_activo: JSON.stringify(quintetoActual)
     };
 
-    const { data, error } = await supabase.from('eventos').insert([nuevoEvento]).select();
-    if (!error) {
-      setEventos([...eventos, data[0]]);
-      setPanelLateral({ activo: false, x: 0, y: 0 });
-      setPasoRegistro(1);
-    }
+    setEventos(prev => [...prev, { ...nuevoEvento, id: Date.now() }]);
+
+    setPanelLateral({ activo: false, x: 0, y: 0 });
+    setPasoRegistro(1);
+    
+    await supabase.from('eventos').insert([nuevoEvento]);
   };
 
   const cancelarRegistro = () => {
@@ -156,65 +151,71 @@ function TomaDatos() {
     setMenuActivo(null);
   };
 
-  // 📸 GUARDADO DE CAMBIO CON FOTO DEL QUINTETO (ANTES DE SALIR)
+  // --- LOGICA DE CAMBIOS ---
   const guardarCambio = async () => {
     if (!saleId || !entraId) return;
-    const nuevoCambio = {
-      id_partido: partido.id, 
-      id_jugador: parseInt(saleId), 
-      id_receptor: parseInt(entraId),
-      accion: 'Cambio', 
-      zona_x: null, 
-      zona_y: null, 
-      equipo: 'Propio', 
-      periodo: periodo, 
+
+    const jSale = jugadoresEnCancha.find(j => j.id == saleId);
+    const jEntra = jugadoresEnBanco.find(j => j.id == entraId);
+
+    if (!jSale || !jEntra) return;
+
+    const quintetoActual = jugadoresEnCancha.map(j => j.id);
+
+    // Evento de Salida
+    const evtSalida = {
+      id_partido: partido.id,
+      id_jugador: jSale.id,
+      accion: 'Cambio',
+      equipo: 'Propio',
+      periodo: periodo,
       minuto: minuto,
-      quinteto_activo: activosEnCancha
+      id_receptor: jEntra.id,
+      quinteto_activo: JSON.stringify(quintetoActual)
     };
-    const { data, error } = await supabase.from('eventos').insert([nuevoCambio]).select();
-    if (!error) {
-      setEventos([...eventos, data[0]]);
-      setActivosEnCancha([...activosEnCancha.filter(id => id !== parseInt(saleId)), parseInt(entraId)]);
-      setModalCambio(false);
-      setSaleId(''); setEntraId('');
-    }
+
+    setJugadoresEnCancha(prev => [...prev.filter(j => j.id != saleId), jEntra]);
+    setJugadoresEnBanco(prev => [...prev.filter(j => j.id != entraId), jSale]);
+
+    setModalCambio(false);
+    setSaleId('');
+    setEntraId('');
+
+    await supabase.from('eventos').insert([evtSalida]);
   };
 
-  const jugadoresActivos = jugadoresPartido.filter(j => activosEnCancha.includes(j.id));
-  const jugadoresEnBanco = jugadoresPartido.filter(j => !activosEnCancha.includes(j.id));
+  if (!partido) return <div>Cargando...</div>;
 
-  // --- COMPONENTE AUXILIAR PARA BOTONES ---
-  const BotonAccion = ({ label, color, onClick, span = 1, bold = false }) => (
-    <button 
-      onClick={onClick}
-      style={{
-        gridColumn: `span ${span}`,
-        background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}`, color: color,
-        padding: '12px 5px', borderRadius: '4px', fontWeight: bold ? 900 : 700, fontSize: '0.7rem',
-        cursor: 'pointer', textTransform: 'uppercase', transition: '0.2s'
-      }}
-      onMouseOver={(e) => e.currentTarget.style.background = `${color}20`}
-      onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-    >
+  const jugadoresActivos = equipo === 'Propio' ? jugadoresEnCancha : [];
+
+  const getColorAccion = (acc) => {
+    if (acc.includes('Gol')) return '#00ff88';
+    if (acc.includes('Ganado') || acc === 'Recuperación') return '#3b82f6';
+    if (acc.includes('Perdido') || acc === 'Pérdida') return '#ef4444';
+    if (acc === 'Tarjeta Roja') return '#991b1b';
+    if (acc === 'Tarjeta Amarilla') return '#facc15';
+    if (acc === 'Falta cometida') return '#ec4899';
+    return '#888';
+  };
+
+  // Componente de botón simplificado
+  const BotonAccion = ({ label, color, span = 1, bold = false, onClick }) => (
+    <button onClick={onClick} className="btn-action" style={{ 
+      gridColumn: `span ${span}`, background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}`, 
+      color: color, fontWeight: bold ? 800 : 500, padding: '12px 5px', fontSize: '0.75rem', 
+      textShadow: bold ? `0 0 5px ${color}` : 'none' 
+    }}>
       {label}
     </button>
   );
 
-  const containerStyle = {
-    display: 'grid', gridTemplateColumns: (!esMovil && panelAbierto) ? 'minmax(0,1fr) 350px' : '1fr',
-    gridTemplateRows: (esMovil && panelAbierto) ? '1fr auto' : '1fr',
-    width: '100%', height: '100%', overflow: 'hidden', background: 'var(--bg)'
-  };
-
-  const sidePanelStyle = {
-    background: 'var(--panel)', borderLeft: esMovil ? 'none' : '1px solid var(--border)',
-    borderTop: esMovil ? '1px solid var(--border)' : 'none', padding: '20px', display: 'flex',
-    flexDirection: 'column', gap: '20px', overflowY: 'auto', width: '100%', height: '100%'
-  };
+  // ESTILOS RESPONSIVE
+  const containerStyle = esMovil ? { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)' } : { display: 'flex', height: '100dvh', background: 'var(--bg)' };
+  const sidePanelStyle = esMovil ? { width: '100%', height: '50vh', borderTop: '1px solid var(--border)', background: 'var(--panel)', padding: '15px', overflowY: 'auto' } : { width: '320px', borderLeft: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', flexDirection: 'column', padding: '15px', overflowY: 'auto' };
 
   return (
     <div style={containerStyle}>
-      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', flex: 1 }}>
         {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div className="stat-label">TRACKER // {partido.rival}</div>
@@ -234,19 +235,27 @@ function TomaDatos() {
         </div>
 
         {/* CANCHA */}
-        <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: '10px' }}>
-          <div className="pitch-wrapper" style={{ width: '100%', maxWidth: esMovil ? '100%' : 'calc((100dvh - 120px) * 2)', aspectRatio: '2 / 1', position: 'relative' }}>
-            <div ref={pitchRef} onClick={registrarToque} className="pitch-container" style={{ width: '100%', height: '100%', position: 'relative', cursor: 'crosshair', backgroundImage: 'radial-gradient(#1a1a1a 1px, transparent 1px)', backgroundSize: '15px 15px' }}>
-               <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', backgroundColor: 'var(--border)' }}></div>
-               {eventos.filter(e => e.zona_x !== null).map((ev) => (
-                <div key={ev.id} style={{ position: 'absolute', left: `${ev.zona_x}%`, top: `${ev.zona_y}%`, width: '14px', height: '14px', backgroundColor: getColorAccion(ev.accion), border: '2px solid #000', borderRadius: '2px', transform: 'translate(-50%, -50%)' }} />
-              ))}
+          <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: '10px' }}>
+            <div className="pitch-wrapper" style={{ width: '100%', maxWidth: esMovil ? '100%' : 'calc((100dvh - 120px) * 2)', aspectRatio: '2 / 1', position: 'relative' }}>
+              <div ref={pitchRef} onClick={registrarToque} className="pitch-container" style={{ width: '100%', height: '100%', position: 'relative', cursor: 'crosshair', backgroundImage: 'radial-gradient(#1a1a1a 1px, transparent 1px)', backgroundSize: '15px 15px', overflow: 'hidden' }}>
+                
+                {/* LÍNEAS DE LA CANCHA */}
+                <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', backgroundColor: 'var(--border)', pointerEvents: 'none' }}></div>
+                <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '1px solid var(--border)', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}></div>
+                <div style={{ position: 'absolute', left: 0, top: '25%', bottom: '25%', width: '15%', border: '1px solid var(--border)', borderLeft: 'none', borderRadius: '0 50% 50% 0', pointerEvents: 'none' }}></div>
+                <div style={{ position: 'absolute', right: 0, top: '25%', bottom: '25%', width: '15%', border: '1px solid var(--border)', borderRight: 'none', borderRadius: '50% 0 0 50%', pointerEvents: 'none' }}></div>
+
+                {/* EVENTOS REGISTRADOS */}
+                {eventos.filter(e => e.zona_x !== null).map((ev) => (
+                  <div key={ev.id} style={{ position: 'absolute', left: `${ev.zona_x}%`, top: `${ev.zona_y}%`, width: '14px', height: '14px', backgroundColor: getColorAccion(ev.accion), border: '2px solid #000', borderRadius: '2px', transform: 'translate(-50%, -50%)', zIndex: 10 }} />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* PANEL LATERAL */}
+        </div>
+
+        {/* PANEL LATERAL */}
       {panelAbierto && (
         <aside style={sidePanelStyle}>
           {!panelLateral.activo ? (
