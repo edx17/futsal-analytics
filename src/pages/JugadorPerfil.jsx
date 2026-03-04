@@ -1,8 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 
-// IMPORTAMOS EL NUEVO MOTOR DE RATING
+// IMPORTAMOS LOS MOTORES
 import { calcularRatingJugador } from '../analytics/rating';
+import { calcularXGEvento } from '../analytics/xg';
+
+// --- COMPONENTE TOOLTIP UX (CORREGIDO) ---
+const InfoBox = ({ texto }) => (
+  <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
+    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter' }}>!</div>
+    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', fontFamily: 'Inter', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
+      {texto}
+    </div>
+  </div>
+);
 
 function JugadorPerfil() {
   const [jugadores, setJugadores] = useState([]);
@@ -14,7 +25,6 @@ function JugadorPerfil() {
   const [tipoMapa, setTipoMapa] = useState('puntos');
   const [eventoHover, setEventoHover] = useState(null);
 
-  // 1. Carga inicial de catálogos
   useEffect(() => {
     async function cargarCatalogos() {
       const { data: j } = await supabase.from('jugadores').select('*').order('dorsal');
@@ -25,7 +35,6 @@ function JugadorPerfil() {
     cargarCatalogos();
   }, []);
 
-  // 2. Cargar eventos cuando se elige un jugador (MODIFICADO PARA ASISTENCIAS)
   useEffect(() => {
     async function fetchEventosJugador() {
       if (!jugadorId) {
@@ -41,14 +50,11 @@ function JugadorPerfil() {
     fetchEventosJugador();
   }, [jugadorId]);
 
-  // Identificamos al jugador seleccionado antes del useMemo para pasarlo al motor
   const jugadorSeleccionado = useMemo(() => jugadores.find(j => j.id == jugadorId), [jugadores, jugadorId]);
 
-  // --- MOTOR ANALÍTICO INDIVIDUAL ---
   const perfil = useMemo(() => {
     if (!jugadorId || !eventos.length || !jugadorSeleccionado) return null;
 
-    // Filtramos por partido si corresponde
     const evFiltrados = partidoFiltro === 'Todos' 
       ? eventos 
       : eventos.filter(ev => ev.id_partido == partidoFiltro);
@@ -61,15 +67,12 @@ function JugadorPerfil() {
       faltas: 0, xG: 0, amarillas: 0, rojas: 0
     };
 
-    // Partidos únicos jugados
     const partidosJugados = new Set(evFiltrados.map(e => e.id_partido)).size;
 
     evFiltrados.forEach(ev => {
       const zonaX = ev.zona_x || 0;
-      const zonaY = ev.zona_y || 0;
       const esAtaque = zonaX > 66;
       const esDefensa = zonaX < 33;
-      const esCentroArea = zonaX > 80 && zonaY > 30 && zonaY < 70;
 
       // Evaluar Asistencia
       if (ev.id_asistencia == jugadorId && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {
@@ -78,10 +81,12 @@ function JugadorPerfil() {
 
       // Evaluar acciones como ejecutor principal
       if (ev.id_jugador == jugadorId) {
-        if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { stats.goles++; stats.remates++; stats.xG += (esCentroArea ? 0.25 : (esAtaque ? 0.12 : 0.05)); }
-        else if (ev.accion === 'Remate - Atajado') { stats.atajados++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
-        else if (ev.accion === 'Remate - Desviado') { stats.desviados++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
-        else if (ev.accion === 'Remate - Rebatido') { stats.rebatidos++; stats.remates++; stats.xG += (esCentroArea ? 0.15 : (esAtaque ? 0.05 : 0.02)); }
+        const xgEvento = calcularXGEvento(ev);
+
+        if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { stats.goles++; stats.remates++; stats.xG += xgEvento; }
+        else if (ev.accion === 'Remate - Atajado') { stats.atajados++; stats.remates++; stats.xG += xgEvento; }
+        else if (ev.accion === 'Remate - Desviado') { stats.desviados++; stats.remates++; stats.xG += xgEvento; }
+        else if (ev.accion === 'Remate - Rebatido') { stats.rebatidos++; stats.remates++; stats.xG += xgEvento; }
         else if (ev.accion === 'Recuperación') { stats.recuperaciones++; if (esAtaque) stats.recAltas++; }
         else if (ev.accion === 'Pérdida') { stats.perdidas++; if (esDefensa) stats.perdidasPeligrosas++; }
         else if (ev.accion === 'Falta cometida') stats.faltas++;
@@ -90,21 +95,16 @@ function JugadorPerfil() {
       }
     });
 
-    // Ratios Pro
     const eficacia = stats.remates > 0 ? ((stats.goles / stats.remates) * 100).toFixed(0) : 0;
     const volumenAcciones = stats.recuperaciones + stats.perdidas;
     const ratioSeguridad = volumenAcciones > 0 ? ((stats.recuperaciones / volumenAcciones) * 100).toFixed(0) : 0;
 
-    // 🔥 NUEVO CÁLCULO DE RATING CONTEXTUALIZADO 🔥
-    // Creamos un proxy de Plus/Minus basado en sus aciertos y errores graves,
-    // y llamamos a la misma función universal que usan Resumen y Temporada.
     const proxyPM = (stats.goles + stats.asistencias) - (stats.perdidasPeligrosas * 1.5);
     const impacto = calcularRatingJugador(jugadorSeleccionado, evFiltrados, proxyPM);
 
     return { stats, evFiltrados, partidosJugados, eficacia, ratioSeguridad, impacto, vacio: false };
   }, [eventos, partidoFiltro, jugadorId, jugadorSeleccionado]);
 
-  // --- DICCIONARIO Y COLORES ---
   const getColorAccion = (acc) => {
     const col = { 'Remate - Gol': '#00ff88', 'Gol': '#00ff88', 'Remate - Atajado': '#3b82f6', 'Remate - Desviado': '#888888', 'Remate - Rebatido': '#a855f7', 'Recuperación': '#eab308', 'Pérdida': '#ef4444' };
     return col[acc] || '#fff';
@@ -113,7 +113,12 @@ function JugadorPerfil() {
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       
-      {/* HEADER Y FILTROS */}
+      {/* ACA ABAJO VA LA ETIQUETA STYLE CORRECTAMENTE UBICADA */}
+      <style>{`
+        .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
+        .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
+      `}</style>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
@@ -147,7 +152,6 @@ function JugadorPerfil() {
       {jugadorSeleccionado && perfil && !perfil.vacio && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* TARJETA DE IDENTIFICACIÓN */}
           <div className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '30px', background: 'linear-gradient(90deg, #111 0%, #000 100%)', borderLeft: '4px solid var(--accent)' }}>
             <div style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--accent)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
             <div>
@@ -160,30 +164,43 @@ function JugadorPerfil() {
             </div>
           </div>
 
-          {/* KPIs RÁPIDOS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center' }}>
-                <div className="stat-label">IMPACTO (RATING)</div>
-                <div className="stat-value" style={{ color: perfil.impacto > 0 ? 'var(--accent)' : '#ef4444' }}>{perfil.impacto > 0 ? '+' : ''}{perfil.impacto}</div>
+                <div className="stat-label">
+                  IMPACTO (RATING) 
+                  <InfoBox texto="Algoritmo global que califica al jugador sumando sus acciones positivas y restando las negativas, ajustado por su rol táctico." />
+                </div>
+                <div className="stat-value" style={{ color: perfil.impacto > 0 ? 'var(--accent)' : '#ef4444' }}>{perfil.impacto > 0 ? '+' : ''}{perfil.impacto.toFixed(1)}</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Algoritmo de rendimiento contextual</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center' }}>
-                <div className="stat-label">EFICACIA EN REMATES</div>
+                <div className="stat-label">
+                  EFICACIA EN REMATES 
+                  <InfoBox texto="Porcentaje de remates que terminan en gol. Arriba del 20% es nivel élite en futsal." />
+                </div>
                 <div className="stat-value" style={{ color: '#fff' }}>{perfil.eficacia}%</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>{perfil.stats.goles} Goles / {perfil.stats.remates} Tiros</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center' }}>
-                <div className="stat-label">RATIO DEFENSIVO</div>
+                <div className="stat-label">
+                  RATIO DEFENSIVO 
+                  <InfoBox texto="De todas las intervenciones divididas del jugador (Robos + Pérdidas), qué porcentaje son positivas. Mide la seguridad con el balón." />
+                </div>
                 <div className="stat-value" style={{ color: perfil.ratioSeguridad > 50 ? 'var(--accent)' : '#ef4444' }}>{perfil.ratioSeguridad}%</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Recuperaciones vs Pérdidas</div>
              </div>
           </div>
 
-          {/* RADIOGRAFÍA TÁCTICA */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>RADIOGRAFÍA OFENSIVA</div>
-              <div style={kpiFila}><span>EXPECTATIVA DE GOL (xG)</span><strong>{perfil.stats.xG.toFixed(2)}</strong></div>
+              <div style={kpiFila}>
+                <span style={{ display: 'flex', alignItems: 'center' }}>
+                  EXPECTATIVA DE GOL (xG) 
+                  <InfoBox texto="Mide la probabilidad matemática (0 a 1) de que un remate sea gol en función de su distancia al arco y su ángulo." />
+                </span>
+                <strong>{perfil.stats.xG.toFixed(2)}</strong>
+              </div>
               <div style={kpiFila}><span>ASISTENCIAS</span><strong style={{color:'var(--accent)'}}>{perfil.stats.asistencias}</strong></div>
               <div style={kpiFila}><span>REMATES TOTALES</span><strong>{perfil.stats.remates}</strong></div>
               {perfil.stats.remates > 0 && (
@@ -199,19 +216,33 @@ function JugadorPerfil() {
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: '#eab308' }}>RADIOGRAFIA DEFENSIVA</div>
               <div style={kpiFila}><span>RECUPERACIONES</span><strong style={{color: 'var(--accent)'}}>{perfil.stats.recuperaciones}</strong></div>
-              <div style={kpiSubFila}><span>↳ Presión Alta (Campo Rival)</span><strong style={{color:'#eab308'}}>{perfil.stats.recAltas}</strong></div>
+              <div style={kpiSubFila}>
+                <span style={{ display: 'flex', alignItems: 'center' }}>
+                  ↳ Presión Alta (Campo Rival) 
+                  <InfoBox texto="Robos de pelota efectuados en el último tercio de la cancha. Generan transiciones altamente peligrosas." />
+                </span>
+                <strong style={{color:'#eab308'}}>{perfil.stats.recAltas}</strong>
+              </div>
               
               <div style={kpiFila}><span>PERDIDAS DE BALÓN</span><strong style={{color: '#ef4444'}}>{perfil.stats.perdidas}</strong></div>
-              <div style={kpiSubFila}><span>↳ Peligrosas (En propia salida)</span><strong style={{color:'#ef4444'}}>{perfil.stats.perdidasPeligrosas}</strong></div>
+              <div style={kpiSubFila}>
+                <span style={{ display: 'flex', alignItems: 'center' }}>
+                  ↳ Peligrosas (En propia salida) 
+                  <InfoBox texto="Pérdidas de pelota en el primer tercio defensivo. Suelen terminar en tiros peligrosos en contra." />
+                </span>
+                <strong style={{color:'#ef4444'}}>{perfil.stats.perdidasPeligrosas}</strong>
+              </div>
               
               <div style={kpiFila}><span>FALTAS COMETIDAS</span><strong>{perfil.stats.faltas}</strong></div>
             </div>
           </div>
 
-          {/* MAPA DE ACCIONES DEL JUGADOR */}
           <div className="bento-card">
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div className="stat-label">MAPA DE ACCIONES ({tipoMapa.toUpperCase()})</div>
+                <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>
+                  MAPA DE ACCIONES ({tipoMapa.toUpperCase()})
+                  <InfoBox texto="Visualización espacial. Pasa el mouse sobre un punto para ver en qué minuto exacto ocurrió esa acción." />
+                </div>
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>TODOS</button>
                   <button onClick={() => setTipoMapa('remates')} style={{ ...btnTab, background: tipoMapa === 'remates' ? '#333' : 'transparent', color: tipoMapa === 'remates' ? 'var(--accent)' : 'var(--text-dim)' }}>SÓLO REMATES</button>
@@ -257,8 +288,9 @@ function JugadorPerfil() {
   );
 }
 
-const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' };
-const kpiSubFila = { display: 'flex', justifyContent: 'space-between', padding: '6px 0 6px 15px', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: 'var(--text-dim)' };
+// Acá agregué alignItems: 'center' para que el icono de InfoBox no te quede desparejo con el texto
+const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem', alignItems: 'center' };
+const kpiSubFila = { display: 'flex', justifyContent: 'space-between', padding: '6px 0 6px 15px', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: 'var(--text-dim)', alignItems: 'center' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
 
 export default JugadorPerfil;

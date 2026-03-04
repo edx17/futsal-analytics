@@ -13,7 +13,7 @@ export function analizarPartido(eventos = [], equipoPropio) {
   const eventosPropios = evSeguros.filter(e => e.equipo === equipoPropio);
   const eventosRivales = evSeguros.filter(e => e.equipo !== equipoPropio);
 
-const xgPropio = calcularXGPartido(eventosPropios, transiciones.filter(t => t.remate.equipo === equipoPropio));
+  const xgPropio = calcularXGPartido(eventosPropios, transiciones.filter(t => t.remate.equipo === equipoPropio));
   const xgRival = calcularXGPartido(eventosRivales, transiciones.filter(t => t.remate.equipo !== equipoPropio));
 
   const gridPropio = generarGrid(eventosPropios);
@@ -36,14 +36,22 @@ const xgPropio = calcularXGPartido(eventosPropios, transiciones.filter(t => t.re
   if (duelos.defensivos.total > 0) duelos.defensivos.eficacia = (duelos.defensivos.ganados / duelos.defensivos.total) * 100;
   if (duelos.ofensivos.total > 0) duelos.ofensivos.eficacia = (duelos.ofensivos.ganados / duelos.ofensivos.total) * 100;
 
-  // 🧠 ANÁLISIS DE QUINTETOS Y PLUS/MINUS (+/-)
+  // 🧠 ANÁLISIS DE QUINTETOS, PLUS/MINUS Y MINUTOS REALES
   const statsQuintetos = {};
   const plusMinusJugador = {};
+  const setsMinutos = {}; // NUEVO: Registra minutos únicos por jugador
 
   evSeguros.forEach(ev => {
     if (!ev.quinteto_activo || ev.quinteto_activo.length === 0) return;
 
-    // Ordenamos el array para que [1,2,3,4,5] sea igual a [5,4,3,2,1]
+    // Registrar Minutos Jugados (Set evita duplicar si hay 3 eventos en el mismo minuto)
+    if (ev.minuto != null) {
+      ev.quinteto_activo.forEach(idJugador => {
+        if (!setsMinutos[idJugador]) setsMinutos[idJugador] = new Set();
+        setsMinutos[idJugador].add(ev.minuto);
+      });
+    }
+
     const idQuinteto = [...ev.quinteto_activo].sort((a, b) => a - b).join('-');
     
     if (!statsQuintetos[idQuinteto]) {
@@ -55,13 +63,11 @@ const xgPropio = calcularXGPartido(eventosPropios, transiciones.filter(t => t.re
 
     const esGol = (ev.accion === 'Gol' || ev.accion === 'Remate - Gol');
     
-    // Impacto de Quintetos y +/- Individual
     if (esGol) {
       const esFavor = ev.equipo === equipoPropio;
       if (esFavor) statsQuintetos[idQuinteto].golesFavor++;
       else statsQuintetos[idQuinteto].golesContra++;
 
-      // Repartimos el +/- a los 5 jugadores en cancha
       ev.quinteto_activo.forEach(idJugador => {
         if (!plusMinusJugador[idJugador]) plusMinusJugador[idJugador] = 0;
         plusMinusJugador[idJugador] += esFavor ? 1 : -1;
@@ -74,6 +80,12 @@ const xgPropio = calcularXGPartido(eventosPropios, transiciones.filter(t => t.re
       if (ev.accion === 'Duelo DEF Ganado' || ev.accion === 'Duelo OFE Ganado') statsQuintetos[idQuinteto].duelosGanados++;
       if (ev.accion === 'Duelo DEF Perdido' || ev.accion === 'Duelo OFE Perdido') statsQuintetos[idQuinteto].duelosPerdidos++;
     }
+  });
+
+  // Convertir los Sets a cantidades enteras
+  const minutosJugados = {};
+  Object.keys(setsMinutos).forEach(id => {
+    minutosJugados[id] = setsMinutos[id].size;
   });
 
   const quintetos = Object.values(statsQuintetos).filter(q => 
@@ -92,6 +104,7 @@ const xgPropio = calcularXGPartido(eventosPropios, transiciones.filter(t => t.re
     duelos, 
     insights,
     quintetos, 
-    plusMinusJugador
+    plusMinusJugador,
+    minutosJugados // NUEVO: Exportamos esto para la temporada
   };
 }

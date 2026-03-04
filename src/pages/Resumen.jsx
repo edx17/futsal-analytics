@@ -7,6 +7,16 @@ import { analizarPartido } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
 
+// --- COMPONENTE TOOLTIP UX (CORREGIDO) ---
+const InfoBox = ({ texto }) => (
+  <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
+    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter' }}>!</div>
+    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', fontFamily: 'Inter', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
+      {texto}
+    </div>
+  </div>
+);
+
 function Resumen() {
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
@@ -126,9 +136,11 @@ function Resumen() {
       .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
       .map(j => {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
+        const mins = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
         return { 
           ...j, 
           plusMinus: pm,
+          minutos: mins,
           impacto: calcularRatingJugador(j, j.eventos, pm)
         }
       })
@@ -188,6 +200,13 @@ function Resumen() {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
+      
+      {/* ACA ABAJO VA LA ETIQUETA STYLE CORRECTAMENTE UBICADA */}
+      <style>{`
+        .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
+        .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
+      `}</style>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
@@ -236,19 +255,19 @@ function Resumen() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
-                <div className="stat-label">EXPECTATIVA DE GOL (xG)</div>
+                <div className="stat-label">EXPECTATIVA DE GOL (xG) <InfoBox texto="Cantidad de goles que el equipo mereció hacer según la calidad geométrica (distancia y ángulo) de sus tiros." /></div>
                 <div className="stat-value" style={{ color: 'var(--accent)' }}>
                   {analitica.xgPropio.toFixed(2)} <span style={{ fontSize: '1rem', color: '#ef4444' }}>| {analitica.xgRival.toFixed(2)}</span>
                 </div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Propio | Rival</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
-                <div className="stat-label">EFICACIA DE REMATE</div>
+                <div className="stat-label">EFICACIA DE REMATE <InfoBox texto="Porcentaje de tiros propios que terminan en gol. Compara esto con el xG para evaluar si hubo falta de definición o mala suerte." /></div>
                 <div className="stat-value" style={{ color: analitica.eficaciaTiro > 15 ? 'var(--accent)' : 'var(--text)' }}>{analitica.eficaciaTiro}%</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Goles / Remates Propios</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
-                <div className="stat-label">TRANSICIONES RÁPIDAS</div>
+                <div className="stat-label">TRANSICIONES RÁPIDAS <InfoBox texto="Ataques estructurados en pocos segundos luego de robar el balón en campo rival o medio campo." /></div>
                 <div className="stat-value" style={{ color: analitica.transiciones.length > 3 ? 'var(--accent)' : 'var(--text-dim)' }}>{analitica.transiciones.length}</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Ataques directos post-robo</div>
              </div>
@@ -260,26 +279,34 @@ function Resumen() {
               <div style={kpiFila}><span>REMATES TOTALES</span><strong>{analitica.stats.propio.remates}</strong></div>
               <div style={kpiFila}><span>ASISTENCIAS TOTALES</span><strong style={{color: '#00ff88'}}>{analitica.stats.propio.asistencias}</strong></div>
               <div style={kpiFila}><span>RECUPERACIONES</span><strong style={{color: 'var(--accent)'}}>{analitica.stats.propio.rec}</strong></div>
-              <div style={kpiFila}><span>POSESIONES LOGRADAS</span><strong style={{color: 'var(--text)'}}>{analitica.posesiones.length}</strong></div>
+              <div style={kpiFila}>
+                <span style={{ display: 'flex', alignItems: 'center' }}>POSESIONES LOGRADAS <InfoBox texto="Cantidad de secuencias donde el equipo logró mantener el control continuo del balón." /></span>
+                <strong style={{color: 'var(--text)'}}>{analitica.posesiones.length}</strong>
+              </div>
             </div>
             
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: '#ef4444' }}>RIESGO Y DISCIPLINA</div>
               <div style={kpiFila}><span>PERDIDAS DE BALÓN</span><strong style={{color: '#ef4444'}}>{analitica.stats.propio.perdidas}</strong></div>
-              <div style={kpiFila}><span>RECUPERACIONES / PERDIDAS)</span><strong style={{color: analitica.balancePosesion > 50 ? 'var(--accent)' : '#ef4444'}}>{analitica.balancePosesion}%</strong></div>
+              <div style={kpiFila}>
+                <span style={{ display: 'flex', alignItems: 'center' }}>RECUPERACIONES / PERDIDAS <InfoBox texto="Porcentaje de acciones de disputa que terminan a favor. Mide el dominio general de la tenencia." /></span>
+                <strong style={{color: analitica.balancePosesion > 50 ? 'var(--accent)' : '#ef4444'}}>{analitica.balancePosesion}%</strong>
+              </div>
               <div style={kpiFila}><span>FALTAS COMETIDAS</span><strong>{analitica.stats.propio.faltas}</strong></div>
             </div>
 
             <div className="bento-card" style={{ borderTop: '3px solid #0ea5e9' }}>
-              <div className="stat-label" style={{ marginBottom: '15px', color: '#0ea5e9' }}>DUELOS</div>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#0ea5e9', display: 'flex', alignItems: 'center' }}>
+                DUELOS <InfoBox texto="El futsal se basa en el 1v1. Perder más del 50% de los duelos defensivos suele desarmar la estructura táctica del equipo." />
+              </div>
               <div style={kpiFila}>
-                <span>DUELOS DEFENSIVOAS GANADOS</span>
+                <span>DEFENSIVOS GANADOS</span>
                 <strong style={{color: analitica.duelos.defensivos.eficacia > 50 ? 'var(--accent)' : '#ef4444'}}>
                   {analitica.duelos.defensivos.ganados}/{analitica.duelos.defensivos.total} ({analitica.duelos.defensivos.eficacia.toFixed(0)}%)
                 </strong>
               </div>
               <div style={kpiFila}>
-                <span>DUELOS OFENSIVOS GANADOS</span>
+                <span>OFENSIVOS GANADOS</span>
                 <strong style={{color: analitica.duelos.ofensivos.eficacia > 50 ? '#0ea5e9' : '#ef4444'}}>
                   {analitica.duelos.ofensivos.ganados}/{analitica.duelos.ofensivos.total} ({analitica.duelos.ofensivos.eficacia.toFixed(0)}%)
                 </strong>
@@ -292,7 +319,9 @@ function Resumen() {
 
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-              <div className="stat-label">MAPEO TÁCTICO</div>
+              <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>
+                MAPEO TÁCTICO <InfoBox texto="Puntos: Ver lugar exacto de la acción. Heatmap: Ver zonas de mayor concentración. Transiciones: Rutas desde el robo al remate." />
+              </div>
               
               <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
@@ -390,11 +419,12 @@ function Resumen() {
                   <tr>
                     <th>#</th>
                     <th style={{ textAlign: 'left' }}>JUGADOR</th>
-                    <th>RATING</th>
-                    <th>+/-</th>
+                    <th>MIN <InfoBox texto="Minutos reales jugados calculados según el cronómetro de cambios." /></th>
+                    <th>RATING <InfoBox texto="Puntaje de impacto del jugador (-10 a +10) en la cancha." /></th>
+                    <th>+/- <InfoBox texto="Goles a favor menos goles en contra mientras el jugador estuvo jugando." /></th>
                     <th>REMATES (G)</th>
                     <th style={{ color: '#00ff88' }}>ASISTENCIAS</th>
-                    <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
+                    <th style={{ color: '#c084fc' }}>xG BUILDUP <InfoBox texto="Valor ofensivo aportado al participar en pases previos al remate final." /></th>
                     <th style={{ color: '#10b981' }}>DUELOS DEF %</th>
                     <th style={{ color: '#0ea5e9' }}>DUELOS OFE %</th>
                     <th>REC</th>
@@ -409,6 +439,7 @@ function Resumen() {
                       <tr key={j.id} style={{ textAlign: 'center' }}>
                         <td className="mono-accent">{j.dorsal}</td>
                         <td style={{ textAlign: 'left', fontWeight: 700 }}>{j.nombre.toUpperCase()}</td>
+                        <td style={{ color: 'var(--text-dim)', fontWeight: 600 }}>{j.minutos}'</td>
                         <td>
                           <div style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '4px', background: j.impacto > 0 ? 'rgba(0,255,136,0.1)' : j.impacto < 0 ? 'rgba(239,68,68,0.1)' : 'transparent', color: j.impacto > 0 ? 'var(--accent)' : j.impacto < 0 ? '#ef4444' : '#fff', fontWeight: 700 }}>
                             {j.impacto > 0 ? '+' : ''}{j.impacto.toFixed(1)}
@@ -427,14 +458,16 @@ function Resumen() {
                       </tr>
                     )
                   })}
-                  {analitica.ranking.length === 0 && <tr><td colSpan="11" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay registros en este periodo.</td></tr>}
+                  {analitica.ranking.length === 0 && <tr><td colSpan="12" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay registros en este periodo.</td></tr>}
                 </tbody>
               </table>
             </div>
           </div>
 
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>RENDIMIENTO POR QUINTETOS</div>
+            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
+              RENDIMIENTO POR QUINTETOS <InfoBox texto="Evalúa cómo le fue al equipo mientras esos 5 jugadores específicos compartieron la cancha." />
+            </div>
             <div className="table-wrapper" style={{ maxHeight: '300px' }}>
               <table>
                 <thead style={{ position: 'sticky', top: 0, background: 'var(--panel)', zIndex: 1 }}>
@@ -489,7 +522,7 @@ function Resumen() {
 }
 
 const escudoStyle = { height: '60px', marginBottom: '10px', filter: 'grayscale(1) brightness(2)' };
-const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem' };
+const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem', alignItems: 'center' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
 
 export default Resumen;

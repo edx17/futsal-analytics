@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
-import Chart from 'chart.js/auto';
+import { 
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  BarChart, Bar, Legend, Cell, ReferenceLine, ReferenceArea
+} from 'recharts';
 
-// --- BIBLIOTECA KINÉSICA ---
+// --- BIBLIOTECA KINÉSICA (NO TOCAR) ---
 const REHAB_LIB = {
   "isquiosural": [{ t: "Dead Bugs", v: "https://youtube.com/shorts/vn72PVWnu14?si=C9T2vir-Y8jEgnaq" }, { t: "Puente glúteo unilateral", v: "https://youtube.com/shorts/Y-N53Q6XxiI?si=Sk3iLRYCAQVPlD2Z" }, { t: "Peso muerto rumano uni", v: "https://youtu.be/YXjc7TURwfE?si=o36r4eyuHhHHya2D" }],
   "movilidad": [{ t: "Dorsiflexión c/ banda", v: "https://youtube.com/shorts/Re7XMKgAti8?si=mNm9ZWNQYnsRpOUO" }, { t: "Obelisco", v: "https://youtube.com/shorts/dWLrnRwY41c?si=qSBKdIW4-a8_YsL-" }, { t: "Movilidad Toráxica", v: "https://youtube.com/shorts/2et2ZXUk6co?si=FnRuSPQI139KEDzA" }],
@@ -13,17 +17,38 @@ const REHAB_LIB = {
 };
 
 // --- ESTÁNDARES ÉLITE FUTSAL ---
-const ELITE = {
-  musc: 48.5, adip: 9.0, cmj: 55, broad: 2.60, yoyo: 21.0
-};
+const ELITE = { musc: 48.5, adip: 9.0, cmj: 55, broad: 2.60, yoyo: 21.0 };
 
+// --- MOTORES MATEMÁTICOS ---
 function getEmbedUrl(url) {
   let videoId = '';
   if (url.includes('youtube.com/shorts/')) videoId = url.split('shorts/')[1].split('?')[0];
   else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1].split('?')[0];
   else if (url.includes('youtube.com/watch?v=')) videoId = url.split('v=')[1].split('&')[0];
-  return `https://www.youtube.com/embed/${videoId}?autoplay=0`;
+  
+  // Usamos youtube-nocookie para evitar bloqueos de rastreo en navegadores/localhost
+  return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
 }
+
+const calcularEstadisticasPlantel = (datos, key) => {
+  const validos = datos.map(d => d[key]).filter(v => v != null);
+  if (!validos.length) return { mean: 0, sd: 0 };
+  const mean = validos.reduce((a, b) => a + b, 0) / validos.length;
+  const variance = validos.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / validos.length;
+  return { mean, sd: Math.sqrt(variance) };
+};
+
+const calcZScore = (val, mean, sd) => {
+  if (val == null || sd === 0) return 0;
+  return (val - mean) / sd;
+};
+
+// Fórmula aproximada de VO2 Máx basada en Nivel de Yo-Yo IR1/IR2 para mostrar un proxy fisiológico
+const estimarVO2Max = (nivelYoyo) => {
+  if (!nivelYoyo) return 'S/D';
+  // Fórmula simplificada de proxy para Futsal: VO2 = (Nivel * 0.84) + 36.4
+  return ((nivelYoyo * 0.84) + 36.4).toFixed(1);
+};
 
 export default function Rendimiento() {
   const [tabActiva, setTabActiva] = useState('global');
@@ -42,6 +67,17 @@ export default function Rendimiento() {
     fetchData();
   }, []);
 
+  // Pre-calcular la estadística poblacional del plantel
+  const statsPoblacion = useMemo(() => {
+    return {
+      cmj: calcularEstadisticasPlantel(datos, 'cmj'),
+      broad: calcularEstadisticasPlantel(datos, 'broad'),
+      musc: calcularEstadisticasPlantel(datos, 'musc'),
+      adip: calcularEstadisticasPlantel(datos, 'adip'),
+      yoyo: calcularEstadisticasPlantel(datos.map(d => ({ ...d, yoyoReal: d.y26 || d.y25 })), 'yoyoReal')
+    };
+  }, [datos]);
+
   if (loading) return <div style={{ padding: '40px', color: 'var(--text-dim)', textAlign: 'center', fontFamily: 'JetBrains Mono' }}>CARGANDO DATOS MÉDICOS Y FÍSICOS...</div>;
 
   return (
@@ -53,133 +89,82 @@ export default function Rendimiento() {
             Área Física y Médica
           </h1>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>
-            Análisis de rendimiento, composición corporal y prevención de lesiones.
+            Análisis de rendimiento, composición corporal Z-Score y prevención.
           </p>
         </div>
         
-        {/* TABS DE NAVEGACIÓN ESTILO APP */}
         <div style={{ display: 'flex', gap: '5px', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-          <button className={`nav-tab ${tabActiva === 'global' ? 'active' : ''}`} onClick={() => setTabActiva('global')}>
-            GLOBAL
-          </button>
-          <button className={`nav-tab ${tabActiva === 'comparativa' ? 'active' : ''}`} onClick={() => setTabActiva('comparativa')}>
-            COMPARATIVA
-          </button>
-          <button className={`nav-tab ${tabActiva === 'individual' ? 'active' : ''}`} onClick={() => setTabActiva('individual')}>
-            FICHA INDIVIDUAL
-          </button>
+          <button className={`nav-tab ${tabActiva === 'global' ? 'active' : ''}`} onClick={() => setTabActiva('global')}>GLOBAL</button>
+          <button className={`nav-tab ${tabActiva === 'comparativa' ? 'active' : ''}`} onClick={() => setTabActiva('comparativa')}>COMPARATIVA</button>
+          <button className={`nav-tab ${tabActiva === 'individual' ? 'active' : ''}`} onClick={() => setTabActiva('individual')}>FICHA INDIVIDUAL</button>
         </div>
       </div>
 
-      {tabActiva === 'global' && <TabGlobal datos={datos} />}
-      {tabActiva === 'comparativa' && <TabComparativa datos={datos} />}
-      {tabActiva === 'individual' && <TabIndividual datos={datos} />}
+      {tabActiva === 'global' && <TabGlobal datos={datos} stats={statsPoblacion} />}
+      {tabActiva === 'comparativa' && <TabComparativa datos={datos} stats={statsPoblacion} />}
+      {tabActiva === 'individual' && <TabIndividual datos={datos} stats={statsPoblacion} />}
 
-      {/* ESTILOS INTERNOS PARA UI LIMPIA */}
       <style>{`
-        .nav-tab {
-          background: transparent; border: none; color: var(--text-dim); padding: 8px 16px; border-radius: 6px;
-          font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all 0.2s;
-        }
+        .nav-tab { background: transparent; border: none; color: var(--text-dim); padding: 8px 16px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; }
         .nav-tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
         .nav-tab.active { background: var(--accent); color: #000; }
-        
         .kpi-title { color: var(--text-dim); font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; }
         .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 2.2rem; font-weight: 900; line-height: 1; margin-bottom: 5px; }
         .kpi-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #666; }
-        
-        .select-dark {
-          width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
-          color: #fff; border-radius: 6px; font-size: 1rem; outline: none; transition: border-color 0.2s;
-          font-family: 'Inter', sans-serif;
-        }
+        .select-dark { width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; border-radius: 6px; font-size: 1rem; outline: none; transition: border-color 0.2s; font-family: 'Inter', sans-serif; }
         .select-dark:focus { border-color: var(--accent); }
-        
-        .section-header {
-          font-size: 0.9rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
-          border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px;
-        }
+        .section-header { font-size: 0.9rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
       `}</style>
     </div>
   );
 }
 
 // -------------------------------------------------------------
-// TAB 1: DETALLE GLOBAL
+// TAB 1: DETALLE GLOBAL (CON CUADRANTE RIESGO/RENDIMIENTO)
 // -------------------------------------------------------------
-function TabGlobal({ datos }) {
-  const radarRef = useRef(null);
-  const compRef = useRef(null);
-  
-  const promCMJ = (datos.reduce((acc, d) => acc + (d.cmj || 0), 0) / (datos.length || 1)).toFixed(1);
-  const promMusc = (datos.reduce((acc, d) => acc + (d.musc || 0), 0) / (datos.length || 1)).toFixed(1);
-  const promAdip = (datos.reduce((acc, d) => acc + (d.adip || 0), 0) / (datos.length || 1)).toFixed(1);
-  const promYoyo = (datos.reduce((acc, d) => acc + (d.y26 || d.y25 || 0), 0) / (datos.length || 1)).toFixed(1);
-  const promBroad = (datos.reduce((acc, d) => acc + (d.broad || 0), 0) / (datos.length || 1)).toFixed(2);
-
+function TabGlobal({ datos, stats }) {
   const riesgoAsimetria = datos.filter(d => Math.abs(d.asym_cmj) > 10 || Math.abs(d.asym_br) > 10);
 
-  useEffect(() => {
-    let radarChart, compChart;
-    
-    if (radarRef.current) {
-      radarChart = new Chart(radarRef.current, {
-        type: 'radar',
-        data: {
-          labels: ['CMJ (cm)', 'Masa Muscular (%)', 'Yo-Yo Test', 'Broad Jump (m x 10)', 'Adiposidad (Inverso)'],
-          datasets: [
-            {
-              label: 'Promedio Equipo',
-              data: [promCMJ, promMusc, promYoyo, promBroad * 10, 30 - promAdip],
-              backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', borderWidth: 2, pointBackgroundColor: '#3b82f6'
-            },
-            {
-              label: 'Élite Internacional',
-              data: [ELITE.cmj, ELITE.musc, ELITE.yoyo, ELITE.broad * 10, 30 - ELITE.adip],
-              backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, pointBackgroundColor: '#10b981'
-            }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: 'rgba(255,255,255,0.05)' }, grid: { color: 'rgba(255,255,255,0.05)' }, pointLabels: { color: 'var(--text-dim)', font: { family: 'Inter', size: 11 } }, ticks: { display: false } } }, plugins: { legend: { labels: { color: '#fff', font: { family: 'Inter' } } } } }
-      });
-    }
+  const radarData = [
+    { subject: 'CMJ', Equipo: stats.cmj.mean, Elite: ELITE.cmj },
+    { subject: 'Masa Muscular', Equipo: stats.musc.mean, Elite: ELITE.musc },
+    { subject: 'Yo-Yo Test', Equipo: stats.yoyo.mean, Elite: ELITE.yoyo },
+    { subject: 'Broad (x10)', Equipo: stats.broad.mean * 10, Elite: ELITE.broad * 10 },
+    { subject: 'Adiposidad Inversa', Equipo: 30 - stats.adip.mean, Elite: 30 - ELITE.adip }
+  ];
 
-    if (compRef.current) {
-      compChart = new Chart(compRef.current, {
-        type: 'scatter',
-        data: {
-          datasets: [
-            { label: 'Jugadores', data: datos.map(d => ({ x: d.adip, y: d.musc, nombre: d.jugadores?.apellido })), backgroundColor: '#3b82f6', pointRadius: 5 },
-            { label: 'Zona Élite', data: [{x: ELITE.adip, y: ELITE.musc, nombre: 'Estándar Élite'}], backgroundColor: '#10b981', pointRadius: 8, pointStyle: 'rectRot' }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw.nombre}: Músc. ${ctx.raw.y}%, Adip. ${ctx.raw.x}%` } }, legend: { labels: { color: '#fff', font: { family: 'Inter' } } } }, scales: { x: { title: { display: true, text: 'Adiposidad (%)', color:'var(--text-dim)' }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { title: { display: true, text: 'Masa Muscular (%)', color:'var(--text-dim)' }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
-      });
-    }
-    return () => { if (radarChart) radarChart.destroy(); if (compChart) compChart.destroy(); };
-  }, [datos, promCMJ, promMusc, promAdip, promYoyo, promBroad]);
+  // Cuadrante: Eje X = Potencia (CMJ), Eje Y = Riesgo Lesional (Máxima asimetría absoluta)
+  const cuadranteData = datos.filter(d => d.cmj != null).map(d => ({
+    x: d.cmj,
+    y: Math.max(Math.abs(d.asym_cmj || 0), Math.abs(d.asym_br || 0)),
+    name: d.jugadores?.apellido || 'N/A'
+  }));
+
+  // Umbrales para dividir el cuadrante
+  const umbralCMJ = stats.cmj.mean; 
+  const umbralRiesgo = 10; // 10% de asimetría es la bandera roja clínica
 
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '20px' }}>
         <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div className="kpi-title">PROMEDIO CMJ</div>
-          <div className="kpi-value" style={{ color: '#10b981' }}>{promCMJ}<span style={{fontSize:'1rem', color:'var(--text-dim)'}}>cm</span></div>
-          <div className="kpi-sub">ÉLITE: {ELITE.cmj}cm</div>
+          <div className="kpi-value" style={{ color: '#10b981' }}>{stats.cmj.mean.toFixed(1)}<span style={{fontSize:'1rem', color:'var(--text-dim)'}}>cm</span></div>
+          <div className="kpi-sub">ÉLITE: {ELITE.cmj}cm | SD: ±{stats.cmj.sd.toFixed(1)}</div>
         </div>
         <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div className="kpi-title">YO-YO TEST</div>
-          <div className="kpi-value" style={{ color: '#f59e0b' }}>{promYoyo}</div>
-          <div className="kpi-sub">ÉLITE: {ELITE.yoyo}</div>
+          <div className="kpi-value" style={{ color: '#f59e0b' }}>{stats.yoyo.mean.toFixed(1)}</div>
+          <div className="kpi-sub">VO2 Máx Est.: {estimarVO2Max(stats.yoyo.mean)}</div>
         </div>
         <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div className="kpi-title">MASA MUSCULAR</div>
-          <div className="kpi-value" style={{ color: '#3b82f6' }}>{promMusc}<span style={{fontSize:'1rem', color:'var(--text-dim)'}}>%</span></div>
+          <div className="kpi-value" style={{ color: '#3b82f6' }}>{stats.musc.mean.toFixed(1)}<span style={{fontSize:'1rem', color:'var(--text-dim)'}}>%</span></div>
           <div className="kpi-sub">ÉLITE: {ELITE.musc}%</div>
         </div>
         <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div className="kpi-title">MASA ADIPOSA</div>
-          <div className="kpi-value" style={{ color: '#ef4444' }}>{promAdip}<span style={{fontSize:'1rem', color:'var(--text-dim)'}}>%</span></div>
+          <div className="kpi-value" style={{ color: '#ef4444' }}>{stats.adip.mean.toFixed(1)}<span style={{fontSize:'1rem', color:'var(--text-dim)'}}>%</span></div>
           <div className="kpi-sub">ÉLITE: {ELITE.adip}%</div>
         </div>
       </div>
@@ -187,11 +172,42 @@ function TabGlobal({ datos }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
         <div className="glass-panel" style={{ padding: '20px', height: '380px' }}>
           <h3 className="section-header" style={{ color: 'var(--text-main)' }}>RENDIMIENTO GLOBAL VS ÉLITE</h3>
-          <div style={{ height: '300px', position: 'relative' }}><canvas ref={radarRef}></canvas></div>
+          <ResponsiveContainer width="100%" height={300}>
+            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+              <PolarGrid stroke="rgba(255,255,255,0.1)" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-dim)', fontSize: 11, fontWeight: 700 }} />
+              <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
+              <Radar name="Equipo" dataKey="Equipo" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
+              <Radar name="Élite" dataKey="Elite" stroke="#10b981" fill="transparent" strokeDasharray="5 5" strokeWidth={2} />
+              <Legend wrapperStyle={{ fontSize: '11px', color: '#fff' }} />
+              <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff', fontSize: '12px' }} />
+            </RadarChart>
+          </ResponsiveContainer>
         </div>
+
         <div className="glass-panel" style={{ padding: '20px', height: '380px' }}>
-          <h3 className="section-header" style={{ color: 'var(--text-main)' }}>DISPERSIÓN DE COMPOSICIÓN CORPORAL</h3>
-          <div style={{ height: '300px', position: 'relative' }}><canvas ref={compRef}></canvas></div>
+          <h3 className="section-header" style={{ color: 'var(--text-main)' }}>CUADRANTE: RIESGO VS POTENCIA</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+              <XAxis type="number" dataKey="x" name="Potencia (CMJ)" unit="cm" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
+              <YAxis type="number" dataKey="y" name="Asimetría Máxima" unit="%" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
+              
+              {/* Fondos de colores para los 4 cuadrantes */}
+              <ReferenceArea x1={umbralCMJ} y1={0} y2={umbralRiesgo} fill="#10b981" fillOpacity={0.05} /> {/* Élite: Sano y Fuerte */}
+              <ReferenceArea x1={0} x2={umbralCMJ} y1={umbralRiesgo} fill="#ef4444" fillOpacity={0.05} /> {/* Riesgo: Débil y Asimétrico */}
+              
+              <ReferenceLine x={umbralCMJ} stroke="#555" strokeDasharray="3 3" />
+              <ReferenceLine y={umbralRiesgo} stroke="#ef4444" strokeDasharray="3 3" />
+              
+              <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} formatter={(value, name) => [value, name === 'x' ? 'CMJ (cm)' : 'Asimetría (%)']} labelFormatter={() => ''} />
+              <Scatter name="Jugadores" data={cuadranteData} fill="#3b82f6">
+                {cuadranteData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.y >= umbralRiesgo ? '#ef4444' : (entry.x >= umbralCMJ ? '#10b981' : '#f59e0b')} />
+                ))}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -210,7 +226,7 @@ function TabGlobal({ datos }) {
             ))}
           </div>
         ) : (
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0 }}>El plantel no presenta asimetrías superiores al 10% en testeos de salto.</p>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0 }}>El plantel no presenta asimetrías estructurales superiores al 10%.</p>
         )}
       </div>
     </div>
@@ -218,21 +234,11 @@ function TabGlobal({ datos }) {
 }
 
 // -------------------------------------------------------------
-// TAB 2: COMPARATIVA AVANZADA
+// TAB 2: COMPARATIVA AVANZADA (CON PERFILADO POR POSICIÓN)
 // -------------------------------------------------------------
-function TabComparativa({ datos }) {
+function TabComparativa({ datos, stats }) {
+  const [modo, setModo] = useState('jugadores'); // 'jugadores' | 'posicion'
   const [jugadoresSeleccionados, setJugadoresSeleccionados] = useState(['', '', '', '']);
-  const cmjRef = useRef(null);
-  const broadRef = useRef(null);
-  const yoyoRef = useRef(null);
-
-  const promEquipo = {
-    cmj_de: datos.reduce((a, b) => a + (b.cmj_de || 0), 0) / datos.length,
-    cmj_iz: datos.reduce((a, b) => a + (b.cmj_iz || 0), 0) / datos.length,
-    broad_de: datos.reduce((a, b) => a + (b.broad_de || 0), 0) / datos.length,
-    broad_iz: datos.reduce((a, b) => a + (b.broad_iz || 0), 0) / datos.length,
-    yoyo: datos.reduce((a, b) => a + (b.y26 || b.y25 || 0), 0) / datos.length,
-  };
 
   const setJugador = (index, val) => {
     const nuevos = [...jugadoresSeleccionados];
@@ -240,99 +246,138 @@ function TabComparativa({ datos }) {
     setJugadoresSeleccionados(nuevos);
   };
 
-  useEffect(() => {
-    const activos = jugadoresSeleccionados.filter(id => id !== '').map(id => datos.find(d => d.id_jugador === parseInt(id)));
-    if (activos.length === 0) return;
+  const activos = jugadoresSeleccionados.filter(id => id !== '').map(id => datos.find(d => d.id_jugador === parseInt(id))).filter(Boolean);
 
-    let cmjChart, broadChart, yoyoChart;
-    const labels = [...activos.map(a => a.jugadores?.apellido), 'PROMEDIO', 'ÉLITE'];
-    
-    // Configuraciones de fuentes corregidas
-    const fontText = { family: "'Inter', sans-serif", size: 12 };
-    const fontNumbers = { family: "'JetBrains Mono', monospace", size: 11 };
+  // Armado de datos para Jugadores Individuales
+  const dataCmj = activos.map(a => ({ name: a.jugadores?.apellido, Derecha: a.cmj_de || 0, Izquierda: a.cmj_iz || 0 }));
+  const dataBroad = activos.map(a => ({ name: a.jugadores?.apellido, Derecha: a.broad_de || 0, Izquierda: a.broad_iz || 0 }));
+  const dataYoyo = activos.map(a => ({ name: a.jugadores?.apellido, Nivel: a.y26 || a.y25 || 0 }));
 
-    if (cmjRef.current) {
-      cmjChart = new Chart(cmjRef.current, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: 'Pierna Derecha', data: [...activos.map(a => a.cmj_de), promEquipo.cmj_de, 27.5], backgroundColor: '#3b82f6', borderRadius: 4 },
-            { label: 'Pierna Izquierda', data: [...activos.map(a => a.cmj_iz), promEquipo.cmj_iz, 27.5], backgroundColor: '#10b981', borderRadius: 4 }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { font: fontText, color: '#aaa' }, grid: { display: false } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { font: fontNumbers, color: '#aaa' } } }, plugins: { legend: { labels: { color: '#fff', font: fontText } } } }
-      });
-    }
-
-    if (broadRef.current) {
-      broadChart = new Chart(broadRef.current, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: 'Pierna Derecha', data: [...activos.map(a => a.broad_de), promEquipo.broad_de, 1.3], backgroundColor: '#f59e0b', borderRadius: 4 },
-            { label: 'Pierna Izquierda', data: [...activos.map(a => a.broad_iz), promEquipo.broad_iz, 1.3], backgroundColor: '#ef4444', borderRadius: 4 }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { font: fontText, color: '#aaa' }, grid: { display: false } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { font: fontNumbers, color: '#aaa' } } }, plugins: { legend: { labels: { color: '#fff', font: fontText } } } }
-      });
-    }
-
-    if (yoyoRef.current) {
-      yoyoChart = new Chart(yoyoRef.current, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Nivel Alcanzado',
-            data: [...activos.map(a => a.y26 || a.y25), promEquipo.yoyo, 21.0],
-            backgroundColor: [...activos.map(() => 'rgba(139, 92, 246, 0.8)'), 'rgba(255,255,255,0.2)', 'rgba(16, 185, 129, 0.8)'],
-            borderRadius: 4
-          }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { font: fontText, color: '#aaa' }, grid: { display: false } }, y: { min: 15, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { font: fontNumbers, color: '#aaa' } } }, plugins: { legend: { display: false } } }
-      });
-    }
-
-    return () => { if (cmjChart) cmjChart.destroy(); if (broadChart) broadChart.destroy(); if (yoyoChart) yoyoChart.destroy(); };
-  }, [jugadoresSeleccionados, datos]);
+  // Armado de datos por Posición
+  const posAgrupadas = useMemo(() => {
+    const grupos = {};
+    datos.forEach(d => {
+      const pos = d.jugadores?.posicion || 'Sin Pos';
+      if (!grupos[pos]) grupos[pos] = { pos, cmjTot: 0, broadTot: 0, yoyoTot: 0, muscTot: 0, count: 0 };
+      grupos[pos].cmjTot += d.cmj || 0;
+      grupos[pos].broadTot += d.broad || 0;
+      grupos[pos].yoyoTot += (d.y26 || d.y25 || 0);
+      grupos[pos].muscTot += d.musc || 0;
+      grupos[pos].count += 1;
+    });
+    return Object.values(grupos).map(g => ({
+      name: g.pos,
+      CMJ: Number((g.cmjTot / g.count).toFixed(1)),
+      Broad: Number((g.broadTot / g.count).toFixed(2)),
+      YoYo: Number((g.yoyoTot / g.count).toFixed(1)),
+      Musculo: Number((g.muscTot / g.count).toFixed(1)),
+    }));
+  }, [datos]);
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '25px' }}>
-        {[0, 1, 2, 3].map(i => (
-          <select key={i} className="select-dark" value={jugadoresSeleccionados[i]} onChange={(e) => setJugador(i, e.target.value)}>
-            <option value="">Seleccionar Jugador {i + 1}</option>
-            {datos.map(d => <option key={d.id} value={d.id_jugador}>{d.jugadores?.apellido} {d.jugadores?.nombre}</option>)}
-          </select>
-        ))}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <button className={`btn-action ${modo === 'jugadores' ? 'active' : ''}`} style={{ background: modo === 'jugadores' ? 'var(--accent)' : '#222', color: modo === 'jugadores' ? '#000' : '#fff' }} onClick={() => setModo('jugadores')}>COMPARAR JUGADORES</button>
+        <button className={`btn-action ${modo === 'posicion' ? 'active' : ''}`} style={{ background: modo === 'posicion' ? 'var(--accent)' : '#222', color: modo === 'posicion' ? '#000' : '#fff' }} onClick={() => setModo('posicion')}>PROMEDIOS POR POSICIÓN</button>
       </div>
 
-      {jugadoresSeleccionados.some(id => id !== '') ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div className="glass-panel" style={{ padding: '20px', height: '320px' }}>
-              <h3 className="section-header" style={{ color: 'var(--text-main)' }}>SALTO CMJ: DER VS IZQ (CM)</h3>
-              <div style={{ height: '240px', position: 'relative' }}><canvas ref={cmjRef}></canvas></div>
-            </div>
-            
-            <div className="glass-panel" style={{ padding: '20px', height: '320px' }}>
-              <h3 className="section-header" style={{ color: 'var(--text-main)' }}>BROAD JUMP: DER VS IZQ (M)</h3>
-              <div style={{ height: '240px', position: 'relative' }}><canvas ref={broadRef}></canvas></div>
-            </div>
+      {modo === 'jugadores' && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '25px' }}>
+            {[0, 1, 2, 3].map(i => (
+              <select key={i} className="select-dark" value={jugadoresSeleccionados[i]} onChange={(e) => setJugador(i, e.target.value)}>
+                <option value="">Seleccionar Jugador {i + 1}</option>
+                {datos.map(d => <option key={d.id} value={d.id_jugador}>{d.jugadores?.apellido} {d.jugadores?.nombre}</option>)}
+              </select>
+            ))}
           </div>
 
+          {activos.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className="glass-panel" style={{ padding: '20px', height: '320px' }}>
+                  <h3 className="section-header" style={{ color: 'var(--text-main)' }}>SALTO CMJ: DER VS IZQ (CM)</h3>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={dataCmj} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                      <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
+                      <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+                      <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
+                      <Legend wrapperStyle={{ fontSize: '11px', color: '#fff' }} />
+                      <Bar dataKey="Derecha" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Izquierda" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="glass-panel" style={{ padding: '20px', height: '320px' }}>
+                  <h3 className="section-header" style={{ color: 'var(--text-main)' }}>BROAD JUMP: DER VS IZQ (M)</h3>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={dataBroad} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                      <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
+                      <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+                      <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
+                      <Legend wrapperStyle={{ fontSize: '11px', color: '#fff' }} />
+                      <Bar dataKey="Derecha" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Izquierda" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="glass-panel" style={{ padding: '20px', height: '320px' }}>
+                <h3 className="section-header" style={{ color: 'var(--text-main)' }}>YO-YO TEST (CAPACIDAD AERÓBICA)</h3>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={dataYoyo} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                    <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
+                    <YAxis domain={['dataMin - 1', 'dataMax + 1']} stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+                    <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
+                    <ReferenceLine y={ELITE.yoyo} stroke="#10b981" strokeDasharray="3 3" label={{ position: 'top', value: 'Élite', fill: '#10b981', fontSize: 10 }} />
+                    <Bar dataKey="Nivel" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={50}>
+                      {dataYoyo.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.Nivel >= ELITE.yoyo ? '#10b981' : '#8b5cf6'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          ) : (
+            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)', border: '1px dashed var(--border)', fontFamily: 'Inter' }}>
+              SELECCIONÁ AL MENOS UN JUGADOR PARA DESPLEGAR LOS GRÁFICOS COMPARATIVOS.
+            </div>
+          )}
+        </>
+      )}
+
+      {modo === 'posicion' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div className="glass-panel" style={{ padding: '20px', height: '320px' }}>
-            <h3 className="section-header" style={{ color: 'var(--text-main)' }}>YO-YO TEST (CAPACIDAD AERÓBICA)</h3>
-            <div style={{ height: '240px', position: 'relative' }}><canvas ref={yoyoRef}></canvas></div>
+            <h3 className="section-header" style={{ color: 'var(--text-main)' }}>FUERZA EXPLOSIVA (CMJ) POR POSICIÓN</h3>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={posAgrupadas} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
+                <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} domain={['dataMin - 5', 'dataMax + 5']} />
+                <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
+                <Bar dataKey="CMJ" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-
-        </div>
-      ) : (
-        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)', border: '1px dashed var(--border)', fontFamily: 'Inter' }}>
-          SELECCIONÁ AL MENOS UN JUGADOR PARA DESPLEGAR LOS GRÁFICOS COMPARATIVOS.
+          <div className="glass-panel" style={{ padding: '20px', height: '320px' }}>
+            <h3 className="section-header" style={{ color: 'var(--text-main)' }}>CAPACIDAD AERÓBICA (YO-YO) POR POSICIÓN</h3>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={posAgrupadas} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
+                <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} domain={['dataMin - 2', 'dataMax + 2']} />
+                <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
+                <Bar dataKey="YoYo" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>
@@ -340,9 +385,9 @@ function TabComparativa({ datos }) {
 }
 
 // -------------------------------------------------------------
-// TAB 3: FICHA INDIVIDUAL
+// TAB 3: FICHA INDIVIDUAL (HUELLA ATLÉTICA Y VO2 MÁX)
 // -------------------------------------------------------------
-function TabIndividual({ datos }) {
+function TabIndividual({ datos, stats }) {
   const [seleccionadoId, setSeleccionadoId] = useState('');
   
   const jugador = datos.find(d => d.id_jugador === parseInt(seleccionadoId));
@@ -354,12 +399,58 @@ function TabIndividual({ datos }) {
     });
   }
 
-  const KpiRow = ({ label, value, highlightColor = '#fff' }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+  const ZScoreRow = ({ label, value, valRaw, statType, inverseRisk = false, extraInfo = null }) => {
+    if (!statType || !stats[statType]) return <KpiRow label={label} value={value} />;
+    const z = calcZScore(valRaw, stats[statType].mean, stats[statType].sd);
+    let colorZ = '#aaa';
+    let labelZ = 'Promedio';
+
+    const normalizedZ = inverseRisk ? -z : z;
+    if (normalizedZ > 1) { colorZ = '#10b981'; labelZ = 'Alto'; }
+    else if (normalizedZ < -1) { colorZ = '#ef4444'; labelZ = 'Riesgo / Bajo'; }
+
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <span style={{ color: 'var(--text-dim)' }}>{label}</span>
+          {extraInfo && <span style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px' }}>{extraInfo}</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <span style={{ fontSize: '0.7rem', color: colorZ, background: `${colorZ}22`, padding: '2px 6px', borderRadius: '4px', fontFamily: 'Inter' }}>
+            Z: {z > 0 ? '+' : ''}{z.toFixed(2)} ({labelZ})
+          </span>
+          <span style={{ fontFamily: 'JetBrains Mono', color: '#fff', fontWeight: 800, fontSize: '1.1rem' }}>{value}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const KpiRow = ({ label, value }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ color: 'var(--text-dim)' }}>{label}</span>
-      <span style={{ fontFamily: 'JetBrains Mono', color: highlightColor, fontWeight: 700 }}>{value}</span>
+      <span style={{ fontFamily: 'JetBrains Mono', color: '#fff', fontWeight: 700 }}>{value}</span>
     </div>
   );
+
+  // Normalización para Radar (Huella Atlética): 0 a 100 donde 50 es la media del plantel
+  const radarNormalizado = useMemo(() => {
+    if (!jugador) return [];
+    const norm = (z, invert = false) => {
+      let finalZ = invert ? -z : z;
+      return Math.max(0, Math.min(100, 50 + (finalZ * 20))); // Z=0 -> 50, Z=2.5 -> 100
+    };
+    
+    const asymMax = Math.max(Math.abs(jugador.asym_cmj || 0), Math.abs(jugador.asym_br || 0));
+    // Simetría: 0% = 100, 10% = 50, 20% = 0
+    const simetriaScore = Math.max(0, 100 - (asymMax * 5));
+
+    return [
+      { subject: 'Potencia', A: norm(calcZScore(jugador.cmj, stats.cmj.mean, stats.cmj.sd)) },
+      { subject: 'Aeróbico', A: norm(calcZScore(jugador.y26 || jugador.y25, stats.yoyo.mean, stats.yoyo.sd)) },
+      { subject: 'Composición', A: norm(calcZScore(jugador.adip, stats.adip.mean, stats.adip.sd), true) }, // Inverso
+      { subject: 'Simetría', A: simetriaScore }
+    ];
+  }, [jugador, stats]);
 
   return (
     <div>
@@ -369,24 +460,44 @@ function TabIndividual({ datos }) {
       </select>
 
       {jugador && (
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '25px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '25px', alignItems: 'start' }}>
           
-          {/* PANEL IZQUIERDO: MÉTRICAS FÍSICAS */}
           <div className="glass-panel" style={{ padding: '25px' }}>
             <h3 className="section-header" style={{ color: 'var(--accent)' }}>ESTADO FÍSICO</h3>
             <div style={{ fontSize: '0.9rem' }}>
               <KpiRow label="Peso" value={`${jugador.peso} kg`} />
-              <KpiRow label="Masa Muscular" value={`${jugador.musc}%`} highlightColor="#3b82f6" />
-              <KpiRow label="Masa Adiposa" value={`${jugador.adip}%`} highlightColor="#ef4444" />
-              <KpiRow label="CMJ (Salto Máx)" value={`${jugador.cmj} cm`} highlightColor="#10b981" />
+              <ZScoreRow label="Masa Muscular" value={`${jugador.musc}%`} valRaw={jugador.musc} statType="musc" />
+              <ZScoreRow label="Masa Adiposa" value={`${jugador.adip}%`} valRaw={jugador.adip} statType="adip" inverseRisk={true} />
+              <ZScoreRow label="CMJ (Salto Máx)" value={`${jugador.cmj} cm`} valRaw={jugador.cmj} statType="cmj" />
               <KpiRow label="Asimetría CMJ" value={`${jugador.asym_cmj}%`} />
-              <KpiRow label="Broad Jump" value={`${jugador.broad} m`} />
+              <ZScoreRow label="Broad Jump" value={`${jugador.broad} m`} valRaw={jugador.broad} statType="broad" />
               <KpiRow label="Asimetría Broad" value={`${jugador.asym_br}%`} />
-              <KpiRow label="Yo-Yo Test" value={jugador.y26 || jugador.y25 || 'S/D'} highlightColor="#f59e0b" />
+              <ZScoreRow 
+                label="Yo-Yo Test" 
+                value={jugador.y26 || jugador.y25 || 'S/D'} 
+                valRaw={jugador.y26 || jugador.y25} 
+                statType="yoyo" 
+                extraInfo={`VO2 Máx Estimado: ${estimarVO2Max(jugador.y26 || jugador.y25)} ml/kg/min`}
+              />
+            </div>
+
+            <h3 className="section-header" style={{ color: 'var(--text-main)', marginTop: '30px' }}>HUELLA ATLÉTICA</h3>
+            <div style={{ height: '220px', marginLeft: '-20px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="60%" data={radarNormalizado}>
+                  <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-dim)', fontSize: 10, fontWeight: 700 }} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar name="Jugador" dataKey="A" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.4} />
+                  <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff', fontSize: '11px' }} formatter={(value) => [value.toFixed(0), 'Score Global']} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#666', textAlign: 'center', marginTop: '-10px' }}>
+              El hexágono central (50) representa el promedio del plantel.
             </div>
           </div>
 
-          {/* PANEL DERECHO: DIETA Y KINE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
             
             <div className="glass-panel" style={{ padding: '25px', borderLeft: '4px solid #f59e0b' }}>
@@ -426,7 +537,14 @@ function TabIndividual({ datos }) {
                     {videosRecomendados.map((vid, idx) => (
                       <div key={idx} style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '0.8rem', marginBottom: '8px', color: '#fff', fontWeight: 600 }}>{vid.t}</div>
-                        <iframe src={getEmbedUrl(vid.v)} style={{ width: '100%', height: '140px', borderRadius: '4px' }} frameBorder="0" allowFullScreen></iframe>
+                        <iframe 
+                          src={getEmbedUrl(vid.v)} 
+                          style={{ width: '100%', height: '140px', borderRadius: '4px' }} 
+                          frameBorder="0" 
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                          allowFullScreen
+                          title={vid.t}
+                        ></iframe>
                       </div>
                     ))}
                   </div>

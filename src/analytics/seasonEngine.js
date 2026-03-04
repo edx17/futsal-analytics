@@ -1,9 +1,8 @@
-// src/analytics/seasonEngine.js
 import { calcularRatingJugador } from './rating';
-import { calcularXGPartido } from './xg';
+import { calcularXGPartido, calcularXGEvento } from './xg';
 import { generarPosesiones, calcularCadenasValor } from './posesiones';
 import { detectarTransiciones } from './transiciones';
-import { analizarPartido } from './engine'; // NUEVO: Importamos el motor individual
+import { analizarPartido } from './engine';
 
 export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
   if (!partidos || partidos.length === 0) return null;
@@ -33,10 +32,13 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
 
   const statsJugadores = {};
   jugadores.forEach(j => {
-    statsJugadores[j.id] = { ...j, eventos: [], goles: 0, asistencias: 0, rec: 0, perdidas: 0, duelosDefGan: 0, duelosDefTot: 0, xgChain: 0, xgBuildup: 0, xgIndividual: 0 };
+    statsJugadores[j.id] = { 
+      ...j, eventos: [], goles: 0, asistencias: 0, rec: 0, perdidas: 0, 
+      duelosDefGan: 0, duelosDefTot: 0, xgChain: 0, xgBuildup: 0, xgIndividual: 0,
+      minutosJugados: 0 // NUEVO
+    };
   });
 
-  // --- NUEVO: RECOLECTOR DE QUINTETOS GLOBALES ---
   const quintetosGlobales = {};
 
   const historialPartidos = partidosFiltrados.map(p => {
@@ -48,12 +50,12 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
     const evPropio = evPartido.filter(e => e.equipo === 'Propio');
     const posesionesPartido = generarPosesiones(evPropio);
     
-    // Usamos tu motor de partido para extraer las líneas de este partido en concreto
     try {
       const datosPartido = analizarPartido(evPartido, 'Propio');
+      
+      // Acumular Quintetos
       if (datosPartido && datosPartido.quintetos) {
         datosPartido.quintetos.forEach(q => {
-          // Creamos una firma única (hash) ordenando los IDs para agrupar las mismas líneas
           const hash = q.ids.slice().sort().join('-');
           if (!quintetosGlobales[hash]) {
             quintetosGlobales[hash] = { ids: q.ids, golesFavor: 0, golesContra: 0 };
@@ -62,8 +64,16 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
           quintetosGlobales[hash].golesContra += q.golesContra;
         });
       }
+
+      // Acumular Minutos Reales
+      if (datosPartido && datosPartido.minutosJugados) {
+        Object.entries(datosPartido.minutosJugados).forEach(([id, mins]) => {
+          if (statsJugadores[id]) statsJugadores[id].minutosJugados += mins;
+        });
+      }
+
     } catch (error) {
-      console.warn("No se pudo extraer quinteto del partido", p.id);
+      console.warn("No se pudo analizar completamente el partido", p.id);
     }
     
     jugadores.forEach(j => {
@@ -81,15 +91,13 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
     statsEquipo.golesContra += golesRival;
 
     const fechaCorta = p.fecha ? p.fecha.substring(0, 5) : 'S/F';
-
     return { ...p, rival: p.rival || 'Desconocido', fechaCorta, fecha: p.fecha || 'Sin fecha', golesPropio, golesRival, resultado, xg };
   });
 
-  // Procesamos los quintetos para el Ranking
   const topQuintetos = Object.values(quintetosGlobales)
     .filter(q => q.ids && q.ids.length > 0)
     .sort((a, b) => (b.golesFavor - b.golesContra) - (a.golesFavor - a.golesContra))
-    .slice(0, 5); // Tomamos los 5 mejores de la temporada
+    .slice(0, 5);
 
   const evPropiosGlobales = evFiltrados.filter(e => e.equipo === 'Propio');
   const transicionesGlobales = detectarTransiciones(evPropiosGlobales);
@@ -115,7 +123,8 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
       if (ev.accion?.includes('Remate')) {
         statsEquipo.remates++;
         if (ev.id_jugador && statsJugadores[ev.id_jugador]) {
-          statsJugadores[ev.id_jugador].xgIndividual += calcularXGPartido([ev]);
+          // Acá conectamos el motor xG real que creaste
+          statsJugadores[ev.id_jugador].xgIndividual += calcularXGEvento(ev);
         }
       }
       if (ev.accion === 'Recuperación') {
@@ -153,7 +162,16 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
 
   const jugadoresActivos = Object.values(statsJugadores).filter(j => j.eventos.length > 0 || j.xgChain > 0);
   
+  // NUEVO: ESTANDARIZACIÓN P40 (Proyección a 40 minutos)
   jugadoresActivos.forEach(j => {
+    // Evitar divisiones por cero. Si tiene eventos pero 0 minutos (error de taggeo), asumimos 1 minuto.
+    const minsReales = Math.max(1, j.minutosJugados); 
+    
+    j.golesP40 = (j.goles / minsReales) * 40;
+    j.asistenciasP40 = (j.asistencias / minsReales) * 40;
+    j.recP40 = (j.rec / minsReales) * 40;
+    j.xgBuildupP40 = (j.xgBuildup / minsReales) * 40;
+
     const pmGlobal = (j.goles + j.asistencias) - (j.perdidas * 0.5); 
     j.impactoGlobal = calcularRatingJugador(j, j.eventos.filter(e => !e.tipoVirtual), pmGlobal);
     j.eficaciaDefensiva = j.duelosDefTot > 0 ? (j.duelosDefGan / j.duelosDefTot) * 100 : 0;
@@ -161,8 +179,8 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
 
   const matrizTalento = jugadoresActivos.map(j => ({
     nombre: j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase(),
-    creacion: Number((j.xgBuildup + j.asistencias).toFixed(2)),
-    finalizacion: Number((j.goles + j.xgIndividual).toFixed(2)),
+    creacion: Number((j.xgBuildupP40 + j.asistenciasP40).toFixed(2)), // Usamos P40 para que sea justo
+    finalizacion: Number((j.golesP40 + (j.xgIndividual / Math.max(1, j.minutosJugados)) * 40).toFixed(2)),
     impacto: j.impactoGlobal 
   })).filter(j => j.creacion > 0 || j.finalizacion > 0);
 
@@ -172,5 +190,5 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
   const topMuros = [...jugadoresActivos].filter(j => j.duelosDefTot >= 5).sort((a, b) => b.eficaciaDefensiva - a.eficaciaDefensiva).slice(0, 5);
   const topCreadores = [...jugadoresActivos].filter(j => j.xgBuildup > 0).sort((a, b) => b.xgBuildup - a.xgBuildup).slice(0, 5);
 
-  return { statsEquipo, historialPartidos, topGoleadores, topAsistidores, topMVP, topMuros, topCreadores, evFiltrados, transicionesLetales, matrizTalento, topQuintetos };
+  return { statsEquipo, historialPartidos, topGoleadores, topAsistidores, topMVP, topMuros, topCreadores, evFiltrados, transicionesLetales, matrizTalento, topQuintetos, jugadoresStatsGlobal: jugadoresActivos };
 }
