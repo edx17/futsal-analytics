@@ -7,7 +7,7 @@ import { analizarPartido } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
 
-// --- COMPONENTE TOOLTIP UX (CORREGIDO) ---
+// --- COMPONENTE TOOLTIP UX ---
 const InfoBox = ({ texto }) => (
   <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
     <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter' }}>!</div>
@@ -28,6 +28,9 @@ function Resumen() {
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
+
+  // NUEVO ESTADO PARA EL FILTRO DE LA GRILLA DE PARTIDOS
+  const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState('Todas');
 
   const heatmapRef = useRef(null);
 
@@ -50,6 +53,11 @@ function Resumen() {
     setEventosPartido(data || []);
   };
 
+  const cerrarPartido = () => {
+    setPartidoSeleccionado(null);
+    setEventosPartido([]);
+  };
+
   const getNombreJugador = (id) => {
     if (!id) return 'SIN ASIGNAR / RIVAL';
     const j = jugadores.find(jug => jug.id == id);
@@ -66,6 +74,17 @@ function Resumen() {
     };
     return colores[acc] || '#ffffff';
   };
+
+  // CATEGORÍAS ÚNICAS PARA EL FILTRO
+  const categoriasUnicas = useMemo(() => {
+    const cats = partidos.map(p => p.categoria).filter(Boolean);
+    return [...new Set(cats)];
+  }, [partidos]);
+
+  const partidosGrid = useMemo(() => {
+    if (filtroCategoriaGrid === 'Todas') return partidos;
+    return partidos.filter(p => p.categoria === filtroCategoriaGrid);
+  }, [partidos, filtroCategoriaGrid]);
 
   const analitica = useMemo(() => {
     if (!eventosPartido.length) return null;
@@ -101,7 +120,7 @@ function Resumen() {
       const { xgChain, xgBuildup } = calcularCadenasValor(datosProcesados.posesiones, j.id);
       
       statsJugadores[j.id] = { 
-        id: j.id, nombre: j.apellido, dorsal: j.dorsal, eventos: [], 
+        id: j.id, nombre: j.apellido || j.nombre, dorsal: j.dorsal, eventos: [], 
         remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
         duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
         xgChain, xgBuildup
@@ -172,8 +191,7 @@ function Resumen() {
   ) || [];
 
   useEffect(() => {
-    if (tipoMapa !== 'calor') return;
-    if (!heatmapRef.current) return;
+    if (tipoMapa !== 'calor' || !heatmapRef.current) return;
 
     const canvas = heatmapRef.current;
     const ctx = canvas.getContext('2d');
@@ -183,11 +201,7 @@ function Resumen() {
 
     const dataPoints = evMapa
       .filter(ev => ev.zona_x != null && ev.zona_y != null)
-      .map(ev => [
-        (ev.zona_x / 100) * canvas.width,
-        (ev.zona_y / 100) * canvas.height,
-        1 
-      ]);
+      .map(ev => [ (ev.zona_x / 100) * canvas.width, (ev.zona_y / 100) * canvas.height, 1 ]);
 
     const heat = simpleheat(canvas);
     heat.data(dataPoints);
@@ -198,10 +212,88 @@ function Resumen() {
 
   }, [evMapa, tipoMapa]);
 
+
+  // --- VISTA 1: GRILLA DE PARTIDOS (MATCH CENTER) ---
+  if (!partidoSeleccionado) {
+    return (
+      <div style={{ animation: 'fadeIn 0.3s' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
+          <div>
+            <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>MATCH CENTER</div>
+            <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>Seleccioná un partido para acceder al reporte analítico.</div>
+          </div>
+          
+          <div>
+            <div className="stat-label">FILTRAR POR CATEGORÍA</div>
+            <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ marginTop: '5px', width: '200px' }}>
+              <option value="Todas">TODAS LAS CATEGORÍAS</option>
+              {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+          {partidosGrid.map(p => (
+            <div 
+              key={p.id} 
+              className="bento-card match-card" 
+              onClick={() => cargarPartido(p.id)}
+              style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}
+            >
+              {/* HEADER DE LA TARJETA (FECHA Y COMPETICION) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>{p.fecha}</span>
+                <span style={{ background: '#222', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                  {p.categoria || 'S/C'} | {p.competicion || 'Amistoso'}
+                </span>
+              </div>
+
+              {/* DUELO (VS) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                
+                {/* LOCAL (MI EQUIPO) */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
+                  {p.escudo_propio ? (
+                    <img src={p.escudo_propio} alt="Local" style={{ height: '50px', objectFit: 'contain', filter: 'grayscale(1) brightness(2)' }} />
+                  ) : (
+                    <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.2rem' }}>MI</div>
+                  )}
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{p.nombre_propio || 'MI EQUIPO'}</span>
+                </div>
+
+                {/* VS */}
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#333', fontStyle: 'italic', width: '20%', textAlign: 'center' }}>VS</div>
+
+                {/* VISITANTE (RIVAL) */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
+                  {p.escudo_rival ? (
+                    <img src={p.escudo_rival} alt="Rival" style={{ height: '50px', objectFit: 'contain', filter: 'grayscale(1) brightness(2)' }} />
+                  ) : (
+                    <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1.2rem' }}>{p.rival.substring(0, 2).toUpperCase()}</div>
+                  )}
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{p.rival.toUpperCase()}</span>
+                </div>
+                
+              </div>
+            </div>
+          ))}
+          {partidosGrid.length === 0 && (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
+              No hay partidos registrados en esta categoría.
+            </div>
+          )}
+        </div>
+        
+        <style>{`
+          .match-card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        `}</style>
+      </div>
+    );
+  }
+
+  // --- VISTA 2: DASHBOARD DEL PARTIDO (EL CÓDIGO ANTERIOR) ---
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
-      
-      {/* ACA ABAJO VA LA ETIQUETA STYLE CORRECTAMENTE UBICADA */}
       <style>{`
         .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
         .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
@@ -209,17 +301,13 @@ function Resumen() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div>
-            <div className="stat-label">PARTIDO (CATEGORIA / COMPETICIÓN)</div>
-            <select onChange={(e) => cargarPartido(e.target.value)} style={{ marginTop: '5px', width: '350px' }}>
-              <option value="">-- SELECCIONAR --</option>
-              {partidos.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.rival.toUpperCase()} // {p.categoria?.toUpperCase() || 'S/C'} ({p.competicion || 'Amistoso'})
-                </option>
-              ))}
-            </select>
-          </div>
+          
+          <button 
+            onClick={cerrarPartido} 
+            style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            ⬅ VOLVER A MATCH CENTER
+          </button>
           
           {partidoSeleccionado && (
             <div>
@@ -240,15 +328,16 @@ function Resumen() {
           
           <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', textAlign: 'center' }}>
             <div>
-              {partidoSeleccionado.escudo_propio && <img src={partidoSeleccionado.escudo_propio} alt="club" style={escudoStyle} />}
+              {partidoSeleccionado.escudo_propio ? <img src={partidoSeleccionado.escudo_propio} alt="club" style={escudoStyle} /> : <div style={escudoFallback}>MI</div>}
               <div className="stat-label">{partidoSeleccionado.nombre_propio || 'MI EQUIPO'}</div>
             </div>
             <div style={{ padding: '0 40px' }}>
               <div style={{ fontSize: '3.5rem', fontWeight: 800, fontFamily: 'JetBrains Mono', color: '#fff' }}>{analitica.stats.propio.goles} - {analitica.stats.rival.goles}</div>
               <div className="stat-label" style={{ color: 'var(--accent)' }}>{filtroPeriodo === 'Todos' ? 'RESULTADO FINAL' : `RESULTADO ${filtroPeriodo}`}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '5px' }}>{partidoSeleccionado.categoria} | {partidoSeleccionado.fecha}</div>
             </div>
             <div>
-              {partidoSeleccionado.escudo_rival && <img src={partidoSeleccionado.escudo_rival} alt="rival" style={escudoStyle} />}
+              {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={escudoStyle} /> : <div style={{...escudoFallback, borderColor: '#555', color: '#fff'}}>{partidoSeleccionado.rival.substring(0,2).toUpperCase()}</div>}
               <div className="stat-label">{partidoSeleccionado.rival.toUpperCase()}</div>
             </div>
           </div>
@@ -521,7 +610,8 @@ function Resumen() {
   );
 }
 
-const escudoStyle = { height: '60px', marginBottom: '10px', filter: 'grayscale(1) brightness(2)' };
+const escudoStyle = { height: '60px', marginBottom: '10px', filter: 'grayscale(1) brightness(2)', objectFit: 'contain' };
+const escudoFallback = { width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.5rem', marginBottom: '10px', margin: '0 auto' };
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem', alignItems: 'center' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
 

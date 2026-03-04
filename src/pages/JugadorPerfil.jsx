@@ -5,7 +5,7 @@ import { supabase } from '../supabase';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
 
-// --- COMPONENTE TOOLTIP UX (CORREGIDO) ---
+// --- COMPONENTE TOOLTIP UX ---
 const InfoBox = ({ texto }) => (
   <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
     <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter' }}>!</div>
@@ -24,6 +24,9 @@ function JugadorPerfil() {
   const [partidoFiltro, setPartidoFiltro] = useState('Todos');
   const [tipoMapa, setTipoMapa] = useState('puntos');
   const [eventoHover, setEventoHover] = useState(null);
+  
+  // NUEVO ESTADO PARA LA GRILLA
+  const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState('Todas');
 
   useEffect(() => {
     async function cargarCatalogos() {
@@ -52,6 +55,17 @@ function JugadorPerfil() {
 
   const jugadorSeleccionado = useMemo(() => jugadores.find(j => j.id == jugadorId), [jugadores, jugadorId]);
 
+  // CATEGORÍAS ÚNICAS PARA EL FILTRO DE LA GRILLA
+  const categoriasUnicas = useMemo(() => {
+    const cats = jugadores.map(j => j.categoria).filter(Boolean);
+    return [...new Set(cats)];
+  }, [jugadores]);
+
+  const jugadoresGrid = useMemo(() => {
+    if (filtroCategoriaGrid === 'Todas') return jugadores;
+    return jugadores.filter(j => j.categoria === filtroCategoriaGrid);
+  }, [jugadores, filtroCategoriaGrid]);
+
   const perfil = useMemo(() => {
     if (!jugadorId || !eventos.length || !jugadorSeleccionado) return null;
 
@@ -74,12 +88,10 @@ function JugadorPerfil() {
       const esAtaque = zonaX > 66;
       const esDefensa = zonaX < 33;
 
-      // Evaluar Asistencia
       if (ev.id_asistencia == jugadorId && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {
         stats.asistencias++;
       }
 
-      // Evaluar acciones como ejecutor principal
       if (ev.id_jugador == jugadorId) {
         const xgEvento = calcularXGEvento(ev);
 
@@ -90,8 +102,6 @@ function JugadorPerfil() {
         else if (ev.accion === 'Recuperación') { stats.recuperaciones++; if (esAtaque) stats.recAltas++; }
         else if (ev.accion === 'Pérdida') { stats.perdidas++; if (esDefensa) stats.perdidasPeligrosas++; }
         else if (ev.accion === 'Falta cometida') stats.faltas++;
-        else if (ev.accion === 'Tarjeta Amarilla') stats.amarillas++;
-        else if (ev.accion === 'Tarjeta Roja') stats.rojas++;
       }
     });
 
@@ -110,10 +120,82 @@ function JugadorPerfil() {
     return col[acc] || '#fff';
   };
 
+  // --- VISTA 1: DIRECTORIO DE JUGADORES (GRILLA) ---
+  if (!jugadorId) {
+    return (
+      <div style={{ animation: 'fadeIn 0.3s' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
+          <div>
+            <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>DIRECTORIO DE PLANTEL</div>
+            <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>Seleccioná un jugador para ver su analítica completa.</div>
+          </div>
+          
+          <div>
+            <div className="stat-label">FILTRAR POR CATEGORÍA</div>
+            <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ marginTop: '5px', width: '200px' }}>
+              <option value="Todas">TODAS LAS CATEGORÍAS</option>
+              {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
+          {jugadoresGrid.map(j => (
+            <div 
+              key={j.id} 
+              className="bento-card player-card" 
+              onClick={() => setJugadorId(j.id)}
+              style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}
+            >
+              {/* DORSAL MARCA DE AGUA */}
+              <div style={{ position: 'absolute', right: '-10px', top: '-20px', fontSize: '6rem', fontWeight: 900, color: 'rgba(255,255,255,0.03)', fontFamily: 'JetBrains Mono', pointerEvents: 'none' }}>
+                {j.dorsal}
+              </div>
+
+              {/* FOTO PLACEHOLDER */}
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '15px' }}>
+                {j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}
+              </div>
+
+              {/* INFO TEXTUAL */}
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1.1 }}>{j.apellido || '-'}</div>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginTop: '4px' }}>{j.nombre || '-'}</div>
+              </div>
+
+              {/* BADGES */}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '15px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+                <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>
+                  {j.puesto || 'S/P'}
+                </span>
+                <span style={{ background: '#222', color: '#aaa', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>
+                  {j.perfil || 'S/Perfil'}
+                </span>
+                <span style={{ background: '#222', color: '#aaa', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>
+                  #{j.dorsal}
+                </span>
+              </div>
+            </div>
+          ))}
+          {jugadoresGrid.length === 0 && (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
+              No hay jugadores en esta categoría.
+            </div>
+          )}
+        </div>
+        
+        {/* Agrego un hover state rapido en linea para las cards */}
+        <style>{`
+          .player-card:hover { transform: translateY(-5px); border-color: var(--accent); }
+        `}</style>
+      </div>
+    );
+  }
+
+  // --- VISTA 2: PERFIL ANALÍTICO (EL CÓDIGO ANTERIOR) ---
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       
-      {/* ACA ABAJO VA LA ETIQUETA STYLE CORRECTAMENTE UBICADA */}
       <style>{`
         .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
         .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
@@ -121,20 +203,17 @@ function JugadorPerfil() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div>
-            <div className="stat-label">RESUMEN INDIVIDUAL</div>
-            <select value={jugadorId} onChange={(e) => setJugadorId(e.target.value)} style={{ marginTop: '5px', width: '250px', borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 700 }}>
-              <option value="">-- SELECCIONAR JUGADOR --</option>
-             {jugadores.map(j => (
-                <option key={j.id} value={j.id}>{j.dorsal} - {j.apellido ? j.apellido.toUpperCase() + ', ' + j.nombre : j.nombre}</option>
-              ))}
-            </select>
-          </div>
+          <button 
+            onClick={() => setJugadorId('')} 
+            style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            ⬅ VOLVER A LA GRILLA
+          </button>
           
           {jugadorId && (
             <div>
               <div className="stat-label">FILTRO DE PARTIDO</div>
-              <select value={partidoFiltro} onChange={(e) => setPartidoFiltro(e.target.value)} style={{ marginTop: '5px', width: '200px' }}>
+              <select value={partidoFiltro} onChange={(e) => setPartidoFiltro(e.target.value)} style={{ marginTop: '5px', width: '250px' }}>
                 <option value="Todos">TODA LA TEMPORADA</option>
                 {partidos.map(p => <option key={p.id} value={p.id}>{p.rival.toUpperCase()} // {p.fecha}</option>)}
               </select>
@@ -152,15 +231,28 @@ function JugadorPerfil() {
       {jugadorSeleccionado && perfil && !perfil.vacio && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
+          {/* HEADER DEL JUGADOR */}
           <div className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '30px', background: 'linear-gradient(90deg, #111 0%, #000 100%)', borderLeft: '4px solid var(--accent)' }}>
-            <div style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--accent)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
-            <div>
-              <div style={{ fontSize: '2rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff' }}>{jugadorSeleccionado.apellido}</div>
-              <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', letterSpacing: '2px' }}>{partidoFiltro === 'Todos' ? 'MÉTRICAS ACUMULADAS' : 'MÉTRICAS DEL PARTIDO'}</div>
+            
+            {/* Foto Real (Cuando la tengas, reemplazás el div por un <img src={jugadorSeleccionado.foto} />) */}
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 800, color: 'var(--accent)', flexShrink: 0 }}>
+                {jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.charAt(0) : ''}{jugadorSeleccionado.nombre ? jugadorSeleccionado.nombre.charAt(0) : ''}
             </div>
-            <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-               <div className="stat-label">PARTIDOS ANALIZADOS</div>
-               <div className="stat-value">{perfil.partidosJugados}</div>
+
+            <div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1 }}>{jugadorSeleccionado.apellido}</div>
+              <div style={{ fontSize: '1.2rem', color: 'var(--text-dim)', marginTop: '5px' }}>{jugadorSeleccionado.nombre} <span className="mono-accent" style={{marginLeft: '10px'}}>#{jugadorSeleccionado.dorsal}</span></div>
+            </div>
+            
+            <div style={{ marginLeft: 'auto', textAlign: 'right', display: 'flex', gap: '20px' }}>
+               <div style={{ textAlign: 'right' }}>
+                 <div className="stat-label">PUESTO</div>
+                 <div className="stat-value" style={{ fontSize: '1.2rem', color: '#00ff88' }}>{jugadorSeleccionado.puesto || '-'}</div>
+               </div>
+               <div style={{ textAlign: 'right' }}>
+                 <div className="stat-label">PARTIDOS ANALIZADOS</div>
+                 <div className="stat-value" style={{ fontSize: '1.2rem' }}>{perfil.partidosJugados}</div>
+               </div>
             </div>
           </div>
 
@@ -288,7 +380,6 @@ function JugadorPerfil() {
   );
 }
 
-// Acá agregué alignItems: 'center' para que el icono de InfoBox no te quede desparejo con el texto
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem', alignItems: 'center' };
 const kpiSubFila = { display: 'flex', justifyContent: 'space-between', padding: '6px 0 6px 15px', fontFamily: 'JetBrains Mono', fontSize: '0.75rem', color: 'var(--text-dim)', alignItems: 'center' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
