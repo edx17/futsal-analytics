@@ -29,7 +29,6 @@ function Resumen() {
   const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
   const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
 
-  // NUEVO ESTADO PARA EL FILTRO DE LA GRILLA DE PARTIDOS
   const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState('Todas');
 
   const heatmapRef = useRef(null);
@@ -75,7 +74,6 @@ function Resumen() {
     return colores[acc] || '#ffffff';
   };
 
-  // CATEGORÍAS ÚNICAS PARA EL FILTRO
   const categoriasUnicas = useMemo(() => {
     const cats = partidos.map(p => p.categoria).filter(Boolean);
     return [...new Set(cats)];
@@ -100,6 +98,13 @@ function Resumen() {
       rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0 } 
     };
 
+    // --- NUEVAS MÉTRICAS ABP ---
+    const abp = {
+      corners: { favor: 0, contra: 0 },
+      laterales: { favor: 0, contra: 0 },
+      zonasLatFavor: { z1: 0, z2: 0, z3: 0, z4: 0 }
+    };
+
     evFiltrados.forEach(ev => {
       const p = ev.equipo === 'Propio';
       if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
@@ -113,6 +118,22 @@ function Resumen() {
       else if (p && ev.accion === 'Pérdida') { stats.propio.perdidas++; }
       else if (p && ev.accion === 'Recuperación') { stats.propio.rec++; }
       else if (ev.accion === 'Falta cometida') { p ? stats.propio.faltas++ : stats.rival.faltas++; }
+
+      // CONTEO ABP
+      if (ev.accion === 'Córner') {
+        p ? abp.corners.favor++ : abp.corners.contra++;
+      }
+      if (ev.accion === 'Lateral') {
+        if (p) {
+          abp.laterales.favor++;
+          if (ev.zona_x < 25) abp.zonasLatFavor.z1++;
+          else if (ev.zona_x < 50) abp.zonasLatFavor.z2++;
+          else if (ev.zona_x < 75) abp.zonasLatFavor.z3++;
+          else abp.zonasLatFavor.z4++;
+        } else {
+          abp.laterales.contra++;
+        }
+      }
     });
 
     const statsJugadores = {};
@@ -170,7 +191,7 @@ function Resumen() {
     const balancePosesion = totalPosesion > 0 ? ((stats.propio.rec / totalPosesion) * 100).toFixed(0) : 0;
 
     return { 
-      evFiltrados, stats, ranking, eficaciaTiro, balancePosesion,
+      evFiltrados, stats, abp, ranking, eficaciaTiro, balancePosesion,
       xgPropio: datosProcesados.xgPropio, xgRival: datosProcesados.xgRival, 
       insights: datosProcesados.insights, 
       posesiones: datosProcesados.posesiones, transiciones: datosProcesados.transiciones,
@@ -240,7 +261,6 @@ function Resumen() {
               onClick={() => cargarPartido(p.id)}
               style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}
             >
-              {/* HEADER DE LA TARJETA (FECHA Y COMPETICION) */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>{p.fecha}</span>
                 <span style={{ background: '#222', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>
@@ -248,10 +268,8 @@ function Resumen() {
                 </span>
               </div>
 
-              {/* DUELO (VS) */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 
-                {/* LOCAL (MI EQUIPO) */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
                   {p.escudo_propio ? (
                     <img src={p.escudo_propio} alt="Local" style={{ height: '50px', objectFit: 'contain', filter: 'grayscale(1) brightness(2)' }} />
@@ -261,10 +279,8 @@ function Resumen() {
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{p.nombre_propio || 'MI EQUIPO'}</span>
                 </div>
 
-                {/* VS */}
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#333', fontStyle: 'italic', width: '20%', textAlign: 'center' }}>VS</div>
 
-                {/* VISITANTE (RIVAL) */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
                   {p.escudo_rival ? (
                     <img src={p.escudo_rival} alt="Rival" style={{ height: '50px', objectFit: 'contain', filter: 'grayscale(1) brightness(2)' }} />
@@ -291,7 +307,7 @@ function Resumen() {
     );
   }
 
-  // --- VISTA 2: DASHBOARD DEL PARTIDO (EL CÓDIGO ANTERIOR) ---
+  // --- VISTA 2: DASHBOARD DEL PARTIDO ---
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       <style>{`
@@ -362,7 +378,7 @@ function Resumen() {
              </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px' }}>
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>PRODUCCIÓN OFENSIVA</div>
               <div style={kpiFila}><span>REMATES TOTALES</span><strong>{analitica.stats.propio.remates}</strong></div>
@@ -404,6 +420,31 @@ function Resumen() {
                 Un % defensivo bajo indica debilidad estructural en el 1v1.
               </div>
             </div>
+
+            <div className="bento-card" style={{ borderTop: '3px solid #f97316' }}>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#f97316', display: 'flex', alignItems: 'center' }}>
+                PELOTA PARADA (ABP) <InfoBox texto="Resumen de acciones de reanudación. Las zonas de los laterales propios van de la Z1 (Defensa) a la Z4 (Ataque)." />
+              </div>
+              <div style={kpiFila}>
+                <span>CÓRNERS (Fav / Contra)</span>
+                <strong><span style={{color:'#f97316'}}>{analitica.abp.corners.favor}</span> - <span style={{color:'#ef4444'}}>{analitica.abp.corners.contra}</span></strong>
+              </div>
+              <div style={kpiFila}>
+                <span>LATERALES (Fav / Contra)</span>
+                <strong><span style={{color:'#06b6d4'}}>{analitica.abp.laterales.favor}</span> - <span style={{color:'#ef4444'}}>{analitica.abp.laterales.contra}</span></strong>
+              </div>
+              
+              <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dashed #333' }}>
+                <div className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px' }}>MIS LATERALES POR ZONAS</div>
+                <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between' }}>
+                   <div style={zonePill}>Z1 (0-10) <br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analitica.abp.zonasLatFavor.z1}</strong></div>
+                   <div style={zonePill}>Z2 (10-20)<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analitica.abp.zonasLatFavor.z2}</strong></div>
+                   <div style={zonePill}>Z3 (20-30)<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analitica.abp.zonasLatFavor.z3}</strong></div>
+                   <div style={zonePill}>Z4 (30-40)<br/><strong style={{color:'#00ff88', fontSize:'1rem'}}>{analitica.abp.zonasLatFavor.z4}</strong></div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <div className="bento-card">
@@ -613,6 +654,7 @@ function Resumen() {
 const escudoStyle = { height: '60px', marginBottom: '10px', filter: 'grayscale(1) brightness(2)', objectFit: 'contain' };
 const escudoFallback = { width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.5rem', marginBottom: '10px', margin: '0 auto' };
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem', alignItems: 'center' };
+const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
 
 export default Resumen;

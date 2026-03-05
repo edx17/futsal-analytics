@@ -45,10 +45,40 @@ function Temporada() {
   }, []);
 
   const analiticaGlobal = useMemo(() => {
-    return analizarTemporadaGlobal(partidos, eventos, jugadores, {
+    const baseAnalytics = analizarTemporadaGlobal(partidos, eventos, jugadores, {
       categoria: filtroCategoria,
       competicion: filtroCompeticion
     });
+
+    if (!baseAnalytics) return null;
+
+    // --- AGREGAMOS LA LÓGICA DE ABP GLOBAL AQUÍ ---
+    const abp = {
+      corners: { favor: 0, contra: 0 },
+      laterales: { favor: 0, contra: 0 },
+      zonasLatFavor: { z1: 0, z2: 0, z3: 0, z4: 0 }
+    };
+
+    baseAnalytics.evFiltrados.forEach(ev => {
+      const p = ev.equipo === 'Propio';
+      
+      if (ev.accion === 'Córner') {
+        p ? abp.corners.favor++ : abp.corners.contra++;
+      }
+      if (ev.accion === 'Lateral') {
+        if (p) {
+          abp.laterales.favor++;
+          if (ev.zona_x < 25) abp.zonasLatFavor.z1++;
+          else if (ev.zona_x < 50) abp.zonasLatFavor.z2++;
+          else if (ev.zona_x < 75) abp.zonasLatFavor.z3++;
+          else abp.zonasLatFavor.z4++;
+        } else {
+          abp.laterales.contra++;
+        }
+      }
+    });
+
+    return { ...baseAnalytics, abp };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
   const evMapa = analiticaGlobal?.evFiltrados.filter(ev => ev.equipo === 'Propio' && (!filtroAccionMapa || ev.accion?.includes(filtroAccionMapa))) || [];
@@ -190,6 +220,31 @@ function Temporada() {
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>DUELOS DEFENSIVOS <InfoBox texto="Eficacia general del equipo al disputar la pelota 1v1." /></div>
                 <div className="stat-value" style={{ color: eficaciaGlobalDefensiva > 50 ? '#10b981' : '#ef4444' }}>{eficaciaGlobalDefensiva}%</div>
+            </div>
+            
+            {/* NUEVA TARJETA: ABP EN TEMPORADA GLOBAL */}
+            <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #f97316' }}>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                PELOTA PARADA (ABP) <InfoBox texto="Resumen de acciones de reanudación en toda la temporada. Las zonas de los laterales van de la Z1 (Defensa) a la Z4 (Ataque)." />
+              </div>
+              <div style={kpiFila}>
+                <span>CÓRNERS (Fav / Contra)</span>
+                <strong><span style={{color:'#f97316'}}>{analiticaGlobal.abp.corners.favor}</span> - <span style={{color:'#ef4444'}}>{analiticaGlobal.abp.corners.contra}</span></strong>
+              </div>
+              <div style={kpiFila}>
+                <span>LATERALES (Fav / Contra)</span>
+                <strong><span style={{color:'#06b6d4'}}>{analiticaGlobal.abp.laterales.favor}</span> - <span style={{color:'#ef4444'}}>{analiticaGlobal.abp.laterales.contra}</span></strong>
+              </div>
+              
+              <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dashed #333' }}>
+                <div className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px', textAlign: 'center' }}>LATERALES FAVOR POR ZONAS</div>
+                <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between' }}>
+                   <div style={zonePill}>Z1 (0-10) <br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z1}</strong></div>
+                   <div style={zonePill}>Z2 (10-20)<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z2}</strong></div>
+                   <div style={zonePill}>Z3 (20-30)<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z3}</strong></div>
+                   <div style={zonePill}>Z4 (30-40)<br/><strong style={{color:'#00ff88', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z4}</strong></div>
+                </div>
+              </div>
             </div>
         </div>
 
@@ -377,6 +432,8 @@ function Temporada() {
                   <option value="Remate">SOLO REMATES</option>
                   <option value="Recuperación">SOLO RECUPERACIONES</option>
                   <option value="Duelo">SOLO DUELOS</option>
+                  <option value="Lateral">SOLO LATERALES</option>
+                  <option value="Córner">SOLO CÓRNERS</option>
                 </select>
 
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
@@ -446,5 +503,8 @@ function Temporada() {
 
 const rankingRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 10px', borderBottom: '1px solid #222' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
+const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem', alignItems: 'center' };
+const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };
+
 
 export default Temporada;

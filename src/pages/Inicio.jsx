@@ -171,8 +171,6 @@ function Inicio() {
               <div className="stat-label" style={{ marginBottom: '10px' }}>CATEGORÍA</div>
               <select value={datosPartido.categoria} onChange={e => setDatosPartido({...datosPartido, categoria: e.target.value})} style={{ width: '100%', background: 'transparent', border: '1px solid #333', color: '#fff', padding: '10px' }}>
                 <option value="Primera">Primera</option><option value="Tercera">Tercera</option>
-                <option value="Cuarta">Cuarta</option><option value="Quinta">Quinta</option>
-                <option value="Sexta">Sexta</option><option value="Séptima">Séptima</option><option value="Octava">Octava</option>
               </select>
             </div>
           </div>
@@ -184,8 +182,6 @@ function Inicio() {
                 <option value="TODOS">VER TODAS LAS CATEGORÍAS</option>
                 <option value="Primera">SOLO PRIMERA</option>
                 <option value="Tercera">SOLO TERCERA</option>
-                <option value="Cuarta">SOLO CUARTA</option>
-                <option value="Quinta">SOLO QUINTA</option>
               </select>
             </div>
             <div className="table-wrapper">
