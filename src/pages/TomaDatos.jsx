@@ -6,6 +6,7 @@ function TomaDatos() {
   const location = useLocation();
   const navigate = useNavigate();
   const partido = location.state?.partido;
+  const clubId = localStorage.getItem('club_id'); // <-- AQUÍ ESTÁ EL PASAPORTE
   const pitchRef = useRef(null);
 
   // --- ESTADOS TÉCNICOS Y RESPONSIVE ---
@@ -156,13 +157,14 @@ function TomaDatos() {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
 
     const evento = {
+      club_id: clubId, // <-- AGREGADO
       id_partido: partido.id,
       id_jugador: null, // SIN JUGADOR
       accion: accion,
       zona_x: dbX, zona_y: dbY,
       equipo: equipoSeleccionado,
       periodo: periodo, minuto: minuto,
-      quinteto_activo: JSON.stringify(quintetoActual)
+      quinteto_activo: quintetoActual
     };
 
     setPanelLateral({ activo: false, x: 0, y: 0 });
@@ -173,6 +175,7 @@ function TomaDatos() {
       setEventos(prev => [...prev, ...eventosGuardados]);
     } else {
       alert("Error de red al guardar el evento.");
+      console.error("Error de Supabase:", error);
     }
   };
 
@@ -198,22 +201,25 @@ function TomaDatos() {
 
     if (pasoRegistro === 3) {
       eventosAInsertar.push({
+        club_id: clubId, // <-- AGREGADO
         id_partido: partido.id, id_jugador: autorGol ? parseInt(autorGol, 10) : null,
         accion: 'Remate - Gol', zona_x: dbX, zona_y: dbY, equipo: finalEquipo,
-        periodo: periodo, minuto: minuto, quinteto_activo: JSON.stringify(quintetoActual)
+        periodo: periodo, minuto: minuto, quinteto_activo: quintetoActual
       });
       if (jugadorId) {
         eventosAInsertar.push({
+          club_id: clubId, // <-- AGREGADO
           id_partido: partido.id, id_jugador: parseInt(jugadorId, 10),
           accion: 'Asistencia', zona_x: dbX, zona_y: dbY, equipo: finalEquipo,
-          periodo: periodo, minuto: minuto, quinteto_activo: JSON.stringify(quintetoActual)
+          periodo: periodo, minuto: minuto, quinteto_activo: quintetoActual
         });
       }
     } else {
       eventosAInsertar.push({
+        club_id: clubId, // <-- AGREGADO
         id_partido: partido.id, id_jugador: jugadorId ? parseInt(jugadorId, 10) : null,
         accion: accion, zona_x: dbX, zona_y: dbY, equipo: finalEquipo,
-        periodo: periodo, minuto: minuto, quinteto_activo: JSON.stringify(quintetoActual)
+        periodo: periodo, minuto: minuto, quinteto_activo: quintetoActual
       });
     }
 
@@ -226,6 +232,7 @@ function TomaDatos() {
       setEventos(prev => [...prev, ...eventosGuardados]);
     } else {
       alert("Error de red al guardar el evento.");
+      console.error("Error de Supabase:", error);
     }
   };
 
@@ -276,17 +283,22 @@ function TomaDatos() {
     if (!jSale || !jEntra) return;
 
     const evtSalida = {
+      club_id: clubId, // <-- AGREGADO
       id_partido: partido.id, id_jugador: jSale.id, accion: 'Cambio', equipo: 'Propio',
       periodo: periodo, minuto: minuto, id_receptor: jEntra.id,
-      quinteto_activo: JSON.stringify(jugadoresEnCancha.map(j => j.id))
+      quinteto_activo: jugadoresEnCancha.map(j => j.id)
     };
 
     setJugadoresEnCancha(prev => [...prev.filter(j => j.id != saleId), jEntra]);
     setJugadoresEnBanco(prev => [...prev.filter(j => j.id != entraId), jSale]);
     setModalCambio(false); setSaleId(''); setEntraId('');
 
-    const { data: cambioGuardado } = await supabase.from('eventos').insert([evtSalida]).select();
-    if (cambioGuardado) setEventos(prev => [...prev, ...cambioGuardado]);
+    const { data: cambioGuardado, error } = await supabase.from('eventos').insert([evtSalida]).select();
+    if (cambioGuardado) {
+      setEventos(prev => [...prev, ...cambioGuardado]);
+    } else {
+       console.error("Error de Supabase:", error);
+    }
   };
 
   if (!partido) return <div>Cargando...</div>;
@@ -594,7 +606,7 @@ const abpBtn = {
   width: '30px',
   height: '30px',
   borderRadius: '50%',
-  background: 'rgba(17, 17, 17, 0.5)', // Fondo oscuro con opacidad
+  background: 'rgba(17, 17, 17, 0.5)',
   border: '2px solid',
   display: 'flex',
   justifyContent: 'center',
@@ -603,7 +615,7 @@ const abpBtn = {
   fontSize: '0.8rem',
   cursor: 'pointer',
   zIndex: 100,
-  opacity: 0.5, // Botón entero al 50% de opacidad
+  opacity: 0.5,
   boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
   transition: 'opacity 0.2s'
 };
