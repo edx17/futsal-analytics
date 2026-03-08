@@ -6,7 +6,7 @@ function TomaDatos() {
   const location = useLocation();
   const navigate = useNavigate();
   const partido = location.state?.partido;
-  const clubId = localStorage.getItem('club_id'); // <-- AQUÍ ESTÁ EL PASAPORTE
+  const clubId = localStorage.getItem('club_id');
   const pitchRef = useRef(null);
 
   // --- ESTADOS TÉCNICOS Y RESPONSIVE ---
@@ -28,9 +28,10 @@ function TomaDatos() {
   const [equipo, setEquipo] = useState('Propio');
   const [accion, setAccion] = useState('');
   
-  // --- ESTADOS PARA GOL Y ASISTENCIA ---
+  // --- ESTADOS PARA GOL, ASISTENCIA Y ORIGEN ---
   const [menuActivo, setMenuActivo] = useState(null); 
   const [autorGol, setAutorGol] = useState(null); 
+  const [autorAsistencia, setAutorAsistencia] = useState(null);
 
   // --- ESTADOS DE EDICIÓN ---
   const [eventoEditando, setEventoEditando] = useState(null); 
@@ -112,7 +113,7 @@ function TomaDatos() {
 
   // --- LOGICA DE REGISTRO NORMAL ---
   const registrarToque = (e) => {
-    setPanelAbierto(true); // AUTO-ABRIR PANEL
+    setPanelAbierto(true);
     const rect = pitchRef.current.getBoundingClientRect();
     let x = ((e.clientX - rect.left) / rect.width) * 100;
     let y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -124,17 +125,19 @@ function TomaDatos() {
     setEquipo('Propio');
     setAccion('');
     setAutorGol(null);
+    setAutorAsistencia(null);
     setMenuActivo(null);
     setTabActiva('registro'); 
   };
 
   // --- LOGICA DE REGISTRO RÁPIDO (ABP) ---
   const triggerABP = (acc, x, y) => {
-    setPanelAbierto(true); // AUTO-ABRIR PANEL
+    setPanelAbierto(true); 
     setPanelLateral({ activo: true, x, y });
     setAccion(acc);
     setPasoRegistro(4); // PASO 4: Confirmación rápida de equipo
     setAutorGol(null);
+    setAutorAsistencia(null);
     setMenuActivo(null);
     setTabActiva('registro');
   };
@@ -157,9 +160,9 @@ function TomaDatos() {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
 
     const evento = {
-      club_id: clubId, // <-- AGREGADO
+      club_id: clubId, 
       id_partido: partido.id,
-      id_jugador: null, // SIN JUGADOR
+      id_jugador: null, 
       accion: accion,
       zona_x: dbX, zona_y: dbY,
       equipo: equipoSeleccionado,
@@ -179,16 +182,25 @@ function TomaDatos() {
     }
   };
 
-  // GUARDADO COMPLETO (CON JUGADORES)
+  // GUARDADO DE ACCIONES COMUNES Y FLUJO DE GOL
   const guardarEventoFinal = async (jugadorId) => {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
 
+    // Si estamos en Paso 2 y fue Gol, guardamos el autor y avanzamos al Paso 3 (Asistencia)
     if (pasoRegistro === 2 && accion === 'Remate - Gol') {
       setAutorGol(jugadorId);
       setPasoRegistro(3); 
-      return;
+      return; 
     }
 
+    // Si estamos en Paso 3 y fue Gol, guardamos la asistencia y avanzamos al Paso 5 (Origen)
+    if (pasoRegistro === 3 && accion === 'Remate - Gol') {
+      setAutorAsistencia(jugadorId);
+      setPasoRegistro(5); 
+      return; 
+    }
+
+    // LÓGICA PARA EL RESTO DE ACCIONES (Remates, Faltas, Recuperaciones, etc.)
     let dbX = panelLateral.x;
     let dbY = panelLateral.y;
     if (direccionAtaque === 'izquierda') {
@@ -197,41 +209,86 @@ function TomaDatos() {
     }
 
     const finalEquipo = jugadorId === null && pasoRegistro === 2 ? 'Rival' : equipo;
-    const eventosAInsertar = [];
-
-    if (pasoRegistro === 3) {
-      eventosAInsertar.push({
-        club_id: clubId, // <-- AGREGADO
-        id_partido: partido.id, id_jugador: autorGol ? parseInt(autorGol, 10) : null,
-        accion: 'Remate - Gol', zona_x: dbX, zona_y: dbY, equipo: finalEquipo,
-        periodo: periodo, minuto: minuto, quinteto_activo: quintetoActual
-      });
-      if (jugadorId) {
-        eventosAInsertar.push({
-          club_id: clubId, // <-- AGREGADO
-          id_partido: partido.id, id_jugador: parseInt(jugadorId, 10),
-          accion: 'Asistencia', zona_x: dbX, zona_y: dbY, equipo: finalEquipo,
-          periodo: periodo, minuto: minuto, quinteto_activo: quintetoActual
-        });
-      }
-    } else {
-      eventosAInsertar.push({
-        club_id: clubId, // <-- AGREGADO
-        id_partido: partido.id, id_jugador: jugadorId ? parseInt(jugadorId, 10) : null,
-        accion: accion, zona_x: dbX, zona_y: dbY, equipo: finalEquipo,
-        periodo: periodo, minuto: minuto, quinteto_activo: quintetoActual
-      });
-    }
+    
+    const evento = {
+      club_id: clubId, 
+      id_partido: partido.id, 
+      id_jugador: jugadorId ? parseInt(jugadorId, 10) : null,
+      accion: accion, 
+      zona_x: dbX, 
+      zona_y: dbY, 
+      equipo: finalEquipo,
+      periodo: periodo, 
+      minuto: minuto, 
+      quinteto_activo: quintetoActual
+    };
 
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
+    
+    const { data: eventosGuardados, error } = await supabase.from('eventos').insert([evento]).select();
+    if (!error && eventosGuardados) {
+      setEventos(prev => [...prev, ...eventosGuardados]);
+    } else {
+      alert("Error de red al guardar el evento.");
+      console.error("Error de Supabase:", error);
+    }
+  };
+
+  // FINALIZADOR ESPECÍFICO DEL GOL (Paso 5)
+  const finalizarRegistroGol = async (origenContexto) => {
+    let dbX = panelLateral.x;
+    let dbY = panelLateral.y;
+    if (direccionAtaque === 'izquierda') {
+      dbX = 100 - dbX;
+      dbY = 100 - dbY;
+    }
+
+    const quintetoActual = jugadoresEnCancha.map(j => j.id);
+    const eventosAInsertar = [];
+
+    // 1. Insertar el Evento del Gol con su Origen
+    eventosAInsertar.push({
+      club_id: clubId, 
+      id_partido: partido.id, 
+      id_jugador: autorGol ? parseInt(autorGol, 10) : null,
+      accion: 'Remate - Gol', 
+      zona_x: dbX, 
+      zona_y: dbY, 
+      equipo: equipo, 
+      periodo: periodo, 
+      minuto: minuto, 
+      quinteto_activo: quintetoActual,
+      origen_gol: origenContexto 
+    });
+
+    // 2. Insertar la asistencia (si la hubo)
+    if (autorAsistencia) {
+      eventosAInsertar.push({
+        club_id: clubId, 
+        id_partido: partido.id, 
+        id_jugador: parseInt(autorAsistencia, 10),
+        accion: 'Asistencia', 
+        zona_x: dbX, 
+        zona_y: dbY, 
+        equipo: equipo,
+        periodo: periodo, 
+        minuto: minuto, 
+        quinteto_activo: quintetoActual
+      });
+    }
+
+    // Resetear todo
+    setPanelLateral({ activo: false, x: 0, y: 0 });
+    setPasoRegistro(1);
     setAutorGol(null);
+    setAutorAsistencia(null);
     
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
     } else {
-      alert("Error de red al guardar el evento.");
+      alert("Error de red al guardar el gol.");
       console.error("Error de Supabase:", error);
     }
   };
@@ -241,6 +298,7 @@ function TomaDatos() {
     setPasoRegistro(1);
     setMenuActivo(null);
     setAutorGol(null);
+    setAutorAsistencia(null);
   };
 
   const eliminarEvento = async (idEvento) => {
@@ -283,7 +341,7 @@ function TomaDatos() {
     if (!jSale || !jEntra) return;
 
     const evtSalida = {
-      club_id: clubId, // <-- AGREGADO
+      club_id: clubId, 
       id_partido: partido.id, id_jugador: jSale.id, accion: 'Cambio', equipo: 'Propio',
       periodo: periodo, minuto: minuto, id_receptor: jEntra.id,
       quinteto_activo: jugadoresEnCancha.map(j => j.id)
@@ -433,39 +491,28 @@ function TomaDatos() {
 
           {tabActiva === 'registro' && (
             <>
-              {!panelLateral.activo ? (
+              {!panelLateral.activo && (
                 <div style={{ textAlign: 'center', marginTop: '100px', opacity: 0.5 }}>
                   <div style={{ fontSize: '3rem' }}>📍</div>
                   <div className="stat-label">SISTEMA EN ESPERA</div>
                   <p style={{ fontSize: '0.8rem' }}>Tocá la pista para registrar</p>
                 </div>
-              ) : (
+              )}
+
+              {panelLateral.activo && (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
                     <div className="stat-label">
-                      {pasoRegistro === 1 ? '1. ACCIÓN' : pasoRegistro === 2 ? '2. AUTOR' : pasoRegistro === 3 ? '3. ASISTENCIA' : 'CONFIRMAR EQUIPO'}
+                      {pasoRegistro === 1 && '1. ACCIÓN'}
+                      {pasoRegistro === 2 && '2. AUTOR'}
+                      {pasoRegistro === 3 && '3. ASISTENCIA'}
+                      {pasoRegistro === 4 && 'CONFIRMAR EQUIPO'}
+                      {pasoRegistro === 5 && '4. ORIGEN'}
                     </div>
                     <button onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
                   </div>
 
-                  {/* NUEVO PASO 4: REGISTRO RÁPIDO ABP */}
-                  {pasoRegistro === 4 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
-                      <div className="stat-label" style={{ color: getColorAccion(accion), textAlign: 'center', fontSize: '1.2rem', margin: '10px 0' }}>
-                        {accion.toUpperCase()} RÁPIDO
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', textAlign: 'center', marginBottom: '10px' }}>
-                        ¿De quién es la pelota?
-                      </div>
-                      
-                      <button onClick={() => guardarEventoRapido('Propio')} className="btn-action" style={{ background: 'rgba(0,255,136,0.1)', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '20px', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', borderRadius: '4px' }}>
-                        MI EQUIPO
-                      </button>
-                      <button onClick={() => guardarEventoRapido('Rival')} className="btn-action" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #555', color: '#fff', padding: '20px', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', borderRadius: '4px' }}>
-                        RIVAL
-                      </button>
-                    </div>
-                  ) : pasoRegistro === 1 ? (
+                  {pasoRegistro === 1 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '15px' }}>
                       <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
                         <button onClick={() => setEquipo('Propio')} style={{ flex: 1, padding: '10px', background: equipo === 'Propio' ? 'rgba(0,255,136,0.1)' : 'none', color: equipo === 'Propio' ? 'var(--accent)' : 'var(--text-dim)', border: 'none', fontWeight: 800, cursor: 'pointer' }}>MI EQUIPO</button>
@@ -519,7 +566,9 @@ function TomaDatos() {
                         </div>
                       </div>
                     </div>
-                  ) : pasoRegistro === 2 ? (
+                  )}
+
+                  {pasoRegistro === 2 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
                       <div className="stat-label" style={{ color: getColorAccion(accion) }}>{accion}</div>
                       {jugadoresActivos.map(j => (
@@ -530,7 +579,9 @@ function TomaDatos() {
                       ))}
                       <button onClick={() => guardarEventoFinal(null)} style={{ marginTop: '10px', background: 'none', border: '1px dashed #444', color: '#ffffff', padding: '10px', cursor: 'pointer' }}>SIN JUGADOR / RIVAL</button>
                     </div>
-                  ) : (
+                  )}
+
+                  {pasoRegistro === 3 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
                       <div className="stat-label" style={{ color: '#06b6d4', marginBottom: '5px' }}>¿QUIÉN DIO EL PASE PREVIO?</div>
                       {jugadoresActivos.filter(j => j.id != autorGol).map(j => (
@@ -540,6 +591,44 @@ function TomaDatos() {
                         </button>
                       ))}
                       <button onClick={() => guardarEventoFinal(null)} style={{ marginTop: '10px', background: 'none', border: '1px dashed #444', color: '#ffffff', padding: '10px', cursor: 'pointer' }}>JUGADA INDIVIDUAL (SIN ASISTENCIA)</button>
+                    </div>
+                  )}
+
+                  {pasoRegistro === 4 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
+                      <div className="stat-label" style={{ color: getColorAccion(accion), textAlign: 'center', fontSize: '1.2rem', margin: '10px 0' }}>
+                        {accion.toUpperCase()} RÁPIDO
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', textAlign: 'center', marginBottom: '10px' }}>
+                        ¿De quién es la pelota?
+                      </div>
+                      <button onClick={() => guardarEventoRapido('Propio')} className="btn-action" style={{ background: 'rgba(0,255,136,0.1)', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '20px', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', borderRadius: '4px' }}>
+                        MI EQUIPO
+                      </button>
+                      <button onClick={() => guardarEventoRapido('Rival')} className="btn-action" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #555', color: '#fff', padding: '20px', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', borderRadius: '4px' }}>
+                        RIVAL
+                      </button>
+                    </div>
+                  )}
+
+                  {pasoRegistro === 5 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+                      <div className="stat-label" style={{ color: '#00ff88', marginBottom: '5px' }}>¿CÓMO SE GESTÓ EL GOL?</div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <BotonAccion label="A. POSICIONAL" color="#fff" onClick={() => finalizarRegistroGol('Ataque Posicional')} />
+                        <BotonAccion label="CONTRAATAQUE" color="#fff" onClick={() => finalizarRegistroGol('Contraataque')} />
+                        <BotonAccion label="RECUP. ALTA" color="#fff" onClick={() => finalizarRegistroGol('Recuperación Alta')} />
+                        <BotonAccion label="ERROR RIVAL" color="#fff" onClick={() => finalizarRegistroGol('Error No Forzado')} />
+                      </div>
+                      
+                      <div className="stat-label" style={{ color: 'var(--text-dim)', marginTop: '10px', marginBottom: '5px' }}>PELOTA PARADA (ABP)</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <BotonAccion label="CÓRNER" color="#f97316" onClick={() => finalizarRegistroGol('Córner')} />
+                        <BotonAccion label="LATERAL" color="#06b6d4" onClick={() => finalizarRegistroGol('Lateral')} />
+                        <BotonAccion label="TIRO LIBRE" color="#a855f7" onClick={() => finalizarRegistroGol('Tiro Libre')} />
+                        <BotonAccion label="PENAL" color="#ef4444" onClick={() => finalizarRegistroGol('Penal / Sexta Falta')} />
+                      </div>
                     </div>
                   )}
                 </>
@@ -600,23 +689,10 @@ function TomaDatos() {
   );
 }
 
-// ESTILOS NUEVOS PARA BOTONES ABP CON OPACIDAD
 const abpBtn = {
-  position: 'absolute',
-  width: '30px',
-  height: '30px',
-  borderRadius: '50%',
-  background: 'rgba(17, 17, 17, 0.5)',
-  border: '2px solid',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  fontWeight: 800,
-  fontSize: '0.8rem',
-  cursor: 'pointer',
-  zIndex: 100,
-  opacity: 0.5,
-  boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+  position: 'absolute', width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(17, 17, 17, 0.5)',
+  border: '2px solid', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800,
+  fontSize: '0.8rem', cursor: 'pointer', zIndex: 100, opacity: 0.5, boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
   transition: 'opacity 0.2s'
 };
 

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
+import { 
+  PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
+} from 'recharts';
 
 // IMPORTACIONES DEL MOTOR ANALÍTICO
 import { analizarPartido } from '../analytics/engine';
@@ -92,7 +95,6 @@ function Resumen() {
       ? eventosPartido 
       : eventosPartido.filter(ev => ev.periodo === filtroPeriodo);
 
-    // Mandamos "false" por ahora para el cambio de lado, se puede atar a un toggle luego
     const datosProcesados = analizarPartido(evFiltrados, 'Propio', false);
 
     const stats = { 
@@ -102,33 +104,48 @@ function Resumen() {
 
     const abp = { corners: { favor: 0, contra: 0, rematesGenerados: 0 }, laterales: { favor: 0, contra: 0, rematesGenerados: 0 }, zonasLatFavor: { z1: 0, z2: 0, z3: 0, z4: 0 } };
     
-    // FASE 2: PERFIL DE REMATE
     const perfilRemate = { centro: 0, banda: 0, cerca: 0, lejos: 0 };
+
+    // --- NUEVO: ACUMULADOR DE ORIGEN DEL GOL ---
+    const origenGoles = {
+      'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
+      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
+    };
 
     evFiltrados.forEach((ev, i) => {
       const p = ev.equipo === 'Propio';
       
-      // Usamos la coordenada normalizada garantizada por la Fase 1
       const xNorm = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
       const yNorm = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
 
       if (p) {
         stats.propio.totalAcciones++;
-        if (xNorm > 50) stats.propio.accionesCampoRival++; // FASE 2: Control Territorial
+        if (xNorm > 50) stats.propio.accionesCampoRival++; 
       } else {
         stats.rival.totalAcciones++;
       }
 
       if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
-        p ? stats.propio.goles++ : stats.rival.goles++; 
-        p ? stats.propio.remates++ : stats.rival.remates++; 
-        if (p && ev.id_asistencia) stats.propio.asistencias++;
+        if (p) {
+          stats.propio.goles++;
+          stats.propio.remates++;
+          if (ev.id_asistencia) stats.propio.asistencias++;
+          // AUMENTAMOS CONTADOR DE ORIGEN
+          const origen = ev.origen_gol || 'No Especificado';
+          if (origenGoles[origen] !== undefined) {
+            origenGoles[origen]++;
+          } else {
+            origenGoles['No Especificado']++;
+          }
+        } else {
+          stats.rival.goles++;
+          stats.rival.remates++;
+        }
       }
       else if (ev.accion === 'Remate - Atajado') { p ? stats.propio.atajados++ : stats.rival.atajados++; p ? stats.propio.remates++ : stats.rival.remates++; }
       else if (ev.accion === 'Remate - Desviado') { p ? stats.propio.desviados++ : stats.rival.desviados++; p ? stats.propio.remates++ : stats.rival.remates++; }
       else if (ev.accion === 'Remate - Rebatido') { p ? stats.propio.rebatidos++ : stats.rival.rebatidos++; p ? stats.propio.remates++ : stats.rival.remates++; }
       
-      // Perfil de Remate (Solo propios)
       if (p && ev.accion?.includes('Remate')) {
         if (yNorm > 35 && yNorm < 65) perfilRemate.centro++;
         else perfilRemate.banda++;
@@ -230,23 +247,19 @@ function Resumen() {
       })
       .sort((a, b) => b.impacto - a.impacto);
 
-    // FASE 2: CÁLCULOS AVANZADOS
     const posesionesTotales = datosProcesados.posesiones.length;
     const posesionesConRemate = datosProcesados.posesiones.filter(p => p.eventos.some(e => e.accion?.includes('Remate'))).length;
     const posesionesGol = datosProcesados.posesiones.filter(p => p.eventos.some(e => e.accion === 'Gol' || e.accion === 'Remate - Gol')).length;
 
-    // Calidad de Posesión
     const shotRate = posesionesTotales > 0 ? ((posesionesConRemate / posesionesTotales) * 100).toFixed(0) : 0;
     const goalRate = posesionesTotales > 0 ? ((posesionesGol / posesionesTotales) * 100).toFixed(1) : 0;
     const lossDanger = posesionesTotales > 0 ? ((stats.propio.perdidasPeligrosas / posesionesTotales) * 100).toFixed(1) : 0;
 
-    // Eficiencia Ofensiva Real
     const xgPorRemate = stats.propio.remates > 0 ? (datosProcesados.xgPropio / stats.propio.remates).toFixed(2) : 0;
     const golesVsXg = (stats.propio.goles - datosProcesados.xgPropio).toFixed(2);
     const rematesPorPosesion = posesionesTotales > 0 ? (stats.propio.remates / posesionesTotales).toFixed(2) : 0;
     const eficaciaTiro = stats.propio.remates > 0 ? ((stats.propio.goles / stats.propio.remates) * 100).toFixed(0) : 0;
     
-    // Control Territorial y Caos
     const territoryPct = stats.propio.totalAcciones > 0 ? ((stats.propio.accionesCampoRival / stats.propio.totalAcciones) * 100).toFixed(0) : 50;
     const totalDuelosPartido = (datosProcesados.duelos.defensivos.total + datosProcesados.duelos.ofensivos.total);
     const chaosIndex = posesionesTotales > 0 ? ((stats.propio.perdidas + stats.rival.perdidas + totalDuelosPartido + datosProcesados.transiciones.length) / posesionesTotales).toFixed(1) : 0;
@@ -255,9 +268,14 @@ function Resumen() {
     const duelosPct = totalDuelosPartido > 0 ? ((datosProcesados.duelos.defensivos.ganados + datosProcesados.duelos.ofensivos.ganados) / totalDuelosPartido) * 100 : 50;
     const matchControl = ((xgDiff * 0.4) + (territoryPct * 0.3) + (duelosPct * 0.3)).toFixed(0);
 
+    // Formatear datos para el gráfico de torta
+    const dataOrigenGol = Object.entries(origenGoles)
+      .filter(([_, valor]) => valor > 0)
+      .map(([nombre, valor]) => ({ name: nombre, value: valor }));
+
     return { 
       evFiltrados, stats, abp, ranking, eficaciaTiro, shotRate, goalRate, lossDanger, chaosIndex, matchControl, territoryPct,
-      xgPorRemate, golesVsXg, rematesPorPosesion, perfilRemate,
+      xgPorRemate, golesVsXg, rematesPorPosesion, perfilRemate, dataOrigenGol, // <--- EXPORTADO
       xgPropio: datosProcesados.xgPropio, xgRival: datosProcesados.xgRival, 
       insights: datosProcesados.insights, posesiones: datosProcesados.posesiones, transiciones: datosProcesados.transiciones,
       duelos: datosProcesados.duelos, quintetos: datosProcesados.quintetos, plusMinusJugador: datosProcesados.plusMinusJugador
@@ -313,7 +331,6 @@ function Resumen() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!evMapa.length) return;
     
-    // Usamos las coordenadas normalizadas para dibujar el heatmap
     const dataPoints = evMapa
       .filter(ev => (ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x) != null)
       .map(ev => {
@@ -366,6 +383,19 @@ function Resumen() {
       </div>
     );
   }
+
+  // COLORES PARA EL GRÁFICO DE ORIGEN
+  const COLORS_ORIGEN = {
+    'Ataque Posicional': '#3b82f6', 
+    'Contraataque': '#f59e0b', 
+    'Recuperación Alta': '#10b981', 
+    'Error No Forzado': '#ef4444', 
+    'Córner': '#a855f7', 
+    'Lateral': '#06b6d4', 
+    'Tiro Libre': '#f472b6', 
+    'Penal / Sexta Falta': '#ffffff', 
+    'No Especificado': '#4b5563' 
+  };
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
@@ -461,6 +491,48 @@ function Resumen() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px' }}>
+            
+            {/* NUEVA TARJETA: ADN DEL GOL */}
+            <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
+                ADN DE NUESTROS GOLES <InfoBox texto="El contexto táctico desde el cual marcamos los goles. Ayuda a ver nuestra principal arma ofensiva." />
+              </div>
+              <div style={{ flex: 1, minHeight: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                {analitica.dataOrigenGol && analitica.dataOrigenGol.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={analitica.dataOrigenGol}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {analitica.dataOrigenGol.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
+                          itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analitica.stats.propio.goles}</span><br/>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>TOTAL</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center' }}>No hay goles registrados.</div>
+                )}
+              </div>
+            </div>
+
             {/* TARJETA 1: CARA A CARA */}
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>CARA A CARA OFENSIVO</div>

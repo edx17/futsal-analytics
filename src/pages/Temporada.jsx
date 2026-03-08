@@ -4,7 +4,8 @@ import simpleheat from 'simpleheat';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  BarChart, Bar, Legend, ScatterChart, Scatter, ZAxis, Label
+  BarChart, Bar, Legend, ScatterChart, Scatter, ZAxis, Label,
+  PieChart, Pie, Cell // <-- NUEVAS IMPORTACIONES
 } from 'recharts';
 
 import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
@@ -65,6 +66,12 @@ function Temporada() {
       rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0 }
     };
 
+    // --- ACUMULADORES ORIGEN DEL GOL (NUEVO) ---
+    const origenGoles = {
+      'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
+      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
+    };
+
     let accionesCampoRival = 0;
     let totalAccionesPropias = 0;
     let rematesPropiosTotales = 0;
@@ -83,7 +90,17 @@ function Temporada() {
         // Perfil de Remate (Solo Propios)
         if (ev.accion?.includes('Remate') || ev.accion === 'Gol') {
           rematesPropiosTotales++;
-          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') golesPropiosTotales++;
+          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
+              golesPropiosTotales++;
+              
+              // Sumar origen
+              const origen = ev.origen_gol || 'No Especificado';
+              if (origenGoles[origen] !== undefined) {
+                origenGoles[origen]++;
+              } else {
+                origenGoles['No Especificado']++;
+              }
+          }
 
           if (yNorm > 35 && yNorm < 65) perfilRemate.centro++;
           else perfilRemate.banda++;
@@ -126,6 +143,11 @@ function Temporada() {
 
     const territoryPct = totalAccionesPropias > 0 ? ((accionesCampoRival / totalAccionesPropias) * 100).toFixed(0) : 50;
 
+    // Formatear datos para el gráfico de torta
+    const dataOrigenGol = Object.entries(origenGoles)
+      .filter(([_, valor]) => valor > 0)
+      .map(([nombre, valor]) => ({ name: nombre, value: valor }));
+
     return { 
       ...baseAnalytics, 
       abp, 
@@ -133,7 +155,8 @@ function Temporada() {
       desgloseRemates,
       territoryPct, 
       rematesPropiosTotales, 
-      golesPropiosTotales 
+      golesPropiosTotales,
+      dataOrigenGol // <--- EXPORTADO
     };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
@@ -226,6 +249,19 @@ function Temporada() {
     return '#ffffff';
   };
 
+  // COLORES PARA EL GRÁFICO DE ORIGEN
+  const COLORS_ORIGEN = {
+    'Ataque Posicional': '#3b82f6', 
+    'Contraataque': '#f59e0b', 
+    'Recuperación Alta': '#10b981', 
+    'Error No Forzado': '#ef4444', 
+    'Córner': '#a855f7', 
+    'Lateral': '#06b6d4', 
+    'Tiro Libre': '#f472b6', 
+    'Penal / Sexta Falta': '#ffffff', 
+    'No Especificado': '#4b5563' 
+  };
+
   if (!partidos || partidos.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-dim)' }}>AÚN NO HAY PARTIDOS CREADOS.</div>;
   if (!analiticaGlobal) return <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-dim)' }}>CARGANDO RESUMEN DE TEMPORADA...</div>;
 
@@ -311,9 +347,50 @@ function Temporada() {
             </div>
         </div>
 
-        {/* ROW 2: DESGLOSE TÁCTICO AVANZADO (AHORA CON 4 TARJETAS) */}
+        {/* ROW 2: DESGLOSE TÁCTICO AVANZADO (AHORA CON 5 TARJETAS) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
             
+            {/* NUEVO: ADN DEL GOL ACUMULADO */}
+            <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
+                ADN DEL GOL (TEMPORADA) <InfoBox texto="El contexto táctico desde el cual marcamos los goles. Ayuda a ver nuestra principal arma ofensiva a lo largo de los partidos." />
+              </div>
+              <div style={{ flex: 1, minHeight: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                {analiticaGlobal.dataOrigenGol && analiticaGlobal.dataOrigenGol.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={analiticaGlobal.dataOrigenGol}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {analiticaGlobal.dataOrigenGol.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
+                          itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analiticaGlobal.golesPropiosTotales}</span><br/>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>TOTAL</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center' }}>No hay goles registrados.</div>
+                )}
+              </div>
+            </div>
+
             {/* 1. DESGLOSE DE REMATES GLOBALES */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #3b82f6' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
