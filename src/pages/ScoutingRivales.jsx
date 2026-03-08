@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { useNavigate } from 'react-router-dom';
 
 function ScoutingRivales() {
   const clubId = localStorage.getItem('club_id');
+  const navigate = useNavigate();
+
   const [rivales, setRivales] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
   
-  const estadoInicial = { nombre: '', escudo: '', sistema_tactico: '3-1', jugadores_claves: '', notas: '' };
+  const estadoInicial = { nombre: '', escudo: '', sistema_tactico: '3-1 Clásico', jugadores_claves: '', notas: '' };
   const [formData, setFormData] = useState(estadoInicial);
+
+  // Estados para manejar el historial H2H
+  const [historialRival, setHistorialRival] = useState([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  
+  // NUEVO: Filtro para no mezclar categorías en el historial
+  const [filtroCategoriaH2H, setFiltroCategoriaH2H] = useState('Primera');
 
   useEffect(() => {
     if (clubId) fetchRivales();
@@ -18,10 +28,24 @@ function ScoutingRivales() {
     if (data) setRivales(data);
   };
 
+  const fetchHistorial = async (idRival) => {
+    setCargandoHistorial(true);
+    // Traemos TODOS los partidos jugados contra este rival
+    const { data } = await supabase
+      .from('partidos')
+      .select('*')
+      .eq('club_id', clubId)
+      .eq('rival_id', idRival)
+      .eq('estado', 'Jugado') 
+      .order('fecha', { ascending: false });
+    
+    if (data) setHistorialRival(data);
+    setCargandoHistorial(false);
+  };
+
   const handleGuardar = async () => {
     if (!formData.nombre) return alert("El nombre del rival es obligatorio.");
     
-    // Armamos el paquete de datos eliminando el ID si es nuevo
     const payload = { 
       nombre: formData.nombre,
       escudo: formData.escudo,
@@ -32,11 +56,9 @@ function ScoutingRivales() {
     };
 
     if (formData.id) {
-      // Si estamos editando
       const { error } = await supabase.from('rivales').update(payload).eq('id', formData.id);
       if (error) return alert("Error al editar en Supabase: " + error.message);
     } else {
-      // Si es un rival nuevo
       const { error } = await supabase.from('rivales').insert([payload]);
       if (error) return alert("Error al guardar en Supabase: " + error.message);
     }
@@ -46,27 +68,51 @@ function ScoutingRivales() {
     fetchRivales();
   };
 
-  const abrirEdicion = (rival) => {
+  const abrirPerfilRival = (rival) => {
     setFormData(rival);
+    setHistorialRival([]);
+    setFiltroCategoriaH2H('Primera'); // Por defecto arranca analizando Primera
+    fetchHistorial(rival.id);
     setMostrarModal(true);
   };
+
+  const abrirNuevoRival = () => {
+    setFormData(estadoInicial);
+    setHistorialRival([]);
+    setMostrarModal(true);
+  };
+
+  // NUEVO: Filtramos el historial antes de calcular las estadísticas
+  const historialFiltrado = historialRival.filter(p => 
+    filtroCategoriaH2H === 'Todas' ? true : p.categoria === filtroCategoriaH2H
+  );
+
+  const statsH2H = historialFiltrado.reduce((acc, p) => {
+    acc.pj++;
+    acc.gf += Number(p.goles_propios);
+    acc.gc += Number(p.goles_rival);
+    if (p.goles_propios > p.goles_rival) acc.pg++;
+    else if (p.goles_propios === p.goles_rival) acc.pe++;
+    else acc.pp++;
+    return acc;
+  }, { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0 });
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club.</div>;
 
   return (
-    <div style={{ paddingBottom: '80px', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ paddingBottom: '80px', maxWidth: '1000px', margin: '0 auto', animation: 'fadeIn 0.3s' }}>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <div className="stat-label" style={{ color: 'var(--text-dim)' }}>DEPARTAMENTO DE ANÁLISIS</div>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)' }}>SCOUTING RIVALES</div>
         </div>
-        <button onClick={() => { setFormData(estadoInicial); setMostrarModal(true); }} className="btn-action" style={{ background: '#00ff88', color: '#000', fontSize: '0.8rem' }}>+ NUEVO RIVAL</button>
+        <button onClick={abrirNuevoRival} className="btn-action" style={{ background: '#00ff88', color: '#000', fontSize: '0.8rem' }}>+ NUEVO RIVAL</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
         {rivales.map(rival => (
-          <div key={rival.id} onClick={() => abrirEdicion(rival)} className="bento-card" style={{ cursor: 'pointer', transition: '0.2s', position: 'relative', overflow: 'hidden' }}>
+          <div key={rival.id} onClick={() => abrirPerfilRival(rival)} className="bento-card" style={{ cursor: 'pointer', transition: '0.2s', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
               <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid #444', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
                 {rival.escudo ? <img src={rival.escudo} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: '#555', fontWeight: 800 }}>FOTO</span>}
@@ -92,7 +138,7 @@ function ScoutingRivales() {
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '600px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div className="stat-label" style={{ color: '#fff' }}>{formData.id ? 'EDITAR INFORME SCOUTING' : 'NUEVO RIVAL'}</div>
+              <div className="stat-label" style={{ color: '#fff' }}>{formData.id ? 'PERFIL Y SCOUTING DEL RIVAL' : 'NUEVO RIVAL'}</div>
               <button onClick={() => setMostrarModal(false)} className="close-btn">×</button>
             </div>
 
@@ -101,7 +147,7 @@ function ScoutingRivales() {
               <div><div className="section-title">SISTEMA TÁCTICO BASE</div>
                 <select value={formData.sistema_tactico} onChange={e => setFormData({...formData, sistema_tactico: e.target.value})} style={inputIndustrial}>
                   <option value="3-1 Clásico">3-1 Clásico</option><option value="4-0 Universal">4-0 Universal</option>
-                  <option value="Arquero Jugador">Arquero Jugador Frecuente</option><option value="Desconocido">Desconocido</option>
+                  <option value="Arquero Jugador Frecuente">Arquero Jugador Frecuente</option><option value="Desconocido">Desconocido</option>
                 </select>
               </div>
             </div>
@@ -114,10 +160,70 @@ function ScoutingRivales() {
 
             <div style={{ marginBottom: '25px' }}>
               <div className="section-title">NOTAS DEL CUERPO TÉCNICO (PELOTA PARADA, DEFENSAS)</div>
-              <textarea value={formData.notas} onChange={e => setFormData({...formData, notas: e.target.value})} style={{...inputIndustrial, height: '100px', resize: 'none'}} placeholder="Ej: En los córners defienden en zona mixta..."></textarea>
+              <textarea value={formData.notas} onChange={e => setFormData({...formData, notas: e.target.value})} style={{...inputIndustrial, height: '80px', resize: 'none'}} placeholder="Ej: En los córners defienden en zona mixta..."></textarea>
             </div>
 
-            <button onClick={handleGuardar} className="btn-action" style={{ width: '100%', padding: '15px', fontSize: '1rem' }}>GUARDAR INFORME EN LA BASE</button>
+            <button onClick={handleGuardar} className="btn-action" style={{ width: '100%', padding: '15px', fontSize: '1rem' }}>GUARDAR DATOS TÁCTICOS</button>
+
+            {/* SECCIÓN H2H CON FILTRO DE CATEGORÍA */}
+            {formData.id && (
+              <div style={{ marginTop: '30px', borderTop: '1px solid #333', paddingTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <div className="stat-label" style={{ color: 'var(--accent)' }}>HISTORIAL DE ENFRENTAMIENTOS</div>
+                  <select 
+                    value={filtroCategoriaH2H} 
+                    onChange={(e) => setFiltroCategoriaH2H(e.target.value)}
+                    style={{ background: '#111', color: '#fff', border: '1px solid var(--accent)', padding: '5px 10px', borderRadius: '4px', outline: 'none', fontSize: '0.8rem' }}
+                  >
+                    <option value="Todas">Todas las categorías</option>
+                    <option value="Primera">Primera</option>
+                    <option value="Tercera">Tercera</option>
+                    <option value="Cuarta">Cuarta</option>
+                    <option value="Quinta">Quinta</option>
+                  </select>
+                </div>
+                
+                {cargandoHistorial ? (
+                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center' }}>Cargando historial de partidos...</div>
+                ) : historialFiltrado.length === 0 ? (
+                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', background: '#111', padding: '15px', borderRadius: '4px' }}>
+                    No hay registros contra este rival en la categoría seleccionada.
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', textAlign: 'center', marginBottom: '20px' }}>
+                      <div style={{ background: '#111', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.pj}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>PJ</div></div>
+                      <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid var(--accent)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent)' }}>{statsH2H.pg}</div><div style={{ fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 800 }}>PG</div></div>
+                      <div style={{ background: '#111', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fbbf24' }}>{statsH2H.pe}</div><div style={{ fontSize: '0.6rem', color: '#fbbf24', fontWeight: 800 }}>PE</div></div>
+                      <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ef4444' }}>{statsH2H.pp}</div><div style={{ fontSize: '0.6rem', color: '#ef4444', fontWeight: 800 }}>PP</div></div>
+                      <div style={{ background: '#111', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.gf}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>GF</div></div>
+                      <div style={{ background: '#111', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.gc}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>GC</div></div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '180px', overflowY: 'auto', paddingRight: '5px' }}>
+                      {historialFiltrado.map(p => {
+                        let resultadoColor = '#555'; let textoR = 'E';
+                        if (p.goles_propios > p.goles_rival) { resultadoColor = 'var(--accent)'; textoR = 'V'; }
+                        if (p.goles_propios < p.goles_rival) { resultadoColor = '#ef4444'; textoR = 'D'; }
+
+                        return (
+                          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000', border: '1px solid #333', padding: '10px', borderRadius: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                              <div style={{ background: resultadoColor, color: '#000', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '3px', fontWeight: 900, fontSize: '0.7rem' }}>{textoR}</div>
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{p.fecha} | {p.competicion} ({p.categoria})</div>
+                                <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{p.goles_propios} - {p.goles_rival}</div>
+                              </div>
+                            </div>
+                            <button onClick={() => navigate('/resumen')} className="btn-secondary" style={{ fontSize: '0.65rem', padding: '6px 10px' }}>📊 REPORTE</button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

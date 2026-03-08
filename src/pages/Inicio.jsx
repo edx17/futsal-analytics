@@ -62,7 +62,7 @@ function Inicio() {
         </button>
       </div>
     );
-  }
+}   
 
   return (
     <div style={{ animation: 'fadeIn 0.3s', paddingBottom: '80px', maxWidth: '1000px', margin: '0 auto' }}>

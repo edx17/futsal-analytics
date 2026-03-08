@@ -31,6 +31,15 @@ function ContinuarPartido() {
     fetchPartidos();
   }, [clubId]);
 
+  // NUEVO: Extraemos categorías y competiciones únicas reales de la BD
+  const categoriasUnicas = useMemo(() => {
+    return [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
+  }, [partidos]);
+
+  const competicionesUnicas = useMemo(() => {
+    return [...new Set(partidos.map(p => p.competicion).filter(Boolean))];
+  }, [partidos]);
+
   // LÓGICA DE FILTRADO DINÁMICO
   const partidosFiltrados = useMemo(() => {
     return partidos.filter(p => {
@@ -58,24 +67,27 @@ function ContinuarPartido() {
       <div className="bento-card" style={{ marginBottom: '20px' }}>
         <div className="stat-label" style={{ marginBottom: '15px' }}>FILTROS DE BÚSQUEDA</div>
         <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+          
           <div style={{ flex: 1, minWidth: '200px' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 800 }}>CATEGORÍA</div>
             <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={inputStyle}>
               <option value="TODOS">TODAS LAS CATEGORÍAS</option>
-              <option value="Primera">Primera</option>
-              <option value="Tercera">Tercera</option>
+              {categoriasUnicas.map(cat => (
+                <option key={cat} value={cat}>{cat.toUpperCase()}</option>
+              ))}
             </select>
           </div>
+          
           <div style={{ flex: 1, minWidth: '200px' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '5px', fontWeight: 800 }}>COMPETICIÓN</div>
             <select value={filtroCompeticion} onChange={(e) => setFiltroCompeticion(e.target.value)} style={inputStyle}>
               <option value="TODAS">TODAS LAS COMPETICIONES</option>
-              <option value="AMISTOSO">AMISTOSO</option>
-              <option value="TORNEO">TORNEO</option>
-              <option value="PLAYOFF">PLAYOFF</option>
-              <option value="COPA ARGENTINA">COPA ARGENTINA</option>
+              {competicionesUnicas.map(comp => (
+                <option key={comp} value={comp}>{comp.toUpperCase()}</option>
+              ))}
             </select>
           </div>
+
         </div>
       </div>
 
@@ -102,7 +114,7 @@ function ContinuarPartido() {
                     </span>
                   </div>
                   <div style={{ fontWeight: 900, fontSize: '1.2rem', color: '#fff' }}>
-                    vs {p.rival.toUpperCase()}
+                    vs {p.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '5px' }}>
                     📅 {p.fecha} | 🕒 {p.horario} | 📍 {p.condicion}

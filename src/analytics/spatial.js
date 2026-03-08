@@ -6,11 +6,15 @@ export function generarGrid(eventos = [], cols = 8, rows = 4) {
   const grid = Array.from({ length: R }, () => Array(C).fill(0));
 
   eventos.forEach(ev => {
-    if (ev.zona_x == null || ev.zona_y == null) return;
+    // Usamos las coordenadas normalizadas
+    const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+    const y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
+
+    if (x == null || y == null) return;
 
     // Clamping robusto: (n / 100) * total puede dar exactamente el total, lo limitamos a total - 1
-    let c = Math.floor((ev.zona_x / 100) * C);
-    let r = Math.floor((ev.zona_y / 100) * R);
+    let c = Math.floor((x / 100) * C);
+    let r = Math.floor((y / 100) * R);
 
     // Forzamos límites físicos del array
     if (c >= C) c = C - 1;

@@ -4,14 +4,67 @@ import { detectarTransiciones } from './transiciones';
 import { generarGrid } from './spatial';
 import { generarInsights } from './insights';
 
-export function analizarPartido(eventos = [], equipoPropio) {
+export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = false) {
   const evSeguros = Array.isArray(eventos) ? eventos : [];
-  
+
+  // ==========================================
+  // FASE 1: PRE-PROCESAMIENTO Y OPTIMIZACIÓN
+  // ==========================================
+
+  // Diccionarios para acceso rápido O(1)
+  const diccionarios = {
+    porEquipo: { propio: [], rival: [] },
+    porJugador: {},
+    porPeriodo: { PT: [], ST: [] },
+    porTramo: { '0-10': [], '10-20': [], '20-30': [], '30-40+': [] }
+  };
+
+  // 1. Normalización y Pre-indexación en un solo bucle O(n)
+  evSeguros.forEach(ev => {
+    // A. Normalización Espacial (El gran fix para el xG)
+    // Si hubo cambio de lado y estamos en el ST, invertimos la cancha
+    // para que x=100 SIEMPRE sea el arco atacado, y x=0 el defendido.
+    if (huboCambioDeLado && ev.periodo === 'ST' && ev.zona_x != null) {
+      ev.zona_x_norm = 100 - ev.zona_x;
+      // Invertimos Y para que la banda izquierda siga siendo izquierda en nuestra mente
+      ev.zona_y_norm = ev.zona_y != null ? 100 - ev.zona_y : null; 
+    } else {
+      ev.zona_x_norm = ev.zona_x;
+      ev.zona_y_norm = ev.zona_y;
+    }
+
+    // B. Indexación por Equipo
+    const esPropio = ev.equipo === equipoPropio;
+    if (esPropio) diccionarios.porEquipo.propio.push(ev);
+    else diccionarios.porEquipo.rival.push(ev);
+
+    // C. Indexación por Jugador (Solo propios para agilizar)
+    if (esPropio && ev.id_jugador) {
+      if (!diccionarios.porJugador[ev.id_jugador]) diccionarios.porJugador[ev.id_jugador] = [];
+      diccionarios.porJugador[ev.id_jugador].push(ev);
+    }
+
+    // D. Indexación por Periodo
+    if (ev.periodo === 'PT') diccionarios.porPeriodo.PT.push(ev);
+    else if (ev.periodo === 'ST') diccionarios.porPeriodo.ST.push(ev);
+
+    // E. Indexación por Tramo Temporal (Buckets)
+    if (ev.minuto <= 10) diccionarios.porTramo['0-10'].push(ev);
+    else if (ev.minuto <= 20) diccionarios.porTramo['10-20'].push(ev);
+    else if (ev.minuto <= 30) diccionarios.porTramo['20-30'].push(ev);
+    else diccionarios.porTramo['30-40+'].push(ev);
+  });
+
+  const eventosPropios = diccionarios.porEquipo.propio;
+  const eventosRivales = diccionarios.porEquipo.rival;
+
+  // ==========================================
+  // CÁLCULOS BASE (Usando la data limpia)
+  // ==========================================
+
+  // Le mandamos a generarPosesiones los eventos ya con las coordenadas normalizadas
   const posesiones = generarPosesiones(evSeguros);
   const transiciones = detectarTransiciones(evSeguros);
-
-  const eventosPropios = evSeguros.filter(e => e.equipo === equipoPropio);
-  const eventosRivales = evSeguros.filter(e => e.equipo !== equipoPropio);
 
   const xgPropio = calcularXGPartido(eventosPropios, transiciones.filter(t => t.remate.equipo === equipoPropio));
   const xgRival = calcularXGPartido(eventosRivales, transiciones.filter(t => t.remate.equipo !== equipoPropio));
@@ -39,12 +92,11 @@ export function analizarPartido(eventos = [], equipoPropio) {
   // 🧠 ANÁLISIS DE QUINTETOS, PLUS/MINUS Y MINUTOS REALES
   const statsQuintetos = {};
   const plusMinusJugador = {};
-  const setsMinutos = {}; // NUEVO: Registra minutos únicos por jugador
+  const setsMinutos = {}; 
 
   evSeguros.forEach(ev => {
     if (!ev.quinteto_activo || ev.quinteto_activo.length === 0) return;
 
-    // Registrar Minutos Jugados (Set evita duplicar si hay 3 eventos en el mismo minuto)
     if (ev.minuto != null) {
       ev.quinteto_activo.forEach(idJugador => {
         if (!setsMinutos[idJugador]) setsMinutos[idJugador] = new Set();
@@ -82,7 +134,6 @@ export function analizarPartido(eventos = [], equipoPropio) {
     }
   });
 
-  // Convertir los Sets a cantidades enteras
   const minutosJugados = {};
   Object.keys(setsMinutos).forEach(id => {
     minutosJugados[id] = setsMinutos[id].size;
@@ -105,6 +156,7 @@ export function analizarPartido(eventos = [], equipoPropio) {
     insights,
     quintetos, 
     plusMinusJugador,
-    minutosJugados // NUEVO: Exportamos esto para la temporada
+    minutosJugados,
+    diccionarios // Exportamos esto para no tener que recalcular en otras métricas
   };
 }
