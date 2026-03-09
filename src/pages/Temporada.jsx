@@ -5,7 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   BarChart, Bar, Legend, ScatterChart, Scatter, ZAxis, Label,
-  PieChart, Pie, Cell // <-- NUEVAS IMPORTACIONES
+  PieChart, Pie, Cell
 } from 'recharts';
 
 import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
@@ -13,8 +13,8 @@ import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
 // --- COMPONENTE TOOLTIP UX ---
 const InfoBox = ({ texto }) => (
   <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
-    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter' }}>!</div>
-    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', fontFamily: 'Inter', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
+    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
+    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
       {texto}
     </div>
   </div>
@@ -36,11 +36,35 @@ function Temporada() {
     async function obtenerDatosGlobales() {
       const { data: p } = await supabase.from('partidos').select('*').order('fecha', { ascending: false });
       const { data: j } = await supabase.from('jugadores').select('*');
-      const { data: e } = await supabase.from('eventos').select('*');
+      
+      // --- FIX: DESCARGA PAGINADA DE EVENTOS ---
+      let todosLosEventos = [];
+      let start = 0;
+      const step = 1000;
+
+      while (true) {
+        const { data: chunk, error } = await supabase
+          .from('eventos')
+          .select('*')
+          .range(start, start + step - 1);
+        
+        if (error) {
+          console.error("Error cargando eventos", error);
+          break;
+        }
+
+        if (chunk && chunk.length > 0) {
+          todosLosEventos = [...todosLosEventos, ...chunk];
+          if (chunk.length < step) break; 
+          start += step;
+        } else {
+          break;
+        }
+      }
       
       setPartidos(p || []);
       setJugadores(j || []);
-      setEventos(e || []);
+      setEventos(todosLosEventos);
     }
     obtenerDatosGlobales();
   }, []);
@@ -66,7 +90,7 @@ function Temporada() {
       rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0 }
     };
 
-    // --- ACUMULADORES ORIGEN DEL GOL (NUEVO) ---
+    // --- ACUMULADORES ORIGEN DEL GOL ---
     const origenGoles = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
@@ -156,11 +180,11 @@ function Temporada() {
       territoryPct, 
       rematesPropiosTotales, 
       golesPropiosTotales,
-      dataOrigenGol // <--- EXPORTADO
+      dataOrigenGol 
     };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
-  // Lógica mejorada para filtrar el mapa (incluye Faltas Recibidas y Goles)
+  // Lógica para filtrar el mapa 
   const evMapa = analiticaGlobal?.evFiltrados.filter(ev => {
     if (!filtroAccionMapa) return ev.equipo === 'Propio';
     
@@ -240,12 +264,12 @@ function Temporada() {
   }, [analiticaGlobal]);
 
   const getColorAccion = (acc) => {
-    if (acc === 'Remate - Gol' || acc === 'Gol') return '#00ff88'; // Verde para goles
-    if (acc?.includes('Remate')) return '#00aaff'; // Celeste tiros
-    if (acc === 'Recuperación') return '#eab308'; // Amarillo
-    if (acc?.includes('Pérdida')) return '#ef4444'; // Rojo
-    if (acc?.includes('Duelo')) return '#10b981'; // Verde oscuro
-    if (acc === 'Falta cometida') return '#ec4899'; // Magenta para faltas
+    if (acc === 'Remate - Gol' || acc === 'Gol') return '#00ff88'; 
+    if (acc?.includes('Remate')) return '#00aaff'; 
+    if (acc === 'Recuperación') return '#eab308'; 
+    if (acc?.includes('Pérdida')) return '#ef4444'; 
+    if (acc?.includes('Duelo')) return '#10b981'; 
+    if (acc === 'Falta cometida') return '#ec4899'; 
     return '#ffffff';
   };
 
@@ -279,12 +303,10 @@ function Temporada() {
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       
-      {/* MAGIA UX: TOOLTIPS Y SCROLLBAR CUSTOM */}
       <style>{`
         .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
         .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
         
-        /* SCROLLBAR CUSTOM PARA PANELES OSCUROS */
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
@@ -347,10 +369,10 @@ function Temporada() {
             </div>
         </div>
 
-        {/* ROW 2: DESGLOSE TÁCTICO AVANZADO (AHORA CON 5 TARJETAS) */}
+        {/* ROW 2: DESGLOSE TÁCTICO AVANZADO */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
             
-            {/* NUEVO: ADN DEL GOL ACUMULADO */}
+            {/* ADN DEL GOL ACUMULADO */}
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
                 ADN DEL GOL (TEMPORADA) <InfoBox texto="El contexto táctico desde el cual marcamos los goles. Ayuda a ver nuestra principal arma ofensiva a lo largo de los partidos." />
@@ -391,7 +413,7 @@ function Temporada() {
               </div>
             </div>
 
-            {/* 1. DESGLOSE DE REMATES GLOBALES */}
+            {/* DESGLOSE DE REMATES GLOBALES */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #3b82f6' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 DESGLOSE DE REMATES <InfoBox texto="Acumulado de cómo finalizaron todos los remates de la temporada." />
@@ -403,7 +425,7 @@ function Temporada() {
               <div style={kpiFila}><span>REBATIDOS</span><strong><span style={{color: '#a855f7'}}>{analiticaGlobal.desgloseRemates.propio.rebatidos}</span> - <span style={{color: '#ef4444'}}>{analiticaGlobal.desgloseRemates.rival.rebatidos}</span></strong></div>
             </div>
 
-            {/* 2. EFICIENCIA OFENSIVA REAL */}
+            {/* EFICIENCIA OFENSIVA REAL */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #00ff88' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#00ff88', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 EFICIENCIA OFENSIVA <InfoBox texto="Métricas avanzadas para entender la calidad y rentabilidad de los ataques a lo largo del torneo." />
@@ -422,7 +444,7 @@ function Temporada() {
               </div>
             </div>
 
-            {/* 3. PERFIL DE REMATE ACUMULADO */}
+            {/* PERFIL DE REMATE ACUMULADO */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #c084fc' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#c084fc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 PERFIL DE REMATE (TENDENCIA) <InfoBox texto="Agrupación de todos los tiros del equipo en el torneo. Ayuda a ver si somos un equipo que finaliza por el medio o por las alas." />
@@ -437,7 +459,7 @@ function Temporada() {
               </div>
             </div>
 
-            {/* 4. PELOTA PARADA */}
+            {/* PELOTA PARADA */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #f97316' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 A.B.P. <InfoBox texto="Resumen de acciones de reanudación en toda la temporada. Las zonas de los laterales van de la Z1 (Defensa) a la Z4 (Ataque)." />
@@ -589,7 +611,7 @@ function Temporada() {
 
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
-                      <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, fontFamily: 'JetBrains Mono', color: '#fff', fontSize: '0.8rem' }}>
+                      <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.8rem' }}>
                         [{nombresQuinteto}]
                       </td>
                       <td style={{ color: '#00ff88', fontWeight: 700 }}>{q.golesFavor}</td>
@@ -610,33 +632,111 @@ function Temporada() {
           </div>
         </div>
 
-        {/* ROW 6: HISTORIAL Y MAPA ESPACIAL */}
+        {/* ROW 6: HISTORIAL VIP Y MAPA ESPACIAL */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           
-          <div className="bento-card">
-             <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>HISTORIAL DE PARTIDOS <InfoBox texto="Registro de los últimos encuentros filtrados, mostrando resultado real y Expectativa de Gol (xG)." /></div>
-             <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '350px', overflowY: 'auto', paddingRight: '5px' }}>
+          <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+             <div className="stat-label" style={{ marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
+               HISTORIAL DE PARTIDOS 
+               <InfoBox texto="Registro de los últimos encuentros filtrados. Arriba podés ver la racha de forma (últimos 10 partidos, el de más a la derecha es el más reciente)." />
+             </div>
+
+             {/* NUEVO: LÍNEA DE FORMA (ÚLTIMOS 10 PARTIDOS) */}
+             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, marginRight: '5px' }}>RACHA (ÚLT. 10):</span>
+                {analiticaGlobal.historialPartidos.slice(0, 10).reverse().map((p, idx) => {
+                   let color = '#333';
+                   let textColor = '#fff';
+                   let text = 'E';
+                   if (p.resultado === 'V') { color = 'var(--accent)'; textColor = '#000'; text = 'G'; }
+                   if (p.resultado === 'D') { color = '#ef4444'; textColor = '#fff'; text = 'P'; }
+                   
+                   return (
+                     <div 
+                       key={idx} 
+                       title={`vs ${p.rival} (${p.golesPropio}-${p.golesRival})`}
+                       style={{ width: '24px', height: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: color, color: textColor, fontSize: '0.75rem', fontWeight: 900, borderRadius: '3px', cursor: 'help' }} 
+                     >
+                       {text}
+                     </div>
+                   )
+                })}
+                {analiticaGlobal.historialPartidos.length === 0 && <span style={{ fontSize: '0.7rem', color: '#555' }}>S/D</span>}
+             </div>
+
+             <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', paddingRight: '5px' }}>
                 {analiticaGlobal.historialPartidos.map(p => {
-                  let badgeColor = '#888'; let text = 'E';
-                  if (p.resultado === 'V') { badgeColor = 'var(--accent)'; text = 'V'; }
-                  if (p.resultado === 'D') { badgeColor = '#ef4444'; text = 'D'; }
+                  let badgeColor = '#333'; 
+                  let textColor = 'var(--text-dim)';
+                  let text = 'E';
+                  let bgTinte = 'transparent';
+                  let borderLeft = '4px solid #333';
+
+                  if (p.resultado === 'V') { 
+                    badgeColor = 'rgba(0, 255, 136, 0.15)'; 
+                    textColor = 'var(--accent)'; 
+                    text = 'G'; // Ganado
+                    bgTinte = 'linear-gradient(90deg, rgba(0,255,136,0.05) 0%, transparent 100%)';
+                    borderLeft = '4px solid var(--accent)';
+                  }
+                  if (p.resultado === 'D') { 
+                    badgeColor = 'rgba(239, 68, 68, 0.15)'; 
+                    textColor = '#ef4444'; 
+                    text = 'P'; // Perdido
+                    bgTinte = 'linear-gradient(90deg, rgba(239,68,68,0.05) 0%, transparent 100%)';
+                    borderLeft = '4px solid #ef4444';
+                  }
+
+                  // Calcular cantidad de convocados
+                  let convocados = 0;
+                  try {
+                    if (p.plantilla) {
+                      const parsed = typeof p.plantilla === 'string' ? JSON.parse(p.plantilla) : p.plantilla;
+                      if (Array.isArray(parsed)) convocados = parsed.length;
+                    }
+                  } catch (e) {}
 
                   return (
-                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111', padding: '12px', border: '1px solid var(--border)', borderRadius: '4px' }}>
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0a0a0a', backgroundImage: bgTinte, padding: '12px 15px', border: '1px solid var(--border)', borderLeft: borderLeft, borderRadius: '6px', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.transform = 'translateX(5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateX(0px)'}>
+                      
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ background: badgeColor, color: '#000', fontWeight: 800, width: '25px', height: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontSize: '0.8rem' }}>{text}</div>
+                        {/* BADGE RESULTADO */}
+                        <div style={{ background: badgeColor, color: textColor, fontWeight: 900, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontSize: '1rem', border: `1px solid ${textColor}`, flexShrink: 0 }}>
+                          {text}
+                        </div>
+                        
+                        {/* INFO PARTIDO */}
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>vs {p.rival.toUpperCase()}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontFamily: 'JetBrains Mono' }}>{p.fecha} // xG: {p.xg.toFixed(2)}</div>
+                          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', letterSpacing: '0.5px' }}>
+                            vs {p.rival.toUpperCase()}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                              {p.fechaCorta} • {p.categoria || 'S/C'} • {p.competicion || 'Amistoso'} • J{p.jornada || '-'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: '#888', marginTop: '4px', fontWeight: 600 }}>
+                            👥 {convocados} CONVOCADOS
+                          </div>
                         </div>
                       </div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 800, fontFamily: 'JetBrains Mono' }}>{p.golesPropio} - {p.golesRival}</div>
+
+                      {/* MARCADOR FINAL */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                        <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '1px', marginBottom: '2px' }}>RESULTADO</div>
+                        <div style={{ background: '#000', border: '1px solid #222', padding: '4px 10px', borderRadius: '4px', fontSize: '1.3rem', fontWeight: 900, color: '#fff', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span style={{ color: p.golesPropio > p.golesRival ? 'var(--accent)' : '#fff' }}>{p.golesPropio}</span>
+                          <span style={{ color: '#555', fontSize: '1rem' }}>-</span>
+                          <span style={{ color: p.golesRival > p.golesPropio ? '#ef4444' : '#fff' }}>{p.golesRival}</span>
+                        </div>
+                      </div>
+
                     </div>
                   )
                 })}
              </div>
           </div>
-
+          
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO ACUMULADO <InfoBox texto="Visualización espacial de todas las acciones ofensivas del equipo a lo largo de la temporada. Útil para detectar zonas preferenciales de ataque." /></div>
@@ -731,7 +831,7 @@ function Temporada() {
 
 const rankingRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 10px', borderBottom: '1px solid #222' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
-const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontFamily: 'JetBrains Mono', fontSize: '0.9rem', alignItems: 'center' };
+const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontSize: '0.9rem', alignItems: 'center' };
 const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };
 
 export default Temporada;

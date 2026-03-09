@@ -162,7 +162,7 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
 
   const jugadoresActivos = Object.values(statsJugadores).filter(j => j.eventos.length > 0 || j.xgChain > 0);
   
-  // NUEVO: ESTANDARIZACIÓN P40 (Proyección a 40 minutos)
+  // ESTANDARIZACIÓN P40 (Proyección a 40 minutos)
   jugadoresActivos.forEach(j => {
     // Evitar divisiones por cero. Si tiene eventos pero 0 minutos (error de taggeo), asumimos 1 minuto.
     const minsReales = Math.max(1, j.minutosJugados); 

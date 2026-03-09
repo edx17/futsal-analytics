@@ -23,9 +23,6 @@ import './App.css';
 // ==========================================
 // ESTILOS AUXILIARES (AHORA ARRIBA DE TODO)
 // ==========================================
-// ==========================================
-// ESTILOS AUXILIARES (AHORA ARRIBA DE TODO)
-// ==========================================
 const navMobileStyle = { 
   display: 'flex', 
   flexDirection: 'column', 
@@ -182,25 +179,25 @@ function AppLayout() {
               </NavLink>
             )}
 
-<button
-  onClick={handleLogout}
-  className="nav-item"
-  style={{
-    marginTop: '20px',
-    background: 'transparent',
-    color: 'var(--text-dim)',
-    borderTop: '1px solid var(--border)',
-    textAlign: 'left',
-    cursor: 'pointer',
-    padding: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: '15px'
-  }}
->
-  <span style={{ fontSize: '1.2rem' }}>🚪</span> {sidebarAbierta && <span>CERRAR SESIÓN</span>}
-</button>
+            <button
+              onClick={handleLogout}
+              className="nav-item"
+              style={{
+                marginTop: '20px',
+                background: 'transparent',
+                color: 'var(--text-dim)',
+                borderTop: '1px solid var(--border)',
+                textAlign: 'left',
+                cursor: 'pointer',
+                padding: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                gap: '15px'
+              }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>🚪</span> {sidebarAbierta && <span>CERRAR SESIÓN</span>}
+            </button>
           </nav>
         </aside>
       )}
