@@ -185,6 +185,6 @@ function NuevoPartido() {
   );
 }
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontFamily: 'JetBrains Mono' };
+const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
 
 export default NuevoPartido;

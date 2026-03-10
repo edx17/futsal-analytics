@@ -68,11 +68,11 @@ function Resumen() {
 
   const getColorAccion = (acc) => {
     const colores = {
-      'Remate - Gol': '#00ff88', 'Remate - Atajado': '#3b82f6', 'Remate - Desviado': '#888888', 'Remate - Rebatido': '#a855f7',
+      'Remate - Gol': '#00ff88', 'Gol': '#00ff88', 'Remate - Atajado': '#3b82f6', 'Remate - Desviado': '#888888', 'Remate - Rebatido': '#a855f7',
       'Recuperación': '#eab308', 'Pérdida': '#ef4444', 
       'Duelo DEF Ganado': '#10b981', 'Duelo DEF Perdido': '#dc2626', 
       'Duelo OFE Ganado': '#0ea5e9', 'Duelo OFE Perdido': '#f97316',
-      'Lateral': '#06b6d4', 'Córner': '#f97316', 'Falta cometida': '#ec4899', 'Tarjeta Amarilla': '#facc15', 'Tarjeta Roja': '#991b1b'
+      'Lateral': '#06b6d4', 'Córner': '#f97316', 'Falta cometida': '#ec4899', 'Falta recibida': '#ec4899', 'Tarjeta Amarilla': '#facc15', 'Tarjeta Roja': '#991b1b'
     };
     return colores[acc] || '#ffffff';
   };
@@ -317,9 +317,10 @@ function Resumen() {
     return pasaAccion && pasaEquipo;
   }) || [];
 
-  const transicionesMapa = analitica?.transiciones.filter(t => 
-    filtroEquipoMapa === 'Ambos' ? true : t.recuperacion.equipo === filtroEquipoMapa
-  ) || [];
+  const transicionesMapa = analitica?.transiciones.filter(t => {
+    const pasaEquipo = filtroEquipoMapa === 'Ambos' ? true : t.recuperacion?.equipo === filtroEquipoMapa;
+    return pasaEquipo && t.remate; // Solo transiciones que terminan en remate
+  }) || [];
 
   useEffect(() => {
     if (tipoMapa !== 'calor' || !heatmapRef.current) return;
@@ -423,7 +424,7 @@ function Resumen() {
           {partidoSeleccionado && (
             <div>
               <div className="stat-label">PERIODO DE TIEMPO</div>
-              <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} style={{ marginTop: '5px', width: '180px', borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+              <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} style={{ marginTop: '5px', width: '180px', borderColor: 'var(--accent)', color: 'var(--accent)', background: '#000', outline: 'none', padding: '5px', borderRadius: '4px' }}>
                 <option value="Todos">PARTIDO COMPLETO</option>
                 <option value="PT">PRIMER TIEMPO (PT)</option>
                 <option value="ST">SEGUNDO TIEMPO (ST)</option>
@@ -533,6 +534,54 @@ function Resumen() {
               <div style={kpiFila}><span>xG / REMATE</span><strong style={{color: analitica.xgPorRemate > 0.15 ? '#00ff88' : '#fff'}}>{analitica.xgPorRemate}</strong></div>
               <div style={kpiFila}><span>GOLES vs xG</span><strong style={{color: analitica.golesVsXg > 0 ? '#00ff88' : '#ef4444'}}>{analitica.golesVsXg > 0 ? '+' : ''}{analitica.golesVsXg}</strong></div>
               <div style={kpiFila}><span>EFICACIA TIRO</span><strong>{analitica.eficaciaTiro}%</strong></div>
+              <div style={kpiFila}>
+                <span>DUELOS OFE. GANADOS</span>
+                <strong>
+                  {analitica.duelos.ofensivos.ganados} / {analitica.duelos.ofensivos.total} 
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analitica.duelos.ofensivos.total > 0 ? ((analitica.duelos.ofensivos.ganados / analitica.duelos.ofensivos.total) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+            </div>
+
+            <div className="bento-card" style={{ borderTop: '3px solid #ef4444' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444' }}>EFICIENCIA DEFENSIVA</div>
+              <div style={kpiFila}>
+                <span>DUELOS DEF. GANADOS</span>
+                <strong>
+                  {analitica.duelos.defensivos.ganados} / {analitica.duelos.defensivos.total}
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analitica.duelos.defensivos.total > 0 ? ((analitica.duelos.defensivos.ganados / analitica.duelos.defensivos.total) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+              <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong>{analitica.stats.propio.rec}</strong></div>
+              <div style={kpiFila}><span>RECUPERACIONES ALTAS</span><strong>{analitica.stats.propio.recAltas}</strong></div>
+              <div style={kpiFila}><span>PÉRDIDAS PELIGROSAS</span><strong style={{ color: analitica.stats.propio.perdidasPeligrosas > 3 ? '#ef4444' : '#00ff88' }}>{analitica.stats.propio.perdidasPeligrosas}</strong></div>
+            </div>
+            
+            <div className="bento-card" style={{ borderTop: '3px solid #06b6d4' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#06b6d4' }}>EFICACIA A.B.P. (Ataque)</div>
+              <div style={kpiFila}>
+                <span>CÓRNERS (TIRO GENERADO)</span>
+                <strong>
+                  {analitica.abp.corners.rematesGenerados} / {analitica.abp.corners.favor}
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analitica.abp.corners.favor > 0 ? ((analitica.abp.corners.rematesGenerados / analitica.abp.corners.favor) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+              <div style={kpiFila}>
+                <span>LATERALES (TIRO GENERADO)</span>
+                <strong>
+                  {analitica.abp.laterales.rematesGenerados} / {analitica.abp.laterales.favor}
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analitica.abp.laterales.favor > 0 ? ((analitica.abp.laterales.rematesGenerados / analitica.abp.laterales.favor) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+              <div style={kpiFila}><span>GOLES DE TIRO LIBRE</span><strong>{analitica.dataOrigenGol?.find(d => d.name === 'Tiro Libre')?.value || 0}</strong></div>
             </div>
             
             <div className="bento-card" style={{ borderTop: '3px solid #c084fc' }}>
@@ -549,22 +598,97 @@ function Resumen() {
           </div>
 
           <div className="bento-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div className="stat-label">MAPEO TÁCTICO</div>
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} style={{ padding: '5px', fontSize: '0.8rem' }}>
-                  <option value="Todas">ACCIONES</option>
-                  <option value="Remate">REMATES</option>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+              <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO TÁCTICO <InfoBox texto="Visualización espacial de las acciones del equipo en este partido." /></div>
+              
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                  <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, background: filtroEquipoMapa === 'Ambos' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
+                  <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, background: filtroEquipoMapa === 'Propio' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
+                  <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, background: filtroEquipoMapa === 'Rival' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
+                </div>
+
+                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '8px', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
+                  <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS LAS ACCIONES</option>
+                  <option value="Gol" style={{ background: '#111', color: '#fff' }}>SOLO GOLES</option>
+                  <option value="Remate" style={{ background: '#111', color: '#fff' }}>SOLO REMATES</option>
+                  <option value="Recuperación" style={{ background: '#111', color: '#fff' }}>SOLO RECUPERACIONES</option>
+                  <option value="Pérdida" style={{ background: '#111', color: '#fff' }}>SOLO PÉRDIDAS</option>
+                  <option value="Duelo" style={{ background: '#111', color: '#fff' }}>SOLO DUELOS</option>
+                  <option value="Falta" style={{ background: '#111', color: '#fff' }}>SOLO FALTAS</option>
                 </select>
+
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
+                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', position: 'relative' }}>
-                {tipoMapa === 'calor' && <canvas ref={heatmapRef} width={800} height={400} style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.85 }} />}
+            
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: '#111', border: '2px solid rgba(255,255,255,0.2)' }}>
+                {/* CANCHA DIBUJADA CON HTML/CSS */}
+                <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '2px', backgroundColor: 'rgba(255,255,255,0.2)', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 0 }}></div>
+                <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
+                <div style={{ position: 'absolute', left: '50%', top: '50%', width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
+
+                <div style={{ position: 'absolute', left: 0, top: '25%', bottom: '25%', width: '15%', border: '2px solid rgba(255,255,255,0.2)', borderLeft: 'none', borderRadius: '0 100px 100px 0', pointerEvents: 'none', zIndex: 0 }}></div>
+                <div style={{ position: 'absolute', right: 0, top: '25%', bottom: '25%', width: '15%', border: '2px solid rgba(255,255,255,0.2)', borderRight: 'none', borderRadius: '100px 0 0 100px', pointerEvents: 'none', zIndex: 0 }}></div>
+                
+                {tipoMapa === 'calor' && (
+                  <canvas ref={heatmapRef} width={800} height={400} style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none', opacity: 0.85 }} />
+                )}
+
+                {tipoMapa === 'puntos' && evMapa.map((ev, i) => {
+                  const xNorm = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+                  const yNorm = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
+                  if (xNorm == null || yNorm == null) return null;
+                  
+                  return (
+                    <div 
+                      key={ev.id || i} 
+                      title={`${ev.accion} - ${getNombreJugador(ev.id_jugador)}`}
+                      style={{ 
+                        position: 'absolute', left: `${xNorm}%`, top: `${yNorm}%`, width: '12px', height: '12px', 
+                        backgroundColor: getColorAccion(ev.accion), 
+                        border: '1px solid #000', borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 0.8, zIndex: 2,
+                        boxShadow: '0 0 5px rgba(0,0,0,0.5)'
+                      }} 
+                    />
+                  )
+                })}
+
+                {tipoMapa === 'transiciones' && (
+                  <svg style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }}>
+                    <defs>
+                      <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="var(--accent)" />
+                      </marker>
+                    </defs>
+                    {transicionesMapa.map((t, i) => {
+                      const recX = t.recuperacion.zona_x_norm !== undefined ? t.recuperacion.zona_x_norm : t.recuperacion.zona_x;
+                      const recY = t.recuperacion.zona_y_norm !== undefined ? t.recuperacion.zona_y_norm : t.recuperacion.zona_y;
+                      const remX = t.remate.zona_x_norm !== undefined ? t.remate.zona_x_norm : t.remate.zona_x;
+                      const remY = t.remate.zona_y_norm !== undefined ? t.remate.zona_y_norm : t.remate.zona_y;
+                      
+                      if (recX == null || remX == null) return null;
+                      
+                      return (
+                        <g key={i}>
+                          <circle cx={`${recX}%`} cy={`${recY}%`} r="4" fill="var(--accent)" />
+                          <line 
+                            x1={`${recX}%`} y1={`${recY}%`} 
+                            x2={`${remX}%`} y2={`${remY}%`} 
+                            stroke="var(--accent)" strokeWidth="2.5" strokeDasharray="5 5"
+                            markerEnd="url(#arrowhead)" opacity="0.85"
+                          />
+                          <circle cx={`${remX}%`} cy={`${remY}%`} r="5" fill="#fff" stroke="#000" strokeWidth="2" />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                )}
               </div>
             </div>
           </div>
@@ -650,13 +774,19 @@ function Resumen() {
                 </thead>
                 <tbody>
                   {rematesDetalle.map(r => (
-                    <tr key={r.id} style={{ textAlign: 'center' }}>
-                      <td style={{ fontWeight: 800 }}>{r.minuto}'</td>
-                      <td>{r.equipo}</td>
+                    <tr key={r.id} style={{ textAlign: 'center', background: (r.accion === 'Remate - Gol' || r.accion === 'Gol') ? 'rgba(0,255,136,0.05)' : 'transparent' }}>
+                      <td style={{ color: 'var(--text-dim)' }}>{r.minuto}'</td>
+                      <td>
+                        <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', background: r.equipo === 'Propio' ? 'var(--accent)' : '#ef4444', color: r.equipo === 'Propio' ? '#000' : '#fff' }}>
+                          {r.equipo.toUpperCase()}
+                        </span>
+                      </td>
                       <td style={{ textAlign: 'left' }}>{r.equipo === 'Propio' ? r.jugadorNombre.toUpperCase() : 'RIVAL'}</td>
-                      <td style={{ fontWeight: 800 }}>{r.accion.toUpperCase()}</td>
-                      <td>{r.distanciaMetros}m</td>
-                      <td style={{ fontWeight: 900 }}>{r.xgCalculado}</td>
+                      <td style={{ color: (r.accion === 'Remate - Gol' || r.accion === 'Gol') ? '#00ff88' : r.accion === 'Remate - Atajado' ? '#3b82f6' : r.accion === 'Remate - Desviado' ? '#888' : '#a855f7' }}>
+                        {r.accion.replace('Remate - ', '').toUpperCase()}
+                      </td>
+                      <td style={{ color: 'var(--text-dim)' }}>{r.distanciaMetros}m</td>
+                      <td>{r.xgCalculado}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -17,11 +17,12 @@ import Login from './pages/Login';
 import Plantel from './pages/Plantel';
 import Torneos from './pages/Torneos';
 import ScoutingRivales from './pages/ScoutingRivales';
+import OrigenGoles from './pages/OrigenGoles'; // <--- NUEVA PANTALLA
 
 import './App.css';
 
 // ==========================================
-// ESTILOS AUXILIARES (AHORA ARRIBA DE TODO)
+// ESTILOS AUXILIARES
 // ==========================================
 const navMobileStyle = { 
   display: 'flex', 
@@ -59,12 +60,10 @@ function AppLayout() {
   const navigate = useNavigate();
   
   const isLogin = location.pathname === '/login';
-  const isTomaDatos = location.pathname === '/toma-datos'; // Ocultamos menú acá para aprovechar la pantalla
+  const isTomaDatos = location.pathname === '/toma-datos'; 
   
-  // Condición de permisos de escritura
   const esEscritura = perfil?.rol === 'admin' || perfil?.rol === 'superuser' || perfil?.rol === 'ct';
 
-  // --- LÓGICA RESPONSIVA (PC vs MÓVIL) ---
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
 
@@ -79,7 +78,6 @@ function AppLayout() {
     navigate('/login', { replace: true });
   };
 
-  // Si es Login o Toma de Datos, mostramos solo el contenido sin menús
   if (isLogin || isTomaDatos) {
     return (
       <main className="app-content-fullscreen">
@@ -94,9 +92,6 @@ function AppLayout() {
   return (
     <div style={{ display: 'flex', height: '100dvh', backgroundColor: 'var(--bg)', overflow: 'hidden' }}>
       
-      {/* =========================================
-          1. SIDEBAR DESKTOP / TABLET 
-      ========================================== */}
       {!esMovil && (
         <aside style={{ 
           width: sidebarAbierta ? '250px' : '70px', 
@@ -119,7 +114,6 @@ function AppLayout() {
           
           <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 20px 0', gap: '2px', overflowY: 'auto' }}>
             
-            {/* --- BLOQUE 1: OPERACIONES EN VIVO --- */}
             {sidebarAbierta && <div style={sidebarGroupTitle}>OPERACIONES</div>}
             
             <NavLink to="/" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
@@ -136,7 +130,6 @@ function AppLayout() {
               <span style={{ fontSize: '1.2rem' }}>⏯️</span> {sidebarAbierta && <span>CONTINUAR PARTIDO</span>}
             </NavLink>
 
-            {/* --- BLOQUE 2: COMPETICIÓN Y SCOUTING --- */}
             {sidebarAbierta && <div style={sidebarGroupTitle}>COMPETICIÓN</div>}
 
             <NavLink to="/torneos" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
@@ -147,7 +140,6 @@ function AppLayout() {
               <span style={{ fontSize: '1.2rem' }}>🕵️‍♂️</span> {sidebarAbierta && <span>RIVALES (SCOUTING)</span>}
             </NavLink>
 
-            {/* --- BLOQUE 3: ANÁLISIS DE DATOS --- */}
             {sidebarAbierta && <div style={sidebarGroupTitle}>ANÁLISIS DE EQUIPO</div>}
 
             <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
@@ -165,8 +157,12 @@ function AppLayout() {
             <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
               <span style={{ fontSize: '1.2rem' }}>🏃‍♂️</span> {sidebarAbierta && <span>RENDIMIENTO</span>}
             </NavLink>
+
+            {/* ---> NUEVO LINK ACÁ <--- */}
+            <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
+              <span style={{ fontSize: '1.2rem' }}>⚽</span> {sidebarAbierta && <span>ORIGEN DE GOLES</span>}
+            </NavLink>
             
-            {/* --- BLOQUE 4: GESTIÓN Y CONFIGURACIÓN --- */}
             {sidebarAbierta && <div style={sidebarGroupTitle}>GESTIÓN</div>}
 
             <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
@@ -202,9 +198,6 @@ function AppLayout() {
         </aside>
       )}
 
-      {/* =========================================
-          2. CONTENIDO PRINCIPAL (RUTAS)
-      ========================================== */}
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '20px 15px' : '40px', paddingBottom: esMovil ? '90px' : '40px' }}>
         <Routes>
           <Route path="/" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
@@ -218,12 +211,12 @@ function AppLayout() {
           <Route path="/plantel" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><Plantel /></ProtectedRoute>} />
           <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><Configuracion /></ProtectedRoute>} /> 
           <Route path="/rendimiento" element={<ProtectedRoute><Rendimiento /></ProtectedRoute>} />
+          
+          {/* ---> NUEVA RUTA ACÁ <--- */}
+          <Route path="/origen-goles" element={<ProtectedRoute><OrigenGoles /></ProtectedRoute>} />
         </Routes>
       </main>
 
-      {/* =========================================
-          3. BOTTOM NAV (SOLO MOBILE)
-      ========================================== */}
       {esMovil && (
         <div style={{ 
           position: 'fixed', bottom: 0, left: 0, right: 0, 

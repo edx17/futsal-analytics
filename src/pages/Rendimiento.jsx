@@ -50,6 +50,16 @@ const estimarVO2Max = (nivelYoyo) => {
   return ((nivelYoyo * 0.84) + 36.4).toFixed(1);
 };
 
+// --- COMPONENTE TOOLTIP UX ---
+const InfoBox = ({ texto }) => (
+  <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
+    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
+    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
+      {texto}
+    </div>
+  </div>
+);
+
 export default function Rendimiento() {
   const [tabActiva, setTabActiva] = useState('global');
   const [datos, setDatos] = useState([]);
@@ -78,7 +88,7 @@ export default function Rendimiento() {
     };
   }, [datos]);
 
-  if (loading) return <div style={{ padding: '40px', color: 'var(--text-dim)', textAlign: 'center', fontFamily: 'JetBrains Mono' }}>CARGANDO DATOS MÉDICOS Y FÍSICOS...</div>;
+  if (loading) return <div style={{ padding: '40px', color: 'var(--text-dim)', textAlign: 'center' }}>CARGANDO DATOS MÉDICOS Y FÍSICOS...</div>;
 
   return (
     <div className="fade-in" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', color: '#fff' }}>
@@ -109,9 +119,9 @@ export default function Rendimiento() {
         .nav-tab:hover { color: #fff; background: rgba(255,255,255,0.05); }
         .nav-tab.active { background: var(--accent); color: #000; }
         .kpi-title { color: var(--text-dim); font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; }
-        .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 2.2rem; font-weight: 900; line-height: 1; margin-bottom: 5px; }
-        .kpi-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #666; }
-        .select-dark { width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; border-radius: 6px; font-size: 1rem; outline: none; transition: border-color 0.2s; font-family: 'Inter', sans-serif; }
+        .kpi-value { font-size: 2.2rem; font-weight: 900; line-height: 1; margin-bottom: 5px; }
+        .kpi-sub { font-size: 0.75rem; color: #666; }
+        .select-dark { width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; border-radius: 6px; font-size: 1rem; outline: none; transition: border-color 0.2s; }
         .select-dark:focus { border-color: var(--accent); }
         .section-header { font-size: 0.9rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
       `}</style>
@@ -218,7 +228,7 @@ function TabGlobal({ datos, stats }) {
             {riesgoAsimetria.map(j => (
               <div key={j.id} style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                 <strong style={{ color: '#fff', fontSize: '1rem', display: 'block', marginBottom: '8px' }}>{j.jugadores?.nombre} {j.jugadores?.apellido}</strong>
-                <div style={{ fontFamily: 'JetBrains Mono', fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
                   {Math.abs(j.asym_cmj) > 10 && <div style={{ color: '#ffbaba', marginBottom: '4px' }}>CMJ: {j.asym_cmj}% (Der {j.cmj_de} / Izq {j.cmj_iz})</div>}
                   {Math.abs(j.asym_br) > 10 && <div style={{ color: '#ffbaba' }}>BROAD: {j.asym_br}% (Der {j.broad_de} / Izq {j.broad_iz})</div>}
                 </div>
@@ -301,7 +311,7 @@ function TabComparativa({ datos, stats }) {
                     <BarChart data={dataCmj} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                       <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
-                      <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+                      <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
                       <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
                       <Legend wrapperStyle={{ fontSize: '11px', color: '#fff' }} />
                       <Bar dataKey="Derecha" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -316,7 +326,7 @@ function TabComparativa({ datos, stats }) {
                     <BarChart data={dataBroad} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                       <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
-                      <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+                      <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
                       <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
                       <Legend wrapperStyle={{ fontSize: '11px', color: '#fff' }} />
                       <Bar dataKey="Derecha" fill="#f59e0b" radius={[4, 4, 0, 0]} />
@@ -332,7 +342,7 @@ function TabComparativa({ datos, stats }) {
                   <BarChart data={dataYoyo} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                     <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
-                    <YAxis domain={['dataMin - 1', 'dataMax + 1']} stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+                    <YAxis domain={['dataMin - 1', 'dataMax + 1']} stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
                     <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
                     <ReferenceLine y={ELITE.yoyo} stroke="#10b981" strokeDasharray="3 3" label={{ position: 'top', value: 'Élite', fill: '#10b981', fontSize: 10 }} />
                     <Bar dataKey="Nivel" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={50}>
@@ -345,7 +355,7 @@ function TabComparativa({ datos, stats }) {
               </div>
             </div>
           ) : (
-            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)', border: '1px dashed var(--border)', fontFamily: 'Inter' }}>
+            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)', border: '1px dashed var(--border)' }}>
               SELECCIONÁ AL MENOS UN JUGADOR PARA DESPLEGAR LOS GRÁFICOS COMPARATIVOS.
             </div>
           )}
@@ -360,7 +370,7 @@ function TabComparativa({ datos, stats }) {
               <BarChart data={posAgrupadas} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                 <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
-                <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} domain={['dataMin - 5', 'dataMax + 5']} />
+                <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} domain={['dataMin - 5', 'dataMax + 5']} />
                 <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
                 <Bar dataKey="CMJ" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
               </BarChart>
@@ -372,7 +382,7 @@ function TabComparativa({ datos, stats }) {
               <BarChart data={posAgrupadas} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                 <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
-                <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11, fontFamily: 'JetBrains Mono' }} domain={['dataMin - 2', 'dataMax + 2']} />
+                <YAxis stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} domain={['dataMin - 2', 'dataMax + 2']} />
                 <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
                 <Bar dataKey="YoYo" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={40} />
               </BarChart>
@@ -416,10 +426,10 @@ function TabIndividual({ datos, stats }) {
           {extraInfo && <span style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px' }}>{extraInfo}</span>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <span style={{ fontSize: '0.7rem', color: colorZ, background: `${colorZ}22`, padding: '2px 6px', borderRadius: '4px', fontFamily: 'Inter' }}>
+          <span style={{ fontSize: '0.7rem', color: colorZ, background: `${colorZ}22`, padding: '2px 6px', borderRadius: '4px' }}>
             Z: {z > 0 ? '+' : ''}{z.toFixed(2)} ({labelZ})
           </span>
-          <span style={{ fontFamily: 'JetBrains Mono', color: '#fff', fontWeight: 800, fontSize: '1.1rem' }}>{value}</span>
+          <span style={{ color: '#fff', fontWeight: 800, fontSize: '1.1rem' }}>{value}</span>
         </div>
       </div>
     );
@@ -428,7 +438,7 @@ function TabIndividual({ datos, stats }) {
   const KpiRow = ({ label, value }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ color: 'var(--text-dim)' }}>{label}</span>
-      <span style={{ fontFamily: 'JetBrains Mono', color: '#fff', fontWeight: 700 }}>{value}</span>
+      <span style={{ color: '#fff', fontWeight: 700 }}>{value}</span>
     </div>
   );
 

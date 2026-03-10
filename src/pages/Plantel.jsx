@@ -152,7 +152,7 @@ function Plantel() {
           <div className="bento-card modal-content" style={{ maxWidth: '600px', background: '#111' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #333', paddingBottom: '20px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--accent)', fontFamily: 'JetBrains Mono', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
+                <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
                 <div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.toUpperCase() + ' ' : ''}{jugadorSeleccionado.nombre.toUpperCase()}</div>
                   <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginTop: '5px' }}>{jugadorSeleccionado.posicion?.toUpperCase()} // {jugadorSeleccionado.categoria?.toUpperCase()}</div>
@@ -283,7 +283,7 @@ function Plantel() {
 
       {/* STYLES AUXILIARES */}
       <style>{`
-        .inputIndustrial { background: transparent; border: 1px solid var(--border); width: 100%; padding: 12px; color: #fff; border-radius: 4px; outline: none; font-family: 'JetBrains Mono'; }
+        .inputIndustrial { background: transparent; border: 1px solid var(--border); width: 100%; padding: 12px; color: #fff; border-radius: 4px; outline: none; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
         .modal-content { width: 100%; border: 1px solid var(--accent); animation: scaleIn 0.2s; max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
@@ -296,7 +296,7 @@ function Plantel() {
   );
 }
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontFamily: 'JetBrains Mono' };
+const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
 const btnGhost = { background: 'transparent', border: '1px solid #333', color: '#fff', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800 };
 const fichaRow = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px dashed #333', color: 'var(--text-dim)', fontSize: '0.9rem' };
 

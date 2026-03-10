@@ -56,7 +56,7 @@ function Configuracion() {
             value={clubId} 
             onChange={(e) => setClubId(e.target.value)} 
             placeholder="Dejar en blanco para generar uno nuevo"
-            style={{ width: '100%', padding: '15px', background: '#111', border: '1px dashed var(--accent)', color: 'var(--accent)', borderRadius: '4px', outline: 'none', fontFamily: 'monospace' }}
+            style={{ width: '100%', padding: '15px', background: '#111', border: '1px dashed var(--accent)', color: 'var(--accent)', borderRadius: '4px', outline: 'none' }}
           />
           <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '10px' }}>
             *Si sos el DT y estás creando el club por primera vez, <strong>dejá este campo en blanco</strong>. Si sos ayudante, pegá acá el ID que te pasó el DT.

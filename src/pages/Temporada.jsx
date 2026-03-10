@@ -79,9 +79,19 @@ function Temporada() {
 
     // --- LÓGICA DE ABP, PERFILES Y DESGLOSE GLOBAL ---
     const abp = {
-      corners: { favor: 0, contra: 0 },
-      laterales: { favor: 0, contra: 0 },
+      corners: { favor: 0, contra: 0, rematesGenerados: 0 },
+      laterales: { favor: 0, contra: 0, rematesGenerados: 0 },
       zonasLatFavor: { z1: 0, z2: 0, z3: 0, z4: 0 }
+    };
+
+    const statsAdicionales = {
+      duelosOfeGanados: 0,
+      duelosOfeTotales: 0,
+      duelosDefGanados: 0,
+      duelosDefTotales: 0,
+      recuperaciones: 0,
+      recuperacionesAltas: 0,
+      perdidasPeligrosas: 0
     };
 
     const perfilRemate = { centro: 0, banda: 0, cerca: 0, lejos: 0 };
@@ -101,7 +111,7 @@ function Temporada() {
     let rematesPropiosTotales = 0;
     let golesPropiosTotales = 0;
 
-    baseAnalytics.evFiltrados.forEach(ev => {
+    baseAnalytics.evFiltrados.forEach((ev, i) => {
       const p = ev.equipo === 'Propio';
       
       const xNorm = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
@@ -135,6 +145,26 @@ function Temporada() {
           if (dist < 8) perfilRemate.cerca++;
           else perfilRemate.lejos++;
         }
+
+        // Recuperaciones, Pérdidas y Duelos
+        if (ev.accion === 'Pérdida') { 
+          for(let j=1; j<=3 && i+j < baseAnalytics.evFiltrados.length; j++) {
+              if (baseAnalytics.evFiltrados[i+j].id_partido === ev.id_partido) {
+                  if (baseAnalytics.evFiltrados[i+j].equipo === 'Rival' && baseAnalytics.evFiltrados[i+j].accion?.includes('Remate')) {
+                      statsAdicionales.perdidasPeligrosas++;
+                      break;
+                  }
+              } else break;
+          }
+        }
+        else if (ev.accion === 'Recuperación') { 
+          statsAdicionales.recuperaciones++; 
+          if (xNorm > 66) statsAdicionales.recuperacionesAltas++;
+        }
+        else if (ev.accion === 'Duelo OFE Ganado') { statsAdicionales.duelosOfeGanados++; statsAdicionales.duelosOfeTotales++; }
+        else if (ev.accion === 'Duelo OFE Perdido') { statsAdicionales.duelosOfeTotales++; }
+        else if (ev.accion === 'Duelo DEF Ganado') { statsAdicionales.duelosDefGanados++; statsAdicionales.duelosDefTotales++; }
+        else if (ev.accion === 'Duelo DEF Perdido') { statsAdicionales.duelosDefTotales++; }
       }
 
       // Desglose de Remates (Ambos equipos)
@@ -150,7 +180,18 @@ function Temporada() {
 
       // Pelota Parada
       if (ev.accion === 'Córner') {
-        p ? abp.corners.favor++ : abp.corners.contra++;
+        if (p) {
+          abp.corners.favor++;
+          for(let j=1; j<=2 && i+j < baseAnalytics.evFiltrados.length; j++) {
+              if (baseAnalytics.evFiltrados[i+j].id_partido === ev.id_partido) {
+                  if (baseAnalytics.evFiltrados[i+j].equipo === 'Propio' && baseAnalytics.evFiltrados[i+j].accion?.includes('Remate')) {
+                      abp.corners.rematesGenerados++; break;
+                  }
+              } else break;
+          }
+        } else {
+          abp.corners.contra++;
+        }
       }
       if (ev.accion === 'Lateral') {
         if (p) {
@@ -159,6 +200,14 @@ function Temporada() {
           else if (xNorm < 50) abp.zonasLatFavor.z2++;
           else if (xNorm < 75) abp.zonasLatFavor.z3++;
           else abp.zonasLatFavor.z4++;
+
+          for(let j=1; j<=2 && i+j < baseAnalytics.evFiltrados.length; j++) {
+            if (baseAnalytics.evFiltrados[i+j].id_partido === ev.id_partido) {
+                if (baseAnalytics.evFiltrados[i+j].equipo === 'Propio' && baseAnalytics.evFiltrados[i+j].accion?.includes('Remate')) {
+                    abp.laterales.rematesGenerados++; break;
+                }
+            } else break;
+          }
         } else {
           abp.laterales.contra++;
         }
@@ -175,6 +224,7 @@ function Temporada() {
     return { 
       ...baseAnalytics, 
       abp, 
+      statsAdicionales,
       perfilRemate, 
       desgloseRemates,
       territoryPct, 
@@ -359,8 +409,8 @@ function Temporada() {
             </div>
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>BALANCE DE PRESIÓN <InfoBox texto="Recuperaciones Altas (en ataque) versus Pérdidas Peligrosas (en defensa). Mide qué tanto rinde asumir riesgos." /></div>
-                <div className="stat-value" style={{ color: stats.recuperacionesAltas >= stats.perdidasPeligrosas ? '#00aaff' : '#ef4444' }}>
-                  {stats.recuperacionesAltas} / {stats.perdidasPeligrosas}
+                <div className="stat-value" style={{ color: stats.recuperacionesAltas >= analiticaGlobal.statsAdicionales.perdidasPeligrosas ? '#00aaff' : '#ef4444' }}>
+                  {stats.recuperacionesAltas} / {analiticaGlobal.statsAdicionales.perdidasPeligrosas}
                 </div>
             </div>
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
@@ -442,6 +492,70 @@ function Temporada() {
                 <span>REMATES ACUMULADOS</span>
                 <strong style={{color: '#fff'}}>{analiticaGlobal.rematesPropiosTotales}</strong>
               </div>
+              <div style={kpiFila}>
+                <span>DUELOS OFE. GANADOS</span>
+                <strong>
+                  {analiticaGlobal.statsAdicionales.duelosOfeGanados} / {analiticaGlobal.statsAdicionales.duelosOfeTotales} 
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analiticaGlobal.statsAdicionales.duelosOfeTotales > 0 ? ((analiticaGlobal.statsAdicionales.duelosOfeGanados / analiticaGlobal.statsAdicionales.duelosOfeTotales) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+            </div>
+
+            {/* NUEVA: EFICIENCIA DEFENSIVA */}
+            <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #ef4444' }}>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                EFICIENCIA DEFENSIVA <InfoBox texto="Métricas avanzadas sobre la capacidad de recuperación y contención a lo largo de la temporada." />
+              </div>
+              <div style={kpiFila}>
+                <span>DUELOS DEF. GANADOS</span>
+                <strong>
+                  {analiticaGlobal.statsAdicionales.duelosDefGanados} / {analiticaGlobal.statsAdicionales.duelosDefTotales}
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analiticaGlobal.statsAdicionales.duelosDefTotales > 0 ? ((analiticaGlobal.statsAdicionales.duelosDefGanados / analiticaGlobal.statsAdicionales.duelosDefTotales) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+              <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong>{analiticaGlobal.statsAdicionales.recuperaciones}</strong></div>
+              <div style={kpiFila}><span>RECUPERACIONES ALTAS</span><strong>{analiticaGlobal.statsAdicionales.recuperacionesAltas}</strong></div>
+              <div style={kpiFila}><span>PÉRDIDAS PELIGROSAS</span><strong style={{ color: analiticaGlobal.statsAdicionales.perdidasPeligrosas > (analiticaGlobal.statsEquipo.partidosJugados * 3) ? '#ef4444' : '#00ff88' }}>{analiticaGlobal.statsAdicionales.perdidasPeligrosas}</strong></div>
+            </div>
+
+            {/* EFICACIA ABP (NUEVA PELOTA PARADA) */}
+            <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #06b6d4' }}>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#06b6d4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                EFICACIA A.B.P. (Ataque) <InfoBox texto="Resumen de eficacia ofensiva en pelota parada en toda la temporada. Las zonas de los laterales van de la Z1 (Defensa) a la Z4 (Ataque)." />
+              </div>
+              <div style={kpiFila}>
+                <span>CÓRNERS (TIRO GENERADO)</span>
+                <strong>
+                  {analiticaGlobal.abp.corners.rematesGenerados} / {analiticaGlobal.abp.corners.favor}
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analiticaGlobal.abp.corners.favor > 0 ? ((analiticaGlobal.abp.corners.rematesGenerados / analiticaGlobal.abp.corners.favor) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+              <div style={kpiFila}>
+                <span>LATERALES (TIRO GENERADO)</span>
+                <strong>
+                  {analiticaGlobal.abp.laterales.rematesGenerados} / {analiticaGlobal.abp.laterales.favor}
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analiticaGlobal.abp.laterales.favor > 0 ? ((analiticaGlobal.abp.laterales.rematesGenerados / analiticaGlobal.abp.laterales.favor) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+              <div style={kpiFila}><span>GOLES DE TIRO LIBRE</span><strong>{analiticaGlobal.dataOrigenGol?.find(d => d.name === 'Tiro Libre')?.value || 0}</strong></div>
+              
+              <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dashed #333' }}>
+                <div className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px', textAlign: 'center' }}>LATERALES FAVOR POR ZONAS</div>
+                <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between' }}>
+                   <div style={zonePill}>Z1 (0-10) <br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z1}</strong></div>
+                   <div style={zonePill}>Z2 (10-20)<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z2}</strong></div>
+                   <div style={zonePill}>Z3 (20-30)<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z3}</strong></div>
+                   <div style={zonePill}>Z4 (30-40)<br/><strong style={{color:'#00ff88', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z4}</strong></div>
+                </div>
+              </div>
             </div>
 
             {/* PERFIL DE REMATE ACUMULADO */}
@@ -459,30 +573,6 @@ function Temporada() {
               </div>
             </div>
 
-            {/* PELOTA PARADA */}
-            <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #f97316' }}>
-              <div className="stat-label" style={{ marginBottom: '15px', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                A.B.P. <InfoBox texto="Resumen de acciones de reanudación en toda la temporada. Las zonas de los laterales van de la Z1 (Defensa) a la Z4 (Ataque)." />
-              </div>
-              <div style={kpiFila}>
-                <span>CÓRNERS</span>
-                <strong><span style={{color:'#f97316'}}>{analiticaGlobal.abp.corners.favor}</span> - <span style={{color:'#ef4444'}}>{analiticaGlobal.abp.corners.contra}</span></strong>
-              </div>
-              <div style={kpiFila}>
-                <span>LATERALES</span>
-                <strong><span style={{color:'#06b6d4'}}>{analiticaGlobal.abp.laterales.favor}</span> - <span style={{color:'#ef4444'}}>{analiticaGlobal.abp.laterales.contra}</span></strong>
-              </div>
-              
-              <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dashed #333' }}>
-                <div className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px', textAlign: 'center' }}>LATERALES FAVOR POR ZONAS</div>
-                <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between' }}>
-                   <div style={zonePill}>Z1 (0-10) <br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z1}</strong></div>
-                   <div style={zonePill}>Z2 (10-20)<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z2}</strong></div>
-                   <div style={zonePill}>Z3 (20-30)<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z3}</strong></div>
-                   <div style={zonePill}>Z4 (30-40)<br/><strong style={{color:'#00ff88', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z4}</strong></div>
-                </div>
-              </div>
-            </div>
         </div>
 
         {/* ROW 3: GRÁFICOS ANALÍTICOS */}
@@ -771,14 +861,14 @@ function Temporada() {
                   <canvas ref={heatmapRef} width={800} height={400} style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none', opacity: 0.85 }} />
                 )}
 
-                {tipoMapa === 'puntos' && evMapa.map(ev => {
+                {tipoMapa === 'puntos' && evMapa.map((ev, i) => {
                   const xNorm = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
                   const yNorm = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
                   if (xNorm == null) return null;
                   
                   return (
                     <div 
-                      key={ev.id} 
+                      key={ev.id || i} 
                       title={`${ev.accion}`}
                       style={{ 
                         position: 'absolute', left: `${xNorm}%`, top: `${yNorm}%`, width: '10px', height: '10px', 

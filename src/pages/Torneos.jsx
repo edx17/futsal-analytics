@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+
+// --- COMPONENTE TOOLTIP UX ---
+const InfoBox = ({ texto }) => (
+  <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
+    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
+    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
+      {texto}
+    </div>
+  </div>
+);
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
@@ -8,6 +19,9 @@ function Torneos() {
 
   const [torneos, setTorneos] = useState([]);
   const [rivales, setRivales] = useState([]);
+  
+  // FILTROS MEJORADOS
+  const [filtroCategoria, setFiltroCategoria] = useState('Primera');
   const [torneoActivo, setTorneoActivo] = useState(null);
   const [fixture, setFixture] = useState([]);
   
@@ -30,7 +44,9 @@ function Torneos() {
     const { data } = await supabase.from('torneos').select('*').eq('club_id', clubId).order('id', { ascending: false });
     if (data) {
       setTorneos(data);
-      if (data.length > 0 && !torneoActivo) setTorneoActivo(data[0]);
+      if (data.length > 0 && !torneoActivo) {
+        setFiltroCategoria(data[0].categoria);
+      }
     }
   };
 
@@ -39,13 +55,32 @@ function Torneos() {
     if (data) setRivales(data);
   };
 
-  // --- EL FILTRO ESTRICTO DE CATEGORÍA ESTÁ ACÁ ---
+  const categoriasUnicas = useMemo(() => {
+    return Array.from(new Set(['Primera', 'Reserva', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', ...torneos.map(t => t.categoria)]));
+  }, [torneos]);
+
+  const torneosFiltrados = useMemo(() => {
+    return torneos.filter(t => t.categoria === filtroCategoria);
+  }, [torneos, filtroCategoria]);
+
+  // Autoseleccionar torneo al cambiar categoría
+  useEffect(() => {
+    if (torneosFiltrados.length > 0) {
+      if (!torneoActivo || !torneosFiltrados.some(t => t.id === torneoActivo.id)) {
+        setTorneoActivo(torneosFiltrados[0]);
+      }
+    } else {
+      setTorneoActivo(null);
+      setFixture([]);
+    }
+  }, [torneosFiltrados]);
+
   const fetchFixture = async (idTorneo, categoriaTorneo) => {
     const { data } = await supabase
       .from('partidos')
       .select('*, rivales(nombre, escudo)')
       .eq('torneo_id', idTorneo)
-      .eq('categoria', categoriaTorneo) // Candado: Solo trae los de esta categoría
+      .eq('categoria', categoriaTorneo)
       .order('jornada', { ascending: true });
     if (data) setFixture(data);
   };
@@ -59,6 +94,7 @@ function Torneos() {
     const { error } = await supabase.from('torneos').insert([{ ...formTorneo, club_id: clubId }]);
     if (!error) {
       setMostrarModalTorneo(false);
+      setFiltroCategoria(formTorneo.categoria); // Cambiar a la categoría del torneo nuevo
       setFormTorneo({ nombre: '', categoria: 'Primera' });
       fetchTorneos();
       alert("¡Torneo guardado con éxito!");
@@ -82,7 +118,7 @@ function Torneos() {
       goles_propios: formFixture.goles_propios,
       goles_rival: formFixture.goles_rival,
       categoria: torneoActivo.categoria, 
-      competicion: 'TORNEO'
+      competicion: torneoActivo.nombre // Aseguramos que la analítica global lo capte
     };
 
     const { error } = await supabase.from('partidos').insert([nuevoPartido]);
@@ -99,24 +135,18 @@ function Torneos() {
     fetchFixture(torneoActivo.id, torneoActivo.categoria);
   };
 
-  // --- EL SEGURO ANTI-CAGADAS ESTÁ ACÁ ---
   const eliminarPartido = async (idPartido) => {
-    // 1. Contamos si hay eventos asociados a este partido
     const { count, error: errorEventos } = await supabase
       .from('eventos')
       .select('*', { count: 'exact', head: true })
       .eq('id_partido', idPartido);
 
-    if (errorEventos) {
-      return alert("Error al verificar los datos del partido: " + errorEventos.message);
-    }
+    if (errorEventos) return alert("Error al verificar los datos del partido: " + errorEventos.message);
 
-    // 2. Si hay eventos, frenamos la eliminación para no perder datos
     if (count > 0) {
-      return alert(`⚠️ BLOQUEO DE SEGURIDAD: Este partido tiene ${count} acciones trackeadas. No podés borrarlo desde acá para no perder los datos. Si ves un duplicado, probá borrando el otro que debería estar vacío.`);
+      return alert(`⚠️ BLOQUEO DE SEGURIDAD: Este partido tiene ${count} acciones trackeadas. No podés borrarlo desde acá para no perder los datos.`);
     }
 
-    // 3. Si está vacío, confirmamos y borramos tranquilos
     if (window.confirm("✅ Este partido está completamente vacío (0 datos trackeados). ¿Estás seguro de que querés eliminar este duplicado del fixture?")) {
       const { error } = await supabase.from('partidos').delete().eq('id', idPartido);
       if (!error) {
@@ -127,58 +157,183 @@ function Torneos() {
     }
   };
 
-  const irATrackear = (partido) => {
-    navigate('/toma-datos', { state: { partido } });
-  };
+  const irATrackear = (partido) => navigate('/toma-datos', { state: { partido } });
 
-  const stats = fixture.filter(f => f.estado === 'Jugado').reduce((acc, f) => {
-    acc.pj++;
-    acc.gf += Number(f.goles_propios);
-    acc.gc += Number(f.goles_rival);
-    if (f.goles_propios > f.goles_rival) acc.pg++;
-    else if (f.goles_propios === f.goles_rival) acc.pe++;
-    else acc.pp++;
-    return acc;
-  }, { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0 });
-  const pts = (stats.pg * 3) + (stats.pe * 1);
+  // --- MOTOR ANALÍTICO DEL TORNEO ---
+  const { stats, local, visitante, racha, vallasInvictas, chartDataEvolucion, chartDataLocalia, ptsTotales, eficacia } = useMemo(() => {
+    const partidosJugados = fixture.filter(f => f.estado === 'Jugado').sort((a,b) => {
+      if(a.fecha && b.fecha) return new Date(a.fecha) - new Date(b.fecha);
+      return a.id - b.id;
+    });
+
+    const s = { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0 };
+    const l = { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
+    const v = { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
+    let rList = [];
+    let vIn = 0;
+    let chartEvol = [];
+
+    partidosJugados.forEach((f, index) => {
+        s.pj++;
+        const gp = Number(f.goles_propios);
+        const gr = Number(f.goles_rival);
+        s.gf += gp;
+        s.gc += gr;
+        
+        let res = 'E';
+        if (gp > gr) { s.pg++; res = 'V'; }
+        else if (gp < gr) { s.pp++; res = 'D'; }
+        else { s.pe++; }
+        
+        rList.push(res);
+        if (gr === 0) vIn++;
+
+        if (f.condicion === 'Local') {
+            l.pj++; l.gf += gp; l.gc += gr;
+            if (res === 'V') { l.pg++; l.pts+=3; }
+            if (res === 'E') { l.pe++; l.pts+=1; }
+            if (res === 'D') { l.pp++; }
+        } else if (f.condicion === 'Visitante') {
+            v.pj++; v.gf += gp; v.gc += gr;
+            if (res === 'V') { v.pg++; v.pts+=3; }
+            if (res === 'E') { v.pe++; v.pts+=1; }
+            if (res === 'D') { v.pp++; }
+        }
+
+        chartEvol.push({
+            name: f.jornada || `F${index+1}`,
+            GF: gp,
+            GC: gr,
+            DIF: gp - gr
+        });
+    });
+
+    const efi = s.pj > 0 ? (((s.pg * 3 + s.pe) / (s.pj * 3)) * 100).toFixed(1) : 0;
+    const ptsTot = (s.pg * 3) + (s.pe * 1);
+
+    const cLocalia = [
+        { name: 'Local', Eficacia: l.pj > 0 ? Number(((l.pts / (l.pj * 3)) * 100).toFixed(0)) : 0, GF: l.gf, GC: l.gc },
+        { name: 'Visitante', Eficacia: v.pj > 0 ? Number(((v.pts / (v.pj * 3)) * 100).toFixed(0)) : 0, GF: v.gf, GC: v.gc }
+    ];
+
+    return { stats: s, local: l, visitante: v, racha: rList, vallasInvictas: vIn, chartDataEvolucion: chartEvol, chartDataLocalia: cLocalia, ptsTotales: ptsTot, eficacia: efi };
+  }, [fixture]);
+
+  const calcularMejorRacha = (racha) => {
+      let max = 0; let actual = 0;
+      for (let r of racha) {
+          if (r === 'V' || r === 'E') { actual++; if (actual > max) max = actual; }
+          else { actual = 0; }
+      }
+      return max;
+  };
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club.</div>;
 
   return (
     <div style={{ paddingBottom: '80px', maxWidth: '1000px', margin: '0 auto', animation: 'fadeIn 0.3s' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-          <div style={{ fontSize: '2.5rem' }}>🏆</div>
-          <div>
-            <div className="stat-label" style={{ color: 'var(--accent)' }}>GESTOR DE COMPETICIÓN</div>
-            <select 
-              value={torneoActivo?.id || ''} 
-              onChange={(e) => setTorneoActivo(torneos.find(t => t.id === e.target.value))}
-              style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', fontWeight: 900, outline: 'none', cursor: 'pointer', appearance: 'none' }}
-            >
-              {torneos.length === 0 && <option value="">NO HAY TORNEOS...</option>}
-              {torneos.map(t => <option key={t.id} value={t.id} style={{ background: '#000' }}>{t.nombre.toUpperCase()} ({t.categoria})</option>)}
-            </select>
-          </div>
+      <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '30px' }}>
+        <div style={{ fontSize: '2.5rem' }}>🏆</div>
+        <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>GESTOR DE COMPETICIÓN</div>
+      </div>
+
+      {/* --- PANEL DE FILTROS --- */}
+      <div className="bento-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-end', marginBottom: '30px', background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%)' }}>
+        <div>
+          <div className="stat-label" style={{ marginBottom: '8px' }}>CATEGORÍA</div>
+          <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={selectStyle}>
+             {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+          </select>
         </div>
-        <button onClick={() => setMostrarModalTorneo(true)} className="btn-secondary" style={{ fontSize: '0.8rem' }}>+ NUEVO TORNEO</button>
+        <div>
+          <div className="stat-label" style={{ marginBottom: '8px' }}>COMPETICIÓN (TORNEO)</div>
+          <select value={torneoActivo?.id || ''} onChange={e => setTorneoActivo(torneos.find(t => t.id == e.target.value))} style={selectStyle}>
+             {torneosFiltrados.length === 0 && <option value="">NO HAY TORNEOS REGISTRADOS...</option>}
+             {torneosFiltrados.map(t => <option key={t.id} value={t.id}>{t.nombre.toUpperCase()}</option>)}
+          </select>
+        </div>
+        <div style={{ marginLeft: 'auto' }}>
+          <button onClick={() => setMostrarModalTorneo(true)} className="btn-secondary" style={{ padding: '10px 20px', fontSize: '0.8rem', fontWeight: 800 }}>+ NUEVO TORNEO</button>
+        </div>
       </div>
 
       {torneoActivo ? (
         <>
+          {/* --- KPIs PRINCIPALES --- */}
           <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '15px', marginBottom: '20px', textAlign: 'center' }}>
-            <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{pts}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>PUNTOS</div></div>
+            <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{ptsTotales}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>PUNTOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{stats.pj}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>JUGADOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00ff88' }}>{stats.pg}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>GANADOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fbbf24' }}>{stats.pe}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>EMPATADOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ef4444' }}>{stats.pp}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>PERDIDOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{stats.gf}:{stats.gc}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>GOLES (DIF {stats.gf - stats.gc})</div></div>
+            
+            <div style={{ borderLeft: '1px solid #333', paddingLeft: '15px' }}>
+               <div style={{ fontSize: '1.5rem', fontWeight: 900, color: eficacia >= 50 ? '#0ea5e9' : '#fff' }}>{eficacia}%</div>
+               <div className="stat-label" style={{ fontSize: '0.65rem' }}>EFICACIA</div>
+            </div>
+            <div>
+               <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a855f7' }}>{vallasInvictas}</div>
+               <div className="stat-label" style={{ fontSize: '0.65rem' }}>VALLAS INVICTAS</div>
+            </div>
+          </div>
+
+          {/* --- ANALÍTICA DE COMPETENCIA --- */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+            
+            {/* 1. Racha Bento */}
+            <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', borderTop: '2px solid var(--accent)' }}>
+               <div className="stat-label">ESTADO DE FORMA <InfoBox texto="Últimos 5 partidos (de izquierda a derecha)."/></div>
+               <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
+                  {racha.slice(-5).map((r, i) => {
+                     let bg = '#333'; let color = '#fff';
+                     if(r === 'V') { bg = 'var(--accent)'; color = '#000'; }
+                     else if(r === 'D') { bg = '#ef4444'; color = '#fff'; }
+                     return <div key={i} style={{ width: '35px', height: '35px', borderRadius: '4px', background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.2rem' }}>{r}</div>
+                  })}
+                  {racha.length === 0 && <span style={{ color: 'var(--text-dim)' }}>Aún sin partidos finalizados</span>}
+               </div>
+               <div style={{ marginTop: '15px', fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center' }}>
+                  Mejor Racha Invicta: <strong>{calcularMejorRacha(racha)} partidos</strong>
+               </div>
+            </div>
+
+            {/* 2. Rendimiento Localia */}
+            <div className="bento-card">
+               <div className="stat-label" style={{ marginBottom: '15px' }}>EFICACIA DE LOCALÍA <InfoBox texto="Rendimiento de puntos jugando de Local vs Visitante."/></div>
+               <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={chartDataLocalia} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                     <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 11, fontWeight: 700 }} />
+                     <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} domain={[0, 100]} tickFormatter={val => `${val}%`} />
+                     <RechartsTooltip cursor={{ fill: '#222' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                     <Bar dataKey="Eficacia" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={40} name="Eficacia (%)" />
+                  </BarChart>
+               </ResponsiveContainer>
+            </div>
+
+            {/* 3. Evolucion Goles */}
+            <div className="bento-card">
+               <div className="stat-label" style={{ marginBottom: '15px' }}>EVOLUCIÓN DE GOLES <InfoBox texto="Tendencia de goles anotados (GF) vs recibidos (GC) fecha a fecha."/></div>
+               <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={chartDataEvolucion} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                     <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
+                     <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
+                     <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                     <Legend wrapperStyle={{ fontSize: '11px' }} iconType="circle" />
+                     <Line type="monotone" dataKey="GF" stroke="#00ff88" strokeWidth={3} dot={{ r: 4, fill: '#00ff88' }} />
+                     <Line type="monotone" dataKey="GC" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} />
+                  </LineChart>
+               </ResponsiveContainer>
+            </div>
+
           </div>
 
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div className="stat-label">FIXTURE Y RESULTADOS - {torneoActivo.categoria.toUpperCase()}</div>
+              <div className="stat-label">FIXTURE Y RESULTADOS</div>
               <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.75rem', padding: '8px 15px' }}>+ AGREGAR FECHA</button>
             </div>
 
@@ -250,8 +405,14 @@ function Torneos() {
             <div style={{ marginBottom: '15px' }}><div className="section-title">NOMBRE</div><input type="text" value={formTorneo.nombre} onChange={e => setFormTorneo({...formTorneo, nombre: e.target.value})} style={inputIndustrial} placeholder="Ej: Copa Argentina" /></div>
             <div style={{ marginBottom: '20px' }}><div className="section-title">CATEGORÍA</div>
               <select value={formTorneo.categoria} onChange={e => setFormTorneo({...formTorneo, categoria: e.target.value})} style={inputIndustrial}>
-                <option value="Primera">Primera</option><option value="Tercera">Tercera</option>
-                <option value="Cuarta">Cuarta</option><option value="Quinta">Quinta</option>
+                <option value="Primera">Primera</option>
+                <option value="Reserva">Reserva</option>
+                <option value="Tercera">Tercera</option>
+                <option value="Cuarta">Cuarta</option>
+                <option value="Quinta">Quinta</option>
+                <option value="Sexta">Sexta</option>
+                <option value="Séptima">Séptima</option>
+                <option value="Octava">Octava</option>
               </select>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -295,11 +456,26 @@ function Torneos() {
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 99999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
         .modal-content { width: 100%; border: 1px solid var(--accent); }
         .section-title { color: var(--text-dim); font-size: 0.8rem; font-weight: 800; margin-bottom: 5px; }
+        .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
+        .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
       `}</style>
     </div>
   );
 }
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontFamily: 'JetBrains Mono' };
+const selectStyle = { 
+  padding: '10px 15px', 
+  fontSize: '1rem', 
+  background: '#111', 
+  color: 'var(--accent)', 
+  border: '1px solid var(--accent)', 
+  borderRadius: '6px', 
+  outline: 'none',
+  fontWeight: 800,
+  cursor: 'pointer',
+  minWidth: '220px'
+};
+
+const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
 
 export default Torneos;
