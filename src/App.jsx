@@ -17,7 +17,10 @@ import Login from './pages/Login';
 import Plantel from './pages/Plantel';
 import Torneos from './pages/Torneos';
 import ScoutingRivales from './pages/ScoutingRivales';
-import OrigenGoles from './pages/OrigenGoles'; // <--- NUEVA PANTALLA
+import OrigenGoles from './pages/OrigenGoles'; 
+import CreadorTareas from './pages/CreadorTareas';
+import BancoTareas from './pages/BancoTareas';
+import CargaWellness from './pages/CargaWellness';
 
 import './App.css';
 
@@ -158,11 +161,26 @@ function AppLayout() {
               <span style={{ fontSize: '1.2rem' }}>🏃‍♂️</span> {sidebarAbierta && <span>RENDIMIENTO</span>}
             </NavLink>
 
-            {/* ---> NUEVO LINK ACÁ <--- */}
+            <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
+              <span style={{ fontSize: '1.2rem' }}>🌡️</span> {sidebarAbierta && <span>CONTROL WELLNESS</span>}
+            </NavLink>
+
             <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
               <span style={{ fontSize: '1.2rem' }}>⚽</span> {sidebarAbierta && <span>ORIGEN DE GOLES</span>}
             </NavLink>
             
+            {sidebarAbierta && <div style={sidebarGroupTitle}>PLANIFICACIÓN</div>}
+
+            {esEscritura && (
+              <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
+                <span style={{ fontSize: '1.2rem' }}>🎨</span> {sidebarAbierta && <span>CREADOR TÁCTICO</span>}
+              </NavLink>
+            )}
+
+            <NavLink to="/banco-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
+              <span style={{ fontSize: '1.2rem' }}>🗃️</span> {sidebarAbierta && <span>BANCO DE TAREAS</span>}
+            </NavLink>
+
             {sidebarAbierta && <div style={sidebarGroupTitle}>GESTIÓN</div>}
 
             <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
@@ -211,9 +229,10 @@ function AppLayout() {
           <Route path="/plantel" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><Plantel /></ProtectedRoute>} />
           <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><Configuracion /></ProtectedRoute>} /> 
           <Route path="/rendimiento" element={<ProtectedRoute><Rendimiento /></ProtectedRoute>} />
-          
-          {/* ---> NUEVA RUTA ACÁ <--- */}
           <Route path="/origen-goles" element={<ProtectedRoute><OrigenGoles /></ProtectedRoute>} />
+          <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
+          <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><CreadorTareas /></ProtectedRoute>} />
+          <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} />        
         </Routes>
       </main>
 

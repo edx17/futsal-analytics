@@ -24,6 +24,7 @@ function Resumen() {
   const [jugadores, setJugadores] = useState([]);
   const [partidoSeleccionado, setPartidoSeleccionado] = useState(null);
   const [eventosPartido, setEventosPartido] = useState([]);
+  const [wellness, setWellness] = useState([]); 
   
   const [filtroPeriodo, setFiltroPeriodo] = useState('Todos');
   const [tipoMapa, setTipoMapa] = useState('calor');
@@ -42,6 +43,11 @@ function Resumen() {
       setPartidos(p || []);
       const { data: j } = await supabase.from('jugadores').select('*');
       setJugadores(j || []);
+      
+      // Acá capturamos si hay error de RLS
+      const { data: w, error: wError } = await supabase.from('wellness').select('*');
+      if (wError) console.error("⚠️ Error leyendo wellness desde Supabase:", wError);
+      setWellness(w || []);
     }
     obtenerDatos();
   }, []);
@@ -279,6 +285,69 @@ function Resumen() {
     };
   }, [eventosPartido, filtroPeriodo, jugadores]);
 
+  // <-- MOTOR DE WELLNESS BLINDADO Y A PRUEBA DE BOMBAS -->
+  const reporteWellness = useMemo(() => {
+    if (!partidoSeleccionado) return null;
+    
+    // Función "Lava-Fechas": Toma cualquier formato podrido y devuelve un Objeto Date sano local
+    const parseDateLocal = (str) => {
+      if (!str) return null;
+      try {
+        const clean = String(str).trim().split('T')[0]; // Saca todo lo que sea hora o basura
+        let parts = clean.split('-');
+        if (parts.length < 3) parts = clean.split('/'); // Por si viene DD/MM/YYYY
+        if (parts.length < 3) return null;
+        
+        // Determina si es YYYY-MM-DD o DD-MM-YYYY
+        if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        return null;
+      } catch (e) { return null; }
+    };
+
+    const fp = parseDateLocal(partidoSeleccionado.fecha);
+    // Si la fecha del partido no es válida, devolvemos formato vacío
+    if (!fp) return { pre: {rpe:0, fatiga:0, sueno:0, registros:0}, post: {rpe:0, fatiga:0, sueno:0, registros:0}, debug: {} };
+    
+    // 1. Calcular Lunes y domingos matemáticamente a prueba de Timezones
+    const day = fp.getDay(); // Domingo es 0, Lunes es 1...
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    
+    const inicioSemana = new Date(fp.getFullYear(), fp.getMonth(), fp.getDate() + diffToMonday);
+    const finPost = new Date(fp.getFullYear(), fp.getMonth(), fp.getDate() + 2);
+
+    // Formateador visual para ver exactamente de qué a qué busca (Debug In-App)
+    const formatStr = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}`;
+
+    const prePartido = wellness.filter(w => {
+      const fw = parseDateLocal(w.fecha);
+      if (!fw) return false;
+      // .getTime() es el número absoluto de milisegundos. Imposible que falle.
+      return fw.getTime() >= inicioSemana.getTime() && fw.getTime() <= fp.getTime();
+    });
+
+    const postPartido = wellness.filter(w => {
+      const fw = parseDateLocal(w.fecha);
+      if (!fw) return false;
+      return fw.getTime() > fp.getTime() && fw.getTime() <= finPost.getTime();
+    });
+
+    const calcAvg = (arr) => {
+      if (!arr.length) return { rpe: 0, fatiga: 0, sueno: 0, registros: 0 };
+      const rpe = arr.reduce((acc, curr) => acc + (Number(curr.rpe) || 0), 0) / arr.length;
+      const fatiga = arr.reduce((acc, curr) => acc + (Number(curr.fatiga) || 0), 0) / arr.length;
+      const sueno = arr.reduce((acc, curr) => acc + (Number(curr.sueno) || Number(curr.calidad_sueno) || 0), 0) / arr.length;
+      // Devolvemos en string formateado con 1 decimal
+      return { rpe: rpe.toFixed(1), fatiga: fatiga.toFixed(1), sueno: sueno.toFixed(1), registros: arr.length };
+    };
+
+    return { 
+      pre: calcAvg(prePartido), 
+      post: calcAvg(postPartido),
+      debug: { inicio: formatStr(inicioSemana), partido: formatStr(fp), post: formatStr(finPost) }
+    };
+  }, [partidoSeleccionado, wellness]);
+
   const rematesDetalle = useMemo(() => {
     if (!analitica) return [];
     return analitica.evFiltrados
@@ -352,6 +421,23 @@ function Resumen() {
           <div>
             <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>MATCH CENTER</div>
             <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>Seleccioná un partido para acceder al reporte analítico.</div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <div>
+              <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR CATEGORÍA</div>
+              <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
+                <option value="Todas">TODAS</option>
+                {categoriasUnicas.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR COMPETICIÓN</div>
+              <select value={filtroCompeticionGrid} onChange={(e) => setFiltroCompeticionGrid(e.target.value)} style={{ padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
+                <option value="Todas">TODAS</option>
+                {competicionesUnicas.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -486,6 +572,51 @@ function Resumen() {
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Índice de descontrol táctico</div>
              </div>
           </div>
+
+          {/* TARJETA DE WELLNESS - AHORA CON FECHAS CLARAS PARA CONFIRMAR */}
+          {reporteWellness && (
+            <div className="bento-card" style={{ borderTop: '3px solid #10b981' }}>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  🩺 CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios. Si no hay registros muestra 0." />
+                </div>
+                {wellness.length === 0 && (
+                  <span style={{ color: '#ef4444', fontSize: '0.65rem', border: '1px solid #ef4444', padding: '2px 6px', borderRadius: '4px' }}>
+                    ⚠️ TABLA VACÍA O SIN PERMISOS (Revisar BD)
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                
+                <div style={{ background: '#000', padding: '15px', borderRadius: '6px', border: '1px solid #222' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '10px', textAlign: 'center', fontWeight: 'bold' }}>
+                    SEMANA PREVIA <br/>
+                    <span style={{ color: '#10b981', fontSize: '0.65rem' }}>(Del {reporteWellness.debug.inicio} al {reporteWellness.debug.partido})</span>
+                  </div>
+                  <div style={kpiFila}><span>RPE PROMEDIO</span><strong style={{color: '#fff'}}>{reporteWellness.pre.rpe}</strong></div>
+                  <div style={kpiFila}><span>NIVEL FATIGA</span><strong style={{color: '#fff'}}>{reporteWellness.pre.fatiga}</strong></div>
+                  <div style={kpiFila}><span>CALIDAD SUEÑO</span><strong style={{color: '#fff'}}>{reporteWellness.pre.sueno}</strong></div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '10px', textAlign: 'right' }}>
+                    Registros capturados: <span style={{ color: reporteWellness.pre.registros > 0 ? '#10b981' : '#ef4444', fontWeight: 900 }}>{reporteWellness.pre.registros}</span>
+                  </div>
+                </div>
+
+                <div style={{ background: '#000', padding: '15px', borderRadius: '6px', border: '1px solid #222' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '10px', textAlign: 'center', fontWeight: 'bold' }}>
+                    RECUPERACIÓN <br/>
+                    <span style={{ color: '#3b82f6', fontSize: '0.65rem' }}>(Hasta {reporteWellness.debug.post})</span>
+                  </div>
+                  <div style={kpiFila}><span>RPE PROMEDIO</span><strong style={{color: '#fff'}}>{reporteWellness.post.rpe}</strong></div>
+                  <div style={kpiFila}><span>NIVEL FATIGA</span><strong style={{color: '#fff'}}>{reporteWellness.post.fatiga}</strong></div>
+                  <div style={kpiFila}><span>CALIDAD SUEÑO</span><strong style={{color: '#fff'}}>{reporteWellness.post.sueno}</strong></div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '10px', textAlign: 'right' }}>
+                    Registros capturados: <span style={{ color: reporteWellness.post.registros > 0 ? '#3b82f6' : '#ef4444', fontWeight: 900 }}>{reporteWellness.post.registros}</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px' }}>
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>

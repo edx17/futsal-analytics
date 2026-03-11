@@ -3,7 +3,7 @@ import { supabase } from '../supabase';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, Legend, Cell, ReferenceLine, ReferenceArea
+  BarChart, Bar, Legend, Cell, ReferenceLine, ReferenceArea, LineChart, Line
 } from 'recharts';
 
 // --- BIBLIOTECA KINÉSICA (NO TOCAR) ---
@@ -16,17 +16,13 @@ const REHAB_LIB = {
   "escapular": [{ t: "Movilidad Escapular", v: "https://youtube.com/shorts/5j4inxyq-MA?si=TfzdpSnAjLYWkqnZ" }, { t: "Halo Split KB", v: "https://youtube.com/shorts/UARPXzqDNhM?si=j8Ug-37tK0ka8g2v" }, { t: "Pájaros con poleas", v: "https://youtu.be/ki6gkb_mJr0?si=hDASv1MqaavNI3_O" }]
 };
 
-// --- ESTÁNDARES ÉLITE FUTSAL ---
 const ELITE = { musc: 48.5, adip: 9.0, cmj: 55, broad: 2.60, yoyo: 21.0 };
 
-// --- MOTORES MATEMÁTICOS ---
 function getEmbedUrl(url) {
   let videoId = '';
   if (url.includes('youtube.com/shorts/')) videoId = url.split('shorts/')[1].split('?')[0];
   else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1].split('?')[0];
   else if (url.includes('youtube.com/watch?v=')) videoId = url.split('v=')[1].split('&')[0];
-  
-  // Usamos youtube-nocookie para evitar bloqueos de rastreo en navegadores/localhost
   return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
 }
 
@@ -43,14 +39,11 @@ const calcZScore = (val, mean, sd) => {
   return (val - mean) / sd;
 };
 
-// Fórmula aproximada de VO2 Máx basada en Nivel de Yo-Yo IR1/IR2 para mostrar un proxy fisiológico
 const estimarVO2Max = (nivelYoyo) => {
   if (!nivelYoyo) return 'S/D';
-  // Fórmula simplificada de proxy para Futsal: VO2 = (Nivel * 0.84) + 36.4
   return ((nivelYoyo * 0.84) + 36.4).toFixed(1);
 };
 
-// --- COMPONENTE TOOLTIP UX ---
 const InfoBox = ({ texto }) => (
   <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
     <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
@@ -63,21 +56,36 @@ const InfoBox = ({ texto }) => (
 export default function Rendimiento() {
   const [tabActiva, setTabActiva] = useState('global');
   const [datos, setDatos] = useState([]);
+  const [wellnessData, setWellnessData] = useState([]); // NUEVO
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
+      const club_id = localStorage.getItem('club_id') || 'club_default';
+
+      // 1. Datos Físicos Base
       const { data } = await supabase
         .from('rendimiento')
         .select('*, jugadores(nombre, apellido, posicion, dorsal)')
         .order('cmj', { ascending: false });
       if (data) setDatos(data);
+
+      // 2. Datos de Wellness de los últimos 14 días
+      const d14 = new Date(); d14.setDate(d14.getDate() - 14);
+      const fechaCorte = d14.toISOString().split('T')[0];
+      const { data: well } = await supabase
+        .from('wellness')
+        .select('*, jugadores(nombre, apellido, dorsal)')
+        .eq('club_id', club_id)
+        .gte('fecha', fechaCorte)
+        .order('fecha', { ascending: true });
+      if (well) setWellnessData(well);
+
       setLoading(false);
     }
     fetchData();
   }, []);
 
-  // Pre-calcular la estadística poblacional del plantel
   const statsPoblacion = useMemo(() => {
     return {
       cmj: calcularEstadisticasPlantel(datos, 'cmj'),
@@ -93,25 +101,28 @@ export default function Rendimiento() {
   return (
     <div className="fade-in" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', color: '#fff' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: '15px', marginBottom: '25px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: '15px', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '-1px', margin: 0 }}>
             Área Física y Médica
           </h1>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>
-            Análisis de rendimiento, composición corporal Z-Score y prevención.
+            Análisis de rendimiento, composición corporal Z-Score y control de cargas.
           </p>
         </div>
         
-        <div style={{ display: 'flex', gap: '5px', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', gap: '5px', background: 'rgba(0,0,0,0.2)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <button className={`nav-tab ${tabActiva === 'global' ? 'active' : ''}`} onClick={() => setTabActiva('global')}>GLOBAL</button>
           <button className={`nav-tab ${tabActiva === 'comparativa' ? 'active' : ''}`} onClick={() => setTabActiva('comparativa')}>COMPARATIVA</button>
+          {/* NUEVO BOTÓN WELLNESS */}
+          <button className={`nav-tab ${tabActiva === 'wellness' ? 'active' : ''}`} onClick={() => setTabActiva('wellness')} style={{ color: tabActiva === 'wellness' ? '#000' : '#3b82f6', background: tabActiva === 'wellness' ? '#3b82f6' : 'transparent' }}>📊 WELLNESS</button>
           <button className={`nav-tab ${tabActiva === 'individual' ? 'active' : ''}`} onClick={() => setTabActiva('individual')}>FICHA INDIVIDUAL</button>
         </div>
       </div>
 
       {tabActiva === 'global' && <TabGlobal datos={datos} stats={statsPoblacion} />}
       {tabActiva === 'comparativa' && <TabComparativa datos={datos} stats={statsPoblacion} />}
+      {tabActiva === 'wellness' && <TabWellness wellnessData={wellnessData} />}
       {tabActiva === 'individual' && <TabIndividual datos={datos} stats={statsPoblacion} />}
 
       <style>{`
@@ -130,7 +141,82 @@ export default function Rendimiento() {
 }
 
 // -------------------------------------------------------------
-// TAB 1: DETALLE GLOBAL (CON CUADRANTE RIESGO/RENDIMIENTO)
+// NUEVA PESTAÑA: TAB WELLNESS GLOBALES
+// -------------------------------------------------------------
+function TabWellness({ wellnessData }) {
+  // Procesamos los datos para armar la línea de tendencia de los últimos 14 días
+  const trendData = useMemo(() => {
+    const byDate = {};
+    wellnessData.forEach(w => {
+      if(!byDate[w.fecha]) byDate[w.fecha] = { fecha: w.fecha, readTotal: 0, count: 0, rpeTotal: 0, rpeCount: 0 };
+      if(w.readiness_score) { byDate[w.fecha].readTotal += w.readiness_score; byDate[w.fecha].count++; }
+      if(w.rpe) { byDate[w.fecha].rpeTotal += w.rpe; byDate[w.fecha].rpeCount++; }
+    });
+    return Object.values(byDate).map(d => ({
+      fecha: d.fecha.substring(5), // Mostrar solo MM-DD
+      Readiness: d.count ? Math.round(d.readTotal / d.count) : null,
+      RPE: d.rpeCount ? Number((d.rpeTotal / d.rpeCount).toFixed(1)) : null
+    })).sort((a,b) => a.fecha.localeCompare(b.fecha));
+  }, [wellnessData]);
+
+  // Filtramos a los que tienen números rojos hoy o ayer
+  const alertas = wellnessData
+    .filter(w => w.readiness_score <= 60 || w.rpe >= 8)
+    .sort((a,b) => new Date(b.fecha) - new Date(a.fecha))
+    .slice(0, 8); 
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '20px', alignItems: 'start' }}>
+      
+      <div className="glass-panel" style={{ padding: '20px', height: '400px' }}>
+        <h3 className="section-header" style={{ color: '#3b82f6' }}>CURVA DE FATIGA Y RECUPERACIÓN (ÚLT 14 DÍAS)</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+            <XAxis dataKey="fecha" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
+            <YAxis yAxisId="left" domain={[0, 100]} stroke="#3b82f6" tick={{ fill: '#3b82f6', fontSize: 11 }} />
+            <YAxis yAxisId="right" orientation="right" domain={[0, 10]} stroke="#ef4444" tick={{ fill: '#ef4444', fontSize: 11 }} />
+            <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+            <Legend wrapperStyle={{ fontSize: '11px', color: '#fff' }} />
+            <Line yAxisId="left" type="monotone" dataKey="Readiness" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} name="Readiness (0-100)" />
+            <Line yAxisId="right" type="monotone" dataKey="RPE" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} name="Esfuerzo RPE (0-10)" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="glass-panel" style={{ padding: '20px', borderTop: '4px solid #ef4444', minHeight: '400px' }}>
+        <h3 className="section-header" style={{ color: '#ef4444', borderBottom: 'none' }}>🚨 ALERTAS ROJAS RECIENTES</h3>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '-10px', marginBottom: '15px' }}>Jugadores con RPE muy alto ({'>'}8) o bajo Readiness ({'<'}60).</p>
+        
+        {alertas.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px 10px', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
+            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>✅</span>
+            Plantel en óptimas condiciones de recuperación.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '280px', overflowY: 'auto', paddingRight: '5px' }}>
+            {alertas.map(a => (
+              <div key={a.id} style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '6px', borderLeft: `3px solid ${a.readiness_score <= 50 ? '#ef4444' : '#f59e0b'}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                  <strong style={{ color: '#fff', fontSize: '0.9rem' }}>{a.jugadores?.apellido} {a.jugadores?.nombre}</strong>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{a.fecha.substring(5)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '15px', fontSize: '0.8rem' }}>
+                  {a.readiness_score && <span style={{ color: a.readiness_score <= 60 ? '#ef4444' : '#aaa' }}>Readiness: {a.readiness_score}</span>}
+                  {a.rpe && <span style={{ color: a.rpe >= 8 ? '#ef4444' : '#aaa' }}>RPE: {a.rpe}/10</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// TAB 1: DETALLE GLOBAL
 // -------------------------------------------------------------
 function TabGlobal({ datos, stats }) {
   const riesgoAsimetria = datos.filter(d => Math.abs(d.asym_cmj) > 10 || Math.abs(d.asym_br) > 10);
@@ -143,16 +229,14 @@ function TabGlobal({ datos, stats }) {
     { subject: 'Adiposidad Inversa', Equipo: 30 - stats.adip.mean, Elite: 30 - ELITE.adip }
   ];
 
-  // Cuadrante: Eje X = Potencia (CMJ), Eje Y = Riesgo Lesional (Máxima asimetría absoluta)
   const cuadranteData = datos.filter(d => d.cmj != null).map(d => ({
     x: d.cmj,
     y: Math.max(Math.abs(d.asym_cmj || 0), Math.abs(d.asym_br || 0)),
     name: d.jugadores?.apellido || 'N/A'
   }));
 
-  // Umbrales para dividir el cuadrante
   const umbralCMJ = stats.cmj.mean; 
-  const umbralRiesgo = 10; // 10% de asimetría es la bandera roja clínica
+  const umbralRiesgo = 10;
 
   return (
     <div>
@@ -202,14 +286,10 @@ function TabGlobal({ datos, stats }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#222" />
               <XAxis type="number" dataKey="x" name="Potencia (CMJ)" unit="cm" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
               <YAxis type="number" dataKey="y" name="Asimetría Máxima" unit="%" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
-              
-              {/* Fondos de colores para los 4 cuadrantes */}
-              <ReferenceArea x1={umbralCMJ} y1={0} y2={umbralRiesgo} fill="#10b981" fillOpacity={0.05} /> {/* Élite: Sano y Fuerte */}
-              <ReferenceArea x1={0} x2={umbralCMJ} y1={umbralRiesgo} fill="#ef4444" fillOpacity={0.05} /> {/* Riesgo: Débil y Asimétrico */}
-              
+              <ReferenceArea x1={umbralCMJ} y1={0} y2={umbralRiesgo} fill="#10b981" fillOpacity={0.05} />
+              <ReferenceArea x1={0} x2={umbralCMJ} y1={umbralRiesgo} fill="#ef4444" fillOpacity={0.05} />
               <ReferenceLine x={umbralCMJ} stroke="#555" strokeDasharray="3 3" />
               <ReferenceLine y={umbralRiesgo} stroke="#ef4444" strokeDasharray="3 3" />
-              
               <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} formatter={(value, name) => [value, name === 'x' ? 'CMJ (cm)' : 'Asimetría (%)']} labelFormatter={() => ''} />
               <Scatter name="Jugadores" data={cuadranteData} fill="#3b82f6">
                 {cuadranteData.map((entry, index) => (
@@ -244,10 +324,10 @@ function TabGlobal({ datos, stats }) {
 }
 
 // -------------------------------------------------------------
-// TAB 2: COMPARATIVA AVANZADA (CON PERFILADO POR POSICIÓN)
+// TAB 2: COMPARATIVA AVANZADA
 // -------------------------------------------------------------
 function TabComparativa({ datos, stats }) {
-  const [modo, setModo] = useState('jugadores'); // 'jugadores' | 'posicion'
+  const [modo, setModo] = useState('jugadores'); 
   const [jugadoresSeleccionados, setJugadoresSeleccionados] = useState(['', '', '', '']);
 
   const setJugador = (index, val) => {
@@ -258,12 +338,10 @@ function TabComparativa({ datos, stats }) {
 
   const activos = jugadoresSeleccionados.filter(id => id !== '').map(id => datos.find(d => d.id_jugador === parseInt(id))).filter(Boolean);
 
-  // Armado de datos para Jugadores Individuales
   const dataCmj = activos.map(a => ({ name: a.jugadores?.apellido, Derecha: a.cmj_de || 0, Izquierda: a.cmj_iz || 0 }));
   const dataBroad = activos.map(a => ({ name: a.jugadores?.apellido, Derecha: a.broad_de || 0, Izquierda: a.broad_iz || 0 }));
   const dataYoyo = activos.map(a => ({ name: a.jugadores?.apellido, Nivel: a.y26 || a.y25 || 0 }));
 
-  // Armado de datos por Posición
   const posAgrupadas = useMemo(() => {
     const grupos = {};
     datos.forEach(d => {
@@ -395,7 +473,7 @@ function TabComparativa({ datos, stats }) {
 }
 
 // -------------------------------------------------------------
-// TAB 3: FICHA INDIVIDUAL (HUELLA ATLÉTICA Y VO2 MÁX)
+// TAB 3: FICHA INDIVIDUAL
 // -------------------------------------------------------------
 function TabIndividual({ datos, stats }) {
   const [seleccionadoId, setSeleccionadoId] = useState('');
@@ -442,22 +520,20 @@ function TabIndividual({ datos, stats }) {
     </div>
   );
 
-  // Normalización para Radar (Huella Atlética): 0 a 100 donde 50 es la media del plantel
   const radarNormalizado = useMemo(() => {
     if (!jugador) return [];
     const norm = (z, invert = false) => {
       let finalZ = invert ? -z : z;
-      return Math.max(0, Math.min(100, 50 + (finalZ * 20))); // Z=0 -> 50, Z=2.5 -> 100
+      return Math.max(0, Math.min(100, 50 + (finalZ * 20))); 
     };
     
     const asymMax = Math.max(Math.abs(jugador.asym_cmj || 0), Math.abs(jugador.asym_br || 0));
-    // Simetría: 0% = 100, 10% = 50, 20% = 0
     const simetriaScore = Math.max(0, 100 - (asymMax * 5));
 
     return [
       { subject: 'Potencia', A: norm(calcZScore(jugador.cmj, stats.cmj.mean, stats.cmj.sd)) },
       { subject: 'Aeróbico', A: norm(calcZScore(jugador.y26 || jugador.y25, stats.yoyo.mean, stats.yoyo.sd)) },
-      { subject: 'Composición', A: norm(calcZScore(jugador.adip, stats.adip.mean, stats.adip.sd), true) }, // Inverso
+      { subject: 'Composición', A: norm(calcZScore(jugador.adip, stats.adip.mean, stats.adip.sd), true) }, 
       { subject: 'Simetría', A: simetriaScore }
     ];
   }, [jugador, stats]);
@@ -482,13 +558,7 @@ function TabIndividual({ datos, stats }) {
               <KpiRow label="Asimetría CMJ" value={`${jugador.asym_cmj}%`} />
               <ZScoreRow label="Broad Jump" value={`${jugador.broad} m`} valRaw={jugador.broad} statType="broad" />
               <KpiRow label="Asimetría Broad" value={`${jugador.asym_br}%`} />
-              <ZScoreRow 
-                label="Yo-Yo Test" 
-                value={jugador.y26 || jugador.y25 || 'S/D'} 
-                valRaw={jugador.y26 || jugador.y25} 
-                statType="yoyo" 
-                extraInfo={`VO2 Máx Estimado: ${estimarVO2Max(jugador.y26 || jugador.y25)} ml/kg/min`}
-              />
+              <ZScoreRow label="Yo-Yo Test" value={jugador.y26 || jugador.y25 || 'S/D'} valRaw={jugador.y26 || jugador.y25} statType="yoyo" extraInfo={`VO2 Máx Estimado: ${estimarVO2Max(jugador.y26 || jugador.y25)} ml/kg/min`} />
             </div>
 
             <h3 className="section-header" style={{ color: 'var(--text-main)', marginTop: '30px' }}>HUELLA ATLÉTICA</h3>
@@ -547,14 +617,7 @@ function TabIndividual({ datos, stats }) {
                     {videosRecomendados.map((vid, idx) => (
                       <div key={idx} style={{ background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                         <div style={{ fontSize: '0.8rem', marginBottom: '8px', color: '#fff', fontWeight: 600 }}>{vid.t}</div>
-                        <iframe 
-                          src={getEmbedUrl(vid.v)} 
-                          style={{ width: '100%', height: '140px', borderRadius: '4px' }} 
-                          frameBorder="0" 
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                          allowFullScreen
-                          title={vid.t}
-                        ></iframe>
+                        <iframe src={getEmbedUrl(vid.v)} style={{ width: '100%', height: '140px', borderRadius: '4px' }} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={vid.t}></iframe>
                       </div>
                     ))}
                   </div>
