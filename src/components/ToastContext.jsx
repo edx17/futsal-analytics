@@ -1,30 +1,32 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
-// 1. Creamos el Contexto
-const ToastContext = createContext();
+const ToastContext = createContext(null); // Empezamos en null para detectar errores
 
-// 2. Hook personalizado para usarlo fácil en cualquier lado
-export const useToast = () => useContext(ToastContext);
+export const useToast = () => {
+  const context = useContext(ToastContext);
+  if (!context) {
+    // Esto te va a decir en la consola si el problema es de ubicación
+    throw new Error("useToast debe usarse dentro de un ToastProvider. Revisá que el componente esté envuelto en App.jsx");
+  }
+  return context;
+};
 
-// 3. El Provider que envuelve la app
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const showToast = useCallback((message, type = 'success') => {
-    const id = Date.now(); // ID único rápido
+    const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
 
-    // Auto-eliminar después de 3 segundos
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
   }, []);
 
-  const removeToast = (id) => {
+  const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  // Diccionario de colores y símbolos según el tipo
   const getToastStyle = (type) => {
     switch (type) {
       case 'success': return { color: '#00ff88', icon: '✓', border: '#00ff88' };
@@ -35,10 +37,10 @@ export const ToastProvider = ({ children }) => {
   };
 
   return (
+    // IMPORTANTE: Pasamos un objeto con showToast
     <ToastContext.Provider value={{ showToast }}>
       {children}
       
-      {/* Contenedor fijo donde se renderizan los Toasts */}
       <div className="toast-wrapper">
         <style>{`
           .toast-wrapper {
@@ -48,8 +50,8 @@ export const ToastProvider = ({ children }) => {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            z-index: 999999;
-            pointer-events: none; /* Para no bloquear clics atrás si está vacío */
+            z-index: 9999999; /* Un número bien alto */
+            pointer-events: none;
           }
           .toast-item {
             background: #111;
@@ -61,18 +63,14 @@ export const ToastProvider = ({ children }) => {
             gap: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.8);
             pointer-events: auto;
-            animation: slideInBottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
             min-width: 250px;
             max-width: 350px;
             cursor: pointer;
-            transition: transform 0.2s, opacity 0.2s;
           }
-          .toast-item:hover {
-            opacity: 0.8;
-          }
-          @keyframes slideInBottom {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+          @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
           }
         `}</style>
         
@@ -83,12 +81,12 @@ export const ToastProvider = ({ children }) => {
               key={t.id} 
               className="toast-item" 
               style={{ borderLeft: `4px solid ${config.border}` }}
-              onClick={() => removeToast(t.id)} // Click para cerrar antes
+              onClick={() => removeToast(t.id)}
             >
               <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: `${config.color}22`, color: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, flexShrink: 0 }}>
                 {config.icon}
               </div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, lineHeight: 1.3 }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
                 {t.message}
               </div>
             </div>
