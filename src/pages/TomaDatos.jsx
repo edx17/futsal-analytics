@@ -110,6 +110,16 @@ function TomaDatos() {
     cargarDatos();
   }, [partido]);
 
+  // --- LÓGICA DE DESHACER (BOTÓN DE PÁNICO) ---
+  const deshacerUltimaAccion = async () => {
+    if (eventos.length === 0) return;
+    const ultimoEvento = eventos[eventos.length - 1];
+    
+    // Usamos tu lógica de eliminación directamente
+    await eliminarEvento(ultimoEvento.id);
+    showToast(`Deshecho: ${ultimoEvento.accion}`, "info");
+  };
+
   const manejarCambioPeriodo = (e) => {
     const nuevo = e.target.value;
     setPeriodo(nuevo);
@@ -117,7 +127,6 @@ function TomaDatos() {
     if (nuevo === 'PT' && periodo === 'ST') setDireccionAtaque('derecha');
   };
 
-  // --- NUEVO: CÁLCULOS EN VIVO (MARCADOR Y MINI-RESUMEN) ---
   const statsEnVivo = useMemo(() => {
     const stats = {
       golesMios: 0, golesRival: 0,
@@ -144,7 +153,6 @@ function TomaDatos() {
     return stats;
   }, [eventos]);
 
-  // --- LOGICA DE REGISTRO NORMAL ---
   const registrarToque = (e) => {
     setPanelAbierto(true);
     const rect = pitchRef.current.getBoundingClientRect();
@@ -163,12 +171,11 @@ function TomaDatos() {
     setTabActiva('registro'); 
   };
 
-  // --- LOGICA DE REGISTRO RÁPIDO (ABP) ---
   const triggerABP = (acc, x, y) => {
     setPanelAbierto(true); 
     setPanelLateral({ activo: true, x, y });
     setAccion(acc);
-    setPasoRegistro(4); // PASO 4: Confirmación rápida de equipo
+    setPasoRegistro(4); 
     setAutorGol(null);
     setAutorAsistencia(null);
     setMenuActivo(null);
@@ -181,7 +188,6 @@ function TomaDatos() {
     setMenuActivo(null);
   };
 
-  // GUARDADO RÁPIDO PARA ABP (SIN JUGADOR)
   const guardarEventoRapido = async (equipoSeleccionado) => {
     let dbX = panelLateral.x;
     let dbY = panelLateral.y;
@@ -189,9 +195,7 @@ function TomaDatos() {
       dbX = 100 - dbX;
       dbY = 100 - dbY;
     }
-
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
-
     const evento = {
       club_id: clubId, 
       id_partido: partido.id,
@@ -202,47 +206,35 @@ function TomaDatos() {
       periodo: periodo, minuto: minuto,
       quinteto_activo: quintetoActual
     };
-
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
-
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert([evento]).select();
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
     } else {
       showToast("Error de red al guardar el evento rápido.", "error");
-      console.error("Error de Supabase:", error);
     }
   };
 
-  // GUARDADO DE ACCIONES COMUNES Y FLUJO DE GOL
   const guardarEventoFinal = async (jugadorId) => {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
-
-    // Si estamos en Paso 2 y fue Gol, guardamos el autor y avanzamos al Paso 3 (Asistencia)
     if (pasoRegistro === 2 && accion === 'Remate - Gol') {
       setAutorGol(jugadorId);
       setPasoRegistro(3); 
       return; 
     }
-
-    // Si estamos en Paso 3 y fue Gol, guardamos la asistencia y avanzamos al Paso 5 (Origen)
     if (pasoRegistro === 3 && accion === 'Remate - Gol') {
       setAutorAsistencia(jugadorId);
       setPasoRegistro(5); 
       return; 
     }
-
-    // LÓGICA PARA EL RESTO DE ACCIONES (Remates, Faltas, Recuperaciones, etc.)
     let dbX = panelLateral.x;
     let dbY = panelLateral.y;
     if (direccionAtaque === 'izquierda') {
       dbX = 100 - dbX;
       dbY = 100 - dbY;
     }
-
     const finalEquipo = jugadorId === null && pasoRegistro === 2 ? 'Rival' : equipo;
-    
     const evento = {
       club_id: clubId, 
       id_partido: partido.id, 
@@ -255,20 +247,16 @@ function TomaDatos() {
       minuto: minuto, 
       quinteto_activo: quintetoActual
     };
-
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
-    
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert([evento]).select();
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
     } else {
       showToast("Error de red al guardar el evento.", "error");
-      console.error("Error de Supabase:", error);
     }
   };
 
-  // FINALIZADOR ESPECÍFICO DEL GOL (Paso 5)
   const finalizarRegistroGol = async (origenContexto) => {
     let dbX = panelLateral.x;
     let dbY = panelLateral.y;
@@ -276,11 +264,8 @@ function TomaDatos() {
       dbX = 100 - dbX;
       dbY = 100 - dbY;
     }
-
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
     const eventosAInsertar = [];
-
-    // 1. Insertar el Evento del Gol con su Origen
     eventosAInsertar.push({
       club_id: clubId, 
       id_partido: partido.id, 
@@ -294,8 +279,6 @@ function TomaDatos() {
       quinteto_activo: quintetoActual,
       origen_gol: origenContexto 
     });
-
-    // 2. Insertar la asistencia (si la hubo)
     if (autorAsistencia) {
       eventosAInsertar.push({
         club_id: clubId, 
@@ -310,20 +293,16 @@ function TomaDatos() {
         quinteto_activo: quintetoActual
       });
     }
-
-    // Resetear todo
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
     setAutorGol(null);
     setAutorAsistencia(null);
-    
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
       showToast("¡Gol registrado en la base de datos!", "success");
     } else {
       showToast("Error de red al guardar el gol.", "error");
-      console.error("Error de Supabase:", error);
     }
   };
 
@@ -343,7 +322,6 @@ function TomaDatos() {
       setIsDeleting(true);
       const { error } = await supabase.from('eventos').delete().eq('id', idEvento);
       if (error) throw error;
-      showToast("Evento eliminado", "info");
     } catch (error) {
       setEventos(prev => [...prev, eventoBackup]);
       showToast("Error de red: No se pudo eliminar el evento.", "error");
@@ -354,7 +332,6 @@ function TomaDatos() {
 
   const confirmarEdicion = async () => {
     if (!eventoEditando) return;
-    
     try {
       const esGol = eventoEditando.accion === 'Remate - Gol' || eventoEditando.accion === 'Gol';
       const payload = {
@@ -365,15 +342,12 @@ function TomaDatos() {
         accion: eventoEditando.accion,
         origen_gol: esGol ? eventoEditando.origen_gol : null
       };
-
       const { error } = await supabase.from('eventos').update(payload).eq('id', eventoEditando.id);
       if (error) throw error;
-
       setEventos(prev => prev.map(e => e.id === eventoEditando.id ? { ...e, ...payload } : e));
       showToast("Evento modificado correctamente", "success");
     } catch (error) {
       showToast("Error de red: No se pudo modificar el evento.", "error");
-      console.error(error);
     } finally {
       setEventoEditando(null); 
     }
@@ -384,25 +358,21 @@ function TomaDatos() {
     const jSale = jugadoresEnCancha.find(j => j.id == saleId);
     const jEntra = jugadoresEnBanco.find(j => j.id == entraId);
     if (!jSale || !jEntra) return;
-
     const evtSalida = {
       club_id: clubId, 
       id_partido: partido.id, id_jugador: jSale.id, accion: 'Cambio', equipo: 'Propio',
       periodo: periodo, minuto: minuto, id_receptor: jEntra.id,
       quinteto_activo: jugadoresEnCancha.map(j => j.id)
     };
-
     setJugadoresEnCancha(prev => [...prev.filter(j => j.id != saleId), jEntra]);
     setJugadoresEnBanco(prev => [...prev.filter(j => j.id != entraId), jSale]);
     setModalCambio(false); setSaleId(''); setEntraId('');
-
     const { data: cambioGuardado, error } = await supabase.from('eventos').insert([evtSalida]).select();
     if (cambioGuardado) {
       setEventos(prev => [...prev, ...cambioGuardado]);
       showToast("Cambio registrado", "info");
     } else {
        showToast("Error al guardar el cambio", "error");
-       console.error("Error de Supabase:", error);
     }
   };
 
@@ -436,11 +406,34 @@ function TomaDatos() {
             </button>
             <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               TRACKER // vs {partido.rival.toUpperCase()}
-              {/* ACA ESTÁ EL NUEVO MARCADOR EN VIVO */}
-              <div style={{ background: '#111', padding: '4px 12px', borderRadius: '4px', border: '1px solid #333', fontSize: '1.2rem', fontFamily: 'JetBrains Mono', display: 'flex', gap: '10px' }}>
-                <span style={{ color: 'var(--accent)' }} title="Goles Propios">{statsEnVivo.golesMios}</span>
+              <div style={{ background: '#111', padding: '4px 12px', borderRadius: '4px', border: '1px solid #333', fontSize: '1.2rem', fontFamily: 'JetBrains Mono', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ color: 'var(--accent)' }}>{statsEnVivo.golesMios}</span>
                 <span style={{ color: '#555' }}>-</span>
-                <span style={{ color: '#ef4444' }} title="Goles Rival">{statsEnVivo.golesRival}</span>
+                <span style={{ color: '#ef4444' }}>{statsEnVivo.golesRival}</span>
+
+                {/* BOTÓN DESHACER AL LADO DEL MARCADOR */}
+                <button 
+                  onClick={deshacerUltimaAccion}
+                  disabled={eventos.length === 0 || isDeleting}
+                  title="Deshacer última acción"
+                  style={{ 
+                    marginLeft: '15px',
+                    background: '#ef444422',
+                    border: '1px solid #ef4444',
+                    color: '#ef4444',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1rem',
+                    opacity: eventos.length === 0 ? 0.3 : 1
+                  }}
+                >
+                  ↩
+                </button>
               </div>
             </div>
           </div>
@@ -455,11 +448,41 @@ function TomaDatos() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setPanelAbierto(!panelAbierto)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>{panelAbierto ? "OCULTAR" : "MOSTRAR"} PANEL</button>
             <button onClick={() => setModalCambio(true)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>CAMBIOS</button>
+            
+            {/* RELOJ CON MODIFICACIÓN MANUAL */}
             <div style={relojContainer}>
               <button onClick={() => setRelojCorriendo(!relojCorriendo)} style={btnPlay}>{relojCorriendo ? '⏸' : '▶'}</button>
-              <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px', color: 'var(--accent)', fontWeight: 800 }}>
-                {String(minuto).padStart(2,'0')}:{String(segundos).padStart(2,'0')}
+              
+              <div style={{ display: 'flex', alignItems: 'center', padding: '0 5px', color: '#ffffff', fontWeight: 800 }}>
+                {/* INPUT MINUTOS */}
+                <input 
+                  type="number"
+                  value={minuto}
+                  onChange={(e) => setMinuto(Math.max(0, parseInt(e.target.value) || 0))}
+                  onFocus={() => setRelojCorriendo(false)} // Pausa automática al editar
+                  style={{ 
+                    background: 'transparent', border: 'none', color: '#ffffff', 
+                    width: '35px', textAlign: 'right', fontSize: '1.2rem', 
+                    fontFamily: 'monospace', fontWeight: 800, outline: 'none',
+                    padding: 0, margin: 0, WebkitAppearance: 'none', MozAppearance: 'textfield'
+                  }}
+                />
+                <span>:</span>
+                {/* INPUT SEGUNDOS */}
+                <input 
+                  type="number"
+                  value={segundos}
+                  onChange={(e) => setSegundos(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  onFocus={() => setRelojCorriendo(false)} // Pausa automática al editar
+                  style={{ 
+                    background: 'transparent', border: 'none', color: '#ffffff', 
+                    width: '35px', textAlign: 'left', fontSize: '1.2rem', 
+                    fontFamily: 'monospace', fontWeight: 800, outline: 'none',
+                    padding: 0, margin: 0, WebkitAppearance: 'none', MozAppearance: 'textfield'
+                  }}
+                />
               </div>
+
               <select value={periodo} onChange={manejarCambioPeriodo} style={{ background: 'transparent', border: 'none', color: '#888' }}>
                 <option value="PT">PT</option><option value="ST">ST</option>
               </select>
@@ -469,7 +492,6 @@ function TomaDatos() {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
           
-          {/* NUEVO DASHBOARD EN VIVO ARRIBA DE LA CANCHA */}
           <div style={{ display: 'flex', gap: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 20px', borderRadius: '6px', border: '1px solid var(--border)', marginBottom: '15px' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800 }}>REMATES PROPIOS</div>
@@ -490,6 +512,7 @@ function TomaDatos() {
             <button onClick={() => triggerABP('Córner', 100, 100)} style={{...abpBtn, bottom: '-25px', right: '-25px', color: '#f97316', borderColor: '#f97316'}}>C</button>
 
             <button onClick={() => triggerABP('Lateral', 12.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(12.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
+            <button onClick={() => triggerABP('Lateral', 37.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(37.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
             <button onClick={() => triggerABP('Lateral', 37.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(37.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
             <button onClick={() => triggerABP('Lateral', 62.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(62.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
             <button onClick={() => triggerABP('Lateral', 87.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(87.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
@@ -513,7 +536,6 @@ function TomaDatos() {
               {eventos.filter(e => e.zona_x !== null).map((ev, index, arr) => {
                 const renderX = direccionAtaque === 'derecha' ? ev.zona_x : 100 - ev.zona_x;
                 const renderY = direccionAtaque === 'derecha' ? ev.zona_y : 100 - ev.zona_y;
-                // ACA CALCULAMOS SI ES EL ÚLTIMO EVENTO (EL MÁS RECIENTE) PARA RESALTARLO
                 const esUltimo = index === arr.length - 1;
 
                 return (
@@ -702,14 +724,12 @@ function TomaDatos() {
                   {pasoRegistro === 5 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
                       <div className="stat-label" style={{ color: '#00ff88', marginBottom: '5px' }}>¿CÓMO SE GESTÓ EL GOL?</div>
-                      
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <BotonAccion label="A. POSICIONAL" color="#fff" onClick={() => finalizarRegistroGol('Ataque Posicional')} />
                         <BotonAccion label="CONTRAATAQUE" color="#fff" onClick={() => finalizarRegistroGol('Contraataque')} />
                         <BotonAccion label="RECUP. ALTA" color="#fff" onClick={() => finalizarRegistroGol('Recuperación Alta')} />
                         <BotonAccion label="ERROR RIVAL" color="#fff" onClick={() => finalizarRegistroGol('Error No Forzado')} />
                       </div>
-                      
                       <div className="stat-label" style={{ color: 'var(--text-dim)', marginTop: '10px', marginBottom: '5px' }}>PELOTA PARADA (ABP)</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <BotonAccion label="CÓRNER" color="#f97316" onClick={() => finalizarRegistroGol('Córner')} />
@@ -730,8 +750,6 @@ function TomaDatos() {
         <div style={overlayStyle}>
           <div style={modalIndustrial}>
             <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>EDITAR EVENTO</div>
-            
-            {/* TIEMPO */}
             <div style={{ marginBottom: '15px' }}>
                 <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>PERÍODO Y MINUTO</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -741,102 +759,6 @@ function TomaDatos() {
                   <input type="number" value={eventoEditando.minuto} onChange={e => setEventoEditando({...eventoEditando, minuto: e.target.value})} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', border: '1px solid #444' }} />
                 </div>
             </div>
-            
-            {/* EQUIPO */}
-            <div style={{ marginBottom: '15px' }}>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>EQUIPO</label>
-                <select 
-                  value={eventoEditando.equipo} 
-                  onChange={e => {
-                    const nuevoEquipo = e.target.value;
-                    setEventoEditando({
-                      ...eventoEditando, 
-                      equipo: nuevoEquipo,
-                      // Si pasa a rival, borramos el jugador asociado (para no cruzar datos)
-                      id_jugador: nuevoEquipo === 'Rival' ? null : eventoEditando.id_jugador
-                    });
-                  }} 
-                  style={{ width: '100%', padding: '10px', background: '#111', color: '#fff', border: '1px solid #444' }}
-                >
-                  <option value="Propio">MI EQUIPO</option>
-                  <option value="Rival">RIVAL</option>
-                </select>
-            </div>
-
-            {/* JUGADOR */}
-            <div style={{ marginBottom: '15px' }}>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>JUGADOR ASIGNADO</label>
-                <select 
-                  value={eventoEditando.id_jugador || ''} 
-                  onChange={e => setEventoEditando({...eventoEditando, id_jugador: e.target.value || null})} 
-                  disabled={eventoEditando.equipo === 'Rival'}
-                  style={{ width: '100%', padding: '10px', background: '#111', color: '#fff', border: '1px solid #444', opacity: eventoEditando.equipo === 'Rival' ? 0.5 : 1 }}
-                >
-                  <option value="">SIN JUGADOR ASIGNADO</option>
-                  {todosLosJugadores.map(j => <option key={j.id} value={j.id}>{j.dorsal} - {j.apellido || j.nombre}</option>)}
-                </select>
-            </div>
-
-            {/* ACCIÓN */}
-            <div style={{ marginBottom: '15px' }}>
-                <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>ACCIÓN</label>
-                <select 
-                  value={eventoEditando.accion} 
-                  onChange={e => setEventoEditando({...eventoEditando, accion: e.target.value})} 
-                  style={{ width: '100%', padding: '10px', background: '#111', color: getColorAccion(eventoEditando.accion), fontWeight: 'bold', border: '1px solid #444' }}
-                >
-                  <optgroup label="Finalización">
-                    <option value="Remate - Gol">GOL</option>
-                    <option value="Remate - Atajado">REMATE ATAJADO</option>
-                    <option value="Remate - Desviado">REMATE DESVIADO</option>
-                    <option value="Remate - Rebatido">REMATE REBATIDO</option>
-                    <option value="Asistencia">ASISTENCIA</option>
-                  </optgroup>
-                  <optgroup label="Posesión y Duelos">
-                    <option value="Recuperación">RECUPERACIÓN</option>
-                    <option value="Pérdida">PÉRDIDA</option>
-                    <option value="Duelo DEF Ganado">DUELO DEF GANADO</option>
-                    <option value="Duelo DEF Perdido">DUELO DEF PERDIDO</option>
-                    <option value="Duelo OFE Ganado">DUELO OFE GANADO</option>
-                    <option value="Duelo OFE Perdido">DUELO OFE PERDIDO</option>
-                  </optgroup>
-                  <optgroup label="Disciplina y ABP">
-                    <option value="Falta cometida">FALTA COMETIDA</option>
-                    <option value="Tarjeta Amarilla">TARJETA AMARILLA</option>
-                    <option value="Tarjeta Roja">TARJETA ROJA</option>
-                    <option value="Lateral">LATERAL</option>
-                    <option value="Córner">CÓRNER</option>
-                    <option value="Tiro Libre">TIRO LIBRE</option>
-                    <option value="Penal / Sexta Falta">PENAL</option>
-                  </optgroup>
-                  <optgroup label="Otros">
-                    <option value="Cambio">CAMBIO DE JUGADOR</option>
-                  </optgroup>
-                </select>
-            </div>
-
-            {/* ORIGEN DEL GOL (Condicional: Solo si la acción es GOL) */}
-            {(eventoEditando.accion === 'Remate - Gol' || eventoEditando.accion === 'Gol') && (
-              <div style={{ marginBottom: '20px' }}>
-                  <label style={{ fontSize: '0.7rem', color: 'var(--accent)', display: 'block', marginBottom: '5px' }}>ORIGEN DEL GOL</label>
-                  <select 
-                    value={eventoEditando.origen_gol || 'No Especificado'} 
-                    onChange={e => setEventoEditando({...eventoEditando, origen_gol: e.target.value})} 
-                    style={{ width: '100%', padding: '10px', background: '#111', color: 'var(--accent)', border: '1px solid var(--accent)' }}
-                  >
-                    <option value="No Especificado">NO ESPECIFICADO</option>
-                    <option value="Ataque Posicional">ATAQUE POSICIONAL</option>
-                    <option value="Contraataque">CONTRAATAQUE</option>
-                    <option value="Recuperación Alta">RECUPERACIÓN ALTA</option>
-                    <option value="Error No Forzado">ERROR NO FORZADO / RIVAL</option>
-                    <option value="Córner">CÓRNER</option>
-                    <option value="Lateral">LATERAL</option>
-                    <option value="Tiro Libre">TIRO LIBRE</option>
-                    <option value="Penal / Sexta Falta">PENAL</option>
-                  </select>
-              </div>
-            )}
-
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setEventoEditando(null)} className="btn-action" style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={confirmarEdicion} className="btn-action" style={{ flex: 1, padding: '10px', background: 'var(--accent)', color: '#000', fontWeight: 'bold', cursor: 'pointer' }}>GUARDAR CAMBIOS</button>
