@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 
+// IMPORTAMOS EL HOOK DE NOTIFICACIONES
+import { useToast } from '../components/ToastContext';
+
 function Plantel() {
   const [jugadores, setJugadores] = useState([]);
   const [mostrarModalAlta, setMostrarModalAlta] = useState(false);
@@ -10,6 +13,7 @@ function Plantel() {
   const [ordenAscendente, setOrdenAscendente] = useState(true);
 
   const clubId = localStorage.getItem('club_id');
+  const { showToast } = useToast(); // INICIALIZAMOS TOAST
 
   const estadoInicial = {
     nombre: '', apellido: '', dorsal: '', posicion: 'Ala', categoria: 'Primera',
@@ -31,7 +35,7 @@ function Plantel() {
 
   const handleGuardarJugador = async () => {
     if (!formData.nombre || !formData.dorsal) {
-      alert("El nombre y el dorsal son obligatorios.");
+      showToast("El nombre y el dorsal son obligatorios.", "warning");
       return;
     }
 
@@ -41,17 +45,17 @@ function Plantel() {
     if (formData.id) {
       const { error } = await supabase.from('jugadores').update(payload).eq('id', formData.id);
       if (!error) {
-        alert("Jugador actualizado");
+        showToast("Jugador actualizado con éxito", "success");
         setMostrarModalAlta(false);
         fetchJugadores();
-      } else alert("Error al actualizar: " + error.message);
+      } else showToast("Error al actualizar: " + error.message, "error");
     } else {
       const { error } = await supabase.from('jugadores').insert([payload]);
       if (!error) {
-        alert("Jugador creado");
+        showToast("Jugador creado con éxito", "success");
         setMostrarModalAlta(false);
         fetchJugadores();
-      } else alert("Error al crear: " + error.message);
+      } else showToast("Error al crear: " + error.message, "error");
     }
   };
 
@@ -68,8 +72,11 @@ function Plantel() {
   const eliminarJugador = async (id) => {
     if(window.confirm("¿Seguro que querés eliminar a este jugador? Esto podría afectar las estadísticas de partidos pasados.")){
       const { error } = await supabase.from('jugadores').delete().eq('id', id);
-      if(!error) fetchJugadores();
-      else alert("Error al eliminar: " + error.message);
+      if(!error) {
+        showToast("Jugador eliminado", "info");
+        fetchJugadores();
+      }
+      else showToast("Error al eliminar: " + error.message, "error");
     }
   };
 

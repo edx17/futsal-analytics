@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// IMPORTAMOS EL HOOK DE NOTIFICACIONES
+import { useToast } from '../components/ToastContext';
+
 function Configuracion() {
   const navigate = useNavigate();
+  const { showToast } = useToast(); // INICIALIZAMOS TOAST
+
   const [clubName, setClubName] = useState(localStorage.getItem('mi_club') || '');
   const [clubId, setClubId] = useState(localStorage.getItem('club_id') || '');
 
   const handleGuardarClub = () => {
     if (!clubName.trim()) {
-      alert("El nombre del club es obligatorio.");
+      showToast("El nombre del club es obligatorio.", "warning");
       return;
     }
 
@@ -22,7 +27,7 @@ function Configuracion() {
     localStorage.setItem('club_id', finalClubId);
     
     setClubId(finalClubId);
-    alert('¡Club configurado con éxito! Ya podés empezar a usar el sistema.');
+    showToast('¡Club configurado con éxito! Ya podés empezar a usar el sistema.', 'success');
     navigate('/'); // Lo mandamos al Centro de Mando
   };
 

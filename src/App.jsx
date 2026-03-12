@@ -21,6 +21,7 @@ import OrigenGoles from './pages/OrigenGoles';
 import CreadorTareas from './pages/CreadorTareas';
 import BancoTareas from './pages/BancoTareas';
 import CargaWellness from './pages/CargaWellness';
+import PlanificadorSemanal from './pages/PlanificadorSemanal'; // <-- ¡NUEVO COMPONENTE IMPORTADO!
 
 import './App.css';
 
@@ -171,6 +172,13 @@ function AppLayout() {
             
             {sidebarAbierta && <div style={sidebarGroupTitle}>PLANIFICACIÓN</div>}
 
+            {/* NUEVO BOTÓN PARA EL MICROCICLO */}
+            {esEscritura && (
+              <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
+                <span style={{ fontSize: '1.2rem' }}>🗓️</span> {sidebarAbierta && <span>MICROCICLO SEMANAL</span>}
+              </NavLink>
+            )}
+
             {esEscritura && (
               <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
                 <span style={{ fontSize: '1.2rem' }}>🎨</span> {sidebarAbierta && <span>CREADOR TÁCTICO</span>}
@@ -231,6 +239,9 @@ function AppLayout() {
           <Route path="/rendimiento" element={<ProtectedRoute><Rendimiento /></ProtectedRoute>} />
           <Route path="/origen-goles" element={<ProtectedRoute><OrigenGoles /></ProtectedRoute>} />
           <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
+          
+          {/* NUEVAS RUTAS DE PLANIFICACIÓN */}
+          <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
           <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><CreadorTareas /></ProtectedRoute>} />
           <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} />        
         </Routes>

@@ -3,19 +3,14 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
-// --- COMPONENTE TOOLTIP UX ---
-const InfoBox = ({ texto }) => (
-  <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
-    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
-    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
-      {texto}
-    </div>
-  </div>
-);
+// IMPORTAMOS EL HOOK DE NOTIFICACIONES Y COMPONENTES REUTILIZABLES
+import { useToast } from '../components/ToastContext';
+import InfoBox from '../components/InfoBox';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
   const navigate = useNavigate();
+  const { showToast } = useToast(); // INICIALIZAMOS TOAST
 
   const [torneos, setTorneos] = useState([]);
   const [rivales, setRivales] = useState([]);
@@ -90,19 +85,19 @@ function Torneos() {
   }, [torneoActivo]);
 
   const handleGuardarTorneo = async () => {
-    if (!formTorneo.nombre) return alert("El nombre es obligatorio");
+    if (!formTorneo.nombre) return showToast("El nombre del torneo es obligatorio", "warning");
     const { error } = await supabase.from('torneos').insert([{ ...formTorneo, club_id: clubId }]);
     if (!error) {
       setMostrarModalTorneo(false);
-      setFiltroCategoria(formTorneo.categoria); // Cambiar a la categoría del torneo nuevo
+      setFiltroCategoria(formTorneo.categoria); 
       setFormTorneo({ nombre: '', categoria: 'Primera' });
       fetchTorneos();
-      alert("¡Torneo guardado con éxito!");
-    } else alert("Error de Supabase: " + error.message);
+      showToast("¡Torneo guardado con éxito!", "success");
+    } else showToast("Error al guardar: " + error.message, "error");
   };
 
   const handleGuardarFixture = async () => {
-    if (!formFixture.rival_id || !formFixture.jornada) return alert("Rival y Jornada son obligatorios");
+    if (!formFixture.rival_id || !formFixture.jornada) return showToast("Rival y Jornada son obligatorios", "warning");
     
     const rivalSeleccionado = rivales.find(r => r.id === formFixture.rival_id);
 
@@ -118,7 +113,7 @@ function Torneos() {
       goles_propios: formFixture.goles_propios,
       goles_rival: formFixture.goles_rival,
       categoria: torneoActivo.categoria, 
-      competicion: torneoActivo.nombre // Aseguramos que la analítica global lo capte
+      competicion: torneoActivo.nombre 
     };
 
     const { error } = await supabase.from('partidos').insert([nuevoPartido]);
@@ -126,13 +121,14 @@ function Torneos() {
     if (!error) {
       setMostrarModalFixture(false);
       fetchFixture(torneoActivo.id, torneoActivo.categoria);
-      alert("¡Fecha agregada al fixture!");
-    } else alert("Error de Supabase: " + error.message);
+      showToast("¡Fecha agregada al fixture!", "success");
+    } else showToast("Error al agregar: " + error.message, "error");
   };
 
   const actualizarResultado = async (id, goles_propios, goles_rival, estado) => {
     await supabase.from('partidos').update({ goles_propios, goles_rival, estado }).eq('id', id);
     fetchFixture(torneoActivo.id, torneoActivo.categoria);
+    if(estado === 'Jugado') showToast("Resultado actualizado", "success");
   };
 
   const eliminarPartido = async (idPartido) => {
@@ -141,18 +137,19 @@ function Torneos() {
       .select('*', { count: 'exact', head: true })
       .eq('id_partido', idPartido);
 
-    if (errorEventos) return alert("Error al verificar los datos del partido: " + errorEventos.message);
+    if (errorEventos) return showToast("Error al verificar datos: " + errorEventos.message, "error");
 
     if (count > 0) {
-      return alert(`⚠️ BLOQUEO DE SEGURIDAD: Este partido tiene ${count} acciones trackeadas. No podés borrarlo desde acá para no perder los datos.`);
+      return showToast(`BLOQUEO: Este partido tiene ${count} acciones. No podés borrarlo desde acá.`, "error");
     }
 
     if (window.confirm("✅ Este partido está completamente vacío (0 datos trackeados). ¿Estás seguro de que querés eliminar este duplicado del fixture?")) {
       const { error } = await supabase.from('partidos').delete().eq('id', idPartido);
       if (!error) {
         fetchFixture(torneoActivo.id, torneoActivo.categoria);
+        showToast("Partido eliminado", "info");
       } else {
-        alert("Error al eliminar: " + error.message);
+        showToast("Error al eliminar: " + error.message, "error");
       }
     }
   };
@@ -456,8 +453,6 @@ function Torneos() {
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 99999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
         .modal-content { width: 100%; border: 1px solid var(--accent); }
         .section-title { color: var(--text-dim); font-size: 0.8rem; font-weight: 800; margin-bottom: 5px; }
-        .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
-        .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
       `}</style>
     </div>
   );

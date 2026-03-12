@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import { useNavigate } from 'react-router-dom'; // <-- IMPORTAMOS ESTO
+import { useNavigate } from 'react-router-dom';
+
+// IMPORTAMOS EL HOOK DE NOTIFICACIONES
+import { useToast } from '../components/ToastContext';
 
 const BancoTareas = () => {
   const [tareas, setTareas] = useState([]);
@@ -11,7 +14,9 @@ const BancoTareas = () => {
   const [filtroFase, setFiltroFase] = useState('Todas');
   
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
-  const navigate = useNavigate(); // <-- INICIALIZAMOS NAVEGACIÓN
+  const navigate = useNavigate();
+  
+  const { showToast } = useToast(); // INICIALIZAMOS TOAST
 
   useEffect(() => {
     cargarTareas();
@@ -33,6 +38,24 @@ const BancoTareas = () => {
       console.error("Error al cargar tareas:", error.message);
     } finally {
       setCargando(false);
+    }
+  };
+
+  // --- NUEVA FUNCIÓN: ELIMINAR TAREA ---
+  const eliminarTarea = async (id) => {
+    const confirmar = window.confirm("⚠️ ¿Estás seguro de que querés eliminar esta tarea definitivamente? Esta acción no se puede deshacer.");
+    if (!confirmar) return;
+
+    try {
+      const { error } = await supabase.from('tareas').delete().eq('id', id);
+      if (error) throw error;
+      
+      // Actualizamos el estado para que desaparezca de la pantalla sin recargar
+      setTareas(tareas.filter(t => t.id !== id));
+      setTareaSeleccionada(null); // Cerramos el modal
+      showToast("Tarea eliminada con éxito", "success");
+    } catch (error) {
+      showToast("Error al eliminar la tarea: " + error.message, "error");
     }
   };
 
@@ -197,7 +220,7 @@ const BancoTareas = () => {
               <button onClick={() => setTareaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', pading: '20px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', padding: '20px' }}>
               <div style={{ flex: '1 1 500px', padding: '20px', borderRight: '1px solid #222' }}>
                 <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {tareaSeleccionada.url_grafico ? (
@@ -243,13 +266,22 @@ const BancoTareas = () => {
                   </div>
                 </div>
 
-                {/* BOTÓN MÁGICO PARA EDITAR */}
-                <button 
-                  onClick={() => navigate('/creador-tareas', { state: { editando: tareaSeleccionada } })}
-                  style={{ marginTop: 'auto', background: 'var(--accent)', border: 'none', color: '#000', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
-                >
-                  ✏️ Editar Tarea en Pizarra
-                </button>
+                {/* BOTONERA DE ACCIONES (EDITAR / ELIMINAR) */}
+                <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
+                  <button 
+                    onClick={() => eliminarTarea(tareaSeleccionada.id)}
+                    style={{ flex: 1, background: '#ef4444', border: 'none', color: '#fff', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
+                  >
+                    🗑️ ELIMINAR
+                  </button>
+
+                  <button 
+                    onClick={() => navigate('/creador-tareas', { state: { editando: tareaSeleccionada } })}
+                    style={{ flex: 2, background: 'var(--accent)', border: 'none', color: '#000', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
+                  >
+                    ✏️ Editar en Pizarra
+                  </button>
+                </div>
 
               </div>
             </div>

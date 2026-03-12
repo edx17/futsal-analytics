@@ -9,16 +9,8 @@ import {
 } from 'recharts';
 
 import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
-
-// --- COMPONENTE TOOLTIP UX ---
-const InfoBox = ({ texto }) => (
-  <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
-    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
-    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
-      {texto}
-    </div>
-  </div>
-);
+import InfoBox from '../components/InfoBox';
+import { getColorAccion } from '../utils/helpers';
 
 function Temporada() {
   const [partidos, setPartidos] = useState([]);
@@ -313,16 +305,6 @@ function Temporada() {
     ];
   }, [analiticaGlobal]);
 
-  const getColorAccion = (acc) => {
-    if (acc === 'Remate - Gol' || acc === 'Gol') return '#00ff88'; 
-    if (acc?.includes('Remate')) return '#00aaff'; 
-    if (acc === 'Recuperación') return '#eab308'; 
-    if (acc?.includes('Pérdida')) return '#ef4444'; 
-    if (acc?.includes('Duelo')) return '#10b981'; 
-    if (acc === 'Falta cometida') return '#ec4899'; 
-    return '#ffffff';
-  };
-
   // COLORES PARA EL GRÁFICO DE ORIGEN
   const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 
@@ -354,9 +336,6 @@ function Temporada() {
     <div style={{ animation: 'fadeIn 0.3s' }}>
       
       <style>{`
-        .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
-        .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
-        
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }

@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { getColorAccion } from '../utils/helpers';
+
+// IMPORTAMOS EL HOOK DE NOTIFICACIONES
+import { useToast } from '../components/ToastContext';
 
 function TomaDatos() {
   const location = useLocation();
@@ -8,6 +12,8 @@ function TomaDatos() {
   const partido = location.state?.partido;
   const clubId = localStorage.getItem('club_id');
   const pitchRef = useRef(null);
+  
+  const { showToast } = useToast(); // INICIALIZAMOS TOAST
 
   // --- ESTADOS TÉCNICOS Y RESPONSIVE ---
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
@@ -204,7 +210,7 @@ function TomaDatos() {
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
     } else {
-      alert("Error de red al guardar el evento.");
+      showToast("Error de red al guardar el evento rápido.", "error");
       console.error("Error de Supabase:", error);
     }
   };
@@ -257,7 +263,7 @@ function TomaDatos() {
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
     } else {
-      alert("Error de red al guardar el evento.");
+      showToast("Error de red al guardar el evento.", "error");
       console.error("Error de Supabase:", error);
     }
   };
@@ -314,8 +320,9 @@ function TomaDatos() {
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
+      showToast("¡Gol registrado en la base de datos!", "success");
     } else {
-      alert("Error de red al guardar el gol.");
+      showToast("Error de red al guardar el gol.", "error");
       console.error("Error de Supabase:", error);
     }
   };
@@ -336,9 +343,10 @@ function TomaDatos() {
       setIsDeleting(true);
       const { error } = await supabase.from('eventos').delete().eq('id', idEvento);
       if (error) throw error;
+      showToast("Evento eliminado", "info");
     } catch (error) {
       setEventos(prev => [...prev, eventoBackup]);
-      alert("Error de red: No se pudo eliminar el evento.");
+      showToast("Error de red: No se pudo eliminar el evento.", "error");
     } finally {
       setIsDeleting(false);
     }
@@ -362,8 +370,9 @@ function TomaDatos() {
       if (error) throw error;
 
       setEventos(prev => prev.map(e => e.id === eventoEditando.id ? { ...e, ...payload } : e));
+      showToast("Evento modificado correctamente", "success");
     } catch (error) {
-      alert("Error de red: No se pudo modificar el evento.");
+      showToast("Error de red: No se pudo modificar el evento.", "error");
       console.error(error);
     } finally {
       setEventoEditando(null); 
@@ -390,27 +399,17 @@ function TomaDatos() {
     const { data: cambioGuardado, error } = await supabase.from('eventos').insert([evtSalida]).select();
     if (cambioGuardado) {
       setEventos(prev => [...prev, ...cambioGuardado]);
+      showToast("Cambio registrado", "info");
     } else {
+       showToast("Error al guardar el cambio", "error");
        console.error("Error de Supabase:", error);
     }
   };
 
-  if (!partido) return <div>Cargando...</div>;
+  if (!partido) return <div style={{ color: 'var(--text-dim)', textAlign: 'center', marginTop: '50px' }}>Cargando datos del partido...</div>;
 
   const jugadoresActivos = equipo === 'Propio' ? jugadoresEnCancha : [];
   const todosLosJugadores = [...jugadoresEnCancha, ...jugadoresEnBanco];
-
-  const getColorAccion = (acc) => {
-    if (!acc) return '#888';
-    if (acc.includes('Gol')) return '#00ff88';
-    if (acc === 'Asistencia') return '#06b6d4';
-    if (acc.includes('Ganado') || acc === 'Recuperación') return '#3b82f6';
-    if (acc.includes('Perdido') || acc === 'Pérdida') return '#ef4444';
-    if (acc === 'Tarjeta Roja') return '#991b1b';
-    if (acc === 'Tarjeta Amarilla') return '#facc15';
-    if (acc === 'Falta cometida') return '#ec4899';
-    return '#888';
-  };
 
   const BotonAccion = ({ label, color, span = 1, bold = false, onClick }) => (
     <button onClick={onClick} className="btn-action" style={{ gridColumn: `span ${span}`, background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}`, color: color, fontWeight: bold ? 800 : 500, padding: '12px 5px', fontSize: '0.75rem', textShadow: bold ? `0 0 5px ${color}` : 'none', cursor: 'pointer' }}>

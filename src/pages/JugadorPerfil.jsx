@@ -1,18 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 
-// IMPORTAMOS LOS MOTORES
+// IMPORTAMOS LOS MOTORES Y COMPONENTES REUTILIZABLES
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
-
-const InfoBox = ({ texto }) => (
-  <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', verticalAlign: 'middle', outline: 'none' }}>
-    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
-    <div className="tooltip-text" style={{ position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' }}>
-      {texto}
-    </div>
-  </div>
-);
+import InfoBox from '../components/InfoBox';
+import { getColorAccion } from '../utils/helpers';
 
 function JugadorPerfil() {
   const [jugadores, setJugadores] = useState([]);
@@ -147,11 +140,6 @@ function JugadorPerfil() {
     };
   }, [wellnessJugador, partidoFiltro, partidos]);
 
-  const getColorAccion = (acc) => {
-    const col = { 'Remate - Gol': '#00ff88', 'Gol': '#00ff88', 'Remate - Atajado': '#3b82f6', 'Remate - Desviado': '#888888', 'Remate - Rebatido': '#a855f7', 'Recuperación': '#eab308', 'Pérdida': '#ef4444' };
-    return col[acc] || '#fff';
-  };
-
   if (!jugadorId) {
      return (
        <div style={{ animation: 'fadeIn 0.3s' }}>
@@ -195,11 +183,6 @@ function JugadorPerfil() {
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       
-      <style>{`
-        .tooltip-text { visibility: hidden; opacity: 0; transition: all 0.2s ease-in-out; }
-        .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
-      `}</style>
-
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <button onClick={() => setJugadorId('')} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>⬅ VOLVER A LA GRILLA</button>

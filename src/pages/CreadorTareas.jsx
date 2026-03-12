@@ -1,11 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Circle, Rect, Text, Group, Line, Arrow, Transformer } from 'react-konva';
 import { supabase } from '../supabase';
-import { useLocation, useNavigate } from 'react-router-dom'; // <-- IMPORTAMOS ROUTER
+import { useLocation, useNavigate } from 'react-router-dom';
+
+// IMPORTAMOS EL HOOK DE NOTIFICACIONES
+import { useToast } from '../components/ToastContext';
 
 const CreadorTareas = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { showToast } = useToast(); // INICIALIZAMOS TOAST
   
   // Verificamos si venimos del "Banco de Tareas" para editar
   const tareaAEditar = location.state?.editando;
@@ -147,7 +151,7 @@ const CreadorTareas = () => {
 
   // --- GUARDADO / ACTUALIZACIÓN INTELIGENTE ---
   const confirmarGuardado = async () => {
-    if (!nombreTarea) return alert("Por favor, ponéle un nombre a la tarea arriba a la izquierda.");
+    if (!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea arriba a la izquierda.", "warning");
     
     setSelectedId(null); 
     
@@ -177,20 +181,20 @@ const CreadorTareas = () => {
           // Si estamos editando, hacemos un UPDATE
           const { error } = await supabase.from('tareas').update(payload).eq('id', tareaIdEditando);
           if (error) throw error;
-          alert("¡Tarea ACTUALIZADA con éxito!");
+          showToast("¡Tarea ACTUALIZADA con éxito!", "success");
           navigate('/banco-tareas'); // Volvemos al banco al terminar
         } else {
           // Si es nueva, hacemos un INSERT
           const { error } = await supabase.from('tareas').insert([payload]);
           if (error) throw error;
-          alert("¡Nueva Ficha Táctica guardada!");
+          showToast("¡Nueva Ficha Táctica guardada!", "success");
           setMostrarModal(false);
           setElementos([]); setLineas([]); setNombreTarea('');
           setFichaTecnica({ categoria_ejercicio: 'Táctico', fase_juego: 'Ataque Posicional', duracion_estimada: 15, intensidad_rpe: 6, jugadores_involucrados: '4v4', objetivo_principal: '', descripcion: '', video_url: '' });
         }
 
       } catch (err) {
-        alert("Error al guardar: " + err.message);
+        showToast("Error al guardar: " + err.message, "error");
       }
     }, 150); 
   };
@@ -272,7 +276,7 @@ const CreadorTareas = () => {
         
         <button onClick={() => {if(window.confirm('¿Limpiar toda la pizarra?')){setElementos([]); setLineas([]);}}} className="btn-secondary" style={{padding:'8px 12px'}}>🗑️ LIMPIAR</button>
         <button onClick={() => {
-            if(!nombreTarea) return alert("Por favor, ponéle un nombre a la tarea arriba a la izquierda.");
+            if(!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea arriba a la izquierda.", "warning");
             setMostrarModal(true);
         }} className="btn-action" style={{ background: tareaIdEditando ? '#3b82f6' : 'var(--accent)', color: tareaIdEditando ? '#fff' : '#000' }}>
           {tareaIdEditando ? '💾 ACTUALIZAR TAREA' : '💾 CONFIGURAR Y GUARDAR'}

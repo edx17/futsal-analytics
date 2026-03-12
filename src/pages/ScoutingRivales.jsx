@@ -2,9 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 
+// IMPORTAMOS EL HOOK DE NOTIFICACIONES
+import { useToast } from '../components/ToastContext';
+
 function ScoutingRivales() {
   const clubId = localStorage.getItem('club_id');
   const navigate = useNavigate();
+  const { showToast } = useToast(); // INICIALIZAMOS TOAST
 
   const [rivales, setRivales] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -44,7 +48,7 @@ function ScoutingRivales() {
   };
 
   const handleGuardar = async () => {
-    if (!formData.nombre) return alert("El nombre del rival es obligatorio.");
+    if (!formData.nombre) return showToast("El nombre del rival es obligatorio.", "warning");
     
     const payload = { 
       nombre: formData.nombre,
@@ -57,13 +61,13 @@ function ScoutingRivales() {
 
     if (formData.id) {
       const { error } = await supabase.from('rivales').update(payload).eq('id', formData.id);
-      if (error) return alert("Error al editar en Supabase: " + error.message);
+      if (error) return showToast("Error al editar en Supabase: " + error.message, "error");
     } else {
       const { error } = await supabase.from('rivales').insert([payload]);
-      if (error) return alert("Error al guardar en Supabase: " + error.message);
+      if (error) return showToast("Error al guardar en Supabase: " + error.message, "error");
     }
     
-    alert("¡Rival guardado con éxito!");
+    showToast("¡Rival guardado con éxito!", "success");
     setMostrarModal(false);
     fetchRivales();
   };

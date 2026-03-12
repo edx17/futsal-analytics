@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+// 1. IMPORTAMOS EL HOOK DE NOTIFICACIONES
+import { useToast } from '../components/ToastContext';
 
 const CargaWellness = () => {
+  // 2. INICIALIZAMOS EL TOAST
+  const { showToast } = useToast();
+
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(false);
   
@@ -17,7 +22,7 @@ const CargaWellness = () => {
   // Estado del formulario
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [jugadorSeleccionado, setJugadorSeleccionado] = useState('');
-  const [fecha, setFecha] = useState(obtenerFechaLocal()); // <-- ARREGLADO ACÁ
+  const [fecha, setFecha] = useState(obtenerFechaLocal()); 
   const [modo, setModo] = useState('pre'); // 'pre' (Readiness) o 'post' (Carga sRPE)
 
   // Valores Readiness (1 al 5)
@@ -89,7 +94,9 @@ const CargaWellness = () => {
   };
 
   const guardarWellness = async () => {
-    if (!jugadorSeleccionado) return alert("Seleccioná un jugador");
+    // 3. CAMBIAMOS LOS ALERTS POR LOS TOASTS
+    if (!jugadorSeleccionado) return showToast("Seleccioná un jugador", "warning");
+    
     setCargando(true);
 
     try {
@@ -115,19 +122,20 @@ const CargaWellness = () => {
 
       if (error) throw error;
       
-      alert("✅ Datos guardados con éxito.");
+      // EXITO!
+      showToast("Datos guardados con éxito", "success");
+      
     } catch (error) {
-      alert("Error al guardar: " + error.message);
+      // ERROR!
+      showToast("Error al guardar: " + error.message, "error");
     } finally {
       setCargando(false);
     }
   };
 
   // --- LÓGICA DE FILTRADO DINÁMICO ---
-  // Obtenemos las categorías únicas de los jugadores cargados (limpiando nulos)
   const categoriasUnicas = ['Todas', ...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
   
-  // Filtramos la lista de jugadores a mostrar
   const jugadoresFiltrados = filtroCategoria === 'Todas' 
     ? jugadores 
     : jugadores.filter(j => j.categoria === filtroCategoria);
@@ -135,7 +143,6 @@ const CargaWellness = () => {
   // --- COMPONENTES UI AUXILIARES ---
   const EscalaBotones = ({ label, icon, valor, setValor, invertido = false }) => {
     const colores = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
-    // Si es invertido (ej. Estrés), 1 es Verde (Muy bajo) y 5 es Rojo (Muy alto)
     const renderColores = invertido ? [...colores].reverse() : colores;
 
     return (
@@ -179,7 +186,6 @@ const CargaWellness = () => {
         
         <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
           
-          {/* NUEVO FILTRO DE CATEGORÍA */}
           <div style={{ flex: 1, minWidth: '130px' }}>
             <label style={labelStyle}>Categoría</label>
             <select 
