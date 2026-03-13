@@ -28,7 +28,6 @@ import PlanificadorSemanal from './pages/PlanificadorSemanal';
 
 import './App.css';
 
-// ... (Estilos auxiliares se mantienen igual)
 const navMobileStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, height: '100%', cursor: 'pointer', color: 'var(--text-dim)', textDecoration: 'none', fontWeight: 800 };
 const sidebarLinkStyle = { padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '15px', textAlign: 'left' };
 const sidebarGroupTitle = { padding: '20px 20px 5px 20px', fontSize: '0.65rem', color: '#555', fontWeight: 900, letterSpacing: '1px' };
@@ -109,7 +108,11 @@ function AppLayout() {
           <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><NuevoPartido /></ProtectedRoute>} />
           <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['admin', 'superuser', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
           <Route path="/temporada" element={<ProtectedRoute><Temporada /></ProtectedRoute>} />
+          
+          {/* ACÁ ESTÁ LA SOLUCIÓN DE LAS RUTAS */}
           <Route path="/resumen" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
+          <Route path="/resumen/:id" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
+          
           <Route path="/torneos" element={<ProtectedRoute><Torneos /></ProtectedRoute>} />
           <Route path="/scouting-rivales" element={<ProtectedRoute><ScoutingRivales /></ProtectedRoute>} />
           <Route path="/perfil-jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
@@ -124,7 +127,7 @@ function AppLayout() {
         </Routes>
       </main>
 
-      {/* ... (Menú móvil se mantiene igual) */}
+      {/* Menú móvil (si lo tenés implementado) */}
     </div>
   );
 }
@@ -132,7 +135,7 @@ function AppLayout() {
 function App() {
   return (
     <AuthProvider>
-      <ToastProvider> {/* <--- SOLUCIÓN: Envolver aquí */}
+      <ToastProvider>
         <Router>
           <AppLayout />
         </Router>

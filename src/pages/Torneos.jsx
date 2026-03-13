@@ -10,12 +10,11 @@ import InfoBox from '../components/InfoBox';
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
   const navigate = useNavigate();
-  const { showToast } = useToast(); // INICIALIZAMOS TOAST
+  const { showToast } = useToast();
 
   const [torneos, setTorneos] = useState([]);
   const [rivales, setRivales] = useState([]);
   
-  // FILTROS MEJORADOS
   const [filtroCategoria, setFiltroCategoria] = useState('Primera');
   const [torneoActivo, setTorneoActivo] = useState(null);
   const [fixture, setFixture] = useState([]);
@@ -58,7 +57,6 @@ function Torneos() {
     return torneos.filter(t => t.categoria === filtroCategoria);
   }, [torneos, filtroCategoria]);
 
-  // Autoseleccionar torneo al cambiar categoría
   useEffect(() => {
     if (torneosFiltrados.length > 0) {
       if (!torneoActivo || !torneosFiltrados.some(t => t.id === torneoActivo.id)) {
@@ -70,14 +68,54 @@ function Torneos() {
     }
   }, [torneosFiltrados]);
 
+  // --- MAGIA: LECTURA AUTOMÁTICA DE EVENTOS ---
   const fetchFixture = async (idTorneo, categoriaTorneo) => {
-    const { data } = await supabase
+    // 1. Buscamos los partidos
+    const { data: partidosData } = await supabase
       .from('partidos')
       .select('*, rivales(nombre, escudo)')
       .eq('torneo_id', idTorneo)
       .eq('categoria', categoriaTorneo)
       .order('jornada', { ascending: true });
-    if (data) setFixture(data);
+      
+    if (!partidosData || partidosData.length === 0) {
+      setFixture([]);
+      return;
+    }
+
+    const idsPartidos = partidosData.map(p => p.id);
+
+    // 2. Buscamos TODOS los eventos de esos partidos para saber la VERDAD
+    const { data: eventosData } = await supabase
+      .from('eventos')
+      .select('id_partido, accion, equipo')
+      .in('id_partido', idsPartidos);
+
+    // 3. Contamos automáticamente los goles desde el tracker
+    const matchStats = {};
+    idsPartidos.forEach(id => matchStats[id] = { gp: 0, gr: 0, tieneEventos: false });
+
+    if (eventosData) {
+      eventosData.forEach(ev => {
+        matchStats[ev.id_partido].tieneEventos = true;
+        if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
+          if (ev.equipo === 'Propio') matchStats[ev.id_partido].gp++;
+          else matchStats[ev.id_partido].gr++;
+        }
+      });
+    }
+
+    // 4. Combinamos y obligamos al partido a tener el resultado real
+    const fixtureCombinado = partidosData.map(p => {
+      const stats = matchStats[p.id];
+      if (stats.tieneEventos) {
+        // SOBREESCRIBE CUALQUIER CARGA MANUAL POR LA VERDAD DEL TRACKER
+        return { ...p, goles_propios: stats.gp, goles_rival: stats.gr, estado: 'Finalizado', esTrackeado: true };
+      }
+      return { ...p, esTrackeado: false };
+    });
+
+    setFixture(fixtureCombinado);
   };
 
   useEffect(() => {
@@ -128,7 +166,7 @@ function Torneos() {
   const actualizarResultado = async (id, goles_propios, goles_rival, estado) => {
     await supabase.from('partidos').update({ goles_propios, goles_rival, estado }).eq('id', id);
     fetchFixture(torneoActivo.id, torneoActivo.categoria);
-    if(estado === 'Jugado') showToast("Resultado actualizado", "success");
+    if(estado === 'Finalizado') showToast("Resultado actualizado", "success");
   };
 
   const eliminarPartido = async (idPartido) => {
@@ -156,9 +194,11 @@ function Torneos() {
 
   const irATrackear = (partido) => navigate('/toma-datos', { state: { partido } });
 
-  // --- MOTOR ANALÍTICO DEL TORNEO ---
+  // --- MOTOR ANALÍTICO DEL TORNEO CORREGIDO ---
   const { stats, local, visitante, racha, vallasInvictas, chartDataEvolucion, chartDataLocalia, ptsTotales, eficacia } = useMemo(() => {
-    const partidosJugados = fixture.filter(f => f.estado === 'Jugado').sort((a,b) => {
+    
+    // AHORA LEE 'Jugado', 'Finalizado' Y LOS QUE TIENEN EVENTOS AUTOMÁTICOS
+    const partidosJugados = fixture.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado' || f.esTrackeado).sort((a,b) => {
       if(a.fecha && b.fecha) return new Date(a.fecha) - new Date(b.fecha);
       return a.id - b.id;
     });
@@ -172,8 +212,8 @@ function Torneos() {
 
     partidosJugados.forEach((f, index) => {
         s.pj++;
-        const gp = Number(f.goles_propios);
-        const gr = Number(f.goles_rival);
+        const gp = Number(f.goles_propios) || 0;
+        const gr = Number(f.goles_rival) || 0;
         s.gf += gp;
         s.gc += gr;
         
@@ -235,7 +275,6 @@ function Torneos() {
         <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>GESTOR DE COMPETICIÓN</div>
       </div>
 
-      {/* --- PANEL DE FILTROS --- */}
       <div className="bento-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-end', marginBottom: '30px', background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%)' }}>
         <div>
           <div className="stat-label" style={{ marginBottom: '8px' }}>CATEGORÍA</div>
@@ -257,7 +296,6 @@ function Torneos() {
 
       {torneoActivo ? (
         <>
-          {/* --- KPIs PRINCIPALES --- */}
           <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '15px', marginBottom: '20px', textAlign: 'center' }}>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{ptsTotales}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>PUNTOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{stats.pj}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>JUGADOS</div></div>
@@ -276,10 +314,7 @@ function Torneos() {
             </div>
           </div>
 
-          {/* --- ANALÍTICA DE COMPETENCIA --- */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-            
-            {/* 1. Racha Bento */}
             <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', borderTop: '2px solid var(--accent)' }}>
                <div className="stat-label">ESTADO DE FORMA <InfoBox texto="Últimos 5 partidos (de izquierda a derecha)."/></div>
                <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
@@ -296,7 +331,6 @@ function Torneos() {
                </div>
             </div>
 
-            {/* 2. Rendimiento Localia */}
             <div className="bento-card">
                <div className="stat-label" style={{ marginBottom: '15px' }}>EFICACIA DE LOCALÍA <InfoBox texto="Rendimiento de puntos jugando de Local vs Visitante."/></div>
                <ResponsiveContainer width="100%" height={180}>
@@ -310,7 +344,6 @@ function Torneos() {
                </ResponsiveContainer>
             </div>
 
-            {/* 3. Evolucion Goles */}
             <div className="bento-card">
                <div className="stat-label" style={{ marginBottom: '15px' }}>EVOLUCIÓN DE GOLES <InfoBox texto="Tendencia de goles anotados (GF) vs recibidos (GC) fecha a fecha."/></div>
                <ResponsiveContainer width="100%" height={180}>
@@ -325,7 +358,6 @@ function Torneos() {
                   </LineChart>
                </ResponsiveContainer>
             </div>
-
           </div>
 
           <div className="bento-card">
@@ -338,54 +370,86 @@ function Torneos() {
               <p style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay partidos programados en este torneo para la categoría {torneoActivo.categoria}.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {fixture.map(f => (
-                  <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: f.estado === 'Jugado' ? 'rgba(0, 255, 136, 0.05)' : '#111', padding: '15px', borderRadius: '6px', border: f.estado === 'Jugado' ? '1px solid var(--accent)' : '1px solid #333', flexWrap: 'wrap', gap: '10px' }}>
-                    
-                    <div style={{ minWidth: '150px' }}>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>{f.jornada?.toUpperCase()} // {f.condicion}</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {f.rivales?.nombre?.toUpperCase() || f.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}
-                      </div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '4px' }}>📅 {f.fecha || 'A definir'}</div>
-                    </div>
-
-                    {f.estado === 'Pendiente' ? (
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <button onClick={() => irATrackear(f)} className="btn-action" style={{ fontSize: '0.75rem', padding: '8px 15px', display: 'flex', gap: '5px', alignItems: 'center' }}>
-                          ⚡ TRACKEAR
-                        </button>
-                        <div style={{ height: '20px', width: '1px', background: '#333' }}></div>
-                        <button onClick={() => actualizarResultado(f.id, 0, 0, 'Jugado')} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px' }}>
-                          CARGA MANUAL
-                        </button>
-                        
-                        {/* BOTÓN ELIMINAR CON SEGURO */}
-                        <button onClick={() => eliminarPartido(f.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1rem', cursor: 'pointer', marginLeft: '5px' }} title="Eliminar partido duplicado">
-                          🗑️
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>MI EQUIPO</span>
-                            <input type="number" value={f.goles_propios} onChange={(e) => actualizarResultado(f.id, e.target.value, f.goles_rival, 'Jugado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: 'var(--accent)', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
-                          </div>
-                          <span style={{ fontWeight: 900 }}>-</span>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>RIVAL</span>
-                            <input type="number" value={f.goles_rival} onChange={(e) => actualizarResultado(f.id, f.goles_propios, e.target.value, 'Jugado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
-                          </div>
-                          <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}>↺</button>
+                {fixture.map(f => {
+                  const estaCompletado = f.estado === 'Finalizado' || f.estado === 'Jugado' || f.esTrackeado;
+                  
+                  return (
+                    <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: estaCompletado ? 'rgba(0, 255, 136, 0.05)' : '#111', padding: '15px', borderRadius: '6px', border: estaCompletado ? '1px solid var(--accent)' : '1px solid #333', flexWrap: 'wrap', gap: '10px' }}>
+                      
+                      <div style={{ minWidth: '150px' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>{f.jornada?.toUpperCase()} // {f.condicion}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {f.rivales?.nombre?.toUpperCase() || f.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}
                         </div>
-
-                        <button onClick={() => navigate('/resumen')} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
-                          📊 REPORTE
-                        </button>
+                        {/* PASTILLA DE ESTADO AGREGADA ACÁ */}
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>📅 {f.fecha || 'A definir'}</span>
+                          <span style={{
+                            padding: '3px 6px',
+                            borderRadius: '4px',
+                            background: f.esTrackeado ? 'rgba(0, 255, 136, 0.1)' : (f.estado === 'Pendiente' ? 'rgba(255,255,255,0.1)' : 'rgba(59, 130, 246, 0.1)'),
+                            color: f.esTrackeado ? 'var(--accent)' : (f.estado === 'Pendiente' ? '#aaa' : '#3b82f6'),
+                            fontWeight: 800,
+                            fontSize: '0.6rem',
+                            letterSpacing: '0.5px'
+                          }}>
+                            {f.esTrackeado ? 'TRACKEADO' : f.estado.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {!estaCompletado ? (
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <button onClick={() => irATrackear(f)} className="btn-action" style={{ fontSize: '0.75rem', padding: '8px 15px', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                            ⚡ TRACKEAR
+                          </button>
+                          <div style={{ height: '20px', width: '1px', background: '#333' }}></div>
+                          <button onClick={() => actualizarResultado(f.id, 0, 0, 'Finalizado')} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px' }}>
+                            CARGA MANUAL
+                          </button>
+                          <button onClick={() => eliminarPartido(f.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1rem', cursor: 'pointer', marginLeft: '5px' }} title="Eliminar partido duplicado">
+                            🗑️
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            {f.esTrackeado ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0, 255, 136, 0.1)', padding: '5px 15px', borderRadius: '4px', border: '1px solid var(--accent)' }}>
+                                <span style={{ color: 'var(--accent)', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_propios}</span>
+                                <span style={{ color: '#fff', fontWeight: 900 }}>-</span>
+                                <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_rival}</span>
+                                <span style={{ fontSize: '0.6rem', color: 'var(--accent)', marginLeft: '10px', fontWeight: 800 }}>✓ TRACKEADO</span>
+                              </div>
+                            ) : (
+                              <>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>MI EQUIPO</span>
+                                  <input type="number" value={f.goles_propios} onChange={(e) => actualizarResultado(f.id, e.target.value, f.goles_rival, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: 'var(--accent)', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                </div>
+                                <span style={{ fontWeight: 900 }}>-</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>RIVAL</span>
+                                  <input type="number" value={f.goles_rival} onChange={(e) => actualizarResultado(f.id, f.goles_propios, e.target.value, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                </div>
+                                <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}>↺</button>
+                              </>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            <button onClick={() => irATrackear(f)} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
+                              ✏️ EDITAR
+                            </button>
+                            <button onClick={() => navigate(`/resumen/${f.id}`)} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
+                              📊 REPORTE
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

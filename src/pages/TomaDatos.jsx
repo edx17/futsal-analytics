@@ -39,8 +39,10 @@ function TomaDatos() {
   const [autorGol, setAutorGol] = useState(null); 
   const [autorAsistencia, setAutorAsistencia] = useState(null);
 
-  // --- ESTADOS DE EDICIÓN ---
+  // --- ESTADOS DE EDICIÓN Y CIERRE ---
   const [eventoEditando, setEventoEditando] = useState(null); 
+  const [modalFinalizar, setModalFinalizar] = useState(false); // ESTADO PARA MODAL DE CIERRE
+  const [isFinishing, setIsFinishing] = useState(false); // ESTADO DE CARGA PARA EL CIERRE
 
   // --- ESTADOS DE PLANTILLA Y EVENTOS ---
   const [modalCambio, setModalCambio] = useState(false);
@@ -376,6 +378,36 @@ function TomaDatos() {
     }
   };
 
+  // --- LÓGICA: FINALIZAR PARTIDO Y GUARDAR GOLES ---
+  const confirmarFinalizarPartido = async () => {
+    try {
+      setIsFinishing(true);
+      
+      const { error } = await supabase
+        .from('partidos')
+        .update({ 
+          estado: 'Finalizado',
+          goles_propios: statsEnVivo.golesMios,
+          goles_rival: statsEnVivo.golesRival
+        })
+        .eq('id', partido.id);
+
+      if (error) throw error;
+      
+      showToast("¡Partido finalizado correctamente!", "success");
+      setModalFinalizar(false);
+      
+      // ACÁ ESTÁ EL CAMBIO MÁGICO
+      navigate(`/resumen/${partido.id}`); 
+      
+    } catch (error) {
+      console.error(error);
+      showToast("Error de red al finalizar el partido.", "error");
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
   if (!partido) return <div style={{ color: 'var(--text-dim)', textAlign: 'center', marginTop: '50px' }}>Cargando datos del partido...</div>;
 
   const jugadoresActivos = equipo === 'Propio' ? jugadoresEnCancha : [];
@@ -446,6 +478,9 @@ function TomaDatos() {
           </button>
 
           <div style={{ display: 'flex', gap: '10px' }}>
+            {/* BOTÓN PARA FINALIZAR PARTIDO */}
+            <button onClick={() => setModalFinalizar(true)} className="btn-action" style={{ background: '#dc2626', color: '#ffffff', border: '1px solid #991b1b', fontSize: '0.7rem', fontWeight: 800, padding: '0 15px', borderRadius: '4px', cursor: 'pointer' }}>FINALIZAR PARTIDO</button>
+
             <button onClick={() => setPanelAbierto(!panelAbierto)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>{panelAbierto ? "OCULTAR" : "MOSTRAR"} PANEL</button>
             <button onClick={() => setModalCambio(true)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>CAMBIOS</button>
             
@@ -782,6 +817,25 @@ function TomaDatos() {
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setModalCambio(false)} className="btn-action" style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={guardarCambio} className="btn-action" style={{ flex: 1, padding: '10px', background: '#fff', color: '#000', fontWeight: 'bold', cursor: 'pointer' }}>CONFIRMAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- NUEVO MODAL: FINALIZAR PARTIDO --- */}
+      {modalFinalizar && (
+        <div style={overlayStyle}>
+          <div style={modalIndustrial}>
+            <div className="stat-label" style={{ marginBottom: '10px', color: '#dc2626', fontSize: '1.2rem' }}>⚠️ FINALIZAR PARTIDO</div>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginBottom: '20px', lineHeight: '1.5' }}>
+              ¿Estás seguro que deseas dar por finalizado el encuentro contra <strong>{partido.rival}</strong>? <br/><br/>
+              Esta acción actualizará el estado en la base de datos y te llevará al reporte final.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setModalFinalizar(false)} disabled={isFinishing} className="btn-action" style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={confirmarFinalizarPartido} disabled={isFinishing} className="btn-action" style={{ flex: 1, padding: '10px', background: '#dc2626', color: '#fff', fontWeight: 'bold', border: '1px solid #991b1b', cursor: 'pointer' }}>
+                {isFinishing ? 'PROCESANDO...' : 'SÍ, FINALIZAR'}
+              </button>
             </div>
           </div>
         </div>

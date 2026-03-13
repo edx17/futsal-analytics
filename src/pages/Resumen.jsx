@@ -4,6 +4,8 @@ import simpleheat from 'simpleheat';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
 } from 'recharts';
+// AGREGAMOS USE_PARAMS Y USE_NAVIGATE
+import { useParams, useNavigate } from 'react-router-dom';
 
 // IMPORTACIONES DEL MOTOR ANALÍTICO Y COMPONENTES
 import { analizarPartido } from '../analytics/engine';
@@ -13,6 +15,9 @@ import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 
 function Resumen() {
+  const { id } = useParams(); // CAPTURAMOS EL ID DE LA URL SI EXISTE
+  const navigate = useNavigate(); // PARA LIMPIAR LA URL AL VOLVER
+
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [partidoSeleccionado, setPartidoSeleccionado] = useState(null);
@@ -37,26 +42,39 @@ function Resumen() {
       const { data: j } = await supabase.from('jugadores').select('*');
       setJugadores(j || []);
       
-      // Acá capturamos si hay error de RLS
       const { data: w, error: wError } = await supabase.from('wellness').select('*');
       if (wError) console.error("⚠️ Error leyendo wellness desde Supabase:", wError);
       setWellness(w || []);
+
+      // LÓGICA MÁGICA: SI HAY ID EN LA URL, CARGAR ESE PARTIDO DIRECTAMENTE
+      if (id && p) {
+        const matchFound = p.find(partido => partido.id == id);
+        if (matchFound) {
+          cargarPartidoDirecto(matchFound);
+        }
+      }
     }
     obtenerDatos();
-  }, []);
+  }, [id]); // Agregamos 'id' como dependencia
 
-  const cargarPartido = async (id) => {
-    const partido = partidos.find(p => p.id == id);
+  // SEPARAMOS LA LÓGICA DE CARGA PARA REUTILIZARLA
+  const cargarPartidoDirecto = async (partido) => {
     setPartidoSeleccionado(partido);
     setFiltroPeriodo('Todos');
     setEventoSeleccionado(null);
-    const { data } = await supabase.from('eventos').select('*').eq('id_partido', id).order('minuto', { ascending: true });
+    const { data } = await supabase.from('eventos').select('*').eq('id_partido', partido.id).order('minuto', { ascending: true });
     setEventosPartido(data || []);
+  };
+
+  const cargarPartido = (idPartido) => {
+    // Si toca una card de la grilla, lo navegamos a la URL con ID
+    navigate(`/resumen/${idPartido}`);
   };
 
   const cerrarPartido = () => {
     setPartidoSeleccionado(null);
     setEventosPartido([]);
+    navigate('/resumen'); // LIMPIAMOS LA URL
   };
 
   const getNombreJugador = (id) => {
@@ -267,20 +285,17 @@ function Resumen() {
     };
   }, [eventosPartido, filtroPeriodo, jugadores]);
 
-  // <-- MOTOR DE WELLNESS BLINDADO Y A PRUEBA DE BOMBAS -->
   const reporteWellness = useMemo(() => {
     if (!partidoSeleccionado) return null;
     
-    // Función "Lava-Fechas": Toma cualquier formato podrido y devuelve un Objeto Date sano local
     const parseDateLocal = (str) => {
       if (!str) return null;
       try {
-        const clean = String(str).trim().split('T')[0]; // Saca todo lo que sea hora o basura
+        const clean = String(str).trim().split('T')[0];
         let parts = clean.split('-');
-        if (parts.length < 3) parts = clean.split('/'); // Por si viene DD/MM/YYYY
+        if (parts.length < 3) parts = clean.split('/');
         if (parts.length < 3) return null;
         
-        // Determina si es YYYY-MM-DD o DD-MM-YYYY
         if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
         return null;
@@ -288,23 +303,19 @@ function Resumen() {
     };
 
     const fp = parseDateLocal(partidoSeleccionado.fecha);
-    // Si la fecha del partido no es válida, devolvemos formato vacío
     if (!fp) return { pre: {rpe:0, fatiga:0, sueno:0, registros:0}, post: {rpe:0, fatiga:0, sueno:0, registros:0}, debug: {} };
     
-    // 1. Calcular Lunes y domingos matemáticamente a prueba de Timezones
-    const day = fp.getDay(); // Domingo es 0, Lunes es 1...
+    const day = fp.getDay();
     const diffToMonday = day === 0 ? -6 : 1 - day;
     
     const inicioSemana = new Date(fp.getFullYear(), fp.getMonth(), fp.getDate() + diffToMonday);
     const finPost = new Date(fp.getFullYear(), fp.getMonth(), fp.getDate() + 2);
 
-    // Formateador visual para ver exactamente de qué a qué busca (Debug In-App)
     const formatStr = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}`;
 
     const prePartido = wellness.filter(w => {
       const fw = parseDateLocal(w.fecha);
       if (!fw) return false;
-      // .getTime() es el número absoluto de milisegundos. Imposible que falle.
       return fw.getTime() >= inicioSemana.getTime() && fw.getTime() <= fp.getTime();
     });
 
@@ -319,7 +330,6 @@ function Resumen() {
       const rpe = arr.reduce((acc, curr) => acc + (Number(curr.rpe) || 0), 0) / arr.length;
       const fatiga = arr.reduce((acc, curr) => acc + (Number(curr.fatiga) || 0), 0) / arr.length;
       const sueno = arr.reduce((acc, curr) => acc + (Number(curr.sueno) || Number(curr.calidad_sueno) || 0), 0) / arr.length;
-      // Devolvemos en string formateado con 1 decimal
       return { rpe: rpe.toFixed(1), fatiga: fatiga.toFixed(1), sueno: sueno.toFixed(1), registros: arr.length };
     };
 
@@ -370,7 +380,7 @@ function Resumen() {
 
   const transicionesMapa = analitica?.transiciones.filter(t => {
     const pasaEquipo = filtroEquipoMapa === 'Ambos' ? true : t.recuperacion?.equipo === filtroEquipoMapa;
-    return pasaEquipo && t.remate; // Solo transiciones que terminan en remate
+    return pasaEquipo && t.remate; 
   }) || [];
 
   useEffect(() => {
@@ -539,7 +549,6 @@ function Resumen() {
              </div>
           </div>
 
-          {/* TARJETA DE WELLNESS - AHORA CON FECHAS CLARAS PARA CONFIRMAR */}
           {reporteWellness && (
             <div className="bento-card" style={{ borderTop: '3px solid #10b981' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
