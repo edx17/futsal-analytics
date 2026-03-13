@@ -1,9 +1,167 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
-
-// IMPORTAMOS EL HOOK DE NOTIFICACIONES
 import { useToast } from '../components/ToastContext';
+import { Stage, Layer, Circle, Rect, Text, Group, Line, Path } from 'react-konva';
+
+// =======================================================
+// COMPONENTE INTERNO: Reproductor Automático ("Modo GIF")
+// =======================================================
+const ReproductorLoop = ({ editorData }) => {
+  const containerRef = useRef(null);
+  const [stageSize, setStageSize] = useState({ w: 500, h: 281, scale: 1 });
+  
+  const frames = editorData?.frames || [];
+  const cancha = editorData?.cancha || { tamaño: '40x20', color: '#064e3b' };
+  
+  const [animElements, setAnimElements] = useState(frames[0]?.elementos || []);
+  const [currentLineas, setCurrentLineas] = useState(frames[0]?.lineas || []);
+
+  const getDimensionesLógicas = () => {
+    switch (cancha.tamaño) {
+      case '20x20_mitad': case '20x20_central': return { w: 500, h: 500 };
+      case '28x20': return { w: 700, h: 500 };
+      default: return { w: 900, h: 500 }; 
+    }
+  };
+  const logicalSize = getDimensionesLógicas();
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const cw = containerRef.current.clientWidth;
+        const ch = containerRef.current.clientHeight;
+        const scale = Math.min(cw / logicalSize.w, ch / logicalSize.h) * 0.95;
+        setStageSize({ w: cw, h: ch, scale });
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [cancha.tamaño, logicalSize.w, logicalSize.h]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (frames.length < 2) return;
+
+    const DURATION = 800;
+    const PAUSE = 500;
+
+    const playLoop = async () => {
+      while (isMounted) {
+        for (let i = 0; i < frames.length - 1; i++) {
+          if (!isMounted) break;
+          const frameA = frames[i];
+          const frameB = frames[i + 1];
+          setCurrentLineas(frameA.lineas || []);
+
+          await new Promise(resolve => {
+            let startTime = null;
+            const animate = (timestamp) => {
+              if (!isMounted) return resolve();
+              if (!startTime) startTime = timestamp;
+              const progress = Math.min((timestamp - startTime) / DURATION, 1);
+              const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+              const interpolated = (frameA.elementos || []).map(elA => {
+                const elB = (frameB.elementos || []).find(b => b.id === elA.id);
+                if (!elB) return elA;
+                return {
+                  ...elA,
+                  x: elA.x + (elB.x - elA.x) * ease,
+                  y: elA.y + (elB.y - elA.y) * ease,
+                  rotation: elA.rotation + (elB.rotation - elA.rotation) * ease,
+                };
+              });
+
+              setAnimElements(interpolated);
+              if (progress < 1) requestAnimationFrame(animate);
+              else resolve();
+            };
+            requestAnimationFrame(animate);
+          });
+
+          if (!isMounted) break;
+          setCurrentLineas(frameB.lineas || []);
+          setAnimElements(frameB.elementos || []);
+          await new Promise(res => setTimeout(res, PAUSE));
+        }
+        // Pausa al final de la jugada antes de reiniciar el bucle
+        await new Promise(res => setTimeout(res, 1000));
+        if (isMounted) {
+          setAnimElements(frames[0].elementos || []);
+          setCurrentLineas(frames[0].lineas || []);
+        }
+      }
+    };
+
+    playLoop();
+    return () => { isMounted = false; };
+  }, [frames]);
+
+  const RenderElemento = ({ el }) => {
+    const scaleFactor = el.radio / 35; 
+    switch(el.tipo) {
+      case 'jugador': case 'arquero': case 'staff':
+        return (
+          <Group scaleX={scaleFactor} scaleY={scaleFactor}>
+            <Group x={-67} y={-40}>
+                <Path data="M 80 10 A 40 40 0 0 0 80 70 L 65 65 A 25 25 0 0 1 65 15 Z M 84 40 A 10 10 0 1 1 50 40 A 10 10 0 1 1 84 40" fill={el.color} stroke="black" strokeWidth={2} />
+            </Group>
+            <Text text={el.texto} fontSize={22} fontStyle="bold" fill={el.color === '#fff' || el.color === '#eab308' ? '#000' : '#fff'} x={-15} y={-11} width={30} align="center" />
+          </Group>
+        );
+      case 'pelota': return (<Group><Circle radius={el.radio} fill="#fff" stroke="#000" strokeWidth={1.5} /><Circle radius={el.radio * 0.4} fill="#000" /></Group>);
+      case 'cono_alto': return (<Group><Circle radius={el.radio} fill={el.color} stroke="#c2410c" strokeWidth={1} /><Circle radius={el.radio * 0.4} fill="#fff" opacity={0.8} /></Group>);
+      case 'cono_plato': return (<Group><Circle radius={el.radio} fill={el.color} stroke="#ca8a04" strokeWidth={1} /><Circle radius={el.radio * 0.3} fill={cancha.color} stroke="rgba(0,0,0,0.2)" strokeWidth={1} /></Group>);
+      case 'valla': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={el.h/2 - 2} width={el.w} height={4} fill={el.color} stroke="#000" strokeWidth={0.5} /></Group>);
+      case 'escalera': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={0} width={el.w} height={el.h} fill="rgba(250, 204, 21, 0.3)" stroke="#facc15" strokeWidth={1} /></Group>);
+      case 'arco': case 'mini_arco': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={0} width={el.w} height={el.h} fill="rgba(255,255,255,0.2)" stroke="#fff" strokeWidth={1.5} /></Group>);
+      default: return <Rect width={el.w} height={el.h} fill={el.color} stroke="#000" strokeWidth={1} x={-el.w/2} y={-el.h/2} />;
+    }
+  };
+
+  const DibujoCancha = () => {
+    const stroke = "rgba(255,255,255,0.7)"; const sw = 3; const midX = logicalSize.w / 2; const midY = logicalSize.h / 2; const padding = 20; const t = cancha.tamaño;
+    return (<Group><Rect width={logicalSize.w} height={logicalSize.h} fill={cancha.color} /><Rect x={padding} y={padding} width={logicalSize.w - padding * 2} height={logicalSize.h - padding * 2} stroke={stroke} strokeWidth={sw} cornerRadius={5} />{(t === '40x20' || t === '28x20' || t === '20x20_central') && (<Group><Line points={[midX, padding, midX, logicalSize.h - padding]} stroke={stroke} strokeWidth={sw} /><Circle x={midX} y={midY} radius={70} stroke={stroke} strokeWidth={sw} /><Circle x={midX} y={midY} radius={4} fill={stroke} /></Group>)}{t !== '20x20_central' && (<Group><Rect x={padding} y={midY - 100} width={100} height={200} stroke={stroke} strokeWidth={sw} cornerRadius={[0, 70, 70, 0]} />{(t === '40x20' || t === '28x20') && (<Rect x={logicalSize.w - padding - 100} y={midY - 100} width={100} height={200} stroke={stroke} strokeWidth={sw} cornerRadius={[70, 0, 0, 70]} />)}</Group>)}</Group>);
+  };
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Stage width={stageSize.w} height={stageSize.h} scaleX={stageSize.scale} scaleY={stageSize.scale} x={(stageSize.w - logicalSize.w * stageSize.scale) / 2 || 0} y={(stageSize.h - logicalSize.h * stageSize.scale) / 2 || 0}>
+        <Layer>
+          <DibujoCancha />
+          {currentLineas.map(li => {
+            const isRecta = li.tipoTool === 'dibujar_pase';
+            const dashPattern = li.tipoTrazo === 'punteada' ? [12, 6] : [];
+            let endX = li.puntos[li.puntos.length-2], endY = li.puntos[li.puntos.length-1];
+            let angleRad = li.puntos.length >= 4 ? Math.atan2(endY - li.puntos[li.puntos.length-3], endX - li.puntos[li.puntos.length-4]) : 0;
+            return (
+              <Group key={li.id}>
+                <Line points={li.puntos} stroke={li.color} strokeWidth={li.grosor} opacity={li.transparencia} dash={dashPattern} lineCap="round" lineJoin="round" tension={isRecta ? 0 : 0.5} />
+                <Group x={endX} y={endY} rotation={angleRad * 180 / Math.PI} opacity={li.transparencia}>
+                  {li.topeFinal === 'triangulo' && (<Path data={`M 0 0 L -${li.grosor * 3} -${li.grosor * 1.5} L -${li.grosor * 3} ${li.grosor * 1.5} Z`} fill={li.color} stroke="#000" strokeWidth={0.5} />)}
+                </Group>
+              </Group>
+            );
+          })}
+          {animElements.map(el => (
+            <Group key={el.id} x={el.x} y={el.y} rotation={el.rotation} scaleX={el.scaleX} scaleY={el.scaleY}>
+              <RenderElemento el={el} />
+            </Group>
+          ))}
+        </Layer>
+      </Stage>
+      {/* Etiqueta flotante de animación */}
+      {frames.length > 1 && (
+        <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', animation: 'pulse 2s infinite' }}>
+          ▶ ANIMACIÓN
+        </div>
+      )}
+    </div>
+  );
+};
+// =======================================================
 
 const BancoTareas = () => {
   const [tareas, setTareas] = useState([]);
@@ -15,8 +173,7 @@ const BancoTareas = () => {
   
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   const navigate = useNavigate();
-  
-  const { showToast } = useToast(); // INICIALIZAMOS TOAST
+  const { showToast } = useToast();
 
   useEffect(() => {
     cargarTareas();
@@ -41,7 +198,6 @@ const BancoTareas = () => {
     }
   };
 
-  // --- NUEVA FUNCIÓN: ELIMINAR TAREA ---
   const eliminarTarea = async (id) => {
     const confirmar = window.confirm("⚠️ ¿Estás seguro de que querés eliminar esta tarea definitivamente? Esta acción no se puede deshacer.");
     if (!confirmar) return;
@@ -50,9 +206,8 @@ const BancoTareas = () => {
       const { error } = await supabase.from('tareas').delete().eq('id', id);
       if (error) throw error;
       
-      // Actualizamos el estado para que desaparezca de la pantalla sin recargar
       setTareas(tareas.filter(t => t.id !== id));
-      setTareaSeleccionada(null); // Cerramos el modal
+      setTareaSeleccionada(null);
       showToast("Tarea eliminada con éxito", "success");
     } catch (error) {
       showToast("Error al eliminar la tarea: " + error.message, "error");
@@ -222,12 +377,17 @@ const BancoTareas = () => {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: '20px' }}>
               <div style={{ flex: '1 1 500px', padding: '20px', borderRight: '1px solid #222' }}>
-                <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {tareaSeleccionada.url_grafico ? (
+                <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  
+                  {/* SI TIENE ANIMACIÓN (MÁS DE 1 FRAME), MOSTRAMOS EL REPRODUCTOR. SI NO, LA FOTO ESTÁTICA */}
+                  {tareaSeleccionada.editor_data?.frames?.length > 1 ? (
+                    <ReproductorLoop editorData={tareaSeleccionada.editor_data} />
+                  ) : tareaSeleccionada.url_grafico ? (
                     <img src={tareaSeleccionada.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : (
                     <span style={{ color: '#444' }}>Sin gráfico</span>
                   )}
+
                 </div>
                 {tareaSeleccionada.video_url && (
                   <div style={{ marginTop: '15px' }}>
@@ -266,7 +426,6 @@ const BancoTareas = () => {
                   </div>
                 </div>
 
-                {/* BOTONERA DE ACCIONES (EDITAR / ELIMINAR) */}
                 <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
                   <button 
                     onClick={() => eliminarTarea(tareaSeleccionada.id)}
