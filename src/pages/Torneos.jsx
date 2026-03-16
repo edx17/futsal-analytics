@@ -22,7 +22,7 @@ function Torneos() {
   const [mostrarModalTorneo, setMostrarModalTorneo] = useState(false);
   const [mostrarModalFixture, setMostrarModalFixture] = useState(false);
   
-  const [formTorneo, setFormTorneo] = useState({ nombre: '', categoria: 'Primera' });
+  const [formTorneo, setFormTorneo] = useState({ nombre: '', categoria: 'Primera', tipo: 'Oficial' });
   const [formFixture, setFormFixture] = useState({
     rival_id: '', jornada: '', fecha_partido: '', condicion: 'Local', estado: 'Pendiente', goles_propios: 0, goles_rival: 0
   });
@@ -50,7 +50,7 @@ function Torneos() {
   };
 
   const categoriasUnicas = useMemo(() => {
-    return Array.from(new Set(['Primera', 'Reserva', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', ...torneos.map(t => t.categoria)]));
+    return Array.from(new Set(['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', ...torneos.map(t => t.categoria)]));
   }, [torneos]);
 
   const torneosFiltrados = useMemo(() => {
@@ -459,15 +459,30 @@ function Torneos() {
       )}
 
       {/* --- MODALES --- */}
-      {mostrarModalTorneo && (
+{mostrarModalTorneo && (
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '400px' }}>
             <div className="stat-label" style={{ marginBottom: '20px' }}>NUEVO TORNEO</div>
-            <div style={{ marginBottom: '15px' }}><div className="section-title">NOMBRE</div><input type="text" value={formTorneo.nombre} onChange={e => setFormTorneo({...formTorneo, nombre: e.target.value})} style={inputIndustrial} placeholder="Ej: Copa Argentina" /></div>
-            <div style={{ marginBottom: '20px' }}><div className="section-title">CATEGORÍA</div>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <div className="section-title">NOMBRE</div>
+              <input type="text" value={formTorneo.nombre} onChange={e => setFormTorneo({...formTorneo, nombre: e.target.value})} style={inputIndustrial} placeholder="Ej: Copa Argentina" />
+            </div>
+            
+            {/* NUEVO: SELECTOR DE TIPO DE TORNEO */}
+            <div style={{ marginBottom: '15px' }}>
+              <div className="section-title">TIPO DE COMPETICIÓN</div>
+              <select value={formTorneo.tipo} onChange={e => setFormTorneo({...formTorneo, tipo: e.target.value})} style={inputIndustrial}>
+                <option value="Oficial">Oficial / Liga</option>
+                <option value="Copa">Copa</option>
+                <option value="Amistoso">Amistoso</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <div className="section-title">CATEGORÍA</div>
               <select value={formTorneo.categoria} onChange={e => setFormTorneo({...formTorneo, categoria: e.target.value})} style={inputIndustrial}>
                 <option value="Primera">Primera</option>
-                <option value="Reserva">Reserva</option>
                 <option value="Tercera">Tercera</option>
                 <option value="Cuarta">Cuarta</option>
                 <option value="Quinta">Quinta</option>
@@ -476,6 +491,7 @@ function Torneos() {
                 <option value="Octava">Octava</option>
               </select>
             </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setMostrarModalTorneo(false)} className="btn-secondary" style={{ flex: 1 }}>CANCELAR</button>
               <button onClick={handleGuardarTorneo} className="btn-action" style={{ flex: 1 }}>GUARDAR</button>

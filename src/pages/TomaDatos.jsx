@@ -437,7 +437,7 @@ function TomaDatos() {
               ⬅ VOLVER
             </button>
             <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              TRACKER // vs {partido.rival.toUpperCase()}
+            TRACKER // vs {partido.rivales?.nombre?.toUpperCase() || partido.rival?.toUpperCase() || 'RIVAL'}
               <div style={{ background: '#111', padding: '4px 12px', borderRadius: '4px', border: '1px solid #333', fontSize: '1.2rem', fontFamily: 'JetBrains Mono', display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <span style={{ color: 'var(--accent)' }}>{statsEnVivo.golesMios}</span>
                 <span style={{ color: '#555' }}>-</span>

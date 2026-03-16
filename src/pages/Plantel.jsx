@@ -40,7 +40,18 @@ function Plantel() {
     }
 
     // INYECTAMOS EL CLUB ID ANTES DE GUARDAR
-    const payload = { ...formData, club_id: clubId };
+    let payload = { ...formData, club_id: clubId };
+
+    // --- MAGIA ANTI-ERROR 400 ---
+    // Convertimos los strings vacíos ('') a null en los campos que son números o fechas
+    const camposEstrictos = ['fechanac', 'dni', 'contacto', 'peso', 'altura', 'vencimiento_apto', 'talla_calzado'];
+    
+    camposEstrictos.forEach(campo => {
+      if (payload[campo] === '') {
+        payload[campo] = null; 
+      }
+    });
+    // -----------------------------
 
     if (formData.id) {
       const { error } = await supabase.from('jugadores').update(payload).eq('id', formData.id);
@@ -60,7 +71,12 @@ function Plantel() {
   };
 
   const abrirEdicion = (jugador) => {
-    setFormData(jugador);
+    // Cuando abrimos edición, si un dato era null en la BD, lo pasamos a '' para que el input no tire error
+    const dataSegura = { ...jugador };
+    Object.keys(dataSegura).forEach(key => {
+      if (dataSegura[key] === null) dataSegura[key] = '';
+    });
+    setFormData(dataSegura);
     setMostrarModalAlta(true);
   };
 

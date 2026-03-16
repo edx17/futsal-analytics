@@ -20,8 +20,8 @@ function ScoutingRivales() {
   const [historialRival, setHistorialRival] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   
-  // NUEVO: Filtro para no mezclar categorías en el historial
-  const [filtroCategoriaH2H, setFiltroCategoriaH2H] = useState('Primera');
+  // Filtro para no mezclar categorías en el historial
+  const [filtroCategoriaH2H, setFiltroCategoriaH2H] = useState('Todas');
 
   useEffect(() => {
     if (clubId) fetchRivales();
@@ -34,13 +34,13 @@ function ScoutingRivales() {
 
   const fetchHistorial = async (idRival) => {
     setCargandoHistorial(true);
-    // Traemos TODOS los partidos jugados contra este rival
+    // Traemos TODOS los partidos jugados contra este rival (Jugados o Finalizados)
     const { data } = await supabase
       .from('partidos')
       .select('*')
       .eq('club_id', clubId)
       .eq('rival_id', idRival)
-      .eq('estado', 'Jugado') 
+      .in('estado', ['Jugado', 'Finalizado']) // ACÁ ESTÁ LA MAGIA QUE ARREGLA EL BUG
       .order('fecha', { ascending: false });
     
     if (data) setHistorialRival(data);
@@ -75,7 +75,7 @@ function ScoutingRivales() {
   const abrirPerfilRival = (rival) => {
     setFormData(rival);
     setHistorialRival([]);
-    setFiltroCategoriaH2H('Primera'); // Por defecto arranca analizando Primera
+    setFiltroCategoriaH2H('Todas'); // AHORA ARRANCA MOSTRANDO EL HISTORIAL GLOBAL
     fetchHistorial(rival.id);
     setMostrarModal(true);
   };
@@ -86,7 +86,7 @@ function ScoutingRivales() {
     setMostrarModal(true);
   };
 
-  // NUEVO: Filtramos el historial antes de calcular las estadísticas
+  // Filtramos el historial antes de calcular las estadísticas
   const historialFiltrado = historialRival.filter(p => 
     filtroCategoriaH2H === 'Todas' ? true : p.categoria === filtroCategoriaH2H
   );
