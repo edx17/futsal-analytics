@@ -41,8 +41,8 @@ function TomaDatos() {
 
   // --- ESTADOS DE EDICIÓN Y CIERRE ---
   const [eventoEditando, setEventoEditando] = useState(null); 
-  const [modalFinalizar, setModalFinalizar] = useState(false); // ESTADO PARA MODAL DE CIERRE
-  const [isFinishing, setIsFinishing] = useState(false); // ESTADO DE CARGA PARA EL CIERRE
+  const [modalFinalizar, setModalFinalizar] = useState(false); 
+  const [isFinishing, setIsFinishing] = useState(false); 
 
   // --- ESTADOS DE PLANTILLA Y EVENTOS ---
   const [modalCambio, setModalCambio] = useState(false);
@@ -51,6 +51,12 @@ function TomaDatos() {
   const [saleId, setSaleId] = useState('');
   const [entraId, setEntraId] = useState('');
   const [eventos, setEventos] = useState([]);
+
+  // --- NUEVOS ESTADOS: EDITAR 5 INICIAL ---
+  const [modalEditarTitulares, setModalEditarTitulares] = useState(false);
+  const [tempTitulares, setTempTitulares] = useState([]);
+  const [tempSuplentes, setTempSuplentes] = useState([]);
+  const [isSavingTitulares, setIsSavingTitulares] = useState(false);
 
   useEffect(() => {
     if (!partido) navigate('/');
@@ -378,6 +384,60 @@ function TomaDatos() {
     }
   };
 
+  // --- NUEVAS FUNCIONES: EDITAR TITULARES ANTES DE INICIAR ---
+  const abrirModalTitulares = () => {
+    setTempTitulares([...jugadoresEnCancha]);
+    setTempSuplentes([...jugadoresEnBanco]);
+    setModalEditarTitulares(true);
+  };
+
+  const toggleTitular = (jugador, esTitularActualmente) => {
+    if (esTitularActualmente) {
+      setTempTitulares(prev => prev.filter(j => j.id !== jugador.id));
+      setTempSuplentes(prev => [...prev, jugador]);
+    } else {
+      if (tempTitulares.length >= 5) {
+        showToast("Ya tenés 5 titulares seleccionados.", "warning");
+        return;
+      }
+      setTempSuplentes(prev => prev.filter(j => j.id !== jugador.id));
+      setTempTitulares(prev => [...prev, jugador]);
+    }
+  };
+
+  const guardarNuevosTitulares = async () => {
+    if (tempTitulares.length !== 5) {
+      showToast("Debes seleccionar exactamente 5 titulares.", "error");
+      return;
+    }
+    setIsSavingTitulares(true);
+    try {
+      // Reconstruimos la plantilla respetando la estructura original JSON
+      const nuevaPlantilla = [
+        ...tempTitulares.map(j => ({ id_jugador: j.id, titular: true })),
+        ...tempSuplentes.map(j => ({ id_jugador: j.id, titular: false }))
+      ];
+
+      const { error } = await supabase
+        .from('partidos')
+        .update({ plantilla: nuevaPlantilla })
+        .eq('id', partido.id);
+
+      if (error) throw error;
+
+      // Actualizamos los estados visuales en la app
+      setJugadoresEnCancha(tempTitulares);
+      setJugadoresEnBanco(tempSuplentes);
+      setModalEditarTitulares(false);
+      showToast("Quinteto inicial actualizado correctamente.", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Error al guardar en Supabase.", "error");
+    } finally {
+      setIsSavingTitulares(false);
+    }
+  };
+
   // --- LÓGICA: FINALIZAR PARTIDO Y GUARDAR GOLES ---
   const confirmarFinalizarPartido = async () => {
     try {
@@ -397,7 +457,6 @@ function TomaDatos() {
       showToast("¡Partido finalizado correctamente!", "success");
       setModalFinalizar(false);
       
-      // ACÁ ESTÁ EL CAMBIO MÁGICO
       navigate(`/resumen/${partido.id}`); 
       
     } catch (error) {
@@ -478,10 +537,15 @@ function TomaDatos() {
           </button>
 
           <div style={{ display: 'flex', gap: '10px' }}>
-            {/* BOTÓN PARA FINALIZAR PARTIDO */}
             <button onClick={() => setModalFinalizar(true)} className="btn-action" style={{ background: '#dc2626', color: '#ffffff', border: '1px solid #991b1b', fontSize: '0.7rem', fontWeight: 800, padding: '0 15px', borderRadius: '4px', cursor: 'pointer' }}>FINALIZAR PARTIDO</button>
 
             <button onClick={() => setPanelAbierto(!panelAbierto)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>{panelAbierto ? "OCULTAR" : "MOSTRAR"} PANEL</button>
+            
+            {/* NUEVO BOTON DE EDITAR TITULARES: Aparece solo si no hay eventos */}
+            {eventos.length === 0 && (
+              <button onClick={abrirModalTitulares} className="btn-action" style={{ background: 'var(--accent)', color: '#000', border: '1px solid var(--accent)', fontSize: '0.7rem', fontWeight: 800 }}>EDITAR 5 INICIAL</button>
+            )}
+
             <button onClick={() => setModalCambio(true)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>CAMBIOS</button>
             
             {/* RELOJ CON MODIFICACIÓN MANUAL */}
@@ -781,6 +845,7 @@ function TomaDatos() {
         </aside>
       )}
 
+      {/* --- MODAL DE EDICIÓN DE EVENTO --- */}
       {eventoEditando && (
         <div style={overlayStyle}>
           <div style={modalIndustrial}>
@@ -802,6 +867,7 @@ function TomaDatos() {
         </div>
       )}
 
+      {/* --- MODAL DE CAMBIOS EN VIVO --- */}
       {modalCambio && (
         <div style={overlayStyle}>
           <div style={modalIndustrial}>
@@ -822,7 +888,63 @@ function TomaDatos() {
         </div>
       )}
 
-      {/* --- NUEVO MODAL: FINALIZAR PARTIDO --- */}
+      {/* --- NUEVO MODAL: EDITAR 5 INICIAL --- */}
+      {modalEditarTitulares && (
+        <div style={overlayStyle}>
+          <div style={{ ...modalIndustrial, width: '450px' }}>
+            <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>EDITAR 5 INICIAL</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '20px', lineHeight: 1.4 }}>
+              Tocá a un jugador para cambiarlo de lista. Para poder guardar, deben haber <strong style={{color: '#fff'}}>exactamente 5 jugadores</strong> en la lista de titulares.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
+              {/* Columna Titulares */}
+              <div>
+                <div className="stat-label" style={{ marginBottom: '10px', color: tempTitulares.length === 5 ? '#00ff88' : '#ef4444' }}>
+                  TITULARES ({tempTitulares.length}/5)
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {tempTitulares.map(j => (
+                    <button key={j.id} onClick={() => toggleTitular(j, true)} style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid var(--accent)', color: '#fff', padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{j.apellido || j.nombre}</span> <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{j.dorsal}</span>
+                    </button>
+                  ))}
+                  {tempTitulares.length === 0 && <div style={{ fontSize: '0.7rem', color: '#555' }}>Vacío</div>}
+                </div>
+              </div>
+
+              {/* Columna Suplentes */}
+              <div>
+                <div className="stat-label" style={{ marginBottom: '10px', color: 'var(--text-dim)' }}>
+                  AL BANCO
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '200px', overflowY: 'auto' }}>
+                  {tempSuplentes.map(j => (
+                    <button key={j.id} onClick={() => toggleTitular(j, false)} style={{ background: '#111', border: '1px solid #333', color: '#aaa', padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{j.apellido || j.nombre}</span> <span style={{ fontWeight: 'bold', color: '#666' }}>{j.dorsal}</span>
+                    </button>
+                  ))}
+                   {tempSuplentes.length === 0 && <div style={{ fontSize: '0.7rem', color: '#555' }}>Vacío</div>}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setModalEditarTitulares(false)} disabled={isSavingTitulares} className="btn-action" style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
+              <button 
+                onClick={guardarNuevosTitulares} 
+                disabled={isSavingTitulares || tempTitulares.length !== 5} 
+                className="btn-action" 
+                style={{ flex: 1, padding: '10px', background: tempTitulares.length === 5 ? 'var(--accent)' : '#555', color: tempTitulares.length === 5 ? '#000' : '#888', fontWeight: 'bold', cursor: tempTitulares.length === 5 ? 'pointer' : 'not-allowed', border: 'none' }}
+              >
+                {isSavingTitulares ? 'GUARDANDO...' : 'CONFIRMAR 5'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL FINALIZAR PARTIDO --- */}
       {modalFinalizar && (
         <div style={overlayStyle}>
           <div style={modalIndustrial}>

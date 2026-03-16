@@ -4,10 +4,8 @@ import simpleheat from 'simpleheat';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
 } from 'recharts';
-// AGREGAMOS USE_PARAMS Y USE_NAVIGATE
 import { useParams, useNavigate } from 'react-router-dom';
 
-// IMPORTACIONES DEL MOTOR ANALÍTICO Y COMPONENTES
 import { analizarPartido } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
@@ -15,8 +13,8 @@ import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 
 function Resumen() {
-  const { id } = useParams(); // CAPTURAMOS EL ID DE LA URL SI EXISTE
-  const navigate = useNavigate(); // PARA LIMPIAR LA URL AL VOLVER
+  const { id } = useParams();
+  const navigate = useNavigate();
 
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
@@ -28,12 +26,18 @@ function Resumen() {
   const [tipoMapa, setTipoMapa] = useState('calor');
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
-  const [eventoSeleccionado, setEventoSeleccionado] = useState(null);
 
   const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState('Todas');
   const [filtroCompeticionGrid, setFiltroCompeticionGrid] = useState('Todas');
 
   const heatmapRef = useRef(null);
+
+  // --- ESTADOS PARA EL VIDEOTRACKING (NATIVO) ---
+  const [videoUrl, setVideoUrl] = useState('');
+  const [tiempoVideo, setTiempoVideo] = useState(0); 
+  const [offsetPT, setOffsetPT] = useState(0); 
+  const [offsetST, setOffsetST] = useState(0); 
+  const [filtroVideoAcciones, setFiltroVideoAcciones] = useState([]); // Filtros interactivos del timeline
 
   useEffect(() => {
     async function obtenerDatos() {
@@ -46,7 +50,6 @@ function Resumen() {
       if (wError) console.error("⚠️ Error leyendo wellness desde Supabase:", wError);
       setWellness(w || []);
 
-      // LÓGICA MÁGICA: SI HAY ID EN LA URL, CARGAR ESE PARTIDO DIRECTAMENTE
       if (id && p) {
         const matchFound = p.find(partido => partido.id == id);
         if (matchFound) {
@@ -55,32 +58,86 @@ function Resumen() {
       }
     }
     obtenerDatos();
-  }, [id]); // Agregamos 'id' como dependencia
+  }, [id]);
 
-  // SEPARAMOS LA LÓGICA DE CARGA PARA REUTILIZARLA
   const cargarPartidoDirecto = async (partido) => {
     setPartidoSeleccionado(partido);
     setFiltroPeriodo('Todos');
-    setEventoSeleccionado(null);
+    setVideoUrl(partido.video_url || ''); 
+    setTiempoVideo(0);
     const { data } = await supabase.from('eventos').select('*').eq('id_partido', partido.id).order('minuto', { ascending: true });
     setEventosPartido(data || []);
   };
 
   const cargarPartido = (idPartido) => {
-    // Si toca una card de la grilla, lo navegamos a la URL con ID
     navigate(`/resumen/${idPartido}`);
   };
 
   const cerrarPartido = () => {
     setPartidoSeleccionado(null);
     setEventosPartido([]);
-    navigate('/resumen'); // LIMPIAMOS LA URL
+    setVideoUrl('');
+    setTiempoVideo(0);
+    navigate('/resumen');
+  };
+
+  // --- GENERADOR DE URL PARA EL IFRAME DE YOUTUBE ---
+  const obtenerUrlEmbed = () => {
+    if (!partidoSeleccionado?.video_url) return '';
+    const url = partidoSeleccionado.video_url;
+    
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=))([^"&?\/\s]{11})/i);
+    const videoId = match ? match[1] : '';
+
+    if (videoId) {
+      const autoplay = tiempoVideo > 0 ? '&autoplay=1' : '';
+      return `https://www.youtube.com/embed/${videoId}?start=${tiempoVideo}${autoplay}&rel=0`;
+    }
+    return url; 
+  };
+
+  // --- FUNCIÓN MÁGICA DEL VIDEOTRACKING ---
+  const saltarAEventoVideo = (ev) => {
+    if (!partidoSeleccionado?.video_url) return;
+    
+    const offset = ev.periodo === 'PT' ? offsetPT : offsetST;
+    const tiempoEvento = (ev.minuto * 60) + (ev.segundos || 0) + offset;
+    const tiempoPrevio = Math.max(0, tiempoEvento - 5); // 5 seg antes para contexto
+    
+    setTiempoVideo(tiempoPrevio);
+  };
+
+  // --- GUARDAR Y BORRAR VIDEO ---
+  const guardarUrlVideo = async () => {
+    if (!partidoSeleccionado || !videoUrl) return;
+    const { error } = await supabase.from('partidos').update({ video_url: videoUrl }).eq('id', partidoSeleccionado.id);
+    if (!error) {
+      setPartidoSeleccionado({ ...partidoSeleccionado, video_url: videoUrl });
+      alert("¡URL vinculada correctamente!");
+    } else alert("Error: " + error.message);
+  };
+
+  const desvincularVideo = async () => {
+    if (!window.confirm("¿Querés quitar este video del partido?")) return;
+    const { error } = await supabase.from('partidos').update({ video_url: null }).eq('id', partidoSeleccionado.id);
+    if(!error){
+      setPartidoSeleccionado({ ...partidoSeleccionado, video_url: null });
+      setVideoUrl('');
+      setTiempoVideo(0);
+    }
   };
 
   const getNombreJugador = (id) => {
     if (!id) return 'SIN ASIGNAR / RIVAL';
     const j = jugadores.find(jug => jug.id == id);
     return j ? `${j.dorsal} - ${j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}` : 'DESCONOCIDO';
+  };
+
+  // TOGGLE PARA FILTROS DEL VIDEO
+  const toggleFiltroVideo = (accion) => {
+    setFiltroVideoAcciones(prev => 
+      prev.includes(accion) ? prev.filter(a => a !== accion) : [...prev, accion]
+    );
   };
 
   const categoriasUnicas = useMemo(() => [...new Set(partidos.map(p => p.categoria).filter(Boolean))], [partidos]);
@@ -285,6 +342,34 @@ function Resumen() {
     };
   }, [eventosPartido, filtroPeriodo, jugadores]);
 
+  // LOGICA PARA FILTRAR Y ORDENAR EL TIMELINE DEL VIDEO
+  const eventosTimeline = useMemo(() => {
+    if (!analitica) return [];
+    
+    // 1. Clonamos los eventos actuales
+    let evs = [...analitica.evFiltrados];
+
+    // 2. Filtramos por las acciones seleccionadas en las pastillas (si hay alguna seleccionada)
+    if (filtroVideoAcciones.length > 0) {
+      evs = evs.filter(ev => filtroVideoAcciones.some(filtro => ev.accion?.includes(filtro)));
+    }
+
+    // 3. Ordenamos: Primero PT, después ST. Y adentro de eso, por minuto/segundo.
+    evs.sort((a, b) => {
+      // Priorizar PT sobre ST
+      if (a.periodo === 'PT' && b.periodo === 'ST') return -1;
+      if (a.periodo === 'ST' && b.periodo === 'PT') return 1;
+      
+      // Si están en el mismo periodo, ordenar cronológicamente
+      const tiempoA = (a.minuto * 60) + (a.segundos || 0);
+      const tiempoB = (b.minuto * 60) + (b.segundos || 0);
+      return tiempoA - tiempoB;
+    });
+
+    return evs;
+  }, [analitica, filtroVideoAcciones]);
+
+
   const reporteWellness = useMemo(() => {
     if (!partidoSeleccionado) return null;
     
@@ -478,6 +563,8 @@ function Resumen() {
         .mci-bar { height: 6px; border-radius: 3px; background: #333; overflow: hidden; margin-top: 8px; display: flex; }
         .bento-card { overflow: visible !important; }
         .table-wrapper { overflow-x: auto; overflow-y: visible; padding-bottom: 40px; }
+        .pill-filtro { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: #000; color: var(--text-dim); transition: 0.2s; }
+        .pill-filtro.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.1); }
       `}</style>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
@@ -899,6 +986,113 @@ function Resumen() {
               </table>
             </div>
           </div>
+
+          {/* --- BLOQUE NUEVO: VIDEOTRACKING NATIVO HTML (MOVIDO AL FINAL) --- */}
+          <div className="bento-card" style={{ borderTop: '3px solid var(--accent)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem', margin: 0 }}>🎬 VIDEOTRACKING INTERACTIVO</div>
+              {partidoSeleccionado.video_url && (
+                <button onClick={desvincularVideo} style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem', padding: '4px 8px', fontWeight: 'bold' }}>
+                  🗑️ QUITAR VIDEO
+                </button>
+              )}
+            </div>
+            
+            {!partidoSeleccionado.video_url ? (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#111', padding: '20px', borderRadius: '4px' }}>
+                <input 
+                  type="text" 
+                  placeholder="Pegá el link de YouTube (No Listado)..."
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  style={{ flex: 1, padding: '12px', background: '#000', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px' }}
+                />
+                <button onClick={guardarUrlVideo} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontWeight: 'bold', padding: '12px 25px' }}>
+                  VINCULAR
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                
+                {/* FILTROS INTERACTIVOS */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '10px' }}>FILTRAR TIMELINE:</span>
+                  {['Gol', 'Remate', 'Pérdida', 'Recuperación', 'Falta', 'Duelo'].map(acc => (
+                    <button 
+                      key={acc}
+                      className={`pill-filtro ${filtroVideoAcciones.includes(acc) ? 'active' : ''}`}
+                      onClick={() => toggleFiltroVideo(acc)}
+                    >
+                      {acc.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                  
+                  {/* REPRODUCTOR IFRAME PURO RESPONSIVE */}
+                  <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ background: '#000', borderRadius: '4px', overflow: 'hidden', border: '1px solid #333', width: '100%', aspectRatio: '16/9' }}>
+                      <iframe 
+                        width="100%" 
+                        height="100%" 
+                        src={obtenerUrlEmbed()} 
+                        title="Reproductor de Video" 
+                        frameBorder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                        allowFullScreen
+                        style={{ border: 'none' }}
+                      ></iframe>
+                    </div>
+
+                    {/* SINCRONIZACIÓN ABAJO DEL VIDEO */}
+                    <div style={{ display: 'flex', gap: '20px', padding: '15px', background: '#111', borderRadius: '4px' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO PT</label>
+                          <input type="number" value={offsetPT} onChange={(e) => setOffsetPT(Number(e.target.value))} style={{ width: '100%', padding: '8px', background: '#000', color: '#fff', border: '1px solid #333' }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO ST</label>
+                          <input type="number" value={offsetST} onChange={(e) => setOffsetST(Number(e.target.value))} style={{ width: '100%', padding: '8px', background: '#000', color: '#fff', border: '1px solid #333' }} />
+                        </div>
+                    </div>
+                  </div>
+
+                  {/* TIMELINE (FILTRADO Y ORDENADO) */}
+                  <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', maxHeight: '550px' }}>
+                    <div className="stat-label" style={{ marginBottom: '10px' }}>EVENTOS DEL PARTIDO ({eventosTimeline.length})</div>
+                    <div style={{ flex: 1, overflowY: 'auto', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {eventosTimeline.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.8rem' }}>No hay eventos para estos filtros.</div>
+                      ) : (
+                        eventosTimeline.map((ev, idx) => {
+                          const color = getColorAccion(ev.accion);
+                          return (
+                            <button 
+                              key={ev.id || idx}
+                              onClick={() => saltarAEventoVideo(ev)}
+                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000', border: `1px solid ${color}`, borderLeft: `4px solid ${color}`, padding: '8px 10px', cursor: 'pointer', borderRadius: '4px', textAlign: 'left' }}
+                            >
+                              <div style={{ pointerEvents: 'none' }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: color }}>{ev.accion.toUpperCase()}</div>
+                                <div style={{ fontSize: '0.65rem', color: '#aaa' }}>{getNombreJugador(ev.id_jugador)}</div>
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 800 }}>
+                                {ev.periodo} {ev.minuto}'
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+          {/* --- FIN BLOQUE VIDEOTRACKING --- */}
+
         </div>
       )}
     </div>
