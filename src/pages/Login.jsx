@@ -3,7 +3,7 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [userHandle, setUserHandle] = useState(''); // Aquí guardamos el username o mail
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,19 +14,39 @@ export default function Login() {
     setLoading(true);
     setError('');
 
+    let emailParaLogin = userHandle.trim();
+
     try {
-      // Intento de login directo con Supabase Auth
+      // 1. Si el usuario NO escribió un @, asumimos que es un username.
+      // Vamos a buscar su email real a la tabla de perfiles.
+      if (!emailParaLogin.includes('@')) {
+        const { data: perfilData, error: perfilError } = await supabase
+          .from('perfiles')
+          .select('email')
+          .eq('username', emailParaLogin)
+          .single();
+
+        if (perfilError || !perfilData) {
+          // Si no lo encuentra, probamos con el truco del mail ficticio por si fue creado por el panel de Usuarios
+          emailParaLogin = `${emailParaLogin}@virtualstats.com`;
+        } else {
+          // Si lo encuentra, usamos el mail real que tiene cargado en su perfil
+          emailParaLogin = perfilData.email;
+        }
+      }
+
+      // 2. Ahora sí, hacemos el login en Supabase Auth con el email correcto
       const { data, error: authError } = await supabase.auth.signInWithPassword({ 
-        email: email, 
+        email: emailParaLogin, 
         password: password 
       });
 
       if (authError) {
-        throw new Error('Credenciales incorrectas o usuario no registrado.');
+        throw new Error('Credenciales incorrectas. Verificá tu usuario y contraseña.');
       }
 
       if (data?.user) {
-        navigate('/temporada');
+        navigate('/'); 
       }
       
     } catch (err) {
@@ -39,37 +59,54 @@ export default function Login() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', width: '100%', background: 'var(--bg)' }}>
       <div style={{ background: 'var(--panel)', padding: '40px', borderRadius: '8px', border: '1px solid var(--border)', width: '100%', maxWidth: '400px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '30px', fontFamily: 'Outfit' }}>
+        <h2 style={{ textAlign: 'center', marginBottom: '30px', fontFamily: 'Outfit', fontWeight: 900 }}>
           VIRTUAL<span style={{ color: 'var(--accent)' }}>.STATS</span>
         </h2>
         
-        {error && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '0.9rem', textAlign: 'center' }}>{error}</div>}
+        {error && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '0.8rem', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: '10px', borderRadius: '4px' }}>{error}</div>}
         
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <input
-            type="email"
-            placeholder="Correo Electrónico"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ padding: '15px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' }}
-            autoComplete="email"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ padding: '15px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' }}
-            autoComplete="current-password"
-            required
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', letterSpacing: '1px' }}>USUARIO O EMAIL</label>
+            <input
+              type="text" 
+              placeholder="Ingresá tu usuario o mail"
+              value={userHandle}
+              onChange={(e) => setUserHandle(e.target.value)}
+              style={{ padding: '15px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' }}
+              required
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', letterSpacing: '1px' }}>CONTRASEÑA</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{ padding: '15px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' }}
+              autoComplete="current-password"
+              required
+            />
+          </div>
+
           <button 
             type="submit" 
             disabled={loading}
-            style={{ padding: '15px', background: 'var(--accent)', color: '#000', fontWeight: 800, border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+            style={{ 
+              padding: '15px', 
+              background: 'var(--accent)', 
+              color: '#000', 
+              fontWeight: 800, 
+              border: 'none', 
+              cursor: 'pointer', 
+              borderRadius: '4px',
+              marginTop: '10px',
+              transition: 'opacity 0.2s'
+            }}
           >
-            {loading ? 'ACCEDIENDO...' : 'INGRESAR'}
+            {loading ? 'VALIDANDO...' : 'INGRESAR AL CLUB'}
           </button>
         </form>
       </div>

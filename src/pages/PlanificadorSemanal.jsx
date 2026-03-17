@@ -9,6 +9,7 @@ const PlanificadorSemanal = () => {
   const [modoVista, setModoVista] = useState('semanal'); // 'semanal' o 'mensual'
   const [diasCalendario, setDiasCalendario] = useState([]);
   const [sesiones, setSesiones] = useState([]);
+  const [partidosOficiales, setPartidosOficiales] = useState([]); // NUEVO: Estado para partidos
   const [tareasBanco, setTareasBanco] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -20,7 +21,7 @@ const PlanificadorSemanal = () => {
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [busquedaTarea, setBusquedaTarea] = useState('');
   
-  const { showToast } = useToast(); // INICIALIZAMOS TOAST
+  const { showToast } = useToast(); 
 
   const [nuevaSesion, setNuevaSesion] = useState({
     tipo_sesion: 'Entrenamiento',
@@ -42,7 +43,7 @@ const PlanificadorSemanal = () => {
   const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const diasNombres = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'];
 
-  // 1. Motor del Calendario (Semanal o Mensual)
+  // 1. Motor del Calendario
   useEffect(() => {
     const calcularCalendario = () => {
       const year = fechaReferencia.getFullYear();
@@ -67,7 +68,6 @@ const PlanificadorSemanal = () => {
           });
         }
       } else {
-        // Vista Mensual (42 días para cubrir el mes completo y huecos)
         const primerDiaDelMes = new Date(year, month, 1);
         const day = primerDiaDelMes.getDay();
         const diffToMonday = day === 0 ? -6 : 1 - day;
@@ -90,7 +90,7 @@ const PlanificadorSemanal = () => {
     calcularCalendario();
   }, [fechaReferencia, modoVista]);
 
-  // 2. Traer Datos
+  // 2. Traer Datos (Sesiones Y Partidos)
   useEffect(() => {
     if (diasCalendario.length > 0) {
       cargarDatos();
@@ -104,11 +104,19 @@ const PlanificadorSemanal = () => {
       const inicio = diasCalendario[0].fechaStr;
       const fin = diasCalendario[diasCalendario.length - 1].fechaStr;
 
+      // TRAER SESIONES
       let querySesiones = supabase.from('sesiones').select('*').eq('club_id', club_id).gte('fecha', inicio).lte('fecha', fin);
       if (filtroCategoria !== 'Todas') querySesiones = querySesiones.eq('categoria_equipo', filtroCategoria);
       const { data: dataSesiones, error: errSesiones } = await querySesiones;
       if (errSesiones) throw errSesiones;
+
+      // NUEVO: TRAER PARTIDOS OFICIALES DE LA TABLA PARTIDOS
+      let queryPartidos = supabase.from('partidos').select('*').eq('club_id', club_id).gte('fecha', inicio).lte('fecha', fin);
+      if (filtroCategoria !== 'Todas') queryPartidos = queryPartidos.eq('categoria', filtroCategoria); // Nota: acá se llama 'categoria'
+      const { data: dataPartidos, error: errPartidos } = await queryPartidos;
+      if (errPartidos) throw errPartidos;
       
+      // TRAER TAREAS DEL BANCO
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
         .select('id, titulo, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico')
@@ -118,6 +126,7 @@ const PlanificadorSemanal = () => {
       if (errTareas) throw errTareas;
 
       setSesiones(dataSesiones || []);
+      setPartidosOficiales(dataPartidos || []); // Guardamos los partidos
       setTareasBanco(dataTareas || []);
 
       const categoriasUnicas = [...new Set((dataSesiones || []).map(s => s.categoria_equipo).filter(Boolean))];
@@ -219,23 +228,16 @@ const PlanificadorSemanal = () => {
       <div className="bento-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', background: 'var(--panel)', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '15px' }}>
         <div>
           <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.5rem', margin: 0 }}>🗓️ CALENDARIO DE PLANIFICACIÓN</h1>
-          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Control de microciclos y cargas mensuales.</p>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Control de microciclos, cargas mensuales y partidos.</p>
         </div>
         
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
           
-          {/* TOGGLE VISTA SEMANA/MES */}
           <div style={{ display: 'flex', background: '#000', padding: '4px', borderRadius: '8px', border: '1px solid #333' }}>
-            <button 
-              onClick={() => setModoVista('semanal')} 
-              style={{ ...toggleBtn, background: modoVista === 'semanal' ? 'var(--accent)' : 'transparent', color: modoVista === 'semanal' ? '#000' : 'var(--text-dim)' }}
-            >
+            <button onClick={() => setModoVista('semanal')} style={{ ...toggleBtn, background: modoVista === 'semanal' ? 'var(--accent)' : 'transparent', color: modoVista === 'semanal' ? '#000' : 'var(--text-dim)' }}>
               Semana
             </button>
-            <button 
-              onClick={() => setModoVista('mensual')} 
-              style={{ ...toggleBtn, background: modoVista === 'mensual' ? 'var(--accent)' : 'transparent', color: modoVista === 'mensual' ? '#000' : 'var(--text-dim)' }}
-            >
+            <button onClick={() => setModoVista('mensual')} style={{ ...toggleBtn, background: modoVista === 'mensual' ? 'var(--accent)' : 'transparent', color: modoVista === 'mensual' ? '#000' : 'var(--text-dim)' }}>
               Mes
             </button>
           </div>
@@ -265,7 +267,6 @@ const PlanificadorSemanal = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           
-          {/* NOMBRES DE LOS DÍAS (Solo se ven fijos arriba en vista mensual, en la semanal van adentro de la tarjeta) */}
           {modoVista === 'mensual' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px', textAlign: 'center' }}>
               {diasNombres.map((d, i) => (
@@ -274,19 +275,14 @@ const PlanificadorSemanal = () => {
             </div>
           )}
 
-          {/* GRILLA DEL CALENDARIO */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(7, 1fr)', 
-            gap: modoVista === 'semanal' ? '10px' : '5px', 
-            alignItems: 'stretch' 
-          }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: modoVista === 'semanal' ? '10px' : '5px', alignItems: 'stretch' }}>
             {diasCalendario.map((dia, idx) => {
+              // Buscar entrenamientos Y partidos para este día
               const sesionesDia = sesiones.filter(s => s.fecha === dia.fechaStr);
-              const opacidadMes = dia.isMesActual ? 1 : 0.4; // Apaga los días que no son del mes actual
+              const partidosDia = partidosOficiales.filter(p => p.fecha === dia.fechaStr);
+              const opacidadMes = dia.isMesActual ? 1 : 0.4;
 
               if (modoVista === 'semanal') {
-                // VISTA SEMANAL DETALLADA
                 return (
                   <div key={idx} style={{ background: dia.isHoy ? '#111827' : '#0a0a0a', border: dia.isHoy ? '2px solid var(--accent)' : '1px solid #222', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '400px' }}>
                     <div style={{ background: dia.isHoy ? 'var(--accent)' : '#111', padding: '10px', textAlign: 'center', borderBottom: '1px solid #222' }}>
@@ -295,6 +291,24 @@ const PlanificadorSemanal = () => {
                     </div>
 
                     <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      
+                      {/* --- RENDERIZADO DE PARTIDOS OFICIALES (AZUL) --- */}
+                      {partidosDia.map(partido => (
+                        <div key={`partido-${partido.id}`} style={{ background: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6', padding: '10px', borderRadius: '6px', position: 'relative' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#3b82f6', marginBottom: '2px' }}>PARTIDO OFICIAL</div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#fff', marginBottom: '5px' }}>vs {partido.rival?.toUpperCase()}</div>
+                          <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
+                            {partido.competicion} - {partido.condicion}
+                          </div>
+                          {partido.estado !== 'Pendiente' && (
+                            <div style={{ marginTop: '5px', fontSize: '0.7rem', color: '#fff', fontWeight: 'bold' }}>
+                              RES: {partido.goles_propios} - {partido.goles_rival}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* --- RENDERIZADO DE SESIONES REGULARES --- */}
                       {sesionesDia.map(sesion => {
                         const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || '#888';
                         const tareasIds = sesion.tareas_ids || [];
@@ -335,7 +349,6 @@ const PlanificadorSemanal = () => {
                   </div>
                 );
               } else {
-                // VISTA MENSUAL COMPACTA
                 return (
                   <div key={idx} onClick={() => abrirModal(dia)} style={{ background: dia.isHoy ? '#111827' : '#0a0a0a', border: dia.isHoy ? '1px solid var(--accent)' : '1px solid #222', borderRadius: '8px', display: 'flex', flexDirection: 'column', minHeight: '100px', padding: '5px', opacity: opacidadMes, cursor: 'pointer', transition: '0.2s', overflow: 'hidden' }} className="mes-card">
                     <div style={{ textAlign: 'right', fontSize: '0.8rem', fontWeight: '900', color: dia.isHoy ? 'var(--accent)' : (dia.isMesActual ? '#fff' : '#666'), marginBottom: '5px' }}>
@@ -343,6 +356,14 @@ const PlanificadorSemanal = () => {
                     </div>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      {/* Pastilla Mes: Partidos (Azul) */}
+                      {partidosDia.map(partido => (
+                        <div key={`partido-${partido.id}`} style={{ background: 'rgba(59, 130, 246, 0.2)', borderLeft: '2px solid #3b82f6', padding: '4px', borderRadius: '3px', fontSize: '0.6rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 'bold', color: '#93c5fd' }}>vs {partido.rival?.substring(0,4).toUpperCase()}</span>
+                        </div>
+                      ))}
+
+                      {/* Pastilla Mes: Sesiones regulares */}
                       {sesionesDia.map(sesion => {
                         const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || '#888';
                         return (
@@ -362,7 +383,6 @@ const PlanificadorSemanal = () => {
         </div>
       )}
 
-      {/* MODAL PARA CREAR SESIÓN (Mismo que ya pulimos) */}
       {mostrarModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
           <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '900px', border: '2px solid var(--accent)', maxHeight: '95vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -373,7 +393,6 @@ const PlanificadorSemanal = () => {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-              
               <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <div style={{ flex: 1 }}>
@@ -385,7 +404,7 @@ const PlanificadorSemanal = () => {
                     <select value={nuevaSesion.tipo_sesion} onChange={e => setNuevaSesion({...nuevaSesion, tipo_sesion: e.target.value})} style={inputStyle}>
                       <option value="Entrenamiento">Entrenamiento</option>
                       <option value="Gimnasio">Gimnasio / Fuerza</option>
-                      <option value="Partido">Partido</option>
+                      <option value="Amistoso">Amistoso (No Oficial)</option>
                       <option value="Descanso">Descanso Activo</option>
                     </select>
                   </div>
