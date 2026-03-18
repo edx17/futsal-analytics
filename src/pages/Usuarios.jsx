@@ -141,10 +141,11 @@ function Usuarios() {
               <div className="input-field">
                 <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '5px', display: 'block' }}>ROL EN EL SISTEMA</label>
                 <select value={nuevoUser.rol} onChange={e => setNuevoUser({...nuevoUser, rol: e.target.value})} style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px' }}>
-                  <option value="jugador">JUGADOR</option>
-                  <option value="ct">CUERPO TÉCNICO (CT)</option>
-                  {esSuperUser && <option value="admin">ADMINISTRATIVO (DUEÑO)</option>}
-                  {esSuperUser && <option value="superuser">SUPER USER (MASTER)</option>}
+                  <option value="jugador">Jugador</option>
+                  <option value="ct">Cuerpo Técnico</option>
+                  {esSuperUser && <option value="admin">Administrativo (Dirigente)</option>}
+                  <option value="tesorero">Tesorero</option>
+                  {esSuperUser && <option value="superuser">Super User</option>}
                 </select>
               </div>
 

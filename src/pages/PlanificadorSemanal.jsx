@@ -14,7 +14,7 @@ const PlanificadorSemanal = () => {
   const [cargando, setCargando] = useState(true);
 
   const [filtroCategoria, setFiltroCategoria] = useState('Primera'); 
-  const [categoriasGuardadas, setCategoriasGuardadas] = useState(['Primera', 'Reserva', 'Tercera', 'Cuarta']);
+  const [categoriasGuardadas, setCategoriasGuardadas] = useState(['Primera', 'Tercera']);
 
   // Modal State
   const [mostrarModal, setMostrarModal] = useState(false);
