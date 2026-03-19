@@ -14,11 +14,14 @@ import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 
 function JugadorPerfil() {
+  const [userRol, setUserRol] = useState(null); // ESTADO PARA PERMISOS
+  const [cargandoAuth, setCargandoAuth] = useState(true);
+
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
   
-  const [eventos, setEventos] = useState([]); // Eventos directos del jugador
-  const [eventosCompletos, setEventosCompletos] = useState([]); // Contexto de los partidos que jugó
+  const [eventos, setEventos] = useState([]);
+  const [eventosCompletos, setEventosCompletos] = useState([]);
   
   const [wellnessJugador, setWellnessJugador] = useState([]);
   
@@ -31,6 +34,29 @@ function JugadorPerfil() {
 
   const heatmapRef = useRef(null);
 
+  // --- 1. VERIFICACIÓN DE PERMISOS SUPABASE ---
+  useEffect(() => {
+    async function checkPermisos() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Asumimos que tenés una tabla 'usuarios' o 'perfiles' vinculada al auth.uid()
+          // Si guardás el rol en los metadatos, sería: user.user_metadata.rol
+          const { data: perfil } = await supabase.from('usuarios').select('rol').eq('id', user.id).single();
+          if (perfil) {
+            setUserRol(perfil.rol);
+          }
+        }
+      } catch (error) {
+        console.error("Error verificando permisos:", error);
+      } finally {
+        setCargandoAuth(false);
+      }
+    }
+    checkPermisos();
+  }, []);
+
+  // --- 2. CARGA DE CATÁLOGOS ---
   useEffect(() => {
     async function cargarCatalogos() {
       const { data: j } = await supabase.from('jugadores').select('*').order('dorsal');
@@ -50,11 +76,9 @@ function JugadorPerfil() {
         setWellnessJugador([]);
         return;
       }
-      // 1. Táctico: Traemos donde él es autor o asistidor para sus listas directas
       const { data: evsJugador } = await supabase.from('eventos').select('*').or(`id_jugador.eq.${jugadorId},id_asistencia.eq.${jugadorId}`).order('id_partido', { ascending: false });
       setEventos(evsJugador || []);
 
-      // 2. Traemos TODOS los eventos de los partidos que jugó (Necesario para posesiones, xG Buildup y +/-)
       const partidosIds = [...new Set((evsJugador || []).map(e => e.id_partido))];
       if (partidosIds.length > 0) {
         const { data: evsFull } = await supabase.from('eventos').select('*').in('id_partido', partidosIds).order('minuto', { ascending: true });
@@ -63,7 +87,6 @@ function JugadorPerfil() {
         setEventosCompletos([]);
       }
 
-      // 3. Físico / Cargas (Últimos 30 registros)
       const { data: well } = await supabase.from('wellness').select('*').eq('jugador_id', jugadorId).order('fecha', { ascending: false }).limit(30);
       setWellnessJugador(well || []);
     }
@@ -82,7 +105,7 @@ function JugadorPerfil() {
     return jugadores.filter(j => j.categoria === filtroCategoriaGrid);
   }, [jugadores, filtroCategoriaGrid]);
 
-  // --- MOTOR ANALÍTICO INDIVIDUAL CONTEXTUALIZADO ---
+  // --- MOTOR ANALÍTICO INDIVIDUAL ---
   const perfil = useMemo(() => {
     if (!jugadorId || !eventos.length || !jugadorSeleccionado) return null;
 
@@ -123,7 +146,6 @@ function JugadorPerfil() {
           else if (ev.accion === 'Remate - Desviado') { stats.desviados++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Desviado++; }
           else if (ev.accion === 'Remate - Rebatido') { stats.rebatidos++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Rebatido++; }
           
-          // Perfil de Remate
           if (zonaY > 35 && zonaY < 65) perfilRemate.centro++;
           else perfilRemate.banda++;
 
@@ -143,7 +165,6 @@ function JugadorPerfil() {
       }
     });
 
-    // CORRER MOTOR GLOBAL PARA OBTENER CONTEXTO (xG Buildup, +/-, Transiciones)
     let xgBuildup = 0;
     let plusMinus = 0;
     let minutos = 0;
@@ -153,11 +174,12 @@ function JugadorPerfil() {
       const baseAnalytics = analizarTemporadaGlobal(partidosFiltrados, evCompletosFiltrados, jugadores, { categoria: 'Todas', competicion: 'Todas' });
       
       if (baseAnalytics) {
-       const cadenas = calcularCadenasValor(baseAnalytics.posesiones || [], jugadorId);
+        const cadenas = calcularCadenasValor(baseAnalytics.posesiones || [], jugadorId);
         xgBuildup = cadenas.xgBuildup;
         
-        plusMinus = baseAnalytics.plusMinusJugador ? (baseAnalytics.plusMinusJugador[jugadorId] || 0) : 0;
-        minutos = baseAnalytics.minutosJugados ? (baseAnalytics.minutosJugados[jugadorId] || 0) : 0;
+        // CORRECCIÓN MINUTOS: Atajamos tanto el String como el Number del ID
+        plusMinus = baseAnalytics.plusMinusJugador ? (baseAnalytics.plusMinusJugador[jugadorId] || baseAnalytics.plusMinusJugador[Number(jugadorId)] || 0) : 0;
+        minutos = baseAnalytics.minutosJugados ? (baseAnalytics.minutosJugados[jugadorId] || baseAnalytics.minutosJugados[Number(jugadorId)] || 0) : 0;
         
         if (baseAnalytics.transiciones) {
           baseAnalytics.transiciones.forEach(t => {
@@ -175,7 +197,6 @@ function JugadorPerfil() {
     const proxyPM = (stats.goles + stats.asistencias) - (stats.perdidasPeligrosas * 1.5);
     const impacto = calcularRatingJugador(jugadorSeleccionado, evFiltrados, proxyPM);
 
-    // ETIQUETA DE ROL AUTOMÁTICO
     let rol = 'MIXTO';
     const ratioFinalizacion = stats.remates / (xgBuildup || 1);
     if (ratioFinalizacion >= 2.5) rol = 'FINALIZADOR';
@@ -195,7 +216,6 @@ function JugadorPerfil() {
     };
   }, [eventos, eventosCompletos, partidoFiltro, jugadorId, jugadorSeleccionado, partidos, jugadores]);
 
-  // --- MAPA DE CALOR / PUNTOS ---
   const evMapa = useMemo(() => {
     if (!perfil || perfil.vacio) return [];
     return perfil.accionesDirectas.filter(ev => {
@@ -228,7 +248,6 @@ function JugadorPerfil() {
     heat.draw();
   }, [evMapa, tipoMapa]);
 
-  // --- CÁLCULO DE MÉTRICAS WELLNESS ---
   const metricasWellness = useMemo(() => {
     if (!wellnessJugador.length) return null;
     let arrayFiltro = [];
@@ -261,6 +280,21 @@ function JugadorPerfil() {
 
   const COLORS_REMATES = { 'Gol': '#00ff88', 'Atajado': '#3b82f6', 'Desviado': '#888888', 'Rebatido': '#a855f7' };
 
+  // --- 3. BLOQUEO DE PANTALLA PARA ADMINS ---
+  if (cargandoAuth) {
+    return <div style={{ color: '#fff', textAlign: 'center', marginTop: '50px' }}>Verificando permisos...</div>;
+  }
+
+  if (userRol === 'Admin') {
+    return (
+      <div className="bento-card" style={{ textAlign: 'center', marginTop: '50px', padding: '40px', border: '1px solid #ef4444' }}>
+        <h2 style={{ color: '#ef4444', marginBottom: '10px' }}>ACCESO DENEGADO</h2>
+        <p style={{ color: 'var(--text-dim)' }}>Tu rol de Administrador no tiene permisos para visualizar los reportes individuales del plantel.</p>
+      </div>
+    );
+  }
+
+  // --- RENDER NORMAL PARA JUGADORES, CT Y SUPERUSER ---
   if (!jugadorId) {
      return (
        <div style={{ animation: 'fadeIn 0.3s' }}>
@@ -516,7 +550,6 @@ function JugadorPerfil() {
 
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: '#111', border: '2px solid rgba(255,255,255,0.2)' }}>
-                {/* DIBUJO DE LA CANCHA */}
                 <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '2px', backgroundColor: 'rgba(255,255,255,0.2)', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', left: '50%', top: '50%', width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
@@ -524,12 +557,10 @@ function JugadorPerfil() {
                 <div style={{ position: 'absolute', left: 0, top: '25%', bottom: '25%', width: '15%', border: '2px solid rgba(255,255,255,0.2)', borderLeft: 'none', borderRadius: '0 100px 100px 0', pointerEvents: 'none', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', right: 0, top: '25%', bottom: '25%', width: '15%', border: '2px solid rgba(255,255,255,0.2)', borderRight: 'none', borderRadius: '100px 0 0 100px', pointerEvents: 'none', zIndex: 0 }}></div>
                 
-                {/* MOTOR DE CALOR */}
                 {tipoMapa === 'calor' && (
                   <canvas ref={heatmapRef} width={800} height={400} style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none', opacity: 0.85 }} />
                 )}
 
-                {/* VISUALIZACIÓN POR PUNTOS */}
                 {tipoMapa === 'puntos' && evMapa.map((ev, i) => {
                   const xNorm = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
                   const yNorm = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
