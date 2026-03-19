@@ -641,27 +641,42 @@ const CreadorTareas = () => {
             </div>
 
             {/* FORMULARIO DE FICHA TÉCNICA */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+  
+  <div>
+    <label style={modalLabel}>Categoría</label>
+    <select style={modalInput} value={fichaTecnica.categoria_ejercicio} onChange={e => setFichaTecnica({...fichaTecnica, categoria_ejercicio: e.target.value})}>
+      <option value="Táctico">Táctico (General)</option>
+      <option value="Libro Táctico">Libro Táctico (Playbook)</option>
+      <option value="Técnico">Técnico</option>
+      <option value="Físico">Físico</option>
+      <option value="Cognitivo">Cognitivo</option>
+      <option value="ABP">Pelota Parada (Normal)</option>
+    </select>
+  </div>
               <div>
-                <label style={modalLabel}>Categoría</label>
-                <select style={modalInput} value={fichaTecnica.categoria_ejercicio} onChange={e => setFichaTecnica({...fichaTecnica, categoria_ejercicio: e.target.value})}>
-                  <option value="Táctico">Táctico</option>
-                  <option value="Técnico">Técnico</option>
-                  <option value="Físico">Físico</option>
-                  <option value="Cognitivo">Cognitivo</option>
-                  <option value="ABP">Pelota Parada (ABP)</option>
-                </select>
-              </div>
-              <div>
-                <label style={modalLabel}>Fase de Juego</label>
-                <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
-                  <option value="Ataque Posicional">Ataque Posicional</option>
-                  <option value="Defensa Posicional">Defensa Posicional</option>
-                  <option value="Transición Ofensiva">Transición Ofensiva</option>
-                  <option value="Transición Defensiva">Transición Defensiva</option>
-                </select>
-              </div>
-              <div>
+                <div>
+    <label style={modalLabel}>Situación / Fase</label>
+    {fichaTecnica.categoria_ejercicio === 'Libro Táctico' ? (
+      <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
+        <option value="Salida de Presión">Salida de Presión</option>
+        <option value="Laterales Bajos">Laterales Bajos</option>
+        <option value="Laterales Medios">Laterales Medios</option>
+        <option value="Laterales Altos">Laterales Altos</option>
+        <option value="Corners">Corners</option>
+        <option value="Tiros Libres">Tiros Libres</option>
+        <option value="5v4">5v4</option>
+      </select>
+    ) : (
+      <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
+        <option value="Ataque Posicional">Ataque Posicional</option>
+        <option value="Defensa Posicional">Defensa Posicional</option>
+        <option value="Transición Ofensiva">Transición Ofensiva</option>
+        <option value="Transición Defensiva">Transición Defensiva</option>
+      </select>
+    )}
+  </div>
+
                 <label style={modalLabel}>Duración Estimada (min)</label>
                 <input type="number" style={modalInput} value={fichaTecnica.duracion_estimada} onChange={e => setFichaTecnica({...fichaTecnica, duracion_estimada: e.target.value})} />
               </div>

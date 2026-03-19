@@ -31,6 +31,7 @@ import Presentismo from './pages/Presentismo';
 import Tesoreria from './pages/Tesoreria';
 import Sponsors from './pages/Sponsors';
 import Usuarios from './pages/Usuarios';
+import LibroTactico from './pages/LibroTactico'; // <-- IMPORTAMOS EL LIBRO TÁCTICO
 
 import './App.css';
 
@@ -172,7 +173,7 @@ function AppLayout() {
             )}
 
             {/* --- PLANIFICACIÓN --- */}
-            {puedeEscribirDeportivo && (
+            {puedeVerDeportivo && (
               <>
                 {sidebarAbierta && (
                   <div style={sidebarGroupTitle} onClick={() => toggleMenu('planificacion')}>
@@ -181,9 +182,17 @@ function AppLayout() {
                 )}
                 {(menusAbiertos.planificacion || !sidebarAbierta) && (
                   <>
-                    <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗓️ {sidebarAbierta && <span>MICROCICLO SEMANAL</span>}</NavLink>
-                    <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎨 {sidebarAbierta && <span>CREADOR TÁCTICO</span>}</NavLink>
+                    {/* Solo el CT y SuperUser pueden armar y crear tareas */}
+                    {puedeEscribirDeportivo && (
+                      <>
+                        <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗓️ {sidebarAbierta && <span>MICROCICLO SEMANAL</span>}</NavLink>
+                        <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎨 {sidebarAbierta && <span>CREADOR TÁCTICO</span>}</NavLink>
+                      </>
+                    )}
+                    
+                    {/* El Banco de Tareas y el Libro Táctico son de lectura compartida */}
                     <NavLink to="/banco-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗃️ {sidebarAbierta && <span>BANCO DE TAREAS</span>}</NavLink>
+                    <NavLink to="/libro-tactico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📘 {sidebarAbierta && <span>LIBRO TÁCTICO</span>}</NavLink>
                   </>
                 )}
               </>
@@ -265,7 +274,10 @@ function AppLayout() {
           <Route path="/rendimiento" element={<ProtectedRoute><Rendimiento /></ProtectedRoute>} />
           <Route path="/origen-goles" element={<ProtectedRoute><OrigenGoles /></ProtectedRoute>} />
           <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
-          <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} />        
+          <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
+          
+          {/* NUEVO: LIBRO TÁCTICO */}       
+          <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
         </Routes>
       </main>
 
