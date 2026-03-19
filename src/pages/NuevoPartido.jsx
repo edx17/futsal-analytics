@@ -10,11 +10,13 @@ function NuevoPartido() {
   const [rivalesBD, setRivalesBD] = useState([]);
   const [torneosBD, setTorneosBD] = useState([]);
   const [jugadoresBD, setJugadoresBD] = useState([]);
+  const [partidosTorneo, setPartidosTorneo] = useState([]); 
   
   const [rivalSeleccionado, setRivalSeleccionado] = useState(null);
 
   // ESTADO DEL FORMULARIO
   const [formData, setFormData] = useState({
+    id: null, 
     fecha: new Date().toISOString().split('T')[0],
     horario: new Date().toTimeString().substring(0, 5),
     lugar: '',
@@ -23,7 +25,7 @@ function NuevoPartido() {
     jornada: '',
     condicion: 'Local',
     rival_id: '',
-    competicion: '' // Ahora se llena solo al elegir el torneo
+    competicion: '' 
   });
 
   // ESTADOS DE CONVOCATORIA
@@ -49,6 +51,71 @@ function NuevoPartido() {
     }
     fetchDatosRelacionales();
   }, [clubId]);
+
+  // CARGAR PARTIDOS PENDIENTES AL ELEGIR TORNEO
+  const handleSeleccionarTorneo = async (e) => {
+    const idTorneo = e.target.value;
+    const torneoObj = torneosBD.find(t => t.id === idTorneo);
+    const nuevaCategoria = torneoObj ? torneoObj.categoria : '';
+    
+    // Resetear formulario parcial
+    setFormData(prev => ({
+      ...prev, 
+      torneo_id: idTorneo,
+      categoria: nuevaCategoria,
+      competicion: torneoObj ? (torneoObj.tipo || 'Oficial') : '',
+      id: null,
+      rival_id: '',
+      jornada: ''
+    }));
+    setRivalSeleccionado(null);
+
+    if (torneoObj && categoriasDisponibles.includes(nuevaCategoria)) {
+      setFiltroVerCategoria(nuevaCategoria); 
+    }
+
+    // Traer fixture pendiente
+    if (idTorneo) {
+      const { data } = await supabase
+        .from('partidos')
+        .select('*')
+        .eq('torneo_id', idTorneo)
+        .eq('estado', 'Pendiente')
+        .order('jornada', { ascending: true });
+      setPartidosTorneo(data || []);
+    } else {
+      setPartidosTorneo([]);
+    }
+  };
+
+  // CARGAR DATOS SI ELIGE UN PARTIDO YA PROGRAMADO
+  const handleSeleccionarPartidoProgramado = (e) => {
+    const pId = e.target.value;
+    if (!pId) {
+      // Vuelve a modo "Partido Libre"
+      setFormData(prev => ({
+        ...prev, id: null, rival_id: '', jornada: '', fecha: new Date().toISOString().split('T')[0], condicion: 'Local'
+      }));
+      setRivalSeleccionado(null);
+      return;
+    }
+
+    const partido = partidosTorneo.find(p => p.id === pId);
+    if (partido) {
+      setFormData(prev => ({
+        ...prev,
+        id: partido.id,
+        rival_id: partido.rival_id,
+        jornada: partido.jornada || '',
+        fecha: partido.fecha || new Date().toISOString().split('T')[0],
+        condicion: partido.condicion || 'Local',
+        horario: partido.horario || prev.horario,
+        lugar: partido.lugar || prev.lugar
+      }));
+      const rivalObj = rivalesBD.find(r => r.id === partido.rival_id);
+      setRivalSeleccionado(rivalObj || null);
+    }
+  };
 
   const handleSeleccionarRival = (e) => {
     const idSeleccionado = e.target.value;
@@ -95,49 +162,72 @@ function NuevoPartido() {
       titular: seleccion[j.id]?.titular || false
     }));
 
-    // PAYLOAD ENRIQUECIDO: Cruza la data de Torneos y Rivales automáticamente
-    const payload = {
-      club_id: clubId,
-      torneo_id: formData.torneo_id,
-      rival_id: formData.rival_id, 
-      rival: rivalSeleccionado ? rivalSeleccionado.nombre : '', // Inyectado para retrocompatibilidad
-      escudo_rival: rivalSeleccionado ? rivalSeleccionado.escudo : '', // Inyectado
-      fecha: formData.fecha,
-      horario: formData.horario,
-      lugar: formData.lugar,
-      jornada: formData.jornada,
-      categoria: formData.categoria, // Viene del torneo
-      competicion: formData.competicion, // Viene del tipo de torneo
-      condicion: formData.condicion,
-      estado: 'Pendiente', 
-      goles_propios: 0,
-      goles_rival: 0,
-      plantilla: plantilla
-    };
+    let partidoData;
+    let errorOp;
 
-    const { data, error } = await supabase.from('partidos').insert([payload]).select().single();
+    if (formData.id) {
+      // 🟢 RUTA A: ACTUALIZAR EL PARTIDO EXISTENTE DEL FIXTURE
+      const { data, error } = await supabase
+        .from('partidos')
+        .update({
+          horario: formData.horario,
+          lugar: formData.lugar,
+          plantilla: plantilla
+        })
+        .eq('id', formData.id)
+        .select()
+        .single();
+      
+      partidoData = data;
+      errorOp = error;
+    } else {
+      // 🔵 RUTA B: CREAR UN PARTIDO TOTALMENTE NUEVO
+      const payload = {
+        club_id: clubId,
+        torneo_id: formData.torneo_id,
+        rival_id: formData.rival_id, 
+        rival: rivalSeleccionado ? rivalSeleccionado.nombre : '', 
+        escudo_rival: rivalSeleccionado ? rivalSeleccionado.escudo : '', 
+        fecha: formData.fecha,
+        horario: formData.horario,
+        lugar: formData.lugar,
+        jornada: formData.jornada,
+        categoria: formData.categoria, 
+        competicion: formData.competicion, 
+        condicion: formData.condicion,
+        estado: 'Pendiente', 
+        goles_propios: 0,
+        goles_rival: 0,
+        plantilla: plantilla
+      };
 
-    if (error) {
-      alert("Error al crear el partido: " + error.message);
+      const { data, error } = await supabase.from('partidos').insert([payload]).select().single();
+      partidoData = data;
+      errorOp = error;
+    }
+
+    if (errorOp) {
+      alert("Error al crear/actualizar el partido: " + errorOp.message);
       setIsSubmitting(false);
     } else {
-      const partidoParaTracker = { ...data, rivales: { nombre: rivalSeleccionado.nombre } };
+      const partidoParaTracker = { ...partidoData, rivales: { nombre: rivalSeleccionado.nombre } };
       navigate('/toma-datos', { state: { partido: partidoParaTracker } });
     }
   };
 
-  const alternarCriterio = () => {
-    if (ordenCriterio === 'dorsal') setOrdenCriterio('nombre');
-    else if (ordenCriterio === 'nombre') setOrdenCriterio('posicion');
-    else setOrdenCriterio('dorsal');
+  // --- LÓGICA NUEVA DE ORDENAMIENTO AL HACER CLIC EN COLUMNAS ---
+  const handleSort = (criterio) => {
+    if (ordenCriterio === criterio) {
+      setOrdenDireccion(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setOrdenCriterio(criterio);
+      setOrdenDireccion('asc');
+    }
   };
 
-  const alternarDireccion = () => setOrdenDireccion(prev => prev === 'asc' ? 'desc' : 'asc');
-
-  const getIconoCriterio = () => {
-    if (ordenCriterio === 'dorsal') return '#️⃣';
-    if (ordenCriterio === 'nombre') return '🔤';
-    return '👕';
+  const renderSortIcon = (criterio) => {
+    if (ordenCriterio !== criterio) return null;
+    return <span style={{ color: 'var(--accent)', marginLeft: '5px', fontSize: '0.7rem' }}>{ordenDireccion === 'asc' ? '▲' : '▼'}</span>;
   };
 
   const categoriasDisponibles = useMemo(() => {
@@ -163,6 +253,9 @@ function NuevoPartido() {
     });
   }, [jugadoresBD, filtroVerCategoria, ordenCriterio, ordenDireccion]);
 
+  // VARIABLE DE CONTROL UI: ¿Es un partido precargado?
+  const isFixtureMatch = !!formData.id;
+
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club primero.</div>;
 
   return (
@@ -175,25 +268,13 @@ function NuevoPartido() {
 
       <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' }}>
         
-        {/* FILA 1: TORNEO COMO EJE CENTRAL */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ gridColumn: 'span 2' }}>
+        {/* FILA 1: TORNEO Y FIXTURE (EJE CENTRAL) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border)' }}>
+          <div>
             <div className="section-title">¿A QUÉ TORNEO PERTENECE?</div>
             <select 
               value={formData.torneo_id} 
-              onChange={e => {
-                const idTorneo = e.target.value;
-                const torneoObj = torneosBD.find(t => t.id === idTorneo);
-                setFormData(prev => ({
-                  ...prev, 
-                  torneo_id: idTorneo,
-                  categoria: torneoObj ? torneoObj.categoria : '',
-                  competicion: torneoObj ? (torneoObj.tipo || 'Oficial') : '' // MAGIA: Hereda el tipo automáticamente
-                }));
-                if (torneoObj && categoriasDisponibles.includes(torneoObj.categoria)) {
-                  setFiltroVerCategoria(torneoObj.categoria); 
-                }
-              }} 
+              onChange={handleSeleccionarTorneo} 
               style={{ ...inputIndustrial, borderColor: 'var(--accent)' }}
             >
               <option value="">Seleccioná un Torneo / Competición...</option>
@@ -202,33 +283,67 @@ function NuevoPartido() {
               ))}
             </select>
           </div>
-          <div>
-            <div className="section-title">JORNADA / FASE</div>
-            <input type="text" value={formData.jornada} onChange={e => setFormData({...formData, jornada: e.target.value})} style={inputIndustrial} placeholder="Ej: Fecha 5" />
-          </div>
-          <div>
-            <div className="section-title">CATEGORÍA (Autocompletado)</div>
-            <input type="text" value={formData.categoria} readOnly style={{ ...inputIndustrial, background: '#111', color: 'var(--text-dim)' }} placeholder="Se llena solo..." />
-          </div>
+
+          {partidosTorneo.length > 0 && (
+            <div style={{ animation: 'fadeIn 0.3s' }}>
+              <div className="section-title" style={{ color: '#00ff88' }}>✅ PARTIDO PROGRAMADO EN EL FIXTURE</div>
+              <select 
+                value={formData.id || ''} 
+                onChange={handleSeleccionarPartidoProgramado} 
+                style={{ ...inputIndustrial, borderColor: '#00ff88', color: '#00ff88', fontWeight: 'bold' }}
+              >
+                <option value="" style={{color: '#fff'}}>+ Crear partido suelto / No está en la lista...</option>
+                {partidosTorneo.map(p => {
+                   const riv = rivalesBD.find(r => r.id === p.rival_id);
+                   return (
+                     <option key={p.id} value={p.id} style={{color: '#fff'}}>
+                       {p.jornada ? `${p.jornada.toUpperCase()} ` : ''}- vs {riv ? riv.nombre.toUpperCase() : 'Desconocido'} ({p.condicion})
+                     </option>
+                   )
+                })}
+              </select>
+            </div>
+          )}
         </div>
 
-        {/* FILA 2: FECHA, HORA Y LUGAR */}
+        {/* FILA 2: DATOS COMPLEMENTARIOS DEL PARTIDO */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-          <div><div className="section-title">FECHA</div><input type="date" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} style={inputIndustrial} /></div>
-          <div><div className="section-title">HORARIO</div><input type="time" value={formData.horario} onChange={e => setFormData({...formData, horario: e.target.value})} style={inputIndustrial} /></div>
-          <div><div className="section-title">LUGAR / ESTADIO</div><input type="text" value={formData.lugar} onChange={e => setFormData({...formData, lugar: e.target.value})} style={inputIndustrial} placeholder="Ej: Microestadio..." /></div>
+          <div>
+            <div className="section-title">JORNADA / FASE</div>
+            <input type="text" value={formData.jornada} onChange={e => setFormData({...formData, jornada: e.target.value})} style={isFixtureMatch ? inputDisabledStyle : inputIndustrial} placeholder="Ej: Fecha 5" disabled={isFixtureMatch} />
+          </div>
+          <div>
+            <div className="section-title">CATEGORÍA</div>
+            <input type="text" value={formData.categoria} readOnly style={inputDisabledStyle} placeholder="Se llena solo..." />
+          </div>
+          <div>
+            <div className="section-title">FECHA</div>
+            <input type="date" value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} style={isFixtureMatch ? inputDisabledStyle : inputIndustrial} disabled={isFixtureMatch} />
+          </div>
           <div>
             <div className="section-title">CONDICIÓN</div>
-            <select value={formData.condicion} onChange={e => setFormData({...formData, condicion: e.target.value})} style={inputIndustrial}>
+            <select value={formData.condicion} onChange={e => setFormData({...formData, condicion: e.target.value})} style={isFixtureMatch ? inputDisabledStyle : inputIndustrial} disabled={isFixtureMatch}>
               <option value="Local">Local</option><option value="Visitante">Visitante</option><option value="Neutral">Neutral</option>
             </select>
           </div>
         </div>
 
-        {/* FILA 3: RIVAL Y SCOUTING */}
-        <div style={{ background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px solid var(--accent)', marginTop: '10px' }}>
-          <div className="section-title" style={{ color: 'var(--accent)' }}>SELECCIONAR RIVAL</div>
-          <select value={formData.rival_id} onChange={handleSeleccionarRival} style={{ ...inputIndustrial, borderColor: 'var(--accent)', marginBottom: rivalSeleccionado ? '15px' : '0' }}>
+        {/* FILA 3: DATOS EDITABLES SIEMPRE (ESTADIO Y HORA) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px dashed #00ff88' }}>
+          <div>
+            <div className="section-title" style={{ color: '#00ff88' }}>HORARIO DEFINITIVO</div>
+            <input type="time" value={formData.horario} onChange={e => setFormData({...formData, horario: e.target.value})} style={{...inputIndustrial, borderColor: '#00ff88'}} />
+          </div>
+          <div>
+            <div className="section-title" style={{ color: '#00ff88' }}>LUGAR / ESTADIO</div>
+            <input type="text" value={formData.lugar} onChange={e => setFormData({...formData, lugar: e.target.value})} style={{...inputIndustrial, borderColor: '#00ff88'}} placeholder="Ej: Microestadio..." />
+          </div>
+        </div>
+
+        {/* FILA 4: RIVAL Y SCOUTING */}
+        <div style={{ background: isFixtureMatch ? '#111' : 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px solid var(--accent)', marginTop: '10px' }}>
+          <div className="section-title" style={{ color: isFixtureMatch ? '#666' : 'var(--accent)' }}>SELECCIONAR RIVAL</div>
+          <select value={formData.rival_id} onChange={handleSeleccionarRival} style={{ ...(isFixtureMatch ? inputDisabledStyle : inputIndustrial), borderColor: isFixtureMatch ? '#222' : 'var(--accent)', marginBottom: rivalSeleccionado ? '15px' : '0' }} disabled={isFixtureMatch}>
             <option value="">Seleccione de la libreta de Scouting...</option>
             {rivalesBD.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
           </select>
@@ -253,7 +368,7 @@ function NuevoPartido() {
         </div>
       </div>
 
-      {/* BLOQUE DE CONVOCATORIA DIRECTO EN PANTALLA */}
+      {/* BLOQUE DE CONVOCATORIA */}
       <div className="bento-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
@@ -270,15 +385,7 @@ function NuevoPartido() {
           </div>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', background: '#000', border: '1px solid #333', borderRadius: '4px', overflow: 'hidden' }}>
-              <button onClick={alternarCriterio} title="Cambiar criterio de orden" style={{ padding: '5px 10px', background: 'transparent', color: 'var(--accent)', border: 'none', cursor: 'pointer', fontSize: '1.2rem', borderRight: '1px solid #333' }}>
-                {getIconoCriterio()}
-              </button>
-              <button onClick={alternarDireccion} title="Invertir dirección" style={{ padding: '5px 10px', background: 'transparent', color: 'var(--accent)', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
-                {ordenDireccion === 'asc' ? '⬇️' : '⬆️'}
-              </button>
-            </div>
-
+            {/* Los botones feos de ordenar fueron eliminados de acá */}
             <select value={filtroVerCategoria} onChange={(e) => setFiltroVerCategoria(e.target.value)} style={{ padding: '5px', background: '#000', color: '#fff', border: '1px solid #333', borderRadius: '4px' }}>
               {categoriasDisponibles.map(cat => (
                 <option key={cat} value={cat}>{cat.toUpperCase()}</option>
@@ -297,8 +404,18 @@ function NuevoPartido() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th><th style={{ textAlign: 'left' }}>JUGADOR</th><th>POS</th>
-                  <th>CONVOCAR</th><th>TITULAR</th>
+                  {/* Encabezados cliqueables con flechita indicadora */}
+                  <th onClick={() => handleSort('dorsal')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    #{renderSortIcon('dorsal')}
+                  </th>
+                  <th onClick={() => handleSort('nombre')} style={{ textAlign: 'left', cursor: 'pointer', userSelect: 'none' }}>
+                    JUGADOR{renderSortIcon('nombre')}
+                  </th>
+                  <th onClick={() => handleSort('posicion')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                    POS{renderSortIcon('posicion')}
+                  </th>
+                  <th>CONVOCAR</th>
+                  <th>TITULAR</th>
                 </tr>
               </thead>
               <tbody>
@@ -386,12 +503,14 @@ function NuevoPartido() {
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 12px; border-bottom: 1px solid #222; text-align: center; color: #fff; }
-        th { font-size: 0.75rem; color: var(--text-dim); font-weight: 800; border-bottom: 2px solid #333; }
+        th { font-size: 0.75rem; color: var(--text-dim); font-weight: 800; border-bottom: 2px solid #333; transition: color 0.2s ease; }
+        th:hover { color: #fff; }
       `}</style>
     </div>
   );
 }
 
 const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
+const inputDisabledStyle = { ...inputIndustrial, background: '#1a1a1a', color: '#666', cursor: 'not-allowed', borderColor: '#222' };
 
 export default NuevoPartido;
