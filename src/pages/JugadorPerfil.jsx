@@ -6,9 +6,9 @@ import {
 } from 'recharts';
 
 // IMPORTAMOS LOS MOTORES Y COMPONENTES REUTILIZABLES
+import { analizarPartido } from '../analytics/engine'; // <-- AHORA USAMOS EL MISMO QUE EN RESUMEN
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
-import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
@@ -40,8 +40,6 @@ function JugadorPerfil() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Asumimos que tenés una tabla 'usuarios' o 'perfiles' vinculada al auth.uid()
-          // Si guardás el rol en los metadatos, sería: user.user_metadata.rol
           const { data: perfil } = await supabase.from('usuarios').select('rol').eq('id', user.id).single();
           if (perfil) {
             setUserRol(perfil.rol);
@@ -111,14 +109,14 @@ function JugadorPerfil() {
 
     const evFiltrados = partidoFiltro === 'Todos' ? eventos : eventos.filter(ev => ev.id_partido == partidoFiltro);
     const evCompletosFiltrados = partidoFiltro === 'Todos' ? eventosCompletos : eventosCompletos.filter(ev => ev.id_partido == partidoFiltro);
-    const partidosFiltrados = partidoFiltro === 'Todos' ? partidos : partidos.filter(p => p.id == partidoFiltro);
     
     if (!evFiltrados.length) return { vacio: true };
 
     const stats = { 
       goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, 
-      recuperaciones: 0, recAltas: 0, perdidas: 0, perdidasPeligrosas: 0, faltas: 0, 
-      xG: 0, duelosDefGanados: 0, duelosDefTotales: 0, duelosOfeGanados: 0, duelosOfeTotales: 0
+      recuperaciones: 0, recAltas: 0, perdidas: 0, perdidasPeligrosas: 0, faltas: 0, xG: 0, 
+      duelosDefGanados: 0, duelosDefPerdidos: 0, duelosDefTotales: 0, 
+      duelosOfeGanados: 0, duelosOfePerdidos: 0, duelosOfeTotales: 0
     };
     
     const partidosJugados = new Set(evFiltrados.map(e => e.id_partido)).size;
@@ -159,36 +157,55 @@ function JugadorPerfil() {
         else if (ev.accion === 'Pérdida') { stats.perdidas++; if (esDefensa) stats.perdidasPeligrosas++; }
         else if (ev.accion === 'Falta cometida') { stats.faltas++; }
         else if (ev.accion === 'Duelo DEF Ganado') { stats.duelosDefGanados++; stats.duelosDefTotales++; }
-        else if (ev.accion === 'Duelo DEF Perdido') { stats.duelosDefTotales++; }
+        else if (ev.accion === 'Duelo DEF Perdido') { stats.duelosDefPerdidos++; stats.duelosDefTotales++; }
         else if (ev.accion === 'Duelo OFE Ganado') { stats.duelosOfeGanados++; stats.duelosOfeTotales++; }
-        else if (ev.accion === 'Duelo OFE Perdido') { stats.duelosOfeTotales++; }
+        else if (ev.accion === 'Duelo OFE Perdido') { stats.duelosOfePerdidos++; stats.duelosOfeTotales++; }
       }
     });
 
+    // --- CORRECCIÓN ABSOLUTA: USAMOS analizarPartido IGUAL QUE EN RESUMEN ---
     let xgBuildup = 0;
     let plusMinus = 0;
     let minutos = 0;
     let transicionesInvolucrado = 0;
 
     if (evCompletosFiltrados.length > 0) {
-      const baseAnalytics = analizarTemporadaGlobal(partidosFiltrados, evCompletosFiltrados, jugadores, { categoria: 'Todas', competicion: 'Todas' });
-      
-      if (baseAnalytics) {
-        const cadenas = calcularCadenasValor(baseAnalytics.posesiones || [], jugadorId);
-        xgBuildup = cadenas.xgBuildup;
-        
-        // CORRECCIÓN MINUTOS: Atajamos tanto el String como el Number del ID
-        plusMinus = baseAnalytics.plusMinusJugador ? (baseAnalytics.plusMinusJugador[jugadorId] || baseAnalytics.plusMinusJugador[Number(jugadorId)] || 0) : 0;
-        minutos = baseAnalytics.minutosJugados ? (baseAnalytics.minutosJugados[jugadorId] || baseAnalytics.minutosJugados[Number(jugadorId)] || 0) : 0;
-        
-        if (baseAnalytics.transiciones) {
-          baseAnalytics.transiciones.forEach(t => {
-            if (t.recuperacion?.id_jugador == jugadorId || t.remate?.id_jugador == jugadorId) {
-              transicionesInvolucrado++;
-            }
-          });
+      // 1. Agrupamos los eventos por partido
+      const evsPorPartido = {};
+      evCompletosFiltrados.forEach(e => {
+        if (!evsPorPartido[e.id_partido]) evsPorPartido[e.id_partido] = [];
+        evsPorPartido[e.id_partido].push(e);
+      });
+
+      let posesionesTotales = [];
+
+      // 2. Corremos el motor de partido por partido (Idéntico a Resumen.jsx)
+      Object.values(evsPorPartido).forEach(evsPartido => {
+        const analisis = analizarPartido(evsPartido, 'Propio', false);
+        if (analisis) {
+          posesionesTotales = [...posesionesTotales, ...analisis.posesiones];
+          
+          // Sumamos minutos
+          const minsPartido = analisis.minutosJugados ? (analisis.minutosJugados[jugadorId] || analisis.minutosJugados[Number(jugadorId)] || 0) : 0;
+          minutos += minsPartido;
+
+          // Sumamos PlusMinus
+          const pmPartido = analisis.plusMinusJugador ? (analisis.plusMinusJugador[jugadorId] || analisis.plusMinusJugador[Number(jugadorId)] || 0) : 0;
+          plusMinus += pmPartido;
+
+          if (analisis.transiciones) {
+            analisis.transiciones.forEach(t => {
+              if (t.recuperacion?.id_jugador == jugadorId || t.remate?.id_jugador == jugadorId) {
+                transicionesInvolucrado++;
+              }
+            });
+          }
         }
-      }
+      });
+
+      // Calculamos xG Buildup con todas las posesiones juntas
+      const cadenas = calcularCadenasValor(posesionesTotales, jugadorId);
+      xgBuildup = cadenas.xgBuildup;
     }
 
     const eficacia = stats.remates > 0 ? ((stats.goles / stats.remates) * 100).toFixed(0) : 0;
@@ -455,6 +472,7 @@ function JugadorPerfil() {
                   </span>
                 </strong>
               </div>
+              <div style={kpiFila}><span>DUELOS OFE. PERDIDOS</span><strong style={{color: '#ef4444'}}>{perfil.stats.duelosOfePerdidos}</strong></div>
             </div>
             
             <div className="bento-card">
@@ -473,6 +491,7 @@ function JugadorPerfil() {
                   </span>
                 </strong>
               </div>
+              <div style={kpiFila}><span>DUELOS DEF. PERDIDOS</span><strong style={{color: '#ef4444'}}>{perfil.stats.duelosDefPerdidos}</strong></div>
             </div>
 
             {/* PERFIL DE REMATE Y TRANSICIONES */}

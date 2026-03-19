@@ -18,12 +18,15 @@ const REHAB_LIB = {
 
 const ELITE = { musc: 48.5, adip: 9.0, cmj: 55, broad: 2.60, yoyo: 21.0 };
 
+// LÓGICA ROBUSTA PARA PARSEAR CUALQUIER URL DE YOUTUBE / SHORTS
 function getEmbedUrl(url) {
-  let videoId = '';
-  if (url.includes('youtube.com/shorts/')) videoId = url.split('shorts/')[1].split('?')[0];
-  else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1].split('?')[0];
-  else if (url.includes('youtube.com/watch?v=')) videoId = url.split('v=')[1].split('&')[0];
-  return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
+  if (!url) return '';
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=))([^"&?\/\s]{11})/i);
+  const videoId = match ? match[1] : '';
+  if (videoId) {
+    return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1`;
+  }
+  return url;
 }
 
 const calcularEstadisticasPlantel = (datos, key) => {
