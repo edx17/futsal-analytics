@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-
-// IMPORTAMOS EL HOOK DE NOTIFICACIONES
 import { useToast } from '../components/ToastContext';
 
 function Plantel() {
@@ -12,14 +10,17 @@ function Plantel() {
   const [ordenColumna, setOrdenColumna] = useState('dorsal');
   const [ordenAscendente, setOrdenAscendente] = useState(true);
 
+  // --- ESTADO PARA CONTROLAR LA SUBIDA DE LA FOTO ---
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+
   const clubId = localStorage.getItem('club_id');
-  const { showToast } = useToast(); // INICIALIZAMOS TOAST
+  const { showToast } = useToast(); 
 
   const estadoInicial = {
     nombre: '', apellido: '', dorsal: '', posicion: 'Ala', categoria: 'Primera',
     pierna: 'Diestro', fechanac: '', dni: '', contacto: '',
     peso: '', altura: '', grupo_sanguineo: '', vencimiento_apto: '',
-    obra_social: '', contacto_emergencia: '', talla_ropa: '', talla_calzado: ''
+    obra_social: '', contacto_emergencia: '', talla_ropa: '', talla_calzado: '', foto: ''
   };
   const [formData, setFormData] = useState(estadoInicial);
 
@@ -28,9 +29,44 @@ function Plantel() {
   }, [clubId]);
 
   const fetchJugadores = async () => {
-    // FILTRO DE SEGURIDAD POR CLUB
     const { data } = await supabase.from('jugadores').select('*').eq('club_id', clubId).order('dorsal', { ascending: true });
     setJugadores(data || []);
+  };
+
+  // --- FUNCIÓN PARA SUBIR LA IMAGEN A SUPABASE STORAGE ---
+  const handleSubirFoto = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setSubiendoFoto(true);
+    
+    // Armamos un nombre único para que no se pisen si se llaman igual
+    const fileExt = file.name.split('.').pop();
+    const fileName = `jugador_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    try {
+      // 1. Subimos el archivo al bucket 'foto'
+      const { data, error } = await supabase.storage
+        .from('foto')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      // 2. Obtenemos la URL pública de la imagen que acabamos de subir
+      const { data: publicUrlData } = supabase.storage
+        .from('foto')
+        .getPublicUrl(filePath);
+
+      // 3. Guardamos esa URL en el formData
+      setFormData({ ...formData, foto: publicUrlData.publicUrl });
+      showToast("Foto subida correctamente", "success");
+
+    } catch (error) {
+      showToast("Error al subir la foto: " + error.message, "error");
+    } finally {
+      setSubiendoFoto(false);
+    }
   };
 
   const handleGuardarJugador = async () => {
@@ -39,11 +75,8 @@ function Plantel() {
       return;
     }
 
-    // INYECTAMOS EL CLUB ID ANTES DE GUARDAR
     let payload = { ...formData, club_id: clubId };
 
-    // --- MAGIA ANTI-ERROR 400 ---
-    // Convertimos los strings vacíos ('') a null en los campos que son números o fechas
     const camposEstrictos = ['fechanac', 'dni', 'contacto', 'peso', 'altura', 'vencimiento_apto', 'talla_calzado'];
     
     camposEstrictos.forEach(campo => {
@@ -51,7 +84,6 @@ function Plantel() {
         payload[campo] = null; 
       }
     });
-    // -----------------------------
 
     if (formData.id) {
       const { error } = await supabase.from('jugadores').update(payload).eq('id', formData.id);
@@ -71,7 +103,6 @@ function Plantel() {
   };
 
   const abrirEdicion = (jugador) => {
-    // Cuando abrimos edición, si un dato era null en la BD, lo pasamos a '' para que el input no tire error
     const dataSegura = { ...jugador };
     Object.keys(dataSegura).forEach(key => {
       if (dataSegura[key] === null) dataSegura[key] = '';
@@ -148,7 +179,10 @@ function Plantel() {
               {jugadoresOrdenados.map(j => (
                 <tr key={j.id} style={{ textAlign: 'center' }}>
                   <td className="mono-accent">{j.dorsal}</td>
-                  <td style={{ textAlign: 'left', fontWeight: 700, cursor: 'pointer', color: '#fff' }} onClick={() => setJugadorSeleccionado(j)}>
+                  <td style={{ textAlign: 'left', fontWeight: 700, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={() => setJugadorSeleccionado(j)}>
+                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                       {j.foto ? <img src={j.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span style={{fontSize:'0.6rem', color:'var(--accent)'}}>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</span>}
+                    </div>
                     <span style={{ textDecoration: 'underline', textUnderlineOffset: '4px' }}>
                       {j.apellido ? j.apellido.toUpperCase() + ' ' : ''}{j.nombre.toUpperCase()}
                     </span>
@@ -169,12 +203,14 @@ function Plantel() {
         </div>
       </div>
 
-      {/* --- MODAL FICHA JUGADOR --- */}
       {jugadorSeleccionado && (
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '600px', background: '#111' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #333', paddingBottom: '20px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                   {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span style={{fontSize:'1.2rem', fontWeight:800, color:'var(--accent)'}}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.charAt(0) : ''}{jugadorSeleccionado.nombre.charAt(0)}</span>}
+                </div>
                 <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
                 <div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.toUpperCase() + ' ' : ''}{jugadorSeleccionado.nombre.toUpperCase()}</div>
@@ -212,7 +248,6 @@ function Plantel() {
         </div>
       )}
 
-      {/* --- MODAL ALTA/EDICIÓN --- */}
       {mostrarModalAlta && (
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '800px' }}>
@@ -224,9 +259,27 @@ function Plantel() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* BLOQUE DE IDENTIFICACIÓN */}
+              
               <div style={{ background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>IDENTIFICACIÓN Y CANCHA</div>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
+                   <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                     {formData.foto ? <img src={formData.foto} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'#555', fontWeight:800}}>FOTO</span>}
+                   </div>
+                   <div style={{ flex: 1 }}>
+                     <div className="section-title" style={{ marginBottom: '5px' }}>FOTO DE PERFIL (Cargar Archivo)</div>
+                     <input 
+                       type="file" 
+                       accept="image/*"
+                       onChange={handleSubirFoto} 
+                       style={inputIndustrial} 
+                       disabled={subiendoFoto}
+                     />
+                     {subiendoFoto && <span style={{fontSize: '0.8rem', color: 'var(--accent)', marginTop: '5px', display: 'block'}}>Subiendo imagen, aguardá un segundo...</span>}
+                     {formData.foto && !subiendoFoto && <span style={{fontSize: '0.8rem', color: '#10b981', marginTop: '5px', display: 'block'}}>¡Foto cargada! (Podés elegir otra para reemplazarla)</span>}
+                   </div>
+                </div>
+
                 <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
                   <div style={{ flex: 1 }}>
                      <div className="section-title">NOMBRE</div>
@@ -267,7 +320,6 @@ function Plantel() {
                 </div>
               </div>
 
-              {/* BLOQUE FÍSICO Y MÉDICO */}
               <div style={{ background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>FICHA MÉDICA Y FÍSICA</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '15px' }}>
@@ -283,7 +335,6 @@ function Plantel() {
                 </div>
               </div>
 
-              {/* BLOQUE CONTACTO */}
               <div style={{ background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>CONTACTO E INDUMENTARIA</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
@@ -296,15 +347,14 @@ function Plantel() {
                 </div>
               </div>
 
-              <button onClick={handleGuardarJugador} className="btn-action" style={{ padding: '20px', fontSize: '1.2rem', marginTop: '10px' }}>
-                GUARDAR FICHA EN BASE DE DATOS
+              <button onClick={handleGuardarJugador} disabled={subiendoFoto} className="btn-action" style={{ padding: '20px', fontSize: '1.2rem', marginTop: '10px', opacity: subiendoFoto ? 0.5 : 1 }}>
+                {subiendoFoto ? 'ESPERANDO IMAGEN...' : 'GUARDAR FICHA EN BASE DE DATOS'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* STYLES AUXILIARES */}
       <style>{`
         .inputIndustrial { background: transparent; border: 1px solid var(--border); width: 100%; padding: 12px; color: #fff; border-radius: 4px; outline: none; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }

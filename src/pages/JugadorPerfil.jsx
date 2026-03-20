@@ -5,8 +5,7 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend 
 } from 'recharts';
 
-// IMPORTAMOS LOS MOTORES Y COMPONENTES REUTILIZABLES
-import { analizarPartido } from '../analytics/engine'; // <-- AHORA USAMOS EL MISMO QUE EN RESUMEN
+import { analizarPartido } from '../analytics/engine'; 
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
 import { calcularCadenasValor } from '../analytics/posesiones';
@@ -14,7 +13,7 @@ import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 
 function JugadorPerfil() {
-  const [userRol, setUserRol] = useState(null); // ESTADO PARA PERMISOS
+  const [userRol, setUserRol] = useState(null);
   const [cargandoAuth, setCargandoAuth] = useState(true);
 
   const [jugadores, setJugadores] = useState([]);
@@ -34,7 +33,6 @@ function JugadorPerfil() {
 
   const heatmapRef = useRef(null);
 
-  // --- 1. VERIFICACIÓN DE PERMISOS SUPABASE ---
   useEffect(() => {
     async function checkPermisos() {
       try {
@@ -54,7 +52,6 @@ function JugadorPerfil() {
     checkPermisos();
   }, []);
 
-  // --- 2. CARGA DE CATÁLOGOS ---
   useEffect(() => {
     async function cargarCatalogos() {
       const { data: j } = await supabase.from('jugadores').select('*').order('dorsal');
@@ -65,7 +62,6 @@ function JugadorPerfil() {
     cargarCatalogos();
   }, []);
 
-  // CARGAMOS EVENTOS TÁCTICOS Y WELLNESS DEL JUGADOR
   useEffect(() => {
     async function fetchDataJugador() {
       if (!jugadorId) {
@@ -103,7 +99,6 @@ function JugadorPerfil() {
     return jugadores.filter(j => j.categoria === filtroCategoriaGrid);
   }, [jugadores, filtroCategoriaGrid]);
 
-  // --- MOTOR ANALÍTICO INDIVIDUAL ---
   const perfil = useMemo(() => {
     if (!jugadorId || !eventos.length || !jugadorSeleccionado) return null;
 
@@ -163,14 +158,12 @@ function JugadorPerfil() {
       }
     });
 
-    // --- CORRECCIÓN ABSOLUTA: USAMOS analizarPartido IGUAL QUE EN RESUMEN ---
     let xgBuildup = 0;
     let plusMinus = 0;
     let minutos = 0;
     let transicionesInvolucrado = 0;
 
     if (evCompletosFiltrados.length > 0) {
-      // 1. Agrupamos los eventos por partido
       const evsPorPartido = {};
       evCompletosFiltrados.forEach(e => {
         if (!evsPorPartido[e.id_partido]) evsPorPartido[e.id_partido] = [];
@@ -179,17 +172,14 @@ function JugadorPerfil() {
 
       let posesionesTotales = [];
 
-      // 2. Corremos el motor de partido por partido (Idéntico a Resumen.jsx)
       Object.values(evsPorPartido).forEach(evsPartido => {
         const analisis = analizarPartido(evsPartido, 'Propio', false);
         if (analisis) {
           posesionesTotales = [...posesionesTotales, ...analisis.posesiones];
           
-          // Sumamos minutos
           const minsPartido = analisis.minutosJugados ? (analisis.minutosJugados[jugadorId] || analisis.minutosJugados[Number(jugadorId)] || 0) : 0;
           minutos += minsPartido;
 
-          // Sumamos PlusMinus
           const pmPartido = analisis.plusMinusJugador ? (analisis.plusMinusJugador[jugadorId] || analisis.plusMinusJugador[Number(jugadorId)] || 0) : 0;
           plusMinus += pmPartido;
 
@@ -203,7 +193,6 @@ function JugadorPerfil() {
         }
       });
 
-      // Calculamos xG Buildup con todas las posesiones juntas
       const cadenas = calcularCadenasValor(posesionesTotales, jugadorId);
       xgBuildup = cadenas.xgBuildup;
     }
@@ -297,7 +286,6 @@ function JugadorPerfil() {
 
   const COLORS_REMATES = { 'Gol': '#00ff88', 'Atajado': '#3b82f6', 'Desviado': '#888888', 'Rebatido': '#a855f7' };
 
-  // --- 3. BLOQUEO DE PANTALLA PARA ADMINS ---
   if (cargandoAuth) {
     return <div style={{ color: '#fff', textAlign: 'center', marginTop: '50px' }}>Verificando permisos...</div>;
   }
@@ -311,7 +299,6 @@ function JugadorPerfil() {
     );
   }
 
-  // --- RENDER NORMAL PARA JUGADORES, CT Y SUPERUSER ---
   if (!jugadorId) {
      return (
        <div style={{ animation: 'fadeIn 0.3s' }}>
@@ -333,9 +320,11 @@ function JugadorPerfil() {
            {jugadoresGrid.map(j => (
              <div key={j.id} className="bento-card player-card" onClick={() => setJugadorId(j.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}>
                <div style={{ position: 'absolute', right: '-10px', top: '-20px', fontSize: '6rem', fontWeight: 900, color: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }}>{j.dorsal}</div>
-               <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '15px' }}>
-                 {j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}
+               
+               <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '15px' }}>
+                 {j.foto ? <img src={j.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</>}
                </div>
+               
                <div style={{ position: 'relative', zIndex: 1 }}>
                  <div style={{ fontSize: '1.2rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1.1 }}>{j.apellido || '-'}</div>
                  <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginTop: '4px' }}>{j.nombre || '-'}</div>
@@ -377,8 +366,8 @@ function JugadorPerfil() {
           
           {/* HEADER JUGADOR */}
           <div className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '30px', background: 'linear-gradient(90deg, #111 0%, #000 100%)', borderLeft: '4px solid var(--accent)', flexWrap: 'wrap' }}>
-            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 800, color: 'var(--accent)', flexShrink: 0 }}>
-                {jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.charAt(0) : ''}{jugadorSeleccionado.nombre ? jugadorSeleccionado.nombre.charAt(0) : ''}
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '2rem', fontWeight: 800, color: 'var(--accent)', flexShrink: 0 }}>
+                {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.charAt(0) : ''}{jugadorSeleccionado.nombre ? jugadorSeleccionado.nombre.charAt(0) : ''}</>}
             </div>
             <div>
               <div style={{ fontSize: '2.5rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1, display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -405,7 +394,6 @@ function JugadorPerfil() {
             </div>
           </div>
 
-          {/* KPIs RÁPIDOS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center' }}>
                 <div className="stat-label">IMPACTO (RATING)</div>
@@ -425,7 +413,6 @@ function JugadorPerfil() {
              </div>
           </div>
 
-          {/* CONTEXTO DE CARGAS */}
           {metricasWellness && (
             <div className="bento-card" style={{ background: '#0a0a0a', border: '1px solid #3b82f6' }}>
               <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '15px' }}>
@@ -454,7 +441,6 @@ function JugadorPerfil() {
             </div>
           )}
 
-          {/* DESGLOSE TÁCTICO AVANZADO */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
             
             <div className="bento-card">
@@ -494,7 +480,6 @@ function JugadorPerfil() {
               <div style={kpiFila}><span>DUELOS DEF. PERDIDOS</span><strong style={{color: '#ef4444'}}>{perfil.stats.duelosDefPerdidos}</strong></div>
             </div>
 
-            {/* PERFIL DE REMATE Y TRANSICIONES */}
             <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#c084fc' }}>PERFIL DE REMATE Y TRANSICIONES</div>
               
@@ -516,7 +501,6 @@ function JugadorPerfil() {
               </div>
             </div>
 
-            {/* GRÁFICO DE TORTA DE REMATES */}
             <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#3b82f6' }}>DESTINO DE SUS REMATES</div>
               <div style={{ flex: 1, minHeight: '180px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
@@ -540,7 +524,6 @@ function JugadorPerfil() {
 
           </div>
 
-          {/* --- MAPA DE INFLUENCIA ESPACIAL --- */}
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div>

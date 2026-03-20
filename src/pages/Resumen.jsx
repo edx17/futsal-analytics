@@ -22,6 +22,10 @@ function Resumen() {
   const [eventosPartido, setEventosPartido] = useState([]);
   const [wellness, setWellness] = useState([]); 
   
+  // --- NUEVO ESTADO PARA EL FILTRO DE PARTIDOS ANALIZADOS ---
+  const [partidosConDatos, setPartidosConDatos] = useState([]);
+  const [soloAnalizados, setSoloAnalizados] = useState(false);
+
   const [filtroPeriodo, setFiltroPeriodo] = useState('Todos');
   const [tipoMapa, setTipoMapa] = useState('calor');
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
@@ -37,7 +41,7 @@ function Resumen() {
   const [tiempoVideo, setTiempoVideo] = useState(0); 
   const [offsetPT, setOffsetPT] = useState(0); 
   const [offsetST, setOffsetST] = useState(0); 
-  const [filtroVideoAcciones, setFiltroVideoAcciones] = useState([]); // Filtros interactivos del timeline
+  const [filtroVideoAcciones, setFiltroVideoAcciones] = useState([]);
 
   useEffect(() => {
     async function obtenerDatos() {
@@ -49,6 +53,13 @@ function Resumen() {
       const { data: w, error: wError } = await supabase.from('wellness').select('*');
       if (wError) console.error("⚠️ Error leyendo wellness desde Supabase:", wError);
       setWellness(w || []);
+
+      // Buscamos qué partidos tienen eventos cargados para el nuevo filtro
+      const { data: evs } = await supabase.from('eventos').select('id_partido');
+      if (evs) {
+        const idsConDatos = [...new Set(evs.map(e => e.id_partido))];
+        setPartidosConDatos(idsConDatos);
+      }
 
       if (id && p) {
         const matchFound = p.find(partido => partido.id == id);
@@ -81,7 +92,6 @@ function Resumen() {
     navigate('/resumen');
   };
 
-  // --- GENERADOR DE URL PARA EL IFRAME DE YOUTUBE ---
   const obtenerUrlEmbed = () => {
     if (!partidoSeleccionado?.video_url) return '';
     const url = partidoSeleccionado.video_url;
@@ -96,18 +106,16 @@ function Resumen() {
     return url; 
   };
 
-  // --- FUNCIÓN MÁGICA DEL VIDEOTRACKING ---
   const saltarAEventoVideo = (ev) => {
     if (!partidoSeleccionado?.video_url) return;
     
     const offset = ev.periodo === 'PT' ? offsetPT : offsetST;
     const tiempoEvento = (ev.minuto * 60) + (ev.segundos || 0) + offset;
-    const tiempoPrevio = Math.max(0, tiempoEvento - 5); // 5 seg antes para contexto
+    const tiempoPrevio = Math.max(0, tiempoEvento - 5);
     
     setTiempoVideo(tiempoPrevio);
   };
 
-  // --- GUARDAR Y BORRAR VIDEO ---
   const guardarUrlVideo = async () => {
     if (!partidoSeleccionado || !videoUrl) return;
     const { error } = await supabase.from('partidos').update({ video_url: videoUrl }).eq('id', partidoSeleccionado.id);
@@ -133,7 +141,6 @@ function Resumen() {
     return j ? `${j.dorsal} - ${j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}` : 'DESCONOCIDO';
   };
 
-  // TOGGLE PARA FILTROS DEL VIDEO
   const toggleFiltroVideo = (accion) => {
     setFiltroVideoAcciones(prev => 
       prev.includes(accion) ? prev.filter(a => a !== accion) : [...prev, accion]
@@ -147,9 +154,10 @@ function Resumen() {
     return partidos.filter(p => {
       const pasaCat = filtroCategoriaGrid === 'Todas' || p.categoria === filtroCategoriaGrid;
       const pasaComp = filtroCompeticionGrid === 'Todas' || p.competicion === filtroCompeticionGrid;
-      return pasaCat && pasaComp;
+      const pasaAnalizados = soloAnalizados ? partidosConDatos.includes(p.id) : true;
+      return pasaCat && pasaComp && pasaAnalizados;
     });
-  }, [partidos, filtroCategoriaGrid, filtroCompeticionGrid]);
+  }, [partidos, filtroCategoriaGrid, filtroCompeticionGrid, soloAnalizados, partidosConDatos]);
 
   const analitica = useMemo(() => {
     if (!eventosPartido.length) return null;
@@ -342,25 +350,19 @@ function Resumen() {
     };
   }, [eventosPartido, filtroPeriodo, jugadores]);
 
-  // LOGICA PARA FILTRAR Y ORDENAR EL TIMELINE DEL VIDEO
   const eventosTimeline = useMemo(() => {
     if (!analitica) return [];
     
-    // 1. Clonamos los eventos actuales
     let evs = [...analitica.evFiltrados];
 
-    // 2. Filtramos por las acciones seleccionadas en las pastillas (si hay alguna seleccionada)
     if (filtroVideoAcciones.length > 0) {
       evs = evs.filter(ev => filtroVideoAcciones.some(filtro => ev.accion?.includes(filtro)));
     }
 
-    // 3. Ordenamos: Primero PT, después ST. Y adentro de eso, por minuto/segundo.
     evs.sort((a, b) => {
-      // Priorizar PT sobre ST
       if (a.periodo === 'PT' && b.periodo === 'ST') return -1;
       if (a.periodo === 'ST' && b.periodo === 'PT') return 1;
       
-      // Si están en el mismo periodo, ordenar cronológicamente
       const tiempoA = (a.minuto * 60) + (a.segundos || 0);
       const tiempoB = (b.minuto * 60) + (b.segundos || 0);
       return tiempoA - tiempoB;
@@ -501,6 +503,17 @@ function Resumen() {
           </div>
 
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            {/* NUEVO BOTÓN DE FILTRO */}
+            <div>
+              <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>MOSTRAR</div>
+              <button 
+                onClick={() => setSoloAnalizados(!soloAnalizados)}
+                style={{ padding: '8px 12px', background: soloAnalizados ? 'rgba(0,255,136,0.1)' : '#111', color: soloAnalizados ? 'var(--accent)' : '#fff', border: `1px solid ${soloAnalizados ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '4px', cursor: 'pointer', outline: 'none', transition: '0.2s' }}
+              >
+                {soloAnalizados ? 'SOLO ANALIZADOS ✓' : 'TODOS LOS PARTIDOS'}
+              </button>
+            </div>
+
             <div>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR CATEGORÍA</div>
               <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
@@ -527,12 +540,12 @@ function Resumen() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
-                  {p.escudo_propio ? <img src={p.escudo_propio} alt="Local" style={{ height: '50px', objectFit: 'contain', filter: 'grayscale(1) brightness(2)' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.2rem' }}>MI</div>}
+                  {p.escudo_propio ? <img src={p.escudo_propio} alt="Local" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.2rem' }}>MI</div>}
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{p.nombre_propio || 'MI EQUIPO'}</span>
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#333', fontStyle: 'italic', width: '20%', textAlign: 'center' }}>VS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
-                  {p.escudo_rival ? <img src={p.escudo_rival} alt="Rival" style={{ height: '50px', objectFit: 'contain', filter: 'grayscale(1) brightness(2)' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1.2rem' }}>{p.rival?.substring(0, 2).toUpperCase() || 'R'}</div>}
+                  {p.escudo_rival ? <img src={p.escudo_rival} alt="Rival" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1.2rem' }}>{p.rival?.substring(0, 2).toUpperCase() || 'R'}</div>}
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{p.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</span>
                 </div>
               </div>
@@ -987,7 +1000,6 @@ function Resumen() {
             </div>
           </div>
 
-          {/* --- BLOQUE NUEVO: VIDEOTRACKING NATIVO HTML (MOVIDO AL FINAL) --- */}
           <div className="bento-card" style={{ borderTop: '3px solid var(--accent)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem', margin: 0 }}>🎬 VIDEOTRACKING INTERACTIVO</div>
@@ -1014,7 +1026,6 @@ function Resumen() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
-                {/* FILTROS INTERACTIVOS */}
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '10px' }}>FILTRAR TIMELINE:</span>
                   {['Gol', 'Remate', 'Pérdida', 'Recuperación', 'Falta', 'Duelo'].map(acc => (
@@ -1030,7 +1041,6 @@ function Resumen() {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
                   
-                  {/* REPRODUCTOR IFRAME PURO RESPONSIVE */}
                   <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <div style={{ background: '#000', borderRadius: '4px', overflow: 'hidden', border: '1px solid #333', width: '100%', aspectRatio: '16/9' }}>
                       <iframe 
@@ -1045,7 +1055,6 @@ function Resumen() {
                       ></iframe>
                     </div>
 
-                    {/* SINCRONIZACIÓN ABAJO DEL VIDEO */}
                     <div style={{ display: 'flex', gap: '20px', padding: '15px', background: '#111', borderRadius: '4px' }}>
                         <div style={{ flex: 1 }}>
                           <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO PT</label>
@@ -1058,7 +1067,6 @@ function Resumen() {
                     </div>
                   </div>
 
-                  {/* TIMELINE (FILTRADO Y ORDENADO) */}
                   <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', maxHeight: '550px' }}>
                     <div className="stat-label" style={{ marginBottom: '10px' }}>EVENTOS DEL PARTIDO ({eventosTimeline.length})</div>
                     <div style={{ flex: 1, overflowY: 'auto', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -1091,7 +1099,6 @@ function Resumen() {
               </div>
             )}
           </div>
-          {/* --- FIN BLOQUE VIDEOTRACKING --- */}
 
         </div>
       )}
@@ -1099,7 +1106,7 @@ function Resumen() {
   );
 }
 
-const escudoStyle = { height: '60px', marginBottom: '10px', filter: 'grayscale(1) brightness(2)', objectFit: 'contain' };
+const escudoStyle = { height: '60px', marginBottom: '10px', objectFit: 'contain' };
 const escudoFallback = { width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.5rem', marginBottom: '10px', margin: '0 auto' };
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontSize: '0.9rem', alignItems: 'center' };
 const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };

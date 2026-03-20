@@ -29,7 +29,24 @@ function Temporada() {
       const { data: p } = await supabase.from('partidos').select('*').order('fecha', { ascending: false });
       const { data: j } = await supabase.from('jugadores').select('*');
       
-      // --- FIX: DESCARGA PAGINADA DE EVENTOS ---
+      const clubId = localStorage.getItem('club_id');
+      let escudoMiClub = null;
+      if (clubId) {
+          const { data: c } = await supabase.from('clubes').select('escudo_url').eq('id', clubId).single();
+          if (c) escudoMiClub = c.escudo_url;
+      }
+      
+      const { data: r } = await supabase.from('rivales').select('id, escudo');
+
+      const pConEscudos = (p || []).map(part => {
+           const rivalInfo = (r || []).find(riv => riv.id === part.rival_id);
+           return {
+               ...part,
+               escudo_propio: escudoMiClub,
+               escudo_rival: part.escudo_rival || rivalInfo?.escudo || null
+           };
+      });
+
       let todosLosEventos = [];
       let start = 0;
       const step = 1000;
@@ -54,7 +71,7 @@ function Temporada() {
         }
       }
       
-      setPartidos(p || []);
+      setPartidos(pConEscudos);
       setJugadores(j || []);
       setEventos(todosLosEventos);
     }
@@ -69,7 +86,6 @@ function Temporada() {
 
     if (!baseAnalytics) return null;
 
-    // --- LÓGICA DE ABP, PERFILES Y DESGLOSE GLOBAL ---
     const abp = {
       corners: { favor: 0, contra: 0, rematesGenerados: 0 },
       laterales: { favor: 0, contra: 0, rematesGenerados: 0 },
@@ -92,7 +108,6 @@ function Temporada() {
       rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0 }
     };
 
-    // --- ACUMULADORES ORIGEN DEL GOL ---
     const origenGoles = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
@@ -113,13 +128,11 @@ function Temporada() {
         totalAccionesPropias++;
         if (xNorm > 50) accionesCampoRival++;
 
-        // Perfil de Remate (Solo Propios)
         if (ev.accion?.includes('Remate') || ev.accion === 'Gol') {
           rematesPropiosTotales++;
           if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
               golesPropiosTotales++;
               
-              // Sumar origen
               const origen = ev.origen_gol || 'No Especificado';
               if (origenGoles[origen] !== undefined) {
                 origenGoles[origen]++;
@@ -138,7 +151,6 @@ function Temporada() {
           else perfilRemate.lejos++;
         }
 
-        // Recuperaciones, Pérdidas y Duelos
         if (ev.accion === 'Pérdida') { 
           for(let j=1; j<=3 && i+j < baseAnalytics.evFiltrados.length; j++) {
               if (baseAnalytics.evFiltrados[i+j].id_partido === ev.id_partido) {
@@ -159,7 +171,6 @@ function Temporada() {
         else if (ev.accion === 'Duelo DEF Perdido') { statsAdicionales.duelosDefTotales++; }
       }
 
-      // Desglose de Remates (Ambos equipos)
       if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
         p ? desgloseRemates.propio.goles++ : desgloseRemates.rival.goles++;
       } else if (ev.accion === 'Remate - Atajado') {
@@ -170,7 +181,6 @@ function Temporada() {
         p ? desgloseRemates.propio.rebatidos++ : desgloseRemates.rival.rebatidos++;
       }
 
-      // Pelota Parada
       if (ev.accion === 'Córner') {
         if (p) {
           abp.corners.favor++;
@@ -208,7 +218,6 @@ function Temporada() {
 
     const territoryPct = totalAccionesPropias > 0 ? ((accionesCampoRival / totalAccionesPropias) * 100).toFixed(0) : 50;
 
-    // Formatear datos para el gráfico de torta
     const dataOrigenGol = Object.entries(origenGoles)
       .filter(([_, valor]) => valor > 0)
       .map(([nombre, valor]) => ({ name: nombre, value: valor }));
@@ -226,7 +235,6 @@ function Temporada() {
     };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
-  // Lógica para filtrar el mapa 
   const evMapa = analiticaGlobal?.evFiltrados.filter(ev => {
     if (!filtroAccionMapa) return ev.equipo === 'Propio';
     
@@ -266,7 +274,6 @@ function Temporada() {
     heat.draw();
   }, [evMapa, tipoMapa]);
 
-  // --- DATOS GRÁFICOS ---
   const dataLineas = useMemo(() => {
     if (!analiticaGlobal) return [];
     return [...analiticaGlobal.historialPartidos].reverse().map(p => ({
@@ -305,7 +312,6 @@ function Temporada() {
     ];
   }, [analiticaGlobal]);
 
-  // COLORES PARA EL GRÁFICO DE ORIGEN
   const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 
     'Contraataque': '#f59e0b', 
@@ -364,7 +370,6 @@ function Temporada() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        {/* ROW 1: KPIs GENERALES DE TEMPORADA */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px', background: 'linear-gradient(180deg, #111 0%, #000 100%)', borderTop: '2px solid var(--accent)' }}>
                 <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>PARTIDOS (V-E-D) <InfoBox texto="Victorias, Empates y Derrotas en la temporada actual." /></div>
@@ -398,10 +403,8 @@ function Temporada() {
             </div>
         </div>
 
-        {/* ROW 2: DESGLOSE TÁCTICO AVANZADO */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
             
-            {/* ADN DEL GOL ACUMULADO */}
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
                 ADN DEL GOL (TEMPORADA) <InfoBox texto="El contexto táctico desde el cual marcamos los goles. Ayuda a ver nuestra principal arma ofensiva a lo largo de los partidos." />
@@ -442,7 +445,6 @@ function Temporada() {
               </div>
             </div>
 
-            {/* DESGLOSE DE REMATES GLOBALES */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #3b82f6' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 DESGLOSE DE REMATES <InfoBox texto="Acumulado de cómo finalizaron todos los remates de la temporada." />
@@ -454,7 +456,6 @@ function Temporada() {
               <div style={kpiFila}><span>REBATIDOS</span><strong><span style={{color: '#a855f7'}}>{analiticaGlobal.desgloseRemates.propio.rebatidos}</span> - <span style={{color: '#ef4444'}}>{analiticaGlobal.desgloseRemates.rival.rebatidos}</span></strong></div>
             </div>
 
-            {/* EFICIENCIA OFENSIVA REAL */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #00ff88' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#00ff88', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 EFICIENCIA OFENSIVA <InfoBox texto="Métricas avanzadas para entender la calidad y rentabilidad de los ataques a lo largo del torneo." />
@@ -482,7 +483,6 @@ function Temporada() {
               </div>
             </div>
 
-            {/* NUEVA: EFICIENCIA DEFENSIVA */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #ef4444' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 EFICIENCIA DEFENSIVA <InfoBox texto="Métricas avanzadas sobre la capacidad de recuperación y contención a lo largo de la temporada." />
@@ -501,7 +501,6 @@ function Temporada() {
               <div style={kpiFila}><span>PÉRDIDAS PELIGROSAS</span><strong style={{ color: analiticaGlobal.statsAdicionales.perdidasPeligrosas > (analiticaGlobal.statsEquipo.partidosJugados * 3) ? '#ef4444' : '#00ff88' }}>{analiticaGlobal.statsAdicionales.perdidasPeligrosas}</strong></div>
             </div>
 
-            {/* EFICACIA ABP (NUEVA PELOTA PARADA) */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #06b6d4' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#06b6d4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 EFICACIA A.B.P. (Ataque) <InfoBox texto="Resumen de eficacia ofensiva en pelota parada en toda la temporada. Las zonas de los laterales van de la Z1 (Defensa) a la Z4 (Ataque)." />
@@ -537,7 +536,6 @@ function Temporada() {
               </div>
             </div>
 
-            {/* PERFIL DE REMATE ACUMULADO */}
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #c084fc' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#c084fc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 PERFIL DE REMATE (TENDENCIA) <InfoBox texto="Agrupación de todos los tiros del equipo en el torneo. Ayuda a ver si somos un equipo que finaliza por el medio o por las alas." />
@@ -554,7 +552,6 @@ function Temporada() {
 
         </div>
 
-        {/* ROW 3: GRÁFICOS ANALÍTICOS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
           
           <div className="bento-card">
@@ -603,7 +600,6 @@ function Temporada() {
           </div>
         </div>
 
-        {/* ROW 4: LEADERBOARDS (TOP 5) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
           
           <div className="bento-card">
@@ -656,7 +652,6 @@ function Temporada() {
 
         </div>
 
-        {/* ROW 5: EL QUINTETO DE ORO */}
         <div className="bento-card" style={{ marginBottom: '10px' }}>
           <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>MEJORES QUINTETOS <InfoBox texto="Rendimiento del equipo (Plus/Minus) al jugar con estas combinaciones específicas de 5 jugadores a lo largo del torneo." /></div>
           <div className="table-wrapper">
@@ -701,7 +696,6 @@ function Temporada() {
           </div>
         </div>
 
-        {/* ROW 6: HISTORIAL VIP Y MAPA ESPACIAL */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           
           <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -710,7 +704,6 @@ function Temporada() {
                <InfoBox texto="Registro de los últimos encuentros filtrados. Arriba podés ver la racha de forma (últimos 10 partidos, el de más a la derecha es el más reciente)." />
              </div>
 
-             {/* NUEVO: LÍNEA DE FORMA (ÚLTIMOS 10 PARTIDOS) */}
              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, marginRight: '5px' }}>RACHA (ÚLT. 10):</span>
                 {analiticaGlobal.historialPartidos.slice(0, 10).reverse().map((p, idx) => {
@@ -744,19 +737,18 @@ function Temporada() {
                   if (p.resultado === 'V') { 
                     badgeColor = 'rgba(0, 255, 136, 0.15)'; 
                     textColor = 'var(--accent)'; 
-                    text = 'G'; // Ganado
+                    text = 'G'; 
                     bgTinte = 'linear-gradient(90deg, rgba(0,255,136,0.05) 0%, transparent 100%)';
                     borderLeft = '4px solid var(--accent)';
                   }
                   if (p.resultado === 'D') { 
                     badgeColor = 'rgba(239, 68, 68, 0.15)'; 
                     textColor = '#ef4444'; 
-                    text = 'P'; // Perdido
+                    text = 'P'; 
                     bgTinte = 'linear-gradient(90deg, rgba(239,68,68,0.05) 0%, transparent 100%)';
                     borderLeft = '4px solid #ef4444';
                   }
 
-                  // Calcular cantidad de convocados
                   let convocados = 0;
                   try {
                     if (p.plantilla) {
@@ -765,19 +757,25 @@ function Temporada() {
                     }
                   } catch (e) {}
 
+                  const partidoOriginal = partidos.find(part => part.id === p.id);
+                  const escudoPropio = partidoOriginal?.escudo_propio;
+                  const escudoRival = partidoOriginal?.escudo_rival;
+
                   return (
                     <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0a0a0a', backgroundImage: bgTinte, padding: '12px 15px', border: '1px solid var(--border)', borderLeft: borderLeft, borderRadius: '6px', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.transform = 'translateX(5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateX(0px)'}>
                       
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        {/* BADGE RESULTADO */}
                         <div style={{ background: badgeColor, color: textColor, fontWeight: 900, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontSize: '1rem', border: `1px solid ${textColor}`, flexShrink: 0 }}>
                           {text}
                         </div>
                         
-                        {/* INFO PARTIDO */}
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', letterSpacing: '0.5px' }}>
-                            vs {p.rival.toUpperCase()}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                            {escudoPropio ? <img src={escudoPropio} style={{width:'20px',height:'20px',objectFit:'contain', filter:'grayscale(1) brightness(2)'}} alt="MI" /> : <div style={{width:'20px',height:'20px',borderRadius:'50%',background:'#222',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.55rem',border:'1px solid var(--accent)',color:'var(--accent)'}}>MI</div>}
+                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', letterSpacing: '0.5px' }}>
+                              vs {p.rival.toUpperCase()}
+                            </div>
+                            {escudoRival ? <img src={escudoRival} style={{width:'20px',height:'20px',objectFit:'contain', filter:'grayscale(1) brightness(2)'}} alt="RIVAL" /> : <div style={{width:'20px',height:'20px',borderRadius:'50%',background:'#222',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.55rem',border:'1px solid #555',color:'#fff'}}>{p.rival?.substring(0,2).toUpperCase()}</div>}
                           </div>
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
@@ -790,7 +788,6 @@ function Temporada() {
                         </div>
                       </div>
 
-                      {/* MARCADOR FINAL */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
                         <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '1px', marginBottom: '2px' }}>RESULTADO</div>
                         <div style={{ background: '#000', border: '1px solid #222', padding: '4px 10px', borderRadius: '4px', fontSize: '1.3rem', fontWeight: 900, color: '#fff', display: 'flex', gap: '8px', alignItems: 'center' }}>
