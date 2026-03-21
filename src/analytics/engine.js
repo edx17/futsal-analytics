@@ -160,3 +160,26 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
     diccionarios // Exportamos esto para no tener que recalcular en otras métricas
   };
 }
+
+export function calcularStatsArquero(eventosArquero, eventosRivales) {
+  const rematesAlArco = eventosRivales.filter(e => 
+    e.accion === 'Remate - Gol' || e.accion === 'Remate - Atajado'
+  );
+  
+  const goles = rematesAlArco.filter(e => e.accion === 'Remate - Gol').length;
+  // Ahora sí podemos contar esto porque TomaDatos lo inyecta
+  const atajadas = eventosArquero.filter(e => e.accion === 'Atajada').length;
+
+  const xgRecibido = rematesAlArco.reduce((acc, e) => acc + (e.xg_ev || e.xg || 0.15), 0);
+
+  return {
+    tirosRecibidos: rematesAlArco.length,
+    golesRecibidos: goles,
+    atajadas: atajadas,
+    porcentajeAtajadas: rematesAlArco.length > 0 ? ((atajadas / rematesAlArco.length) * 100).toFixed(1) : 0,
+    xgRecibido: Number(xgRecibido.toFixed(2)),
+    // LA MÉTRICA REINA: Goles Evitables (Delta)
+    // Si es negativo: atajó más de lo esperado. Si es positivo: le hicieron goles "tontos"
+    golesEvitables: Number((goles - xgRecibido).toFixed(2)) 
+  };
+}

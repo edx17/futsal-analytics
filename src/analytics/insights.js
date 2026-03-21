@@ -27,4 +27,26 @@ export function generarInsights({
     insights.push('Baja eficacia de definición');
 
   return insights;
+  
+}
+
+export function generarInsightsArquero(statsArquero) {
+  const insights = [];
+  if (!statsArquero || statsArquero.tirosRecibidos === 0) return insights;
+
+  const { tirosRecibidos, golesRecibidos, xgRecibido, golesEvitables, porcentajeAtajadas } = statsArquero;
+
+  if (golesEvitables < -0.5) {
+    insights.push(`Rendimiento de élite: Recibió ${tirosRecibidos} remates (xG ${xgRecibido}) y concedió solo ${golesRecibidos} goles.`);
+  } else if (golesEvitables > 0.5) {
+    insights.push(`Problemas de eficacia: Concedió ${golesRecibidos} goles con un peligro esperado (xG) de apenas ${xgRecibido}.`);
+  }
+
+  if (tirosRecibidos < 5 && golesRecibidos >= 2) {
+    insights.push(`Vulnerabilidad defensiva: Bajo volumen de llegadas del rival pero altísima conversión en contra.`);
+  } else if (tirosRecibidos >= 15 && porcentajeAtajadas > 80) {
+    insights.push(`Arquero figura: Sometido a alto volumen de tiros, sostuvo al equipo atajando el ${porcentajeAtajadas}% de las pelotas al arco.`);
+  }
+
+  return insights;
 }

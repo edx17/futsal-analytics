@@ -26,7 +26,12 @@ function Temporada() {
 
   useEffect(() => {
     async function obtenerDatosGlobales() {
-      const { data: p } = await supabase.from('partidos').select('*').order('fecha', { ascending: false });
+      const { data: p } = await supabase
+        .from('partidos')
+        .select('*')
+        .in('estado', ['Finalizado', 'Jugado'])
+        .order('fecha', { ascending: false });
+        
       const { data: j } = await supabase.from('jugadores').select('*');
       
       const clubId = localStorage.getItem('club_id');
@@ -112,11 +117,18 @@ function Temporada() {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
     };
+    
+    // Diccionario para los goles rivales
+    const origenGolesRival = {
+      'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
+      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
+    };
 
     let accionesCampoRival = 0;
     let totalAccionesPropias = 0;
     let rematesPropiosTotales = 0;
     let golesPropiosTotales = 0;
+    let golesRivalesTotales = 0;
 
     baseAnalytics.evFiltrados.forEach((ev, i) => {
       const p = ev.equipo === 'Propio';
@@ -169,6 +181,17 @@ function Temporada() {
         else if (ev.accion === 'Duelo OFE Perdido') { statsAdicionales.duelosOfeTotales++; }
         else if (ev.accion === 'Duelo DEF Ganado') { statsAdicionales.duelosDefGanados++; statsAdicionales.duelosDefTotales++; }
         else if (ev.accion === 'Duelo DEF Perdido') { statsAdicionales.duelosDefTotales++; }
+      } else {
+        // Lógica Rival
+        if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
+           golesRivalesTotales++;
+           const origen = ev.origen_gol || 'No Especificado';
+           if (origenGolesRival[origen] !== undefined) {
+             origenGolesRival[origen]++;
+           } else {
+             origenGolesRival['No Especificado']++;
+           }
+        }
       }
 
       if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
@@ -221,6 +244,10 @@ function Temporada() {
     const dataOrigenGol = Object.entries(origenGoles)
       .filter(([_, valor]) => valor > 0)
       .map(([nombre, valor]) => ({ name: nombre, value: valor }));
+      
+    const dataOrigenGolRival = Object.entries(origenGolesRival)
+      .filter(([_, valor]) => valor > 0)
+      .map(([nombre, valor]) => ({ name: nombre, value: valor }));
 
     return { 
       ...baseAnalytics, 
@@ -231,7 +258,9 @@ function Temporada() {
       territoryPct, 
       rematesPropiosTotales, 
       golesPropiosTotales,
-      dataOrigenGol 
+      golesRivalesTotales,
+      dataOrigenGol,
+      dataOrigenGolRival
     };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
@@ -324,7 +353,7 @@ function Temporada() {
     'No Especificado': '#4b5563' 
   };
 
-  if (!partidos || partidos.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-dim)' }}>AÚN NO HAY PARTIDOS CREADOS.</div>;
+  if (!partidos || partidos.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-dim)' }}>AÚN NO HAY PARTIDOS CREADOS O FINALIZADOS.</div>;
   if (!analiticaGlobal) return <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-dim)' }}>CARGANDO RESUMEN DE TEMPORADA...</div>;
 
   const stats = analiticaGlobal.statsEquipo;
@@ -436,7 +465,7 @@ function Temporada() {
                     </ResponsiveContainer>
                     <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
                       <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analiticaGlobal.golesPropiosTotales}</span><br/>
-                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>TOTAL</span>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>A FAVOR</span>
                     </div>
                   </>
                 ) : (
@@ -445,15 +474,45 @@ function Temporada() {
               </div>
             </div>
 
-            <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #3b82f6' }}>
-              <div className="stat-label" style={{ marginBottom: '15px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                DESGLOSE DE REMATES <InfoBox texto="Acumulado de cómo finalizaron todos los remates de la temporada." />
+            {/* GRÁFICO NUEVO: ADN GOL RIVAL */}
+            <div className="bento-card" style={{ borderTop: '3px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
+                ADN GOL RIVAL (TEMPORADA) <InfoBox texto="El contexto táctico desde el cual nos marcan los goles." />
               </div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px', textAlign: 'right', fontWeight: 700 }}>NOSOTROS - RIVAL</div>
-              <div style={kpiFila}><span>GOLES</span><strong><span style={{color: '#00ff88'}}>{analiticaGlobal.desgloseRemates.propio.goles}</span> - <span style={{color: '#ef4444'}}>{analiticaGlobal.desgloseRemates.rival.goles}</span></strong></div>
-              <div style={kpiFila}><span>ATAJADOS</span><strong><span style={{color: '#3b82f6'}}>{analiticaGlobal.desgloseRemates.propio.atajados}</span> - <span style={{color: '#ef4444'}}>{analiticaGlobal.desgloseRemates.rival.atajados}</span></strong></div>
-              <div style={kpiFila}><span>DESVIADOS</span><strong><span style={{color: '#888888'}}>{analiticaGlobal.desgloseRemates.propio.desviados}</span> - <span style={{color: '#ef4444'}}>{analiticaGlobal.desgloseRemates.rival.desviados}</span></strong></div>
-              <div style={kpiFila}><span>REBATIDOS</span><strong><span style={{color: '#a855f7'}}>{analiticaGlobal.desgloseRemates.propio.rebatidos}</span> - <span style={{color: '#ef4444'}}>{analiticaGlobal.desgloseRemates.rival.rebatidos}</span></strong></div>
+              <div style={{ flex: 1, minHeight: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                {analiticaGlobal.dataOrigenGolRival && analiticaGlobal.dataOrigenGolRival.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={analiticaGlobal.dataOrigenGolRival}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {analiticaGlobal.dataOrigenGolRival.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
+                          itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }}
+                        />
+                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analiticaGlobal.golesRivalesTotales}</span><br/>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>EN CONTRA</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center' }}>No nos marcaron goles.</div>
+                )}
+              </div>
             </div>
 
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #00ff88' }}>

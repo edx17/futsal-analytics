@@ -242,8 +242,11 @@ function TomaDatos() {
       dbX = 100 - dbX;
       dbY = 100 - dbY;
     }
+    
     const finalEquipo = jugadorId === null && pasoRegistro === 2 ? 'Rival' : equipo;
-    const evento = {
+    
+    // 1. EVENTO PRINCIPAL (TIRADOR)
+    const eventoPrincipal = {
       club_id: clubId, 
       id_partido: partido.id, 
       id_jugador: jugadorId ? parseInt(jugadorId, 10) : null,
@@ -255,9 +258,38 @@ function TomaDatos() {
       minuto: minuto, 
       quinteto_activo: quintetoActual
     };
+
+    const eventosAInsertar = [eventoPrincipal];
+
+    // 2. LÓGICA DE INSERCIÓN DOBLE PARA ARQUEROS (INYECTADA ACÁ ADENTRO)
+    const esRemateAlArco = accion === 'Remate - Atajado' || accion === 'Remate - Gol';
+    const esRival = finalEquipo === 'Rival';
+
+    const arquero = jugadoresEnCancha.find(j => 
+      (j.posicion || '').toLowerCase().includes('arquero') || (j.posicion || '').toLowerCase().includes('portero')
+    );
+
+    if (esRemateAlArco && esRival && arquero) {
+      eventosAInsertar.push({
+        club_id: clubId,
+        id_partido: partido.id,
+        id_jugador: arquero.id,
+        accion: accion === 'Remate - Gol' ? 'Gol Recibido' : 'Atajada',
+        zona_x: dbX,
+        zona_y: dbY,
+        equipo: 'Propio',
+        periodo: periodo,
+        minuto: minuto,
+        quinteto_activo: quintetoActual
+      });
+    }
+
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
-    const { data: eventosGuardados, error } = await supabase.from('eventos').insert([evento]).select();
+    
+    // 3. ENVIAMOS TODO EL ARRAY JUNTO A LA BASE DE DATOS
+    const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
+    
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
     } else {

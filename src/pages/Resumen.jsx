@@ -181,6 +181,12 @@ function Resumen() {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
     };
+    
+    // Diccionario para goles rivales
+    const origenGolesRival = {
+      'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
+      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
+    };
 
     evFiltrados.forEach((ev, i) => {
       const p = ev.equipo === 'Propio';
@@ -209,6 +215,12 @@ function Resumen() {
         } else {
           stats.rival.goles++;
           stats.rival.remates++;
+          const origen = ev.origen_gol || 'No Especificado';
+          if (origenGolesRival[origen] !== undefined) {
+            origenGolesRival[origen]++;
+          } else {
+            origenGolesRival['No Especificado']++;
+          }
         }
       }
       else if (ev.accion === 'Remate - Atajado') { p ? stats.propio.atajados++ : stats.rival.atajados++; p ? stats.propio.remates++ : stats.rival.remates++; }
@@ -340,10 +352,14 @@ function Resumen() {
     const dataOrigenGol = Object.entries(origenGoles)
       .filter(([_, valor]) => valor > 0)
       .map(([nombre, valor]) => ({ name: nombre, value: valor }));
+      
+    const dataOrigenGolRival = Object.entries(origenGolesRival)
+      .filter(([_, valor]) => valor > 0)
+      .map(([nombre, valor]) => ({ name: nombre, value: valor }));
 
     return { 
       evFiltrados, stats, abp, ranking, eficaciaTiro, shotRate, goalRate, lossDanger, chaosIndex, matchControl, territoryPct,
-      xgPorRemate, golesVsXg, rematesPorPosesion, perfilRemate, dataOrigenGol,
+      xgPorRemate, golesVsXg, rematesPorPosesion, perfilRemate, dataOrigenGol, dataOrigenGolRival,
       xgPropio: datosProcesados.xgPropio, xgRival: datosProcesados.xgRival, 
       insights: datosProcesados.insights, posesiones: datosProcesados.posesiones, transiciones: datosProcesados.transiciones,
       duelos: datosProcesados.duelos, quintetos: datosProcesados.quintetos, plusMinusJugador: datosProcesados.plusMinusJugador
@@ -714,10 +730,38 @@ function Resumen() {
                     </ResponsiveContainer>
                     <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
                       <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analitica.stats.propio.goles}</span><br/>
-                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>TOTAL</span>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>A FAVOR</span>
                     </div>
                   </>
                 ) : <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>No hay goles registrados.</div>}
+              </div>
+            </div>
+
+            {/* GRÁFICO NUEVO: ADN GOLES RIVALES */}
+            <div className="bento-card" style={{ borderTop: '3px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
+                ADN GOLES RIVALES <InfoBox texto="El contexto táctico desde el cual nos marcaron." />
+              </div>
+              <div style={{ flex: 1, minHeight: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                {analitica.dataOrigenGolRival && analitica.dataOrigenGolRival.length > 0 ? (
+                  <>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={analitica.dataOrigenGolRival} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
+                          {analitica.dataOrigenGolRival.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analitica.stats.rival.goles}</span><br/>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>EN CONTRA</span>
+                    </div>
+                  </>
+                ) : <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>No nos marcaron goles.</div>}
               </div>
             </div>
 
