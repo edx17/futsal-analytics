@@ -2,73 +2,96 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
-import { 
+import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, Legend, Cell, ReferenceLine, ReferenceArea, LineChart, Line
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
+  ResponsiveContainer, Legend, Cell, ReferenceLine, LineChart, Line,
 } from 'recharts';
 
-// --- BIBLIOTECA KINÉSICA ---
+// ─── REHAB LIBRARY ──────────────────────────────────────────────────────────
 const REHAB_LIB = {
-  "isquiosural": [{ t: "Dead Bugs", v: "https://youtube.com/shorts/vn72PVWnu14" }, { t: "Puente glúteo unilateral", v: "https://youtube.com/shorts/Y-N53Q6XxiI" }, { t: "Peso muerto rumano uni", v: "https://youtu.be/YXjc7TURwfE" }],
-  "movilidad": [{ t: "Dorsiflexión c/ banda", v: "https://youtube.com/shorts/Re7XMKgAti8" }, { t: "Obelisco", v: "https://youtube.com/shorts/dWLrnRwY41c" }, { t: "Movilidad Toráxica", v: "https://youtube.com/shorts/2et2ZXUk6co" }],
-  "tobillo": [{ t: "Mov. Articular", v: "https://youtube.com/shorts/dYS9cgYk2lY" }, { t: "Salto Alternado", v: "https://youtube.com/shorts/b5qmCWB8cpo" }, { t: "Dorsiflexión c/ carga", v: "https://youtube.com/shorts/tXVq7MAOAVY" }],
-  "pelvica": [{ t: "Bird-dog", v: "https://youtube.com/shorts/Tjo5oYHoS8M" }, { t: "Puente almeja c/ banda", v: "https://youtube.com/shorts/9vWRjF08xiQ" }, { t: "Isométricos glúteo", v: "https://youtube.com/shorts/oxouNCjxHWw" }],
-  "cadera": [{ t: "90-90 Rotación interna", v: "https://youtube.com/shorts/p2NUakSyUcE" }, { t: "Ranita", v: "https://youtube.com/shorts/cvgsb7xCgN4" }, { t: "Curl Nórdico invertido", v: "https://youtube.com/shorts/UZf6CbQR8_s" }],
-  "escapular": [{ t: "Movilidad Escapular", v: "https://youtube.com/shorts/5j4inxyq-MA" }, { t: "Halo Split KB", v: "https://youtube.com/shorts/UARPXzqDNhM" }, { t: "Pájaros con poleas", v: "https://youtu.be/ki6gkb_mJr0" }]
+  isquiosural: [{ t: 'Dead Bugs', v: 'https://youtube.com/shorts/vn72PVWnu14' }, { t: 'Puente glúteo unilateral', v: 'https://youtube.com/shorts/Y-N53Q6XxiI' }, { t: 'Peso muerto rumano uni', v: 'https://youtu.be/YXjc7TURwfE' }],
+  movilidad:   [{ t: 'Dorsiflexión c/ banda', v: 'https://youtube.com/shorts/Re7XMKgAti8' }, { t: 'Obelisco', v: 'https://youtube.com/shorts/dWLrnRwY41c' }, { t: 'Movilidad Toráxica', v: 'https://youtube.com/shorts/2et2ZXUk6co' }],
+  tobillo:     [{ t: 'Mov. Articular', v: 'https://youtube.com/shorts/dYS9cgYk2lY' }, { t: 'Salto Alternado', v: 'https://youtube.com/shorts/b5qmCWB8cpo' }, { t: 'Dorsiflexión c/ carga', v: 'https://youtube.com/shorts/tXVq7MAOAVY' }],
+  pelvica:     [{ t: 'Bird-dog', v: 'https://youtube.com/shorts/Tjo5oYHoS8M' }, { t: 'Puente almeja c/ banda', v: 'https://youtube.com/shorts/9vWRjF08xiQ' }, { t: 'Isométricos glúteo', v: 'https://youtube.com/shorts/oxouNCjxHWw' }],
+  cadera:      [{ t: '90-90 Rotación interna', v: 'https://youtube.com/shorts/p2NUakSyUcE' }, { t: 'Ranita', v: 'https://youtube.com/shorts/cvgsb7xCgN4' }, { t: 'Curl Nórdico invertido', v: 'https://youtube.com/shorts/UZf6CbQR8_s' }],
+  escapular:   [{ t: 'Movilidad Escapular', v: 'https://youtube.com/shorts/5j4inxyq-MA' }, { t: 'Halo Split KB', v: 'https://youtube.com/shorts/UARPXzqDNhM' }, { t: 'Pájaros con poleas', v: 'https://youtu.be/ki6gkb_mJr0' }],
 };
 
-// VALORES ÉLITE DE REFERENCIA (Agregado ABK para completar perfiles)
-const ELITE = { musc: 48.5, adip: 9.0, sum6: 45.0, cmj: 55, abk: 62, broad: 2.60, yoyo: 21.0 };
+const ELITE = { musc: 48.5, adip: 9.0, sum6: 45.0, cmj: 55, abk: 62, broad: 2.60, yoyo: 21.0, visc: 4, imc: 23.0 };
 
-function getEmbedUrl(url) {
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+const calcStats = (arr, key) => {
+  const vals = arr.map(d => Number(d[key])).filter(v => !isNaN(v) && v != null && v !== 0);
+  if (!vals.length) return { mean: 0, sd: 0 };
+  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const sd = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
+  return { mean, sd };
+};
+const zNorm = (val, stat) =>
+  val == null || stat.sd === 0 ? 50
+  : Math.max(0, Math.min(100, 50 + ((Number(val) - stat.mean) / stat.sd) * 20));
+const estimarVO2 = lvl => (!lvl ? 'S/D' : ((Number(lvl) * 0.84) + 36.4).toFixed(1));
+const asimColor = v => { const a = Math.abs(v); return a > 15 ? '#ef4444' : a > 10 ? '#f59e0b' : '#10b981'; };
+const fmtNum = (v, dec = 1) => v != null && !isNaN(v) ? Number(v).toFixed(dec) : '—';
+const getEmbedUrl = url => {
   if (!url) return '';
-  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=))([^"&?\/\s]{11})/i);
-  const videoId = match ? match[1] : '';
-  return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&modestbranding=1` : url;
-}
-
-const calcularEstadisticasPlantel = (datos, key) => {
-  const validos = datos.map(d => d[key]).filter(v => v != null && !isNaN(v));
-  if (!validos.length) return { mean: 0, sd: 0 };
-  const mean = validos.reduce((a, b) => a + Number(b), 0) / validos.length;
-  const variance = validos.reduce((a, b) => a + Math.pow(Number(b) - mean, 2), 0) / validos.length;
-  return { mean, sd: Math.sqrt(variance) };
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=))([^"&?/\s]{11})/i);
+  return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=0&rel=0&modestbranding=1` : url;
 };
 
-const calcZScore = (val, mean, sd) => (val == null || sd === 0) ? 0 : (val - mean) / sd;
-const estimarVO2Max = (nivelYoyo) => (!nivelYoyo) ? 'S/D' : ((nivelYoyo * 0.84) + 36.4).toFixed(1);
+// ─── SHARED UI ───────────────────────────────────────────────────────────────
+const Tip = ({ t }) => (
+  <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 5, cursor: 'help', verticalAlign: 'middle' }} className="tip-wrap">
+    <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: 9, fontWeight: 900, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>!</span>
+    <span className="tip-box">{t}</span>
+  </span>
+);
 
-const InfoBox = ({ texto }) => (
-  <div className="tooltip-container" tabIndex="0" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '6px', position: 'relative', cursor: 'help', outline: 'none' }}>
-    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
-    <div className="tooltip-text">{texto}</div>
+const SecTitle = ({ children, color }) => (
+  <div style={{ fontSize: '0.78rem', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', borderBottom: '1px solid #0f172a', paddingBottom: 9, marginBottom: 16, color: color || 'var(--text-dim)' }}>{children}</div>
+);
+
+const KpiCard = ({ label, value, unit = '', sub, color = '#fff', accent }) => (
+  <div className="glass-panel" style={{ padding: 16, textAlign: 'center', borderTop: accent ? `3px solid ${accent}` : undefined }}>
+    <div style={{ color: 'var(--text-dim)', fontSize: '0.62rem', fontWeight: 900, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>{label}</div>
+    <div style={{ fontSize: '1.8rem', fontWeight: 900, color, lineHeight: 1 }}>{value}<span style={{ fontSize: '0.85rem' }}>{unit}</span></div>
+    {sub && <div style={{ fontSize: '0.62rem', color: '#334155', marginTop: 5 }}>{sub}</div>}
   </div>
 );
 
+const PercBadge = ({ val, mean, sd, higher = true }) => {
+  if (val == null || !sd) return <span style={{ color: '#1e293b', fontSize: '0.65rem' }}>S/D</span>;
+  const z = (Number(val) - mean) / sd * (higher ? 1 : -1);
+  const c = z > 0.5 ? '#10b981' : z < -0.5 ? '#ef4444' : '#f59e0b';
+  const lbl = z > 1 ? 'TOP' : z > 0.5 ? 'SOBRE' : z < -1 ? 'BAJO' : z < -0.5 ? 'DEBAJO' : 'PROM';
+  return <span style={{ padding: '2px 7px', borderRadius: 4, background: c + '22', color: c, fontSize: '0.62rem', fontWeight: 900, border: `1px solid ${c}33` }}>{lbl}</span>;
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// MAIN EXPORT
+// ════════════════════════════════════════════════════════════════════════════
 export default function Rendimiento() {
-  const [tabActiva, setTabActiva] = useState('individual'); // Arrancamos en Resumen por defecto
+  const [tab, setTab] = useState('resumen');
   const [jugadoresBD, setJugadoresBD] = useState([]);
-  const [historialRendimiento, setHistorialRendimiento] = useState([]);
+  const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalAbierto, setModalAbierto] = useState(false);
-  
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selId, setSelId] = useState(null);
+
   const { showToast } = useToast();
   const { perfil } = useAuth();
-  
   const esJugador = perfil?.rol === 'jugador';
   const esStaff = !esJugador;
   const clubId = localStorage.getItem('club_id');
 
   const cargarDatos = async () => {
     setLoading(true);
-    const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion').eq('club_id', clubId).order('dorsal');
+    const { data: j } = await supabase.from('jugadores').select('id,nombre,apellido,dorsal,posicion').eq('club_id', clubId).order('dorsal');
     setJugadoresBD(j || []);
-
-    const { data: r } = await supabase.from('rendimiento').select('*, jugadores(nombre, apellido, posicion, dorsal)').eq('club_id', clubId).order('fecha_medicion', { ascending: false }); 
+    const { data: r } = await supabase.from('rendimiento').select('*,jugadores(nombre,apellido,posicion,dorsal)').eq('club_id', clubId).order('fecha_medicion', { ascending: false });
     const filtrado = esJugador ? (r || []).filter(x => x.id_jugador === perfil?.jugador_id) : (r || []);
-    setHistorialRendimiento(filtrado);
-
+    setHistorial(filtrado);
     setLoading(false);
   };
 
@@ -76,754 +99,1277 @@ export default function Rendimiento() {
 
   const ultimosDatos = useMemo(() => {
     const mapa = {};
-    historialRendimiento.forEach(reg => {
-      if (!mapa[reg.id_jugador]) mapa[reg.id_jugador] = reg;
-    });
+    historial.forEach(reg => { if (!mapa[reg.id_jugador]) mapa[reg.id_jugador] = reg; });
     return Object.values(mapa);
-  }, [historialRendimiento]);
+  }, [historial]);
+
+  useEffect(() => {
+    if (esJugador && perfil?.jugador_id) { setSelId(perfil.jugador_id); return; }
+    if (ultimosDatos.length && !selId) setSelId(ultimosDatos[0].id_jugador);
+  }, [ultimosDatos, esJugador, perfil]);
+
+  const jug = ultimosDatos.find(j => j.id_jugador === selId);
 
   const stats = useMemo(() => ({
-    cmj: calcularEstadisticasPlantel(ultimosDatos, 'cmj'),
-    abk: calcularEstadisticasPlantel(ultimosDatos, 'abk'),
-    broad: calcularEstadisticasPlantel(ultimosDatos, 'broad'),
-    musc: calcularEstadisticasPlantel(ultimosDatos, 'musc'),
-    adip: calcularEstadisticasPlantel(ultimosDatos, 'adip'),
-    sum6: calcularEstadisticasPlantel(ultimosDatos, 'sum6'),
-    yoyo: calcularEstadisticasPlantel(ultimosDatos.map(d => ({ ...d, yoyoReal: d.y26 || d.y25 })), 'yoyoReal'),
-    pl_tri: calcularEstadisticasPlantel(ultimosDatos, 'pl_tri'),
-    pl_sub: calcularEstadisticasPlantel(ultimosDatos, 'pl_sub'),
-    pl_bic: calcularEstadisticasPlantel(ultimosDatos, 'pl_bic'),
-    pl_cre: calcularEstadisticasPlantel(ultimosDatos, 'pl_cre'),
-    pl_sup: calcularEstadisticasPlantel(ultimosDatos, 'pl_sup'),
-    pl_abd: calcularEstadisticasPlantel(ultimosDatos, 'pl_abd')
+    cmj:    calcStats(ultimosDatos, 'cmj'),
+    abk:    calcStats(ultimosDatos, 'abk'),
+    broad:  calcStats(ultimosDatos, 'broad'),
+    musc:   calcStats(ultimosDatos, 'musc'),
+    adip:   calcStats(ultimosDatos, 'adip'),
+    sum6:   calcStats(ultimosDatos, 'sum6'),
+    visc:   calcStats(ultimosDatos, 'visc'),
+    imc:    calcStats(ultimosDatos, 'imc'),
+    ed_met: calcStats(ultimosDatos, 'ed_met'),
+    yoyo:   calcStats(ultimosDatos.map(d => ({ ...d, yr: d.y26 || d.y25 })), 'yr'),
+    pl_tri: calcStats(ultimosDatos, 'pl_tri'), pl_sub: calcStats(ultimosDatos, 'pl_sub'),
+    pl_bic: calcStats(ultimosDatos, 'pl_bic'), pl_cre: calcStats(ultimosDatos, 'pl_cre'),
+    pl_sup: calcStats(ultimosDatos, 'pl_sup'), pl_abd: calcStats(ultimosDatos, 'pl_abd'),
   }), [ultimosDatos]);
 
-  if (loading) return <div style={{ padding: '40px', color: 'var(--text-dim)', textAlign: 'center' }}>ANALIZANDO BIOMECÁNICA Y KINANTROPOMETRÍA... 🧬</div>;
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, gap: 14, color: 'var(--text-dim)' }}>
+      <div style={{ width: 44, height: 44, border: '3px solid #1e293b', borderTop: '3px solid var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <span style={{ fontSize: '0.8rem', letterSpacing: 3, textTransform: 'uppercase' }}>Cargando datos...</span>
+    </div>
+  );
+
+  const TABS = [
+    { id: 'resumen', lbl: '📊 RESUMEN',  col: null },
+    { id: 'fisico',  lbl: '⚡ FÍSICO',   col: '#3b82f6' },
+    { id: 'kine',    lbl: '🩺 KINE',     col: '#10b981' },
+    { id: 'nutri',   lbl: '🥗 NUTRI',    col: '#f59e0b' },
+    { id: 'equipo',  lbl: '🏟️ EQUIPO',   col: '#8b5cf6' },
+    ...(!esJugador ? [{ id: 'vs', lbl: '⚖️ VS', col: '#ec4899' }] : []),
+  ];
 
   return (
-    <div className="fade-in" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto', color: '#fff', paddingBottom: '80px' }}>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: '15px', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
+    <div style={{ padding: '20px', maxWidth: 1500, margin: '0 auto', color: '#fff', paddingBottom: 80 }} className="fade-in">
+
+      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '-1px', margin: 0 }}>
-            Sports Science
-          </h1>
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>
-            Análisis de Rendimiento, Biomecánica y Antropometría.
-          </p>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '-1px', margin: 0 }}>Sports Science</h1>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: 4 }}>Rendimiento · Biomecánica · Antropometría · Nutrición</p>
         </div>
-        
-        {esStaff && (
-          <button onClick={() => setModalAbierto(true)} className="btn-action" style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', fontWeight: 'bold' }}>
-            + NUEVA TOMA DE DATOS
-          </button>
-        )}
+        {esStaff && <button onClick={() => setModalOpen(true)} className="btn-action" style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', fontWeight: 900 }}>+ NUEVA TOMA</button>}
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '25px', overflowX: 'auto', paddingBottom: '10px' }}>
-        <button className={`nav-tab ${tabActiva === 'individual' ? 'active' : ''}`} onClick={() => setTabActiva('individual')}>👤 RESUMEN INDIVIDUAL</button>
-        <button className={`nav-tab ${tabActiva === 'fisico' ? 'active' : ''}`} onClick={() => setTabActiva('fisico')}>🏃‍♂️ P. FÍSICA</button>
-        <button className={`nav-tab ${tabActiva === 'kinesiologia' ? 'active' : ''}`} onClick={() => setTabActiva('kinesiologia')} style={{ borderBottom: tabActiva==='kinesiologia' ? '3px solid #10b981' : 'none'}}>🩺 KINESIOLOGÍA</button>
-        <button className={`nav-tab ${tabActiva === 'nutricion' ? 'active' : ''}`} onClick={() => setTabActiva('nutricion')} style={{ borderBottom: tabActiva==='nutricion' ? '3px solid #f59e0b' : 'none'}}>🥗 NUTRICIÓN</button>
-        {!esJugador && <button className={`nav-tab ${tabActiva === 'comparativa' ? 'active' : ''}`} onClick={() => setTabActiva('comparativa')}>⚖️ COMPARATIVA (VS)</button>}
+      {/* ── LAYOUT: SIDEBAR + CONTENT ──────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 20, alignItems: 'start' }} className="rend-layout-grid">
+
+        {/* ══ SIDEBAR ══ */}
+        <div style={{ position: 'sticky', top: 16 }}>
+          <div style={{ background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 16, backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* ── SELECTOR GLOBAL (siempre visible) ── */}
+            <div>
+              <div style={{ fontSize: '0.58rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>
+                {esJugador ? 'MI PERFIL' : 'JUGADOR ACTIVO'}
+              </div>
+              {esStaff ? (
+                <select
+                  style={{ width: '100%', background: '#060a14', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: 8, padding: '9px 11px', fontSize: '0.82rem', fontWeight: 800, outline: 'none', cursor: 'pointer' }}
+                  value={selId || ''}
+                  onChange={e => setSelId(parseInt(e.target.value))}
+                >
+                  {ultimosDatos.map(j => (
+                    <option key={j.id} value={j.id_jugador}>
+                      #{j.jugadores?.dorsal} · {j.jugadores?.apellido}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ padding: '9px 12px', background: '#060a14', border: '1px solid #0f172a', borderRadius: 8, color: 'var(--accent)', fontWeight: 900, fontSize: '0.88rem' }}>
+                  {jug?.jugadores?.apellido} {jug?.jugadores?.nombre}
+                </div>
+              )}
+            </div>
+
+            {/* ── PLAYER CARD ── */}
+            {jug ? (
+              <div style={{ background: 'rgba(2,6,23,0.6)', borderRadius: 10, padding: 14, border: '1px solid #0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+                <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'linear-gradient(135deg,#1e3a5f,#0f172a)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--accent)', fontSize: '1rem', marginBottom: 8, letterSpacing: -1 }}>
+                  {jug.jugadores?.apellido?.charAt(0)}{jug.jugadores?.nombre?.charAt(0)}
+                </div>
+                <div style={{ fontWeight: 900, fontSize: '0.95rem', letterSpacing: -0.5 }}>{jug.jugadores?.apellido?.toUpperCase()}</div>
+                <div style={{ fontSize: '0.72rem', color: '#475569' }}>{jug.jugadores?.nombre}</div>
+                <div style={{ marginTop: 6, padding: '2px 10px', background: '#10b98122', border: '1px solid #10b98133', borderRadius: 4, fontSize: '0.62rem', fontWeight: 900, color: '#10b981', textTransform: 'uppercase', letterSpacing: 1 }}>{jug.jugadores?.posicion || '—'}</div>
+                <div style={{ fontSize: '0.7rem', color: '#1e293b', marginTop: 3, fontWeight: 900 }}>#{jug.jugadores?.dorsal}</div>
+
+                {/* Stats rápidas */}
+                <div style={{ width: '100%', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {[['Fecha', jug.fecha_medicion?.slice(0, 10) || '—'], ['Pierna', jug.pierna || '—'], ['Peso', jug.peso ? `${jug.peso} kg` : '—'], ['Talla', jug.talla ? `${jug.talla} cm` : '—']].map(([k, v]) => (
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', background: '#060a14', borderRadius: 5 }}>
+                      <span style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 800, textTransform: 'uppercase' }}>{k}</span>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#64748b' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mini barras métricas clave */}
+                <div style={{ width: '100%', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {[
+                    { lbl: 'CMJ',   val: jug.cmj,            elite: ELITE.cmj,   unit: 'cm', color: '#3b82f6' },
+                    { lbl: 'ABK',   val: jug.abk,            elite: ELITE.abk,   unit: 'cm', color: '#8b5cf6' },
+                    { lbl: 'YoYo',  val: jug.y26 || jug.y25, elite: ELITE.yoyo,  unit: '',   color: '#10b981' },
+                    { lbl: 'Broad', val: jug.broad,          elite: ELITE.broad, unit: 'm',  color: '#f59e0b' },
+                  ].map(({ lbl, val, elite, unit, color }) => {
+                    const pct = val ? Math.min(100, (Number(val) / elite) * 100) : 0;
+                    return (
+                      <div key={lbl}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase' }}>{lbl}</span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 900, color }}>{val ?? '—'}<span style={{ fontSize: '0.58rem', color: '#334155', marginLeft: 1 }}>{unit}</span></span>
+                        </div>
+                        <div style={{ height: 4, background: '#0f172a', borderRadius: 2, position: 'relative' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2, transition: 'width 0.5s ease' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', color: '#1e293b', padding: 20, fontSize: '0.78rem' }}>Sin datos del jugador.</div>
+            )}
+
+            {/* ── NAV TABS ── */}
+            <nav style={{ borderTop: '1px solid #0f172a', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {TABS.map(t => (
+                <button key={t.id} onClick={() => setTab(t.id)}
+                  style={{ background: tab === t.id ? '#0a0f1e' : 'transparent', border: 'none', borderLeft: `3px solid ${tab === t.id ? (t.col || 'var(--accent)') : 'transparent'}`, color: tab === t.id ? (t.col || 'var(--accent)') : '#1e293b', padding: '8px 10px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 900, cursor: 'pointer', borderRadius: '0 6px 6px 0', transition: '0.15s' }}>
+                  {t.lbl}
+                </button>
+              ))}
+            </nav>
+
+          </div>
+        </div>
+
+        {/* ══ MAIN CONTENT ══ */}
+        <div>
+          {/* Tab bar superior (duplicado para acceso rápido) */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 18, overflowX: 'auto', paddingBottom: 4, flexWrap: 'wrap' }}>
+            {TABS.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                style={{ background: tab === t.id ? (t.col ? t.col + '22' : 'rgba(255,255,255,0.06)') : '#0a0f1e', border: `1px solid ${tab === t.id ? (t.col || 'rgba(255,255,255,0.15)') : '#1e293b'}`, color: tab === t.id ? (t.col || '#fff') : '#334155', padding: '9px 16px', borderRadius: 7, fontSize: '0.72rem', fontWeight: 900, cursor: 'pointer', transition: '0.15s', whiteSpace: 'nowrap' }}>
+                {t.lbl}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div style={{ animation: 'fadeUp 0.2s ease' }}>
+            {tab === 'resumen' && <TabResumen jug={jug} stats={stats} historial={historial} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
+            {tab === 'fisico'  && <TabFisico  jug={jug} stats={stats} historial={historial} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
+            {tab === 'kine'    && <TabKine    jug={jug} stats={stats} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
+            {tab === 'nutri'   && <TabNutri   jug={jug} stats={stats} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
+            {tab === 'equipo'  && <TabEquipo  stats={stats} ultimosDatos={ultimosDatos} selId={selId} historial={historial} />}
+            {tab === 'vs' && !esJugador && <TabVS datos={ultimosDatos} stats={stats} selId={selId} historial={historial} />}
+          </div>
+        </div>
       </div>
 
-      {tabActiva === 'individual' && <TabIndividual datos={ultimosDatos} stats={stats} esJugador={esJugador} />}
-      {tabActiva === 'fisico' && <TabFisico datos={ultimosDatos} stats={stats} historial={historialRendimiento} esJugador={esJugador} />}
-      {tabActiva === 'kinesiologia' && <TabKinesiologia datos={ultimosDatos} esJugador={esJugador} />}
-      {tabActiva === 'nutricion' && <TabNutricion datos={ultimosDatos} stats={stats} esJugador={esJugador} />}
-      {tabActiva === 'comparativa' && !esJugador && <TabComparativa datos={ultimosDatos} stats={stats} />}
-
-      {modalAbierto && esStaff && (
-        <ModalIngresoDatos 
-          jugadores={jugadoresBD}
-          clubId={clubId}
-          onClose={() => setModalAbierto(false)} 
-          onSuccess={() => { setModalAbierto(false); cargarDatos(); }} 
-          showToast={showToast} 
-        />
+      {modalOpen && esStaff && (
+        <ModalIngreso jugadores={jugadoresBD} clubId={clubId} onClose={() => setModalOpen(false)} onSuccess={() => { setModalOpen(false); cargarDatos(); }} showToast={showToast} />
       )}
 
       <style>{`
-        .nav-tab { background: #111; border: 1px solid #333; color: var(--text-dim); padding: 12px 20px; border-radius: 6px; font-size: 0.85rem; font-weight: 800; cursor: pointer; transition: 0.2s; white-space: nowrap; }
-        .nav-tab:hover { background: #222; color: #fff; }
-        .nav-tab.active { background: var(--accent); color: #000; border-color: var(--accent); }
-        .kpi-title { color: var(--text-dim); font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 5px; text-transform: uppercase; }
-        .kpi-value { font-size: 2.2rem; font-weight: 900; line-height: 1; margin-bottom: 5px; }
-        .kpi-sub { font-size: 0.75rem; color: #666; }
-        .select-dark { width: 100%; padding: 12px 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; border-radius: 6px; font-size: 1rem; outline: none; }
-        .section-header { font-size: 0.9rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
-        
-        .tooltip-text { visibility: hidden; opacity: 0; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: #111; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.75rem; width: 220px; text-align: center; border: 1px solid #333; z-index: 100; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.8); transition: visibility 0.2s, opacity 0.2s; }
-        .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text, .tooltip-container:focus-within .tooltip-text { visibility: visible; opacity: 1; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        .select-dark { width:100%; padding:9px 12px; background:rgba(0,0,0,0.4); border:1px solid #1e293b; color:#fff; border-radius:7px; font-size:0.85rem; outline:none; }
+        .data-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+        .data-table th { font-size:0.6rem; font-weight:900; color:#1e293b; text-transform:uppercase; padding:7px 10px; border-bottom:1px solid #0f172a; text-align:left; }
+        .data-table td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.025); }
+        .data-table tr:hover td { background:rgba(255,255,255,0.015); }
+        .tip-box { visibility:hidden; opacity:0; position:absolute; bottom:130%; left:50%; transform:translateX(-50%); background:#0f172a; color:#64748b; padding:8px 12px; border-radius:6px; font-size:0.68rem; width:210px; text-align:center; border:1px solid #1e293b; z-index:300; pointer-events:none; transition:opacity 0.2s; white-space:normal; line-height:1.5; }
+        .tip-wrap:hover .tip-box { visibility:visible; opacity:1; }
+        .rg { display:flex; flex-direction:column; gap:18px; }
+        .c2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .c3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+        .c4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+        .scroll { overflow-y:auto; max-height:320px; }
+        .scroll::-webkit-scrollbar { width:3px; }
+        .scroll::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
+        @media(max-width:1000px) { .c2,.c3,.c4 { grid-template-columns:1fr; } }
+        @media(max-width:800px) { .rend-layout-grid { grid-template-columns:1fr !important; } }
       `}</style>
     </div>
   );
 }
 
-// =======================================================
-// NUEVO: RESUMEN INDIVIDUAL COMPLETO
-// =======================================================
-function TabIndividual({ datos, stats, esJugador }) {
-  const [jugadorSeleccionado, setJugadorSeleccionado] = useState('');
-  useEffect(() => { if (datos.length > 0 && !jugadorSeleccionado) setJugadorSeleccionado(datos[0].id_jugador.toString()); }, [datos, jugadorSeleccionado]);
+// ════════════════════════════════════════════════════════════════════════════
+// TAB RESUMEN — overview del jugador seleccionado
+// ════════════════════════════════════════════════════════════════════════════
+function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
+  if (!jug) return <Empty />;
+  const yoyo = jug.y26 || jug.y25;
+  const yoyoHist = historial
+    .filter(h => h.id_jugador === jug.id_jugador && (h.y26 || h.y25))
+    .slice(0, 8).reverse()
+    .map(h => ({ f: h.fecha_medicion?.slice(0, 7), v: h.y26 || h.y25 }));
 
-  const jugador = datos.find(j => j.id_jugador === parseInt(jugadorSeleccionado));
-
-  // Preparar Radar vs Elite
-  const radarZScore = useMemo(() => {
-    if (!jugador) return [];
-    const norm = (val, statKey) => Math.max(0, Math.min(100, 50 + (calcZScore(val, stats[statKey].mean, stats[statKey].sd) * 20)));
-    return [
-      { metrica: 'Explosión (CMJ)', Valor: norm(jugador.cmj, 'cmj'), Elite: norm(ELITE.cmj, 'cmj') },
-      { metrica: 'Elástica (ABK)', Valor: norm(jugador.abk, 'abk'), Elite: norm(ELITE.abk, 'abk') },
-      { metrica: 'Horizontal (Broad)', Valor: norm(jugador.broad, 'broad'), Elite: norm(ELITE.broad, 'broad') },
-      { metrica: 'Aeróbico (YoYo)', Valor: norm(jugador.y26 || jugador.y25, 'yoyo'), Elite: norm(ELITE.yoyo, 'yoyo') }
-    ];
-  }, [jugador, stats]);
-
-  // Lógica inteligente para sugerir videos según lo que el kine anotó
-  const videosRecomendados = useMemo(() => {
-    if (!jugador) return [];
-    const observaciones = `${jugador.kin_t || ''} ${jugador.kin_c || ''} ${jugador.kin_u || ''} ${jugador.kin_s || ''}`.toLowerCase();
-    const vids = [];
-    if (observaciones.includes('isquio')) vids.push(...REHAB_LIB.isquiosural);
-    if (observaciones.includes('movilidad')) vids.push(...REHAB_LIB.movilidad);
-    if (observaciones.includes('tobillo')) vids.push(...REHAB_LIB.tobillo);
-    if (observaciones.includes('pelvi') || observaciones.includes('estabilidad')) vids.push(...REHAB_LIB.pelvica);
-    if (observaciones.includes('cader')) vids.push(...REHAB_LIB.cadera);
-    if (observaciones.includes('escapul')) vids.push(...REHAB_LIB.escapular);
-    
-    // Si está todo perfecto y no matcheó nada, le tiramos zona media general (pelvica)
-    if (vids.length === 0) vids.push(...REHAB_LIB.pelvica);
-    
-    return [...new Set(vids)].slice(0, 3); // Devolvemos max 3 videos para no saturar
-  }, [jugador]);
-
-  if (!jugador) return <div style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>Sin datos.</div>;
+  const radarData = [
+    { m: 'CMJ',     J: zNorm(jug.cmj, stats.cmj),   E: zNorm(ELITE.cmj, stats.cmj) },
+    { m: 'ABK',     J: zNorm(jug.abk, stats.abk),   E: zNorm(ELITE.abk, stats.abk) },
+    { m: 'Broad',   J: zNorm(jug.broad, stats.broad), E: zNorm(ELITE.broad, stats.broad) },
+    { m: 'Yo-Yo',   J: zNorm(yoyo, stats.yoyo),      E: zNorm(ELITE.yoyo, stats.yoyo) },
+    { m: 'Músculo', J: zNorm(jug.musc, stats.musc),  E: zNorm(ELITE.musc, stats.musc) },
+    { m: 'Composic.', J: jug.adip ? Math.max(0, 100 - zNorm(jug.adip, stats.adip)) : 50, E: 70 },
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      
-      {!esJugador && (
-        <div style={{ marginBottom: '10px' }}>
-          <select className="select-dark" style={{ width: '100%', maxWidth: '400px', fontSize: '1.2rem', fontWeight: 'bold' }} value={jugadorSeleccionado} onChange={e => setJugadorSeleccionado(e.target.value)}>
-            {datos.map(j => <option key={j.id} value={j.id_jugador}>#{j.jugadores?.dorsal} - {j.jugadores?.apellido} {j.jugadores?.nombre}</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* BLOQUE FÍSICO */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div className="glass-panel" style={{ padding: '20px' }}>
-          <h3 className="section-header" style={{ color: '#3b82f6' }}>⚡ HUELLA ATLÉTICA VS ÉLITE</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarZScore}>
-              <PolarGrid stroke="rgba(255,255,255,0.1)" />
-              <PolarAngleAxis dataKey="metrica" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} />
+    <div className="rg">
+      {/* Radar + Composición */}
+      <div className="c2">
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#3b82f6">⚡ Huella Atlética vs Élite <Tip t="Score 50 = promedio plantel. Línea roja = élite mundial." /></SecTitle>
+          <ResponsiveContainer width="100%" height={265}>
+            <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarData}>
+              <PolarGrid stroke="#0f172a" />
+              <PolarAngleAxis dataKey="m" tick={{ fill: '#475569', fontSize: 11 }} />
               <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-              <Radar name="Jugador" dataKey="Valor" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-              <Radar name="Referencia Élite" dataKey="Elite" stroke="#ef4444" fill="transparent" strokeDasharray="3 3" />
-              <Legend wrapperStyle={{ fontSize: '12px' }}/>
-              <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} formatter={(v) => [v.toFixed(0), 'Score']} />
+              <Radar name={jug.jugadores?.apellido} dataKey="J" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
+              <Radar name="Élite" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" strokeWidth={1.5} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [v.toFixed(0), 'Score']} />
             </RadarChart>
           </ResponsiveContainer>
-          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '10px', borderTop: '1px solid #222', paddingTop: '15px' }}>
-             <div style={{ textAlign: 'center' }}><span style={{ color: '#888', fontSize: '0.8rem', display: 'block' }}>CMJ</span><strong style={{ fontSize: '1.2rem', color: '#fff' }}>{jugador.cmj || '-'}</strong><span style={{color:'#666', fontSize:'0.7rem'}}>/ {ELITE.cmj}</span></div>
-             <div style={{ textAlign: 'center' }}><span style={{ color: '#888', fontSize: '0.8rem', display: 'block' }}>Broad</span><strong style={{ fontSize: '1.2rem', color: '#fff' }}>{jugador.broad || '-'}</strong><span style={{color:'#666', fontSize:'0.7rem'}}>/ {ELITE.broad}</span></div>
-             <div style={{ textAlign: 'center' }}><span style={{ color: '#888', fontSize: '0.8rem', display: 'block' }}>Yo-Yo</span><strong style={{ fontSize: '1.2rem', color: '#fff' }}>{jugador.y26 || jugador.y25 || '-'}</strong><span style={{color:'#666', fontSize:'0.7rem'}}>/ {ELITE.yoyo}</span></div>
-          </div>
         </div>
 
-        {/* BLOQUE KINE Y RUTINA INDICADA */}
-        <div className="glass-panel" style={{ padding: '20px', borderTop: '4px solid #10b981' }}>
-          <h3 className="section-header" style={{ color: '#10b981' }}>🩺 ESTADO KINÉSICO Y TRABAJO RECOMENDADO</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-            <div style={{ background: '#111', padding: '10px', borderRadius: '6px' }}><strong style={{ color: '#888', fontSize: '0.75rem', display:'block' }}>TOBILLO</strong> {jugador.kin_t || 'S/D'}</div>
-            <div style={{ background: '#111', padding: '10px', borderRadius: '6px' }}><strong style={{ color: '#888', fontSize: '0.75rem', display:'block' }}>CADERA</strong> {jugador.kin_c || 'S/D'}</div>
-            <div style={{ background: '#111', padding: '10px', borderRadius: '6px' }}><strong style={{ color: '#888', fontSize: '0.75rem', display:'block' }}>ZONA MEDIA</strong> {jugador.kin_u || 'S/D'}</div>
-            <div style={{ background: '#111', padding: '10px', borderRadius: '6px' }}><strong style={{ color: '#888', fontSize: '0.75rem', display:'block' }}>SENTADILLA</strong> {jugador.kin_s || 'S/D'}</div>
-          </div>
+        <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
+          <SecTitle color="#f59e0b">🧬 Composición Corporal</SecTitle>
+          <table className="data-table">
+            <thead><tr><th>Métrica</th><th style={{ textAlign: 'center', color: '#f59e0b' }}>Jugador</th><th style={{ textAlign: 'center' }}>Equipo</th><th style={{ textAlign: 'center', color: '#10b981' }}>Élite</th><th>Rank</th></tr></thead>
+            <tbody>
+              {[
+                { lbl: 'Músculo %',   val: jug.musc,   eq: stats.musc,   elite: '48.5', c: '#3b82f6', h: true },
+                { lbl: 'Adiposidad %',val: jug.adip,   eq: stats.adip,   elite: '11.0', c: '#ef4444', h: false },
+                { lbl: 'IMC',         val: jug.imc,    eq: stats.imc,    elite: '23.0', c: '#fff',    h: false },
+                { lbl: 'Visceral',    val: jug.visc,   eq: stats.visc,   elite: '4.0',  c: '#fff',    h: false },
+                { lbl: 'Edad Met.',   val: jug.ed_met, eq: stats.ed_met, elite: '20.0', c: '#f59e0b', h: false },
+              ].map(r => (
+                <tr key={r.lbl}>
+                  <td style={{ color: '#475569', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>{r.lbl}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 900, color: r.c }}>{r.val ?? '—'}</td>
+                  <td style={{ textAlign: 'center', color: '#334155' }}>{fmtNum(r.eq.mean)}</td>
+                  <td style={{ textAlign: 'center', color: '#10b981', fontWeight: 700 }}>{r.elite}</td>
+                  <td><PercBadge val={r.val} mean={r.eq.mean} sd={r.eq.sd} higher={r.h} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-          <h4 style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textTransform: 'uppercase', marginBottom: '10px' }}>Videos Asignados (Basado en observaciones)</h4>
-          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px' }}>
-            {videosRecomendados.map((vid, idx) => (
-              <div key={idx} style={{ minWidth: '160px' }}>
-                <iframe src={getEmbedUrl(vid.v)} style={{ width: '100%', height: '100px', borderRadius: '6px' }} frameBorder="0" allowFullScreen title={vid.t}></iframe>
-                <div style={{ fontSize: '0.75rem', color: '#ccc', textAlign: 'center', marginTop: '4px' }}>{vid.t}</div>
+      {/* Yo-Yo + Asimetrías */}
+      <div className="c2">
+        <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
+          <SecTitle color="#10b981">🏃 Yo-Yo — Contexto Equipo</SecTitle>
+          <div className="c4" style={{ marginBottom: 12 }}>
+            {[
+              { lbl: '2025', val: jug.y25, c: '#334155' },
+              { lbl: '2026', val: jug.y26, c: '#10b981', bold: true },
+              { lbl: 'Equipo', val: fmtNum(stats.yoyo.mean), c: '#475569' },
+              { lbl: 'Élite', val: ELITE.yoyo, c: '#f59e0b' },
+            ].map(({ lbl, val, c, bold }) => (
+              <div key={lbl} style={{ background: '#060a14', border: '1px solid #0f172a', borderRadius: 8, padding: '9px 6px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.58rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 3 }}>{lbl}</div>
+                <div style={{ fontSize: bold ? '1.4rem' : '1.1rem', fontWeight: 900, color: c, lineHeight: 1 }}>{val ?? '—'}</div>
               </div>
             ))}
           </div>
+          <div style={{ fontSize: '0.65rem', color: '#1e293b', marginBottom: 8 }}>
+            VO₂ est: <strong style={{ color: '#10b981' }}>{estimarVO2(jug.y26 || jug.y25)} ml/kg/min</strong>
+          </div>
+          {/* Gráfico barras plantel Yo-Yo */}
+          <ResponsiveContainer width="100%" height={140}>
+            <BarChart data={[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25))} margin={{ left: -25, right: 5 }}>
+              <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#1e293b', fontSize: 7 }} />
+              <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 9 }} />
+              <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1} label={{ value: 'Él', fill: '#ef4444', fontSize: 7 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [v, p.payload.jugadores?.apellido]} />
+              <Bar dataKey={d => d.y26 || d.y25} radius={[2, 2, 0, 0]} barSize={12}>
+                {[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25)).map((d, i) => (
+                  <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.6} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle>⚡ Potencia y Asimetrías</SecTitle>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table" style={{ minWidth: 360 }}>
+              <thead><tr><th>Métrica</th><th style={{ textAlign: 'center' }}>Total</th><th style={{ textAlign: 'center' }}>Der</th><th style={{ textAlign: 'center' }}>Izq</th><th style={{ textAlign: 'center' }}>Asim%</th><th style={{ textAlign: 'center' }}>Eq</th></tr></thead>
+              <tbody>
+                {[
+                  { lbl: 'CMJ cm',   tot: jug.cmj,   der: jug.cmj_de,   izq: jug.cmj_iz,   asim: jug.asym_cmj, eq: stats.cmj.mean,   c: '#3b82f6' },
+                  { lbl: 'Broad m',  tot: jug.broad, der: jug.broad_de, izq: jug.broad_iz, asim: jug.asym_br,  eq: stats.broad.mean, c: '#f59e0b' },
+                  { lbl: 'ABK cm',   tot: jug.abk,   der: '—',          izq: '—',          asim: null,          eq: stats.abk.mean,   c: '#8b5cf6' },
+                ].map(r => (
+                  <tr key={r.lbl}>
+                    <td style={{ color: '#334155', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>{r.lbl}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 900, color: r.c }}>{r.tot ?? '—'}</td>
+                    <td style={{ textAlign: 'center', color: '#475569' }}>{r.der ?? '—'}</td>
+                    <td style={{ textAlign: 'center', color: '#475569' }}>{r.izq ?? '—'}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      {r.asim != null ? <span style={{ padding: '2px 6px', borderRadius: 3, background: asimColor(r.asim) + '22', color: asimColor(r.asim), fontWeight: 900, fontSize: '0.72rem' }}>{r.asim.toFixed(1)}%</span> : '—'}
+                    </td>
+                    <td style={{ textAlign: 'center', color: '#1e293b' }}>{fmtNum(r.eq)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Kine resumen */}
+          <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 12 }}>
+            <div style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Estado Kinésico</div>
+            <div className="c2" style={{ gap: 6 }}>
+              {[['🦶 Tob', jug.kin_t], ['🦴 Cad', jug.kin_c], ['⚖️ ZM', jug.kin_u], ['🏋️ Sent', jug.kin_s]].map(([l, v]) => {
+                const ok = v && (v.toLowerCase().includes('optim') || v.toLowerCase().includes('sin obs'));
+                return (
+                  <div key={l} style={{ background: '#060a14', padding: '7px 9px', borderRadius: 6, borderLeft: `2px solid ${ok ? '#10b981' : v ? '#f59e0b' : '#1e293b'}` }}>
+                    <div style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900 }}>{l}</div>
+                    <div style={{ fontSize: '0.7rem', color: ok ? '#10b981' : v ? '#f59e0b' : '#334155', marginTop: 2 }}>{v || 'S/D'}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* BLOQUE NUTRICIÓN Y DIETA */}
-      <div className="glass-panel" style={{ padding: '20px', borderTop: '4px solid #f59e0b' }}>
-        <h3 className="section-header" style={{ color: '#f59e0b' }}>🥗 PERFIL NUTRICIONAL Y DIETA ASIGNADA</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
-          <div>
-            <div style={{ background: '#111', padding: '15px', borderRadius: '6px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#888' }}>Peso Actual:</span> <strong style={{ color: '#fff' }}>{jugador.peso || 'S/D'} kg</strong>
-            </div>
-            <div style={{ background: '#111', padding: '15px', borderRadius: '6px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#888' }}>Músculo (vs {ELITE.musc}%):</span> <strong style={{ color: '#3b82f6' }}>{jugador.musc || '-'} %</strong>
-            </div>
-            <div style={{ background: '#111', padding: '15px', borderRadius: '6px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#888' }}>Adiposidad (vs {ELITE.adip}%):</span> <strong style={{ color: '#ef4444' }}>{jugador.adip || '-'} %</strong>
-            </div>
-            <div style={{ background: '#111', padding: '15px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#888' }}>∑ 6 Pliegues (vs {ELITE.sum6}):</span> <strong style={{ color: '#f59e0b' }}>{jugador.sum6 || '-'} mm</strong>
-            </div>
+      {/* Plan nutricional */}
+      <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
+        <SecTitle color="#f59e0b">🥗 Plan Nutricional</SecTitle>
+        <div className="c2" style={{ alignItems: 'start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[['Peso', `${jug.peso ?? '—'} kg`], ['∑ 6 Pliegues', `${jug.sum6 ?? '—'} mm`], ['Músculo', `${jug.musc ?? '—'} %`], ['Adiposidad', `${jug.adip ?? '—'} %`]].map(([l, v]) => (
+              <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 11px', background: '#060a14', borderRadius: 6, border: '1px solid #0f172a' }}>
+                <span style={{ color: '#1e293b', fontSize: '0.7rem' }}>{l}</span>
+                <strong style={{ color: '#64748b', fontSize: '0.78rem' }}>{v}</strong>
+              </div>
+            ))}
           </div>
-          <div style={{ background: '#000', padding: '15px', borderRadius: '6px', maxHeight: '250px', overflowY: 'auto' }}>
-            <span style={{ color: '#666', fontSize: '0.75rem', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>Pautas / Menú</span>
-            {jugador.plan_nutricional ? (
-              <div dangerouslySetInnerHTML={{ __html: jugador.plan_nutricional }} style={{ fontSize: '0.85rem', lineHeight: '1.6', color: '#ddd' }} />
-            ) : <div style={{ color: '#666', fontStyle: 'italic' }}>Sin plan cargado.</div>}
+          <div style={{ background: '#060a14', borderRadius: 9, padding: 14, maxHeight: 180, overflowY: 'auto', border: '1px solid #0f172a' }}>
+            {jug.plan_nutricional
+              ? <div dangerouslySetInnerHTML={{ __html: jug.plan_nutricional }} style={{ fontSize: '0.78rem', lineHeight: 1.7, color: '#64748b' }} />
+              : <div style={{ color: '#1e293b', fontStyle: 'italic', textAlign: 'center', marginTop: 25 }}>Sin plan cargado.</div>}
           </div>
         </div>
       </div>
-
     </div>
   );
 }
 
-// =======================================================
-// DEPARTAMENTO FÍSICO (HUELLA ATLÉTICA GENERAL)
-// =======================================================
-function TabFisico({ datos, stats, historial, esJugador }) {
-  const [jugadorSeleccionado, setJugadorSeleccionado] = useState('');
-  useEffect(() => { if (datos.length > 0 && !jugadorSeleccionado) setJugadorSeleccionado(datos[0].id_jugador.toString()); }, [datos, jugadorSeleccionado]);
+// ════════════════════════════════════════════════════════════════════════════
+// TAB FÍSICO — datos del jugador elegido + contexto equipo
+// ════════════════════════════════════════════════════════════════════════════
+function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
+  if (!jug) return <Empty />;
+  const yoyo = jug.y26 || jug.y25;
 
-  const jugador = datos.find(j => j.id_jugador === parseInt(jugadorSeleccionado));
-
-  const radarZScore = useMemo(() => {
-    if (!jugador) return [];
-    const norm = (val, statKey) => Math.max(0, Math.min(100, 50 + (calcZScore(val, stats[statKey].mean, stats[statKey].sd) * 20)));
-    return [
-      { metrica: 'Fuerza Explosiva (CMJ)', Valor: norm(jugador.cmj, 'cmj'), Elite: norm(ELITE.cmj, 'cmj') },
-      { metrica: 'Fuerza Elástica (ABK)', Valor: norm(jugador.abk, 'abk'), Elite: norm(ELITE.abk, 'abk') },
-      { metrica: 'Fuerza Horizontal (Broad)', Valor: norm(jugador.broad, 'broad'), Elite: norm(ELITE.broad, 'broad') },
-      { metrica: 'Capacidad Aeróbica (YoYo)', Valor: norm(jugador.y26 || jugador.y25, 'yoyo'), Elite: norm(ELITE.yoyo, 'yoyo') }
-    ];
-  }, [jugador, stats]);
+  const radarData = [
+    { m: 'CMJ',   J: zNorm(jug.cmj, stats.cmj),   E: zNorm(ELITE.cmj, stats.cmj) },
+    { m: 'ABK',   J: zNorm(jug.abk, stats.abk),   E: zNorm(ELITE.abk, stats.abk) },
+    { m: 'Broad', J: zNorm(jug.broad, stats.broad), E: zNorm(ELITE.broad, stats.broad) },
+    { m: 'Yo-Yo', J: zNorm(yoyo, stats.yoyo),      E: zNorm(ELITE.yoyo, stats.yoyo) },
+  ];
+  const cmjRank = [...ultimosDatos].filter(d => d.cmj).sort((a, b) => b.cmj - a.cmj);
+  const pos = cmjRank.findIndex(d => d.id_jugador === jug.id_jugador) + 1;
 
   return (
-    <div>
-      {!esJugador && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
-          <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
-            <div className="kpi-title">CMJ EQUIPO</div>
-            <div className="kpi-value" style={{ color: '#3b82f6' }}>{stats.cmj.mean.toFixed(1)}<span style={{fontSize:'1rem'}}>cm</span></div>
-            <div className="kpi-sub">ÉLITE: {ELITE.cmj}cm</div>
-          </div>
-          <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
-            <div className="kpi-title">ABALAKOV EQUIPO</div>
-            <div className="kpi-value" style={{ color: '#8b5cf6' }}>{stats.abk.mean.toFixed(1)}<span style={{fontSize:'1rem'}}>cm</span></div>
-            <div className="kpi-sub">ÉLITE: {ELITE.abk}cm</div>
-          </div>
-          <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
-            <div className="kpi-title">YO-YO TEST</div>
-            <div className="kpi-value" style={{ color: '#f59e0b' }}>{stats.yoyo.mean.toFixed(1)}</div>
-            <div className="kpi-sub">VO2 Máx: {estimarVO2Max(stats.yoyo.mean)}</div>
-          </div>
-        </div>
-      )}
+    <div className="rg">
+      {/* KPIs jugador vs equipo */}
+      <div className="c4">
+        {[
+          { lbl: 'CMJ',   val: jug.cmj,   eq: stats.cmj,   unit: 'cm', color: '#3b82f6', elite: ELITE.cmj },
+          { lbl: 'ABK',   val: jug.abk,   eq: stats.abk,   unit: 'cm', color: '#8b5cf6', elite: ELITE.abk },
+          { lbl: 'Broad', val: jug.broad, eq: stats.broad, unit: 'm',  color: '#10b981', elite: ELITE.broad },
+          { lbl: 'Yo-Yo', val: yoyo,      eq: stats.yoyo,  unit: '',   color: '#f59e0b', elite: ELITE.yoyo },
+        ].map(({ lbl, val, eq, unit, color, elite }) => (
+          <KpiCard key={lbl} label={lbl} value={val ?? '—'} unit={unit} color={color} accent={color}
+            sub={`Eq: ${fmtNum(eq.mean)}${unit} · Él: ${elite}${unit}`} />
+        ))}
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: esJugador ? '1fr' : '1fr 350px', gap: '20px' }}>
-        
-        <div className="glass-panel" style={{ padding: '20px', height: '450px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <h3 className="section-header" style={{ color: '#3b82f6', margin: 0 }}>HUELLA ATLÉTICA (PERFIL Z-SCORE) <InfoBox texto="El centro (50) representa el promedio exacto del plantel. La línea roja es el nivel de élite mundial." /></h3>
-            {!esJugador && (
-              <select className="select-dark" style={{ width: '200px', padding: '8px' }} value={jugadorSeleccionado} onChange={e => setJugadorSeleccionado(e.target.value)}>
-                {datos.map(j => <option key={j.id} value={j.id_jugador}>{j.jugadores?.apellido}</option>)}
-              </select>
-            )}
-          </div>
-          
-          {jugador ? (
-            <ResponsiveContainer width="100%" height={350}>
-              <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarZScore}>
-                <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                <PolarAngleAxis dataKey="metrica" tick={{ fill: 'var(--text-dim)', fontSize: 11, fontWeight: 700 }} />
-                <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name={jugador.jugadores?.apellido} dataKey="Valor" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-                <Radar name="Referencia Élite" dataKey="Elite" stroke="#ef4444" fill="transparent" strokeDasharray="3 3" />
-                <Legend wrapperStyle={{ fontSize: '12px' }}/>
-                <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} formatter={(v) => [v.toFixed(0), 'Score']} />
-              </RadarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ textAlign: 'center', color: '#666', marginTop: '100px' }}>Seleccioná un jugador.</div>
-          )}
+      {/* Radar jugador + Ranking CMJ */}
+      <div className="c2">
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#3b82f6">Perfil Z-Score <Tip t="Centro = promedio plantel. Rojo = élite mundial." /></SecTitle>
+          <ResponsiveContainer width="100%" height={290}>
+            <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarData}>
+              <PolarGrid stroke="#0f172a" />
+              <PolarAngleAxis dataKey="m" tick={{ fill: '#475569', fontSize: 11, fontWeight: 700 }} />
+              <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+              <Radar name={jug.jugadores?.apellido} dataKey="J" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.55} />
+              <Radar name="Élite" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [v.toFixed(0), 'Score']} />
+            </RadarChart>
+          </ResponsiveContainer>
         </div>
 
-        {!esJugador && (
-          <div className="glass-panel" style={{ padding: '20px' }}>
-            <h3 className="section-header" style={{ color: '#10b981' }}>🏆 TOP 5: ÍNDICE REACTIVO (ABK - CMJ)</h3>
-            {datos.filter(d => d.abk && d.cmj).sort((a,b) => (b.abk - b.cmj) - (a.abk - a.cmj)).slice(0,5).map((j, i) => {
-              const dif = (j.abk - j.cmj).toFixed(1);
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#10b981">🏆 Ranking CMJ Plantel</SecTitle>
+          <div style={{ fontSize: '0.7rem', color: '#1e293b', marginBottom: 10 }}>
+            {jug.jugadores?.apellido}: posición <strong style={{ color: '#f59e0b' }}>{pos}/{cmjRank.length}</strong>
+          </div>
+          <div className="scroll">
+            {cmjRank.map((d, i) => {
+              const isMe = d.id_jugador === jug.id_jugador;
+              const pct = Math.min(100, (d.cmj / ELITE.cmj) * 100);
               return (
-                <div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222' }}>
-                  <span style={{ color: '#fff', fontWeight: 600 }}>{i+1}. {j.jugadores?.apellido}</span>
-                  <span style={{ color: '#10b981', fontWeight: 900 }}>+{dif} cm</span>
+                <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, background: isMe ? 'rgba(59,130,246,0.09)' : 'transparent', border: isMe ? '1px solid #3b82f622' : '1px solid transparent' }}>
+                  <span style={{ color: i === 0 ? '#f59e0b' : '#1e293b', fontWeight: 900, fontSize: '0.72rem', minWidth: 20, textAlign: 'right' }}>{i + 1}</span>
+                  <span style={{ flex: 1, fontSize: '0.76rem', fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{d.jugadores?.apellido}</span>
+                  <div style={{ width: 55, background: '#0f172a', borderRadius: 2, height: 4 }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: isMe ? '#3b82f6' : '#1e293b', borderRadius: 2 }} />
+                  </div>
+                  <span style={{ fontSize: '0.76rem', fontWeight: 900, color: isMe ? '#3b82f6' : '#1e293b', minWidth: 38, textAlign: 'right' }}>{d.cmj}cm</span>
                 </div>
-              )
+              );
             })}
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* Asimetrías jugador */}
+      <div className="glass-panel" style={{ padding: 20 }}>
+        <SecTitle color="#ef4444">📊 Déficit Bilateral CMJ — Plantel <Tip t=">10% = factor de riesgo lesional. Amarillo = jugador seleccionado." /></SecTitle>
+        <div style={{ fontSize: '0.7rem', color: '#1e293b', marginBottom: 10 }}>
+          {jug.jugadores?.apellido}: {jug.asym_cmj != null ? (
+            <span style={{ color: asimColor(jug.asym_cmj), fontWeight: 900 }}>
+              {jug.asym_cmj.toFixed(1)}% — {Math.abs(jug.asym_cmj) > 15 ? '🔴 RIESGO ALTO' : Math.abs(jug.asym_cmj) > 10 ? '🟡 ATENCIÓN' : '🟢 OK'}
+            </span>
+          ) : <span style={{ color: '#1e293b' }}>Sin datos unilaterales</span>}
+        </div>
+        <ResponsiveContainer width="100%" height={210}>
+          <BarChart data={ultimosDatos.filter(d => d.asym_cmj != null).sort((a, b) => Math.abs(b.asym_cmj) - Math.abs(a.asym_cmj))} layout="vertical" margin={{ left: 10, right: 30 }}>
+            <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" horizontal={false} />
+            <XAxis type="number" domain={[-30, 30]} tick={{ fill: '#1e293b', fontSize: 9 }} stroke="#0f172a" />
+            <YAxis dataKey={d => d.jugadores?.apellido} type="category" tick={{ fill: '#475569', fontSize: 10 }} width={80} stroke="#0f172a" />
+            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [`${v.toFixed(1)}%`, 'Asimetría']} />
+            <ReferenceLine x={0} stroke="#1e293b" />
+            <ReferenceLine x={-10} stroke="#ef4444" strokeDasharray="3 3" opacity={0.4} />
+            <ReferenceLine x={10} stroke="#ef4444" strokeDasharray="3 3" opacity={0.4} />
+            <Bar dataKey="asym_cmj" barSize={11}>
+              {ultimosDatos.filter(d => d.asym_cmj != null).sort((a, b) => Math.abs(b.asym_cmj) - Math.abs(a.asym_cmj)).map((d, i) => (
+                <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : Math.abs(d.asym_cmj) > 10 ? '#ef4444' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.65} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Bar chart CMJ plantel con jugador resaltado */}
+      <div className="glass-panel" style={{ padding: 20 }}>
+        <SecTitle color="#3b82f6">📊 CMJ Plantel — {jug.jugadores?.apellido} destacado</SecTitle>
+        <ResponsiveContainer width="100%" height={175}>
+          <BarChart data={cmjRank} margin={{ left: -20, right: 5 }}>
+            <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+            <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 6)} tick={{ fill: '#1e293b', fontSize: 8 }} />
+            <YAxis domain={[0, 70]} tick={{ fill: '#1e293b', fontSize: 9 }} />
+            <ReferenceLine y={ELITE.cmj} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
+            <ReferenceLine y={stats.cmj.mean} stroke="#3b82f633" strokeDasharray="2 4" label={{ value: `⌀${fmtNum(stats.cmj.mean)}`, fill: '#3b82f6', fontSize: 8 }} />
+            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [v + ' cm', p.payload.jugadores?.apellido]} />
+            <Bar dataKey="cmj" radius={[3, 3, 0, 0]} barSize={15}>
+              {cmjRank.map((d, i) => (
+                <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : d.cmj >= ELITE.cmj ? '#10b981' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.7} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
 
-// =======================================================
-// DEPARTAMENTO KINESIOLOGÍA (ASIMETRÍAS Y VIDEOS)
-// =======================================================
-function TabKinesiologia({ datos, esJugador }) {
-  const asimetriasCMJ = datos.filter(d => d.cmj_de && d.cmj_iz).map(d => {
-    return {
-      nombre: d.jugadores?.apellido,
-      Deficit: Number(d.asym_cmj?.toFixed(1) || 0),
-      esRiesgo: Math.abs(d.asym_cmj) > 10
-    };
-  }).sort((a, b) => Math.abs(b.Deficit) - Math.abs(a.Deficit)).slice(0, 10);
+// ════════════════════════════════════════════════════════════════════════════
+// TAB KINE — datos del jugador elegido + contexto equipo
+// ════════════════════════════════════════════════════════════════════════════
+function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
+  if (!jug) return <Empty />;
+  const obs = `${jug.kin_t || ''} ${jug.kin_c || ''} ${jug.kin_u || ''} ${jug.kin_s || ''}`.toLowerCase();
+  const vids = (() => {
+    const v = [];
+    if (obs.includes('isquio')) v.push(...REHAB_LIB.isquiosural);
+    if (obs.includes('movilidad')) v.push(...REHAB_LIB.movilidad);
+    if (obs.includes('tobillo')) v.push(...REHAB_LIB.tobillo);
+    if (obs.includes('pelvi') || obs.includes('estabilidad')) v.push(...REHAB_LIB.pelvica);
+    if (obs.includes('cader')) v.push(...REHAB_LIB.cadera);
+    if (obs.includes('escapul')) v.push(...REHAB_LIB.escapular);
+    if (!v.length) v.push(...REHAB_LIB.pelvica);
+    return [...new Map(v.map(x => [x.t, x])).values()].slice(0, 3);
+  })();
 
   return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: esJugador ? '1fr' : '2fr 1fr', gap: '20px', marginBottom: '25px' }}>
-        
-        {!esJugador && (
-          <div className="glass-panel" style={{ padding: '20px', borderTop: '4px solid #ef4444', height: '400px' }}>
-            <h3 className="section-header" style={{ color: '#ef4444', borderBottom: 'none' }}>🚨 DÉFICIT BILATERAL DE POTENCIA (CMJ) <InfoBox texto="Barras a la izquierda indican déficit en la pierna izquierda. Más de 10% es factor de riesgo de lesión (Rojo)." /></h3>
-            {asimetriasCMJ.length > 0 ? (
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={asimetriasCMJ} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={true} vertical={false} />
-                  <XAxis type="number" domain={[-25, 25]} tick={{ fill: '#888' }} stroke="#555" />
-                  <YAxis dataKey="nombre" type="category" tick={{ fill: '#ccc', fontSize: 11 }} width={80} stroke="#555" />
-                  <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} formatter={(val) => [`${val}%`, 'Desbalance']} />
-                  <ReferenceLine x={0} stroke="#fff" />
-                  <ReferenceLine x={-10} stroke="#ef4444" strokeDasharray="3 3" />
-                  <ReferenceLine x={10} stroke="#ef4444" strokeDasharray="3 3" />
-                  <Bar dataKey="Deficit" barSize={15}>
-                    {asimetriasCMJ.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.esRiesgo ? '#ef4444' : (entry.Deficit > 0 ? '#3b82f6' : '#10b981')} />
+    <div className="rg">
+      <div className="c2">
+        {/* Estado kinésico jugador */}
+        <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
+          <SecTitle color="#10b981">🩺 Estado Kinésico — {jug.jugadores?.apellido}</SecTitle>
+          <div className="c2" style={{ marginBottom: 16 }}>
+            {[['🦶 Tobillo / Pie', jug.kin_t], ['🦴 Cadera (Jurdan)', jug.kin_c], ['⚖️ Zona Media', jug.kin_u], ['🏋️ Sentadilla', jug.kin_s]].map(([lbl, val]) => {
+              const ok = val && (val.toLowerCase().includes('optim') || val.toLowerCase().includes('sin obs') || val.toLowerCase().includes('+90'));
+              const color = ok ? '#10b981' : val ? '#f59e0b' : '#1e293b';
+              return (
+                <div key={lbl} style={{ background: '#060a14', border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '11px 13px' }}>
+                  <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>{lbl}</div>
+                  <div style={{ fontSize: '0.8rem', color, fontWeight: 700, lineHeight: 1.3 }}>{val || 'S/D'}</div>
+                  <span style={{ fontSize: '0.58rem', padding: '2px 6px', background: color + '22', color, borderRadius: 3, fontWeight: 900, marginTop: 5, display: 'inline-block' }}>
+                    {ok ? '✓ OK' : val ? '⚠ ATENCIÓN' : 'SIN DATOS'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ borderTop: '1px solid #0f172a', paddingTop: 13 }}>
+            <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 9 }}>Videos Prescritos</div>
+            <div style={{ display: 'flex', gap: 9, overflowX: 'auto', paddingBottom: 4 }}>
+              {vids.map((vid, i) => (
+                <div key={i} style={{ minWidth: 165, flexShrink: 0 }}>
+                  <iframe src={getEmbedUrl(vid.v)} style={{ width: '100%', height: 98, borderRadius: 7 }} frameBorder="0" allowFullScreen title={vid.t} />
+                  <div style={{ fontSize: '0.66rem', color: '#475569', textAlign: 'center', marginTop: 3 }}>{vid.t}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Asimetría CMJ jugador */}
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#ef4444">📊 Asimetría — {jug.jugadores?.apellido} vs Plantel</SecTitle>
+          {jug.asym_cmj != null ? (
+            <>
+              <div style={{ background: '#060a14', borderRadius: 9, padding: 14, marginBottom: 14, border: `1px solid ${asimColor(jug.asym_cmj)}33` }}>
+                <div style={{ fontSize: '0.62rem', color: '#1e293b', textTransform: 'uppercase', fontWeight: 900 }}>Asimetría CMJ</div>
+                <div style={{ fontSize: '2rem', fontWeight: 900, color: asimColor(jug.asym_cmj), margin: '6px 0' }}>{jug.asym_cmj.toFixed(1)}%</div>
+                <div style={{ fontSize: '0.7rem', color: '#475569' }}>
+                  {Math.abs(jug.asym_cmj) > 15 ? '🔴 RIESGO ALTO — Protocolo urgente'
+                    : Math.abs(jug.asym_cmj) > 10 ? '🟡 ZONA ATENCIÓN — Seguimiento recomendado'
+                      : '🟢 RANGO ACEPTABLE'}
+                </div>
+                <div style={{ marginTop: 8, display: 'flex', gap: 14, fontSize: '0.72rem' }}>
+                  <span>Der: <strong style={{ color: '#3b82f6' }}>{jug.cmj_de ?? '—'} cm</strong></span>
+                  <span>Izq: <strong style={{ color: '#8b5cf6' }}>{jug.cmj_iz ?? '—'} cm</strong></span>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Comparación plantel</div>
+              <ResponsiveContainer width="100%" height={150}>
+                <BarChart data={[...ultimosDatos].filter(d => d.asym_cmj != null).sort((a, b) => b.asym_cmj - a.asym_cmj)} margin={{ left: -20, right: 10 }}>
+                  <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+                  <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#1e293b', fontSize: 7 }} />
+                  <YAxis tick={{ fill: '#1e293b', fontSize: 9 }} />
+                  <ReferenceLine y={10} stroke="#ef4444" strokeDasharray="2 2" opacity={0.35} />
+                  <ReferenceLine y={-10} stroke="#ef4444" strokeDasharray="2 2" opacity={0.35} />
+                  <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [v.toFixed(1) + '%', p.payload.jugadores?.apellido]} />
+                  <Bar dataKey="asym_cmj" barSize={11}>
+                    {[...ultimosDatos].filter(d => d.asym_cmj != null).sort((a, b) => b.asym_cmj - a.asym_cmj).map((d, i) => (
+                      <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : Math.abs(d.asym_cmj) > 10 ? '#ef4444' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.6} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            ) : (
-               <div style={{ textAlign: 'center', color: '#666', marginTop: '100px' }}>Sin datos suficientes de salto unilateral.</div>
-            )}
-          </div>
-        )}
+            </>
+          ) : (
+            <div style={{ color: '#0f172a', textAlign: 'center', marginTop: 60 }}>Sin datos unilaterales.</div>
+          )}
+        </div>
+      </div>
 
-        <div className="glass-panel" style={{ padding: '20px', borderTop: '4px solid #10b981', height: '400px' }}>
-          <h3 className="section-header" style={{ color: '#10b981', borderBottom: 'none' }}>📋 GABINETE KINÉSICO</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '320px', overflowY: 'auto', paddingRight: '10px' }}>
-            {datos.filter(j => j.kin_t || j.kin_c || j.kin_u || j.kin_s).map(j => (
-              <div key={j.id} style={{ background: '#111', padding: '12px', borderRadius: '6px', border: '1px solid #333' }}>
-                <strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>{j.jugadores?.apellido}</strong>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {j.kin_t && <div><span style={{color:'#666'}}>Tobillo:</span> <span style={{color: j.kin_t.includes('optimo') || j.kin_t.includes('óptimo') ? '#10b981' : '#f59e0b'}}>{j.kin_t}</span></div>}
-                  {j.kin_c && <div><span style={{color:'#666'}}>Cadera:</span> <span style={{color: j.kin_c.includes('optimo') || j.kin_c.includes('óptimo') ? '#10b981' : '#f59e0b'}}>{j.kin_c}</span></div>}
-                  {j.kin_u && <div><span style={{color:'#666'}}>Z.Media:</span> <span style={{color: j.kin_u.includes('Sin obs') ? '#10b981' : '#f59e0b'}}>{j.kin_u}</span></div>}
+      {/* Gabinete plantel — contexto equipo */}
+      {!esJugador && (
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#10b981">📋 Gabinete Kinésico — Plantel Completo</SecTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 9 }}>
+            {ultimosDatos.filter(j => j.kin_t || j.kin_c || j.kin_u).map(j => {
+              const isMe = j.id_jugador === selId;
+              return (
+                <div key={j.id} style={{ background: isMe ? 'rgba(16,185,129,0.07)' : '#060a14', padding: 11, borderRadius: 8, border: isMe ? '1px solid #10b98133' : '1px solid #0f172a' }}>
+                  <strong style={{ color: isMe ? '#10b981' : '#475569', display: 'block', marginBottom: 5, fontSize: '0.8rem' }}>{isMe ? '👤 ' : ''}{j.jugadores?.apellido}</strong>
+                  {[['Tob', j.kin_t], ['Cad', j.kin_c], ['ZM', j.kin_u]].map(([l, v]) => v ? (
+                    <div key={l} style={{ fontSize: '0.66rem' }}>
+                      <span style={{ color: '#0f172a' }}>{l}: </span>
+                      <span style={{ color: v.includes('optim') || v.includes('óptim') ? '#10b981' : '#f59e0b' }}>{v}</span>
+                    </div>
+                  ) : null)}
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Biblioteca */}
+      <div className="glass-panel" style={{ padding: 20 }}>
+        <SecTitle color="#8b5cf6">📚 Biblioteca Prevención & Rehab</SecTitle>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 13 }}>
+          {Object.entries(REHAB_LIB).map(([cat, vs]) => (
+            <div key={cat} style={{ background: '#060a14', padding: 13, borderRadius: 10, border: '1px solid #0f172a' }}>
+              <h4 style={{ textTransform: 'uppercase', color: '#1e293b', margin: '0 0 9px', fontSize: '0.68rem', fontWeight: 900, letterSpacing: 1 }}>{cat}</h4>
+              {vs.map((v, i) => (
+                <div key={i} style={{ marginBottom: 9 }}>
+                  <div style={{ fontSize: '0.7rem', color: '#475569', marginBottom: 3 }}>{v.t}</div>
+                  <iframe src={getEmbedUrl(v.v)} style={{ width: '100%', height: 112, borderRadius: 6 }} frameBorder="0" allowFullScreen title={v.t} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAB NUTRI — datos del jugador elegido + contexto equipo
+// ════════════════════════════════════════════════════════════════════════════
+function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
+  if (!jug) return <Empty />;
+  const tieneISAK = jug.pl_tri != null;
+  const radarISAK = [
+    { p: 'Tricipital',   J: jug.pl_tri || 0, Eq: stats.pl_tri.mean },
+    { p: 'Subescap.',    J: jug.pl_sub || 0, Eq: stats.pl_sub.mean },
+    { p: 'Bicipital',    J: jug.pl_bic || 0, Eq: stats.pl_bic.mean },
+    { p: 'C. Ilíaca',    J: jug.pl_cre || 0, Eq: stats.pl_cre.mean },
+    { p: 'Supraespinal', J: jug.pl_sup || 0, Eq: stats.pl_sup.mean },
+    { p: 'Abdominal',    J: jug.pl_abd || 0, Eq: stats.pl_abd.mean },
+  ];
+
+  return (
+    <div className="rg">
+      {/* KPIs jugador */}
+      <div className="c4">
+        <KpiCard label="Músculo %"    value={jug.musc ?? '—'}  color="#3b82f6" accent="#3b82f6" sub={`Eq: ${fmtNum(stats.musc.mean)}% · Él: ${ELITE.musc}%`} />
+        <KpiCard label="Adiposidad %" value={jug.adip ?? '—'}  color="#ef4444" accent="#ef4444" sub={`Eq: ${fmtNum(stats.adip.mean)}% · Él: ${ELITE.adip}%`} />
+        <KpiCard label="∑ 6 Pliegues" value={jug.sum6 ?? '—'} unit=" mm" color="#f59e0b" accent="#f59e0b" sub={`Eq: ${fmtNum(stats.sum6.mean)}mm · Él: ${ELITE.sum6}mm`} />
+        <KpiCard label="Peso"         value={jug.peso ?? '—'} unit=" kg" color="#fff"    accent="#334155" sub={jug.talla ? `Talla: ${jug.talla}cm` : 'Talla: —'} />
+      </div>
+
+      <div className="c2">
+        <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
+          <SecTitle color="#f59e0b">📐 Perfil ISAK — Pliegues vs Promedio Equipo</SecTitle>
+          {tieneISAK ? (
+            <ResponsiveContainer width="100%" height={270}>
+              <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarISAK}>
+                <PolarGrid stroke="#0f172a" />
+                <PolarAngleAxis dataKey="p" tick={{ fill: '#475569', fontSize: 11 }} />
+                <PolarRadiusAxis domain={[0, 'auto']} tick={false} axisLine={false} />
+                <Radar name={jug.jugadores?.apellido} dataKey="J" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.5} />
+                <Radar name="Promedio Equipo" dataKey="Eq" stroke="#334155" fill="transparent" strokeDasharray="4 3" />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [`${v.toFixed(1)} mm`]} />
+              </RadarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#0f172a', marginTop: 80 }}>Sin datos ISAK cargados.</div>
+          )}
+        </div>
+
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#f59e0b">🥗 Plan Nutricional</SecTitle>
+          {[['Peso', `${jug.peso ?? '—'} kg`], ['∑ 6 Pliegues', `${jug.sum6 ?? '—'} mm`], ['Talla', `${jug.talla ?? '—'} cm`], ['Adiposidad', `${jug.adip ?? '—'} %`]].map(([l, v]) => (
+            <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 10px', background: '#060a14', borderRadius: 6, marginBottom: 5, border: '1px solid #0f172a' }}>
+              <span style={{ color: '#1e293b', fontSize: '0.7rem' }}>{l}</span>
+              <strong style={{ color: '#64748b' }}>{v}</strong>
+            </div>
+          ))}
+          <div style={{ background: '#060a14', borderRadius: 9, padding: 13, marginTop: 10, maxHeight: 240, overflowY: 'auto', border: '1px solid #0f172a' }}>
+            {jug.plan_nutricional
+              ? <div dangerouslySetInnerHTML={{ __html: jug.plan_nutricional }} style={{ fontSize: '0.76rem', lineHeight: 1.7, color: '#64748b' }} />
+              : <div style={{ color: '#0f172a', fontStyle: 'italic', textAlign: 'center', marginTop: 30 }}>Sin plan cargado.</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* Ranking adiposidad plantel — contexto equipo */}
+      {!esJugador && (
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#ef4444">📊 Ranking Adiposidad Plantel (∑ 6 pliegues) — {jug.jugadores?.apellido} destacado</SecTitle>
+          <ResponsiveContainer width="100%" height={175}>
+            <BarChart data={[...ultimosDatos].filter(d => d.sum6).sort((a, b) => b.sum6 - a.sum6)} margin={{ left: -20, right: 10 }}>
+              <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 7)} tick={{ fill: '#1e293b', fontSize: 8 }} />
+              <YAxis tick={{ fill: '#1e293b', fontSize: 9 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [`${v} mm`, p.payload.jugadores?.apellido]} />
+              <ReferenceLine y={ELITE.sum6} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#10b981', fontSize: 8 }} />
+              <Bar dataKey="sum6" radius={[3, 3, 0, 0]} barSize={16}>
+                {[...ultimosDatos].filter(d => d.sum6).sort((a, b) => b.sum6 - a.sum6).map((d, i) => (
+                  <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : d.sum6 > 80 ? '#ef4444' : d.sum6 > 55 ? '#f59e0b55' : '#10b98155'} opacity={d.id_jugador === selId ? 1 : 0.7} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAB EQUIPO — resumen global del plantel
+// ════════════════════════════════════════════════════════════════════════════
+function TabEquipo({ stats, ultimosDatos, selId, historial }) {
+  const posData = useMemo(() => {
+    const g = { Arquero: [], Cierre: [], Ala: [], Pivot: [] };
+    ultimosDatos.forEach(d => {
+      const p = (d.jugadores?.posicion || '').toLowerCase();
+      const k = p.includes('arquero') ? 'Arquero' : p.includes('cierre') || p.includes('defensa') ? 'Cierre' : p.includes('pivot') ? 'Pivot' : 'Ala';
+      g[k].push(d);
+    });
+    return Object.entries(g).filter(([, v]) => v.length).map(([name, v]) => {
+      const cmjs = v.filter(d => d.cmj).map(d => d.cmj);
+      const yoys = v.filter(d => d.y26 || d.y25).map(d => d.y26 || d.y25);
+      const musc = v.filter(d => d.musc).map(d => d.musc);
+      const adip = v.filter(d => d.adip).map(d => d.adip);
+      return {
+        name, n: v.length,
+        CMJ:   cmjs.length ? +(cmjs.reduce((a, b) => a + b, 0) / cmjs.length).toFixed(1) : 0,
+        YoYo:  yoys.length ? +(yoys.reduce((a, b) => a + b, 0) / yoys.length).toFixed(1) : 0,
+        Musc:  musc.length ? +(musc.reduce((a, b) => a + b, 0) / musc.length).toFixed(1) : 0,
+        Adip:  adip.length ? +(adip.reduce((a, b) => a + b, 0) / adip.length).toFixed(1) : 0,
+      };
+    });
+  }, [ultimosDatos]);
+
+  const ranking = [...ultimosDatos].sort((a, b) => (b.cmj || 0) - (a.cmj || 0));
+
+  // Datos históricos para evolución del equipo
+  const yoyoEvol = useMemo(() => {
+    const byFecha = {};
+    historial.forEach(r => {
+      const f = r.fecha_medicion?.slice(0, 7);
+      if (!f) return;
+      if (!byFecha[f]) byFecha[f] = [];
+      const v = r.y26 || r.y25;
+      if (v) byFecha[f].push(Number(v));
+    });
+    return Object.entries(byFecha).sort().map(([f, vs]) => ({
+      f,
+      avg: +(vs.reduce((a, b) => a + b, 0) / vs.length).toFixed(2),
+      n: vs.length,
+    }));
+  }, [historial]);
+
+  return (
+    <div className="rg">
+      {/* ── KPIs EQUIPO ── */}
+      <div className="c4">
+        <KpiCard label="CMJ Promedio"   value={fmtNum(stats.cmj.mean)}   unit=" cm" color="#3b82f6" accent="#3b82f6" sub={`SD: ${fmtNum(stats.cmj.sd)} · Élite: ${ELITE.cmj}cm`} />
+        <KpiCard label="Yo-Yo Promedio" value={fmtNum(stats.yoyo.mean)}  unit=""    color="#10b981" accent="#10b981" sub={`VO₂ est: ${estimarVO2(stats.yoyo.mean)}`} />
+        <KpiCard label="Músculo %"      value={fmtNum(stats.musc.mean)}  unit="%"   color="#f59e0b" accent="#f59e0b" sub={`SD: ${fmtNum(stats.musc.sd)} · Élite: ${ELITE.musc}%`} />
+        <KpiCard label="Adiposidad %"   value={fmtNum(stats.adip.mean)}  unit="%"   color="#ef4444" accent="#ef4444" sub={`SD: ${fmtNum(stats.adip.sd)} · Élite: ${ELITE.adip}%`} />
+      </div>
+
+      {/* ── YO-YO PLANTEL COMPLETO + EVOLUCIÓN ── */}
+      <div className="c2">
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#10b981">🏃 Yo-Yo — Comparativa Plantel Completo</SecTitle>
+          <div style={{ fontSize: '0.68rem', color: '#1e293b', marginBottom: 8 }}>
+            {ultimosDatos.filter(d => d.y26 || d.y25).length} jugadores · Promedio: <strong style={{ color: '#10b981' }}>{fmtNum(stats.yoyo.mean)}</strong> · Élite: {ELITE.yoyo}
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart
+              data={[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25))}
+              margin={{ left: -15, right: 5, bottom: 32 }}
+            >
+              <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 8)} tick={{ fill: '#334155', fontSize: 8 }} angle={-45} textAnchor="end" interval={0} />
+              <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 10 }} />
+              <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1.5} label={{ value: `Élite ${ELITE.yoyo}`, fill: '#ef4444', fontSize: 8, position: 'insideTopRight' }} />
+              <ReferenceLine y={stats.yoyo.mean} stroke="#33415566" strokeDasharray="2 4" label={{ value: `⌀${fmtNum(stats.yoyo.mean)}`, fill: '#475569', fontSize: 8 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [`${v} — ${p.payload.jugadores?.apellido}`, 'Yo-Yo']} />
+              <Bar dataKey={d => d.y26 || d.y25} name="Yo-Yo" radius={[3, 3, 0, 0]} barSize={17}>
+                {[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25)).map((d, i) => (
+                  <Cell key={i}
+                    fill={d.id_jugador === selId ? '#f59e0b' : (d.y26 || d.y25) >= ELITE.yoyo ? '#10b981' : (d.y26 || d.y25) >= stats.yoyo.mean ? '#1e3a5f' : '#0f172a'}
+                    stroke={d.id_jugador === selId ? '#f59e0b44' : 'transparent'}
+                    opacity={(d.y26 || d.y25) < stats.yoyo.mean && d.id_jugador !== selId ? 0.5 : 0.9}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Evolución temporal promedio equipo */}
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#10b981">📈 Evolución Yo-Yo — Promedio Equipo</SecTitle>
+          {yoyoEvol.length > 1 ? (
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={yoyoEvol} margin={{ left: -10, right: 20 }}>
+                <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" />
+                <XAxis dataKey="f" tick={{ fill: '#334155', fontSize: 9 }} />
+                <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 10 }} />
+                <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
+                <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [`${v} (n=${p.payload.n})`, 'Prom. equipo']} />
+                <Line type="monotone" dataKey="avg" stroke="#10b981" strokeWidth={2.5} dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ textAlign: 'center', color: '#1e293b', marginTop: 80, fontSize: '0.8rem' }}>Se necesitan al menos 2 tomas históricas para mostrar la evolución.</div>
+          )}
+          <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {yoyoEvol.map(d => (
+              <div key={d.f} style={{ background: '#060a14', padding: '5px 10px', borderRadius: 5, border: '1px solid #0f172a', fontSize: '0.66rem' }}>
+                <span style={{ color: '#1e293b' }}>{d.f}: </span>
+                <strong style={{ color: '#10b981' }}>{d.avg}</strong>
+                <span style={{ color: '#334155', marginLeft: 4 }}>n={d.n}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
-      
-      <div className="bento-card">
-        <h3 className="section-header" style={{ color: '#10b981' }}>📚 BIBLIOTECA DE PREVENCIÓN Y REHAB</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-          {Object.entries(REHAB_LIB).map(([cat, videos]) => (
-            <div key={cat} style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222' }}>
-              <h4 style={{ textTransform: 'uppercase', color: 'var(--text-dim)', margin: '0 0 10px 0' }}>{cat}</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {videos.map((vid, idx) => (
-                  <div key={idx}>
-                    <div style={{ fontSize: '0.8rem', color: '#fff', marginBottom: '4px' }}>{vid.t}</div>
-                    <iframe src={getEmbedUrl(vid.v)} style={{ width: '100%', height: '120px', borderRadius: '4px' }} frameBorder="0" allowFullScreen title={vid.t}></iframe>
-                  </div>
-                ))}
+
+      {/* ── POR POSICIÓN + Distribución CMJ ── */}
+      <div className="c2">
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#8b5cf6">📍 Promedios por Posición Táctica</SecTitle>
+          <ResponsiveContainer width="100%" height={175}>
+            <BarChart data={posData} margin={{ top: 10, left: -20, right: 5 }}>
+              <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+              <YAxis yAxisId="l" domain={[0, 70]} tick={{ fontSize: 9, fill: '#1e293b' }} />
+              <YAxis yAxisId="r" orientation="right" domain={[0, 25]} tick={{ fontSize: 9, fill: '#1e293b' }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <ReferenceLine yAxisId="l" y={ELITE.cmj} stroke="#3b82f633" strokeDasharray="3 3" />
+              <Bar yAxisId="l" dataKey="CMJ"  name="CMJ (cm)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={18} />
+              <Bar yAxisId="r" dataKey="YoYo" name="Yo-Yo"    fill="#10b981" radius={[4, 4, 0, 0]} barSize={18} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {posData.map(p => (
+              <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: '#060a14', borderRadius: 6 }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 900, color: '#475569' }}>{p.name}</span>
+                <span style={{ fontSize: '0.68rem', color: '#1e293b' }}>n={p.n}</span>
+                <span style={{ fontSize: '0.72rem' }}>CMJ <strong style={{ color: '#3b82f6' }}>{p.CMJ}</strong></span>
+                <span style={{ fontSize: '0.72rem' }}>YoYo <strong style={{ color: '#10b981' }}>{p.YoYo}</strong></span>
+                <span style={{ fontSize: '0.72rem' }}>💪 <strong style={{ color: '#f59e0b' }}>{p.Musc}%</strong></span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#3b82f6">📊 Distribución CMJ Plantel</SecTitle>
+          <ResponsiveContainer width="100%" height={195}>
+            <BarChart data={[...ultimosDatos].filter(d => d.cmj).sort((a, b) => b.cmj - a.cmj)} margin={{ left: -20 }}>
+              <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 6)} tick={{ fill: '#1e293b', fontSize: 8 }} />
+              <YAxis domain={[0, 70]} tick={{ fill: '#1e293b', fontSize: 9 }} />
+              <ReferenceLine y={ELITE.cmj} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
+              <ReferenceLine y={stats.cmj.mean} stroke="#3b82f633" strokeDasharray="2 4" label={{ value: `⌀${fmtNum(stats.cmj.mean)}`, fill: '#3b82f6', fontSize: 8 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [v + ' cm', p.payload.jugadores?.apellido]} />
+              <Bar dataKey="cmj" radius={[3, 3, 0, 0]} barSize={15}>
+                {[...ultimosDatos].filter(d => d.cmj).sort((a, b) => b.cmj - a.cmj).map((d, i) => (
+                  <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : d.cmj >= ELITE.cmj ? '#10b981' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.7} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          {/* Top reactivo */}
+          <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 12 }}>
+            <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 6 }}>Top 5 Índice Reactivo (ABK − CMJ)</div>
+            {ultimosDatos.filter(d => d.abk && d.cmj).sort((a, b) => (b.abk - b.cmj) - (a.abk - a.cmj)).slice(0, 5).map((d, i) => {
+              const dif = (d.abk - d.cmj).toFixed(1);
+              const isMe = d.id_jugador === selId;
+              return (
+                <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 5, marginBottom: 3, background: isMe ? 'rgba(245,158,11,0.07)' : '#060a14', border: isMe ? '1px solid #f59e0b33' : '1px solid #0f172a' }}>
+                  <span style={{ color: i === 0 ? '#f59e0b' : '#0f172a', fontWeight: 900, fontSize: '0.75rem', minWidth: 18 }}>{i + 1}</span>
+                  <span style={{ flex: 1, fontSize: '0.76rem', fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{d.jugadores?.apellido}</span>
+                  <span style={{ fontSize: '0.66rem', color: '#1e293b' }}>+{dif}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── RANKING GENERAL ── */}
+      <div className="glass-panel" style={{ padding: 20 }}>
+        <SecTitle>📋 Ranking General — Todos los Jugadores</SecTitle>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table" style={{ minWidth: 680 }}>
+            <thead>
+              <tr>
+                <th>#</th><th>Jugador</th><th>Pos</th>
+                <th style={{ textAlign: 'center', color: '#3b82f6' }}>CMJ</th>
+                <th style={{ textAlign: 'center', color: '#8b5cf6' }}>ABK</th>
+                <th style={{ textAlign: 'center', color: '#10b981' }}>Broad</th>
+                <th style={{ textAlign: 'center', color: '#f59e0b' }}>Yo-Yo</th>
+                <th style={{ textAlign: 'center', color: '#3b82f6' }}>Musc%</th>
+                <th style={{ textAlign: 'center', color: '#ef4444' }}>Adip%</th>
+                <th style={{ textAlign: 'center' }}>Asim</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ranking.map((d, i) => {
+                const isMe = d.id_jugador === selId;
+                const yy = d.y26 || d.y25;
+                return (
+                  <tr key={d.id} style={{ background: isMe ? 'rgba(59,130,246,0.07)' : 'transparent' }}>
+                    <td style={{ color: i < 3 ? '#f59e0b' : '#1e293b', fontWeight: 900 }}>{i + 1}</td>
+                    <td style={{ fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{isMe ? '👤 ' : ''}{d.jugadores?.apellido}</td>
+                    <td style={{ color: '#1e293b', fontSize: '0.68rem' }}>{d.jugadores?.posicion || '—'}</td>
+                    <td style={{ textAlign: 'center', color: '#3b82f6', fontWeight: 700 }}>{d.cmj ?? '—'}</td>
+                    <td style={{ textAlign: 'center', color: '#8b5cf6' }}>{d.abk ?? '—'}</td>
+                    <td style={{ textAlign: 'center', color: '#10b981' }}>{d.broad ?? '—'}</td>
+                    <td style={{ textAlign: 'center', color: '#f59e0b' }}>{yy ?? '—'}</td>
+                    <td style={{ textAlign: 'center', color: '#3b82f6' }}>{d.musc ?? '—'}</td>
+                    <td style={{ textAlign: 'center', color: d.adip > 20 ? '#ef4444' : '#64748b' }}>{d.adip ?? '—'}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      {d.asym_cmj != null
+                        ? <span style={{ color: asimColor(d.asym_cmj), fontWeight: 900, fontSize: '0.72rem' }}>{d.asym_cmj.toFixed(1)}%</span>
+                        : <span style={{ color: '#0f172a' }}>—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 }
 
-// =======================================================
-// DEPARTAMENTO NUTRICIÓN
-// =======================================================
-function TabNutricion({ datos, stats, esJugador }) {
-  const [jugadorSeleccionado, setJugadorSeleccionado] = useState('');
-  useEffect(() => { if (datos.length > 0 && !jugadorSeleccionado) setJugadorSeleccionado(datos[0].id_jugador.toString()); }, [datos, jugadorSeleccionado]);
-
-  const infoNutriJugador = datos.find(j => j.id_jugador === parseInt(jugadorSeleccionado));
-  
-  const radarPliegues = useMemo(() => {
-    if (!infoNutriJugador) return [];
-    return [
-      { pliegue: 'Tricipital', Jugador: infoNutriJugador.pl_tri || 0, Promedio: stats.pl_tri.mean },
-      { pliegue: 'Subescapular', Jugador: infoNutriJugador.pl_sub || 0, Promedio: stats.pl_sub.mean },
-      { pliegue: 'Bicipital', Jugador: infoNutriJugador.pl_bic || 0, Promedio: stats.pl_bic.mean },
-      { pliegue: 'Cresta Ilíaca', Jugador: infoNutriJugador.pl_cre || 0, Promedio: stats.pl_cre.mean },
-      { pliegue: 'Supraespinal', Jugador: infoNutriJugador.pl_sup || 0, Promedio: stats.pl_sup.mean },
-      { pliegue: 'Abdominal', Jugador: infoNutriJugador.pl_abd || 0, Promedio: stats.pl_abd.mean }
-    ];
-  }, [infoNutriJugador, stats]);
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: esJugador ? '1fr' : '1fr 400px', gap: '20px' }}>
-      
-      {!esJugador && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
-            <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
-              <div className="kpi-title">MASA MUSCULAR</div>
-              <div className="kpi-value" style={{ color: '#3b82f6' }}>{stats.musc.mean.toFixed(1)}<span style={{fontSize:'1rem'}}>%</span></div>
-              <div className="kpi-sub">Élite: {ELITE.musc}%</div>
-            </div>
-            <div className="glass-panel" style={{ padding: '20px', textAlign: 'center' }}>
-              <div className="kpi-title">MASA ADIPOSA</div>
-              <div className="kpi-value" style={{ color: '#ef4444' }}>{stats.adip.mean.toFixed(1)}<span style={{fontSize:'1rem'}}>%</span></div>
-              <div className="kpi-sub">Élite: {ELITE.adip}%</div>
-            </div>
-            <div className="glass-panel" style={{ padding: '20px', textAlign: 'center', borderBottom: '4px solid #f59e0b' }}>
-              <div className="kpi-title">∑ 6 PLIEGUES</div>
-              <div className="kpi-value" style={{ color: '#f59e0b' }}>{stats.sum6.mean.toFixed(1)}<span style={{fontSize:'1rem'}}>mm</span></div>
-              <div className="kpi-sub">Élite: ~{ELITE.sum6}mm</div>
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '20px', height: '400px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <h3 className="section-header" style={{ color: '#f59e0b', margin: 0 }}>PERFIL ISAK: PLIEGUES VS PROMEDIO PLANTEL</h3>
-               <select className="select-dark" style={{ width: '200px', padding: '8px' }} value={jugadorSeleccionado} onChange={e => setJugadorSeleccionado(e.target.value)}>
-                  {datos.map(j => <option key={j.id} value={j.id_jugador}>{j.jugadores?.apellido}</option>)}
-               </select>
-            </div>
-            {radarPliegues.length > 0 && infoNutriJugador.pl_tri ? (
-              <ResponsiveContainer width="100%" height={320}>
-                <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarPliegues}>
-                  <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                  <PolarAngleAxis dataKey="pliegue" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} />
-                  <PolarRadiusAxis domain={[0, 'auto']} tick={false} axisLine={false} />
-                  <Radar name={infoNutriJugador.jugadores?.apellido} dataKey="Jugador" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.5} />
-                  <Radar name="Promedio Equipo" dataKey="Promedio" stroke="#555" fill="transparent" strokeDasharray="3 3" />
-                  <Legend wrapperStyle={{ fontSize: '12px' }}/>
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} formatter={(val) => [`${val.toFixed(1)} mm`]} />
-                </RadarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ textAlign: 'center', color: '#666', marginTop: '100px' }}>Sin datos de pliegues (ISAK) cargados para este jugador.</div>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="glass-panel" style={{ padding: '20px', background: '#111' }}>
-        <h3 className="section-header" style={{ color: 'var(--accent)' }}>PLAN NUTRICIONAL</h3>
-        {infoNutriJugador ? (
-          <div style={{ animation: 'fadeIn 0.2s' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '10px', marginBottom: '10px' }}>
-              <span style={{ color: 'var(--text-dim)' }}>Peso Actual:</span>
-              <strong style={{ color: '#fff' }}>{infoNutriJugador.peso || 'S/D'} kg</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #333', paddingBottom: '10px', marginBottom: '10px' }}>
-              <span style={{ color: 'var(--text-dim)' }}>∑ 6 Pliegues:</span>
-              <strong style={{ color: '#f59e0b' }}>{infoNutriJugador.sum6 || 'S/D'} mm</strong>
-            </div>
-            
-            <div style={{ background: '#000', padding: '15px', borderRadius: '6px', marginTop: '15px', overflowY: 'auto', maxHeight: '450px' }}>
-              {infoNutriJugador.plan_nutricional ? (
-                <div dangerouslySetInnerHTML={{ __html: infoNutriJugador.plan_nutricional }} style={{ fontSize: '0.85rem', lineHeight: '1.6', color: '#ddd' }} />
-              ) : <div style={{ color: '#666', fontStyle: 'italic' }}>Sin plan cargado.</div>}
-            </div>
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>Seleccioná un jugador.</div>
-        )}
-      </div>
-
-    </div>
-  );
-}
-
-// =======================================================
-// TAB 4: COMPARATIVA AVANZADA (HASTA 4 JUGADORES + PUESTOS)
-// =======================================================
-function TabComparativa({ datos, stats }) {
+// ════════════════════════════════════════════════════════════════════════════
+// TAB VS — comparativa libre entre jugadores
+// ════════════════════════════════════════════════════════════════════════════
+function TabVS({ datos, stats, selId, historial }) {
   const [jugs, setJugs] = useState([null, null, null, null]);
-
   useEffect(() => {
     if (datos.length >= 2 && jugs[0] === null) {
-      setJugs([datos[0].id_jugador, datos[1].id_jugador, null, null]);
+      const otros = datos.filter(d => d.id_jugador !== selId);
+      setJugs([selId || datos[0].id_jugador, otros[0]?.id_jugador || null, null, null]);
     }
-  }, [datos]);
+  }, [datos, selId]);
 
-  const setJugador = (index, value) => {
-    const newJugs = [...jugs];
-    newJugs[index] = value ? parseInt(value) : null;
-    setJugs(newJugs);
-  };
+  const setJug = (i, v) => { const n = [...jugs]; n[i] = v ? parseInt(v) : null; setJugs(n); };
+  const getJug = id => datos.find(j => j.id_jugador === id);
+  const COLS = ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'];
+  const active = jugs.filter(Boolean);
 
-  const getJugadorData = (id) => datos.find(j => j.id_jugador === id);
-  const colores = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
-
-  const radarComparativo = useMemo(() => {
-    const norm = (val, statKey) => Math.max(0, Math.min(100, 50 + (calcZScore(val, stats[statKey].mean, stats[statKey].sd) * 20)));
+  const radarComp = useMemo(() => {
+    const jd = jugs.map(id => getJug(id));
     return [
-      { 
-        metrica: 'Explosión (CMJ)', 
-        A: norm(getJugadorData(jugs[0])?.cmj, 'cmj'), 
-        B: norm(getJugadorData(jugs[1])?.cmj, 'cmj'),
-        C: norm(getJugadorData(jugs[2])?.cmj, 'cmj'),
-        D: norm(getJugadorData(jugs[3])?.cmj, 'cmj'),
-        Elite: norm(ELITE.cmj, 'cmj')
-      },
-      { 
-        metrica: 'Elástica (ABK)', 
-        A: norm(getJugadorData(jugs[0])?.abk, 'abk'), 
-        B: norm(getJugadorData(jugs[1])?.abk, 'abk'),
-        C: norm(getJugadorData(jugs[2])?.abk, 'abk'),
-        D: norm(getJugadorData(jugs[3])?.abk, 'abk'),
-        Elite: norm(ELITE.abk, 'abk')
-      },
-      { 
-        metrica: 'Horizontal (Broad)', 
-        A: norm(getJugadorData(jugs[0])?.broad, 'broad'), 
-        B: norm(getJugadorData(jugs[1])?.broad, 'broad'),
-        C: norm(getJugadorData(jugs[2])?.broad, 'broad'),
-        D: norm(getJugadorData(jugs[3])?.broad, 'broad'),
-        Elite: norm(ELITE.broad, 'broad')
-      },
-      { 
-        metrica: 'Aeróbico (YoYo)', 
-        A: norm(getJugadorData(jugs[0])?.y26 || getJugadorData(jugs[0])?.y25, 'yoyo'), 
-        B: norm(getJugadorData(jugs[1])?.y26 || getJugadorData(jugs[1])?.y25, 'yoyo'),
-        C: norm(getJugadorData(jugs[2])?.y26 || getJugadorData(jugs[2])?.y25, 'yoyo'),
-        D: norm(getJugadorData(jugs[3])?.y26 || getJugadorData(jugs[3])?.y25, 'yoyo'),
-        Elite: norm(ELITE.yoyo, 'yoyo')
-      }
+      { m: 'CMJ',     A: zNorm(jd[0]?.cmj, stats.cmj),   B: zNorm(jd[1]?.cmj, stats.cmj),   C: zNorm(jd[2]?.cmj, stats.cmj),   D: zNorm(jd[3]?.cmj, stats.cmj),   E: zNorm(ELITE.cmj, stats.cmj) },
+      { m: 'ABK',     A: zNorm(jd[0]?.abk, stats.abk),   B: zNorm(jd[1]?.abk, stats.abk),   C: zNorm(jd[2]?.abk, stats.abk),   D: zNorm(jd[3]?.abk, stats.abk),   E: zNorm(ELITE.abk, stats.abk) },
+      { m: 'Broad',   A: zNorm(jd[0]?.broad, stats.broad), B: zNorm(jd[1]?.broad, stats.broad), C: zNorm(jd[2]?.broad, stats.broad), D: zNorm(jd[3]?.broad, stats.broad), E: zNorm(ELITE.broad, stats.broad) },
+      { m: 'Yo-Yo',   A: zNorm(jd[0]?.y26 || jd[0]?.y25, stats.yoyo), B: zNorm(jd[1]?.y26 || jd[1]?.y25, stats.yoyo), C: zNorm(jd[2]?.y26 || jd[2]?.y25, stats.yoyo), D: zNorm(jd[3]?.y26 || jd[3]?.y25, stats.yoyo), E: zNorm(ELITE.yoyo, stats.yoyo) },
+      { m: 'Músculo', A: zNorm(jd[0]?.musc, stats.musc), B: zNorm(jd[1]?.musc, stats.musc), C: zNorm(jd[2]?.musc, stats.musc), D: zNorm(jd[3]?.musc, stats.musc), E: zNorm(ELITE.musc, stats.musc) },
     ];
   }, [jugs, stats]);
 
-  // Posiciones estandarizadas Futsal/Fútbol
-  const posAgrupadas = useMemo(() => {
-    const orden = ['Arquero', 'Cierre', 'Ala', 'Pivot'];
-    const grupos = { 'Arquero': { pos: 'Arquero', cmjTot: 0, yoyoTot: 0, count: 0 }, 'Cierre': { pos: 'Cierre', cmjTot: 0, yoyoTot: 0, count: 0 }, 'Ala': { pos: 'Ala', cmjTot: 0, yoyoTot: 0, count: 0 }, 'Pivot': { pos: 'Pivot', cmjTot: 0, yoyoTot: 0, count: 0 }};
-    
-    datos.forEach(d => {
-      let pos = d.jugadores?.posicion || '';
-      // Normalizamos el string a la posición más parecida
-      let posKey = 'Ala'; 
-      if (pos.toLowerCase().includes('arquero')) posKey = 'Arquero';
-      else if (pos.toLowerCase().includes('cierre') || pos.toLowerCase().includes('defensa')) posKey = 'Cierre';
-      else if (pos.toLowerCase().includes('pivot') || pos.toLowerCase().includes('delantero')) posKey = 'Pivot';
-      
-      grupos[posKey].cmjTot += d.cmj || 0;
-      grupos[posKey].yoyoTot += (d.y26 || d.y25 || 0);
-      grupos[posKey].count += 1;
-    });
-
-    return orden.map(k => ({
-      name: k,
-      CMJ: grupos[k].count > 0 ? Number((grupos[k].cmjTot / grupos[k].count).toFixed(1)) : 0,
-      YoYo: grupos[k].count > 0 ? Number((grupos[k].yoyoTot / grupos[k].count).toFixed(1)) : 0,
-    })).filter(g => g.CMJ > 0 || g.YoYo > 0);
-  }, [datos]);
+  // ── Yo-Yo histórico por jugador seleccionado ──
+  const yoyoHistComp = useMemo(() => {
+    // Obtener todas las fechas únicas
+    const fechas = [...new Set(historial.map(r => r.fecha_medicion?.slice(0, 7)).filter(Boolean))].sort();
+    return fechas.map(f => {
+      const row = { f };
+      active.forEach((id, i) => {
+        const reg = historial.find(r => r.id_jugador === id && r.fecha_medicion?.slice(0, 7) === f);
+        row[`J${i}`] = reg ? (reg.y26 || reg.y25 || null) : null;
+      });
+      return row;
+    }).filter(row => active.some((_, i) => row[`J${i}`] != null));
+  }, [jugs, historial, active]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-      
-      {/* COMPARATIVA HASTA 4 JUGADORES */}
-      <div className="glass-panel" style={{ padding: '20px', height: '480px' }}>
-        <h3 className="section-header" style={{ color: 'var(--text-main)' }}>HEAD TO HEAD: PERFIL Z-SCORE (VS ÉLITE)</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+    <div className="rg">
+      {/* Selectores */}
+      <div className="glass-panel" style={{ padding: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {[0, 1, 2, 3].map(i => (
-            <select key={i} className="select-dark" style={{ border: `1px solid ${colores[i]}`, padding: '6px', fontSize: '0.85rem' }} value={jugs[i] || ''} onChange={e => setJugador(i, e.target.value)}>
-              <option value="">-- Vacío --</option>
-              {datos.map(j => <option key={`${i}-${j.id}`} value={j.id_jugador}>{j.jugadores?.apellido}</option>)}
-            </select>
+            <div key={i}>
+              <div style={{ fontSize: '0.58rem', color: COLS[i], fontWeight: 900, textTransform: 'uppercase', marginBottom: 5, letterSpacing: 1 }}>Jugador {i + 1}</div>
+              <select className="select-dark" style={{ border: `1px solid ${COLS[i]}44`, fontSize: '0.8rem', padding: '8px 10px', color: jugs[i] ? '#fff' : '#334155' }}
+                value={jugs[i] || ''} onChange={e => setJug(i, e.target.value)}>
+                <option value="">— Vacío —</option>
+                {datos.map(j => <option key={`${i}-${j.id}`} value={j.id_jugador}>{j.jugadores?.apellido}</option>)}
+              </select>
+            </div>
           ))}
         </div>
-        
-        <ResponsiveContainer width="100%" height={320}>
-          <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarComparativo}>
-            <PolarGrid stroke="rgba(255,255,255,0.1)" />
-            <PolarAngleAxis dataKey="metrica" tick={{ fill: 'var(--text-dim)', fontSize: 10 }} />
-            <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-            <Radar name="ÉLITE MUNDIAL" dataKey="Elite" stroke="#ef4444" fill="transparent" strokeDasharray="3 3" strokeWidth={2} />
-            {jugs[0] && <Radar name={getJugadorData(jugs[0])?.jugadores?.apellido} dataKey="A" stroke={colores[0]} fill={colores[0]} fillOpacity={0.3} />}
-            {jugs[1] && <Radar name={getJugadorData(jugs[1])?.jugadores?.apellido} dataKey="B" stroke={colores[1]} fill={colores[1]} fillOpacity={0.3} />}
-            {jugs[2] && <Radar name={getJugadorData(jugs[2])?.jugadores?.apellido} dataKey="C" stroke={colores[2]} fill={colores[2]} fillOpacity={0.3} />}
-            {jugs[3] && <Radar name={getJugadorData(jugs[3])?.jugadores?.apellido} dataKey="D" stroke={colores[3]} fill={colores[3]} fillOpacity={0.3} />}
-            <Legend wrapperStyle={{ fontSize: '11px' }}/>
-            <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} formatter={(v) => [v ? v.toFixed(0) : 0, 'Score']} />
-          </RadarChart>
-        </ResponsiveContainer>
       </div>
 
-      {/* COMPARATIVA POR PUESTOS */}
-      <div className="glass-panel" style={{ padding: '20px', height: '480px' }}>
-        <h3 className="section-header" style={{ color: 'var(--text-main)' }}>PROMEDIOS POR POSICIÓN TÁCTICA</h3>
-        {posAgrupadas.length > 0 ? (
-          <ResponsiveContainer width="100%" height={380}>
-            <BarChart data={posAgrupadas} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-              <XAxis dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 11 }} />
-              <YAxis yAxisId="left" stroke="#3b82f6" tick={{ fontSize: 11 }} domain={[0, 70]} />
-              <YAxis yAxisId="right" orientation="right" stroke="#10b981" tick={{ fontSize: 11 }} domain={[0, 30]} />
-              <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
-              <Legend wrapperStyle={{ fontSize: '11px', marginTop: '10px' }}/>
-              
-              <ReferenceLine y={ELITE.cmj} yAxisId="left" stroke="#3b82f6" strokeDasharray="3 3" label={{ position: 'top', value: 'Élite CMJ', fill: '#3b82f6', fontSize: 10 }} />
-              <ReferenceLine y={ELITE.yoyo} yAxisId="right" stroke="#10b981" strokeDasharray="3 3" label={{ position: 'top', value: 'Élite YoYo', fill: '#10b981', fontSize: 10 }} />
-              
-              <Bar yAxisId="left" name="Potencia CMJ (cm)" dataKey="CMJ" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={35} />
-              <Bar yAxisId="right" name="Aeróbico YoYo (lvl)" dataKey="YoYo" fill="#10b981" radius={[4, 4, 0, 0]} barSize={35} />
+      <div className="c2">
+        {/* Radar comparativo */}
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle>⚖️ Perfil Z-Score Comparativo</SecTitle>
+          <ResponsiveContainer width="100%" height={310}>
+            <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarComp}>
+              <PolarGrid stroke="#0f172a" />
+              <PolarAngleAxis dataKey="m" tick={{ fill: '#475569', fontSize: 11 }} />
+              <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+              <Radar name="ÉLITE" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" strokeWidth={1.5} />
+              {jugs[0] && <Radar name={getJug(jugs[0])?.jugadores?.apellido} dataKey="A" stroke={COLS[0]} fill={COLS[0]} fillOpacity={0.3} />}
+              {jugs[1] && <Radar name={getJug(jugs[1])?.jugadores?.apellido} dataKey="B" stroke={COLS[1]} fill={COLS[1]} fillOpacity={0.3} />}
+              {jugs[2] && <Radar name={getJug(jugs[2])?.jugadores?.apellido} dataKey="C" stroke={COLS[2]} fill={COLS[2]} fillOpacity={0.3} />}
+              {jugs[3] && <Radar name={getJug(jugs[3])?.jugadores?.apellido} dataKey="D" stroke={COLS[3]} fill={COLS[3]} fillOpacity={0.3} />}
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [v ? v.toFixed(0) : 0, 'Score']} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Yo-Yo comparativa DIRECTA — barras agrupadas */}
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#10b981">🏃 Yo-Yo — Comparativa Directa</SecTitle>
+          <ResponsiveContainer width="100%" height={190}>
+            <BarChart
+              data={active.map(id => getJug(id)).filter(Boolean).map((d, i) => ({ name: d.jugadores?.apellido?.slice(0, 10), y25: d.y25 || null, y26: d.y26 || null, id: d.id_jugador, col: COLS[i] }))}
+              margin={{ left: -15, right: 10 }}
+            >
+              <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+              <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 10 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
+              <Bar dataKey="y25" name="2025" fill="#1e3a5f" radius={[2, 2, 0, 0]} barSize={20} />
+              <Bar dataKey="y26" name="2026" radius={[2, 2, 0, 0]} barSize={20}>
+                {active.map(id => getJug(id)).filter(Boolean).map((d, i) => <Cell key={i} fill={COLS[i % 4]} />)}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
-        ) : (
-          <div style={{ textAlign: 'center', color: '#666', marginTop: '100px' }}>Sin datos suficientes por posición.</div>
-        )}
+
+          {/* Tabla detallada */}
+          <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 13 }}>
+            <table className="data-table">
+              <thead><tr><th>Jugador</th><th style={{ textAlign: 'center' }}>CMJ</th><th style={{ textAlign: 'center' }}>ABK</th><th style={{ textAlign: 'center' }}>Broad</th><th style={{ textAlign: 'center' }}>Asim</th><th style={{ textAlign: 'center' }}>Músculo</th></tr></thead>
+              <tbody>
+                {active.map((id, i) => {
+                  const d = getJug(id);
+                  if (!d) return null;
+                  return (
+                    <tr key={id}>
+                      <td style={{ fontWeight: 900, color: COLS[i % 4] }}>{d.jugadores?.apellido}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{d.cmj ?? '—'}</td>
+                      <td style={{ textAlign: 'center' }}>{d.abk ?? '—'}</td>
+                      <td style={{ textAlign: 'center' }}>{d.broad ?? '—'}</td>
+                      <td style={{ textAlign: 'center' }}>{d.asym_cmj != null ? <span style={{ color: asimColor(d.asym_cmj), fontWeight: 900 }}>{d.asym_cmj.toFixed(1)}%</span> : '—'}</td>
+                      <td style={{ textAlign: 'center' }}>{d.musc ?? '—'}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ borderTop: '1px solid #0f172a' }}>
+                  <td style={{ color: '#ef4444', fontWeight: 900, fontSize: '0.68rem' }}>🔴 ÉLITE</td>
+                  <td style={{ textAlign: 'center', color: '#ef4444' }}>{ELITE.cmj}</td>
+                  <td style={{ textAlign: 'center', color: '#ef4444' }}>{ELITE.abk}</td>
+                  <td style={{ textAlign: 'center', color: '#ef4444' }}>{ELITE.broad}</td>
+                  <td style={{ textAlign: 'center', color: '#ef4444' }}>—</td>
+                  <td style={{ textAlign: 'center', color: '#ef4444' }}>{ELITE.musc}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ── EVOLUCIÓN YO-YO HISTÓRICA — nuevo gráfico ── */}
+      {yoyoHistComp.length > 1 && (
+        <div className="glass-panel" style={{ padding: 20 }}>
+          <SecTitle color="#10b981">📈 Evolución Yo-Yo Histórica — Jugadores Seleccionados</SecTitle>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={yoyoHistComp} margin={{ left: -10, right: 20 }}>
+              <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" />
+              <XAxis dataKey="f" tick={{ fill: '#334155', fontSize: 10 }} />
+              <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 10 }} />
+              <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1.5} label={{ value: `Élite ${ELITE.yoyo}`, fill: '#ef4444', fontSize: 8, position: 'insideTopRight' }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {active.map((id, i) => {
+                const nombre = getJug(id)?.jugadores?.apellido;
+                if (!nombre) return null;
+                return (
+                  <Line key={id} type="monotone" dataKey={`J${i}`} name={nombre} stroke={COLS[i]} strokeWidth={2.5}
+                    dot={{ fill: COLS[i], r: 4 }} activeDot={{ r: 6 }} connectNulls={false} />
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Yo-Yo plantel completo — contexto */}
+      <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
+        <SecTitle color="#10b981">🏟️ Yo-Yo — Plantel Completo (contexto)</SecTitle>
+        <div style={{ fontSize: '0.68rem', color: '#1e293b', marginBottom: 8 }}>
+          Jugadores seleccionados destacados en sus respectivos colores
+        </div>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart
+            data={[...datos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25))}
+            margin={{ left: -15, right: 5, bottom: 28 }}
+          >
+            <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
+            <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 8)} tick={{ fill: '#334155', fontSize: 7 }} angle={-45} textAnchor="end" interval={0} />
+            <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 9 }} />
+            <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1.5} />
+            <ReferenceLine y={stats.yoyo.mean} stroke="#33415566" strokeDasharray="2 4" />
+            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [`${v} — ${p.payload.jugadores?.apellido}`, 'Yo-Yo']} />
+            <Bar dataKey={d => d.y26 || d.y25} radius={[2, 2, 0, 0]} barSize={14}>
+              {[...datos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25)).map((d, i) => {
+                const idx = active.indexOf(d.id_jugador);
+                return (
+                  <Cell key={i}
+                    fill={idx >= 0 ? COLS[idx] : '#1e293b'}
+                    opacity={idx >= 0 ? 1 : 0.35}
+                    stroke={idx >= 0 ? COLS[idx] + '66' : 'transparent'}
+                  />
+                );
+              })}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
 
-// =======================================================
-// MODAL: INGRESO DE DATOS (ESPECIALISTAS Y CT)
-// =======================================================
-function ModalIngresoDatos({ jugadores, clubId, onClose, onSuccess, showToast }) {
-  const [tipoEvaluacion, setTipoEvaluacion] = useState('fisico');
-  const [jugadorId, setJugadorId] = useState('');
+// ════════════════════════════════════════════════════════════════════════════
+// MODAL INGRESO
+// ════════════════════════════════════════════════════════════════════════════
+function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
+  const [tipo, setTipo] = useState('fisico');
+  const [jugId, setJugId] = useState('');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
+  const [fF, setFF] = useState({ cmj: '', cmj_de: '', cmj_iz: '', broad: '', broad_de: '', broad_iz: '', y25: '', y26: '', abk: '' });
+  const [fN, setFN] = useState({ peso: '', talla: '', musc: '', adip: '', visc: '', imc: '', ed_met: '', sum6: '', plan_nutricional: '', pl_tri: '', pl_sub: '', pl_bic: '', pl_cre: '', pl_sup: '', pl_abd: '' });
+  const [fK, setFK] = useState({ kin_t: '', kin_c: '', kin_u: '', kin_s: '', pierna: '' });
 
-  const [fFisico, setFFisico] = useState({ cmj: '', cmj_de: '', cmj_iz: '', broad: '', broad_de: '', broad_iz: '', y25: '', abk: '' });
-  const [fNutri, setFNutri] = useState({ peso: '', musc: '', adip: '', sum6: '', plan_nutricional: '' });
-  const [fKine, setFKine] = useState({ kin_t: '', kin_c: '', kin_u: '', kin_s: '' });
+  const calcAsim = (a, b) => { if (!a || !b) return null; const mx = Math.max(+a, +b), mn = Math.min(+a, +b); return mx > 0 ? ((mx - mn) / mx) * 100 * (+a > +b ? 1 : -1) : 0; };
 
   const handleGuardar = async () => {
-    if (!jugadorId) return showToast("Seleccioná un jugador", "warning");
+    if (!jugId) return showToast('Seleccioná un jugador', 'warning');
     setLoading(true);
-
     try {
-      let asym_cmj = null; let asym_br = null;
-      if (fFisico.cmj_de && fFisico.cmj_iz) {
-        const max = Math.max(fFisico.cmj_de, fFisico.cmj_iz);
-        const min = Math.min(fFisico.cmj_de, fFisico.cmj_iz);
-        asym_cmj = max > 0 ? ((max - min) / max) * 100 * (fFisico.cmj_de > fFisico.cmj_iz ? 1 : -1) : 0;
-      }
-      if (fFisico.broad_de && fFisico.broad_iz) {
-        const max = Math.max(fFisico.broad_de, fFisico.broad_iz);
-        const min = Math.min(fFisico.broad_de, fFisico.broad_iz);
-        asym_br = max > 0 ? ((max - min) / max) * 100 * (fFisico.broad_de > fFisico.broad_iz ? 1 : -1) : 0;
-      }
-
       const payload = {
-        club_id: clubId, id_jugador: jugadorId, fecha_medicion: fecha,
-        cmj: fFisico.cmj || null, cmj_de: fFisico.cmj_de || null, cmj_iz: fFisico.cmj_iz || null, asym_cmj,
-        broad: fFisico.broad || null, broad_de: fFisico.broad_de || null, broad_iz: fFisico.broad_iz || null, asym_br,
-        y25: fFisico.y25 || null, abk: fFisico.abk || null,
-        peso: fNutri.peso || null, adip: fNutri.adip || null, musc: fNutri.musc || null, sum6: fNutri.sum6 || null,
-        plan_nutricional: fNutri.plan_nutricional || null,
-        kin_t: fKine.kin_t || null, kin_c: fKine.kin_c || null, kin_u: fKine.kin_u || null, kin_s: fKine.kin_s || null
+        club_id: clubId, id_jugador: jugId, fecha_medicion: fecha,
+        cmj: fF.cmj || null, cmj_de: fF.cmj_de || null, cmj_iz: fF.cmj_iz || null, asym_cmj: calcAsim(fF.cmj_de, fF.cmj_iz),
+        broad: fF.broad || null, broad_de: fF.broad_de || null, broad_iz: fF.broad_iz || null, asym_br: calcAsim(fF.broad_de, fF.broad_iz),
+        y25: fF.y25 || null, y26: fF.y26 || null, abk: fF.abk || null,
+        peso: fN.peso || null, talla: fN.talla || null, musc: fN.musc || null, adip: fN.adip || null,
+        visc: fN.visc || null, imc: fN.imc || null, ed_met: fN.ed_met || null,
+        sum6: fN.sum6 || null, plan_nutricional: fN.plan_nutricional || null,
+        pl_tri: fN.pl_tri || null, pl_sub: fN.pl_sub || null, pl_bic: fN.pl_bic || null,
+        pl_cre: fN.pl_cre || null, pl_sup: fN.pl_sup || null, pl_abd: fN.pl_abd || null,
+        kin_t: fK.kin_t || null, kin_c: fK.kin_c || null, kin_u: fK.kin_u || null, kin_s: fK.kin_s || null, pierna: fK.pierna || null,
       };
-
       const { error } = await supabase.from('rendimiento').insert([payload]);
       if (error) throw error;
-
-      showToast("Evaluación registrada correctamente.", "success");
+      showToast('Evaluación registrada.', 'success');
       onSuccess();
-    } catch (err) {
-      showToast("Error al guardar: " + err.message, "error");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    finally { setLoading(false); }
   };
 
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-      <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '600px', padding: '30px', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
-          <h2 style={{ margin: 0, color: 'var(--accent)' }}>NUEVA TOMA DE DATOS</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
-        </div>
+  const F = ({ label, val, set, step = '0.1', type = 'number', ph = '' }) => (
+    <div>
+      <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{label}</label>
+      <input type={type} step={step} value={val} onChange={e => set(e.target.value)} className="select-dark" placeholder={ph} />
+    </div>
+  );
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.93)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+      <div style={{ background: '#060a14', width: '100%', maxWidth: 580, padding: 24, maxHeight: '92vh', overflowY: 'auto', border: '1px solid #1e293b', borderRadius: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid #0f172a', paddingBottom: 14 }}>
+          <h2 style={{ margin: 0, color: 'var(--accent)', fontWeight: 900, fontSize: '1.05rem' }}>NUEVA TOMA DE DATOS</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#334155', fontSize: '1.3rem', cursor: 'pointer' }}>✕</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 15 }}>
           <div>
-            <label style={lStyle}>JUGADOR</label>
-            <select className="select-dark" value={jugadorId} onChange={e => setJugadorId(e.target.value)} style={{ padding: '10px' }}>
+            <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Jugador</label>
+            <select className="select-dark" value={jugId} onChange={e => setJugId(e.target.value)}>
               <option value="">Seleccionar...</option>
-              {jugadores.map(j => <option key={j.id} value={j.id}>{j.dorsal} - {j.apellido} {j.nombre}</option>)}
+              {jugadores.map(j => <option key={j.id} value={j.id}>{j.dorsal} — {j.apellido} {j.nombre}</option>)}
             </select>
           </div>
           <div>
-            <label style={lStyle}>FECHA DE EVALUACIÓN</label>
-            <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="select-dark" style={{ padding: '10px' }} />
+            <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Fecha</label>
+            <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="select-dark" />
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '5px', marginBottom: '20px', background: '#000', padding: '5px', borderRadius: '8px' }}>
-          <button onClick={() => setTipoEvaluacion('fisico')} style={{ flex: 1, padding: '10px', background: tipoEvaluacion === 'fisico' ? '#3b82f6' : 'transparent', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>FÍSICO</button>
-          <button onClick={() => setTipoEvaluacion('nutri')} style={{ flex: 1, padding: '10px', background: tipoEvaluacion === 'nutri' ? '#f59e0b' : 'transparent', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>NUTRICIÓN</button>
-          <button onClick={() => setTipoEvaluacion('kine')} style={{ flex: 1, padding: '10px', background: tipoEvaluacion === 'kine' ? '#10b981' : 'transparent', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>KINESIO</button>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: '#000', padding: 4, borderRadius: 8 }}>
+          {[{ id: 'fisico', lbl: 'Físico', c: '#3b82f6' }, { id: 'nutri', lbl: 'Nutrición', c: '#f59e0b' }, { id: 'kine', lbl: 'Kinesio', c: '#10b981' }].map(t => (
+            <button key={t.id} onClick={() => setTipo(t.id)}
+              style={{ flex: 1, padding: '8px', background: tipo === t.id ? t.c : 'transparent', color: tipo === t.id ? '#000' : '#334155', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 900, fontSize: '0.72rem', transition: '0.15s' }}>
+              {t.lbl}
+            </button>
+          ))}
         </div>
 
-        {tipoEvaluacion === 'fisico' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
-            <div><label style={lStyle}>CMJ (Bi) cm</label><input type="number" step="0.1" value={fFisico.cmj} onChange={e => setFFisico({...fFisico, cmj: e.target.value})} className="select-dark" /></div>
-            <div><label style={lStyle}>ABK (Brazos)</label><input type="number" step="0.1" value={fFisico.abk} onChange={e => setFFisico({...fFisico, abk: e.target.value})} className="select-dark" /></div>
-            <div style={{gridColumn: 'span 1'}}></div>
-            <div><label style={lStyle}>CMJ Der cm</label><input type="number" step="0.1" value={fFisico.cmj_de} onChange={e => setFFisico({...fFisico, cmj_de: e.target.value})} className="select-dark" /></div>
-            <div><label style={lStyle}>CMJ Izq cm</label><input type="number" step="0.1" value={fFisico.cmj_iz} onChange={e => setFFisico({...fFisico, cmj_iz: e.target.value})} className="select-dark" /></div>
-            <div style={{gridColumn: 'span 1'}}></div>
-            <div><label style={lStyle}>Broad (Bi) m</label><input type="number" step="0.01" value={fFisico.broad} onChange={e => setFFisico({...fFisico, broad: e.target.value})} className="select-dark" /></div>
-            <div><label style={lStyle}>Broad Der m</label><input type="number" step="0.01" value={fFisico.broad_de} onChange={e => setFFisico({...fFisico, broad_de: e.target.value})} className="select-dark" /></div>
-            <div><label style={lStyle}>Broad Izq m</label><input type="number" step="0.01" value={fFisico.broad_iz} onChange={e => setFFisico({...fFisico, broad_iz: e.target.value})} className="select-dark" /></div>
-            <div style={{ gridColumn: 'span 3' }}><label style={lStyle}>Yo-Yo Test Nivel</label><input type="number" step="0.1" value={fFisico.y25} onChange={e => setFFisico({...fFisico, y25: e.target.value})} className="select-dark" placeholder="Ej: 18.2"/></div>
+        {tipo === 'fisico' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+            <F label="CMJ (bi) cm" val={fF.cmj} set={v => setFF({ ...fF, cmj: v })} />
+            <F label="ABK cm"      val={fF.abk} set={v => setFF({ ...fF, abk: v })} />
+            <div />
+            <F label="CMJ Der" val={fF.cmj_de} set={v => setFF({ ...fF, cmj_de: v })} />
+            <F label="CMJ Izq" val={fF.cmj_iz} set={v => setFF({ ...fF, cmj_iz: v })} />
+            <div />
+            <F label="Broad (bi) m" val={fF.broad}    set={v => setFF({ ...fF, broad: v })}    step="0.01" />
+            <F label="Broad Der"    val={fF.broad_de}  set={v => setFF({ ...fF, broad_de: v })} step="0.01" />
+            <F label="Broad Izq"    val={fF.broad_iz}  set={v => setFF({ ...fF, broad_iz: v })} step="0.01" />
+            <F label="Yo-Yo 2025"   val={fF.y25} set={v => setFF({ ...fF, y25: v })} ph="ej: 18.5" />
+            <div style={{ gridColumn: 'span 2' }}><F label="Yo-Yo 2026 (actual)" val={fF.y26} set={v => setFF({ ...fF, y26: v })} ph="ej: 19.2" /></div>
           </div>
         )}
 
-        {tipoEvaluacion === 'nutri' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div><label style={lStyle}>Peso (kg)</label><input type="number" step="0.1" value={fNutri.peso} onChange={e => setFNutri({...fNutri, peso: e.target.value})} className="select-dark" /></div>
-              <div><label style={lStyle}>∑ 6 Pliegues (mm)</label><input type="number" step="0.1" value={fNutri.sum6} onChange={e => setFNutri({...fNutri, sum6: e.target.value})} className="select-dark" /></div>
-              <div><label style={lStyle}>Músculo %</label><input type="number" step="0.1" value={fNutri.musc} onChange={e => setFNutri({...fNutri, musc: e.target.value})} className="select-dark" /></div>
-              <div><label style={lStyle}>Adiposidad %</label><input type="number" step="0.1" value={fNutri.adip} onChange={e => setFNutri({...fNutri, adip: e.target.value})} className="select-dark" /></div>
+        {tipo === 'nutri' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <F label="Peso (kg)"        val={fN.peso}   set={v => setFN({ ...fN, peso: v })} />
+              <F label="Talla (cm)"       val={fN.talla}  set={v => setFN({ ...fN, talla: v })} />
+              <F label="Músculo %"        val={fN.musc}   set={v => setFN({ ...fN, musc: v })} />
+              <F label="Adiposidad %"     val={fN.adip}   set={v => setFN({ ...fN, adip: v })} />
+              <F label="IMC"              val={fN.imc}    set={v => setFN({ ...fN, imc: v })} />
+              <F label="Visceral"         val={fN.visc}   set={v => setFN({ ...fN, visc: v })} step="1" />
+              <F label="Edad Metabólica"  val={fN.ed_met} set={v => setFN({ ...fN, ed_met: v })} step="1" />
+              <F label="∑ 6 Pliegues mm"  val={fN.sum6}   set={v => setFN({ ...fN, sum6: v })} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              {[['Tricipital', 'pl_tri'], ['Subescapular', 'pl_sub'], ['Bicipital', 'pl_bic'], ['C. Ilíaca', 'pl_cre'], ['Supraespinal', 'pl_sup'], ['Abdominal', 'pl_abd']].map(([lbl, k]) => (
+                <F key={k} label={lbl + ' mm'} val={fN[k]} set={v => setFN({ ...fN, [k]: v })} />
+              ))}
             </div>
             <div>
-              <label style={lStyle}>Plan Nutricional (Texto o HTML)</label>
-              <textarea value={fNutri.plan_nutricional} onChange={e => setFNutri({...fNutri, plan_nutricional: e.target.value})} className="select-dark" rows="5" placeholder="Pegá acá la dieta..."></textarea>
+              <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Plan Nutricional</label>
+              <textarea value={fN.plan_nutricional} onChange={e => setFN({ ...fN, plan_nutricional: e.target.value })} className="select-dark" rows="4" placeholder="Pegá acá la dieta..." style={{ resize: 'vertical' }} />
             </div>
           </div>
         )}
 
-        {tipoEvaluacion === 'kine' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-            <div><label style={lStyle}>Tobillo/Pie (kin_t)</label><input type="text" value={fKine.kin_t} onChange={e => setFKine({...fKine, kin_t: e.target.value})} className="select-dark" placeholder="Ej: movilidad" /></div>
-            <div><label style={lStyle}>Cadera (kin_c)</label><input type="text" value={fKine.kin_c} onChange={e => setFKine({...fKine, kin_c: e.target.value})} className="select-dark" placeholder="Ej: isquio"/></div>
-            <div><label style={lStyle}>Zona Media (kin_u)</label><input type="text" value={fKine.kin_u} onChange={e => setFKine({...fKine, kin_u: e.target.value})} className="select-dark" placeholder="Ej: pelvica"/></div>
-            <div><label style={lStyle}>Sentadilla (kin_s)</label><input type="text" value={fKine.kin_s} onChange={e => setFKine({...fKine, kin_s: e.target.value})} className="select-dark" placeholder="Ej: optimo"/></div>
+        {tipo === 'kine' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {[['Tobillo / Pie', 'kin_t', 'ej: movilidad'], ['Cadera (Jurdan)', 'kin_c', 'ej: isquio'], ['Zona Media', 'kin_u', 'ej: pelvica'], ['Sentadilla', 'kin_s', 'ej: optimo'], ['Pierna Hábil', 'pierna', 'Derecho / Izquierdo']].map(([lbl, k, ph]) => (
+              <div key={k}>
+                <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{lbl}</label>
+                <input type="text" value={fK[k]} onChange={e => setFK({ ...fK, [k]: e.target.value })} className="select-dark" placeholder={ph} />
+              </div>
+            ))}
           </div>
         )}
 
-        <button onClick={handleGuardar} disabled={loading} className="btn-action" style={{ width: '100%', padding: '15px', marginTop: '25px', opacity: loading ? 0.5 : 1 }}>
+        <button onClick={handleGuardar} disabled={loading} className="btn-action"
+          style={{ width: '100%', padding: 13, marginTop: 18, background: '#3b82f6', color: '#fff', fontWeight: 900, opacity: loading ? 0.5 : 1, fontSize: '0.86rem', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
           {loading ? 'GUARDANDO...' : '💾 GUARDAR EN HISTORIAL'}
         </button>
       </div>
     </div>
   );
 }
-const lStyle = { fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 'bold', display: 'block', marginBottom: '5px' };
+
+const Empty = () => (
+  <div style={{ textAlign: 'center', color: '#0f172a', marginTop: 80, fontSize: '0.85rem' }}>
+    Seleccioná un jugador en el panel izquierdo.
+  </div>
+);
