@@ -33,8 +33,6 @@ const CargaWellness = () => {
 
   const [readiness, setReadiness] = useState({ sueno: 3, estres: 3, fatiga: 3, dolor_muscular: 3 });
   const [cargaPost, setCargaPost] = useState({ tipo_sesion: 'Entrenamiento', rpe: 5, minutos_actividad: 90 });
-  
-  // NUEVO: ESTADO MENTAL
   const [mental, setMental] = useState({ animo: 3, motivacion: 3, ansiedad: 3, confianza: 3, notas: '' });
 
   // --- ESTADOS PARA EL REPORTE DEL DT ---
@@ -42,6 +40,9 @@ const CargaWellness = () => {
   const [diasSemanaReporte, setDiasSemanaReporte] = useState([]);
   const [datosSemana, setDatosSemana] = useState([]);
   const [cargandoReporte, setCargandoReporte] = useState(false);
+  
+  // NUEVO: ESTADO PARA EL MODAL DE DETALLE
+  const [detalleRegistro, setDetalleRegistro] = useState(null);
 
   useEffect(() => {
     cargarJugadores();
@@ -98,7 +99,6 @@ const CargaWellness = () => {
         club_id, jugador_id: jugadorSeleccionado, fecha,
         sueno: readiness.sueno, estres: readiness.estres, fatiga: readiness.fatiga, dolor_muscular: readiness.dolor_muscular,
         tipo_sesion: cargaPost.tipo_sesion, rpe: parseInt(cargaPost.rpe), minutos_actividad: parseInt(cargaPost.minutos_actividad),
-        // AGREGAMOS LOS DATOS MENTALES
         animo: mental.animo, motivacion: mental.motivacion, ansiedad: mental.ansiedad, confianza: mental.confianza, notas_mentales: mental.notas
       };
       const { error } = await supabase.from('wellness').upsert(payload, { onConflict: 'jugador_id, fecha' });
@@ -156,6 +156,45 @@ const CargaWellness = () => {
   const categoriasUnicas = ['Todas', ...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
   const jugadoresFiltrados = filtroCategoria === 'Todas' ? jugadores : jugadores.filter(j => j.categoria === filtroCategoria);
 
+  // --- LÓGICA DE ANALÍTICA DEL PF ---
+  const calcularScoreReadiness = (reg) => {
+    if (!reg) return null;
+    let suma = 0;
+    let max = 0;
+
+    // Métricas Físicas: Invertimos estrés, fatiga y dolor (1 es poco/bueno, 5 es mucho/malo). 
+    if (reg.sueno) { 
+      suma += reg.sueno; 
+      suma += (6 - reg.estres); 
+      suma += (6 - reg.fatiga); 
+      suma += (6 - reg.dolor_muscular); 
+      max += 20; 
+    }
+    
+    // Métricas Mentales: Invertimos ansiedad
+    if (reg.animo) { 
+      suma += reg.animo + reg.motivacion + (6 - reg.ansiedad) + reg.confianza; 
+      max += 20; 
+    }
+    
+    if (max === 0) return null;
+    return Math.round((suma / max) * 100);
+  };
+
+  const getColorPorPuntos = (score) => {
+    if (score >= 80) return { bg: '#10b98120', text: '#10b981', border: '#10b98150' }; // Verde (Óptimo)
+    if (score >= 60) return { bg: '#eab30820', text: '#eab308', border: '#eab30850' }; // Amarillo (Precaución)
+    return { bg: '#ef444420', text: '#ef4444', border: '#ef444450' }; // Rojo (Peligro)
+  };
+
+  // Semáforo independiente para el RPE (Carga de sesión)
+  const getColorPorRPE = (rpe) => {
+    if (rpe <= 4) return { bg: '#10b98120', text: '#10b981', border: '#10b98150' }; // Verde (Baja)
+    if (rpe <= 7) return { bg: '#eab30820', text: '#eab308', border: '#eab30850' }; // Amarillo (Media)
+    return { bg: '#ef444420', text: '#ef4444', border: '#ef444450' }; // Rojo (Alta)
+  };
+
+
   // --- COMPONENTES UI AUXILIARES ---
   const EscalaBotones = ({ label, icon, valor, setValor, invertido = false, labelBajo = 'Muy Malo', labelAlto = 'Excelente' }) => {
     const colores = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
@@ -192,6 +231,27 @@ const CargaWellness = () => {
     );
   };
 
+  const RenderMetricaDetalle = ({ label, valor, invertido = false }) => {
+    const coloresNormal = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
+    const coloresInvertido = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'];
+    const paleta = invertido ? coloresInvertido : coloresNormal;
+    const color = paleta[valor - 1] || '#888';
+
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.85rem' }}>
+        <span style={{ color: '#ccc' }}>{label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '2px' }}>
+            {[1, 2, 3, 4, 5].map(v => (
+              <div key={v} style={{ width: '15px', height: '6px', borderRadius: '2px', background: v <= valor ? color : '#222' }} />
+            ))}
+          </div>
+          <span style={{ fontWeight: 'bold', color: color, width: '20px', textAlign: 'right' }}>{valor}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: vistaActiva === 'reporte' ? '1200px' : '600px', margin: '0 auto', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
       
@@ -207,16 +267,16 @@ const CargaWellness = () => {
       )}
 
       {/* ========================================== */}
-      {/* VISTA: REPORTE DT             */}
+      {/* VISTA: REPORTE DT (SEMÁFORO)               */}
       {/* ========================================== */}
       {vistaActiva === 'reporte' && (
         <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <h1 style={{ fontSize: '1.5rem', color: 'var(--accent)', margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '2rem' }}>📈</span> MONITOREO 360° DEL PLANTEL
+                <span style={{ fontSize: '2rem' }}>📈</span> MONITOREO DE READINESS
               </h1>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Control general de Readiness, Mindset y Carga Interna (UC) de la semana.</p>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Índice de Preparación (Físico + Mental) y Cargas RPE del microciclo.</p>
             </div>
 
             <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
@@ -262,45 +322,51 @@ const CargaWellness = () => {
                       </td>
                       {diasSemanaReporte.map((dia, i) => {
                         const registro = datosSemana.find(d => d.jugador_id === j.id && d.fecha === dia.fechaStr);
+                        const score = calcularScoreReadiness(registro);
                         
-                        // Lógica de alerta emocional
-                        const alertaEmocional = registro && (registro.notas_mentales || registro.ansiedad <= 2 || registro.animo <= 2);
-
                         return (
                           <td key={i} style={{ padding: '8px', textAlign: 'center', borderLeft: '1px solid #222' }}>
-                            {registro ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                                {/* PRE (Físico) */}
-                                {registro.sueno ? (
-                                  <div style={{ background: 'rgba(0, 255, 136, 0.1)', color: 'var(--accent)', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(0, 255, 136, 0.3)', fontWeight: 'bold', width: 'fit-content' }}>
-                                    🌞 PRE: OK
+                            {registro && (score !== null || registro.rpe) ? (
+                              <div 
+                                onClick={() => setDetalleRegistro({ jugador: j, registro, dia: dia.fechaStr })}
+                                style={{ display: 'inline-flex', flexDirection: 'column', gap: '6px', alignItems: 'center', cursor: 'pointer', transition: 'transform 0.2s', width: '100%' }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                              >
+                                {/* LÍNEA 1: PRE + MENTAL (READINESS) */}
+                                {score !== null ? (
+                                  <div style={{ 
+                                    background: getColorPorPuntos(score).bg, 
+                                    color: getColorPorPuntos(score).text, 
+                                    border: `1px solid ${getColorPorPuntos(score).border}`,
+                                    padding: '4px 2px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900',
+                                    width: '100%', minWidth: '70px', textAlign: 'center', position: 'relative'
+                                  }}>
+                                    🛡️ {score}%
+                                    {registro.notas_mentales && (
+                                      <span style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#a855f7', color: '#fff', fontSize: '0.6rem', width: '14px', height: '14px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #111' }}>
+                                        💬
+                                      </span>
+                                    )}
                                   </div>
-                                ) : null}
-
-{/* MENTAL */}
-{registro.animo ? (
-  <div style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(168, 85, 247, 0.3)', fontWeight: 'bold', width: 'fit-content', display: 'flex', gap: '4px', alignItems: 'center' }}>
-    🧠 {registro.animo + registro.motivacion + registro.ansiedad + registro.confianza}/20
-    {alertaEmocional && (
-      <span 
-        onClick={() => {
-          const msj = registro.notas_mentales || "Niveles de bienestar bajos detectados (sin nota escrita).";
-          showToast(`${j.apellido}: ${msj}`, 'info');
-        }} 
-        style={{ fontSize: '0.9rem', cursor: 'pointer', marginLeft: '2px', filter: 'drop-shadow(0 0 2px yellow)' }}
-      >
-        ⚠️
-      </span>
-    )}
-  </div>
-) : null}
+                                ) : (
+                                  <div style={{ padding: '4px', fontSize: '0.75rem', color: '#444' }}>-</div>
+                                )}
                                 
-                                {/* POST (Carga UC) */}
-                                {registro.minutos_actividad && registro.rpe ? (
-                                  <div style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)', fontWeight: 'bold', width: 'fit-content' }}>
-                                    🔋 UC: {registro.rpe * registro.minutos_actividad}
+                                {/* LÍNEA 2: POST (RPE) */}
+                                {registro.rpe ? (
+                                  <div style={{ 
+                                    background: getColorPorRPE(registro.rpe).bg, 
+                                    color: getColorPorRPE(registro.rpe).text, 
+                                    border: `1px solid ${getColorPorRPE(registro.rpe).border}`,
+                                    padding: '4px 2px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '900',
+                                    width: '100%', minWidth: '70px', textAlign: 'center'
+                                  }}>
+                                    🔋 RPE {registro.rpe}
                                   </div>
-                                ) : null}
+                                ) : (
+                                  <div style={{ padding: '4px', fontSize: '0.75rem', color: '#444' }}>-</div>
+                                )}
                               </div>
                             ) : (
                               <span style={{ color: '#333', fontSize: '1.2rem' }}>-</span>
@@ -323,7 +389,108 @@ const CargaWellness = () => {
       )}
 
       {/* ========================================== */}
-      {/* VISTA: FORMULARIO DE CARGA          */}
+      {/* MODAL FLOTANTE DE DETALLE                  */}
+      {/* ========================================== */}
+      {detalleRegistro && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+          <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '700px', border: '1px solid #333', position: 'relative', animation: 'fadeIn 0.2s', padding: 0, overflow: 'hidden' }}>
+            
+            {/* HEADER */}
+            <div style={{ background: '#0a0a0a', padding: '20px', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#fff', fontSize: '1.3rem', textTransform: 'uppercase' }}>{detalleRegistro.jugador.apellido}, {detalleRegistro.jugador.nombre}</h3>
+                <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 'bold' }}>🗓️ Reporte del día: {detalleRegistro.dia}</span>
+              </div>
+              <button onClick={() => setDetalleRegistro(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.5rem' }}>✖</button>
+            </div>
+
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '75vh', overflowY: 'auto' }}>
+              
+              {/* SCORE GENERAL */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', background: '#000', padding: '15px', borderRadius: '12px', border: '1px solid #222' }}>
+                {(() => {
+                  const score = calcularScoreReadiness(detalleRegistro.registro);
+                  if(score === null) return <div style={{color: '#888', fontStyle: 'italic'}}>No hay datos de preparación (Pre/Mental) ingresados este día.</div>;
+                  
+                  const colorConfig = getColorPorPuntos(score);
+                  return (
+                    <>
+                      <div style={{ 
+                        background: colorConfig.bg, color: colorConfig.text, border: `3px solid ${colorConfig.border}`,
+                        width: '80px', height: '80px', borderRadius: '50%',
+                        display: 'flex', justifyContent: 'center', alignItems: 'center',
+                        fontWeight: '900', fontSize: '1.8rem', flexShrink: 0
+                      }}>
+                        {score}%
+                      </div>
+                      <div>
+                        <h4 style={{ margin: '0 0 5px 0', color: colorConfig.text, fontSize: '1.1rem', textTransform: 'uppercase' }}>
+                          {score >= 80 ? 'Óptimo para entrenar' : score >= 60 ? 'Alerta / Monitorear' : 'Bandera Roja / Adaptar'}
+                        </h4>
+                        <p style={{ margin: 0, color: '#888', fontSize: '0.85rem' }}>Índice Readiness calculado en base al bienestar físico y la predisposición mental.</p>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                {/* COLUMNA FÍSICA */}
+                {detalleRegistro.registro.sueno && (
+                  <div style={{ flex: '1 1 300px', background: '#0a0a0a', padding: '15px', borderRadius: '12px', border: '1px solid #333' }}>
+                    <h4 style={{ color: 'var(--accent)', margin: '0 0 15px 0', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      🌞 Pre-Físico
+                    </h4>
+                    <RenderMetricaDetalle label="Calidad de Sueño" valor={detalleRegistro.registro.sueno} />
+                    <RenderMetricaDetalle label="Nivel de Estrés" valor={detalleRegistro.registro.estres} invertido />
+                    <RenderMetricaDetalle label="Fatiga Muscular" valor={detalleRegistro.registro.fatiga} invertido />
+                    <RenderMetricaDetalle label="Dolor Muscular (DOMS)" valor={detalleRegistro.registro.dolor_muscular} invertido />
+                  </div>
+                )}
+
+                {/* COLUMNA MENTAL */}
+                {detalleRegistro.registro.animo && (
+                  <div style={{ flex: '1 1 300px', background: '#0a0a0a', padding: '15px', borderRadius: '12px', border: '1px solid #333' }}>
+                    <h4 style={{ color: '#c084fc', margin: '0 0 15px 0', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      🧠 Mindset
+                    </h4>
+                    <RenderMetricaDetalle label="Estado de Ánimo" valor={detalleRegistro.registro.animo} />
+                    <RenderMetricaDetalle label="Motivación" valor={detalleRegistro.registro.motivacion} />
+                    <RenderMetricaDetalle label="Nivel de Ansiedad" valor={detalleRegistro.registro.ansiedad} invertido />
+                    <RenderMetricaDetalle label="Confianza" valor={detalleRegistro.registro.confianza} />
+                  </div>
+                )}
+              </div>
+
+              {/* NOTAS Y CARGA (RPE) */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                {detalleRegistro.registro.notas_mentales && (
+                  <div style={{ flex: 2, background: 'rgba(168, 85, 247, 0.1)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                    <h4 style={{ margin: '0 0 5px 0', color: '#c084fc', fontSize: '0.8rem', textTransform: 'uppercase' }}>💬 Notas / Novedades</h4>
+                    <p style={{ margin: 0, color: '#e9d5ff', fontSize: '0.9rem', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>"{detalleRegistro.registro.notas_mentales}"</p>
+                  </div>
+                )}
+
+                {detalleRegistro.registro.minutos_actividad && detalleRegistro.registro.rpe ? (
+                  <div style={{ flex: 1, minWidth: '200px', background: getColorPorRPE(detalleRegistro.registro.rpe).bg, padding: '15px', borderRadius: '12px', border: `1px solid ${getColorPorRPE(detalleRegistro.registro.rpe).border}`, textAlign: 'center' }}>
+                    <h4 style={{ margin: '0 0 10px 0', color: getColorPorRPE(detalleRegistro.registro.rpe).text, fontSize: '0.8rem', textTransform: 'uppercase' }}>🔋 Post-Entrenamiento</h4>
+                    <div style={{ fontSize: '2rem', fontWeight: '900', color: getColorPorRPE(detalleRegistro.registro.rpe).text, lineHeight: '1' }}>
+                      RPE {detalleRegistro.registro.rpe}/10
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: getColorPorRPE(detalleRegistro.registro.rpe).text, marginTop: '5px', opacity: 0.8 }}>
+                      Duración: {detalleRegistro.registro.minutos_actividad} mins • Carga UC: {detalleRegistro.registro.rpe * detalleRegistro.registro.minutos_actividad}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* VISTA: FORMULARIO DE CARGA                  */}
       {/* ========================================== */}
       {vistaActiva === 'carga' && (
         <>
@@ -387,10 +554,10 @@ const CargaWellness = () => {
               <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '20px' }}>
                 ¿Cómo te levantaste hoy? Evalúa tu cuerpo antes de iniciar la actividad.
               </p>
-              <EscalaBotones label="Calidad de Sueño" icon="😴" valor={readiness.sueno} setValor={(v) => setReadiness({...readiness, sueno: v})} />
-              <EscalaBotones label="Nivel de Estrés" icon="💆‍♂️" valor={readiness.estres} setValor={(v) => setReadiness({...readiness, estres: v})} invertido={true} labelBajo="Muy Alto (Mal)" labelAlto="Relajado (Bien)" />
-              <EscalaBotones label="Fatiga General" icon="🥱" valor={readiness.fatiga} setValor={(v) => setReadiness({...readiness, fatiga: v})} invertido={true} labelBajo="Mucha Fatiga" labelAlto="Fresco" />
-              <EscalaBotones label="Dolor Muscular (DOMS)" icon="🦵" valor={readiness.dolor_muscular} setValor={(v) => setReadiness({...readiness, dolor_muscular: v})} invertido={true} labelBajo="Mucho Dolor" labelAlto="Sin Dolor" />
+              <EscalaBotones label="Calidad de Sueño" icon="😴" valor={readiness.sueno} setValor={(v) => setReadiness({...readiness, sueno: v})} labelBajo="Mala" labelAlto="Excelente" />
+              <EscalaBotones label="Nivel de Estrés" icon="💆‍♂️" valor={readiness.estres} setValor={(v) => setReadiness({...readiness, estres: v})} invertido={true} labelBajo="Poco / Nada" labelAlto="Mucho Estrés" />
+              <EscalaBotones label="Fatiga General" icon="🥱" valor={readiness.fatiga} setValor={(v) => setReadiness({...readiness, fatiga: v})} invertido={true} labelBajo="Fresco / Nada" labelAlto="Mucha Fatiga" />
+              <EscalaBotones label="Dolor Muscular (DOMS)" icon="🦵" valor={readiness.dolor_muscular} setValor={(v) => setReadiness({...readiness, dolor_muscular: v})} invertido={true} labelBajo="Sin Dolor" labelAlto="Mucho Dolor" />
             </div>
           )}
 
@@ -402,8 +569,8 @@ const CargaWellness = () => {
               </p>
               <EscalaBotones label="Estado de Ánimo (Mood)" icon="🎭" valor={mental.animo} setValor={(v) => setMental({...mental, animo: v})} labelBajo="Triste / Apagado" labelAlto="Feliz / Positivo" />
               <EscalaBotones label="Motivación y Ganas" icon="🔥" valor={mental.motivacion} setValor={(v) => setMental({...mental, motivacion: v})} labelBajo="Desganado / Apatía" labelAlto="A Tope / Entusiasmado" />
-              <EscalaBotones label="Control de Ansiedad" icon="🌬️" valor={mental.ansiedad} setValor={(v) => setMental({...mental, ansiedad: v})} labelBajo="Nervioso / Presionado" labelAlto="Tranquilo / Relajado" />
-              <EscalaBotones label="Confianza y Foco" icon="🎯" valor={mental.confianza} setValor={(v) => setMental({...mental, confianza: v})} labelBajo="Dudoso / Distraído" labelAlto="Confiado / 100% Enfocado" />
+              <EscalaBotones label="Nivel de Ansiedad" icon="🌬️" valor={mental.ansiedad} setValor={(v) => setMental({...mental, ansiedad: v})} invertido={true} labelBajo="Relajado / Nada" labelAlto="Nervioso / Presionado" />
+              <EscalaBotones label="Confianza y Foco" icon="🎯" valor={mental.confianza} setValor={(v) => setMental({...mental, confianza: v})} labelBajo="Dudoso / Distraído" labelAlto="Confiado / 100% Foco" />
               
               <div style={{ marginTop: '20px' }}>
                 <label style={{...labelStyle, color: '#c084fc'}}>¿Algo externo que te esté afectando? (Opcional)</label>
