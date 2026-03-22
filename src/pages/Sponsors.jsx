@@ -12,7 +12,7 @@ function Sponsors() {
   const puedeEditar = ['admin', 'tesorero', 'superuser'].includes(rol);
 
   const [sponsors, setSponsors] = useState([]);
-  const [jugadores, setJugadores] = useState([]); // Para la lista de comisiones
+  const [jugadores, setJugadores] = useState([]); 
   const [cargando, setCargando] = useState(false);
 
   // Modales
@@ -20,9 +20,9 @@ function Sponsors() {
   const [formSponsor, setFormSponsor] = useState({ id: null, nombre: '', contacto_nombre: '', monto_aporte: '', periodicidad: 'mensual', estado: 'activo', fecha_vencimiento: '' });
 
   const [modalPago, setModalPago] = useState({ visible: false, sponsor: null });
-  // Estados para la comisión
+  // Estados para la comisión (Añadido 'descripcion')
   const [formPago, setFormPago] = useState({ 
-    monto: '', metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0],
+    monto: '', metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], descripcion: '',
     aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' 
   });
 
@@ -67,10 +67,13 @@ function Sponsors() {
   };
 
   const registrarPago = async () => {
-    const montoPagar = parseFloat(formPago.monto);
-    if (!montoPagar || montoPagar <= 0) return showToast("Monto inválido.", "error");
+    const esEspecie = formPago.metodo_pago === 'Especie';
+    const montoPagar = esEspecie ? 0 : parseFloat(formPago.monto);
     
-    if (formPago.aplicaComision) {
+    if (!esEspecie && (!montoPagar || montoPagar <= 0)) return showToast("Monto inválido.", "error");
+    if (esEspecie && !formPago.descripcion) return showToast("Por favor, detallá en los comentarios qué entregó el sponsor.", "error");
+    
+    if (formPago.aplicaComision && !esEspecie) {
       if (!formPago.porcentajeComision || formPago.porcentajeComision <= 0) return showToast("Completá el porcentaje.", "error");
       if (formPago.tipoReferido === 'jugador' && !formPago.jugadorReferidoId) return showToast("Seleccioná un jugador.", "error");
       if (formPago.tipoReferido === 'externo' && !formPago.nombreReferidoExterno) return showToast("Ingresá el nombre del referido.", "error");
@@ -78,14 +81,15 @@ function Sponsors() {
 
     setCargando(true);
     try {
-      // 1. Ingresa la totalidad del dinero del Sponsor
+      // 1. Ingresa la totalidad del dinero (o el registro del canje) del Sponsor
       const { error: errSponsor } = await supabase.from('sponsors_pagos').insert([{
-        club_id: clubId, sponsor_id: modalPago.sponsor.id, monto: montoPagar, fecha_pago: formPago.fecha_pago, metodo_pago: formPago.metodo_pago
+        club_id: clubId, sponsor_id: modalPago.sponsor.id, monto: montoPagar, 
+        fecha_pago: formPago.fecha_pago, metodo_pago: formPago.metodo_pago, descripcion: formPago.descripcion
       }]);
       if (errSponsor) throw errSponsor;
 
-      // 2. Si hay comisión, crea un Egreso automático
-      if (formPago.aplicaComision) {
+      // 2. Si hay comisión y NO es en especie, crea un Egreso automático
+      if (formPago.aplicaComision && !esEspecie) {
         const montoComision = (montoPagar * (parseFloat(formPago.porcentajeComision) / 100)).toFixed(2);
         let responsableNombre = '';
         let categoriaEgreso = '';
@@ -93,10 +97,10 @@ function Sponsors() {
         if (formPago.tipoReferido === 'jugador') {
           const jug = jugadores.find(j => String(j.id) === String(formPago.jugadorReferidoId));
           responsableNombre = jug ? `${jug.apellido}, ${jug.nombre}` : 'Jugador Desconocido';
-          categoriaEgreso = 'Sueldos y Viáticos'; // Queda como viático según pediste
+          categoriaEgreso = 'Sueldos y Viáticos'; 
         } else {
           responsableNombre = formPago.nombreReferidoExterno;
-          categoriaEgreso = 'Comisiones / Terceros'; // Agente externo
+          categoriaEgreso = 'Comisiones / Terceros'; 
         }
 
         await supabase.from('tesoreria_egresos').insert([{
@@ -105,7 +109,7 @@ function Sponsors() {
         }]);
       }
 
-      showToast("Ingreso (y comisiones si aplican) registrados en Tesorería.", "success");
+      showToast("Ingreso de sponsor registrado en Tesorería.", "success");
       setModalPago({ visible: false, sponsor: null });
     } catch (error) { showToast(error.message || "Error al registrar pago.", "error"); } finally { setCargando(false); }
   };
@@ -144,7 +148,7 @@ function Sponsors() {
                   <span style={{ color: estaVencido ? '#ef4444' : '#888' }}>{s.fecha_vencimiento ? `Vence: ${s.fecha_vencimiento.split('-').reverse().join('/')}` : 'Sin vencimiento'}</span>
                 </div>
                 {puedeEditar && (
-                  <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
+                  <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], descripcion: '', aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
                     💸 REGISTRAR COBRO
                   </button>
                 )}
@@ -186,50 +190,70 @@ function Sponsors() {
             <h3 style={{ marginTop: 0, color: '#3b82f6' }}>Registrar Ingreso de Sponsor</h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
-              <div><label style={lblStyle}>Monto a ingresar en Caja ($)</label><input type="number" value={formPago.monto} onChange={e => setFormPago({...formPago, monto: e.target.value})} style={{...inputStyle, fontSize:'1.2rem', padding:'12px', borderColor:'#3b82f6'}} /></div>
               <div style={{ display: 'flex', gap: '15px' }}>
                 <div style={{ flex: 1 }}><label style={lblStyle}>Fecha de Pago</label><input type="date" value={formPago.fecha_pago} onChange={e => setFormPago({...formPago, fecha_pago: e.target.value})} style={inputStyle} /></div>
-                <div style={{ flex: 1 }}><label style={lblStyle}>Método de Recepción</label><select value={formPago.metodo_pago} onChange={e => setFormPago({...formPago, metodo_pago: e.target.value})} style={inputStyle}><option value="Transferencia">🏦 Transferencia</option><option value="Efectivo">💵 Efectivo</option></select></div>
+                <div style={{ flex: 1 }}>
+                  <label style={lblStyle}>Método de Recepción</label>
+                  <select value={formPago.metodo_pago} onChange={e => setFormPago({...formPago, metodo_pago: e.target.value, aplicaComision: e.target.value === 'Especie' ? false : formPago.aplicaComision})} style={inputStyle}>
+                    <option value="Transferencia">🏦 Transferencia</option>
+                    <option value="Efectivo">💵 Efectivo</option>
+                    <option value="Especie">📦 En Especies / Canje</option>
+                  </select>
+                </div>
               </div>
 
-              {/* SECCIÓN COMISIÓN */}
-              <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #333', marginTop: '10px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', color: formPago.aplicaComision ? '#f59e0b' : '#fff' }}>
-                  <input type="checkbox" checked={formPago.aplicaComision} onChange={(e) => setFormPago({...formPago, aplicaComision: e.target.checked})} style={{ width: '18px', height: '18px' }} />
-                  ¿Repartir comisión por este Sponsor?
-                </label>
+              {formPago.metodo_pago !== 'Especie' && (
+                <div>
+                  <label style={lblStyle}>Monto a ingresar en Caja ($)</label>
+                  <input type="number" value={formPago.monto} onChange={e => setFormPago({...formPago, monto: e.target.value})} style={{...inputStyle, fontSize:'1.2rem', padding:'12px', borderColor:'#3b82f6'}} />
+                </div>
+              )}
 
-                {formPago.aplicaComision && (
-                  <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px', animation: 'fadeIn 0.3s' }}>
-                    <div>
-                      <label style={lblStyle}>Porcentaje de Comisión (%)</label>
-                      <input type="number" placeholder="Ej: 10" value={formPago.porcentajeComision} onChange={e => setFormPago({...formPago, porcentajeComision: e.target.value})} style={inputStyle} />
-                    </div>
-                    <div>
-                      <label style={lblStyle}>¿Quién trajo el Sponsor?</label>
-                      <select value={formPago.tipoReferido} onChange={e => setFormPago({...formPago, tipoReferido: e.target.value})} style={inputStyle}>
-                        <option value="jugador">Jugador del Club (Va como Viático)</option>
-                        <option value="externo">Agente / Externo</option>
-                      </select>
-                    </div>
+              <div>
+                <label style={lblStyle}>Comentarios / Detalle {formPago.metodo_pago === 'Especie' ? '(Ej: 10 pelotas, 5 pecheras)' : '(Opcional)'}</label>
+                <textarea value={formPago.descripcion} onChange={e => setFormPago({...formPago, descripcion: e.target.value})} style={{...inputStyle, resize: 'none', height: '60px'}} placeholder={formPago.metodo_pago === 'Especie' ? "Describí qué entregó el sponsor..." : "Detalles adicionales..."} />
+              </div>
 
-                    {formPago.tipoReferido === 'jugador' ? (
+              {/* SECCIÓN COMISIÓN (Oculta si es en especie porque no entra plata a repartir) */}
+              {formPago.metodo_pago !== 'Especie' && (
+                <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #333', marginTop: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', color: formPago.aplicaComision ? '#f59e0b' : '#fff' }}>
+                    <input type="checkbox" checked={formPago.aplicaComision} onChange={(e) => setFormPago({...formPago, aplicaComision: e.target.checked})} style={{ width: '18px', height: '18px' }} />
+                    ¿Repartir comisión por este Sponsor?
+                  </label>
+
+                  {formPago.aplicaComision && (
+                    <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px', animation: 'fadeIn 0.3s' }}>
                       <div>
-                        <label style={lblStyle}>Seleccionar Jugador</label>
-                        <select value={formPago.jugadorReferidoId} onChange={e => setFormPago({...formPago, jugadorReferidoId: e.target.value})} style={inputStyle}>
-                          <option value="">Seleccione un jugador...</option>
-                          {jugadores.map(j => <option key={j.id} value={j.id}>{j.apellido}, {j.nombre}</option>)}
+                        <label style={lblStyle}>Porcentaje de Comisión (%)</label>
+                        <input type="number" placeholder="Ej: 10" value={formPago.porcentajeComision} onChange={e => setFormPago({...formPago, porcentajeComision: e.target.value})} style={inputStyle} />
+                      </div>
+                      <div>
+                        <label style={lblStyle}>¿Quién trajo el Sponsor?</label>
+                        <select value={formPago.tipoReferido} onChange={e => setFormPago({...formPago, tipoReferido: e.target.value})} style={inputStyle}>
+                          <option value="jugador">Jugador del Club (Va como Viático)</option>
+                          <option value="externo">Agente / Externo</option>
                         </select>
                       </div>
-                    ) : (
-                      <div>
-                        <label style={lblStyle}>Nombre del Agente Externo</label>
-                        <input type="text" placeholder="Nombre completo" value={formPago.nombreReferidoExterno} onChange={e => setFormPago({...formPago, nombreReferidoExterno: e.target.value})} style={inputStyle} />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+
+                      {formPago.tipoReferido === 'jugador' ? (
+                        <div>
+                          <label style={lblStyle}>Seleccionar Jugador</label>
+                          <select value={formPago.jugadorReferidoId} onChange={e => setFormPago({...formPago, jugadorReferidoId: e.target.value})} style={inputStyle}>
+                            <option value="">Seleccione un jugador...</option>
+                            {jugadores.map(j => <option key={j.id} value={j.id}>{j.apellido}, {j.nombre}</option>)}
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label style={lblStyle}>Nombre del Agente Externo</label>
+                          <input type="text" placeholder="Nombre completo" value={formPago.nombreReferidoExterno} onChange={e => setFormPago({...formPago, nombreReferidoExterno: e.target.value})} style={inputStyle} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>

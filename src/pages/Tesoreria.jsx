@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import PaymentSelector from '../components/PaymentSelector';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Cell,
@@ -35,14 +36,12 @@ function Tesoreria() {
   // Estados UI
   const [vista, setVista] = useState('cobros'); 
   const [categoria, setCategoria] = useState('Primera');
-  const [filtroEmp, setFiltroEmp] = useState('Todos'); 
   const [cargando, setCargando] = useState(false);
 
   // Datos
   const [jugadoresInfo, setJugadoresInfo] = useState([]);
   const [empleados, setEmpleados] = useState([]);
-  const [listaEgresos, setListaEgresos] = useState([]);
-  const [cajaCompleta, setCajaCompleta] = useState([]); // NUEVO ESTADO PARA EL LIBRO MAYOR
+  const [cajaCompleta, setCajaCompleta] = useState([]);
   const [balance, setBalance] = useState({ ingresos: 0, egresos: 0 });
   const [datosReporte, setDatosReporte] = useState(null);
 
@@ -74,7 +73,7 @@ function Tesoreria() {
   useEffect(() => {
     if (clubId && accesoPermitido) {
       if (vista === 'cobros') cargarTableroCobros();
-      if (vista === 'empleados') cargarEmpleados();
+      if (vista === 'staff' || vista === 'viaticos') cargarEmpleados();
       if (vista === 'egresos') cargarEgresosYBalance();
       if (vista === 'reportes') cargarReportes();
     }
@@ -216,8 +215,9 @@ function Tesoreria() {
       // 2. Traer Ingresos de Cuotas
       const { data: ingresosMes } = await supabase.from('tesoreria_pagos').select('*').eq('club_id', clubId).gte('fecha_pago', primerDia).lte('fecha_pago', ultimoDia);
       
-      // 3. Traer Ingresos de Sponsors
+      // 3. Traer Ingresos de Sponsors (También traemos la lista de sponsors para enlazar los nombres)
       const { data: ingSponsorsMes } = await supabase.from('sponsors_pagos').select('*').eq('club_id', clubId).gte('fecha_pago', primerDia).lte('fecha_pago', ultimoDia);
+      const { data: listaSponsors } = await supabase.from('sponsors').select('id, nombre').eq('club_id', clubId);
       
       // 4. Traer Ingresos Extraordinarios
       const { data: ingExtraMes } = await supabase.from('tesoreria_ingresos_extra').select('*').eq('club_id', clubId).gte('fecha', primerDia).lte('fecha', ultimoDia);
@@ -225,9 +225,34 @@ function Tesoreria() {
       // Consolidar todos los movimientos en un solo arreglo (Libro Mayor)
       let movimientos = [];
 
-      (egresosMes || []).forEach(e => movimientos.push({ id: `eg-${e.id}`, fecha: e.fecha, tipo: 'salida', categoria: e.categoria, descripcion: e.descripcion || `Resp: ${e.responsable}`, monto: Number(e.monto) }));
+      (egresosMes || []).forEach(e => {
+        // Mejoramos la descripción para que quede claro quién se llevó la plata si es un responsable
+        const textoDetalle = e.responsable && e.responsable !== 'Tesorero/Admin' 
+          ? `${e.descripcion || e.categoria} (Abonado a: ${e.responsable})` 
+          : e.descripcion || e.categoria;
+
+        movimientos.push({ 
+          id: `eg-${e.id}`, fecha: e.fecha, tipo: 'salida', categoria: e.categoria, 
+          descripcion: textoDetalle, monto: Number(e.monto) 
+        });
+      });
+
       (ingresosMes || []).forEach(i => movimientos.push({ id: `cuota-${i.id}`, fecha: i.fecha_pago, tipo: 'entrada', categoria: 'Cuota Social', descripcion: 'Cobro registrado por sistema', monto: Number(i.monto) }));
-      (ingSponsorsMes || []).forEach(s => movimientos.push({ id: `spon-${s.id}`, fecha: s.fecha_pago, tipo: 'entrada', categoria: 'Sponsor / Subsidio', descripcion: 'Aporte comercial', monto: Number(s.monto) }));
+      
+      (ingSponsorsMes || []).forEach(s => {
+        const nombreSponsor = listaSponsors?.find(sp => sp.id === s.sponsor_id)?.nombre || 'Sponsor Desconocido';
+        const textoDetalle = s.descripcion ? `${nombreSponsor} - ${s.descripcion}` : `Aporte de ${nombreSponsor}`;
+        
+        movimientos.push({ 
+          id: `spon-${s.id}`, 
+          fecha: s.fecha_pago, 
+          tipo: 'entrada', 
+          categoria: s.metodo_pago === 'Especie' ? 'Canje / Especie' : 'Sponsor / Subsidio', 
+          descripcion: textoDetalle, 
+          monto: Number(s.monto) 
+        });
+      });
+
       (ingExtraMes || []).forEach(x => movimientos.push({ id: `ext-${x.id}`, fecha: x.fecha, tipo: 'entrada', categoria: x.categoria, descripcion: x.descripcion || 'Ingreso manual', monto: Number(x.monto) }));
 
       // Ordenar por fecha (más reciente arriba)
@@ -290,15 +315,25 @@ function Tesoreria() {
       const ultimoDia = `${periodo}-${ultimoDiaNum}`;
 
       const { data: pagosMes } = await supabase.from('tesoreria_egresos')
-        .select('responsable, fecha, monto, categoria').eq('club_id', clubId).gte('fecha', primerDia).lte('fecha', ultimoDia);
+        .select('responsable, fecha, monto, categoria, descripcion').eq('club_id', clubId).gte('fecha', primerDia).lte('fecha', ultimoDia);
 
       const empleadosConEstado = (emp || []).map(e => {
-        const pagoRealizado = (pagosMes || []).find(p => {
-          const nombreEmpleado = e.nombre_completo?.trim().toLowerCase();
-          const nombrePago = p.responsable?.trim().toLowerCase();
-          return (p.categoria === 'Sueldos y Viáticos' || p.categoria === 'Sueldos' || p.categoria === 'Comisiones / Terceros') && (nombreEmpleado === nombrePago);
-        });
-        return { ...e, pagoEsteMes: pagoRealizado };
+        const nombreEmpleado = e.nombre_completo?.trim().toLowerCase();
+        
+        // Buscamos si ya se le liquidó el sueldo base (excluimos comisiones)
+        const pagoSueldo = (pagosMes || []).find(p => 
+          (p.categoria === 'Sueldos y Viáticos' || p.categoria === 'Sueldos') && 
+          p.responsable?.trim().toLowerCase() === nombreEmpleado &&
+          !p.descripcion?.toLowerCase().includes('comisión') 
+        );
+
+        // Sumamos todos los bonos extras/comisiones que tuvo este mes
+        const bonosMes = (pagosMes || []).filter(p => 
+          p.responsable?.trim().toLowerCase() === nombreEmpleado &&
+          p.descripcion?.toLowerCase().includes('comisión')
+        ).reduce((acc, curr) => acc + Number(curr.monto), 0);
+
+        return { ...e, pagoEsteMes: pagoSueldo, bonosExtra: bonosMes };
       });
 
       setEmpleados(empleadosConEstado);
@@ -413,13 +448,6 @@ function Tesoreria() {
     catch (err) { showToast("Error al aplicar beca.", "error"); } finally { setCargando(false); }
   };
 
-  // --- FILTRO VISUAL DE EMPLEADOS ---
-  const empleadosFiltrados = empleados.filter(e => {
-    if (filtroEmp === 'Jugadores') return e.jugador_id !== null;
-    if (filtroEmp === 'Externos') return e.jugador_id === null;
-    return true;
-  });
-
   // SI NO TIENE PERMISOS, LO REBOTAMOS ACÁ
   if (!accesoPermitido) {
     return (
@@ -456,9 +484,10 @@ function Tesoreria() {
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '20px' }}>
              <button onClick={() => setVista('cobros')} style={{ ...tabBtn, background: vista === 'cobros' ? '#3b82f6' : 'transparent', color: vista === 'cobros' ? '#fff' : '#888' }}>💰 COBROS DE CUOTAS</button>
-             <button onClick={() => setVista('empleados')} style={{ ...tabBtn, background: vista === 'empleados' ? '#f59e0b' : 'transparent', color: vista === 'empleados' ? '#000' : '#888' }}>👥 SUELDOS Y VIÁTICOS</button>
-             <button onClick={() => setVista('egresos')} style={{ ...tabBtn, background: vista === 'egresos' ? '#00ff88' : 'transparent', color: vista === 'egresos' ? '#000' : '#888' }}>🏦 CAJA COMPLETA</button>
-             <button onClick={() => setVista('reportes')} style={{ ...tabBtn, background: vista === 'reportes' ? '#a855f7' : 'transparent', color: vista === 'reportes' ? '#fff' : '#888' }}>📊 REPORTES Y KPI</button>
+             <button onClick={() => setVista('staff')} style={{ ...tabBtn, background: vista === 'staff' ? '#f59e0b' : 'transparent', color: vista === 'staff' ? '#000' : '#888' }}>👥 STAFF / EMPLEADOS</button>
+             <button onClick={() => setVista('viaticos')} style={{ ...tabBtn, background: vista === 'viaticos' ? '#a855f7' : 'transparent', color: vista === 'viaticos' ? '#fff' : '#888' }}>🏃‍♂️ JUGADORES (VIÁTICOS)</button>
+             <button onClick={() => setVista('egresos')} style={{ ...tabBtn, background: vista === 'egresos' ? '#00ff88' : 'transparent', color: vista === 'egresos' ? '#000' : '#888' }}>🏦 CAJA Y MAYOR</button>
+             <button onClick={() => setVista('reportes')} style={{ ...tabBtn, background: vista === 'reportes' ? '#ef4444' : 'transparent', color: vista === 'reportes' ? '#fff' : '#888' }}>📊 REPORTES</button>
         </div>
       </div>
 
@@ -550,22 +579,15 @@ function Tesoreria() {
           )}
 
           {/* ==================================================== */}
-          {/* VISTA 2: EMPLEADOS Y SUELDOS (CON FILTROS)           */}
+          {/* VISTA 2: STAFF Y EMPLEADOS (SIN JUGADORES)           */}
           {/* ==================================================== */}
-          {vista === 'empleados' && (
+          {vista === 'staff' && (
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                <h3 style={{ margin: 0, color: '#f59e0b' }}>Sueldos de {nombreMesVencido}</h3>
+                <h3 style={{ margin: 0, color: '#f59e0b' }}>Liquidación Staff - {nombreMesVencido}</h3>
                 <button onClick={() => { setFormEmpleado({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' }); setModalEmpleado(true); }} style={{ background: '#f59e0b', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   + NUEVO EMPLEADO
                 </button>
-              </div>
-
-              {/* FILTROS ARREGLADOS EL DISPLAY */}
-              <div style={{ gap: '10px', marginBottom: '20px', background: '#111', padding: '5px', borderRadius: '8px', display: 'inline-flex' }}>
-                <button onClick={() => setFiltroEmp('Todos')} style={{ ...tabBtn, background: filtroEmp === 'Todos' ? '#333' : 'transparent', color: filtroEmp === 'Todos' ? '#fff' : '#888' }}>Todos</button>
-                <button onClick={() => setFiltroEmp('Jugadores')} style={{ ...tabBtn, background: filtroEmp === 'Jugadores' ? '#3b82f6' : 'transparent', color: filtroEmp === 'Jugadores' ? '#fff' : '#888' }}>Jugadores Becados</button>
-                <button onClick={() => setFiltroEmp('Externos')} style={{ ...tabBtn, background: filtroEmp === 'Externos' ? '#f59e0b' : 'transparent', color: filtroEmp === 'Externos' ? '#000' : '#888' }}>Cuerpo Técnico / Staff</button>
               </div>
 
               <div className="table-wrapper">
@@ -579,36 +601,42 @@ function Tesoreria() {
                     </tr>
                   </thead>
                   <tbody>
-                    {empleadosFiltrados.map(emp => (
+                    {empleados.filter(e => !e.jugador_id).map(emp => (
                       <tr key={emp.id} style={{ borderBottom: '1px solid #222' }}>
                         <td style={{ padding: '15px 12px' }}>
                           <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{emp.nombre_completo}</div>
                           <div style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 'bold' }}>{emp.rol.toUpperCase()}</div>
-                          {emp.jugador_id && <span style={{ fontSize: '0.65rem', color: '#3b82f6', border: '1px solid #3b82f6', padding: '2px 6px', borderRadius: '10px', marginLeft: '5px' }}>Ficha Jugador</span>}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
                           {emp.pagoEsteMes ? (
                             <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '6px', borderRadius: '6px', display: 'inline-block' }}>
-                              <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ PAGADO</span>
+                              <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ LIQUIDADO</span>
                               <div style={{ color: '#aaa', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                             </div>
                           ) : (
                             <span style={{ background: '#7f1d1d', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
                           )}
                         </td>
-                        <td style={{ padding: '12px', textAlign: 'right', fontWeight: 900, fontSize: '1.1rem' }}>${Number(emp.sueldo_base).toLocaleString()}</td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                          <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>${Number(emp.sueldo_base).toLocaleString()}</div>
+                          {emp.bonosExtra > 0 && (
+                            <div style={{ fontSize: '0.75rem', color: '#00ff88', fontWeight: 'bold', background: 'rgba(0,255,136,0.1)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
+                              🌟 + ${emp.bonosExtra.toLocaleString()} (Bonos/Comisión)
+                            </div>
+                          )}
+                        </td>
                         <td style={{ padding: '12px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                           <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: '#fff', border: '1px solid #555', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
                           {emp.pagoEsteMes ? (
                              <button disabled style={{ background: '#222', color: '#555', border: '1px solid #333', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
                           ) : (
-                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Sueldo de ${nombreMesVencido}`}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR</button>
+                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Sueldo de ${nombreMesVencido}`}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR BASE</button>
                           )}
                         </td>
                       </tr>
                     ))}
-                    {empleadosFiltrados.length === 0 && (
-                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No se encontraron registros para este filtro.</td></tr>
+                    {empleados.filter(e => !e.jugador_id).length === 0 && (
+                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No hay miembros del staff registrados.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -617,7 +645,73 @@ function Tesoreria() {
           )}
 
           {/* ==================================================== */}
-          {/* VISTA 3: CAJA COMPLETA (LIBRO MAYOR Y EXTRAS)        */}
+          {/* VISTA 3: JUGADORES CON VIÁTICOS Y COMISIONES         */}
+          {/* ==================================================== */}
+          {vista === 'viaticos' && (
+            <div className="bento-card" style={{ borderTop: '3px solid #a855f7' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+                <h3 style={{ margin: 0, color: '#a855f7' }}>Viáticos de Jugadores - {nombreMesVencido}</h3>
+                <button onClick={() => { setFormEmpleado({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' }); setModalEmpleado(true); }} style={{ background: '#a855f7', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                  + ASIGNAR VIÁTICO
+                </button>
+              </div>
+
+              <div className="table-wrapper">
+                <table style={{ width: '100%', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
+                      <th style={{ padding: '12px' }}>NOMBRE DEL JUGADOR</th>
+                      <th style={{ padding: '12px', textAlign: 'center' }}>LIQUIDACIÓN {nombreMesVencido}</th>
+                      <th style={{ padding: '12px', textAlign: 'right' }}>MONTO VIÁTICO</th>
+                      <th style={{ padding: '12px', textAlign: 'right' }}>ACCIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {empleados.filter(e => e.jugador_id).map(emp => (
+                      <tr key={emp.id} style={{ borderBottom: '1px solid #222' }}>
+                        <td style={{ padding: '15px 12px' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{emp.nombre_completo}</div>
+                          <span style={{ fontSize: '0.65rem', color: '#a855f7', border: '1px solid #a855f7', padding: '2px 6px', borderRadius: '10px' }}>Plantel Activo</span>
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {emp.pagoEsteMes ? (
+                             <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '6px', borderRadius: '6px', display: 'inline-block' }}>
+                               <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ VIÁTICO PAGADO</span>
+                               <div style={{ color: '#aaa', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
+                             </div>
+                          ) : (
+                            <span style={{ background: '#7f1d1d', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                          <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>${Number(emp.sueldo_base).toLocaleString()}</div>
+                          {emp.bonosExtra > 0 && (
+                            <div style={{ fontSize: '0.75rem', color: '#00ff88', fontWeight: 'bold', background: 'rgba(0,255,136,0.1)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
+                              🌟 + ${emp.bonosExtra.toLocaleString()} (Comisión Sponsor)
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: '#fff', border: '1px solid #555', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
+                          {emp.pagoEsteMes ? (
+                             <button disabled style={{ background: '#222', color: '#555', border: '1px solid #333', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
+                          ) : (
+                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Viático de ${nombreMesVencido}`}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#a855f7', color: '#fff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR VIÁTICO</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {empleados.filter(e => e.jugador_id).length === 0 && (
+                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No hay jugadores con viáticos asignados.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ==================================================== */}
+          {/* VISTA 4: CAJA COMPLETA (LIBRO MAYOR Y EXTRAS)        */}
           {/* ==================================================== */}
           {vista === 'egresos' && (
             <>
@@ -694,7 +788,7 @@ function Tesoreria() {
           )}
 
           {/* ==================================================== */}
-          {/* VISTA 4: REPORTES Y KPI (DASHBOARD PRO)              */}
+          {/* VISTA 5: REPORTES Y KPI (DASHBOARD PRO)              */}
           {/* ==================================================== */}
           {vista === 'reportes' && datosReporte && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
@@ -731,7 +825,7 @@ function Tesoreria() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false}/>
                       <XAxis dataKey="name" stroke="#555" fontSize={10}/>
                       <YAxis stroke="#555" fontSize={10} width={60} tickFormatter={(val) => `$${val/1000}k`} />
-                      <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} />
+                      <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} itemStyle={{ color: '#fff', fontWeight: 'bold' }} labelStyle={{ color: '#aaa', marginBottom: '5px' }} />
                       <Line type="monotone" name="Ingresos" dataKey="ingresos" stroke="#00ff88" strokeWidth={3} dot={{fill: '#00ff88'}} />
                       <Line type="monotone" name="Egresos" dataKey="egresos" stroke="#ef4444" strokeWidth={3} dot={{fill: '#ef4444'}} />
                     </LineChart>
@@ -748,7 +842,7 @@ function Tesoreria() {
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} formatter={(val) => `$${val.toLocaleString()}`} />
+                        <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} itemStyle={{ color: '#fff', fontWeight: 'bold' }} formatter={(val) => `$${val.toLocaleString()}`} />
                       </PieChart>
                    </ResponsiveContainer>
                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
@@ -795,7 +889,7 @@ function Tesoreria() {
                         <BarChart data={datosReporte.dataCat} layout="vertical" margin={{ left: 30, right: 20 }}>
                           <XAxis type="number" hide />
                           <YAxis dataKey="nombre" type="category" stroke="#888" fontSize={10} width={90} />
-                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ background: '#000', border: '1px solid #333', borderRadius:'8px' }} formatter={(val) => `$${val.toLocaleString()}`} />
+                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ background: '#000', border: '1px solid #333', borderRadius:'8px' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} labelStyle={{ color: '#aaa' }} formatter={(val) => `$${val.toLocaleString()}`} />
                           <Bar dataKey="monto" radius={[0, 4, 4, 0]} barSize={15}>
                             {datosReporte.dataCat.map((entry, index) => (
                               <Cell key={index} fill={entry.nombre === 'Sueldos y Viáticos' ? '#f59e0b' : '#333'} />
@@ -878,14 +972,10 @@ function Tesoreria() {
                 <label style={lblStyle}>¿Cuánto paga ahora?</label>
                 <input type="number" value={montoPagar} onChange={(e) => setMontoPagar(e.target.value)} placeholder="Monto a ingresar..." style={{ ...inputFormStyle, borderColor: '#00ff88', fontSize: '1.2rem', padding: '15px' }} />
               </div>
-              <div>
-                <label style={lblStyle}>Forma de pago</label>
-                <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} style={inputFormStyle}>
-                  <option value="Efectivo">💵 Efectivo (Caja Club)</option>
-                  <option value="Transferencia">🏦 Transferencia Bancaria</option>
-                  <option value="MercadoPago">📱 MercadoPago / Billetera</option>
-                </select>
-              </div>
+              
+              {/* === NUEVO COMPONENTE: COBRAR CUOTA === */}
+              <PaymentSelector onMethodSelect={(metodo) => setMetodoPago(metodo)} />
+              {/* ====================================== */}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
@@ -958,16 +1048,25 @@ function Tesoreria() {
           <div className="bento-card" style={{ width: '420px', border: '1px solid #ef4444' }}>
             <h3 style={{ marginTop: 0, color: '#ef4444' }}>Liquidar Sueldo de {nombreMesVencido}</h3>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Registrando pago para <strong>{modalSueldo.empleado.nombre_completo}</strong>.</p>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
                 <label style={lblStyle}>Monto a registrar ($)</label>
                 <input type="number" value={formSueldo.monto} onChange={(e) => setFormSueldo({...formSueldo, monto: e.target.value})} style={{ ...inputFormStyle, borderColor: '#ef4444', fontSize: '1.2rem', padding: '15px' }} />
               </div>
+
+              {/* === NUEVO COMPONENTE: PAGO DE SUELDO === */}
+              <PaymentSelector 
+                 onMethodSelect={(metodo) => setFormSueldo({...formSueldo, cajaOrigen: metodo})} 
+              />
+              {/* ======================================== */}
+
               <div>
                 <label style={lblStyle}>Detalle / Concepto</label>
                 <input type="text" value={formSueldo.descripcion} onChange={(e) => setFormSueldo({...formSueldo, descripcion: e.target.value})} style={inputFormStyle} />
               </div>
             </div>
+
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
               <button onClick={() => setModalSueldo({visible: false, empleado: null})} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={registrarPagoSueldo} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#ef4444', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>CONFIRMAR EGRESO</button>
@@ -1000,6 +1099,11 @@ function Tesoreria() {
                 <label style={lblStyle}>Monto a descontar ($)</label>
                 <input type="number" value={formGasto.monto} onChange={(e) => setFormGasto({...formGasto, monto: e.target.value})} style={{ ...inputFormStyle, borderColor: '#ef4444', fontSize: '1.2rem', padding: '15px' }} />
               </div>
+
+              {/* === NUEVO COMPONENTE: GASTO GENERAL === */}
+              <PaymentSelector onMethodSelect={(metodo) => setFormGasto({...formGasto, cajaOrigen: metodo})} />
+              {/* ======================================= */}
+
               <div>
                 <label style={lblStyle}>Descripción (Opcional)</label>
                 <input type="text" value={formGasto.descripcion} onChange={(e) => setFormGasto({...formGasto, descripcion: e.target.value})} placeholder="Ej: Pago referí domingo" style={inputFormStyle} />
@@ -1039,16 +1143,14 @@ function Tesoreria() {
                 <label style={lblStyle}>Monto a ingresar ($)</label>
                 <input type="number" value={formIngresoExtra.monto} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, monto: e.target.value})} style={{ ...inputFormStyle, borderColor: '#00ff88', fontSize: '1.2rem', padding: '15px' }} />
               </div>
+
+              {/* === NUEVO COMPONENTE: INGRESO EXTRA === */}
+              <PaymentSelector onMethodSelect={(metodo) => setFormIngresoExtra({...formIngresoExtra, metodo_pago: metodo})} />
+              {/* ======================================= */}
+
               <div>
                 <label style={lblStyle}>Descripción (Opcional)</label>
                 <input type="text" value={formIngresoExtra.descripcion} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, descripcion: e.target.value})} placeholder="Ej: Recaudación bingo familiar" style={inputFormStyle} />
-              </div>
-              <div>
-                <label style={lblStyle}>Método de Pago</label>
-                <select value={formIngresoExtra.metodo_pago} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, metodo_pago: e.target.value})} style={inputFormStyle}>
-                  <option value="Efectivo">Efectivo</option>
-                  <option value="Transferencia">Transferencia</option>
-                </select>
               </div>
             </div>
 
