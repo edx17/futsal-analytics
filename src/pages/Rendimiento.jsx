@@ -49,14 +49,14 @@ const Tip = ({ t }) => (
 );
 
 const SecTitle = ({ children, color }) => (
-  <div style={{ fontSize: '0.78rem', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', borderBottom: '1px solid #0f172a', paddingBottom: 9, marginBottom: 16, color: color || 'var(--text-dim)' }}>{children}</div>
+  <div style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '1.5px', textTransform: 'uppercase', borderBottom: '1px solid #0f172a', paddingBottom: 9, marginBottom: 16, color: color || 'var(--text-dim)' }}>{children}</div>
 );
 
 const KpiCard = ({ label, value, unit = '', sub, color = '#fff', accent }) => (
   <div className="glass-panel" style={{ padding: 16, textAlign: 'center', borderTop: accent ? `3px solid ${accent}` : undefined }}>
     <div style={{ color: 'var(--text-dim)', fontSize: '0.62rem', fontWeight: 900, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>{label}</div>
-    <div style={{ fontSize: '1.8rem', fontWeight: 900, color, lineHeight: 1 }}>{value}<span style={{ fontSize: '0.85rem' }}>{unit}</span></div>
-    {sub && <div style={{ fontSize: '0.62rem', color: '#334155', marginTop: 5 }}>{sub}</div>}
+    <div style={{ fontSize: '2rem', fontWeight: 900, color, lineHeight: 1 }}>{value}<span style={{ fontSize: '0.85rem' }}>{unit}</span></div>
+    {sub && <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 6 }}>{sub}</div>}
   </div>
 );
 
@@ -155,20 +155,20 @@ export default function Rendimiento() {
       </div>
 
       {/* ── LAYOUT: SIDEBAR + CONTENT ──────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 20, alignItems: 'start' }} className="rend-layout-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 24, alignItems: 'start' }} className="rend-layout-grid">
 
-        {/* ══ SIDEBAR ══ */}
+        {/* ══ SIDEBAR — único punto de navegación ══ */}
         <div style={{ position: 'sticky', top: 16 }}>
-          <div style={{ background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 16, backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 18, backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            {/* ── SELECTOR GLOBAL (siempre visible) ── */}
+            {/* ── SELECTOR GLOBAL ── */}
             <div>
-              <div style={{ fontSize: '0.58rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>
+              <div style={{ fontSize: '0.65rem', fontWeight: 900, color: '#475569', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 7 }}>
                 {esJugador ? 'MI PERFIL' : 'JUGADOR ACTIVO'}
               </div>
               {esStaff ? (
                 <select
-                  style={{ width: '100%', background: '#060a14', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: 8, padding: '9px 11px', fontSize: '0.82rem', fontWeight: 800, outline: 'none', cursor: 'pointer' }}
+                  style={{ width: '100%', background: '#060a14', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: 9, padding: '10px 12px', fontSize: '0.88rem', fontWeight: 800, outline: 'none', cursor: 'pointer' }}
                   value={selId || ''}
                   onChange={e => setSelId(parseInt(e.target.value))}
                 >
@@ -179,7 +179,7 @@ export default function Rendimiento() {
                   ))}
                 </select>
               ) : (
-                <div style={{ padding: '9px 12px', background: '#060a14', border: '1px solid #0f172a', borderRadius: 8, color: 'var(--accent)', fontWeight: 900, fontSize: '0.88rem' }}>
+                <div style={{ padding: '10px 13px', background: '#060a14', border: '1px solid #0f172a', borderRadius: 9, color: 'var(--accent)', fontWeight: 900, fontSize: '0.9rem' }}>
                   {jug?.jugadores?.apellido} {jug?.jugadores?.nombre}
                 </div>
               )}
@@ -187,27 +187,25 @@ export default function Rendimiento() {
 
             {/* ── PLAYER CARD ── */}
             {jug ? (
-              <div style={{ background: 'rgba(2,6,23,0.6)', borderRadius: 10, padding: 14, border: '1px solid #0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-                <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'linear-gradient(135deg,#1e3a5f,#0f172a)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--accent)', fontSize: '1rem', marginBottom: 8, letterSpacing: -1 }}>
+              <div style={{ background: 'rgba(2,6,23,0.7)', borderRadius: 12, padding: 16, border: '1px solid #0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#1e3a5f,#0f172a)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--accent)', fontSize: '1.1rem', marginBottom: 10, letterSpacing: -1 }}>
                   {jug.jugadores?.apellido?.charAt(0)}{jug.jugadores?.nombre?.charAt(0)}
                 </div>
-                <div style={{ fontWeight: 900, fontSize: '0.95rem', letterSpacing: -0.5 }}>{jug.jugadores?.apellido?.toUpperCase()}</div>
-                <div style={{ fontSize: '0.72rem', color: '#475569' }}>{jug.jugadores?.nombre}</div>
-                <div style={{ marginTop: 6, padding: '2px 10px', background: '#10b98122', border: '1px solid #10b98133', borderRadius: 4, fontSize: '0.62rem', fontWeight: 900, color: '#10b981', textTransform: 'uppercase', letterSpacing: 1 }}>{jug.jugadores?.posicion || '—'}</div>
-                <div style={{ fontSize: '0.7rem', color: '#1e293b', marginTop: 3, fontWeight: 900 }}>#{jug.jugadores?.dorsal}</div>
+                <div style={{ fontWeight: 900, fontSize: '1rem', letterSpacing: -0.5 }}>{jug.jugadores?.apellido?.toUpperCase()}</div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{jug.jugadores?.nombre}</div>
+                <div style={{ marginTop: 7, padding: '3px 11px', background: '#10b98122', border: '1px solid #10b98133', borderRadius: 4, fontSize: '0.68rem', fontWeight: 900, color: '#10b981', textTransform: 'uppercase', letterSpacing: 1 }}>{jug.jugadores?.posicion || '—'}</div>
+                <div style={{ fontSize: '0.76rem', color: '#334155', marginTop: 4, fontWeight: 900 }}>#{jug.jugadores?.dorsal}</div>
 
-                {/* Stats rápidas */}
-                <div style={{ width: '100%', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ width: '100%', marginTop: 14, display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {[['Fecha', jug.fecha_medicion?.slice(0, 10) || '—'], ['Pierna', jug.pierna || '—'], ['Peso', jug.peso ? `${jug.peso} kg` : '—'], ['Talla', jug.talla ? `${jug.talla} cm` : '—']].map(([k, v]) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', background: '#060a14', borderRadius: 5 }}>
-                      <span style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 800, textTransform: 'uppercase' }}>{k}</span>
-                      <span style={{ fontSize: '0.68rem', fontWeight: 900, color: '#64748b' }}>{v}</span>
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 9px', background: '#060a14', borderRadius: 6 }}>
+                      <span style={{ fontSize: '0.68rem', color: '#334155', fontWeight: 800, textTransform: 'uppercase' }}>{k}</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#94a3b8' }}>{v}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Mini barras métricas clave */}
-                <div style={{ width: '100%', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <div style={{ width: '100%', marginTop: 14, display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {[
                     { lbl: 'CMJ',   val: jug.cmj,            elite: ELITE.cmj,   unit: 'cm', color: '#3b82f6' },
                     { lbl: 'ABK',   val: jug.abk,            elite: ELITE.abk,   unit: 'cm', color: '#8b5cf6' },
@@ -217,12 +215,12 @@ export default function Rendimiento() {
                     const pct = val ? Math.min(100, (Number(val) / elite) * 100) : 0;
                     return (
                       <div key={lbl}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                          <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#1e293b', textTransform: 'uppercase' }}>{lbl}</span>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 900, color }}>{val ?? '—'}<span style={{ fontSize: '0.58rem', color: '#334155', marginLeft: 1 }}>{unit}</span></span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: '0.66rem', fontWeight: 900, color: '#475569', textTransform: 'uppercase' }}>{lbl}</span>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 900, color }}>{val ?? '—'}<span style={{ fontSize: '0.62rem', color: '#475569', marginLeft: 2 }}>{unit}</span></span>
                         </div>
-                        <div style={{ height: 4, background: '#0f172a', borderRadius: 2, position: 'relative' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2, transition: 'width 0.5s ease' }} />
+                        <div style={{ height: 5, background: '#0f172a', borderRadius: 3 }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.5s ease' }} />
                         </div>
                       </div>
                     );
@@ -230,14 +228,14 @@ export default function Rendimiento() {
                 </div>
               </div>
             ) : (
-              <div style={{ textAlign: 'center', color: '#1e293b', padding: 20, fontSize: '0.78rem' }}>Sin datos del jugador.</div>
+              <div style={{ textAlign: 'center', color: '#334155', padding: 20, fontSize: '0.82rem' }}>Sin datos del jugador.</div>
             )}
 
-            {/* ── NAV TABS ── */}
-            <nav style={{ borderTop: '1px solid #0f172a', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* ── NAV TABS (única botonera) ── */}
+            <nav style={{ borderTop: '1px solid #0f172a', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
               {TABS.map(t => (
                 <button key={t.id} onClick={() => setTab(t.id)}
-                  style={{ background: tab === t.id ? '#0a0f1e' : 'transparent', border: 'none', borderLeft: `3px solid ${tab === t.id ? (t.col || 'var(--accent)') : 'transparent'}`, color: tab === t.id ? (t.col || 'var(--accent)') : '#1e293b', padding: '8px 10px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 900, cursor: 'pointer', borderRadius: '0 6px 6px 0', transition: '0.15s' }}>
+                  style={{ background: tab === t.id ? '#0a0f1e' : 'transparent', border: 'none', borderLeft: `3px solid ${tab === t.id ? (t.col || 'var(--accent)') : 'transparent'}`, color: tab === t.id ? (t.col || 'var(--accent)') : '#475569', padding: '10px 12px', textAlign: 'left', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer', borderRadius: '0 7px 7px 0', transition: '0.15s' }}>
                   {t.lbl}
                 </button>
               ))}
@@ -246,19 +244,8 @@ export default function Rendimiento() {
           </div>
         </div>
 
-        {/* ══ MAIN CONTENT ══ */}
+        {/* ══ MAIN CONTENT — sin botonera duplicada ══ */}
         <div>
-          {/* Tab bar superior (duplicado para acceso rápido) */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 18, overflowX: 'auto', paddingBottom: 4, flexWrap: 'wrap' }}>
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                style={{ background: tab === t.id ? (t.col ? t.col + '22' : 'rgba(255,255,255,0.06)') : '#0a0f1e', border: `1px solid ${tab === t.id ? (t.col || 'rgba(255,255,255,0.15)') : '#1e293b'}`, color: tab === t.id ? (t.col || '#fff') : '#334155', padding: '9px 16px', borderRadius: 7, fontSize: '0.72rem', fontWeight: 900, cursor: 'pointer', transition: '0.15s', whiteSpace: 'nowrap' }}>
-                {t.lbl}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab content */}
           <div style={{ animation: 'fadeUp 0.2s ease' }}>
             {tab === 'resumen' && <TabResumen jug={jug} stats={stats} historial={historial} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
             {tab === 'fisico'  && <TabFisico  jug={jug} stats={stats} historial={historial} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
@@ -277,22 +264,26 @@ export default function Rendimiento() {
       <style>{`
         @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-        .select-dark { width:100%; padding:9px 12px; background:rgba(0,0,0,0.4); border:1px solid #1e293b; color:#fff; border-radius:7px; font-size:0.85rem; outline:none; }
-        .data-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
-        .data-table th { font-size:0.6rem; font-weight:900; color:#1e293b; text-transform:uppercase; padding:7px 10px; border-bottom:1px solid #0f172a; text-align:left; }
-        .data-table td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.025); }
-        .data-table tr:hover td { background:rgba(255,255,255,0.015); }
-        .tip-box { visibility:hidden; opacity:0; position:absolute; bottom:130%; left:50%; transform:translateX(-50%); background:#0f172a; color:#64748b; padding:8px 12px; border-radius:6px; font-size:0.68rem; width:210px; text-align:center; border:1px solid #1e293b; z-index:300; pointer-events:none; transition:opacity 0.2s; white-space:normal; line-height:1.5; }
+        .select-dark { width:100%; padding:10px 13px; background:rgba(0,0,0,0.4); border:1px solid #1e293b; color:#fff; border-radius:8px; font-size:0.9rem; outline:none; }
+        .data-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .data-table th { font-size:0.68rem; font-weight:900; color:#475569; text-transform:uppercase; padding:9px 12px; border-bottom:1px solid #0f172a; text-align:left; }
+        .data-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.03); color:#e2e8f0; }
+        .data-table tr:hover td { background:rgba(255,255,255,0.02); }
+        .tip-box { visibility:hidden; opacity:0; position:absolute; bottom:130%; left:50%; transform:translateX(-50%); background:#0f172a; color:#e2e8f0; padding:9px 13px; border-radius:7px; font-size:0.72rem; width:220px; text-align:center; border:1px solid #1e293b; z-index:300; pointer-events:none; transition:opacity 0.2s; white-space:normal; line-height:1.55; }
         .tip-wrap:hover .tip-box { visibility:visible; opacity:1; }
-        .rg { display:flex; flex-direction:column; gap:18px; }
-        .c2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-        .c3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-        .c4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-        .scroll { overflow-y:auto; max-height:320px; }
+        .rg { display:flex; flex-direction:column; gap:22px; }
+        .c2 { display:grid; grid-template-columns:1fr; gap:18px; }
+        .c3 { display:grid; grid-template-columns:1fr; gap:16px; }
+        .c4 { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+        .scroll { overflow-y:auto; max-height:360px; }
         .scroll::-webkit-scrollbar { width:3px; }
         .scroll::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
-        @media(max-width:1000px) { .c2,.c3,.c4 { grid-template-columns:1fr; } }
-        @media(max-width:800px) { .rend-layout-grid { grid-template-columns:1fr !important; } }
+        /* Recharts tooltip override — texto siempre blanco */
+        .recharts-tooltip-wrapper .recharts-default-tooltip { background:#0f172a !important; border:1px solid #1e293b !important; color:#f8fafc !important; }
+        .recharts-tooltip-item { color:#f8fafc !important; }
+        .recharts-tooltip-label { color:#94a3b8 !important; }
+        @media(min-width:1280px) { .c2 { grid-template-columns:1fr 1fr; } .c3 { grid-template-columns:repeat(3,1fr); } .c4 { grid-template-columns:repeat(4,1fr); } }
+        @media(max-width:800px) { .rend-layout-grid { grid-template-columns:1fr !important; } .c4 { grid-template-columns:1fr 1fr; } }
       `}</style>
     </div>
   );
@@ -324,15 +315,15 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#3b82f6">⚡ Huella Atlética vs Élite <Tip t="Score 50 = promedio plantel. Línea roja = élite mundial." /></SecTitle>
-          <ResponsiveContainer width="100%" height={265}>
+          <ResponsiveContainer width="100%" height={340}>
             <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarData}>
               <PolarGrid stroke="#0f172a" />
-              <PolarAngleAxis dataKey="m" tick={{ fill: '#475569', fontSize: 11 }} />
+              <PolarAngleAxis dataKey="m" tick={{ fill: '#64748b', fontSize: 12 }} />
               <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
               <Radar name={jug.jugadores?.apellido} dataKey="J" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
               <Radar name="Élite" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" strokeWidth={1.5} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [v.toFixed(0), 'Score']} />
+              <Legend wrapperStyle={{ fontSize: 13 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [v.toFixed(0), 'Score']} />
             </RadarChart>
           </ResponsiveContainer>
         </div>
@@ -383,13 +374,13 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
             VO₂ est: <strong style={{ color: '#10b981' }}>{estimarVO2(jug.y26 || jug.y25)} ml/kg/min</strong>
           </div>
           {/* Gráfico barras plantel Yo-Yo */}
-          <ResponsiveContainer width="100%" height={140}>
+          <ResponsiveContainer width="100%" height={200}>
             <BarChart data={[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25))} margin={{ left: -25, right: 5 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#1e293b', fontSize: 7 }} />
-              <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 9 }} />
+              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#64748b', fontSize: 9 }} />
+              <YAxis domain={[14, 24]} tick={{ fill: '#64748b', fontSize: 11 }} />
               <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1} label={{ value: 'Él', fill: '#ef4444', fontSize: 7 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [v, p.payload.jugadores?.apellido]} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v, p.payload.jugadores?.apellido]} />
               <Bar dataKey={d => d.y26 || d.y25} radius={[2, 2, 0, 0]} barSize={12}>
                 {[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25)).map((d, i) => (
                   <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.6} />
@@ -500,15 +491,15 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#3b82f6">Perfil Z-Score <Tip t="Centro = promedio plantel. Rojo = élite mundial." /></SecTitle>
-          <ResponsiveContainer width="100%" height={290}>
+          <ResponsiveContainer width="100%" height={340}>
             <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarData}>
               <PolarGrid stroke="#0f172a" />
-              <PolarAngleAxis dataKey="m" tick={{ fill: '#475569', fontSize: 11, fontWeight: 700 }} />
+              <PolarAngleAxis dataKey="m" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }} />
               <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
               <Radar name={jug.jugadores?.apellido} dataKey="J" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.55} />
               <Radar name="Élite" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [v.toFixed(0), 'Score']} />
+              <Legend wrapperStyle={{ fontSize: 13 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [v.toFixed(0), 'Score']} />
             </RadarChart>
           </ResponsiveContainer>
         </div>
@@ -547,12 +538,12 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
             </span>
           ) : <span style={{ color: '#1e293b' }}>Sin datos unilaterales</span>}
         </div>
-        <ResponsiveContainer width="100%" height={210}>
+        <ResponsiveContainer width="100%" height={270}>
           <BarChart data={ultimosDatos.filter(d => d.asym_cmj != null).sort((a, b) => Math.abs(b.asym_cmj) - Math.abs(a.asym_cmj))} layout="vertical" margin={{ left: 10, right: 30 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" horizontal={false} />
-            <XAxis type="number" domain={[-30, 30]} tick={{ fill: '#1e293b', fontSize: 9 }} stroke="#0f172a" />
-            <YAxis dataKey={d => d.jugadores?.apellido} type="category" tick={{ fill: '#475569', fontSize: 10 }} width={80} stroke="#0f172a" />
-            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [`${v.toFixed(1)}%`, 'Asimetría']} />
+            <XAxis type="number" domain={[-30, 30]} tick={{ fill: '#64748b', fontSize: 11 }} stroke="#0f172a" />
+            <YAxis dataKey={d => d.jugadores?.apellido} type="category" tick={{ fill: '#64748b', fontSize: 12 }} width={80} stroke="#0f172a" />
+            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [`${v.toFixed(1)}%`, 'Asimetría']} />
             <ReferenceLine x={0} stroke="#1e293b" />
             <ReferenceLine x={-10} stroke="#ef4444" strokeDasharray="3 3" opacity={0.4} />
             <ReferenceLine x={10} stroke="#ef4444" strokeDasharray="3 3" opacity={0.4} />
@@ -568,14 +559,14 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
       {/* Bar chart CMJ plantel con jugador resaltado */}
       <div className="glass-panel" style={{ padding: 20 }}>
         <SecTitle color="#3b82f6">📊 CMJ Plantel — {jug.jugadores?.apellido} destacado</SecTitle>
-        <ResponsiveContainer width="100%" height={175}>
+        <ResponsiveContainer width="100%" height={240}>
           <BarChart data={cmjRank} margin={{ left: -20, right: 5 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-            <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 6)} tick={{ fill: '#1e293b', fontSize: 8 }} />
-            <YAxis domain={[0, 70]} tick={{ fill: '#1e293b', fontSize: 9 }} />
+            <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 6)} tick={{ fill: '#64748b', fontSize: 12 }} />
+            <YAxis domain={[0, 70]} tick={{ fill: '#64748b', fontSize: 11 }} />
             <ReferenceLine y={ELITE.cmj} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
             <ReferenceLine y={stats.cmj.mean} stroke="#3b82f633" strokeDasharray="2 4" label={{ value: `⌀${fmtNum(stats.cmj.mean)}`, fill: '#3b82f6', fontSize: 8 }} />
-            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [v + ' cm', p.payload.jugadores?.apellido]} />
+            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v + ' cm', p.payload.jugadores?.apellido]} />
             <Bar dataKey="cmj" radius={[3, 3, 0, 0]} barSize={15}>
               {cmjRank.map((d, i) => (
                 <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : d.cmj >= ELITE.cmj ? '#10b981' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.7} />
@@ -659,14 +650,14 @@ function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
                 </div>
               </div>
               <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Comparación plantel</div>
-              <ResponsiveContainer width="100%" height={150}>
+              <ResponsiveContainer width="100%" height={270}>
                 <BarChart data={[...ultimosDatos].filter(d => d.asym_cmj != null).sort((a, b) => b.asym_cmj - a.asym_cmj)} margin={{ left: -20, right: 10 }}>
                   <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-                  <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#1e293b', fontSize: 7 }} />
-                  <YAxis tick={{ fill: '#1e293b', fontSize: 9 }} />
+                  <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#64748b', fontSize: 9 }} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
                   <ReferenceLine y={10} stroke="#ef4444" strokeDasharray="2 2" opacity={0.35} />
                   <ReferenceLine y={-10} stroke="#ef4444" strokeDasharray="2 2" opacity={0.35} />
-                  <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [v.toFixed(1) + '%', p.payload.jugadores?.apellido]} />
+                  <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v.toFixed(1) + '%', p.payload.jugadores?.apellido]} />
                   <Bar dataKey="asym_cmj" barSize={11}>
                     {[...ultimosDatos].filter(d => d.asym_cmj != null).sort((a, b) => b.asym_cmj - a.asym_cmj).map((d, i) => (
                       <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : Math.abs(d.asym_cmj) > 10 ? '#ef4444' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.6} />
@@ -754,15 +745,15 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
           <SecTitle color="#f59e0b">📐 Perfil ISAK — Pliegues vs Promedio Equipo</SecTitle>
           {tieneISAK ? (
-            <ResponsiveContainer width="100%" height={270}>
+            <ResponsiveContainer width="100%" height={340}>
               <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarISAK}>
                 <PolarGrid stroke="#0f172a" />
-                <PolarAngleAxis dataKey="p" tick={{ fill: '#475569', fontSize: 11 }} />
+                <PolarAngleAxis dataKey="p" tick={{ fill: '#64748b', fontSize: 12 }} />
                 <PolarRadiusAxis domain={[0, 'auto']} tick={false} axisLine={false} />
                 <Radar name={jug.jugadores?.apellido} dataKey="J" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.5} />
                 <Radar name="Promedio Equipo" dataKey="Eq" stroke="#334155" fill="transparent" strokeDasharray="4 3" />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [`${v.toFixed(1)} mm`]} />
+                <Legend wrapperStyle={{ fontSize: 13 }} />
+                <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [`${v.toFixed(1)} mm`]} />
               </RadarChart>
             </ResponsiveContainer>
           ) : (
@@ -790,12 +781,12 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
       {!esJugador && (
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#ef4444">📊 Ranking Adiposidad Plantel (∑ 6 pliegues) — {jug.jugadores?.apellido} destacado</SecTitle>
-          <ResponsiveContainer width="100%" height={175}>
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart data={[...ultimosDatos].filter(d => d.sum6).sort((a, b) => b.sum6 - a.sum6)} margin={{ left: -20, right: 10 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 7)} tick={{ fill: '#1e293b', fontSize: 8 }} />
-              <YAxis tick={{ fill: '#1e293b', fontSize: 9 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [`${v} mm`, p.payload.jugadores?.apellido]} />
+              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 7)} tick={{ fill: '#64748b', fontSize: 12 }} />
+              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [`${v} mm`, p.payload.jugadores?.apellido]} />
               <ReferenceLine y={ELITE.sum6} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#10b981', fontSize: 8 }} />
               <Bar dataKey="sum6" radius={[3, 3, 0, 0]} barSize={16}>
                 {[...ultimosDatos].filter(d => d.sum6).sort((a, b) => b.sum6 - a.sum6).map((d, i) => (
@@ -872,17 +863,17 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
           <div style={{ fontSize: '0.68rem', color: '#1e293b', marginBottom: 8 }}>
             {ultimosDatos.filter(d => d.y26 || d.y25).length} jugadores · Promedio: <strong style={{ color: '#10b981' }}>{fmtNum(stats.yoyo.mean)}</strong> · Élite: {ELITE.yoyo}
           </div>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={320}>
             <BarChart
               data={[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25))}
               margin={{ left: -15, right: 5, bottom: 32 }}
             >
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 8)} tick={{ fill: '#334155', fontSize: 8 }} angle={-45} textAnchor="end" interval={0} />
-              <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 10 }} />
+              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 8)} tick={{ fill: '#64748b', fontSize: 12 }} angle={-45} textAnchor="end" interval={0} />
+              <YAxis domain={[14, 24]} tick={{ fill: '#64748b', fontSize: 12 }} />
               <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1.5} label={{ value: `Élite ${ELITE.yoyo}`, fill: '#ef4444', fontSize: 8, position: 'insideTopRight' }} />
-              <ReferenceLine y={stats.yoyo.mean} stroke="#33415566" strokeDasharray="2 4" label={{ value: `⌀${fmtNum(stats.yoyo.mean)}`, fill: '#475569', fontSize: 8 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [`${v} — ${p.payload.jugadores?.apellido}`, 'Yo-Yo']} />
+              <ReferenceLine y={stats.yoyo.mean} stroke="#33415566" strokeDasharray="2 4" label={{ value: `⌀${fmtNum(stats.yoyo.mean)}`, fill: '#64748b', fontSize: 12 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [`${v} — ${p.payload.jugadores?.apellido}`, 'Yo-Yo']} />
               <Bar dataKey={d => d.y26 || d.y25} name="Yo-Yo" radius={[3, 3, 0, 0]} barSize={17}>
                 {[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25)).map((d, i) => (
                   <Cell key={i}
@@ -900,13 +891,13 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">📈 Evolución Yo-Yo — Promedio Equipo</SecTitle>
           {yoyoEvol.length > 1 ? (
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={320}>
               <LineChart data={yoyoEvol} margin={{ left: -10, right: 20 }}>
                 <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" />
-                <XAxis dataKey="f" tick={{ fill: '#334155', fontSize: 9 }} />
-                <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 10 }} />
+                <XAxis dataKey="f" tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis domain={[14, 24]} tick={{ fill: '#64748b', fontSize: 12 }} />
                 <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
-                <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [`${v} (n=${p.payload.n})`, 'Prom. equipo']} />
+                <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [`${v} (n=${p.payload.n})`, 'Prom. equipo']} />
                 <Line type="monotone" dataKey="avg" stroke="#10b981" strokeWidth={2.5} dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -929,14 +920,14 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#8b5cf6">📍 Promedios por Posición Táctica</SecTitle>
-          <ResponsiveContainer width="100%" height={175}>
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart data={posData} margin={{ top: 10, left: -20, right: 5 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
+              <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} />
               <YAxis yAxisId="l" domain={[0, 70]} tick={{ fontSize: 9, fill: '#1e293b' }} />
               <YAxis yAxisId="r" orientation="right" domain={[0, 25]} tick={{ fontSize: 9, fill: '#1e293b' }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
               <ReferenceLine yAxisId="l" y={ELITE.cmj} stroke="#3b82f633" strokeDasharray="3 3" />
               <Bar yAxisId="l" dataKey="CMJ"  name="CMJ (cm)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={18} />
               <Bar yAxisId="r" dataKey="YoYo" name="Yo-Yo"    fill="#10b981" radius={[4, 4, 0, 0]} barSize={18} />
@@ -957,14 +948,14 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
 
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#3b82f6">📊 Distribución CMJ Plantel</SecTitle>
-          <ResponsiveContainer width="100%" height={195}>
+          <ResponsiveContainer width="100%" height={320}>
             <BarChart data={[...ultimosDatos].filter(d => d.cmj).sort((a, b) => b.cmj - a.cmj)} margin={{ left: -20 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 6)} tick={{ fill: '#1e293b', fontSize: 8 }} />
-              <YAxis domain={[0, 70]} tick={{ fill: '#1e293b', fontSize: 9 }} />
+              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 6)} tick={{ fill: '#64748b', fontSize: 12 }} />
+              <YAxis domain={[0, 70]} tick={{ fill: '#64748b', fontSize: 11 }} />
               <ReferenceLine y={ELITE.cmj} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
               <ReferenceLine y={stats.cmj.mean} stroke="#3b82f633" strokeDasharray="2 4" label={{ value: `⌀${fmtNum(stats.cmj.mean)}`, fill: '#3b82f6', fontSize: 8 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [v + ' cm', p.payload.jugadores?.apellido]} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v + ' cm', p.payload.jugadores?.apellido]} />
               <Bar dataKey="cmj" radius={[3, 3, 0, 0]} barSize={15}>
                 {[...ultimosDatos].filter(d => d.cmj).sort((a, b) => b.cmj - a.cmj).map((d, i) => (
                   <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : d.cmj >= ELITE.cmj ? '#10b981' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.7} />
@@ -1102,18 +1093,18 @@ function TabVS({ datos, stats, selId, historial }) {
         {/* Radar comparativo */}
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle>⚖️ Perfil Z-Score Comparativo</SecTitle>
-          <ResponsiveContainer width="100%" height={310}>
+          <ResponsiveContainer width="100%" height={360}>
             <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarComp}>
               <PolarGrid stroke="#0f172a" />
-              <PolarAngleAxis dataKey="m" tick={{ fill: '#475569', fontSize: 11 }} />
+              <PolarAngleAxis dataKey="m" tick={{ fill: '#64748b', fontSize: 12 }} />
               <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
               <Radar name="ÉLITE" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" strokeWidth={1.5} />
               {jugs[0] && <Radar name={getJug(jugs[0])?.jugadores?.apellido} dataKey="A" stroke={COLS[0]} fill={COLS[0]} fillOpacity={0.3} />}
               {jugs[1] && <Radar name={getJug(jugs[1])?.jugadores?.apellido} dataKey="B" stroke={COLS[1]} fill={COLS[1]} fillOpacity={0.3} />}
               {jugs[2] && <Radar name={getJug(jugs[2])?.jugadores?.apellido} dataKey="C" stroke={COLS[2]} fill={COLS[2]} fillOpacity={0.3} />}
               {jugs[3] && <Radar name={getJug(jugs[3])?.jugadores?.apellido} dataKey="D" stroke={COLS[3]} fill={COLS[3]} fillOpacity={0.3} />}
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} formatter={v => [v ? v.toFixed(0) : 0, 'Score']} />
+              <Legend wrapperStyle={{ fontSize: 13 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [v ? v.toFixed(0) : 0, 'Score']} />
             </RadarChart>
           </ResponsiveContainer>
         </div>
@@ -1121,16 +1112,16 @@ function TabVS({ datos, stats, selId, historial }) {
         {/* Yo-Yo comparativa DIRECTA — barras agrupadas */}
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">🏃 Yo-Yo — Comparativa Directa</SecTitle>
-          <ResponsiveContainer width="100%" height={190}>
+          <ResponsiveContainer width="100%" height={250}>
             <BarChart
               data={active.map(id => getJug(id)).filter(Boolean).map((d, i) => ({ name: d.jugadores?.apellido?.slice(0, 10), y25: d.y25 || null, y26: d.y26 || null, id: d.id_jugador, col: COLS[i] }))}
               margin={{ left: -15, right: 10 }}
             >
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 11 }} />
-              <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 10 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 12 }} />
+              <YAxis domain={[14, 24]} tick={{ fill: '#64748b', fontSize: 12 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
               <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
               <Bar dataKey="y25" name="2025" fill="#1e3a5f" radius={[2, 2, 0, 0]} barSize={20} />
               <Bar dataKey="y26" name="2026" radius={[2, 2, 0, 0]} barSize={20}>
@@ -1176,14 +1167,14 @@ function TabVS({ datos, stats, selId, historial }) {
       {yoyoHistComp.length > 1 && (
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">📈 Evolución Yo-Yo Histórica — Jugadores Seleccionados</SecTitle>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={320}>
             <LineChart data={yoyoHistComp} margin={{ left: -10, right: 20 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" />
-              <XAxis dataKey="f" tick={{ fill: '#334155', fontSize: 10 }} />
-              <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 10 }} />
+              <XAxis dataKey="f" tick={{ fill: '#334155', fontSize: 12 }} />
+              <YAxis domain={[14, 24]} tick={{ fill: '#64748b', fontSize: 12 }} />
               <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1.5} label={{ value: `Élite ${ELITE.yoyo}`, fill: '#ef4444', fontSize: 8, position: 'insideTopRight' }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} />
+              <Legend wrapperStyle={{ fontSize: 13 }} />
               {active.map((id, i) => {
                 const nombre = getJug(id)?.jugadores?.apellido;
                 if (!nombre) return null;
@@ -1210,10 +1201,10 @@ function TabVS({ datos, stats, selId, historial }) {
           >
             <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
             <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 8)} tick={{ fill: '#334155', fontSize: 7 }} angle={-45} textAnchor="end" interval={0} />
-            <YAxis domain={[14, 24]} tick={{ fill: '#1e293b', fontSize: 9 }} />
+            <YAxis domain={[14, 24]} tick={{ fill: '#64748b', fontSize: 11 }} />
             <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1.5} />
             <ReferenceLine y={stats.yoyo.mean} stroke="#33415566" strokeDasharray="2 4" />
-            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 10 }} formatter={(v, n, p) => [`${v} — ${p.payload.jugadores?.apellido}`, 'Yo-Yo']} />
+            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [`${v} — ${p.payload.jugadores?.apellido}`, 'Yo-Yo']} />
             <Bar dataKey={d => d.y26 || d.y25} radius={[2, 2, 0, 0]} barSize={14}>
               {[...datos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25)).map((d, i) => {
                 const idx = active.indexOf(d.id_jugador);
