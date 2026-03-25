@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -72,31 +73,75 @@ const PercBadge = ({ val, mean, sd, higher = true }) => {
 // MAIN EXPORT
 // ════════════════════════════════════════════════════════════════════════════
 export default function Rendimiento() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('resumen');
   const [jugadoresBD, setJugadoresBD] = useState([]);
-  const [historial, setHistorial] = useState([]);
+  
+  // --- MODIFICACIÓN DE SEGURIDAD ---
+  const [historialGlobal, setHistorialGlobal] = useState([]); // Todos los datos para matemáticas
+  const [historial, setHistorial] = useState([]); // Solo datos permitidos para renderizar UI
+
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selId, setSelId] = useState(null);
 
   const { showToast } = useToast();
   const { perfil } = useAuth();
-  const esJugador = perfil?.rol === 'jugador';
+  
+  // FIX: Identificadores de Rol y Club robustos para evitar bugs en kiosco
+  const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
+  const esJugador = perfil?.rol === 'jugador' || isKioscoMode;
   const esStaff = !esJugador;
-  const clubId = localStorage.getItem('club_id');
+  const clubId = localStorage.getItem('club_id') || perfil?.club_id || localStorage.getItem('kiosco_club_id');
 
   const cargarDatos = async () => {
     setLoading(true);
+    
+    if (!clubId) {
+      showToast('Error: No se pudo validar el club.', 'error');
+      setLoading(false);
+      return;
+    }
+
     const { data: j } = await supabase.from('jugadores').select('id,nombre,apellido,dorsal,posicion').eq('club_id', clubId).order('dorsal');
     setJugadoresBD(j || []);
-    const { data: r } = await supabase.from('rendimiento').select('*,jugadores(nombre,apellido,posicion,dorsal)').eq('club_id', clubId).order('fecha_medicion', { ascending: false });
-    const filtrado = esJugador ? (r || []).filter(x => x.id_jugador === perfil?.jugador_id) : (r || []);
-    setHistorial(filtrado);
+    
+    const { data: r } = await supabase.from('rendimiento')
+      .select('*,jugadores(nombre,apellido,posicion,dorsal)')
+      .eq('club_id', clubId)
+      .order('fecha_medicion', { ascending: false });
+
+    const todosLosRegistros = r || [];
+    
+    // Guardamos la info de TODO EL EQUIPO para promedios y comparativas anónimas
+    setHistorialGlobal(todosLosRegistros);
+
+    if (esJugador) {
+      // Usar perfil oficial o fallback al local storage del kiosco
+      const miId = perfil?.jugador_id || localStorage.getItem('kiosco_jugador_id');
+      if (miId) {
+        setHistorial(todosLosRegistros);
+        setSelId(Number(miId)); // Setear directamente
+      } else {
+        setHistorial([]); 
+      }
+    } else {
+      setHistorial(todosLosRegistros); 
+    }
+
     setLoading(false);
   };
 
   useEffect(() => { if (clubId) cargarDatos(); }, [clubId]);
 
+  // Cálculos globales (Matemática pura basada en historialGlobal)
+  const ultimosDatosGlobal = useMemo(() => {
+    const mapa = {};
+    historialGlobal.forEach(reg => { if (!mapa[reg.id_jugador]) mapa[reg.id_jugador] = reg; });
+    return Object.values(mapa);
+  }, [historialGlobal]);
+
+  // Datos filtrados para la Interfaz
   const ultimosDatos = useMemo(() => {
     const mapa = {};
     historial.forEach(reg => { if (!mapa[reg.id_jugador]) mapa[reg.id_jugador] = reg; });
@@ -104,27 +149,31 @@ export default function Rendimiento() {
   }, [historial]);
 
   useEffect(() => {
-    if (esJugador && perfil?.jugador_id) { setSelId(perfil.jugador_id); return; }
+    if (esJugador && (perfil?.jugador_id || localStorage.getItem('kiosco_jugador_id'))) { 
+      setSelId(Number(perfil?.jugador_id || localStorage.getItem('kiosco_jugador_id'))); 
+      return; 
+    }
     if (ultimosDatos.length && !selId) setSelId(ultimosDatos[0].id_jugador);
   }, [ultimosDatos, esJugador, perfil]);
 
   const jug = ultimosDatos.find(j => j.id_jugador === selId);
 
+  // Los STATS se calculan con ultimosDatosGlobal para que el Radar de los jugadores siga funcionando vs equipo
   const stats = useMemo(() => ({
-    cmj:    calcStats(ultimosDatos, 'cmj'),
-    abk:    calcStats(ultimosDatos, 'abk'),
-    broad:  calcStats(ultimosDatos, 'broad'),
-    musc:   calcStats(ultimosDatos, 'musc'),
-    adip:   calcStats(ultimosDatos, 'adip'),
-    sum6:   calcStats(ultimosDatos, 'sum6'),
-    visc:   calcStats(ultimosDatos, 'visc'),
-    imc:    calcStats(ultimosDatos, 'imc'),
-    ed_met: calcStats(ultimosDatos, 'ed_met'),
-    yoyo:   calcStats(ultimosDatos.map(d => ({ ...d, yr: d.y26 || d.y25 })), 'yr'),
-    pl_tri: calcStats(ultimosDatos, 'pl_tri'), pl_sub: calcStats(ultimosDatos, 'pl_sub'),
-    pl_bic: calcStats(ultimosDatos, 'pl_bic'), pl_cre: calcStats(ultimosDatos, 'pl_cre'),
-    pl_sup: calcStats(ultimosDatos, 'pl_sup'), pl_abd: calcStats(ultimosDatos, 'pl_abd'),
-  }), [ultimosDatos]);
+    cmj:    calcStats(ultimosDatosGlobal, 'cmj'),
+    abk:    calcStats(ultimosDatosGlobal, 'abk'),
+    broad:  calcStats(ultimosDatosGlobal, 'broad'),
+    musc:   calcStats(ultimosDatosGlobal, 'musc'),
+    adip:   calcStats(ultimosDatosGlobal, 'adip'),
+    sum6:   calcStats(ultimosDatosGlobal, 'sum6'),
+    visc:   calcStats(ultimosDatosGlobal, 'visc'),
+    imc:    calcStats(ultimosDatosGlobal, 'imc'),
+    ed_met: calcStats(ultimosDatosGlobal, 'ed_met'),
+    yoyo:   calcStats(ultimosDatosGlobal.map(d => ({ ...d, yr: d.y26 || d.y25 })), 'yr'),
+    pl_tri: calcStats(ultimosDatosGlobal, 'pl_tri'), pl_sub: calcStats(ultimosDatosGlobal, 'pl_sub'),
+    pl_bic: calcStats(ultimosDatosGlobal, 'pl_bic'), pl_cre: calcStats(ultimosDatosGlobal, 'pl_cre'),
+    pl_sup: calcStats(ultimosDatosGlobal, 'pl_sup'), pl_abd: calcStats(ultimosDatosGlobal, 'pl_abd'),
+  }), [ultimosDatosGlobal]);
 
   if (loading) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, gap: 14, color: 'var(--text-dim)' }}>
@@ -133,17 +182,43 @@ export default function Rendimiento() {
     </div>
   );
 
+  // Ocultamos TABS grupales si es jugador
   const TABS = [
     { id: 'resumen', lbl: '📊 RESUMEN',  col: null },
     { id: 'fisico',  lbl: '⚡ FÍSICO',   col: '#3b82f6' },
     { id: 'kine',    lbl: '🩺 KINE',     col: '#10b981' },
     { id: 'nutri',   lbl: '🥗 NUTRI',    col: '#f59e0b' },
-    { id: 'equipo',  lbl: '🏟️ EQUIPO',   col: '#8b5cf6' },
-    ...(!esJugador ? [{ id: 'vs', lbl: '⚖️ VS', col: '#ec4899' }] : []),
+    ...(!esJugador ? [
+      { id: 'equipo',  lbl: '🏟️ EQUIPO',   col: '#8b5cf6' },
+      { id: 'vs',      lbl: '⚖️ VS',       col: '#ec4899' }
+    ] : []),
   ];
 
   return (
     <div style={{ padding: '20px', maxWidth: 1500, margin: '0 auto', color: '#fff', paddingBottom: 80 }} className="fade-in">
+
+      {/* --- BOTÓN VOLVER ATRÁS --- */}
+      <button 
+        onClick={() => navigate(-1)} 
+        style={{ 
+          background: 'transparent', 
+          border: 'none', 
+          color: 'var(--text-dim)', 
+          cursor: 'pointer', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px', 
+          fontWeight: 'bold', 
+          marginBottom: '15px', 
+          padding: '5px 0', 
+          fontSize: '0.9rem', 
+          transition: 'color 0.2s' 
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
+      >
+        ⬅ Volver atrás
+      </button>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
@@ -248,11 +323,11 @@ export default function Rendimiento() {
         <div>
           <div style={{ animation: 'fadeUp 0.2s ease' }}>
             {tab === 'resumen' && <TabResumen jug={jug} stats={stats} historial={historial} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
-            {tab === 'fisico'  && <TabFisico  jug={jug} stats={stats} historial={historial} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
-            {tab === 'kine'    && <TabKine    jug={jug} stats={stats} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
+            {tab === 'fisico'  && <TabFisico  jug={jug} stats={stats} ultimosDatos={ultimosDatos} ultimosDatosGlobal={ultimosDatosGlobal} esJugador={esJugador} selId={selId} />}
+            {tab === 'kine'    && <TabKine    jug={jug} stats={stats} ultimosDatos={ultimosDatos} ultimosDatosGlobal={ultimosDatosGlobal} esJugador={esJugador} selId={selId} />}
             {tab === 'nutri'   && <TabNutri   jug={jug} stats={stats} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
-            {tab === 'equipo'  && <TabEquipo  stats={stats} ultimosDatos={ultimosDatos} selId={selId} historial={historial} />}
-            {tab === 'vs' && !esJugador && <TabVS datos={ultimosDatos} stats={stats} selId={selId} historial={historial} />}
+            {tab === 'equipo'  && !esJugador && <TabEquipo  stats={stats} ultimosDatos={ultimosDatos} selId={selId} historial={historial} />}
+            {tab === 'vs'      && !esJugador && <TabVS datos={ultimosDatos} stats={stats} selId={selId} historial={historial} />}
           </div>
         </div>
       </div>
@@ -290,42 +365,71 @@ export default function Rendimiento() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// TAB RESUMEN — overview del jugador seleccionado
+// TAB RESUMEN
 // ════════════════════════════════════════════════════════════════════════════
 function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
   if (!jug) return <Empty />;
   const yoyo = jug.y26 || jug.y25;
-  const yoyoHist = historial
-    .filter(h => h.id_jugador === jug.id_jugador && (h.y26 || h.y25))
-    .slice(0, 8).reverse()
-    .map(h => ({ f: h.fecha_medicion?.slice(0, 7), v: h.y26 || h.y25 }));
-
-  const radarData = [
-    { m: 'CMJ',     J: zNorm(jug.cmj, stats.cmj),   E: zNorm(ELITE.cmj, stats.cmj) },
-    { m: 'ABK',     J: zNorm(jug.abk, stats.abk),   E: zNorm(ELITE.abk, stats.abk) },
-    { m: 'Broad',   J: zNorm(jug.broad, stats.broad), E: zNorm(ELITE.broad, stats.broad) },
-    { m: 'Yo-Yo',   J: zNorm(yoyo, stats.yoyo),      E: zNorm(ELITE.yoyo, stats.yoyo) },
-    { m: 'Músculo', J: zNorm(jug.musc, stats.musc),  E: zNorm(ELITE.musc, stats.musc) },
-    { m: 'Composic.', J: jug.adip ? Math.max(0, 100 - zNorm(jug.adip, stats.adip)) : 50, E: 70 },
-  ];
 
   return (
     <div className="rg">
-      {/* Radar + Composición */}
       <div className="c2">
+
+        {/* ── HUELLA ATLÉTICA — Bullet Chart ── */}
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#3b82f6">⚡ Huella Atlética vs Élite <Tip t="Score 50 = promedio plantel. Línea roja = élite mundial." /></SecTitle>
-          <ResponsiveContainer width="100%" height={340}>
-            <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarData}>
-              <PolarGrid stroke="#0f172a" />
-              <PolarAngleAxis dataKey="m" tick={{ fill: '#64748b', fontSize: 12 }} />
-              <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-              <Radar name={jug.jugadores?.apellido} dataKey="J" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.5} />
-              <Radar name="Élite" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" strokeWidth={1.5} />
-              <Legend wrapperStyle={{ fontSize: 13 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [v.toFixed(0), 'Score']} />
-            </RadarChart>
-          </ResponsiveContainer>
+          <SecTitle color="#3b82f6">⚡ Huella Atlética vs Élite <Tip t="La barra muestra el valor real del jugador. La línea roja marca el estándar Élite Mundial." /></SecTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
+            {[
+              { lbl: 'CMJ',        val: jug.cmj,   elite: ELITE.cmj,   unit: 'cm', color: '#3b82f6', max: 75,  higher: true  },
+              { lbl: 'ABK',        val: jug.abk,   elite: ELITE.abk,   unit: 'cm', color: '#8b5cf6', max: 80,  higher: true  },
+              { lbl: 'Broad Jump', val: jug.broad, elite: ELITE.broad, unit: 'm',  color: '#10b981', max: 3.2, higher: true  },
+              { lbl: 'Yo-Yo',      val: yoyo,      elite: ELITE.yoyo,  unit: '',   color: '#f59e0b', max: 26,  higher: true  },
+              { lbl: 'Músculo',    val: jug.musc,  elite: ELITE.musc,  unit: '%',  color: '#06b6d4', max: 60,  higher: true  },
+              { lbl: 'Adiposidad', val: jug.adip,  elite: ELITE.adip,  unit: '%',  color: '#ef4444', max: 30,  higher: false },
+            ].map(({ lbl, val, elite, unit, color, max, higher }) => {
+              const pct      = val != null ? Math.min(100, (Number(val) / max) * 100) : 0;
+              const elitePct = Math.min(100, (elite / max) * 100);
+              const gap      = val != null ? Number(val) - elite : null;
+              const ok       = gap != null && (higher ? gap >= 0 : gap <= 0);
+              const gapColor = gap == null ? '#334155' : ok ? '#10b981' : Math.abs(gap) < elite * 0.1 ? '#f59e0b' : '#ef4444';
+              return (
+                <div key={lbl}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>{lbl}</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                      {gap != null && (
+                        <span style={{ fontSize: '0.62rem', color: gapColor, fontWeight: 900 }}>
+                          {ok ? '▲' : '▼'} {Math.abs(gap).toFixed(lbl === 'Broad Jump' ? 2 : 1)}{unit} vs élite
+                        </span>
+                      )}
+                      <span style={{ fontSize: '1rem', fontWeight: 900, color: val != null ? color : '#334155' }}>
+                        {val ?? '—'}<span style={{ fontSize: '0.68rem', color: '#475569', marginLeft: 2 }}>{unit}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative', height: 10, background: '#0f172a', borderRadius: 5 }}>
+                    {/* Barra jugador */}
+                    <div style={{
+                      position: 'absolute', left: 0, top: 0,
+                      height: '100%', width: `${pct}%`,
+                      background: color, borderRadius: 5,
+                      transition: 'width 0.6s ease', opacity: 0.85,
+                    }} />
+                    {/* Línea élite */}
+                    <div style={{
+                      position: 'absolute', top: -3, bottom: -3,
+                      left: `${elitePct}%`, width: 2,
+                      background: '#ef4444', borderRadius: 2,
+                      transform: 'translateX(-50%)',
+                    }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 3 }}>
+                    <span style={{ fontSize: '0.58rem', color: '#334155' }}>Élite: {elite}{unit}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
@@ -353,7 +457,6 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
         </div>
       </div>
 
-      {/* Yo-Yo + Asimetrías */}
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
           <SecTitle color="#10b981">🏃 Yo-Yo — Contexto Equipo</SecTitle>
@@ -373,14 +476,14 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
           <div style={{ fontSize: '0.65rem', color: '#1e293b', marginBottom: 8 }}>
             VO₂ est: <strong style={{ color: '#10b981' }}>{estimarVO2(jug.y26 || jug.y25)} ml/kg/min</strong>
           </div>
-          {/* Gráfico barras plantel Yo-Yo */}
+          
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25))} margin={{ left: -25, right: 5 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#64748b', fontSize: 9 }} />
+              <XAxis dataKey={d => esJugador && d.id_jugador !== selId ? '' : d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#64748b', fontSize: 9 }} />
               <YAxis domain={[14, 24]} tick={{ fill: '#64748b', fontSize: 11 }} />
               <ReferenceLine y={ELITE.yoyo} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={1} label={{ value: 'Él', fill: '#ef4444', fontSize: 7 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v, p.payload.jugadores?.apellido]} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v, esJugador && p.payload.id_jugador !== selId ? 'Jugador' : p.payload.jugadores?.apellido]} />
               <Bar dataKey={d => d.y26 || d.y25} radius={[2, 2, 0, 0]} barSize={12}>
                 {[...ultimosDatos].filter(d => d.y26 || d.y25).sort((a, b) => (b.y26 || b.y25) - (a.y26 || a.y25)).map((d, i) => (
                   <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.6} />
@@ -399,7 +502,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
                 {[
                   { lbl: 'CMJ cm',   tot: jug.cmj,   der: jug.cmj_de,   izq: jug.cmj_iz,   asim: jug.asym_cmj, eq: stats.cmj.mean,   c: '#3b82f6' },
                   { lbl: 'Broad m',  tot: jug.broad, der: jug.broad_de, izq: jug.broad_iz, asim: jug.asym_br,  eq: stats.broad.mean, c: '#f59e0b' },
-                  { lbl: 'ABK cm',   tot: jug.abk,   der: '—',          izq: '—',          asim: null,          eq: stats.abk.mean,   c: '#8b5cf6' },
+                  { lbl: 'ABK cm',   tot: jug.abk,   der: '—',          izq: '—',          asim: null,         eq: stats.abk.mean,   c: '#8b5cf6' },
                 ].map(r => (
                   <tr key={r.lbl}>
                     <td style={{ color: '#334155', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>{r.lbl}</td>
@@ -415,7 +518,6 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
               </tbody>
             </table>
           </div>
-          {/* Kine resumen */}
           <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 12 }}>
             <div style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Estado Kinésico</div>
             <div className="c2" style={{ gap: 6 }}>
@@ -433,7 +535,6 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
         </div>
       </div>
 
-      {/* Plan nutricional */}
       <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
         <SecTitle color="#f59e0b">🥗 Plan Nutricional</SecTitle>
         <div className="c2" style={{ alignItems: 'start' }}>
@@ -457,24 +558,24 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// TAB FÍSICO — datos del jugador elegido + contexto equipo
+// TAB FÍSICO
 // ════════════════════════════════════════════════════════════════════════════
-function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
+function TabFisico({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selId }) {
   if (!jug) return <Empty />;
   const yoyo = jug.y26 || jug.y25;
 
   const radarData = [
-    { m: 'CMJ',   J: zNorm(jug.cmj, stats.cmj),   E: zNorm(ELITE.cmj, stats.cmj) },
-    { m: 'ABK',   J: zNorm(jug.abk, stats.abk),   E: zNorm(ELITE.abk, stats.abk) },
-    { m: 'Broad', J: zNorm(jug.broad, stats.broad), E: zNorm(ELITE.broad, stats.broad) },
-    { m: 'Yo-Yo', J: zNorm(yoyo, stats.yoyo),      E: zNorm(ELITE.yoyo, stats.yoyo) },
+    { m: 'CMJ',   J: jug.cmj ? (jug.cmj / ELITE.cmj) * 100 : 0,   E: 100 },
+    { m: 'ABK',   J: jug.abk ? (jug.abk / ELITE.abk) * 100 : 0,   E: 100 },
+    { m: 'Broad', J: jug.broad ? (jug.broad / ELITE.broad) * 100 : 0, E: 100 },
+    { m: 'Yo-Yo', J: yoyo ? (yoyo / ELITE.yoyo) * 100 : 0,        E: 100 },
   ];
-  const cmjRank = [...ultimosDatos].filter(d => d.cmj).sort((a, b) => b.cmj - a.cmj);
+  
+  const cmjRank = [...ultimosDatosGlobal].filter(d => d.cmj).sort((a, b) => b.cmj - a.cmj);
   const pos = cmjRank.findIndex(d => d.id_jugador === jug.id_jugador) + 1;
 
   return (
     <div className="rg">
-      {/* KPIs jugador vs equipo */}
       <div className="c4">
         {[
           { lbl: 'CMJ',   val: jug.cmj,   eq: stats.cmj,   unit: 'cm', color: '#3b82f6', elite: ELITE.cmj },
@@ -487,19 +588,18 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
         ))}
       </div>
 
-      {/* Radar jugador + Ranking CMJ */}
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#3b82f6">Perfil Z-Score <Tip t="Centro = promedio plantel. Rojo = élite mundial." /></SecTitle>
+          <SecTitle color="#3b82f6">Perfil Atlético vs Élite <Tip t="100% = Nivel Élite Mundial." /></SecTitle>
           <ResponsiveContainer width="100%" height={340}>
             <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarData}>
               <PolarGrid stroke="#0f172a" />
               <PolarAngleAxis dataKey="m" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }} />
-              <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+              <PolarRadiusAxis domain={[0, 'auto']} tick={false} axisLine={false} />
               <Radar name={jug.jugadores?.apellido} dataKey="J" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.55} />
               <Radar name="Élite" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" />
               <Legend wrapperStyle={{ fontSize: 13 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [v.toFixed(0), 'Score']} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [`${v.toFixed(1)}%`, '% Élite']} />
             </RadarChart>
           </ResponsiveContainer>
         </div>
@@ -509,6 +609,7 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
           <div style={{ fontSize: '0.7rem', color: '#1e293b', marginBottom: 10 }}>
             {jug.jugadores?.apellido}: posición <strong style={{ color: '#f59e0b' }}>{pos}/{cmjRank.length}</strong>
           </div>
+          
           <div className="scroll">
             {cmjRank.map((d, i) => {
               const isMe = d.id_jugador === jug.id_jugador;
@@ -516,7 +617,7 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
               return (
                 <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, background: isMe ? 'rgba(59,130,246,0.09)' : 'transparent', border: isMe ? '1px solid #3b82f622' : '1px solid transparent' }}>
                   <span style={{ color: i === 0 ? '#f59e0b' : '#1e293b', fontWeight: 900, fontSize: '0.72rem', minWidth: 20, textAlign: 'right' }}>{i + 1}</span>
-                  <span style={{ flex: 1, fontSize: '0.76rem', fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{d.jugadores?.apellido}</span>
+                  <span style={{ flex: 1, fontSize: '0.76rem', fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{esJugador && !isMe ? 'Compañero' : d.jugadores?.apellido}</span>
                   <div style={{ width: 55, background: '#0f172a', borderRadius: 2, height: 4 }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: isMe ? '#3b82f6' : '#1e293b', borderRadius: 2 }} />
                   </div>
@@ -525,12 +626,12 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
               );
             })}
           </div>
+          
         </div>
       </div>
 
-      {/* Asimetrías jugador */}
       <div className="glass-panel" style={{ padding: 20 }}>
-        <SecTitle color="#ef4444">📊 Déficit Bilateral CMJ — Plantel <Tip t=">10% = factor de riesgo lesional. Amarillo = jugador seleccionado." /></SecTitle>
+        <SecTitle color="#ef4444">📊 Déficit Bilateral CMJ {esJugador ? '' : '— Plantel'} <Tip t=">10% = factor de riesgo lesional. Amarillo = jugador seleccionado." /></SecTitle>
         <div style={{ fontSize: '0.7rem', color: '#1e293b', marginBottom: 10 }}>
           {jug.jugadores?.apellido}: {jug.asym_cmj != null ? (
             <span style={{ color: asimColor(jug.asym_cmj), fontWeight: 900 }}>
@@ -538,12 +639,13 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
             </span>
           ) : <span style={{ color: '#1e293b' }}>Sin datos unilaterales</span>}
         </div>
+        
         <ResponsiveContainer width="100%" height={270}>
           <BarChart data={ultimosDatos.filter(d => d.asym_cmj != null).sort((a, b) => Math.abs(b.asym_cmj) - Math.abs(a.asym_cmj))} layout="vertical" margin={{ left: 10, right: 30 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" horizontal={false} />
             <XAxis type="number" domain={[-30, 30]} tick={{ fill: '#64748b', fontSize: 11 }} stroke="#0f172a" />
-            <YAxis dataKey={d => d.jugadores?.apellido} type="category" tick={{ fill: '#64748b', fontSize: 12 }} width={80} stroke="#0f172a" />
-            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [`${v.toFixed(1)}%`, 'Asimetría']} />
+            <YAxis dataKey={d => esJugador && d.id_jugador !== selId ? '' : d.jugadores?.apellido} type="category" tick={{ fill: '#64748b', fontSize: 12 }} width={80} stroke="#0f172a" />
+            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={(v, n, p) => [`${v.toFixed(1)}%`, 'Asimetría']} />
             <ReferenceLine x={0} stroke="#1e293b" />
             <ReferenceLine x={-10} stroke="#ef4444" strokeDasharray="3 3" opacity={0.4} />
             <ReferenceLine x={10} stroke="#ef4444" strokeDasharray="3 3" opacity={0.4} />
@@ -554,19 +656,19 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        
       </div>
 
-      {/* Bar chart CMJ plantel con jugador resaltado */}
       <div className="glass-panel" style={{ padding: 20 }}>
         <SecTitle color="#3b82f6">📊 CMJ Plantel — {jug.jugadores?.apellido} destacado</SecTitle>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={cmjRank} margin={{ left: -20, right: 5 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-            <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 6)} tick={{ fill: '#64748b', fontSize: 12 }} />
+            <XAxis dataKey={d => esJugador && d.id_jugador !== selId ? '' : d.jugadores?.apellido?.slice(0, 6)} tick={{ fill: '#64748b', fontSize: 12 }} />
             <YAxis domain={[0, 70]} tick={{ fill: '#64748b', fontSize: 11 }} />
             <ReferenceLine y={ELITE.cmj} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#ef4444', fontSize: 8 }} />
             <ReferenceLine y={stats.cmj.mean} stroke="#3b82f633" strokeDasharray="2 4" label={{ value: `⌀${fmtNum(stats.cmj.mean)}`, fill: '#3b82f6', fontSize: 8 }} />
-            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v + ' cm', p.payload.jugadores?.apellido]} />
+            <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v + ' cm', esJugador && p.payload.id_jugador !== selId ? 'Jugador' : p.payload.jugadores?.apellido]} />
             <Bar dataKey="cmj" radius={[3, 3, 0, 0]} barSize={15}>
               {cmjRank.map((d, i) => (
                 <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : d.cmj >= ELITE.cmj ? '#10b981' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.7} />
@@ -574,15 +676,30 @@ function TabFisico({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 12 }}>
+          <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 6 }}>Top 5 Índice Reactivo (ABK − CMJ)</div>
+          {ultimosDatos.filter(d => d.abk && d.cmj).sort((a, b) => (b.abk - b.cmj) - (a.abk - a.cmj)).slice(0, 5).map((d, i) => {
+            const dif = (d.abk - d.cmj).toFixed(1);
+            const isMe = d.id_jugador === selId;
+            return (
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 5, marginBottom: 3, background: isMe ? 'rgba(245,158,11,0.07)' : '#060a14', border: isMe ? '1px solid #f59e0b33' : '1px solid #0f172a' }}>
+                <span style={{ color: i === 0 ? '#f59e0b' : '#0f172a', fontWeight: 900, fontSize: '0.75rem', minWidth: 18 }}>{i + 1}</span>
+                <span style={{ flex: 1, fontSize: '0.76rem', fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{esJugador && !isMe ? 'Compañero' : d.jugadores?.apellido}</span>
+                <span style={{ fontSize: '0.66rem', color: '#1e293b' }}>+{dif}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
+      
     </div>
   );
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// TAB KINE — datos del jugador elegido + contexto equipo
+// TAB KINE
 // ════════════════════════════════════════════════════════════════════════════
-function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
+function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selId }) {
   if (!jug) return <Empty />;
   const obs = `${jug.kin_t || ''} ${jug.kin_c || ''} ${jug.kin_u || ''} ${jug.kin_s || ''}`.toLowerCase();
   const vids = (() => {
@@ -600,7 +717,6 @@ function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
   return (
     <div className="rg">
       <div className="c2">
-        {/* Estado kinésico jugador */}
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
           <SecTitle color="#10b981">🩺 Estado Kinésico — {jug.jugadores?.apellido}</SecTitle>
           <div className="c2" style={{ marginBottom: 16 }}>
@@ -631,9 +747,8 @@ function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
           </div>
         </div>
 
-        {/* Asimetría CMJ jugador */}
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#ef4444">📊 Asimetría — {jug.jugadores?.apellido} vs Plantel</SecTitle>
+          <SecTitle color="#ef4444">📊 Asimetría — {jug.jugadores?.apellido} {esJugador ? '' : 'vs Plantel'}</SecTitle>
           {jug.asym_cmj != null ? (
             <>
               <div style={{ background: '#060a14', borderRadius: 9, padding: 14, marginBottom: 14, border: `1px solid ${asimColor(jug.asym_cmj)}33` }}>
@@ -649,22 +764,24 @@ function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
                   <span>Izq: <strong style={{ color: '#8b5cf6' }}>{jug.cmj_iz ?? '—'} cm</strong></span>
                 </div>
               </div>
+              
               <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Comparación plantel</div>
               <ResponsiveContainer width="100%" height={270}>
-                <BarChart data={[...ultimosDatos].filter(d => d.asym_cmj != null).sort((a, b) => b.asym_cmj - a.asym_cmj)} margin={{ left: -20, right: 10 }}>
+                <BarChart data={[...ultimosDatosGlobal].filter(d => d.asym_cmj != null).sort((a, b) => b.asym_cmj - a.asym_cmj)} margin={{ left: -20, right: 10 }}>
                   <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-                  <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#64748b', fontSize: 9 }} />
+                  <XAxis dataKey={d => esJugador && d.id_jugador !== selId ? '' : d.jugadores?.apellido?.slice(0, 5)} tick={{ fill: '#64748b', fontSize: 9 }} />
                   <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
                   <ReferenceLine y={10} stroke="#ef4444" strokeDasharray="2 2" opacity={0.35} />
                   <ReferenceLine y={-10} stroke="#ef4444" strokeDasharray="2 2" opacity={0.35} />
-                  <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v.toFixed(1) + '%', p.payload.jugadores?.apellido]} />
+                  <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [v.toFixed(1) + '%', esJugador && p.payload.id_jugador !== selId ? 'Jugador' : p.payload.jugadores?.apellido]} />
                   <Bar dataKey="asym_cmj" barSize={11}>
-                    {[...ultimosDatos].filter(d => d.asym_cmj != null).sort((a, b) => b.asym_cmj - a.asym_cmj).map((d, i) => (
+                    {[...ultimosDatosGlobal].filter(d => d.asym_cmj != null).sort((a, b) => b.asym_cmj - a.asym_cmj).map((d, i) => (
                       <Cell key={i} fill={d.id_jugador === selId ? '#f59e0b' : Math.abs(d.asym_cmj) > 10 ? '#ef4444' : '#1e3a5f'} opacity={d.id_jugador === selId ? 1 : 0.6} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              
             </>
           ) : (
             <div style={{ color: '#0f172a', textAlign: 'center', marginTop: 60 }}>Sin datos unilaterales.</div>
@@ -672,12 +789,11 @@ function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
         </div>
       </div>
 
-      {/* Gabinete plantel — contexto equipo */}
       {!esJugador && (
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">📋 Gabinete Kinésico — Plantel Completo</SecTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 9 }}>
-            {ultimosDatos.filter(j => j.kin_t || j.kin_c || j.kin_u).map(j => {
+            {ultimosDatosGlobal.filter(j => j.kin_t || j.kin_c || j.kin_u).map(j => {
               const isMe = j.id_jugador === selId;
               return (
                 <div key={j.id} style={{ background: isMe ? 'rgba(16,185,129,0.07)' : '#060a14', padding: 11, borderRadius: 8, border: isMe ? '1px solid #10b98133' : '1px solid #0f172a' }}>
@@ -695,7 +811,6 @@ function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
         </div>
       )}
 
-      {/* Biblioteca */}
       <div className="glass-panel" style={{ padding: 20 }}>
         <SecTitle color="#8b5cf6">📚 Biblioteca Prevención & Rehab</SecTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 13 }}>
@@ -717,7 +832,7 @@ function TabKine({ jug, stats, ultimosDatos, esJugador, selId }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// TAB NUTRI — datos del jugador elegido + contexto equipo
+// TAB NUTRI
 // ════════════════════════════════════════════════════════════════════════════
 function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
   if (!jug) return <Empty />;
@@ -733,7 +848,6 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
 
   return (
     <div className="rg">
-      {/* KPIs jugador */}
       <div className="c4">
         <KpiCard label="Músculo %"    value={jug.musc ?? '—'}  color="#3b82f6" accent="#3b82f6" sub={`Eq: ${fmtNum(stats.musc.mean)}% · Él: ${ELITE.musc}%`} />
         <KpiCard label="Adiposidad %" value={jug.adip ?? '—'}  color="#ef4444" accent="#ef4444" sub={`Eq: ${fmtNum(stats.adip.mean)}% · Él: ${ELITE.adip}%`} />
@@ -777,14 +891,13 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
         </div>
       </div>
 
-      {/* Ranking adiposidad plantel — contexto equipo */}
       {!esJugador && (
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#ef4444">📊 Ranking Adiposidad Plantel (∑ 6 pliegues) — {jug.jugadores?.apellido} destacado</SecTitle>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={[...ultimosDatos].filter(d => d.sum6).sort((a, b) => b.sum6 - a.sum6)} margin={{ left: -20, right: 10 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
-              <XAxis dataKey={d => d.jugadores?.apellido?.slice(0, 7)} tick={{ fill: '#64748b', fontSize: 12 }} />
+              <XAxis dataKey={d => esJugador && d.id_jugador !== selId ? '' : d.jugadores?.apellido?.slice(0, 7)} tick={{ fill: '#64748b', fontSize: 12 }} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
               <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', fontSize: 12, color: '#f8fafc' }} formatter={(v, n, p) => [`${v} mm`, p.payload.jugadores?.apellido]} />
               <ReferenceLine y={ELITE.sum6} stroke="#10b981" strokeDasharray="3 3" label={{ value: 'Élite', fill: '#10b981', fontSize: 8 }} />
@@ -802,7 +915,7 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// TAB EQUIPO — resumen global del plantel
+// TAB EQUIPO — Solo visible para Staff
 // ════════════════════════════════════════════════════════════════════════════
 function TabEquipo({ stats, ultimosDatos, selId, historial }) {
   const posData = useMemo(() => {
@@ -829,7 +942,6 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
 
   const ranking = [...ultimosDatos].sort((a, b) => (b.cmj || 0) - (a.cmj || 0));
 
-  // Datos históricos para evolución del equipo
   const yoyoEvol = useMemo(() => {
     const byFecha = {};
     historial.forEach(r => {
@@ -848,7 +960,6 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
 
   return (
     <div className="rg">
-      {/* ── KPIs EQUIPO ── */}
       <div className="c4">
         <KpiCard label="CMJ Promedio"   value={fmtNum(stats.cmj.mean)}   unit=" cm" color="#3b82f6" accent="#3b82f6" sub={`SD: ${fmtNum(stats.cmj.sd)} · Élite: ${ELITE.cmj}cm`} />
         <KpiCard label="Yo-Yo Promedio" value={fmtNum(stats.yoyo.mean)}  unit=""    color="#10b981" accent="#10b981" sub={`VO₂ est: ${estimarVO2(stats.yoyo.mean)}`} />
@@ -856,7 +967,6 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
         <KpiCard label="Adiposidad %"   value={fmtNum(stats.adip.mean)}  unit="%"   color="#ef4444" accent="#ef4444" sub={`SD: ${fmtNum(stats.adip.sd)} · Élite: ${ELITE.adip}%`} />
       </div>
 
-      {/* ── YO-YO PLANTEL COMPLETO + EVOLUCIÓN ── */}
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">🏃 Yo-Yo — Comparativa Plantel Completo</SecTitle>
@@ -887,7 +997,6 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
           </ResponsiveContainer>
         </div>
 
-        {/* Evolución temporal promedio equipo */}
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">📈 Evolución Yo-Yo — Promedio Equipo</SecTitle>
           {yoyoEvol.length > 1 ? (
@@ -916,7 +1025,6 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
         </div>
       </div>
 
-      {/* ── POR POSICIÓN + Distribución CMJ ── */}
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#8b5cf6">📍 Promedios por Posición Táctica</SecTitle>
@@ -963,25 +1071,9 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-          {/* Top reactivo */}
-          <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 12 }}>
-            <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 6 }}>Top 5 Índice Reactivo (ABK − CMJ)</div>
-            {ultimosDatos.filter(d => d.abk && d.cmj).sort((a, b) => (b.abk - b.cmj) - (a.abk - a.cmj)).slice(0, 5).map((d, i) => {
-              const dif = (d.abk - d.cmj).toFixed(1);
-              const isMe = d.id_jugador === selId;
-              return (
-                <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 5, marginBottom: 3, background: isMe ? 'rgba(245,158,11,0.07)' : '#060a14', border: isMe ? '1px solid #f59e0b33' : '1px solid #0f172a' }}>
-                  <span style={{ color: i === 0 ? '#f59e0b' : '#0f172a', fontWeight: 900, fontSize: '0.75rem', minWidth: 18 }}>{i + 1}</span>
-                  <span style={{ flex: 1, fontSize: '0.76rem', fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{d.jugadores?.apellido}</span>
-                  <span style={{ fontSize: '0.66rem', color: '#1e293b' }}>+{dif}</span>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
 
-      {/* ── RANKING GENERAL ── */}
       <div className="glass-panel" style={{ padding: 20 }}>
         <SecTitle>📋 Ranking General — Todos los Jugadores</SecTitle>
         <div style={{ overflowX: 'auto' }}>
@@ -1030,7 +1122,7 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// TAB VS — comparativa libre entre jugadores
+// TAB VS — Solo visible para Staff
 // ════════════════════════════════════════════════════════════════════════════
 function TabVS({ datos, stats, selId, historial }) {
   const [jugs, setJugs] = useState([null, null, null, null]);
@@ -1048,18 +1140,17 @@ function TabVS({ datos, stats, selId, historial }) {
 
   const radarComp = useMemo(() => {
     const jd = jugs.map(id => getJug(id));
+    const pct = (val, elite) => val ? (Number(val) / elite) * 100 : 0;
     return [
-      { m: 'CMJ',     A: zNorm(jd[0]?.cmj, stats.cmj),   B: zNorm(jd[1]?.cmj, stats.cmj),   C: zNorm(jd[2]?.cmj, stats.cmj),   D: zNorm(jd[3]?.cmj, stats.cmj),   E: zNorm(ELITE.cmj, stats.cmj) },
-      { m: 'ABK',     A: zNorm(jd[0]?.abk, stats.abk),   B: zNorm(jd[1]?.abk, stats.abk),   C: zNorm(jd[2]?.abk, stats.abk),   D: zNorm(jd[3]?.abk, stats.abk),   E: zNorm(ELITE.abk, stats.abk) },
-      { m: 'Broad',   A: zNorm(jd[0]?.broad, stats.broad), B: zNorm(jd[1]?.broad, stats.broad), C: zNorm(jd[2]?.broad, stats.broad), D: zNorm(jd[3]?.broad, stats.broad), E: zNorm(ELITE.broad, stats.broad) },
-      { m: 'Yo-Yo',   A: zNorm(jd[0]?.y26 || jd[0]?.y25, stats.yoyo), B: zNorm(jd[1]?.y26 || jd[1]?.y25, stats.yoyo), C: zNorm(jd[2]?.y26 || jd[2]?.y25, stats.yoyo), D: zNorm(jd[3]?.y26 || jd[3]?.y25, stats.yoyo), E: zNorm(ELITE.yoyo, stats.yoyo) },
-      { m: 'Músculo', A: zNorm(jd[0]?.musc, stats.musc), B: zNorm(jd[1]?.musc, stats.musc), C: zNorm(jd[2]?.musc, stats.musc), D: zNorm(jd[3]?.musc, stats.musc), E: zNorm(ELITE.musc, stats.musc) },
+      { m: 'CMJ',     A: pct(jd[0]?.cmj, ELITE.cmj),   B: pct(jd[1]?.cmj, ELITE.cmj),   C: pct(jd[2]?.cmj, ELITE.cmj),   D: pct(jd[3]?.cmj, ELITE.cmj),   E: 100 },
+      { m: 'ABK',     A: pct(jd[0]?.abk, ELITE.abk),   B: pct(jd[1]?.abk, ELITE.abk),   C: pct(jd[2]?.abk, ELITE.abk),   D: pct(jd[3]?.abk, ELITE.abk),   E: 100 },
+      { m: 'Broad',   A: pct(jd[0]?.broad, ELITE.broad), B: pct(jd[1]?.broad, ELITE.broad), C: pct(jd[2]?.broad, ELITE.broad), D: pct(jd[3]?.broad, ELITE.broad), E: 100 },
+      { m: 'Yo-Yo',   A: pct(jd[0]?.y26 || jd[0]?.y25, ELITE.yoyo), B: pct(jd[1]?.y26 || jd[1]?.y25, ELITE.yoyo), C: pct(jd[2]?.y26 || jd[2]?.y25, ELITE.yoyo), D: pct(jd[3]?.y26 || jd[3]?.y25, ELITE.yoyo), E: 100 },
+      { m: 'Músculo', A: pct(jd[0]?.musc, ELITE.musc), B: pct(jd[1]?.musc, ELITE.musc), C: pct(jd[2]?.musc, ELITE.musc), D: pct(jd[3]?.musc, ELITE.musc), E: 100 },
     ];
-  }, [jugs, stats]);
+  }, [jugs]);
 
-  // ── Yo-Yo histórico por jugador seleccionado ──
   const yoyoHistComp = useMemo(() => {
-    // Obtener todas las fechas únicas
     const fechas = [...new Set(historial.map(r => r.fecha_medicion?.slice(0, 7)).filter(Boolean))].sort();
     return fechas.map(f => {
       const row = { f };
@@ -1073,7 +1164,6 @@ function TabVS({ datos, stats, selId, historial }) {
 
   return (
     <div className="rg">
-      {/* Selectores */}
       <div className="glass-panel" style={{ padding: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {[0, 1, 2, 3].map(i => (
@@ -1090,26 +1180,24 @@ function TabVS({ datos, stats, selId, historial }) {
       </div>
 
       <div className="c2">
-        {/* Radar comparativo */}
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle>⚖️ Perfil Z-Score Comparativo</SecTitle>
+          <SecTitle>⚖️ Perfil vs Élite Comparativo</SecTitle>
           <ResponsiveContainer width="100%" height={360}>
             <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarComp}>
               <PolarGrid stroke="#0f172a" />
               <PolarAngleAxis dataKey="m" tick={{ fill: '#64748b', fontSize: 12 }} />
-              <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+              <PolarRadiusAxis domain={[0, 'auto']} tick={false} axisLine={false} />
               <Radar name="ÉLITE" dataKey="E" stroke="#ef4444" fill="transparent" strokeDasharray="4 3" strokeWidth={1.5} />
               {jugs[0] && <Radar name={getJug(jugs[0])?.jugadores?.apellido} dataKey="A" stroke={COLS[0]} fill={COLS[0]} fillOpacity={0.3} />}
               {jugs[1] && <Radar name={getJug(jugs[1])?.jugadores?.apellido} dataKey="B" stroke={COLS[1]} fill={COLS[1]} fillOpacity={0.3} />}
               {jugs[2] && <Radar name={getJug(jugs[2])?.jugadores?.apellido} dataKey="C" stroke={COLS[2]} fill={COLS[2]} fillOpacity={0.3} />}
               {jugs[3] && <Radar name={getJug(jugs[3])?.jugadores?.apellido} dataKey="D" stroke={COLS[3]} fill={COLS[3]} fillOpacity={0.3} />}
               <Legend wrapperStyle={{ fontSize: 13 }} />
-              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [v ? v.toFixed(0) : 0, 'Score']} />
+              <RTooltip contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', color: '#f8fafc' }} formatter={v => [v ? `${v.toFixed(1)}%` : '0%', '% Élite']} />
             </RadarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Yo-Yo comparativa DIRECTA — barras agrupadas */}
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">🏃 Yo-Yo — Comparativa Directa</SecTitle>
           <ResponsiveContainer width="100%" height={250}>
@@ -1130,7 +1218,6 @@ function TabVS({ datos, stats, selId, historial }) {
             </BarChart>
           </ResponsiveContainer>
 
-          {/* Tabla detallada */}
           <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 13 }}>
             <table className="data-table">
               <thead><tr><th>Jugador</th><th style={{ textAlign: 'center' }}>CMJ</th><th style={{ textAlign: 'center' }}>ABK</th><th style={{ textAlign: 'center' }}>Broad</th><th style={{ textAlign: 'center' }}>Asim</th><th style={{ textAlign: 'center' }}>Músculo</th></tr></thead>
@@ -1163,7 +1250,6 @@ function TabVS({ datos, stats, selId, historial }) {
         </div>
       </div>
 
-      {/* ── EVOLUCIÓN YO-YO HISTÓRICA — nuevo gráfico ── */}
       {yoyoHistComp.length > 1 && (
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">📈 Evolución Yo-Yo Histórica — Jugadores Seleccionados</SecTitle>
@@ -1188,7 +1274,6 @@ function TabVS({ datos, stats, selId, historial }) {
         </div>
       )}
 
-      {/* Yo-Yo plantel completo — contexto */}
       <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
         <SecTitle color="#10b981">🏟️ Yo-Yo — Plantel Completo (contexto)</SecTitle>
         <div style={{ fontSize: '0.68rem', color: '#1e293b', marginBottom: 8 }}>

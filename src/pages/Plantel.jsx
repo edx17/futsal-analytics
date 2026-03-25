@@ -40,25 +40,16 @@ function Plantel() {
 
     setSubiendoFoto(true);
     
-    // Armamos un nombre único para que no se pisen si se llaman igual
     const fileExt = file.name.split('.').pop();
     const fileName = `jugador_${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
     try {
-      // 1. Subimos el archivo al bucket 'foto'
-      const { data, error } = await supabase.storage
-        .from('foto')
-        .upload(filePath, file);
-
+      const { data, error } = await supabase.storage.from('foto').upload(filePath, file);
       if (error) throw error;
 
-      // 2. Obtenemos la URL pública de la imagen que acabamos de subir
-      const { data: publicUrlData } = supabase.storage
-        .from('foto')
-        .getPublicUrl(filePath);
+      const { data: publicUrlData } = supabase.storage.from('foto').getPublicUrl(filePath);
 
-      // 3. Guardamos esa URL en el formData
       setFormData({ ...formData, foto: publicUrlData.publicUrl });
       showToast("Foto subida correctamente", "success");
 
@@ -77,7 +68,7 @@ function Plantel() {
 
     let payload = { ...formData, club_id: clubId };
 
-    const camposEstrictos = ['fechanac', 'dni', 'contacto', 'peso', 'altura', 'vencimiento_apto', 'talla_calzado'];
+    const camposEstrictos = ['fechanac', 'dni', 'contacto', 'peso', 'altura', 'vencimiento_apto', 'talla_calzado', 'user_id'];
     
     camposEstrictos.forEach(campo => {
       if (payload[campo] === '') {
@@ -86,19 +77,74 @@ function Plantel() {
     });
 
     if (formData.id) {
+      // --- MODO EDICIÓN ---
       const { error } = await supabase.from('jugadores').update(payload).eq('id', formData.id);
       if (!error) {
         showToast("Jugador actualizado con éxito", "success");
         setMostrarModalAlta(false);
         fetchJugadores();
-      } else showToast("Error al actualizar: " + error.message, "error");
+      } else {
+        showToast("Error al actualizar: " + error.message, "error");
+      }
     } else {
-      const { error } = await supabase.from('jugadores').insert([payload]);
-      if (!error) {
-        showToast("Jugador creado con éxito", "success");
+      // --- MODO CREACIÓN (ALTA NUEVA) ---
+      try {
+        showToast("Creando jugador y generando PIN...", "info");
+        
+        // 1. Generamos un PIN de 4 dígitos aleatorio
+        const nuevoPin = Math.floor(1000 + Math.random() * 9000).toString();
+        
+        // 2. Armamos un username base a prueba de duplicados (ej: messi_10_4821)
+        let baseUsername = `${payload.apellido || payload.nombre}_${payload.dorsal}_${nuevoPin}`.toLowerCase().replace(/\s+/g, '');
+        const emailFicticio = `${baseUsername}@virtualstats.com`;
+        const passwordConPrefijo = `VS${nuevoPin}`;
+
+        // 3. Creamos el usuario en Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: emailFicticio,
+          password: passwordConPrefijo,
+          options: {
+            data: {
+              nombre: payload.nombre,
+              apellido: payload.apellido || '',
+              rol: 'jugador'
+            }
+          }
+        });
+
+        if (authError) throw new Error("Error creando cuenta de Auth: " + authError.message);
+
+        const nuevoUserId = authData.user?.id;
+
+        if (nuevoUserId) {
+           // 4. Creamos el perfil (ignoramos error si tu Supabase ya lo crea con un Trigger automático)
+           await supabase.from('perfiles').insert([{
+             id: nuevoUserId,
+             username: baseUsername,
+             email: emailFicticio,
+             rol: 'jugador',
+             club_id: clubId
+           }]);
+           
+           payload.user_id = nuevoUserId;
+        }
+
+        // 5. Agregamos los datos de Kiosco al payload
+        payload.username = baseUsername;
+        payload.pin_kiosco = nuevoPin;
+
+        // 6. Guardamos la ficha en la tabla jugadores
+        const { error: dbError } = await supabase.from('jugadores').insert([payload]);
+        
+        if (dbError) throw new Error("Error guardando ficha técnica: " + dbError.message);
+
+        showToast(`Jugador creado. PIN de acceso: ${nuevoPin}`, "success");
         setMostrarModalAlta(false);
         fetchJugadores();
-      } else showToast("Error al crear: " + error.message, "error");
+
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     }
   };
 
@@ -132,6 +178,35 @@ function Plantel() {
     else { setOrdenColumna(columna); setOrdenAscendente(true); }
   };
 
+  // --- COPIAR TODOS LOS PINS ---
+  const copiarTodosLosPINs = () => {
+    let texto = "🔐 *ACCESOS AL SISTEMA VIRTUAL.STATS*\n\n";
+    
+    jugadoresOrdenados.forEach(j => {
+      const nombreCompleto = `${j.nombre} ${j.apellido || ''}`.trim().toUpperCase();
+      texto += `👤 *${nombreCompleto}*\n`;
+      texto += `Usuario (Casa): ${j.username || 'No generado'}\n`;
+      texto += `PIN (Kiosco): ${j.pin_kiosco || 'No generado'}\n\n`;
+    });
+
+    navigator.clipboard.writeText(texto)
+      .then(() => showToast("¡Lista completa copiada!", "success"))
+      .catch(err => showToast("Error al copiar", "error"));
+  };
+
+  // --- COPIAR PIN INDIVIDUAL ---
+  const copiarPinIndividual = (j) => {
+    const nombreCompleto = `${j.nombre} ${j.apellido || ''}`.trim().toUpperCase();
+    let texto = `🔐 *ACCESO VIRTUAL.STATS*\n\n`;
+    texto += `👤 *${nombreCompleto}*\n`;
+    texto += `Usuario (Casa): ${j.username || 'No generado'}\n`;
+    texto += `PIN (Kiosco): ${j.pin_kiosco || 'No generado'}\n`;
+
+    navigator.clipboard.writeText(texto)
+      .then(() => showToast(`¡Acceso de ${j.nombre} copiado!`, "success"))
+      .catch(err => showToast("Error al copiar", "error"));
+  };
+
   const jugadoresOrdenados = [...jugadores].sort((a, b) => {
     let valorA = a[ordenColumna] || '';
     let valorB = b[ordenColumna] || '';
@@ -159,9 +234,13 @@ function Plantel() {
   return (
     <div style={{ animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>
       <div className="bento-card">
+        
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div className="stat-label" style={{ fontSize: '1.2rem', color: '#fff' }}>MI PLANTEL ({jugadores.length})</div>
-          <button onClick={abrirNuevo} className="btn-action" style={{ background: '#00ff88', color: '#000' }}>+ NUEVO JUGADOR</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)' }}>📋 COPIAR PINs</button>
+            <button onClick={abrirNuevo} className="btn-action" style={{ background: '#00ff88', color: '#000' }}>+ NUEVO JUGADOR</button>
+          </div>
         </div>
 
         <div className="table-wrapper">
@@ -239,6 +318,16 @@ function Plantel() {
                 <div style={fichaRow}><span>Obra Social:</span> <strong>{jugadorSeleccionado.obra_social || 'N/A'}</strong></div>
                 <div style={fichaRow}><span>Venc. Apto:</span> <strong style={{ color: 'var(--accent)' }}>{jugadorSeleccionado.vencimiento_apto || 'N/A'}</strong></div>
               </div>
+            </div>
+
+            {/* --- SECCIÓN DE ACCESO AL KIOSCO --- */}
+            <div style={{ background: 'rgba(0, 255, 136, 0.05)', border: '1px solid var(--accent)', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                 <div className="section-title" style={{ margin: 0, color: 'var(--accent)' }}>ACCESO AL SISTEMA</div>
+                 <button onClick={() => copiarPinIndividual(jugadorSeleccionado)} style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', transition: '0.2s' }}>📋 COPIAR ACCESO</button>
+               </div>
+               <div style={fichaRow}><span>Usuario (Login Normal):</span> <strong style={{ color: '#fff' }}>{jugadorSeleccionado.username || 'No generado'}</strong></div>
+               <div style={fichaRow}><span>PIN (Kiosco):</span> <strong style={{ fontSize: '1.2rem', color: 'var(--accent)', letterSpacing: '2px' }}>{jugadorSeleccionado.pin_kiosco || 'N/A'}</strong></div>
             </div>
 
             <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>

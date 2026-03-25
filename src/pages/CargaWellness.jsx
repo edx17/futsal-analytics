@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const CargaWellness = () => {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const { perfil } = useAuth();
 
@@ -16,7 +18,6 @@ const CargaWellness = () => {
   // ESTADOS DE NAVEGACIÓN
   const [vistaActiva, setVistaActiva] = useState(esJugador ? 'carga' : 'reporte');
   
-  // --- FUNCIONES DE FECHA ---
   const obtenerFechaLocal = (fechaBase = new Date()) => {
     const yyyy = fechaBase.getFullYear();
     const mm = String(fechaBase.getMonth() + 1).padStart(2, '0');
@@ -26,27 +27,45 @@ const CargaWellness = () => {
 
   const [fecha, setFecha] = useState(obtenerFechaLocal()); 
   
-  // Estado del formulario de Carga
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [jugadorSeleccionado, setJugadorSeleccionado] = useState('');
-  const [modo, setModo] = useState('pre'); // 'pre', 'mental' o 'post'
+  const [modo, setModo] = useState('pre'); 
 
   const [readiness, setReadiness] = useState({ sueno: 3, estres: 3, fatiga: 3, dolor_muscular: 3 });
   const [cargaPost, setCargaPost] = useState({ tipo_sesion: 'Entrenamiento', rpe: 5, minutos_actividad: 90 });
   const [mental, setMental] = useState({ animo: 3, motivacion: 3, ansiedad: 3, confianza: 3, notas: '' });
 
-  // --- ESTADOS PARA EL REPORTE DEL DT ---
   const [fechaReferenciaReporte, setFechaReferenciaReporte] = useState(new Date());
   const [diasSemanaReporte, setDiasSemanaReporte] = useState([]);
   const [datosSemana, setDatosSemana] = useState([]);
   const [cargandoReporte, setCargandoReporte] = useState(false);
-  
-  // NUEVO: ESTADO PARA EL MODAL DE DETALLE
   const [detalleRegistro, setDetalleRegistro] = useState(null);
 
+  // --- SOLUCIÓN: BÚSQUEDA ROBUSTA DEL ID DEL JUGADOR ---
   useEffect(() => {
-    cargarJugadores();
-  }, []);
+    const inicializarJugador = async () => {
+      if (esJugador) {
+        // 1. Si el AuthContext ya nos mandó el ID listo, lo usamos
+        if (perfil?.jugador_id) {
+          setJugadorSeleccionado(perfil.jugador_id);
+        } else {
+          // 2. Si no llegó, lo buscamos a la fuerza con el ID del Kiosco
+          const kioscoUid = localStorage.getItem('kiosco_user_id');
+          if (kioscoUid) {
+            const { data } = await supabase.from('jugadores').select('id').eq('user_id', kioscoUid).single();
+            if (data) {
+              setJugadorSeleccionado(data.id);
+            }
+          }
+        }
+      } else {
+        // Si es DT o Admin, carga la lista normal
+        cargarJugadores();
+      }
+    };
+
+    inicializarJugador();
+  }, [esJugador, perfil]);
 
   useEffect(() => {
     if (jugadorSeleccionado && fecha && vistaActiva === 'carga') {
@@ -67,7 +86,7 @@ const CargaWellness = () => {
     const { data, error } = await query;
     if (!error && data) {
       setJugadores(data);
-      if (data.length > 0) setJugadorSeleccionado(data[0].id);
+      if (data.length > 0 && !esJugador) setJugadorSeleccionado(data[0].id);
     }
   };
 
@@ -91,10 +110,12 @@ const CargaWellness = () => {
   };
 
   const guardarWellness = async () => {
-    if (!jugadorSeleccionado) return showToast("Seleccioná un jugador", "warning");
+    // Si todavía no cargó el ID, frenamos y avisamos
+    if (!jugadorSeleccionado) return showToast("Aguardá un segundo, vinculando perfil...", "warning");
+    
     setCargando(true);
     try {
-      const club_id = localStorage.getItem('club_id') || 'club_default';
+      const club_id = localStorage.getItem('club_id') || localStorage.getItem('kiosco_club_id') || 'club_default';
       const payload = {
         club_id, jugador_id: jugadorSeleccionado, fecha,
         sueno: readiness.sueno, estres: readiness.estres, fatiga: readiness.fatiga, dolor_muscular: readiness.dolor_muscular,
@@ -162,7 +183,6 @@ const CargaWellness = () => {
     let suma = 0;
     let max = 0;
 
-    // Métricas Físicas: Invertimos estrés, fatiga y dolor (1 es poco/bueno, 5 es mucho/malo). 
     if (reg.sueno) { 
       suma += reg.sueno; 
       suma += (6 - reg.estres); 
@@ -171,7 +191,6 @@ const CargaWellness = () => {
       max += 20; 
     }
     
-    // Métricas Mentales: Invertimos ansiedad
     if (reg.animo) { 
       suma += reg.animo + reg.motivacion + (6 - reg.ansiedad) + reg.confianza; 
       max += 20; 
@@ -182,18 +201,16 @@ const CargaWellness = () => {
   };
 
   const getColorPorPuntos = (score) => {
-    if (score >= 80) return { bg: '#10b98120', text: '#10b981', border: '#10b98150' }; // Verde (Óptimo)
-    if (score >= 60) return { bg: '#eab30820', text: '#eab308', border: '#eab30850' }; // Amarillo (Precaución)
-    return { bg: '#ef444420', text: '#ef4444', border: '#ef444450' }; // Rojo (Peligro)
+    if (score >= 80) return { bg: '#10b98120', text: '#10b981', border: '#10b98150' }; 
+    if (score >= 60) return { bg: '#eab30820', text: '#eab308', border: '#eab30850' }; 
+    return { bg: '#ef444420', text: '#ef4444', border: '#ef444450' }; 
   };
 
-  // Semáforo independiente para el RPE (Carga de sesión)
   const getColorPorRPE = (rpe) => {
-    if (rpe <= 4) return { bg: '#10b98120', text: '#10b981', border: '#10b98150' }; // Verde (Baja)
-    if (rpe <= 7) return { bg: '#eab30820', text: '#eab308', border: '#eab30850' }; // Amarillo (Media)
-    return { bg: '#ef444420', text: '#ef4444', border: '#ef444450' }; // Rojo (Alta)
+    if (rpe <= 4) return { bg: '#10b98120', text: '#10b981', border: '#10b98150' }; 
+    if (rpe <= 7) return { bg: '#eab30820', text: '#eab308', border: '#eab30850' }; 
+    return { bg: '#ef444420', text: '#ef4444', border: '#ef444450' }; 
   };
-
 
   // --- COMPONENTES UI AUXILIARES ---
   const EscalaBotones = ({ label, icon, valor, setValor, invertido = false, labelBajo = 'Muy Malo', labelAlto = 'Excelente' }) => {
@@ -255,6 +272,13 @@ const CargaWellness = () => {
   return (
     <div style={{ maxWidth: vistaActiva === 'reporte' ? '1200px' : '600px', margin: '0 auto', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
       
+      {/* --- BOTÓN VOLVER --- */}
+      <div style={{ marginBottom: '20px' }}>
+        <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: '1px solid #333', color: '#fff', padding: '8px 15px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}>
+          ← VOLVER
+        </button>
+      </div>
+
       {!esJugador && (
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <button onClick={() => setVistaActiva('reporte')} style={{ ...mainTabBtn, background: vistaActiva === 'reporte' ? 'var(--accent)' : '#111', color: vistaActiva === 'reporte' ? '#000' : '#888' }}>
@@ -333,7 +357,6 @@ const CargaWellness = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                                 onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                               >
-                                {/* LÍNEA 1: PRE + MENTAL (READINESS) */}
                                 {score !== null ? (
                                   <div style={{ 
                                     background: getColorPorPuntos(score).bg, 
@@ -353,7 +376,6 @@ const CargaWellness = () => {
                                   <div style={{ padding: '4px', fontSize: '0.75rem', color: '#444' }}>-</div>
                                 )}
                                 
-                                {/* LÍNEA 2: POST (RPE) */}
                                 {registro.rpe ? (
                                   <div style={{ 
                                     background: getColorPorRPE(registro.rpe).bg, 
@@ -395,7 +417,6 @@ const CargaWellness = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
           <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '700px', border: '1px solid #333', position: 'relative', animation: 'fadeIn 0.2s', padding: 0, overflow: 'hidden' }}>
             
-            {/* HEADER */}
             <div style={{ background: '#0a0a0a', padding: '20px', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, color: '#fff', fontSize: '1.3rem', textTransform: 'uppercase' }}>{detalleRegistro.jugador.apellido}, {detalleRegistro.jugador.nombre}</h3>
@@ -406,7 +427,6 @@ const CargaWellness = () => {
 
             <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '75vh', overflowY: 'auto' }}>
               
-              {/* SCORE GENERAL */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px', background: '#000', padding: '15px', borderRadius: '12px', border: '1px solid #222' }}>
                 {(() => {
                   const score = calcularScoreReadiness(detalleRegistro.registro);
@@ -435,7 +455,6 @@ const CargaWellness = () => {
               </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-                {/* COLUMNA FÍSICA */}
                 {detalleRegistro.registro.sueno && (
                   <div style={{ flex: '1 1 300px', background: '#0a0a0a', padding: '15px', borderRadius: '12px', border: '1px solid #333' }}>
                     <h4 style={{ color: 'var(--accent)', margin: '0 0 15px 0', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -448,7 +467,6 @@ const CargaWellness = () => {
                   </div>
                 )}
 
-                {/* COLUMNA MENTAL */}
                 {detalleRegistro.registro.animo && (
                   <div style={{ flex: '1 1 300px', background: '#0a0a0a', padding: '15px', borderRadius: '12px', border: '1px solid #333' }}>
                     <h4 style={{ color: '#c084fc', margin: '0 0 15px 0', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -462,7 +480,6 @@ const CargaWellness = () => {
                 )}
               </div>
 
-              {/* NOTAS Y CARGA (RPE) */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
                 {detalleRegistro.registro.notas_mentales && (
                   <div style={{ flex: 2, background: 'rgba(168, 85, 247, 0.1)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
@@ -499,36 +516,50 @@ const CargaWellness = () => {
               <span style={{ fontSize: '2rem' }}>🌡️</span> CONTROL WELLNESS 360°
             </h1>
             
-            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center' }}>
+              
+              {/* VISTA STAFF: Eligen categoría y jugador */}
               {!esJugador && (
-                <div style={{ flex: 1, minWidth: '130px' }}>
-                  <label style={labelStyle}>Categoría</label>
-                  <select 
-                    value={filtroCategoria} 
-                    onChange={e => {
-                      const nuevaCat = e.target.value;
-                      setFiltroCategoria(nuevaCat);
-                      const listaNueva = nuevaCat === 'Todas' ? jugadores : jugadores.filter(j => j.categoria === nuevaCat);
-                      setJugadorSeleccionado(listaNueva.length > 0 ? listaNueva[0].id : '');
-                    }} 
-                    style={inputStyle}
-                  >
-                    {categoriasUnicas.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                <>
+                  <div style={{ flex: 1, minWidth: '130px' }}>
+                    <label style={labelStyle}>Categoría</label>
+                    <select 
+                      value={filtroCategoria} 
+                      onChange={e => {
+                        const nuevaCat = e.target.value;
+                        setFiltroCategoria(nuevaCat);
+                        const listaNueva = nuevaCat === 'Todas' ? jugadores : jugadores.filter(j => j.categoria === nuevaCat);
+                        setJugadorSeleccionado(listaNueva.length > 0 ? listaNueva[0].id : '');
+                      }} 
+                      style={inputStyle}
+                    >
+                      {categoriasUnicas.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ flex: 2, minWidth: '200px' }}>
+                    <label style={labelStyle}>Jugador</label>
+                    <select value={jugadorSeleccionado} onChange={e => setJugadorSeleccionado(e.target.value)} style={inputStyle}>
+                      {jugadoresFiltrados.map(j => (
+                        <option key={j.id} value={j.id}>{j.apellido}, {j.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* VISTA JUGADOR: Indicador visual en lugar de selectores */}
+              {esJugador && (
+                <div style={{ flex: 2, padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', textAlign: 'center' }}>
+                  <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+                    {jugadorSeleccionado ? '✅ Tu perfil está vinculado y listo para cargar' : '🔄 Conectando con tu ficha...'}
+                  </span>
                 </div>
               )}
 
-              <div style={{ flex: 2, minWidth: '200px' }}>
-                <label style={labelStyle}>Jugador</label>
-                <select value={jugadorSeleccionado} onChange={e => setJugadorSeleccionado(e.target.value)} style={inputStyle}>
-                  {jugadoresFiltrados.map(j => (
-                    <option key={j.id} value={j.id}>{j.apellido}, {j.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
+              {/* Selector de fecha para ambos */}
               <div style={{ flex: 1, minWidth: '130px' }}>
                 <label style={labelStyle}>Fecha</label>
                 <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} style={inputStyle} />
@@ -641,8 +672,8 @@ const CargaWellness = () => {
 
           <button 
             onClick={guardarWellness} 
-            disabled={cargando}
-            style={{ width: '100%', padding: '15px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '900', cursor: 'pointer', marginTop: '20px', transition: '0.2s', opacity: cargando ? 0.7 : 1 }}
+            disabled={cargando || !jugadorSeleccionado}
+            style={{ width: '100%', padding: '15px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '900', cursor: 'pointer', marginTop: '20px', transition: '0.2s', opacity: (cargando || !jugadorSeleccionado) ? 0.5 : 1 }}
           >
             {cargando ? 'GUARDANDO...' : '💾 GUARDAR DATOS COMPLETOS'}
           </button>

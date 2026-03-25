@@ -24,7 +24,9 @@ function JugadorPerfil() {
   
   const [wellnessJugador, setWellnessJugador] = useState([]);
   
-  const [jugadorId, setJugadorId] = useState('');
+  const isKiosco = !!localStorage.getItem('kiosco_jugador_id'); // <-- CONTROL DE KIOSCO AÑADIDO
+  const [jugadorId, setJugadorId] = useState(localStorage.getItem('kiosco_jugador_id') || ''); // <-- VA DIRECTO AL PERFIL DEL JUGADOR
+  
   const [partidoFiltro, setPartidoFiltro] = useState('Todos');
   const [tipoMapa, setTipoMapa] = useState('calor');
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
@@ -36,6 +38,11 @@ function JugadorPerfil() {
   useEffect(() => {
     async function checkPermisos() {
       try {
+        if (localStorage.getItem('kiosco_jugador_id')) {
+          setUserRol('Jugador');
+          setCargandoAuth(false);
+          return;
+        }
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: perfil } = await supabase.from('usuarios').select('rol').eq('id', user.id).single();
@@ -300,45 +307,45 @@ function JugadorPerfil() {
   }
 
   if (!jugadorId) {
-     return (
-       <div style={{ animation: 'fadeIn 0.3s' }}>
-         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
-           <div>
-             <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>DIRECTORIO DE PLANTEL</div>
-             <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>Seleccioná un jugador para ver su analítica completa y sus mapas de influencia.</div>
-           </div>
-           <div>
-             <div className="stat-label">FILTRAR POR CATEGORÍA</div>
-             <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ marginTop: '5px', width: '200px', background: '#000', color: '#fff', padding: '8px', borderRadius: '4px', border: '1px solid #333', outline: 'none' }}>
-               <option value="Todas">TODAS LAS CATEGORÍAS</option>
-               {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
-             </select>
-           </div>
-         </div>
+      return (
+        <div style={{ animation: 'fadeIn 0.3s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
+            <div>
+              <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>DIRECTORIO DE PLANTEL</div>
+              <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>Seleccioná un jugador para ver su analítica completa y sus mapas de influencia.</div>
+            </div>
+            <div>
+              <div className="stat-label">FILTRAR POR CATEGORÍA</div>
+              <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ marginTop: '5px', width: '200px', background: '#000', color: '#fff', padding: '8px', borderRadius: '4px', border: '1px solid #333', outline: 'none' }}>
+                <option value="Todas">TODAS LAS CATEGORÍAS</option>
+                {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+              </select>
+            </div>
+          </div>
 
-         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
-           {jugadoresGrid.map(j => (
-             <div key={j.id} className="bento-card player-card" onClick={() => setJugadorId(j.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}>
-               <div style={{ position: 'absolute', right: '-10px', top: '-20px', fontSize: '6rem', fontWeight: 900, color: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }}>{j.dorsal}</div>
-               
-               <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '15px' }}>
-                 {j.foto ? <img src={j.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</>}
-               </div>
-               
-               <div style={{ position: 'relative', zIndex: 1 }}>
-                 <div style={{ fontSize: '1.2rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1.1 }}>{j.apellido || '-'}</div>
-                 <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginTop: '4px' }}>{j.nombre || '-'}</div>
-               </div>
-               <div style={{ display: 'flex', gap: '8px', marginTop: '15px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
-                 <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>{j.posicion || 'S/P'}</span>
-                 <span style={{ background: '#222', color: '#aaa', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>#{j.dorsal}</span>
-               </div>
-             </div>
-           ))}
-         </div>
-         <style>{`.player-card:hover { transform: translateY(-5px); border-color: var(--accent); }`}</style>
-       </div>
-     );
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
+            {jugadoresGrid.map(j => (
+              <div key={j.id} className="bento-card player-card" onClick={() => setJugadorId(j.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}>
+                <div style={{ position: 'absolute', right: '-10px', top: '-20px', fontSize: '6rem', fontWeight: 900, color: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }}>{j.dorsal}</div>
+                
+                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '15px' }}>
+                  {j.foto ? <img src={j.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</>}
+                </div>
+                
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1.1 }}>{j.apellido || '-'}</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginTop: '4px' }}>{j.nombre || '-'}</div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '15px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+                  <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>{j.posicion || 'S/P'}</span>
+                  <span style={{ background: '#222', color: '#aaa', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>#{j.dorsal}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <style>{`.player-card:hover { transform: translateY(-5px); border-color: var(--accent); }`}</style>
+        </div>
+      );
   }
 
   return (
@@ -346,7 +353,9 @@ function JugadorPerfil() {
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <button onClick={() => setJugadorId('')} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>⬅ VOLVER AL PLANTEL</button>
+          {!isKiosco && (
+            <button onClick={() => setJugadorId('')} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>⬅ VOLVER AL PLANTEL</button>
+          )}
           {jugadorId && (
             <div>
               <div className="stat-label">CONTEXTO / PARTIDO</div>

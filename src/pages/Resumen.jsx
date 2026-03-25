@@ -11,10 +11,12 @@ import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
+import { useAuth } from '../context/AuthContext';
 
 function Resumen() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { perfil } = useAuth();
 
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
@@ -22,7 +24,6 @@ function Resumen() {
   const [eventosPartido, setEventosPartido] = useState([]);
   const [wellness, setWellness] = useState([]); 
   
-  // --- NUEVO ESTADO PARA EL FILTRO DE PARTIDOS ANALIZADOS ---
   const [partidosConDatos, setPartidosConDatos] = useState([]);
   const [soloAnalizados, setSoloAnalizados] = useState(false);
 
@@ -36,7 +37,6 @@ function Resumen() {
 
   const heatmapRef = useRef(null);
 
-  // --- ESTADOS PARA EL VIDEOTRACKING (NATIVO) ---
   const [videoUrl, setVideoUrl] = useState('');
   const [tiempoVideo, setTiempoVideo] = useState(0); 
   const [offsetPT, setOffsetPT] = useState(0); 
@@ -45,6 +45,8 @@ function Resumen() {
 
   useEffect(() => {
     async function obtenerDatos() {
+      const club_id = localStorage.getItem('club_id') || perfil?.club_id || 'club_default';
+
       const { data: p } = await supabase.from('partidos').select('*').order('id', { ascending: false });
       setPartidos(p || []);
       const { data: j } = await supabase.from('jugadores').select('*');
@@ -54,13 +56,13 @@ function Resumen() {
       if (wError) console.error("⚠️ Error leyendo wellness desde Supabase:", wError);
       setWellness(w || []);
 
-      // Buscamos qué partidos tienen eventos cargados para el nuevo filtro
       const { data: evs } = await supabase.from('eventos').select('id_partido');
       if (evs) {
         const idsConDatos = [...new Set(evs.map(e => e.id_partido))];
         setPartidosConDatos(idsConDatos);
       }
 
+      // Esto sigue funcionando por si alguien (staff) entra directo con un link /resumen/123
       if (id && p) {
         const matchFound = p.find(partido => partido.id == id);
         if (matchFound) {
@@ -69,7 +71,7 @@ function Resumen() {
       }
     }
     obtenerDatos();
-  }, [id]);
+  }, [id, perfil]);
 
   const cargarPartidoDirecto = async (partido) => {
     setPartidoSeleccionado(partido);
@@ -80,16 +82,20 @@ function Resumen() {
     setEventosPartido(data || []);
   };
 
+  // FIX: Ya no usamos navigate(). Lo cargamos directo del estado para no cambiar la URL y que el Kiosco no te patee.
   const cargarPartido = (idPartido) => {
-    navigate(`/resumen/${idPartido}`);
+    const matchFound = partidos.find(p => p.id === idPartido);
+    if (matchFound) {
+      cargarPartidoDirecto(matchFound);
+    }
   };
 
+  // FIX: Tampoco usamos navigate() al cerrar, solo limpiamos los estados.
   const cerrarPartido = () => {
     setPartidoSeleccionado(null);
     setEventosPartido([]);
     setVideoUrl('');
     setTiempoVideo(0);
-    navigate('/resumen');
   };
 
   const obtenerUrlEmbed = () => {
@@ -519,7 +525,6 @@ function Resumen() {
           </div>
 
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            {/* NUEVO BOTÓN DE FILTRO */}
             <div>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>MOSTRAR</div>
               <button 
@@ -737,7 +742,6 @@ function Resumen() {
               </div>
             </div>
 
-            {/* GRÁFICO NUEVO: ADN GOLES RIVALES */}
             <div className="bento-card" style={{ borderTop: '3px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
                 ADN GOLES RIVALES <InfoBox texto="El contexto táctico desde el cual nos marcaron." />

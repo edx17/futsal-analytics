@@ -6,7 +6,7 @@ export function ProtectedRoute({ children, allowedRoles }) {
   const { user, perfil, loading } = useAuth();
 
   if (loading) {
-    return <div style={{ color: 'var(--accent)', padding: '20px', fontFamily: 'JetBrains Mono' }}>VERIFICANDO CREDENCIALES...</div>;
+    return <div style={{ color: 'var(--accent)', padding: '20px', fontFamily: 'JetBrains Mono', textAlign: 'center', marginTop: '50px' }}>VERIFICANDO ACCESO...</div>;
   }
 
   if (!user) {
@@ -14,8 +14,7 @@ export function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (allowedRoles && perfil && !allowedRoles.includes(perfil.rol)) {
-    // Si no tiene permiso, lo enviamos al dashboard global (lectura)
-    return <Navigate to="/temporada" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return children;

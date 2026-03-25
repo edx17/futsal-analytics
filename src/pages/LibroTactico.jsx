@@ -176,7 +176,9 @@ export default function LibroTactico() {
   const { showToast } = useToast();
   const { perfil } = useAuth();
   
-  const esStaff = ['superuser', 'admin', 'ct'].includes(perfil?.rol?.toLowerCase());
+  // FIX: Validación a prueba de balas para que no rompa si el kiosco no carga el perfil bien
+  const rolUsuario = perfil?.rol ? String(perfil.rol).toLowerCase() : '';
+  const esStaff = ['superuser', 'admin', 'ct'].includes(rolUsuario);
 
   useEffect(() => {
     cargarLibroTactico();
@@ -185,12 +187,14 @@ export default function LibroTactico() {
   const cargarLibroTactico = async () => {
     setCargando(true);
     try {
-      const club_id = localStorage.getItem('club_id') || 'club_default';
+      // FIX: Fallback a perfil?.club_id por si el kiosco no lo guardó en el localStorage
+      const club_id = localStorage.getItem('club_id') || perfil?.club_id || 'club_default';
+      
       const { data, error } = await supabase
         .from('tareas')
         .select('*')
         .eq('club_id', club_id)
-        .eq('categoria_ejercicio', 'Libro Táctico') // Solo traemos las de Pizarra Oficial
+        .eq('categoria_ejercicio', 'Libro Táctico') 
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -220,6 +224,29 @@ export default function LibroTactico() {
   return (
     <div className="fade-in" style={{ paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto' }}>
       
+      {/* BOTÓN VOLVER ATRÁS */}
+      <button 
+        onClick={() => navigate(-1)} 
+        style={{ 
+          background: 'transparent', 
+          border: 'none', 
+          color: 'var(--text-dim)', 
+          cursor: 'pointer', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '8px', 
+          fontWeight: 'bold', 
+          marginBottom: '15px', 
+          padding: '5px 0', 
+          fontSize: '0.9rem', 
+          transition: 'color 0.2s' 
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
+      >
+        ⬅ Volver atrás
+      </button>
+
       <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '25px', background: 'var(--panel)', border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
           <div>

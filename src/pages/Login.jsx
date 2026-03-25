@@ -109,6 +109,30 @@ export default function Login() {
             {loading ? 'VALIDANDO...' : 'INGRESAR AL CLUB'}
           </button>
         </form>
+
+        {/* --- NUEVO BOTÓN PARA IR AL MODO KIOSCO --- */}
+        <div style={{ marginTop: '20px', textAlign: 'center', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+          <button 
+            type="button" // Importante para que no haga submit del form
+            onClick={() => navigate('/kiosco')}
+            style={{ 
+              background: 'transparent', 
+              border: '1px solid var(--border)', 
+              color: 'var(--text-dim)', 
+              padding: '12px 20px', 
+              borderRadius: '4px', 
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              width: '100%',
+              transition: 'color 0.2s, borderColor 0.2s'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+          >
+            📱 INGRESO RÁPIDO JUGADORES
+          </button>
+        </div>
       </div>
     </div>
   );

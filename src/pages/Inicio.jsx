@@ -42,7 +42,11 @@ export default function Inicio() {
   const navigate = useNavigate();
   const { perfil } = useAuth(); 
   
-  const rol = perfil?.rol?.toLowerCase() || 'jugador';
+  const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
+  const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id') || localStorage.getItem('kiosco_user_id') || '';
+  const kioscoClubId = localStorage.getItem('kiosco_club_id') || perfil?.club_id || '';
+
+  const rol = (isKioscoMode ? 'jugador' : (perfil?.rol || 'jugador')).toLowerCase();
   const esSuperUser = rol === 'superuser';
   const esAdmin = rol === 'admin';
 
@@ -58,6 +62,10 @@ export default function Inicio() {
 
   const [cargando, setCargando] = useState(true);
   const [listaClubes, setListaClubes] = useState([]);
+
+  const [kioscoJugador, setKioscoJugador] = useState(null);
+  const [kioscoClub, setKioscoClub] = useState(null);
+  const [kioscoCargando, setKioscoCargando] = useState(true);
   
   const [ultimoPartido, setUltimoPartido] = useState(null);
   const [proximoPartido, setProximoPartido] = useState(null); 
@@ -96,6 +104,44 @@ export default function Inicio() {
   };
 
   useEffect(() => {
+    if (isKioscoMode) {
+      const cargarKiosco = async () => {
+        setKioscoCargando(true);
+
+        if (!kioscoJugadorId || !kioscoClubId) {
+          setKioscoJugador(null);
+          setKioscoClub(null);
+          setKioscoCargando(false);
+          return;
+        }
+
+        const [resJugador, resClub] = await Promise.all([
+          supabase
+            .from('jugadores')
+            .select('id, nombre, apellido, foto, club_id, username, pin_kiosco, user_id')
+            .eq('id', kioscoJugadorId)
+            .eq('club_id', kioscoClubId)
+            .single(),
+          supabase
+            .from('clubes')
+            .select('id, nombre, escudo_url')
+            .eq('id', kioscoClubId)
+            .single()
+        ]);
+
+        if (resJugador.data) setKioscoJugador(resJugador.data);
+        else setKioscoJugador(null);
+
+        if (resClub.data) setKioscoClub(resClub.data);
+        else setKioscoClub(null);
+
+        setKioscoCargando(false);
+      };
+
+      cargarKiosco();
+      return;
+    }
+
     if (esSuperUser) {
       async function fetchClubes() {
         let { data, error } = await supabase.from('clubes').select('id, nombre, escudo_url').order('nombre');
@@ -104,9 +150,14 @@ export default function Inicio() {
       }
       fetchClubes();
     }
-  }, [esSuperUser]);
+  }, [esSuperUser, isKioscoMode, kioscoJugadorId, kioscoClubId]);
 
   useEffect(() => {
+    if (isKioscoMode) {
+      setCargando(false);
+      return;
+    }
+
     async function cargarDashboard() {
       setCargando(true);
       if (!clubActivo && !esSuperUser) { setCargando(false); return; }
@@ -235,6 +286,98 @@ export default function Inicio() {
       setClubMaster(nuevoId); setNombreClub(club.nombre);
     }
   };
+
+
+  if (isKioscoMode) {
+    const nombreJugador = `${kioscoJugador?.apellido ? kioscoJugador.apellido.toUpperCase() + ' ' : ''}${kioscoJugador?.nombre ? kioscoJugador.nombre.toUpperCase() : (localStorage.getItem('kiosco_nombre') || 'JUGADOR').toUpperCase()}`.trim();
+    const nombreClubK = kioscoClub?.nombre || localStorage.getItem('mi_club') || 'MI CLUB';
+    const escudoK = kioscoClub?.escudo_url || localStorage.getItem('escudo_url') || '';
+    const menuJugador = [
+      { id: 'wellness', titulo: 'CARGA WELLNESS', icon: '🌡️', ruta: '/kiosco/wellness' },
+      { id: 'rendimiento', titulo: 'RENDIMIENTO', icon: '🧬', ruta: '/kiosco/rendimiento' },
+      { id: 'resumen', titulo: 'RESUMEN', icon: '📊', ruta: '/kiosco/resumen' },
+      { id: 'temporada', titulo: 'TEMPORADA', icon: '📈', ruta: '/kiosco/temporada' },
+      { id: 'perfil', titulo: 'JUGADOR PERFIL', icon: '🏃‍♂️', ruta: '/kiosco/jugador-perfil' },
+      { id: 'libro', titulo: 'LIBRO TÁCTICO', icon: '📘', ruta: '/kiosco/libro-tactico' },
+    ];
+
+    return (
+      <div style={{ animation: 'fadeIn 0.3s', padding: '20px', maxWidth: '1100px', margin: '0 auto', minHeight: '100vh' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', gap: '15px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.5rem', overflow: 'hidden' }}>
+              {escudoK ? <img src={escudoK} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : nombreClubK.substring(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <div className="stat-label" style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>INGRESO JUGADOR</div>
+              <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, textTransform: 'uppercase' }}>{nombreClubK}</h1>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              localStorage.removeItem('kiosco_user_id');
+              localStorage.removeItem('kiosco_jugador_id');
+              localStorage.removeItem('kiosco_club_id');
+              localStorage.removeItem('kiosco_nombre');
+              localStorage.removeItem('kiosco_apellido');
+              localStorage.removeItem('kiosco_username');
+              localStorage.removeItem('kiosco_mode');
+              navigate('/login', { replace: true });
+            }}
+            className="btn-action"
+            style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)' }}
+          >
+            SALIR
+          </button>
+        </div>
+
+        {kioscoCargando ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '60px 20px' }}>CARGANDO MI PANEL...</div>
+        ) : !kioscoJugador ? (
+          <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '60px 20px' }}>
+            <h2 style={{ color: '#ef4444' }}>No se pudo cargar tu sesión.</h2>
+            <p>Volvé a ingresar desde el kiosco.</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
+              <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--accent)' }}>
+                {kioscoJugador.foto ? <img src={kioscoJugador.foto} alt="Foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : `${(kioscoJugador.apellido || '').charAt(0)}${(kioscoJugador.nombre || '').charAt(0)}`}
+              </div>
+              <div>
+                <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 800 }}>HOLA</div>
+                <div style={{ fontSize: '2rem', fontWeight: 900, textTransform: 'uppercase', color: '#fff', lineHeight: 1 }}>{nombreJugador}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+              {menuJugador.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => navigate(item.ruta)}
+                  style={{
+                    background: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '16px',
+                    padding: '22px 18px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    color: '#fff',
+                    minHeight: '120px'
+                  }}
+                >
+                  <div style={{ fontSize: '1.6rem', marginBottom: '12px' }}>{item.icon}</div>
+                  <div style={{ fontSize: '0.82rem', letterSpacing: '1px', color: 'var(--text-dim)', fontWeight: 800, marginBottom: '6px' }}>{item.titulo}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{item.ruta}</div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   if (!cargando && !clubActivo && !esSuperUser) {
     if (esAdmin) {
