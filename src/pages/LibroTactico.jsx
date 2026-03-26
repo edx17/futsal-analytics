@@ -164,7 +164,7 @@ const ReproductorLoop = ({ editorData }) => {
 // =======================================================
 // COMPONENTE PRINCIPAL: LIBRO TÁCTICO
 // =======================================================
-const SITUACIONES = ['Salida de Presión', 'Laterales Bajos', 'Laterales Medios', 'Laterales Altos', 'Corners', 'Tiros Libres', '5v4'];
+const SITUACIONES = ['Salida de Presión', "Saque Inicial", 'Laterales Bajos', 'Laterales Medios', 'Laterales Altos', 'Corners', 'Tiros Libres', '5v4'];
 
 export default function LibroTactico() {
   const [tacticas, setTacticas] = useState([]);

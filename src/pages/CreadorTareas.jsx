@@ -242,7 +242,7 @@ const CreadorTareas = () => {
     { id: 'staff', tipo: 'staff', color: '#111', texto: 'DT', label: 'Staff Técnico', radio: 18 },
     { id: 'pelota', tipo: 'pelota', label: 'Pelota', radio: 8 },
     { id: 'cono_alto', tipo: 'cono_alto', color: '#f97316', label: 'Cono Alto', radio: 8 },
-    { id: 'cono_plato', tipo: 'cono_plato', color: '#facc15', label: 'Cono Plato', radio: 8 },
+    { id: 'cono_plato', tipo: 'cono_plato', color: '#facc15', label: 'Cono Plano', radio: 8 },
     { id: 'valla', tipo: 'valla', color: '#fbbf24', label: 'Valla', w: 40, h: 10 },
     { id: 'escalera', tipo: 'escalera', color: '#94a3b8', label: 'Escalera', w: 100, h: 25 },
     { id: 'mini_arco', tipo: 'mini_arco', color: '#fff', label: 'Mini Arco', w: 40, h: 20 },
@@ -456,16 +456,16 @@ const CreadorTareas = () => {
       {/* HEADER TÁCTICO */}
       <div className="bento-card" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', background: '#111', borderBottom: tareaIdEditando ? '2px solid #3b82f6' : '2px solid #333', padding: '10px 15px' }}>
         {tareaIdEditando && (<div style={{ background: '#3b82f6', color: '#fff', padding: '5px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>MODO EDICIÓN</div>)}
-        <input placeholder="Ej: Rondo 4v4 + 3 Comodines" value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} disabled={isPlaying} style={inputStyle} />
+        <input placeholder="Titulo de Tarea..." value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} disabled={isPlaying} style={inputStyle} />
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
           <span style={headerLabelStyle}>Dimensión:</span>
           <select value={canchaConfig.tamaño} onChange={(e) => setCanchaConfig({...canchaConfig, tamaño: e.target.value})} disabled={isPlaying} style={selectStyle}>
-            <option value="40x20">Pista 40x20</option><option value="28x20">Reducido 28x20</option><option value="20x20_mitad">Media Pista</option><option value="20x20_central">Zona Central</option>
+            <option value="40x20">40x20</option><option value="28x20">28x20</option><option value="20x20_mitad">20x20 Finalización</option><option value="20x20_central">20x20 Media Pista</option>
           </select>
           <span style={headerLabelStyle}>Color:</span>
           <select value={canchaConfig.color} onChange={(e) => setCanchaConfig({...canchaConfig, color: e.target.value})} disabled={isPlaying} style={selectStyle}>
-            <option value="#064e3b">Verde Césped</option><option value="#1e3a8a">Azul Sintético</option><option value="#b45309">Madera</option><option value="#334155">Cemento</option>
+            <option value="#064e3b">Verde</option><option value="#1e3a8a">Azul</option><option value="#b45309">Naranja</option><option value="#334155">Gris</option>
           </select>
         </div>
         
@@ -644,22 +644,23 @@ const CreadorTareas = () => {
 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
   
   <div>
-    <label style={modalLabel}>Categoría</label>
+    <label style={modalLabel}>Enfoque Teórico</label>
     <select style={modalInput} value={fichaTecnica.categoria_ejercicio} onChange={e => setFichaTecnica({...fichaTecnica, categoria_ejercicio: e.target.value})}>
-      <option value="Táctico">Táctico (General)</option>
-      <option value="Libro Táctico">Libro Táctico (Playbook)</option>
+      <option value="Táctico">Táctico</option>
       <option value="Técnico">Técnico</option>
       <option value="Físico">Físico</option>
       <option value="Cognitivo">Cognitivo</option>
-      <option value="ABP">Pelota Parada (Normal)</option>
+      <option value="ABP">ABP (Acción a Balón Parado)</option>
+      <option value="Libro Táctico">Libro Táctico</option>
     </select>
   </div>
               <div>
                 <div>
-    <label style={modalLabel}>Situación / Fase</label>
+    <label style={modalLabel}>Objetivo Principal</label>
     {fichaTecnica.categoria_ejercicio === 'Libro Táctico' ? (
       <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
         <option value="Salida de Presión">Salida de Presión</option>
+        <option value="Saque Inicial">Saque Inicial</option>
         <option value="Laterales Bajos">Laterales Bajos</option>
         <option value="Laterales Medios">Laterales Medios</option>
         <option value="Laterales Altos">Laterales Altos</option>
@@ -669,10 +670,10 @@ const CreadorTareas = () => {
       </select>
     ) : (
       <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
-        <option value="Ataque Posicional">Ataque Posicional</option>
-        <option value="Defensa Posicional">Defensa Posicional</option>
-        <option value="Transición Ofensiva">Transición Ofensiva</option>
-        <option value="Transición Defensiva">Transición Defensiva</option>
+        <option value="Ataque Posicional">Ataque</option>
+        <option value="Defensa Posicional">Defensa</option>
+        <option value="Transición Ofensiva">Transiciones</option>
+        <option value="Transición Defensiva">Situación Especial</option>
       </select>
     )}
   </div>
@@ -689,7 +690,7 @@ const CreadorTareas = () => {
                 <input type="text" placeholder="Ej: 4v4 + 2 Comodines" style={modalInput} value={fichaTecnica.jugadores_involucrados} onChange={e => setFichaTecnica({...fichaTecnica, jugadores_involucrados: e.target.value})} />
               </div>
               <div>
-                <label style={modalLabel}>Objetivo Principal</label>
+                <label style={modalLabel}>Enfoque Principal</label>
                 <input type="text" placeholder="Ej: Mantener posesión bajo presión" style={modalInput} value={fichaTecnica.objetivo_principal} onChange={e => setFichaTecnica({...fichaTecnica, objetivo_principal: e.target.value})} />
               </div>
             </div>

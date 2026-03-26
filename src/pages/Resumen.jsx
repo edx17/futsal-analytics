@@ -7,11 +7,94 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { analizarPartido } from '../analytics/engine';
-import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
+
+// ==========================================
+// 🧠 NUEVO MOTOR DE RATING ESTRUCTURAL
+// ==========================================
+const calcularRatingAvanzado = (jugador, eventos, pm, mins) => {
+  let score = 0;
+  let goles = 0;
+  let rematesTotales = 0;
+  let numAcciones = eventos.length;
+
+  // 1. FILTRO DE MINUTOS (Muestra irrelevante)
+  // Si no hay minutos cargados, estimamos ~1 min por cada 1.5 acciones como fallback
+  const minutosReales = mins !== undefined && mins !== null ? mins : (numAcciones * 0.6); 
+  
+  if (minutosReales < 2) {
+    return '-'; // Menos de 2 minutos = Sin calificación
+  }
+
+  // Estimación de Goles en Contra recibidos en cancha basado en el +/- (pm)
+  let golesContraEstimados = Math.max(0, goles - pm);
+  if (pm < 0) golesContraEstimados = Math.abs(pm);
+
+  eventos.forEach(ev => {
+    if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') { goles++; score += 1.2; rematesTotales++; }
+    else if (ev.accion === 'Remate - Atajado') { score += 0.08; rematesTotales++; }
+    else if (ev.accion === 'Remate - Desviado' || ev.accion === 'Remate - Rebatido') { score -= 0.04; rematesTotales++; }
+    else if (ev.accion === 'Recuperación') { score += 0.25; }
+    else if (ev.accion === 'Pérdida') { score -= 0.25; }
+    else if (ev.accion === 'Falta recibida') { score += 0.12; }
+    else if (ev.accion === 'Falta cometida') { score -= 0.15; }
+    else if (ev.accion === 'Tarjeta Amarilla') { score -= 0.6; }
+    else if (ev.accion === 'Tarjeta Roja') { score -= 1.5; }
+  });
+
+  // Penalidad estructural por goles recibidos estando en cancha
+  score += (golesContraEstimados * -0.9);
+
+  // Factor de minutos (Filtra el ruido de muestras chicas)
+  const min_factor = Math.min(1, minutosReales / 20);
+
+  // 2. FACTOR DE EFICIENCIA DE REMATE
+  let bonus_eficiencia = 0;
+  if (rematesTotales > 0) {
+    const eficiencia = goles / rematesTotales;
+    if (eficiencia >= 0.25) bonus_eficiencia = 0.3;
+    else if (eficiencia < 0.10) bonus_eficiencia = -0.3;
+  }
+
+  // 3. AJUSTE POR VOLUMEN (Evita inflar stats, usa logaritmo base 10)
+  const log_factor = numAcciones > 0 ? Math.log10(1 + numAcciones) : 1;
+
+  // 4. FÓRMULA FINAL (Base 6.0 Aprobado)
+  let rating = 6.0 + (score * min_factor * log_factor) + bonus_eficiencia;
+  
+  return Math.max(1, Math.min(10, rating));
+};
+
+const calcularRatingQuintetoAvanzado = (q) => {
+  const gf = q.golesFavor || 0;
+  const gc = q.golesContra || 0;
+  const rf = q.rematesFavor || 0;
+  const rc = q.rematesContra || 0;
+  const rec = q.recuperaciones || 0;
+  const per = q.perdidas || 0;
+  
+  // Si no hay trackeo estricto de minutos del quinteto, lo aproximamos por volumen de eventos
+  const volumenAcciones = gf + gc + rf + rc + rec + per;
+  const mins = q.minutos !== undefined ? q.minutos : (volumenAcciones * 0.8); 
+
+  if (mins < 2) {
+    return '-'; // Quintetos que jugaron 1 minuto o menos no se califican
+  }
+
+  // Factor de tiempo para quintetos (Base 10 min)
+  const min_factor = Math.min(1, mins / 10);
+
+  // Diferencial de impacto colectivo
+  const diferencial = (gf - gc) * 1.5 + (rf - rc) * 0.1 + (rec - per) * 0.2;
+
+  // Base 6.0 Aprobado
+  let rating = 6.0 + (diferencial * min_factor);
+  return Math.max(1, Math.min(10, rating));
+};
+// ==========================================
 
 function Resumen() {
   const { id } = useParams();
@@ -62,7 +145,6 @@ function Resumen() {
         setPartidosConDatos(idsConDatos);
       }
 
-      // Esto sigue funcionando por si alguien (staff) entra directo con un link /resumen/123
       if (id && p) {
         const matchFound = p.find(partido => partido.id == id);
         if (matchFound) {
@@ -82,7 +164,6 @@ function Resumen() {
     setEventosPartido(data || []);
   };
 
-  // FIX: Ya no usamos navigate(). Lo cargamos directo del estado para no cambiar la URL y que el Kiosco no te patee.
   const cargarPartido = (idPartido) => {
     const matchFound = partidos.find(p => p.id === idPartido);
     if (matchFound) {
@@ -90,7 +171,6 @@ function Resumen() {
     }
   };
 
-  // FIX: Tampoco usamos navigate() al cerrar, solo limpiamos los estados.
   const cerrarPartido = () => {
     setPartidoSeleccionado(null);
     setEventosPartido([]);
@@ -188,7 +268,6 @@ function Resumen() {
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
     };
     
-    // Diccionario para goles rivales
     const origenGolesRival = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
@@ -330,9 +409,14 @@ function Resumen() {
         if (ratioFinalizacion >= 2.5) rol = 'FINALIZADOR';
         else if (j.xgBuildup >= 0.5 && ratioFinalizacion < 1.5) rol = 'GENERADOR';
 
-        return { ...j, plusMinus: pm, minutos: mins, impacto: calcularRatingJugador(j, j.eventos, pm), rol }
+        return { ...j, plusMinus: pm, minutos: mins, impacto: calcularRatingAvanzado(j, j.eventos, pm, mins), rol }
       })
-      .sort((a, b) => b.impacto - a.impacto);
+      .sort((a, b) => {
+        // Ordenamiento seguro: Si es un guion, se asume 0 para mandarlo abajo.
+        const valA = a.impacto === '-' ? 0 : a.impacto;
+        const valB = b.impacto === '-' ? 0 : b.impacto;
+        return valB - valA;
+      });
 
     const posesionesTotales = datosProcesados.posesiones.length;
     const posesionesConRemate = datosProcesados.posesiones.filter(p => p.eventos.some(e => e.accion?.includes('Remate'))).length;
@@ -717,7 +801,7 @@ function Resumen() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px' }}>
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
-                ADN DE NUESTROS GOLES <InfoBox texto="El contexto táctico desde el cual marcamos." />
+                ADN DE GOLES <InfoBox texto="El contexto táctico desde el cual marcamos." />
               </div>
               <div style={{ flex: 1, minHeight: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
                 {analitica.dataOrigenGol && analitica.dataOrigenGol.length > 0 ? (
@@ -744,7 +828,7 @@ function Resumen() {
 
             <div className="bento-card" style={{ borderTop: '3px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
-                ADN GOLES RIVALES <InfoBox texto="El contexto táctico desde el cual nos marcaron." />
+                ADN DE GOLES RIVALES <InfoBox texto="El contexto táctico desde el cual nos marcaron." />
               </div>
               <div style={{ flex: 1, minHeight: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
                 {analitica.dataOrigenGolRival && analitica.dataOrigenGolRival.length > 0 ? (
@@ -787,7 +871,7 @@ function Resumen() {
               <div className="stat-label" style={{ marginBottom: '5px', color: '#00ff88' }}>EFICIENCIA OFENSIVA</div>
               <div style={kpiFila}><span>xG / REMATE</span><strong style={{color: analitica.xgPorRemate > 0.15 ? '#00ff88' : '#fff'}}>{analitica.xgPorRemate}</strong></div>
               <div style={kpiFila}><span>GOLES vs xG</span><strong style={{color: analitica.golesVsXg > 0 ? '#00ff88' : '#ef4444'}}>{analitica.golesVsXg > 0 ? '+' : ''}{analitica.golesVsXg}</strong></div>
-              <div style={kpiFila}><span>EFICACIA TIRO</span><strong>{analitica.eficaciaTiro}%</strong></div>
+              <div style={kpiFila}><span>EFECTIVIDAD DE  TIRO</span><strong>{analitica.eficaciaTiro}%</strong></div>
               <div style={kpiFila}>
                 <span>DUELOS OFE. GANADOS</span>
                 <strong>
@@ -816,7 +900,7 @@ function Resumen() {
             </div>
             
             <div className="bento-card" style={{ borderTop: '3px solid #06b6d4' }}>
-              <div className="stat-label" style={{ marginBottom: '5px', color: '#06b6d4' }}>EFICACIA A.B.P. (Ataque)</div>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#06b6d4' }}>EFECTIVIDAD ABP</div>
               <div style={kpiFila}>
                 <span>CÓRNERS (TIRO GENERADO)</span>
                 <strong>
@@ -864,12 +948,12 @@ function Resumen() {
 
                 <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '8px', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
                   <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS LAS ACCIONES</option>
-                  <option value="Gol" style={{ background: '#111', color: '#fff' }}>SOLO GOLES</option>
-                  <option value="Remate" style={{ background: '#111', color: '#fff' }}>SOLO REMATES</option>
-                  <option value="Recuperación" style={{ background: '#111', color: '#fff' }}>SOLO RECUPERACIONES</option>
-                  <option value="Pérdida" style={{ background: '#111', color: '#fff' }}>SOLO PÉRDIDAS</option>
-                  <option value="Duelo" style={{ background: '#111', color: '#fff' }}>SOLO DUELOS</option>
-                  <option value="Falta" style={{ background: '#111', color: '#fff' }}>SOLO FALTAS</option>
+                  <option value="Gol" style={{ background: '#111', color: '#fff' }}>GOLES</option>
+                  <option value="Remate" style={{ background: '#111', color: '#fff' }}>REMATES</option>
+                  <option value="Recuperación" style={{ background: '#111', color: '#fff' }}>RECUPERACIONES</option>
+                  <option value="Pérdida" style={{ background: '#111', color: '#fff' }}>PÉRDIDAS</option>
+                  <option value="Duelo" style={{ background: '#111', color: '#fff' }}>DUELOS</option>
+                  <option value="Falta" style={{ background: '#111', color: '#fff' }}>FALTAS</option>
                 </select>
 
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
@@ -956,8 +1040,16 @@ function Resumen() {
                     <th>#</th>
                     <th style={{ textAlign: 'left' }}>JUGADOR</th>
                     <th>MIN</th>
-                    <th>RATING</th>
-                    <th>+/-</th>
+                    <th>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                        RATING <InfoBox texto="Puntuación algorítmica (0-10) basada en volumen de acciones multiplicadas por pesos específicos. Filtrada logarítmicamente y por tiempo jugado para evitar ruido estadístico. Base: 6.0" />
+                      </div>
+                    </th>
+                    <th>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                        +/- <InfoBox texto="Diferencia de goles del equipo mientras el jugador estuvo en cancha (Goles a Favor - Goles en Contra)." />
+                      </div>
+                    </th>
                     <th>REMATES (G)</th>
                     <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
                     <th style={{ color: '#10b981' }}>REC</th>
@@ -969,8 +1061,20 @@ function Resumen() {
                       <td className="mono-accent">{j.dorsal}</td>
                       <td style={{ textAlign: 'left', fontWeight: 700 }}>{j.nombre.toUpperCase()}</td>
                       <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
-                      <td>{j.impacto.toFixed(1)}</td>
-                      <td style={{ fontWeight: 800 }}>{j.plusMinus}</td>
+                      <td>
+                        {j.impacto === '-' ? (
+                          <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>
+                            -
+                          </div>
+                        ) : (
+                          <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
+                            {j.impacto.toFixed(1)}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
+                        {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
+                      </td>
                       <td>{j.remates} ({j.goles})</td>
                       <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
                       <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
@@ -982,31 +1086,87 @@ function Resumen() {
           </div>
 
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>RENDIMIENTO POR QUINTETOS</div>
-            <div className="table-wrapper">
-              <table>
+            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
+              RENDIMIENTO POR QUINTETOS 
+              <InfoBox texto="Rendimiento del equipo al jugar con estas combinaciones específicas de 5 jugadores en este partido." />
+            </div>
+            <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                 <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left' }}>QUINTETO</th>
-                    <th>GF</th>
-                    <th>GC</th>
-                    <th>BALANCE</th>
+                  <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                    <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETO</th>
+                    <th style={{ color: '#00ff88' }} title="Goles a Favor / En Contra">GOL</th>
+                    <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
+                    <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
+                    <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
+                    <th title="Amarillas / Rojas">🟨/🟥</th>
+                    <th>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                        +/- 
+                      </div>
+                    </th>
+                    <th>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                        RATING <InfoBox texto="Cálculo diferencial avanzado (Goles, Remates y Transiciones) filtrado por tiempo en cancha. Base: 6.0" />
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {analitica.quintetos.map((q, idx) => (
-                    <tr key={idx} style={{ textAlign: 'center' }}>
-                      <td style={{ textAlign: 'left', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
-                        [{q.ids.map(id => {
-                          const jug = jugadores.find(j => j.id === id);
-                          return jug ? (jug.apellido || jug.nombre).toUpperCase() : '?';
-                        }).join(' - ')}]
-                      </td>
-                      <td style={{ color: '#00ff88' }}>{q.golesFavor}</td>
-                      <td style={{ color: '#ef4444' }}>{q.golesContra}</td>
-                      <td>{q.golesFavor - q.golesContra}</td>
-                    </tr>
-                  ))}
+                  {analitica.quintetos.map((q, idx) => {
+                    const diffGoles = (q.golesFavor || 0) - (q.golesContra || 0);
+                    const ratingQuinteto = calcularRatingQuintetoAvanzado(q);
+                    
+                    const remF = q.rematesFavor || 0;
+                    const remC = q.rematesContra || 0;
+                    const rec = q.recuperaciones || 0;
+                    const per = q.perdidas || 0;
+                    const fltR = q.faltasRecibidas || 0;
+                    const fltC = q.faltasCometidas || 0;
+                    const ama = q.amarillas || 0;
+                    const roj = q.rojas || 0;
+
+                    const nombresQuinteto = q.ids.map(id => {
+                      const jug = jugadores.find(j => j.id === id);
+                      if (!jug) return '?';
+                      return jug.apellido ? jug.apellido.toUpperCase() : jug.nombre.toUpperCase();
+                    }).join(' - ');
+
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
+                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
+                          [{nombresQuinteto}]
+                        </td>
+                        <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor || 0}</span> - <span style={{color: '#ef4444'}}>{q.golesContra || 0}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#3b82f6'}}>{remF}</span> - <span style={{color: '#ef4444'}}>{remC}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#f59e0b'}}>{rec}</span> - <span style={{color: '#ef4444'}}>{per}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#c084fc'}}>{fltR}</span> - <span style={{color: '#ef4444'}}>{fltC}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#fbbf24'}}>{ama}</span> / <span style={{color: '#ef4444'}}>{roj}</span></td>
+                        <td>
+                          <div style={{ 
+                            display: 'inline-block', padding: '4px 8px', borderRadius: '4px', fontWeight: 800,
+                            color: diffGoles > 0 ? 'var(--accent)' : (diffGoles < 0 ? '#ef4444' : '#888') 
+                          }}>
+                            {diffGoles > 0 ? '+' : ''}{diffGoles}
+                          </div>
+                        </td>
+                        <td>
+                          {ratingQuinteto === '-' ? (
+                            <div style={{ display: 'inline-block', padding: '4px 8px', color: 'var(--text-dim)', fontWeight: 800 }}>
+                              -
+                            </div>
+                          ) : (
+                            <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: ratingQuinteto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: ratingQuinteto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
+                              {ratingQuinteto.toFixed(1)}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {(!analitica.quintetos || analitica.quintetos.length === 0) && (
+                    <tr><td colSpan="8" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay suficientes datos de rotaciones.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>

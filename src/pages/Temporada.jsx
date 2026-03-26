@@ -5,7 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   BarChart, Bar, Legend, ScatterChart, Scatter, ZAxis, Label,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, ComposedChart
 } from 'recharts';
 
 import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
@@ -341,6 +341,25 @@ function Temporada() {
     ];
   }, [analiticaGlobal]);
 
+  // --- NUEVA DATA PARA EL GRÁFICO DE APORTE OFENSIVO ---
+  const dataCreacionFin = useMemo(() => {
+    if (!analiticaGlobal || !analiticaGlobal.matrizTalento) return [];
+    
+    // Filtramos para mostrar solo los que tienen algo de aporte y los ordenamos por impacto total
+    const dataLimpia = analiticaGlobal.matrizTalento
+      .filter(j => j.creacion > 0 || j.finalizacion > 0)
+      .map(j => ({
+        nombre: j.nombre.substring(0, 10), // Acortamos el nombre para que entre bien
+        Creación: Number(j.creacion.toFixed(2)),
+        Finalización: Number(j.finalizacion.toFixed(2)),
+        total: j.creacion + j.finalizacion
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8); // Mostramos el Top 8 para que el gráfico no sea eterno
+
+    return dataLimpia;
+  }, [analiticaGlobal]);
+
   const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 
     'Contraataque': '#f59e0b', 
@@ -417,7 +436,7 @@ function Temporada() {
                 <div className="stat-value" style={{ color: analiticaGlobal.territoryPct > 50 ? '#0ea5e9' : 'var(--text-dim)' }}>{analiticaGlobal.territoryPct}%</div>
             </div>
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
-                <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>EFICACIA EN REMATES <InfoBox texto="Porcentaje general de remates que terminaron en gol." /></div>
+                <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>EFECTIVIDAD EN REMATES <InfoBox texto="Porcentaje general de remates que terminaron en gol." /></div>
                 <div className="stat-value" style={{ color: eficaciaTiro >= 15 ? 'var(--accent)' : '#fff' }}>{eficaciaTiro}%</div>
             </div>
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
@@ -436,7 +455,7 @@ function Temporada() {
             
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
-                ADN DEL GOL (TEMPORADA) <InfoBox texto="El contexto táctico desde el cual marcamos los goles. Ayuda a ver nuestra principal arma ofensiva a lo largo de los partidos." />
+                ADN DEL GOL<InfoBox texto="El contexto táctico desde el cual marcamos los goles. Ayuda a ver nuestra principal arma ofensiva a lo largo de los partidos." />
               </div>
               <div style={{ flex: 1, minHeight: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
                 {analiticaGlobal.dataOrigenGol && analiticaGlobal.dataOrigenGol.length > 0 ? (
@@ -477,7 +496,7 @@ function Temporada() {
             {/* GRÁFICO NUEVO: ADN GOL RIVAL */}
             <div className="bento-card" style={{ borderTop: '3px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
-                ADN GOL RIVAL (TEMPORADA) <InfoBox texto="El contexto táctico desde el cual nos marcan los goles." />
+                ADN DEL GOL RIVAL<InfoBox texto="El contexto táctico desde el cual nos marcan los goles." />
               </div>
               <div style={{ flex: 1, minHeight: '220px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
                 {analiticaGlobal.dataOrigenGolRival && analiticaGlobal.dataOrigenGolRival.length > 0 ? (
@@ -562,7 +581,7 @@ function Temporada() {
 
             <div className="bento-card" style={{ padding: '20px', borderTop: '3px solid #06b6d4' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#06b6d4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                EFICACIA A.B.P. (Ataque) <InfoBox texto="Resumen de eficacia ofensiva en pelota parada en toda la temporada. Las zonas de los laterales van de la Z1 (Defensa) a la Z4 (Ataque)." />
+                EFECTIVIDAD ABP <InfoBox texto="Resumen de eficacia ofensiva en pelota parada en toda la temporada. Las zonas de los laterales van de la Z1 (Defensa) a la Z4 (Ataque)." />
               </div>
               <div style={kpiFila}>
                 <span>CÓRNERS (TIRO GENERADO)</span>
@@ -614,21 +633,34 @@ function Temporada() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
           
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>CREACIÓN VS FINALIZACIÓN <InfoBox texto="Gráfico de dispersión. Creadores de juego a la derecha, finalizadores arriba. Jugadores en la esquina superior derecha dominan ambas facetas." /></div>
-            <ResponsiveContainer width="100%" height={250}>
-              <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#222" />
-                <XAxis type="number" dataKey="creacion" name="Creación" stroke="#555" tick={{ fill: '#888', fontSize: 11 }}>
-                  <Label value="Armadores ➔" offset={-10} position="insideBottomRight" fill="#888" fontSize={10} />
-                </XAxis>
-                <YAxis type="number" dataKey="finalizacion" name="Finalización" stroke="#555" tick={{ fill: '#888', fontSize: 11 }}>
-                  <Label value="Pívots ➔" offset={10} position="insideTopLeft" angle={-90} fill="#888" fontSize={10} />
-                </YAxis>
-                <ZAxis type="number" dataKey="impacto" range={[40, 400]} name="Impacto" />
-                <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
-                <Scatter name="Jugadores" data={analiticaGlobal.matrizTalento} fill="var(--accent)" fillOpacity={0.7} />
-              </ScatterChart>
-            </ResponsiveContainer>
+            <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
+              APORTE OFENSIVO TOTAL <InfoBox texto="Suma del xG Buildup (Creación) y Goles Anotados (Finalización). Muestra quiénes son los motores ofensivos del equipo y en qué rol destacan." />
+            </div>
+            
+            {dataCreacionFin.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <ComposedChart data={dataCreacionFin} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={true} vertical={false} />
+                  <XAxis type="number" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
+                  <YAxis dataKey="nombre" type="category" stroke="#555" tick={{ fill: '#fff', fontSize: 10, fontWeight: 700 }} width={80} />
+                  <RechartsTooltip 
+                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                    contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
+                    itemStyle={{ fontSize: '0.8rem', fontWeight: 800 }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#888', paddingTop: '10px' }} />
+                  
+                  {/* Barra de Creación (xG Buildup) */}
+                  <Bar dataKey="Creación" stackId="a" fill="#c084fc" barSize={15} />
+                  {/* Barra de Finalización (Goles) */}
+                  <Bar dataKey="Finalización" stackId="a" fill="#00ff88" barSize={15} radius={[0, 4, 4, 0]} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+                No hay datos suficientes de creación y finalización.
+              </div>
+            )}
           </div>
 
           <div className="bento-card">
@@ -711,49 +743,139 @@ function Temporada() {
 
         </div>
 
-        <div className="bento-card" style={{ marginBottom: '10px' }}>
-          <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>MEJORES QUINTETOS <InfoBox texto="Rendimiento del equipo (Plus/Minus) al jugar con estas combinaciones específicas de 5 jugadores a lo largo del torneo." /></div>
-          <div className="table-wrapper">
-            <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-                  <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETOS</th>
-                  <th style={{ color: '#00ff88' }}>GF</th>
-                  <th style={{ color: '#ef4444' }}>GC</th>
-                  <th>BALANCE</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analiticaGlobal.topQuintetos && analiticaGlobal.topQuintetos.map((q, idx) => {
-                  const diff = q.golesFavor - q.golesContra;
-                  const nombresQuinteto = q.ids.map(id => {
-                    const jug = jugadores.find(j => j.id === id);
-                    if (!jug) return '?';
-                    return jug.apellido ? jug.apellido.toUpperCase() : jug.nombre.toUpperCase();
-                  }).join(' - ');
+        {/* --- INICIO ZONA DE QUINTETOS --- */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px', marginBottom: '10px' }}>
+          
+          {/* MEJORES QUINTETOS */}
+          <div className="bento-card">
+            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
+              MEJORES QUINTETOS 
+              <InfoBox texto="Rendimiento del equipo al jugar con estas combinaciones específicas de 5 jugadores. Todas las estadísticas están contempladas." />
+            </div>
+            <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                    <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETO</th>
+                    <th style={{ color: '#00ff88' }} title="Goles a Favor / En Contra">GOL</th>
+                    <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
+                    <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
+                    <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
+                    <th title="Amarillas / Rojas">🟨/🟥</th>
+                    <th>BALANCE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analiticaGlobal.topQuintetos && analiticaGlobal.topQuintetos.map((q, idx) => {
+                    const diffGoles = q.balanceRating;
+                    
+                    const remF = q.rematesFavor || 0;
+                    const remC = q.rematesContra || 0;
+                    const rec = q.recuperaciones || 0;
+                    const per = q.perdidas || 0;
+                    const fltR = q.faltasRecibidas || 0;
+                    const fltC = q.faltasCometidas || 0;
+                    const ama = q.amarillas || 0;
+                    const roj = q.rojas || 0;
 
-                  return (
-                    <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
-                      <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.8rem' }}>
-                        [{nombresQuinteto}]
-                      </td>
-                      <td style={{ color: '#00ff88', fontWeight: 700 }}>{q.golesFavor}</td>
-                      <td style={{ color: '#ef4444', fontWeight: 700 }}>{q.golesContra}</td>
-                      <td>
-                        <div style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '4px', background: diff > 0 ? 'rgba(0,255,136,0.1)' : diff < 0 ? 'rgba(239,68,68,0.1)' : 'transparent', color: diff > 0 ? 'var(--accent)' : diff < 0 ? '#ef4444' : '#fff', fontWeight: 800 }}>
-                          {diff > 0 ? '+' : ''}{diff}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-                {(!analiticaGlobal.topQuintetos || analiticaGlobal.topQuintetos.length === 0) && (
-                  <tr><td colSpan="4" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay suficientes datos de rotaciones.</td></tr>
-                )}
-              </tbody>
-            </table>
+                    const nombresQuinteto = q.ids.map(id => {
+                      const jug = jugadores.find(j => j.id === id);
+                      if (!jug) return '?';
+                      return jug.apellido ? jug.apellido.toUpperCase() : jug.nombre.toUpperCase();
+                    }).join(' - ');
+
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
+                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
+                          [{nombresQuinteto}]
+                        </td>
+                        <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor}</span> - <span style={{color: '#ef4444'}}>{q.golesContra}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#3b82f6'}}>{remF}</span> - <span style={{color: '#ef4444'}}>{remC}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#f59e0b'}}>{rec}</span> - <span style={{color: '#ef4444'}}>{per}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#c084fc'}}>{fltR}</span> - <span style={{color: '#ef4444'}}>{fltC}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#fbbf24'}}>{ama}</span> / <span style={{color: '#ef4444'}}>{roj}</span></td>
+                        <td>
+                          <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: diffGoles >= 5.5 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: diffGoles >= 5.5 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
+                            {diffGoles}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {(!analiticaGlobal.topQuintetos || analiticaGlobal.topQuintetos.length === 0) && (
+                    <tr><td colSpan="7" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay suficientes datos de rotaciones.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {/* PEORES QUINTETOS */}
+          <div className="bento-card">
+            <div className="stat-label" style={{ marginBottom: '20px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
+              PEORES QUINTETOS 
+              <InfoBox texto="Combinaciones de jugadores con el peor Rating Promedio en cancha (con al menos 5 acciones registradas)." />
+            </div>
+            <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                    <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETO</th>
+                    <th style={{ color: '#00ff88' }} title="Goles a Favor / En Contra">GOL</th>
+                    <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
+                    <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
+                    <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
+                    <th title="Amarillas / Rojas">🟨/🟥</th>
+                    <th>BALANCE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analiticaGlobal.peoresQuintetos && analiticaGlobal.peoresQuintetos.map((q, idx) => {
+                    const diffGoles = q.balanceRating;
+                    
+                    const remF = q.rematesFavor || 0;
+                    const remC = q.rematesContra || 0;
+                    const rec = q.recuperaciones || 0;
+                    const per = q.perdidas || 0;
+                    const fltR = q.faltasRecibidas || 0;
+                    const fltC = q.faltasCometidas || 0;
+                    const ama = q.amarillas || 0;
+                    const roj = q.rojas || 0;
+
+                    const nombresQuinteto = q.ids.map(id => {
+                      const jug = jugadores.find(j => j.id === id);
+                      if (!jug) return '?';
+                      return jug.apellido ? jug.apellido.toUpperCase() : jug.nombre.toUpperCase();
+                    }).join(' - ');
+
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
+                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
+                          [{nombresQuinteto}]
+                        </td>
+                        <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor}</span> - <span style={{color: '#ef4444'}}>{q.golesContra}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#3b82f6'}}>{remF}</span> - <span style={{color: '#ef4444'}}>{remC}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#f59e0b'}}>{rec}</span> - <span style={{color: '#ef4444'}}>{per}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#c084fc'}}>{fltR}</span> - <span style={{color: '#ef4444'}}>{fltC}</span></td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#fbbf24'}}>{ama}</span> / <span style={{color: '#ef4444'}}>{roj}</span></td>
+                        <td>
+                          <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: diffGoles >= 5.5 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: diffGoles >= 5.5 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
+                            {diffGoles}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {(!analiticaGlobal.peoresQuintetos || analiticaGlobal.peoresQuintetos.length === 0) && (
+                    <tr><td colSpan="7" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay suficientes datos de rotaciones.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
+        {/* --- FIN ZONA DE QUINTETOS --- */}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           

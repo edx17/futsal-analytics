@@ -298,7 +298,7 @@ const CargaWellness = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <h1 style={{ fontSize: '1.5rem', color: 'var(--accent)', margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '2rem' }}>📈</span> MONITOREO DE READINESS
+                <span style={{ fontSize: '2rem' }}>📈</span> MONITOREO
               </h1>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Índice de Preparación (Físico + Mental) y Cargas RPE del microciclo.</p>
             </div>
@@ -513,7 +513,7 @@ const CargaWellness = () => {
         <>
           <div className="bento-card" style={{ marginBottom: '20px', background: 'var(--panel)', border: '1px solid var(--border)' }}>
             <h1 style={{ fontSize: '1.5rem', color: 'var(--accent)', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '2rem' }}>🌡️</span> CONTROL WELLNESS 360°
+              <span style={{ fontSize: '2rem' }}></span> CONTROL WELLNESS
             </h1>
             
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -625,10 +625,10 @@ const CargaWellness = () => {
               <div style={{ marginBottom: '20px' }}>
                 <label style={labelStyle}>Tipo de Sesión</label>
                 <select value={cargaPost.tipo_sesion} onChange={e => setCargaPost({...cargaPost, tipo_sesion: e.target.value})} style={inputStyle}>
-                  <option value="Entrenamiento">Entrenamiento (Cancha)</option>
-                  <option value="Gimnasio">Fuerza / Gimnasio</option>
-                  <option value="Partido">Partido Oficial / Amistoso</option>
-                  <option value="Recuperación">Recuperación / Fisioterapia</option>
+                  <option value="Entrenamiento">Entrenamiento</option>
+                  <option value="Gimnasio">Gimnasio</option>
+                  <option value="Partido">Partido</option>
+                  <option value="Recuperación">Kinesio / Fisioterapia</option>
                 </select>
               </div>
 

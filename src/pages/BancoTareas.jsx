@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
@@ -311,31 +311,31 @@ const BancoTareas = () => {
           <div>
             <div style={{ fontSize: '2.5rem' }}>🗃️</div>
             <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.5rem', margin: 0 }}>BANCO DE TAREAS</h1>
-            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Tu biblioteca personal de ejercicios tácticos.</p>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Biblioteca de ejercicios</p>
           </div>
           
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <input 
               type="text" 
-              placeholder="🔍 Buscar tarea o táctica..." 
+              placeholder="🔍 Buscar tarea..." 
               value={busqueda} 
               onChange={e => setBusqueda(e.target.value)}
               style={inputFiltro}
             />
             <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={selectFiltro}>
-              <option value="Todas">Todas las Categorías</option>
+              <option value="Todas">Enfoque Teórico</option>
               <option value="Táctico">Táctico</option>
               <option value="Técnico">Técnico</option>
               <option value="Físico">Físico</option>
-              <option value="ABP">Pelota Parada (ABP)</option>
+              <option value="ABP">ABP (Acción a Balón Parado)</option>
               <option value="Cognitivo">Cognitivo</option>
             </select>
             <select value={filtroFase} onChange={e => setFiltroFase(e.target.value)} style={selectFiltro}>
-              <option value="Todas">Todas las Fases</option>
+              <option value="Todas">Objetivo Principal</option>
               <option value="Ataque Posicional">Ataque</option>
               <option value="Defensa Posicional">Defensa</option>
-              <option value="Transición Ofensiva">Transición Ofensiva</option>
-              <option value="Transición Defensiva">Transición Defensiva</option>
+              <option value="Transición Ofensiva">Transiciones</option>
+              <option value="Transición Defensiva">Situación Especial</option>
             </select>
           </div>
         </div>

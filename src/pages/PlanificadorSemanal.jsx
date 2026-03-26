@@ -465,8 +465,8 @@ const PlanificadorSemanal = () => {
       {/* HEADER CONTROLES */}
       <div className="bento-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', background: 'var(--panel)', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '15px' }}>
         <div>
-          <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.5rem', margin: 0 }}>🗓️ CALENDARIO DE PLANIFICACIÓN</h1>
-          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Control de microciclos, cargas mensuales y partidos.</p>
+          <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.5rem', margin: 0 }}>PLANIFICADOR DE SESIONES</h1>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Micro y Macrociclos de tu plantel.</p>
         </div>
         
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -832,11 +832,10 @@ const PlanificadorSemanal = () => {
                       <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Tipo de Sesión</label>
                         <select value={nuevaSesion.tipo_sesion} onChange={e => setNuevaSesion({...nuevaSesion, tipo_sesion: e.target.value})} style={inputStyle}>
-                          <option value="Entrenamiento">Entrenamiento (Táctico/Técnico)</option>
-                          <option value="Doble Turno">Doble Turno</option>
-                          <option value="Gimnasio">Gimnasio / Fuerza</option>
+                          <option value="Entrenamiento">Entrenamiento</option>
+                          <option value="Gimnasio">Gimnasio</option>
                           <option value="Amistoso">Amistoso (No Oficial)</option>
-                          <option value="Descanso">Descanso Activo</option>
+                          <option value="Descanso">Sesión Especial</option>
                         </select>
                       </div>
                     </div>
@@ -905,7 +904,7 @@ const PlanificadorSemanal = () => {
                     </div>
 
                     <div>
-                      <label style={labelStyle}>Comentarios / Novedades / Sanidad</label>
+                      <label style={labelStyle}>Comentarios / Novedades</label>
                       <textarea 
                         value={nuevaSesion.comentarios} 
                         onChange={e => setNuevaSesion({...nuevaSesion, comentarios: e.target.value})} 

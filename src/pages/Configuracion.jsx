@@ -134,12 +134,12 @@ function Configuracion() {
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <div className="section-title" style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 800, marginBottom: '10px' }}>NOMBRE DE MI EQUIPO</div>
+          <div className="section-title" style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 800, marginBottom: '10px' }}>NOMBRE DE MI CLUB</div>
           <input 
             type="text" 
             value={clubName} 
             onChange={(e) => setClubName(e.target.value)} 
-            placeholder="Ej: BOCA JUNIORS"
+            placeholder="Nombre de mi Club"
             style={{ width: '100%', padding: '15px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '1.2rem', fontWeight: 800 }}
           />
         </div>
@@ -154,7 +154,7 @@ function Configuracion() {
             style={{ width: '100%', padding: '15px', background: '#111', border: '1px dashed var(--accent)', color: 'var(--accent)', borderRadius: '4px', outline: 'none' }}
           />
           <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '10px' }}>
-            *Si sos el DT y estás creando el club por primera vez, <strong>dejá este campo en blanco</strong>. Si sos ayudante, pegá acá el ID que te pasó el DT.
+            *Si estás creando el club por primera vez, <strong>ingresá el ID que te informamos.</strong>. Si tenes problemas para vincular tu club, contactanos.
           </p>
         </div>
 

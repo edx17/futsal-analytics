@@ -10,7 +10,8 @@ function Plantel() {
   const [ordenColumna, setOrdenColumna] = useState('dorsal');
   const [ordenAscendente, setOrdenAscendente] = useState(true);
 
-  // --- ESTADO PARA CONTROLAR LA SUBIDA DE LA FOTO ---
+  // --- NUEVO ESTADO PARA EL FILTRO ---
+  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
   const clubId = localStorage.getItem('club_id');
@@ -45,16 +46,39 @@ function Plantel() {
     const filePath = `${fileName}`;
 
     try {
+      // 1. Subimos al Storage
       const { data, error } = await supabase.storage.from('foto').upload(filePath, file);
       if (error) throw error;
 
+      // 2. Obtenemos la URL pública
       const { data: publicUrlData } = supabase.storage.from('foto').getPublicUrl(filePath);
+      const urlFinal = publicUrlData.publicUrl;
 
-      setFormData({ ...formData, foto: publicUrlData.publicUrl });
-      showToast("Foto subida correctamente", "success");
+      // 3. Actualizamos la pantalla de forma segura
+      setFormData(prev => ({ ...prev, foto: urlFinal }));
+
+      // 4. GUARDADO AUTOMÁTICO CON DETECCIÓN DE BLOQUEO RLS
+      if (formData.id) {
+        const { data: updateData, error: updateError } = await supabase
+          .from('jugadores')
+          .update({ foto: urlFinal })
+          .eq('id', formData.id)
+          .select(); // <-- ESTO ES CLAVE: Obliga a Supabase a devolver lo que actualizó
+
+        if (updateError) throw updateError;
+        
+        // Si Supabase no nos devuelve la fila, significa que el RLS nos bloqueó silenciosamente
+        if (!updateData || updateData.length === 0) {
+          throw new Error("Fallo silencioso: La política RLS de tu base de datos bloqueó la actualización.");
+        }
+      }
+
+      showToast("¡Foto subida y guardada en la base!", "success");
+      fetchJugadores(); 
 
     } catch (error) {
-      showToast("Error al subir la foto: " + error.message, "error");
+      console.error("Error completo:", error);
+      showToast("Error al guardar: " + error.message, "error");
     } finally {
       setSubiendoFoto(false);
     }
@@ -207,20 +231,25 @@ function Plantel() {
       .catch(err => showToast("Error al copiar", "error"));
   };
 
-  const jugadoresOrdenados = [...jugadores].sort((a, b) => {
-    let valorA = a[ordenColumna] || '';
-    let valorB = b[ordenColumna] || '';
-    if (ordenColumna === 'nombre') {
-      valorA = `${a.apellido || ''} ${a.nombre}`.trim().toLowerCase();
-      valorB = `${b.apellido || ''} ${b.nombre}`.trim().toLowerCase();
-    } else if (typeof valorA === 'string') {
-      valorA = valorA.toLowerCase();
-      valorB = valorB.toLowerCase();
-    }
-    if (valorA < valorB) return ordenAscendente ? -1 : 1;
-    if (valorA > valorB) return ordenAscendente ? 1 : -1;
-    return 0;
-  });
+  // Extraemos categorías únicas para los botones de filtro
+  const categoriasExistentes = ['Todas', ...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
+
+  const jugadoresOrdenados = [...jugadores]
+    .filter(j => filtroCategoria === 'Todas' || j.categoria === filtroCategoria)
+    .sort((a, b) => {
+      let valorA = a[ordenColumna] || '';
+      let valorB = b[ordenColumna] || '';
+      if (ordenColumna === 'nombre') {
+        valorA = `${a.apellido || ''} ${a.nombre}`.trim().toLowerCase();
+        valorB = `${b.apellido || ''} ${b.nombre}`.trim().toLowerCase();
+      } else if (typeof valorA === 'string') {
+        valorA = valorA.toLowerCase();
+        valorB = valorB.toLowerCase();
+      }
+      if (valorA < valorB) return ordenAscendente ? -1 : 1;
+      if (valorA > valorB) return ordenAscendente ? 1 : -1;
+      return 0;
+    });
 
   const getSortIcon = (columna) => {
     if (ordenColumna !== columna) return <span style={{ opacity: 0.3 }}>↕</span>;
@@ -236,11 +265,38 @@ function Plantel() {
       <div className="bento-card">
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div className="stat-label" style={{ fontSize: '1.2rem', color: '#fff' }}>MI PLANTEL ({jugadores.length})</div>
+          <div className="stat-label" style={{ fontSize: '1.2rem', color: '#fff' }}>MI PLANTEL ({jugadoresOrdenados.length})</div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)' }}>📋 COPIAR PINs</button>
             <button onClick={abrirNuevo} className="btn-action" style={{ background: '#00ff88', color: '#000' }}>+ NUEVO JUGADOR</button>
           </div>
+        </div>
+
+        {/* --- BOTONES DE FILTRO --- */}
+        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', marginBottom: '20px', paddingBottom: '5px' }}>
+          {categoriasExistentes.map(cat => {
+            const activo = filtroCategoria === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setFiltroCategoria(cat)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: activo ? '1px solid var(--accent)' : '1px solid #333',
+                  background: activo ? 'var(--accent)' : '#111',
+                  color: activo ? '#000' : 'var(--text-dim)',
+                  fontWeight: 800,
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {cat.toUpperCase()}
+              </button>
+            );
+          })}
         </div>
 
         <div className="table-wrapper">
@@ -276,7 +332,7 @@ function Plantel() {
                   </td>
                 </tr>
               ))}
-              {jugadores.length === 0 && <tr><td colSpan="5" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay jugadores cargados en la base de datos.</td></tr>}
+              {jugadoresOrdenados.length === 0 && <tr><td colSpan="5" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay jugadores cargados en esta categoría.</td></tr>}
             </tbody>
           </table>
         </div>

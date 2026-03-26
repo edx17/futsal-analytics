@@ -8,12 +8,13 @@ import { useToast } from '../components/ToastContext';
 function ScoutingRivales() {
   const clubId = localStorage.getItem('club_id');
   const navigate = useNavigate();
-  const { showToast } = useToast(); // INICIALIZAMOS TOAST
+  const { showToast } = useToast(); 
 
   const [rivales, setRivales] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   
-  const estadoInicial = { nombre: '', escudo: '', sistema_tactico: '3-1 Clásico', jugadores_claves: '', notas: '' };
+  const estadoInicial = { nombre: '', escudo: '', sistema_tactico: '3-1 Clásico', jugadores_claves: '', notas: '', video_url: '' };
   const [formData, setFormData] = useState(estadoInicial);
 
   // Estados para manejar el historial H2H
@@ -34,17 +35,60 @@ function ScoutingRivales() {
 
   const fetchHistorial = async (idRival) => {
     setCargandoHistorial(true);
-    // Traemos TODOS los partidos jugados contra este rival (Jugados o Finalizados)
     const { data } = await supabase
       .from('partidos')
       .select('*')
       .eq('club_id', clubId)
       .eq('rival_id', idRival)
-      .in('estado', ['Jugado', 'Finalizado']) // ACÁ ESTÁ LA MAGIA QUE ARREGLA EL BUG
+      .in('estado', ['Jugado', 'Finalizado']) 
       .order('fecha', { ascending: false });
     
     if (data) setHistorialRival(data);
     setCargandoHistorial(false);
+  };
+
+  // --- FUNCIÓN PARA SUBIR EL ESCUDO A SUPABASE STORAGE ---
+  const handleSubirEscudo = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setSubiendoFoto(true);
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `escudo_${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    try {
+      const { data, error } = await supabase.storage.from('escudos').upload(filePath, file);
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage.from('escudos').getPublicUrl(filePath);
+      const urlFinal = publicUrlData.publicUrl;
+
+      setFormData(prev => ({ ...prev, escudo: urlFinal }));
+
+      if (formData.id) {
+        const { data: updateData, error: updateError } = await supabase
+          .from('rivales')
+          .update({ escudo: urlFinal })
+          .eq('id', formData.id)
+          .select();
+
+        if (updateError) throw updateError;
+        if (!updateData || updateData.length === 0) {
+          throw new Error("Fallo silencioso: La política RLS de tu base de datos bloqueó la actualización.");
+        }
+      }
+
+      showToast("¡Escudo subido y guardado!", "success");
+      fetchRivales(); 
+
+    } catch (error) {
+      console.error("Error completo:", error);
+      showToast("Error al guardar el escudo: " + error.message, "error");
+    } finally {
+      setSubiendoFoto(false);
+    }
   };
 
   const handleGuardar = async () => {
@@ -56,6 +100,7 @@ function ScoutingRivales() {
       sistema_tactico: formData.sistema_tactico,
       jugadores_claves: formData.jugadores_claves,
       notas: formData.notas,
+      video_url: formData.video_url,
       club_id: clubId 
     };
 
@@ -75,7 +120,7 @@ function ScoutingRivales() {
   const abrirPerfilRival = (rival) => {
     setFormData(rival);
     setHistorialRival([]);
-    setFiltroCategoriaH2H('Todas'); // AHORA ARRANCA MOSTRANDO EL HISTORIAL GLOBAL
+    setFiltroCategoriaH2H('Todas'); 
     fetchHistorial(rival.id);
     setMostrarModal(true);
   };
@@ -86,7 +131,6 @@ function ScoutingRivales() {
     setMostrarModal(true);
   };
 
-  // Filtramos el historial antes de calcular las estadísticas
   const historialFiltrado = historialRival.filter(p => 
     filtroCategoriaH2H === 'Todas' ? true : p.categoria === filtroCategoriaH2H
   );
@@ -100,6 +144,14 @@ function ScoutingRivales() {
     else acc.pp++;
     return acc;
   }, { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0 });
+
+  // Función auxiliar para extraer el ID del video de YouTube
+  const extractYoutubeId = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club.</div>;
 
@@ -119,7 +171,7 @@ function ScoutingRivales() {
           <div key={rival.id} onClick={() => abrirPerfilRival(rival)} className="bento-card" style={{ cursor: 'pointer', transition: '0.2s', position: 'relative', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
               <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid #444', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-                {rival.escudo ? <img src={rival.escudo} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: '#555', fontWeight: 800 }}>FOTO</span>}
+                {rival.escudo ? <img src={rival.escudo} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: '#555', fontWeight: 800 }}>ESCUDO</span>}
               </div>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>{rival.nombre.toUpperCase()}</div>
             </div>
@@ -146,6 +198,24 @@ function ScoutingRivales() {
               <button onClick={() => setMostrarModal(false)} className="close-btn">×</button>
             </div>
 
+            {/* --- SECCIÓN ESCUDO --- */}
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px', background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                {formData.escudo ? <img src={formData.escudo} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'#555', fontWeight:800}}>ESCUDO</span>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div className="section-title" style={{ marginBottom: '5px' }}>ESCUDO DEL CLUB (Cargar Archivo)</div>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleSubirEscudo} 
+                  style={{...inputIndustrial, padding: '8px'}} 
+                  disabled={subiendoFoto}
+                />
+                {subiendoFoto && <span style={{fontSize: '0.8rem', color: 'var(--accent)', marginTop: '5px', display: 'block'}}>Subiendo imagen, aguardá...</span>}
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
               <div><div className="section-title">NOMBRE DEL RIVAL</div><input type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} style={inputIndustrial} placeholder="Ej: Boca Juniors" /></div>
               <div><div className="section-title">SISTEMA TÁCTICO BASE</div>
@@ -155,7 +225,6 @@ function ScoutingRivales() {
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom: '15px' }}><div className="section-title">URL DEL ESCUDO (Opcional)</div><input type="text" value={formData.escudo} onChange={e => setFormData({...formData, escudo: e.target.value})} style={inputIndustrial} placeholder="https://..." /></div>
             
             <div style={{ marginBottom: '15px' }}>
               <div className="section-title" style={{ color: '#ef4444' }}>JUGADORES CLAVE A MARCAR</div>
@@ -165,6 +234,25 @@ function ScoutingRivales() {
             <div style={{ marginBottom: '25px' }}>
               <div className="section-title">NOTAS DEL CUERPO TÉCNICO (PELOTA PARADA, DEFENSAS)</div>
               <textarea value={formData.notas} onChange={e => setFormData({...formData, notas: e.target.value})} style={{...inputIndustrial, height: '80px', resize: 'none'}} placeholder="Ej: En los córners defienden en zona mixta..."></textarea>
+            </div>
+
+            {/* --- SECCIÓN VIDEO DE YOUTUBE --- */}
+            <div style={{ marginBottom: '25px', background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
+              <div className="section-title">ANÁLISIS EN VIDEO (URL DE YOUTUBE)</div>
+              <input type="text" value={formData.video_url || ''} onChange={e => setFormData({...formData, video_url: e.target.value})} style={inputIndustrial} placeholder="https://www.youtube.com/watch?v=..." />
+              
+              {formData.video_url && extractYoutubeId(formData.video_url) && (
+                <div style={{ marginTop: '15px', position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '4px' }}>
+                  <iframe 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                    src={`https://www.youtube.com/embed/${extractYoutubeId(formData.video_url)}`} 
+                    title="YouTube video player" 
+                    frameBorder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowFullScreen>
+                  </iframe>
+                </div>
+              )}
             </div>
 
             <button onClick={handleGuardar} className="btn-action" style={{ width: '100%', padding: '15px', fontSize: '1rem' }}>GUARDAR DATOS TÁCTICOS</button>
