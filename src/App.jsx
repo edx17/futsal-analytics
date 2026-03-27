@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { ToastProvider } from './components/ToastContext';
 
 // PANTALLAS ORIGINALES
+import Landing from './pages/Landing'; // <-- NUEVO IMPORT DEL LANDING
 import Inicio from './pages/Inicio';
 import NuevoPartido from './pages/NuevoPartido';
 import ContinuarPartido from './pages/ContinuarPartido';
@@ -44,6 +45,7 @@ function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   
+  const isLanding = location.pathname === '/'; // <-- DETECTAMOS SI ESTÁ EN LA RAÍZ
   const isLogin = location.pathname === '/login';
   const isTomaDatos = location.pathname === '/toma-datos'; 
   const isKioscoAuth = location.pathname === '/kiosco';
@@ -84,11 +86,17 @@ function AppLayout() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (isLogin || isTomaDatos || isKioscoAuth) {
+  // <-- ACTUALIZADO: Agregamos isLanding para que no muestre el menú lateral en la Landing Page
+  if (isLanding || isLogin || isTomaDatos || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
         <Routes>
-          <Route path="/login" element={<Login />} />
+          {/* Si está logueado y entra a "/", lo mandamos a "/inicio". Si no, ve la Landing. */}
+          <Route path="/" element={perfil ? <Navigate to="/inicio" replace /> : <Landing />} />
+          
+          {/* Si está logueado y entra a "/login", lo mandamos a "/inicio". */}
+          <Route path="/login" element={perfil ? <Navigate to="/inicio" replace /> : <Login />} />
+          
           <Route path="/kiosco" element={<LoginKiosco />} />
           <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><TomaDatos /></ProtectedRoute>} />
         </Routes>
@@ -143,7 +151,8 @@ function AppLayout() {
                 )}
                 {(menusAbiertos.operaciones || !sidebarAbierta) && (
                   <>
-                    <NavLink to="/" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏠 {sidebarAbierta && <span>{esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}</NavLink>
+                    {/* <-- ACTUALIZADO: Apunta a /inicio en lugar de / --> */}
+                    <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏠 {sidebarAbierta && <span>{esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}</NavLink>
                     {puedeEscribirDeportivo && (
                       <>
                         <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚡ {sidebarAbierta && <span>NUEVO PARTIDO</span>}</NavLink>
@@ -265,7 +274,8 @@ function AppLayout() {
 
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '20px 15px' : '40px', paddingBottom: esMovil ? '90px' : '40px' }}>
         <Routes>
-          <Route path="/" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
+          {/* <-- ACTUALIZADO: El dashboard ahora vive en /inicio --> */}
+          <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
           
           {/* DEPORTIVO */}
           <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><NuevoPartido /></ProtectedRoute>} />
@@ -296,12 +306,16 @@ function AppLayout() {
           <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
           <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
           <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
+
+          {/* Fallback de seguridad: si entra a cualquier ruta que no existe, lo manda a /inicio */}
+          <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Routes>
       </main>
 
       {esMovil && (
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '70px', background: 'var(--panel)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 1000 }}>
-          <NavLink to="/" style={navMobileStyle}>🏠<span style={{fontSize: '0.6rem'}}>INICIO</span></NavLink>
+          {/* <-- ACTUALIZADO: Apunta a /inicio --> */}
+          <NavLink to="/inicio" style={navMobileStyle}>🏠<span style={{fontSize: '0.6rem'}}>INICIO</span></NavLink>
           {esJugador ? (
             <NavLink to="/wellness" style={navMobileStyle}>🌡️<span style={{fontSize: '0.6rem'}}>WELLNESS</span></NavLink>
           ) : (
