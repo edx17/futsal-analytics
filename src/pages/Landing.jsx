@@ -40,7 +40,7 @@ const subtitleStyle = {
   lineHeight: 1.6
 };
 
-// Componente Placeholder para Imágenes/Videos (Imitando las referencias)
+// Componente Placeholder para Imágenes/Videos
 const PlaceholderMedia = ({ text = 'MEDIA PLACEHOLDER', aspectRatio = '16/9', height }) => (
   <div style={{
     width: '100%',
@@ -76,39 +76,51 @@ function Landing() {
         .plan-card:hover { border-color: ${COLORS.accent} !important; transform: scale(1.02); }
       `}</style>
 
-      {/* 1. NAVBAR (Inspiración Global) */}
+      {/* 1. NAVBAR */}
       <nav style={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
         padding: '15px 40px', borderBottom: `1px solid ${COLORS.border}`,
         position: 'sticky', top: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', zIndex: 1000
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-           {/* CAMBIO REAL: ICONO */}
           <img 
             src="/favicon-32x32.png" 
             alt="logo" 
             style={{ width: '30px', height: '30px', objectFit: 'contain' }}
           />
-
           <div style={{ fontSize: '1.3rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>
             VIRTUAL<span style={{color: COLORS.accent}}>CLUB</span><span style={{fontWeight: 300, fontSize: '0.9rem'}}></span>
           </div>
         </div>
         
-        <button 
-          onClick={() => navigate('/login')}
-          style={{ 
-            padding: '8px 20px', background: 'transparent', color: '#fff', 
-            border: '1px solid var(--border)', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem'
-          }}
-          onMouseOver={(e) => { e.target.style.borderColor = COLORS.accent; e.target.style.color = COLORS.accent; }}
-          onMouseOut={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = '#fff'; }}
-        >
-          INICIAR SESIÓN
-        </button>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+          <button 
+            onClick={() => navigate('/kiosco')}
+            style={{ 
+              padding: '8px 20px', background: 'rgba(255,255,255,0.05)', color: '#fff', 
+              border: '1px solid var(--border)', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem'
+            }}
+            onMouseOver={(e) => { e.target.style.borderColor = COLORS.textDim; e.target.style.background = 'rgba(255,255,255,0.1)'; }}
+            onMouseOut={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.background = 'rgba(255,255,255,0.05)'; }}
+          >
+            📱 INGRESO JUGADORES
+          </button>
+
+          <button 
+            onClick={() => navigate('/login')}
+            style={{ 
+              padding: '8px 20px', background: 'transparent', color: '#fff', 
+              border: '1px solid var(--border)', borderRadius: '4px', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem'
+            }}
+            onMouseOver={(e) => { e.target.style.borderColor = COLORS.accent; e.target.style.color = COLORS.accent; }}
+            onMouseOut={(e) => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = '#fff'; }}
+          >
+            INICIAR SESIÓN
+          </button>
+        </div>
       </nav>
 
-      {/* 2. HERO SECTION (Inspiración LongoMatch/Nacsport - Mostrar el producto pronto) */}
+      {/* 2. HERO SECTION */}
       <header style={{ ...sectionStyle, textAlign: 'center', padding: '120px 20px' }}>
         <h1 style={{ fontSize: '4.5rem', fontWeight: 900, marginBottom: '25px', lineHeight: 1.0, letterSpacing: '-2px' }}>
           Analizá. Medí.<span style={{ color: COLORS.accent }}> Ganá</span>.
@@ -119,20 +131,19 @@ function Landing() {
         
         <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginBottom: '80px' }}>
           <button 
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/registro?plan=trial')}
             style={{ padding: '18px 35px', background: COLORS.accent, color: '#000', border: 'none', borderRadius: '4px', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: `0 0 20px ${COLORS.accent}33` }}
           >
             SOLICITAR DEMO GRATIS
           </button>
         </div>
 
-        {/* Placeholder para Video/Gran Screenshot (Simil LongoMatch Hero) */}
         <div style={{maxWidth: '1000px', margin: '0 auto', boxShadow: '0 20px 50px rgba(0,255,136,0.1)'}}>
           <PlaceholderMedia text="VIDEO DEMOSTRACIÓN DE LA INTERFAZ TRABAJANDO CON YOUTUBE" aspectRatio="16/9" />
         </div>
       </header>
 
-      {/* 3. EL PROBLEMA/SOLUCIÓN (Inspiración CuatroCero - Gestión y Control) */}
+      {/* 3. EL PROBLEMA/SOLUCIÓN */}
       <section style={{ ...sectionStyle, background: COLORS.bgCard }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '50px', alignItems: 'center' }}>
           <div>
@@ -148,13 +159,12 @@ function Landing() {
         </div>
       </section>
 
-      {/* 4. MÓDULOS TÉCNICOS (Inspiración Longo/Nacsport - Características Core) */}
+      {/* 4. MÓDULOS TÉCNICOS */}
       <section style={sectionStyle}>
         <h2 style={titleStyle}>Módulos de Éxito Deportivo</h2>
         <p style={subtitleStyle}>Herramientas de nivel profesional integradas en un flujo de trabajo optimizado para el staff técnico.</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-          {/* Módulo 1 */}
           <div className="feature-card" style={featureCardStyle}>
             <div style={iconStyle}>🎬</div>
             <h3 style={featureTitleStyle}>Videotracking Interactivo</h3>
@@ -162,7 +172,6 @@ function Landing() {
             <PlaceholderMedia text="SCREENSHOT: LÍNEA DE TIEMPO + VIDEO YOUTUBE" aspectRatio="16/10" />
           </div>
 
-          {/* Módulo 2 */}
           <div className="feature-card" style={featureCardStyle}>
             <div style={iconStyle}>🔄</div>
             <h3 style={featureTitleStyle}>Ratings de Quintetos</h3>
@@ -170,7 +179,6 @@ function Landing() {
             <PlaceholderMedia text="SCREENSHOT: TABLA DE QUINTETOS CON RATING PRO" aspectRatio="16/10" />
           </div>
 
-          {/* Módulo 3 */}
           <div className="feature-card" style={featureCardStyle}>
             <div style={iconStyle}>🗺️</div>
             <h3 style={featureTitleStyle}>Mapeo Táctico Espacial</h3>
@@ -180,7 +188,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* 5. GESTIÓN INTEGRAL (Inspiración CuatroCero - El Club y el Staff) */}
+      {/* 5. GESTIÓN INTEGRAL */}
       <section style={{ ...sectionStyle, background: COLORS.bgCard }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px', alignItems: 'center' }}>
           <PlaceholderMedia text="SCREENSHOT: DASHBOARD INICIAL DEL CLUB / PANEL WELLNESS" height="400px" />
@@ -196,13 +204,13 @@ function Landing() {
         </div>
       </section>
 
-      {/* 6. PLANES Y PRECIOS (Inspiración Nacsport/Longo - Segmentación) */}
+      {/* 6. PLANES Y PRECIOS */}
       <section style={sectionStyle}>
         <h2 style={titleStyle}>Planes diseñados para cada nivel</h2>
         <p style={subtitleStyle}>Desde cuerpos técnicos individuales hasta estructuras completas de clubes.</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px', alignItems: 'start' }}>
-          {/* Plan 1 */}
+          
           <div className="plan-card" style={planCardStyle}>
             <div style={planBadgeStyle}>INDIVIDUAL</div>
             <h3 style={planTitleStyle}>Entrenador PRO</h3>
@@ -214,10 +222,9 @@ function Landing() {
               <li>Gestión de Equipo Basica</li>
               <li>Soporte vía Email</li>
             </ul>
-            <button style={planButtonStyle}>EMPEZAR GRATIS</button>
+            <button onClick={() => navigate('/registro?plan=trial')} style={planButtonStyle}>EMPEZAR GRATIS</button>
           </div>
 
-          {/* Plan 2 - Destacado */}
           <div className="plan-card" style={{ ...planCardStyle, borderColor: COLORS.accent, background: '#1a1a1a', boxShadow: `0 10px 30px ${COLORS.accent}15` }}>
             <div style={{ ...planBadgeStyle, background: COLORS.accent, color: '#000' }}>.    .    .  .  RECOMENDADO</div>
             <h3 style={planTitleStyle}>Cuerpo Técnico PRO</h3>
@@ -230,10 +237,9 @@ function Landing() {
               <li>Creador Táctico y Libro Táctico</li>
               <li>Reportes PDF Personalizados</li>
             </ul>
-            <button style={{ ...planButtonStyle, background: COLORS.accent, color: '#000' }}>SUSCRIBIRSE</button>
+            <button onClick={() => navigate('/registro?plan=pro')} style={{ ...planButtonStyle, background: COLORS.accent, color: '#000' }}>SUSCRIBIRSE</button>
           </div>
 
-          {/* Plan 3 */}
           <div className="plan-card" style={planCardStyle}>
             <div style={planBadgeStyle}>.          .        .            .         INSTITUCIONAL</div>
             <h3 style={planTitleStyle}>Gestión de Club</h3>
@@ -245,12 +251,12 @@ function Landing() {
               <li>Admin, RRHH, Gestor de Cuotas y Tesorería</li>
               <li>Soporte 24/7 y Capacitación</li>
             </ul>
-            <button style={planButtonStyle}>CONTACTAR VENTAS</button>
+            <button onClick={() => window.location.href = 'mailto:virtualfutsal@gmail.com'} style={planButtonStyle}>CONTACTAR VENTAS</button>
           </div>
         </div>
       </section>
 
-      {/* 7. FOOTER (Inspiración Global) */}
+      {/* 7. FOOTER */}
       <footer style={{ padding: '50px 20px', textAlign: 'center', color: '#444', fontSize: '0.8rem', borderTop: `1px solid ${COLORS.border}` }}>
         <p>VIRTUAL.CLUB © 2026 - Propiedad de VirtualFutsal - Todos los derechos reservados.</p>
         <p style={{marginTop: '10px'}}>Software diseñado en Argentina para el Futsal del mundo.</p>
@@ -260,94 +266,15 @@ function Landing() {
   );
 }
 
-// ==========================================
-// ESTILOS ESPECÍFICOS (Objetos JS)
-// ==========================================
-const featureCardStyle = {
-  background: COLORS.bgCard,
-  padding: '30px',
-  borderRadius: '8px',
-  border: `1px solid ${COLORS.border}`,
-  transition: '0.3s'
-};
-
-const iconStyle = {
-  fontSize: '2.5rem',
-  marginBottom: '20px',
-  color: COLORS.accent
-};
-
-const featureTitleStyle = {
-  fontSize: '1.4rem',
-  fontWeight: 800,
-  marginBottom: '10px'
-};
-
-const featureDescStyle = {
-  color: COLORS.textDim,
-  fontSize: '0.9rem',
-  lineHeight: 1.6,
-  marginBottom: '25px',
-  height: '70px' // Para alinear los placeholders
-};
-
-const planCardStyle = {
-  background: COLORS.bgCard,
-  padding: '40px',
-  borderRadius: '8px',
-  border: `1px solid ${COLORS.border}`,
-  textAlign: 'center',
-  transition: '0.3s',
-  position: 'relative',
-  overflow: 'hidden'
-};
-
-const planBadgeStyle = {
-  position: 'absolute',
-  top: '15px',
-  right: '-30px',
-  background: '#333',
-  color: '#fff',
-  padding: '5px 30px',
-  fontSize: '0.65rem',
-  fontWeight: 700,
-  transform: 'rotate(45deg)',
-  textTransform: 'uppercase',
-  letterSpacing: '1px'
-};
-
-const planTitleStyle = {
-  fontSize: '1.5rem',
-  fontWeight: 800,
-  marginBottom: '10px'
-};
-
-const planPriceStyle = {
-  fontSize: '2.5rem',
-  fontWeight: 900,
-  color: COLORS.accent,
-  marginBottom: '30px'
-};
-
-const planListStyle = {
-  listStyle: 'none',
-  padding: 0,
-  margin: '0 0 40px 0',
-  color: COLORS.textDim,
-  fontSize: '0.9rem',
-  lineHeight: 2.2,
-  textAlign: 'left'
-};
-
-const planButtonStyle = {
-  width: '100%',
-  padding: '12px',
-  background: 'transparent',
-  color: '#fff',
-  border: `1px solid ${COLORS.border}`,
-  borderRadius: '4px',
-  fontWeight: 700,
-  cursor: 'pointer'
-};
+const featureCardStyle = { background: COLORS.bgCard, padding: '30px', borderRadius: '8px', border: `1px solid ${COLORS.border}`, transition: '0.3s' };
+const iconStyle = { fontSize: '2.5rem', marginBottom: '20px', color: COLORS.accent };
+const featureTitleStyle = { fontSize: '1.4rem', fontWeight: 800, marginBottom: '10px' };
+const featureDescStyle = { color: COLORS.textDim, fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '25px', height: '70px' };
+const planCardStyle = { background: COLORS.bgCard, padding: '40px', borderRadius: '8px', border: `1px solid ${COLORS.border}`, textAlign: 'center', transition: '0.3s', position: 'relative', overflow: 'hidden' };
+const planBadgeStyle = { position: 'absolute', top: '15px', right: '-30px', background: '#333', color: '#fff', padding: '5px 30px', fontSize: '0.65rem', fontWeight: 700, transform: 'rotate(45deg)', textTransform: 'uppercase', letterSpacing: '1px' };
+const planTitleStyle = { fontSize: '1.5rem', fontWeight: 800, marginBottom: '10px' };
+const planPriceStyle = { fontSize: '2.5rem', fontWeight: 900, color: COLORS.accent, marginBottom: '30px' };
+const planListStyle = { listStyle: 'none', padding: 0, margin: '0 0 40px 0', color: COLORS.textDim, fontSize: '0.9rem', lineHeight: 2.2, textAlign: 'left' };
+const planButtonStyle = { width: '100%', padding: '12px', background: 'transparent', color: '#fff', border: `1px solid ${COLORS.border}`, borderRadius: '4px', fontWeight: 700, cursor: 'pointer' };
 
 export default Landing;

@@ -68,9 +68,9 @@ function Torneos() {
     }
   }, [torneosFiltrados]);
 
-  // --- MAGIA: LECTURA AUTOMÁTICA DE EVENTOS ---
+  // --- MAGIA: LECTURA OPTIMIZADA SIN LÍMITE DE 1000 FILAS ---
   const fetchFixture = async (idTorneo, categoriaTorneo) => {
-    // 1. Buscamos los partidos
+    // 1. Buscamos los partidos con los resultados que ya están guardados en la BD
     const { data: partidosData } = await supabase
       .from('partidos')
       .select('*, rivales(nombre, escudo)')
@@ -83,39 +83,21 @@ function Torneos() {
       return;
     }
 
-    const idsPartidos = partidosData.map(p => p.id);
+    // 2. Verificamos si tienen eventos usando "count" para evitar saturar el servidor
+    // Esto es rapidísimo y 100% preciso sin importar cuántos miles de eventos haya.
+    const partidosConStatus = await Promise.all(partidosData.map(async (p) => {
+      const { count } = await supabase
+        .from('eventos')
+        .select('id', { count: 'exact', head: true })
+        .eq('id_partido', p.id);
 
-    // 2. Buscamos TODOS los eventos de esos partidos para saber la VERDAD
-    const { data: eventosData } = await supabase
-      .from('eventos')
-      .select('id_partido, accion, equipo')
-      .in('id_partido', idsPartidos);
+      return {
+        ...p,
+        esTrackeado: count > 0 // Si tiene al menos 1 evento, le clavamos la etiqueta de Trackeado
+      };
+    }));
 
-    // 3. Contamos automáticamente los goles desde el tracker
-    const matchStats = {};
-    idsPartidos.forEach(id => matchStats[id] = { gp: 0, gr: 0, tieneEventos: false });
-
-    if (eventosData) {
-      eventosData.forEach(ev => {
-        matchStats[ev.id_partido].tieneEventos = true;
-        if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
-          if (ev.equipo === 'Propio') matchStats[ev.id_partido].gp++;
-          else matchStats[ev.id_partido].gr++;
-        }
-      });
-    }
-
-    // 4. Combinamos y obligamos al partido a tener el resultado real
-    const fixtureCombinado = partidosData.map(p => {
-      const stats = matchStats[p.id];
-      if (stats.tieneEventos) {
-        // SOBREESCRIBE CUALQUIER CARGA MANUAL POR LA VERDAD DEL TRACKER
-        return { ...p, goles_propios: stats.gp, goles_rival: stats.gr, estado: 'Finalizado', esTrackeado: true };
-      }
-      return { ...p, esTrackeado: false };
-    });
-
-    setFixture(fixtureCombinado);
+    setFixture(partidosConStatus);
   };
 
   useEffect(() => {
@@ -197,8 +179,8 @@ function Torneos() {
   // --- MOTOR ANALÍTICO DEL TORNEO CORREGIDO ---
   const { stats, local, visitante, racha, vallasInvictas, chartDataEvolucion, chartDataLocalia, ptsTotales, eficacia } = useMemo(() => {
     
-    // AHORA LEE 'Jugado', 'Finalizado' Y LOS QUE TIENEN EVENTOS AUTOMÁTICOS
-    const partidosJugados = fixture.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado' || f.esTrackeado).sort((a,b) => {
+    // AHORA SOLO LEE PARTIDOS QUE YA FUERON CERRADOS (FINALIZADO / JUGADO) PARA LA TABLA
+    const partidosJugados = fixture.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado').sort((a,b) => {
       if(a.fecha && b.fecha) return new Date(a.fecha) - new Date(b.fecha);
       return a.id - b.id;
     });
@@ -371,7 +353,7 @@ function Torneos() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {fixture.map(f => {
-                  const estaCompletado = f.estado === 'Finalizado' || f.estado === 'Jugado' || f.esTrackeado;
+                  const estaCompletado = f.estado === 'Finalizado' || f.estado === 'Jugado';
                   
                   return (
                     <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: estaCompletado ? 'rgba(0, 255, 136, 0.05)' : '#111', padding: '15px', borderRadius: '6px', border: estaCompletado ? '1px solid var(--accent)' : '1px solid #333', flexWrap: 'wrap', gap: '10px' }}>
@@ -381,7 +363,7 @@ function Torneos() {
                         <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
                           {f.rivales?.nombre?.toUpperCase() || f.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}
                         </div>
-                        {/* PASTILLA DE ESTADO AGREGADA ACÁ */}
+                        {/* PASTILLA DE ESTADO */}
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span>📅 {f.fecha || 'A definir'}</span>
                           <span style={{
@@ -401,7 +383,7 @@ function Torneos() {
                       {!estaCompletado ? (
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                           <button onClick={() => irATrackear(f)} className="btn-action" style={{ fontSize: '0.75rem', padding: '8px 15px', display: 'flex', gap: '5px', alignItems: 'center' }}>
-                            ⚡ TRACKEAR
+                            {f.esTrackeado ? '▶ CONTINUAR' : '⚡ TRACKEAR'}
                           </button>
                           <div style={{ height: '20px', width: '1px', background: '#333' }}></div>
                           <button onClick={() => actualizarResultado(f.id, 0, 0, 'Finalizado')} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px' }}>
@@ -419,7 +401,7 @@ function Torneos() {
                                 <span style={{ color: 'var(--accent)', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_propios}</span>
                                 <span style={{ color: '#fff', fontWeight: 900 }}>-</span>
                                 <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_rival}</span>
-                                <span style={{ fontSize: '0.6rem', color: 'var(--accent)', marginLeft: '10px', fontWeight: 800 }}>✓ TRACKEADO</span>
+                                <span style={{ fontSize: '0.6rem', color: 'var(--accent)', marginLeft: '10px', fontWeight: 800 }}>✓ FINALIZADO</span>
                               </div>
                             ) : (
                               <>
@@ -459,7 +441,7 @@ function Torneos() {
       )}
 
       {/* --- MODALES --- */}
-{mostrarModalTorneo && (
+      {mostrarModalTorneo && (
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '400px' }}>
             <div className="stat-label" style={{ marginBottom: '20px' }}>NUEVO TORNEO</div>
@@ -469,7 +451,6 @@ function Torneos() {
               <input type="text" value={formTorneo.nombre} onChange={e => setFormTorneo({...formTorneo, nombre: e.target.value})} style={inputIndustrial} placeholder="Ej: Copa Argentina" />
             </div>
             
-            {/* NUEVO: SELECTOR DE TIPO DE TORNEO */}
             <div style={{ marginBottom: '15px' }}>
               <div className="section-title">TIPO DE COMPETICIÓN</div>
               <select value={formTorneo.tipo} onChange={e => setFormTorneo({...formTorneo, tipo: e.target.value})} style={inputIndustrial}>

@@ -139,11 +139,31 @@ function Resumen() {
       if (wError) console.error("⚠️ Error leyendo wellness desde Supabase:", wError);
       setWellness(w || []);
 
-      const { data: evs } = await supabase.from('eventos').select('id_partido');
-      if (evs) {
-        const idsConDatos = [...new Set(evs.map(e => e.id_partido))];
-        setPartidosConDatos(idsConDatos);
+      // --- MAGIA: LECTURA PAGINADA PARA SALTAR EL LÍMITE DE 1000 FILAS ---
+      let todosLosEventos = [];
+      let rangoInicio = 0;
+      let limiteAlcanzado = false;
+
+      while (!limiteAlcanzado) {
+        const { data: evs } = await supabase
+          .from('eventos')
+          .select('id_partido')
+          .range(rangoInicio, rangoInicio + 999);
+
+        if (evs && evs.length > 0) {
+          todosLosEventos = [...todosLosEventos, ...evs];
+          rangoInicio += 1000;
+          // Si nos devolvió menos de 1000, significa que ya llegamos al final de la tabla
+          if (evs.length < 1000) limiteAlcanzado = true;
+        } else {
+          limiteAlcanzado = true;
+        }
       }
+
+      // Filtramos los IDs únicos
+      const idsConDatos = [...new Set(todosLosEventos.map(e => e.id_partido))];
+      setPartidosConDatos(idsConDatos);
+      // -------------------------------------------------------------------
 
       if (id && p) {
         const matchFound = p.find(partido => partido.id == id);

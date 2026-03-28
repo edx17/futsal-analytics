@@ -569,11 +569,27 @@ function TomaDatos() {
           </button>
 
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => setModalFinalizar(true)} className="btn-action" style={{ background: '#dc2626', color: '#ffffff', border: '1px solid #991b1b', fontSize: '0.7rem', fontWeight: 800, padding: '0 15px', borderRadius: '4px', cursor: 'pointer' }}>FINALIZAR PARTIDO</button>
+            
+            {/* NUEVO: BOTÓN DE RESUMEN PARCIAL */}
+            <button 
+              onClick={() => navigate(`/resumen/${partido.id}`)} 
+              className="btn-action" 
+              style={{ background: '#3b82f6', color: '#ffffff', border: '1px solid #2563eb', fontSize: '0.7rem', fontWeight: 800, padding: '0 15px', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              RESUMEN PARCIAL
+            </button>
+
+            {/* BOTÓN FINALIZAR */}
+            <button 
+              onClick={() => setModalFinalizar(true)} 
+              className="btn-action" 
+              style={{ background: '#dc2626', color: '#ffffff', border: '1px solid #991b1b', fontSize: '0.7rem', fontWeight: 800, padding: '0 15px', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              FINALIZAR
+            </button>
 
             <button onClick={() => setPanelAbierto(!panelAbierto)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>{panelAbierto ? "OCULTAR" : "MOSTRAR"} PANEL</button>
             
-            {/* NUEVO BOTON DE EDITAR TITULARES: Aparece solo si no hay eventos */}
             {eventos.length === 0 && (
               <button onClick={abrirModalTitulares} className="btn-action" style={{ background: 'var(--accent)', color: '#000', border: '1px solid var(--accent)', fontSize: '0.7rem', fontWeight: 800 }}>EDITAR 5 INICIAL</button>
             )}

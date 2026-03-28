@@ -6,7 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { ToastProvider } from './components/ToastContext';
 
 // PANTALLAS ORIGINALES
-import Landing from './pages/Landing'; // <-- NUEVO IMPORT DEL LANDING
+import Landing from './pages/Landing';
 import Inicio from './pages/Inicio';
 import NuevoPartido from './pages/NuevoPartido';
 import ContinuarPartido from './pages/ContinuarPartido';
@@ -15,8 +15,10 @@ import Resumen from './pages/Resumen';
 import JugadorPerfil from './pages/JugadorPerfil';
 import Temporada from './pages/Temporada';
 import Configuracion from './pages/Configuracion';
+import MiSuscripcion from './pages/MiSuscripcion';
 import Rendimiento from './pages/Rendimiento';
 import Login from './pages/Login';
+import Registro from './pages/Registro';
 import Plantel from './pages/Plantel';
 import Torneos from './pages/Torneos';
 import ScoutingRivales from './pages/ScoutingRivales';
@@ -45,11 +47,14 @@ function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const isLanding = location.pathname === '/'; // <-- DETECTAMOS SI ESTÁ EN LA RAÍZ
+  const isLanding = location.pathname === '/'; 
   const isLogin = location.pathname === '/login';
+  const isRegistro = location.pathname === '/registro'; 
   const isTomaDatos = location.pathname === '/toma-datos'; 
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
+  
+  const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
 
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
   const rol = (perfil?.rol || '').toLowerCase();
@@ -67,12 +72,14 @@ function AppLayout() {
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
 
+  // ESTADO ACTUALIZADO DE LOS MENÚS
   const [menusAbiertos, setMenusAbiertos] = useState({
     operaciones: true,
     competicion: false,
     analisis: false,
     planificacion: false,
-    gestion: false,
+    plantel: false,
+    administracion: false,
     sistema: false
   });
 
@@ -86,17 +93,24 @@ function AppLayout() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // <-- ACTUALIZADO: Agregamos isLanding para que no muestre el menú lateral en la Landing Page
-  if (isLanding || isLogin || isTomaDatos || isKioscoAuth) {
+  // =========================================================
+  // 🚧 EL GRAN MURO DE PAGO (ACTUALIZADO CON EXPIRACIÓN DE FECHA) 🚧
+  // =========================================================
+  const club = perfil?.clubes;
+  const isVencido = club?.fecha_vencimiento ? new Date(club.fecha_vencimiento) < new Date() : false;
+
+  if (perfil && !esSuperUser && club && (club.suscripcion_activa === false || isVencido) && !isSuscripcionPath) {
+    return <Navigate to="/mi-suscripcion" replace />;
+  }
+  // =========================================================
+
+  if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
         <Routes>
-          {/* Si está logueado y entra a "/", lo mandamos a "/inicio". Si no, ve la Landing. */}
           <Route path="/" element={perfil ? <Navigate to="/inicio" replace /> : <Landing />} />
-          
-          {/* Si está logueado y entra a "/login", lo mandamos a "/inicio". */}
           <Route path="/login" element={perfil ? <Navigate to="/inicio" replace /> : <Login />} />
-          
+          <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
           <Route path="/kiosco" element={<LoginKiosco />} />
           <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><TomaDatos /></ProtectedRoute>} />
         </Routes>
@@ -104,12 +118,10 @@ function AppLayout() {
     );
   }
 
-  // Si está en el Kiosco logueado y va a la raíz, lo mandamos a su home.
   if (isKioscoMode && !isKioscoPath) {
     return <Navigate to="/kiosco/home" replace />;
   }
 
-  // Rutas exclusivas del Kiosco (Ya protegidas por AuthContext)
   if (isKioscoMode && isKioscoPath) {
     return (
       <main className="app-content-fullscreen">
@@ -134,15 +146,28 @@ function AppLayout() {
     <div style={{ display: 'flex', height: '100dvh', backgroundColor: 'var(--bg)', overflow: 'hidden' }}>
       {!esMovil && (
         <aside style={{ width: sidebarAbierta ? '250px' : '70px', backgroundColor: 'var(--panel)', borderRight: '1px solid var(--border)', transition: 'width 0.3s ease', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
+          
+          {/* HEADER DEL SIDEBAR CON LOGO */}
           <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: sidebarAbierta ? 'space-between' : 'center', borderBottom: '1px solid var(--border)' }}>
-            {sidebarAbierta && <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '1px' }}>VIRTUAL<span style={{ color: 'var(--accent)' }}>.STATS</span></div>}
+            {sidebarAbierta && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Asegurate de tener logo.png en tu carpeta public, o cambialo por el nombre correcto */}
+                <img src="/favicon-32x32.png"  alt="VS" style={{ height: '26px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none' }} />
+                <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '1px' }}>VIRTUAL<span style={{ color: 'var(--accent)' }}>.CLUB</span></div>
+              </div>
+            )}
             <button onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.2rem' }}>{sidebarAbierta ? '◀' : '▶'}</button>
           </div>
           
           <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 20px 0', gap: '2px', overflowY: 'auto' }}>
             
+            {/* --- INICIO (FUERA DE GRUPO) --- */}
+            <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
+              🏠 {sidebarAbierta && <span>{esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}
+            </NavLink>
+
             {/* --- OPERACIONES --- */}
-            {puedeVerDeportivo && (
+            {puedeEscribirDeportivo && (
               <>
                 {sidebarAbierta && (
                   <div style={sidebarGroupTitle} onClick={() => toggleMenu('operaciones')}>
@@ -151,21 +176,14 @@ function AppLayout() {
                 )}
                 {(menusAbiertos.operaciones || !sidebarAbierta) && (
                   <>
-                    {/* <-- ACTUALIZADO: Apunta a /inicio en lugar de / --> */}
-                    <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏠 {sidebarAbierta && <span>{esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}</NavLink>
-                    {puedeEscribirDeportivo && (
-                      <>
-                        <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚡ {sidebarAbierta && <span>NUEVO PARTIDO</span>}</NavLink>
-                        <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⏯️ {sidebarAbierta && <span>CONTINUAR PARTIDO</span>}</NavLink>
-                        <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📅 {sidebarAbierta && <span>PRESENTISMO</span>}</NavLink>
-                      </>
-                    )}
+                    <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚡ {sidebarAbierta && <span>NUEVO PARTIDO</span>}</NavLink>
+                    <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⏯️ {sidebarAbierta && <span>CONTINUAR PARTIDO</span>}</NavLink>
                   </>
                 )}
               </>
             )}
 
-            {/* --- COMPETICIÓN (Solo Staff) --- */}
+            {/* --- COMPETICIÓN --- */}
             {!esJugador && puedeVerDeportivo && (
               <>
                 {sidebarAbierta && (
@@ -176,7 +194,7 @@ function AppLayout() {
                 {(menusAbiertos.competicion || !sidebarAbierta) && (
                   <>
                     <NavLink to="/torneos" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏆 {sidebarAbierta && <span>MIS TORNEOS</span>}</NavLink>
-                    <NavLink to="/scouting-rivales" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🕵️‍♂️ {sidebarAbierta && <span>RIVALES (SCOUTING)</span>}</NavLink>
+                    <NavLink to="/scouting-rivales" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🕵️‍♂️ {sidebarAbierta && <span>RIVALES</span>}</NavLink>
                   </>
                 )}
               </>
@@ -192,11 +210,9 @@ function AppLayout() {
                 )}
                 {(menusAbiertos.analisis || !sidebarAbierta) && (
                   <>
-                    {!esJugador && <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📈 {sidebarAbierta && <span>TEMPORADA GLOBAL</span>}</NavLink>}
-                    <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📊 {sidebarAbierta && <span>{esJugador ? 'MIS PARTIDOS' : 'PARTIDO MATCH'}</span>}</NavLink>
-                    <NavLink to="/perfil-jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👁️ {sidebarAbierta && <span>{esJugador ? 'MI RENDIMIENTO' : 'SCOUTING PROPIO'}</span>}</NavLink>
-                    <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏃‍♂️ {sidebarAbierta && <span>FISIOLOGÍA</span>}</NavLink>
-                    <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🌡️ {sidebarAbierta && <span>{esJugador ? 'CARGAR WELLNESS' : 'CONTROL WELLNESS'}</span>}</NavLink>
+                    {!esJugador && <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📈 {sidebarAbierta && <span>RESUMEN TEMPORADA</span>}</NavLink>}
+                    <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📊 {sidebarAbierta && <span>RESUMEN POR PARTIDO</span>}</NavLink>
+                    <NavLink to="/perfil-jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👁️ {sidebarAbierta && <span>{esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span>}</NavLink>
                     {!esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚽ {sidebarAbierta && <span>ORIGEN DE GOLES</span>}</NavLink>}
                   </>
                 )}
@@ -204,7 +220,7 @@ function AppLayout() {
             )}
 
             {/* --- PLANIFICACIÓN --- */}
-            {puedeVerDeportivo && (
+            {puedeVerDeportivo && !esJugador && (
               <>
                 {sidebarAbierta && (
                   <div style={sidebarGroupTitle} onClick={() => toggleMenu('planificacion')}>
@@ -215,7 +231,7 @@ function AppLayout() {
                   <>
                     {puedeEscribirDeportivo && (
                       <>
-                        <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗓️ {sidebarAbierta && <span>MICROCICLO SEMANAL</span>}</NavLink>
+                        <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗓️ {sidebarAbierta && <span>MICROCICLO</span>}</NavLink>
                         <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎨 {sidebarAbierta && <span>CREADOR TÁCTICO</span>}</NavLink>
                       </>
                     )}
@@ -226,32 +242,49 @@ function AppLayout() {
               </>
             )}
 
-            {/* --- GESTIÓN (Solo Staff) --- */}
-            {!esJugador && (puedeControlarAdmin || puedeEscribirDeportivo) && (
+            {/* --- PLANTEL --- */}
+            {puedeVerDeportivo && (
               <>
                 {sidebarAbierta && (
-                  <div style={sidebarGroupTitle} onClick={() => toggleMenu('gestion')}>
-                    <span>GESTIÓN</span> <span>{menusAbiertos.gestion ? '▼' : '▶'}</span>
+                  <div style={sidebarGroupTitle} onClick={() => toggleMenu('plantel')}>
+                    <span>PLANTEL</span> <span>{menusAbiertos.plantel ? '▼' : '▶'}</span>
                   </div>
                 )}
-                {(menusAbiertos.gestion || !sidebarAbierta) && (
+                {(menusAbiertos.plantel || !sidebarAbierta) && (
                   <>
-                    <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👤 {sidebarAbierta && <span>MI PLANTEL</span>}</NavLink>
-                    {puedeControlarAdmin && (
-                      <>
-                        <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💰 {sidebarAbierta && <span>TESORERÍA</span>}</NavLink>
-                        <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🤝 {sidebarAbierta && <span>SPONSORS</span>}</NavLink>
-                      </>
-                    )}
+                    {!esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👤 {sidebarAbierta && <span>MI PLANTEL</span>}</NavLink>}
+                    {puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📅 {sidebarAbierta && <span>PRESENTISMO</span>}</NavLink>}
+                    <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🌡️ {sidebarAbierta && <span>WELLNESS</span>}</NavLink>
+                    <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏃‍♂️ {sidebarAbierta && <span>FISIOLOGÍA</span>}</NavLink>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* --- ADMINISTRACIÓN --- */}
+            {!esJugador && puedeControlarAdmin && (
+              <>
+                {sidebarAbierta && (
+                  <div style={sidebarGroupTitle} onClick={() => toggleMenu('administracion')}>
+                    <span>ADMINISTRACIÓN</span> <span>{menusAbiertos.administracion ? '▼' : '▶'}</span>
+                  </div>
+                )}
+                {(menusAbiertos.administracion || !sidebarAbierta) && (
+                  <>
+                    <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💰 {sidebarAbierta && <span>TESORERÍA</span>}</NavLink>
+                    <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🤝 {sidebarAbierta && <span>SPONSORS</span>}</NavLink>
                     {puedeConfigurar && (
-                      <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚙️ {sidebarAbierta && <span>CONFIG. CLUB</span>}</NavLink>
+                      <>
+                        <NavLink to="/mi-suscripcion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💳 {sidebarAbierta && <span>MI SUSCRIPCIÓN</span>}</NavLink>
+                        <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚙️ {sidebarAbierta && <span>CONFIG. DE CLUB</span>}</NavLink>
+                      </>
                     )}
                   </>
                 )}
               </>
             )}
 
-            {/* --- SISTEMA (Solo SuperUser) --- */}
+            {/* --- SISTEMA --- */}
             {esSuperUser && (
               <>
                 {sidebarAbierta && (
@@ -274,7 +307,6 @@ function AppLayout() {
 
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '20px 15px' : '40px', paddingBottom: esMovil ? '90px' : '40px' }}>
         <Routes>
-          {/* <-- ACTUALIZADO: El dashboard ahora vive en /inicio --> */}
           <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
           
           {/* DEPORTIVO */}
@@ -289,7 +321,8 @@ function AppLayout() {
           <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'admin']}><Tesoreria /></ProtectedRoute>} />
           <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'admin']}><Sponsors /></ProtectedRoute>} />
           <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'admin']}><Configuracion /></ProtectedRoute>} /> 
-          
+          <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
+
           {/* MASTER */}
           <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
 
@@ -307,14 +340,13 @@ function AppLayout() {
           <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
           <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
 
-          {/* Fallback de seguridad: si entra a cualquier ruta que no existe, lo manda a /inicio */}
+          {/* Fallback de seguridad */}
           <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Routes>
       </main>
 
       {esMovil && (
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '70px', background: 'var(--panel)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 1000 }}>
-          {/* <-- ACTUALIZADO: Apunta a /inicio --> */}
           <NavLink to="/inicio" style={navMobileStyle}>🏠<span style={{fontSize: '0.6rem'}}>INICIO</span></NavLink>
           {esJugador ? (
             <NavLink to="/wellness" style={navMobileStyle}>🌡️<span style={{fontSize: '0.6rem'}}>WELLNESS</span></NavLink>

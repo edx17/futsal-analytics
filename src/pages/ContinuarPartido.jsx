@@ -19,11 +19,16 @@ function ContinuarPartido() {
       
       const { data, error } = await supabase
         .from('partidos')
-        .select('*')
+        .select('*, eventos(id)') 
         .eq('club_id', clubId)
-        .order('id', { ascending: false }); // Los más nuevos primero
+        .neq('estado', 'Finalizado') 
+        .order('id', { ascending: false }); 
 
-      if (data) setPartidos(data);
+      if (data) {
+        // Solo mostramos los que tienen al menos 1 evento trackeado
+        const partidosEnJuego = data.filter(p => p.eventos && p.eventos.length > 0);
+        setPartidos(partidosEnJuego);
+      }
       if (error) console.error("Error cargando historial de partidos:", error);
       
       setCargando(false);
@@ -31,7 +36,6 @@ function ContinuarPartido() {
     fetchPartidos();
   }, [clubId]);
 
-  // NUEVO: Extraemos categorías y competiciones únicas reales de la BD
   const categoriasUnicas = useMemo(() => {
     return [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
   }, [partidos]);
@@ -40,7 +44,6 @@ function ContinuarPartido() {
     return [...new Set(partidos.map(p => p.competicion).filter(Boolean))];
   }, [partidos]);
 
-  // LÓGICA DE FILTRADO DINÁMICO
   const partidosFiltrados = useMemo(() => {
     return partidos.filter(p => {
       const cumpleCategoria = filtroCategoria === 'TODOS' || p.categoria === filtroCategoria;
@@ -92,13 +95,13 @@ function ContinuarPartido() {
       </div>
 
       <div className="bento-card">
-        <div className="stat-label" style={{ marginBottom: '20px' }}>HISTORIAL DE PARTIDOS ({partidosFiltrados.length})</div>
+        <div className="stat-label" style={{ marginBottom: '20px' }}>PARTIDOS EN JUEGO ({partidosFiltrados.length})</div>
         
         {cargando ? (
-          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>Cargando historial...</div>
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>Cargando partidos...</div>
         ) : partidosFiltrados.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>
-            No se encontraron partidos con estos filtros.
+            No hay partidos en curso actualmente.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>

@@ -33,9 +33,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const cargarPerfil = async (userId) => {
+    // ACÁ ESTÁ LA MAGIA DE LAS SUSCRIPCIONES: 
+    // Ahora le pedimos a Supabase que nos traiga el plan, si está activa y el vencimiento.
     const { data, error } = await supabase
       .from('perfiles')
-      .select(`*, clubes ( nombre )`)
+      .select(`*, clubes ( nombre, plan_actual, suscripcion_activa, fecha_vencimiento )`)
       .eq('id', userId)
       .single();
       
