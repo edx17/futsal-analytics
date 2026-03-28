@@ -50,9 +50,10 @@ function TomaDatos() {
   const [jugadoresEnBanco, setJugadoresEnBanco] = useState([]);
   const [saleId, setSaleId] = useState('');
   const [entraId, setEntraId] = useState('');
+  const [isSavingCambio, setIsSavingCambio] = useState(false); // NUEVO ESTADO PARA CARGA
   const [eventos, setEventos] = useState([]);
 
-  // --- NUEVOS ESTADOS: EDITAR 5 INICIAL ---
+  // --- ESTADOS: EDITAR 5 INICIAL ---
   const [modalEditarTitulares, setModalEditarTitulares] = useState(false);
   const [tempTitulares, setTempTitulares] = useState([]);
   const [tempSuplentes, setTempSuplentes] = useState([]);
@@ -261,7 +262,7 @@ function TomaDatos() {
 
     const eventosAInsertar = [eventoPrincipal];
 
-    // 2. LÓGICA DE INSERCIÓN DOBLE PARA ARQUEROS (INYECTADA ACÁ ADENTRO)
+    // 2. LÓGICA DE INSERCIÓN DOBLE PARA ARQUEROS
     const esRemateAlArco = accion === 'Remate - Atajado' || accion === 'Remate - Gol';
     const esRival = finalEquipo === 'Rival';
 
@@ -393,30 +394,51 @@ function TomaDatos() {
     }
   };
 
+  // --- LÓGICA MEJORADA DE CAMBIOS ---
   const guardarCambio = async () => {
     if (!saleId || !entraId) return;
+    setIsSavingCambio(true);
+    
     const jSale = jugadoresEnCancha.find(j => j.id == saleId);
     const jEntra = jugadoresEnBanco.find(j => j.id == entraId);
-    if (!jSale || !jEntra) return;
+    
+    if (!jSale || !jEntra) {
+      setIsSavingCambio(false);
+      return;
+    }
+    
     const evtSalida = {
       club_id: clubId, 
-      id_partido: partido.id, id_jugador: jSale.id, accion: 'Cambio', equipo: 'Propio',
-      periodo: periodo, minuto: minuto, id_receptor: jEntra.id,
+      id_partido: partido.id, 
+      id_jugador: jSale.id, 
+      accion: 'Cambio', 
+      equipo: 'Propio',
+      periodo: periodo, 
+      minuto: minuto, 
+      id_receptor: jEntra.id,
       quinteto_activo: jugadoresEnCancha.map(j => j.id)
     };
+    
+    // Actualización visual rápida
     setJugadoresEnCancha(prev => [...prev.filter(j => j.id != saleId), jEntra]);
     setJugadoresEnBanco(prev => [...prev.filter(j => j.id != entraId), jSale]);
-    setModalCambio(false); setSaleId(''); setEntraId('');
+    
     const { data: cambioGuardado, error } = await supabase.from('eventos').insert([evtSalida]).select();
-    if (cambioGuardado) {
+    
+    if (cambioGuardado && !error) {
       setEventos(prev => [...prev, ...cambioGuardado]);
-      showToast("Cambio registrado", "info");
+      showToast("Cambio registrado correctamente", "success");
     } else {
-       showToast("Error al guardar el cambio", "error");
+       showToast("Error de red al guardar el cambio", "error");
     }
+    
+    setModalCambio(false); 
+    setSaleId(''); 
+    setEntraId('');
+    setIsSavingCambio(false);
   };
 
-  // --- NUEVAS FUNCIONES: EDITAR TITULARES ANTES DE INICIAR ---
+  // --- FUNCIONES: EDITAR TITULARES ANTES DE INICIAR ---
   const abrirModalTitulares = () => {
     setTempTitulares([...jugadoresEnCancha]);
     setTempSuplentes([...jugadoresEnBanco]);
@@ -444,7 +466,6 @@ function TomaDatos() {
     }
     setIsSavingTitulares(true);
     try {
-      // Reconstruimos la plantilla respetando la estructura original JSON
       const nuevaPlantilla = [
         ...tempTitulares.map(j => ({ id_jugador: j.id, titular: true })),
         ...tempSuplentes.map(j => ({ id_jugador: j.id, titular: false }))
@@ -457,7 +478,6 @@ function TomaDatos() {
 
       if (error) throw error;
 
-      // Actualizamos los estados visuales en la app
       setJugadoresEnCancha(tempTitulares);
       setJugadoresEnBanco(tempSuplentes);
       setModalEditarTitulares(false);
@@ -918,19 +938,84 @@ function TomaDatos() {
       {/* --- MODAL DE CAMBIOS EN VIVO --- */}
       {modalCambio && (
         <div style={overlayStyle}>
-          <div style={modalIndustrial}>
-            <div className="stat-label" style={{ marginBottom: '20px' }}>GESTIÓN DE CAMBIOS</div>
-            <select value={saleId} onChange={(e) => setSaleId(e.target.value)} style={{ width: '100%', marginBottom: '10px', padding: '10px', background: '#111', color: '#fff', border: '1px solid #444' }}>
-              <option value="">SALE...</option>
-              {jugadoresEnCancha.map(j => <option key={j.id} value={j.id}>{j.dorsal} - {j.apellido ? j.apellido : j.nombre}</option>)}
-            </select>
-            <select value={entraId} onChange={(e) => setEntraId(e.target.value)} style={{ width: '100%', marginBottom: '20px', padding: '10px', background: '#111', color: '#fff', border: '1px solid #444' }}>
-              <option value="">ENTRA...</option>
-              {jugadoresEnBanco.map(j => <option key={j.id} value={j.id}>{j.dorsal} - {j.apellido ? j.apellido : j.nombre}</option>)}
-            </select>
+          <div style={{ ...modalIndustrial, width: '450px' }}>
+            <div className="stat-label" style={{ marginBottom: '15px', color: '#fff' }}>🔄 GESTIÓN DE CAMBIOS</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '20px', lineHeight: 1.4 }}>
+              Seleccioná el jugador que <strong style={{color: '#ef4444'}}>SALE</strong> y el que <strong style={{color: '#10b981'}}>ENTRA</strong>.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
+              {/* Columna Sale */}
+              <div>
+                <div className="stat-label" style={{ marginBottom: '10px', color: saleId ? '#ef4444' : 'var(--text-dim)' }}>
+                  SALE (EN CANCHA)
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {jugadoresEnCancha.map(j => (
+                    <button 
+                      key={j.id} 
+                      onClick={() => setSaleId(j.id)} 
+                      style={{ 
+                        background: saleId === j.id ? 'rgba(239, 68, 68, 0.2)' : '#111', 
+                        border: `1px solid ${saleId === j.id ? '#ef4444' : '#333'}`, 
+                        color: saleId === j.id ? '#fff' : '#aaa', 
+                        padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' 
+                      }}
+                    >
+                      <span>{j.apellido || j.nombre}</span> <span style={{ fontWeight: 'bold' }}>{j.dorsal}</span>
+                    </button>
+                  ))}
+                  {jugadoresEnCancha.length === 0 && <div style={{ fontSize: '0.7rem', color: '#555' }}>Vacío</div>}
+                </div>
+              </div>
+
+              {/* Columna Entra */}
+              <div>
+                <div className="stat-label" style={{ marginBottom: '10px', color: entraId ? '#10b981' : 'var(--text-dim)' }}>
+                  ENTRA (BANCO)
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '200px', overflowY: 'auto' }}>
+                  {jugadoresEnBanco.map(j => (
+                    <button 
+                      key={j.id} 
+                      onClick={() => setEntraId(j.id)} 
+                      style={{ 
+                        background: entraId === j.id ? 'rgba(16, 185, 129, 0.2)' : '#111', 
+                        border: `1px solid ${entraId === j.id ? '#10b981' : '#333'}`, 
+                        color: entraId === j.id ? '#fff' : '#aaa', 
+                        padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' 
+                      }}
+                    >
+                      <span>{j.apellido || j.nombre}</span> <span style={{ fontWeight: 'bold' }}>{j.dorsal}</span>
+                    </button>
+                  ))}
+                  {jugadoresEnBanco.length === 0 && <div style={{ fontSize: '0.7rem', color: '#555' }}>Vacío</div>}
+                </div>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setModalCambio(false)} className="btn-action" style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={guardarCambio} className="btn-action" style={{ flex: 1, padding: '10px', background: '#fff', color: '#000', fontWeight: 'bold', cursor: 'pointer' }}>CONFIRMAR</button>
+              <button 
+                onClick={() => { setModalCambio(false); setSaleId(''); setEntraId(''); }} 
+                disabled={isSavingCambio}
+                className="btn-action" 
+                style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}
+              >
+                CANCELAR
+              </button>
+              <button 
+                onClick={guardarCambio} 
+                disabled={!saleId || !entraId || isSavingCambio} 
+                className="btn-action" 
+                style={{ 
+                  flex: 1, padding: '10px', 
+                  background: (saleId && entraId) ? '#fff' : '#555', 
+                  color: (saleId && entraId) ? '#000' : '#888', 
+                  fontWeight: 'bold', cursor: (saleId && entraId) ? 'pointer' : 'not-allowed', border: 'none' 
+                }}
+              >
+                {isSavingCambio ? 'GUARDANDO...' : 'CONFIRMAR CAMBIO'}
+              </button>
             </div>
           </div>
         </div>
