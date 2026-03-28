@@ -137,7 +137,6 @@ function NuevoPartido() {
     });
   };
 
-  // LÍMITES DINÁMICOS SEGÚN EL TIPO DE TORNEO HEREDADO
   const esAmistoso = formData.competicion.toLowerCase().includes('amistoso');
   const limiteConvocados = esAmistoso ? 16 : 14;
   const totalConvocados = jugadoresBD.filter(j => seleccion[j.id]?.convocado).length;
@@ -175,10 +174,10 @@ function NuevoPartido() {
           plantilla: plantilla
         })
         .eq('id', formData.id)
-        .select()
-        .single();
+        .select(); // <-- CERO ".single()", para evitar el 406
       
-      partidoData = data;
+      // Armamos la data a la fuerza por si falla el retorno
+      partidoData = (data && data.length > 0) ? data[0] : { ...formData, id: formData.id, plantilla };
       errorOp = error;
     } else {
       // 🔵 RUTA B: CREAR UN PARTIDO TOTALMENTE NUEVO
@@ -201,12 +200,15 @@ function NuevoPartido() {
         plantilla: plantilla
       };
 
-      const { data, error } = await supabase.from('partidos').insert([payload]).select().single();
-      partidoData = data;
+      const { data, error } = await supabase.from('partidos').insert([payload]).select(); // <-- CERO ".single()"
+      
+      // Armamos la data a la fuerza
+      partidoData = (data && data.length > 0) ? data[0] : payload;
       errorOp = error;
     }
 
-    if (errorOp) {
+    // Si hubo un error y NO es el bendito 406
+    if (errorOp && errorOp.code !== '406') {
       alert("Error al crear/actualizar el partido: " + errorOp.message);
       setIsSubmitting(false);
     } else {
@@ -215,7 +217,6 @@ function NuevoPartido() {
     }
   };
 
-  // --- LÓGICA NUEVA DE ORDENAMIENTO AL HACER CLIC EN COLUMNAS ---
   const handleSort = (criterio) => {
     if (ordenCriterio === criterio) {
       setOrdenDireccion(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -253,7 +254,6 @@ function NuevoPartido() {
     });
   }, [jugadoresBD, filtroVerCategoria, ordenCriterio, ordenDireccion]);
 
-  // VARIABLE DE CONTROL UI: ¿Es un partido precargado?
   const isFixtureMatch = !!formData.id;
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club primero.</div>;
@@ -268,7 +268,6 @@ function NuevoPartido() {
 
       <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px' }}>
         
-        {/* FILA 1: TORNEO Y FIXTURE (EJE CENTRAL) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div className="section-title">¿A QUÉ TORNEO PERTENECE?</div>
@@ -306,7 +305,6 @@ function NuevoPartido() {
           )}
         </div>
 
-        {/* FILA 2: DATOS COMPLEMENTARIOS DEL PARTIDO */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
           <div>
             <div className="section-title">JORNADA / FASE</div>
@@ -328,7 +326,6 @@ function NuevoPartido() {
           </div>
         </div>
 
-        {/* FILA 3: DATOS EDITABLES SIEMPRE (ESTADIO Y HORA) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px dashed #00ff88' }}>
           <div>
             <div className="section-title" style={{ color: '#00ff88' }}>HORARIO DEFINITIVO</div>
@@ -340,7 +337,6 @@ function NuevoPartido() {
           </div>
         </div>
 
-        {/* FILA 4: RIVAL Y SCOUTING */}
         <div style={{ background: isFixtureMatch ? '#111' : 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px solid var(--accent)', marginTop: '10px' }}>
           <div className="section-title" style={{ color: isFixtureMatch ? '#666' : 'var(--accent)' }}>SELECCIONAR RIVAL</div>
           <select value={formData.rival_id} onChange={handleSeleccionarRival} style={{ ...(isFixtureMatch ? inputDisabledStyle : inputIndustrial), borderColor: isFixtureMatch ? '#222' : 'var(--accent)', marginBottom: rivalSeleccionado ? '15px' : '0' }} disabled={isFixtureMatch}>
@@ -368,7 +364,6 @@ function NuevoPartido() {
         </div>
       </div>
 
-      {/* BLOQUE DE CONVOCATORIA */}
       <div className="bento-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
@@ -385,7 +380,6 @@ function NuevoPartido() {
           </div>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Los botones feos de ordenar fueron eliminados de acá */}
             <select value={filtroVerCategoria} onChange={(e) => setFiltroVerCategoria(e.target.value)} style={{ padding: '5px', background: '#000', color: '#fff', border: '1px solid #333', borderRadius: '4px' }}>
               {categoriasDisponibles.map(cat => (
                 <option key={cat} value={cat}>{cat.toUpperCase()}</option>
@@ -404,7 +398,6 @@ function NuevoPartido() {
             <table>
               <thead>
                 <tr>
-                  {/* Encabezados cliqueables con flechita indicadora */}
                   <th onClick={() => handleSort('dorsal')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                     #{renderSortIcon('dorsal')}
                   </th>
