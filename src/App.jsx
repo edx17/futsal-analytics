@@ -61,13 +61,15 @@ function AppLayout() {
 
   const esSuperUser = rol === 'superuser';
   const esAdmin = rol === 'admin';
+  const esManager = rol === 'manager'; // <--- NUEVO ROL
   const esCT = rol === 'ct';
   const esJugador = rol === 'jugador';
 
-  const puedeEscribirDeportivo = esSuperUser || esCT;
-  const puedeVerDeportivo = esSuperUser || esAdmin || esCT || esJugador;
-  const puedeControlarAdmin = esSuperUser || esAdmin;
-  const puedeConfigurar = esSuperUser || esAdmin;
+  // --- PERMISOS ACTUALIZADOS ---
+  const puedeEscribirDeportivo = esSuperUser || esManager || esCT;
+  const puedeVerDeportivo = esSuperUser || esManager || esAdmin || esCT || esJugador;
+  const puedeControlarAdmin = esSuperUser || esManager || esAdmin;
+  const puedeConfigurar = esSuperUser || esManager || esAdmin;
 
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
@@ -112,7 +114,7 @@ function AppLayout() {
           <Route path="/login" element={perfil ? <Navigate to="/inicio" replace /> : <Login />} />
           <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
           <Route path="/kiosco" element={<LoginKiosco />} />
-          <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><TomaDatos /></ProtectedRoute>} />
+          <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
         </Routes>
       </main>
     );
@@ -151,7 +153,6 @@ function AppLayout() {
           <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: sidebarAbierta ? 'space-between' : 'center', borderBottom: '1px solid var(--border)' }}>
             {sidebarAbierta && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {/* Asegurate de tener logo.png en tu carpeta public, o cambialo por el nombre correcto */}
                 <img src="/favicon-32x32.png"  alt="VS" style={{ height: '26px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none' }} />
                 <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '1px' }}>VIRTUAL<span style={{ color: 'var(--accent)' }}>.CLUB</span></div>
               </div>
@@ -310,18 +311,18 @@ function AppLayout() {
           <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
           
           {/* DEPORTIVO */}
-          <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><NuevoPartido /></ProtectedRoute>} />
-          <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
-          <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><Presentismo /></ProtectedRoute>} />
-          <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
-          <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
-          <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'ct']}><CreadorTareas /></ProtectedRoute>} />
+          <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
+          <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
+          <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
+          <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
+          <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
+          <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
           
           {/* ADMINISTRATIVO */}
-          <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'admin']}><Tesoreria /></ProtectedRoute>} />
-          <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'admin']}><Sponsors /></ProtectedRoute>} />
-          <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'admin']}><Configuracion /></ProtectedRoute>} /> 
-          <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
+          <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
+          <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
+          <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
+          <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
 
           {/* MASTER */}
           <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />

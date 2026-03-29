@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
-import { createClient } from '@supabase/supabase-js'; // <--- IMPORTANTE: Agregamos esto
+import { createClient } from '@supabase/supabase-js'; 
 
 function Usuarios() {
   const { perfil } = useAuth();
@@ -56,7 +56,6 @@ function Usuarios() {
     const emailFicticio = `${nuevoUser.username.trim()}@virtualstats.com`;
 
     // --- EL TRUCO PARA NO DESLOGUEARTE ---
-    // Clonamos la conexión a Supabase pero le decimos que NO guarde la sesión.
     const tempSupabase = createClient(supabase.supabaseUrl, supabase.supabaseKey, {
       auth: { persistSession: false }
     });
@@ -73,7 +72,7 @@ function Usuarios() {
       return;
     }
 
-    // 2. Insertar en nuestra tabla de perfiles (Usamos el supabase ORIGINAL porque ese sí tiene tus permisos Master para escribir)
+    // 2. Insertar en nuestra tabla de perfiles (Usamos el supabase ORIGINAL)
     const { error: profileError } = await supabase.from('perfiles').insert([
       {
         id: authData.user.id,
@@ -143,6 +142,7 @@ function Usuarios() {
                 <select value={nuevoUser.rol} onChange={e => setNuevoUser({...nuevoUser, rol: e.target.value})} style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px' }}>
                   <option value="jugador">Jugador</option>
                   <option value="ct">Cuerpo Técnico</option>
+                  <option value="manager">Manager / Coordinador</option> {/* NUEVO ROL AQUI */}
                   {esSuperUser && <option value="admin">Administrativo (Dirigente)</option>}
                   <option value="tesorero">Tesorero</option>
                   {esSuperUser && <option value="superuser">Super User</option>}
@@ -192,7 +192,8 @@ function Usuarios() {
                       <td style={{ padding: '12px 10px' }}>
                         <span style={{ 
                           fontSize: '0.65rem', padding: '4px 8px', borderRadius: '4px', fontWeight: 800,
-                          background: u.rol === 'superuser' ? '#c084fc' : u.rol === 'admin' ? '#3b82f6' : u.rol === 'ct' ? '#10b981' : '#222',
+                          // COLORCITO NUEVO PARA EL MANAGER
+                          background: u.rol === 'superuser' ? '#c084fc' : u.rol === 'manager' ? '#f97316' : u.rol === 'admin' ? '#3b82f6' : u.rol === 'ct' ? '#10b981' : '#222',
                           color: u.rol === 'jugador' ? 'var(--text-dim)' : '#000'
                         }}>
                           {u.rol.toUpperCase()}

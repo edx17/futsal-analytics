@@ -7,29 +7,29 @@ import { useAuth } from '../context/AuthContext';
 // 1. CATÁLOGO DE WIDGETS Y PERMISOS ESTRICTOS
 // ==========================================
 const CATÁLOGO_WIDGETS = [
-  { id: 'w_proximo', tipo: 'data', titulo: 'Próximo Partido', icon: '📅', roles: ['superuser', 'ct'] },
-  { id: 'w_ultimo', tipo: 'data', titulo: 'Último Registro', icon: '⏱️', roles: ['superuser', 'ct'] },
-  { id: 'w_stats_base', tipo: 'data', titulo: 'Estado de la Base', icon: '📊', roles: ['superuser', 'admin'] },
-  { id: 'w_vep_anual', tipo: 'data', titulo: 'Balance Anual (V-E-D)', icon: '⚖️', roles: ['superuser', 'ct', 'admin'] },
-  { id: 'w_goles_cat', tipo: 'data', titulo: 'Goles Acumulados', icon: '⚽', roles: ['superuser', 'ct', 'admin'] },
-  { id: 'w_resultados_cat', tipo: 'data', titulo: 'Últimos Resultados', icon: '📈', roles: ['superuser', 'ct', 'admin'] },
+  { id: 'w_proximo', tipo: 'data', titulo: 'Próximo Partido', icon: '📅', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'w_ultimo', tipo: 'data', titulo: 'Último Registro', icon: '⏱️', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'w_stats_base', tipo: 'data', titulo: 'Estado de la Base', icon: '📊', roles: ['superuser', 'manager', 'admin'] },
+  { id: 'w_vep_anual', tipo: 'data', titulo: 'Balance Anual (V-E-D)', icon: '⚖️', roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'w_goles_cat', tipo: 'data', titulo: 'Goles Acumulados', icon: '⚽', roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'w_resultados_cat', tipo: 'data', titulo: 'Últimos Resultados', icon: '📈', roles: ['superuser', 'manager', 'ct', 'admin'] },
   
-  // CT
-  { id: 'nuevo_partido', tipo: 'link', titulo: 'Nuevo Partido', icon: '⚡', ruta: '/nuevo-partido', color: '#10b981', desc: 'Toma de stats en vivo', roles: ['superuser', 'ct'] },
-  { id: 'planificador', tipo: 'link', titulo: 'Microciclo', icon: '🗓️', ruta: '/planificador-semanal', color: '#8b5cf6', desc: 'Cargas y sesiones', roles: ['superuser', 'ct'] },
-  { id: 'creador_tareas', tipo: 'link', titulo: 'Creador Tareas', icon: '🎨', ruta: '/creador-tareas', color: '#ec4899', desc: 'Pizarra de ejercicios', roles: ['superuser', 'ct'] },
-  { id: 'banco_tareas', tipo: 'link', titulo: 'Banco Tareas', icon: '📁', ruta: '/banco-tareas', color: '#f59e0b', desc: 'Archivo de ejercicios', roles: ['superuser', 'ct'] },
-  { id: 'libro_tactico', tipo: 'link', titulo: 'Libro Táctico', icon: '📋', ruta: '/libro-tactico', color: '#3b82f6', desc: 'Pelota parada y sistemas', roles: ['superuser', 'ct'] },
-  { id: 'scouting', tipo: 'link', titulo: 'Scouting Rivales', icon: '🕵️‍♂️', ruta: '/scouting-rivales', color: '#64748b', desc: 'Análisis del rival', roles: ['superuser', 'ct'] },
-  { id: 'rendimiento', tipo: 'link', titulo: 'Sports Science', icon: '🧬', ruta: '/rendimiento', color: '#f43f5e', desc: 'Físico, Kine y Nutri', roles: ['superuser', 'ct'] },
-  { id: 'presentismo', tipo: 'link', titulo: 'Presentismo', icon: '✅', ruta: '/presentismo', color: '#14b8a6', desc: 'Asistencia a entrenos', roles: ['superuser', 'ct'] },
-  { id: 'plantel', tipo: 'link', titulo: 'Mi Plantel', icon: '👥', ruta: '/plantel', color: '#0ea5e9', desc: 'Gestión de jugadores', roles: ['superuser', 'ct', 'admin'] },
-  { id: 'wellness_ct', tipo: 'link', titulo: 'Monitor Wellness', icon: '🔋', ruta: '/carga-wellness', color: '#10b981', desc: 'Estado del plantel hoy', roles: ['superuser', 'ct'] },
+  // CT / MANAGER
+  { id: 'nuevo_partido', tipo: 'link', titulo: 'Nuevo Partido', icon: '⚡', ruta: '/nuevo-partido', color: '#10b981', desc: 'Toma de stats en vivo', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'planificador', tipo: 'link', titulo: 'Microciclo', icon: '🗓️', ruta: '/planificador-semanal', color: '#8b5cf6', desc: 'Cargas y sesiones', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'creador_tareas', tipo: 'link', titulo: 'Creador Tareas', icon: '🎨', ruta: '/creador-tareas', color: '#ec4899', desc: 'Pizarra de ejercicios', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'banco_tareas', tipo: 'link', titulo: 'Banco Tareas', icon: '📁', ruta: '/banco-tareas', color: '#f59e0b', desc: 'Archivo de ejercicios', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'libro_tactico', tipo: 'link', titulo: 'Libro Táctico', icon: '📋', ruta: '/libro-tactico', color: '#3b82f6', desc: 'Pelota parada y sistemas', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'scouting', tipo: 'link', titulo: 'Scouting Rivales', icon: '🕵️‍♂️', ruta: '/scouting-rivales', color: '#64748b', desc: 'Análisis del rival', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'rendimiento', tipo: 'link', titulo: 'Sports Science', icon: '🧬', ruta: '/rendimiento', color: '#f43f5e', desc: 'Físico, Kine y Nutri', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'presentismo', tipo: 'link', titulo: 'Presentismo', icon: '✅', ruta: '/presentismo', color: '#14b8a6', desc: 'Asistencia a entrenos', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'plantel', tipo: 'link', titulo: 'Mi Plantel', icon: '👥', ruta: '/plantel', color: '#0ea5e9', desc: 'Gestión de jugadores', roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'wellness_ct', tipo: 'link', titulo: 'Monitor Wellness', icon: '🔋', ruta: '/carga-wellness', color: '#10b981', desc: 'Estado del plantel hoy', roles: ['superuser', 'manager', 'ct'] },
 
-  // ADMIN
-  { id: 'tesoreria', tipo: 'link', titulo: 'Tesorería', icon: '💰', ruta: '/tesoreria', color: '#eab308', desc: 'Caja y Cuotas', roles: ['superuser', 'admin'] },
-  { id: 'torneos', tipo: 'link', titulo: 'Torneos', icon: '🏆', ruta: '/torneos', color: '#fbbf24', desc: 'Gestión de ligas', roles: ['superuser', 'admin'] },
-  { id: 'sponsors', tipo: 'link', titulo: 'Sponsors', icon: '🤝', ruta: '/sponsors', color: '#0284c7', desc: 'Patrocinadores', roles: ['superuser', 'admin'] },
+  // ADMIN / MANAGER
+  { id: 'tesoreria', tipo: 'link', titulo: 'Tesorería', icon: '💰', ruta: '/tesoreria', color: '#eab308', desc: 'Caja y Cuotas', roles: ['superuser', 'manager', 'admin'] },
+  { id: 'torneos', tipo: 'link', titulo: 'Torneos', icon: '🏆', ruta: '/torneos', color: '#fbbf24', desc: 'Gestión de ligas', roles: ['superuser', 'manager', 'admin'] },
+  { id: 'sponsors', tipo: 'link', titulo: 'Sponsors', icon: '🤝', ruta: '/sponsors', color: '#0284c7', desc: 'Patrocinadores', roles: ['superuser', 'manager', 'admin'] },
   { id: 'usuarios', tipo: 'link', titulo: 'Gestión de Usuarios', icon: '👑', ruta: '/usuarios', color: '#c084fc', desc: 'Accesos y permisos', roles: ['superuser'] },
   
   // JUGADORES
@@ -49,6 +49,7 @@ export default function Inicio() {
   const rol = (isKioscoMode ? 'jugador' : (perfil?.rol || 'jugador')).toLowerCase();
   const esSuperUser = rol === 'superuser';
   const esAdmin = rol === 'admin';
+  const esManager = rol === 'manager'; // <--- NUEVO ROL
 
   const [clubMaster, setClubMaster] = useState(localStorage.getItem('club_id') || '');
   const clubActivo = esSuperUser ? clubMaster : (perfil?.club_id || '');
@@ -78,7 +79,16 @@ export default function Inicio() {
   const [modoEdicion, setModoEdicion] = useState(false);
   const widgetsPermitidos = CATÁLOGO_WIDGETS.filter(w => w.roles.includes(rol));
   
-  const defaultLayout = esSuperUser ? ['usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido'] : rol === 'ct' ? ['w_vep_anual', 'w_proximo', 'nuevo_partido', 'planificador', 'rendimiento', 'wellness_ct'] : esAdmin ? ['w_stats_base', 'tesoreria', 'torneos', 'sponsors', 'plantel'] : ['mi_wellness', 'mi_perfil', 'mi_rendimiento'];
+  // DEFAULT LAYOUT CON EL MANAGER INCLUIDO
+  const defaultLayout = esSuperUser 
+    ? ['usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido'] 
+    : esManager
+    ? ['w_vep_anual', 'w_stats_base', 'tesoreria', 'nuevo_partido', 'planificador', 'plantel']
+    : rol === 'ct' 
+    ? ['w_vep_anual', 'w_proximo', 'nuevo_partido', 'planificador', 'rendimiento', 'wellness_ct'] 
+    : esAdmin 
+    ? ['w_stats_base', 'tesoreria', 'torneos', 'sponsors', 'plantel'] 
+    : ['mi_wellness', 'mi_perfil', 'mi_rendimiento'];
 
   const [misWidgetsActivos, setMisWidgetsActivos] = useState(() => {
     const guardado = localStorage.getItem(`dashboard_${perfil?.id}`);
@@ -379,8 +389,9 @@ export default function Inicio() {
     );
   }
 
+  // --- MODIFICADO PARA MANAGER ---
   if (!cargando && !clubActivo && !esSuperUser) {
-    if (esAdmin) {
+    if (esAdmin || esManager) {
       return (
         <div style={{ animation: 'fadeIn 0.3s', padding: '50px 20px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
           <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🏟️</div>
@@ -492,7 +503,7 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGET: ÚLTIMOS RESULTADOS (Ahora muestra hasta 2) ---
+              // --- WIDGET: ÚLTIMOS RESULTADOS ---
               if (config.id === 'w_resultados_cat') {
                 const cats = Object.keys(resultadosRecientesCat);
                 return (
