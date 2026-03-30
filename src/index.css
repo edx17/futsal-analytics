@@ -285,3 +285,78 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #333; }
+
+/* ==========================================
+   📱 OPTIMIZACIONES MOBILE-FIRST
+   ========================================== */
+
+/* 1. Ajuste del padding global en móviles para maximizar espacio */
+@media (max-width: 768px) {
+  main {
+    padding: 15px 10px !important;
+    padding-bottom: 85px !important; /* Espacio para el menú inferior */
+  }
+  
+  .bento-card {
+    padding: 15px; /* Reducimos el padding interno de las tarjetas */
+  }
+
+  /* 2. Clases utilitarias para ocultar elementos no vitales en celu */
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+/* 3. Transformación de Tablas a Tarjetas en Móviles */
+@media (max-width: 768px) {
+  .table-responsive-mobile table, 
+  .table-responsive-mobile thead, 
+  .table-responsive-mobile tbody, 
+  .table-responsive-mobile th, 
+  .table-responsive-mobile td, 
+  .table-responsive-mobile tr { 
+    display: block; 
+  }
+  
+  /* Ocultamos las cabeceras originales */
+  .table-responsive-mobile thead tr { 
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  
+  .table-responsive-mobile tr { 
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    background: #000;
+  }
+  
+  .table-responsive-mobile td { 
+    border: none;
+    border-bottom: 1px solid #111; 
+    position: relative;
+    padding-left: 50% !important; /* Espacio para el label */
+    text-align: right !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .table-responsive-mobile td:last-child {
+    border-bottom: 0;
+  }
+
+  /* Inyectamos el título de la columna usando un atributo data-label en el HTML */
+  .table-responsive-mobile td::before { 
+    content: attr(data-label);
+    position: absolute;
+    left: 15px;
+    width: 45%; 
+    text-align: left;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+}

@@ -14,6 +14,15 @@ function Presentismo() {
   const clubId = perfil?.club_id || localStorage.getItem('club_id');
   const esJugador = perfil?.rol?.toLowerCase() === 'jugador';
 
+  // --- RESPONSIVE STATE ---
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setEsMovil(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const obtenerFechaLocal = () => {
     const hoy = new Date();
     return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
@@ -54,87 +63,86 @@ function Presentismo() {
   }, [fecha, historial, jugadores]);
 
   const cargarBaseDatos = async () => {
-  setCargando(true);
-  try {
-    // 1) roster principal: jugadores cuya categoría coincide con la seleccionada
-    const { data: jubs } = await supabase
-      .from('jugadores')
-      .select('*')
-      .eq('club_id', clubId)
-      .eq('categoria', categoria)
-      .order('apellido');
-    let jugadoresLista = jubs || [];
-
-    // 2) historial completo para la categoría (para los reportes)
-    const { data: histAll } = await supabase
-      .from('asistencias')
-      .select('*')
-      .eq('club_id', clubId)
-      .eq('categoria', categoria)
-      .order('fecha', { ascending: true });
-    setHistorial(histAll || []);
-
-    // 3) asistencias del día/fecha actual para la categoría (para detectar jugadores de otras categorías que asistieron a esta sesión)
-    const { data: histHoy } = await supabase
-      .from('asistencias')
-      .select('jugador_id')
-      .eq('club_id', clubId)
-      .eq('categoria', categoria)
-      .eq('fecha', fecha);
-
-    const idsHoy = (histHoy || []).map(h => String(h.jugador_id));
-    const faltantes = idsHoy.filter(id => !jugadoresLista.some(j => String(j.id) === id));
-
-    // 4) si hay jugadores que no pertenecen a la categoría pero aparecen en asistencias del día, traelos y agregalos al roster mostrado
-    if (faltantes.length > 0) {
-      const { data: extras } = await supabase
+    setCargando(true);
+    try {
+      // 1) roster principal
+      const { data: jubs } = await supabase
         .from('jugadores')
         .select('*')
-        .in('id', faltantes)
+        .eq('club_id', clubId)
+        .eq('categoria', categoria)
         .order('apellido');
+      let jugadoresLista = jubs || [];
 
-      jugadoresLista = jugadoresLista.concat(extras || []);
+      // 2) historial completo
+      const { data: histAll } = await supabase
+        .from('asistencias')
+        .select('*')
+        .eq('club_id', clubId)
+        .eq('categoria', categoria)
+        .order('fecha', { ascending: true });
+      setHistorial(histAll || []);
+
+      // 3) asistencias del día actual
+      const { data: histHoy } = await supabase
+        .from('asistencias')
+        .select('jugador_id')
+        .eq('club_id', clubId)
+        .eq('categoria', categoria)
+        .eq('fecha', fecha);
+
+      const idsHoy = (histHoy || []).map(h => String(h.jugador_id));
+      const faltantes = idsHoy.filter(id => !jugadoresLista.some(j => String(j.id) === id));
+
+      // 4) jugadores extras que asistieron
+      if (faltantes.length > 0) {
+        const { data: extras } = await supabase
+          .from('jugadores')
+          .select('*')
+          .in('id', faltantes)
+          .order('apellido');
+
+        jugadoresLista = jugadoresLista.concat(extras || []);
+      }
+
+      setJugadores(jugadoresLista);
+    } catch (err) {
+      showToast("Error al cargar datos", "error");
+    } finally {
+      setCargando(false);
     }
+  };
 
-    setJugadores(jugadoresLista);
-  } catch (err) {
-    showToast("Error al cargar datos", "error");
-  } finally {
-    setCargando(false);
-  }
-};
-
-  // --- GUARDADO: UPSERT alineado con índice único (club_id, jugador_id, fecha) ---
   const guardarAsistencia = async () => {
-  setCargando(true);
-  try {
-    const recordsToInsert = jugadores.map(j => ({
-      club_id: clubId, // NO lo conviertas a string
-      jugador_id: j.id,
-      estado: asistenciasHoy[j.id] || 'presente',
-      categoria: categoria,
-      fecha: fecha,
-      notas: notasHoy[j.id] || ''
-    }));
+    setCargando(true);
+    try {
+      const recordsToInsert = jugadores.map(j => ({
+        club_id: clubId, 
+        jugador_id: j.id,
+        estado: asistenciasHoy[j.id] || 'presente',
+        categoria: categoria,
+        fecha: fecha,
+        notas: notasHoy[j.id] || ''
+      }));
 
-    const { error } = await supabase
-      .from('asistencias')
-      .upsert(recordsToInsert, { 
-        onConflict: 'club_id,jugador_id,fecha' 
-      });
+      const { error } = await supabase
+        .from('asistencias')
+        .upsert(recordsToInsert, { 
+          onConflict: 'club_id,jugador_id,fecha' 
+        });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    showToast("Asistencia guardada correctamente.", "success");
-    cargarBaseDatos();
+      showToast("Asistencia guardada correctamente.", "success");
+      cargarBaseDatos();
 
-  } catch (err) {
-    console.error("Error completo:", err);
-    showToast("Error al guardar: " + err.message, "error");
-  } finally {
-    setCargando(false);
-  }
-};
+    } catch (err) {
+      console.error("Error completo:", err);
+      showToast("Error al guardar: " + err.message, "error");
+    } finally {
+      setCargando(false);
+    }
+  };
 
   const stats = useMemo(() => {
     if (historial.length === 0 || jugadores.length === 0) return null;
@@ -197,16 +205,16 @@ function Presentismo() {
     <div style={{ maxWidth: '1100px', margin: '0 auto', animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>
       
       <div className="bento-card" style={{ marginBottom: '20px', background: 'var(--panel)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'center', flexWrap: 'wrap', gap: '20px' }}>
           <div>
             <div className="stat-label">OPERACIONES • PRESENTISMO</div>
             <h2 style={{ margin: 0, fontSize: '1.8rem', color: 'var(--accent)' }}>{categoria.toUpperCase()}</h2>
           </div>
           
-          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: esMovil ? '1 1 100%' : 'auto' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>CATEGORÍA</span>
-              <select value={categoria} onChange={(e) => setCategoria(e.target.value)} style={selectStyle}>
+              <select value={categoria} onChange={(e) => setCategoria(e.target.value)} style={{...selectStyle, width: '100%'}}>
                 <option value="Primera">Primera</option>
                 <option value="Reserva">Reserva</option>
                 <option value="Tercera">Tercera</option>
@@ -214,17 +222,17 @@ function Presentismo() {
               </select>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: esMovil ? '1 1 100%' : 'auto' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>FECHA A GESTIONAR</span>
-              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={selectStyle} />
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{...selectStyle, width: '100%'}} />
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', marginTop: '20px', background: '#000', padding: '5px', borderRadius: '10px', border: '1px solid #333' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px', background: '#000', padding: '5px', borderRadius: '10px', border: '1px solid #333' }}>
           <button onClick={() => setVista('tomar')} style={{ ...tabBtn, background: vista === 'tomar' ? 'var(--accent)' : 'transparent', color: vista === 'tomar' ? '#000' : '#888' }}>📝 PASAR LISTA</button>
-          <button onClick={() => setVista('mensual')} style={{ ...tabBtn, background: vista === 'mensual' ? '#3b82f6' : 'transparent', color: vista === 'mensual' ? '#fff' : '#888' }}>📅 RESUMEN DEL MES</button>
-          <button onClick={() => setVista('anual')} style={{ ...tabBtn, background: vista === 'anual' ? '#a855f7' : 'transparent', color: vista === 'anual' ? '#fff' : '#888' }}>📊 DASHBOARD ANUAL</button>
+          <button onClick={() => setVista('mensual')} style={{ ...tabBtn, background: vista === 'mensual' ? '#3b82f6' : 'transparent', color: vista === 'mensual' ? '#fff' : '#888' }}>📅 RESUMEN</button>
+          <button onClick={() => setVista('anual')} style={{ ...tabBtn, background: vista === 'anual' ? '#a855f7' : 'transparent', color: vista === 'anual' ? '#fff' : '#888' }}>📊 DASHBOARD</button>
         </div>
       </div>
 
@@ -243,48 +251,91 @@ function Presentismo() {
                 </span>
               </div>
               
-              <div className="table-wrapper">
-                <table style={{ width: '100%', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
-                      <th style={{ padding: '10px' }}>JUGADOR</th>
-                      <th style={{ padding: '10px' }}>ESTADO</th>
-                      <th style={{ padding: '10px' }}>OBSERVACIONES PRIVADAS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jugadores.map(j => (
-                      <tr key={j.id} style={{ borderBottom: '1px solid #222' }}>
-                        <td style={{ padding: '12px 10px', fontWeight: 'bold' }}>{j.apellido}, {j.nombre}</td>
-                        <td style={{ padding: '5px 10px' }}>
-                          <select 
-                            value={asistenciasHoy[j.id] || 'presente'} 
-                            onChange={(e) => setAsistenciasHoy({...asistenciasHoy, [j.id]: e.target.value})} 
-                            style={{ 
-                              ...inputStyle, 
-                              background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : '#1e3a8a' 
-                            }}
-                          >
-                            <option value="presente">✅ PRESENTE</option>
-                            <option value="ausente">❌ AUSENTE</option>
-                            <option value="tarde">⏳ TARDE</option>
-                            <option value="justificado">📝 JUSTIF.</option>
-                          </select>
-                        </td>
-                        <td style={{ padding: '5px 10px' }}>
-                          <input 
-                            type="text" 
-                            value={notasHoy[j.id] || ''} 
-                            onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
-                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '0.8rem', width: '100%', outline: 'none' }} 
-                            placeholder="Ej: Problemas familiares, estudio..." 
-                          />
-                        </td>
+              {esMovil ? (
+                // 📱 VERSIÓN MÓVIL: Tarjetas en lugar de tabla
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {jugadores.map(j => (
+                    <div key={j.id} style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
+                        {j.apellido}, {j.nombre}
+                      </div>
+                      <div style={{ marginBottom: '10px' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>ESTADO</span>
+                        <select 
+                          value={asistenciasHoy[j.id] || 'presente'} 
+                          onChange={(e) => setAsistenciasHoy({...asistenciasHoy, [j.id]: e.target.value})} 
+                          style={{ 
+                            ...inputStyle, 
+                            width: '100%',
+                            padding: '12px',
+                            background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : '#1e3a8a' 
+                          }}
+                        >
+                          <option value="presente">✅ PRESENTE</option>
+                          <option value="ausente">❌ AUSENTE</option>
+                          <option value="tarde">⏳ TARDE</option>
+                          <option value="justificado">📝 JUSTIF.</option>
+                        </select>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>OBSERVACIONES</span>
+                        <input 
+                          type="text" 
+                          value={notasHoy[j.id] || ''} 
+                          onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
+                          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '12px', color: '#fff', fontSize: '0.9rem', width: '100%', outline: 'none' }} 
+                          placeholder="Ej: Problemas familiares..." 
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // 💻 VERSIÓN DESKTOP: Tabla original
+                <div className="table-wrapper">
+                  <table style={{ width: '100%', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
+                        <th style={{ padding: '10px' }}>JUGADOR</th>
+                        <th style={{ padding: '10px' }}>ESTADO</th>
+                        <th style={{ padding: '10px' }}>OBSERVACIONES PRIVADAS</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {jugadores.map(j => (
+                        <tr key={j.id} style={{ borderBottom: '1px solid #222' }}>
+                          <td style={{ padding: '12px 10px', fontWeight: 'bold' }}>{j.apellido}, {j.nombre}</td>
+                          <td style={{ padding: '5px 10px' }}>
+                            <select 
+                              value={asistenciasHoy[j.id] || 'presente'} 
+                              onChange={(e) => setAsistenciasHoy({...asistenciasHoy, [j.id]: e.target.value})} 
+                              style={{ 
+                                ...inputStyle, 
+                                background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : '#1e3a8a' 
+                              }}
+                            >
+                              <option value="presente">✅ PRESENTE</option>
+                              <option value="ausente">❌ AUSENTE</option>
+                              <option value="tarde">⏳ TARDE</option>
+                              <option value="justificado">📝 JUSTIF.</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '5px 10px' }}>
+                            <input 
+                              type="text" 
+                              value={notasHoy[j.id] || ''} 
+                              onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '0.8rem', width: '100%', outline: 'none' }} 
+                              placeholder="Ej: Problemas familiares, estudio..." 
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               <button onClick={guardarAsistencia} className="btn-action" style={{ marginTop: '20px', width: '100%', padding: '15px', fontSize: '1.1rem' }}>
                 💾 GUARDAR PLANILLA DEL DÍA
               </button>
@@ -293,9 +344,12 @@ function Presentismo() {
 
           {vista === 'mensual' && stats && (
             <div className="bento-card" style={{ borderTop: '3px solid #3b82f6' }}>
-              <h3 style={{ margin: '0 0 20px 0', color: '#3b82f6' }}>RESUMEN DEL MES ({fecha.substring(5,7)}/{fecha.substring(0,4)})</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, color: '#3b82f6' }}>RESUMEN ({fecha.substring(5,7)}/{fecha.substring(0,4)})</h3>
+                {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+              </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '30px' }}>
                 <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222', textAlign: 'center' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#3b82f6' }}>{stats.mes.promedio}%</div>
                   <div className="stat-label">PROMEDIO MES</div>
@@ -306,8 +360,8 @@ function Presentismo() {
                 </div>
               </div>
 
-              <div className="table-wrapper">
-                <table style={{ width: '100%' }}>
+              <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: '400px' }}>
                   <thead>
                     <tr style={{ background: '#0a0a0a' }}>
                       <th style={{ padding: '10px', textAlign: 'left', color: 'var(--text-dim)', fontSize: '0.75rem' }}>JUGADOR</th>
@@ -356,7 +410,7 @@ function Presentismo() {
               <div className="bento-card" style={{ height: '300px' }}>
                  <div className="stat-label" style={{ marginBottom:'15px' }}>EVOLUCIÓN MES A MES</div>
                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={stats.año.dataMeses}>
+                    <LineChart data={stats.año.dataMeses} margin={{ left: -20, right: 10 }}>
                       <CartesianGrid stroke="#222" vertical={false}/>
                       <XAxis dataKey="name" stroke="#555" fontSize={10}/>
                       <YAxis hide domain={[0,100]}/>
@@ -369,7 +423,7 @@ function Presentismo() {
               <div className="bento-card" style={{ height: '300px' }}>
                  <div className="stat-label" style={{ marginBottom:'15px' }}>TOP 10 ASISTENCIA (AÑO)</div>
                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.año.top10} layout="vertical" margin={{ left: 30 }}>
+                    <BarChart data={stats.año.top10} layout="vertical" margin={{ left: 30, right: 10 }}>
                       <XAxis type="number" hide domain={[0, 100]} />
                       <YAxis dataKey="nombre" type="category" stroke="#888" fontSize={10} width={80} />
                       <Tooltip cursor={{fill: '#222'}} contentStyle={{ background: '#111', border: '1px solid #333', borderRadius:'8px' }} />
@@ -396,7 +450,7 @@ function Presentismo() {
   );
 }
 
-const tabBtn = { padding: '10px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '900', transition: '0.2s', flex: 1 };
+const tabBtn = { padding: '10px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '900', transition: '0.2s', flex: '1 1 auto', textAlign: 'center' };
 const selectStyle = { padding: '10px 15px', background: '#111', color: '#fff', border: '1px solid #333', borderRadius: '8px', fontWeight: 'bold', outline: 'none' };
 const inputStyle = { padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 'bold', color: '#fff', outline: 'none', cursor: 'pointer' };
 

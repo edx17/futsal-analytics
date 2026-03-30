@@ -11,10 +11,20 @@ import { calcularXGEvento } from '../analytics/xg';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
+import ReportGenerator from '../components/ReportGenerator'; // <-- IMPORTANTE: Agregar import
 
 function JugadorPerfil() {
   const [userRol, setUserRol] = useState(null);
   const [cargandoAuth, setCargandoAuth] = useState(true);
+
+  // --- RESPONSIVE STATE ---
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setEsMovil(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
@@ -24,8 +34,8 @@ function JugadorPerfil() {
   
   const [wellnessJugador, setWellnessJugador] = useState([]);
   
-  const isKiosco = !!localStorage.getItem('kiosco_jugador_id'); // <-- CONTROL DE KIOSCO AÑADIDO
-  const [jugadorId, setJugadorId] = useState(localStorage.getItem('kiosco_jugador_id') || ''); // <-- VA DIRECTO AL PERFIL DEL JUGADOR
+  const isKiosco = !!localStorage.getItem('kiosco_jugador_id');
+  const [jugadorId, setJugadorId] = useState(localStorage.getItem('kiosco_jugador_id') || ''); 
   
   const [partidoFiltro, setPartidoFiltro] = useState('Todos');
   const [tipoMapa, setTipoMapa] = useState('calor');
@@ -34,6 +44,9 @@ function JugadorPerfil() {
   const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState('Todas');
 
   const heatmapRef = useRef(null);
+
+  // --- ESTADO PARA EXPORTAR ---
+  const [mostrarReporte, setMostrarReporte] = useState(false);
 
   useEffect(() => {
     async function checkPermisos() {
@@ -293,6 +306,69 @@ function JugadorPerfil() {
 
   const COLORS_REMATES = { 'Gol': '#00ff88', 'Atajado': '#3b82f6', 'Desviado': '#888888', 'Rebatido': '#a855f7' };
 
+  // ==========================================
+  // 🚀 ARMADO DE DATOS PARA EXPORTACIÓN PDF
+  // ==========================================
+  const datosParaReporte = useMemo(() => {
+    if (!jugadorSeleccionado || !perfil || perfil.vacio) return null;
+
+    const mapaRecuperacionesPerdidas = perfil.accionesDirectas
+      .filter(ev => ev.accion === 'Recuperación' || ev.accion === 'Pérdida')
+      .map(ev => ({
+        x: ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x,
+        y: ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y,
+        tipo: ev.accion
+      }));
+
+    const tirosAdaptados = perfil.accionesDirectas
+      .filter(ev => ev.accion?.includes('Remate') || ev.accion === 'Gol')
+      .map(r => ({
+        x: r.zona_x_norm !== undefined ? r.zona_x_norm : r.zona_x,
+        y: r.zona_y_norm !== undefined ? r.zona_y_norm : r.zona_y,
+        equipo: 'local', // Lo seteamos así para que el ReportGenerator lo pinte a favor
+        esGol: r.accion === 'Remate - Gol' || r.accion === 'Gol',
+        xg: calcularXGEvento(r)
+      }));
+
+    return {
+      equipos: {
+        local: { nombre: `${jugadorSeleccionado.nombre} ${jugadorSeleccionado.apellido}`, escudo: jugadorSeleccionado.foto || null },
+        visitante: { nombre: 'REPORTE INDIVIDUAL', escudo: null }
+      },
+      resultado: {
+        final: `${perfil.stats.goles} GOL`,
+        primerTiempo: `${perfil.stats.asistencias} AST`
+      },
+      info: {
+        fecha: partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : partidos.find(p => p.id == partidoFiltro)?.fecha || '-',
+        torneo: jugadorSeleccionado.categoria || 'Plantel',
+        estadio: `Dorsal #${jugadorSeleccionado.dorsal || '-'}`,
+        categoria: perfil.rol || 'MIXTO'
+      },
+      stats: {
+        local: { 
+          xg: perfil.stats.xG, 
+          remates: perfil.stats.remates, 
+          rematesAlArco: perfil.stats.goles + perfil.stats.atajados, 
+          recuperaciones: perfil.stats.recuperaciones, 
+          perdidas: perfil.stats.perdidas, 
+          faltas: perfil.stats.faltas 
+        },
+        visitante: { 
+          xg: 0, remates: 0, rematesAlArco: 0, recuperaciones: 0, perdidas: 0, faltas: 0 
+        },
+        topJugadores: [], // Vaciamos para no generar ruido en el PDF del jugador
+        topJugadoresExt: []
+      },
+      tiros: tirosAdaptados,
+      xgFlow: [], // Podemos dejarlo vacío para el jugador individual
+      recYPer: mapaRecuperacionesPerdidas,
+      golesOrigen: { local: perfil.dataTortaRemates.length > 0 ? perfil.dataTortaRemates : [{name: 'Sin Goles', value: 1}] }
+    };
+  }, [jugadorSeleccionado, perfil, partidoFiltro, partidos]);
+  // ==========================================
+
+
   if (cargandoAuth) {
     return <div style={{ color: '#fff', textAlign: 'center', marginTop: '50px' }}>Verificando permisos...</div>;
   }
@@ -309,14 +385,14 @@ function JugadorPerfil() {
   if (!jugadorId) {
       return (
         <div style={{ animation: 'fadeIn 0.3s' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
+          <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>DIRECTORIO DE PLANTEL</div>
               <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>Seleccioná un jugador para ver su analítica completa y sus mapas de influencia.</div>
             </div>
-            <div>
+            <div style={{ width: esMovil ? '100%' : 'auto' }}>
               <div className="stat-label">FILTRAR POR CATEGORÍA</div>
-              <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ marginTop: '5px', width: '200px', background: '#000', color: '#fff', padding: '8px', borderRadius: '4px', border: '1px solid #333', outline: 'none' }}>
+              <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '200px', background: '#000', color: '#fff', padding: '8px', borderRadius: '4px', border: '1px solid #333', outline: 'none' }}>
                 <option value="Todas">TODAS LAS CATEGORÍAS</option>
                 {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
               </select>
@@ -351,35 +427,41 @@ function JugadorPerfil() {
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
           {!isKiosco && (
-            <button onClick={() => setJugadorId('')} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>⬅ VOLVER AL PLANTEL</button>
+            <button onClick={() => setJugadorId('')} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flex: esMovil ? '1 1 auto' : 'none' }}>⬅ VOLVER</button>
           )}
           {jugadorId && (
-            <div>
+            <div style={{ flex: esMovil ? '1 1 100%' : 'auto' }}>
               <div className="stat-label">CONTEXTO / PARTIDO</div>
-              <select value={partidoFiltro} onChange={(e) => setPartidoFiltro(e.target.value)} style={{ marginTop: '5px', width: '250px', background: '#000', color: 'var(--accent)', border: '1px solid #333', padding: '8px', borderRadius: '4px', outline: 'none' }}>
+              <select value={partidoFiltro} onChange={(e) => setPartidoFiltro(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '250px', background: '#000', color: 'var(--accent)', border: '1px solid #333', padding: '8px', borderRadius: '4px', outline: 'none' }}>
                 <option value="Todos">TODA LA TEMPORADA</option>
                 {partidos.map(p => <option key={p.id} value={p.id}>{p.rival.toUpperCase()} // {p.fecha}</option>)}
               </select>
             </div>
           )}
         </div>
+
+        {jugadorId && perfil && !perfil.vacio && (
+          <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto' }}>
+            EXPORTAR REPORTE
+          </button>
+        )}
       </div>
 
       {perfil?.vacio && <div className="bento-card" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>El jugador no tiene datos registrados en este filtro.</div>}
 
       {jugadorSeleccionado && perfil && !perfil.vacio && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* HEADER JUGADOR */}
-          <div className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '30px', background: 'linear-gradient(90deg, #111 0%, #000 100%)', borderLeft: '4px solid var(--accent)', flexWrap: 'wrap' }}>
+          <div className="bento-card" style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', alignItems: 'center', gap: '30px', background: 'linear-gradient(90deg, #111 0%, #000 100%)', borderLeft: '4px solid var(--accent)', flexWrap: 'wrap', textAlign: esMovil ? 'center' : 'left' }}>
             <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '2rem', fontWeight: 800, color: 'var(--accent)', flexShrink: 0 }}>
                 {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.charAt(0) : ''}{jugadorSeleccionado.nombre ? jugadorSeleccionado.nombre.charAt(0) : ''}</>}
             </div>
-            <div>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1, display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: esMovil ? 'center' : 'flex-start' }}>
+              <div style={{ fontSize: esMovil ? '2rem' : '2.5rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1, display: 'flex', flexDirection: esMovil ? 'column' : 'row', alignItems: 'center', gap: '15px' }}>
                 {jugadorSeleccionado.apellido}
                 <span style={{ background: 'var(--accent)', color: '#000', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 900, letterSpacing: '1px' }}>
                   {perfil.rol}
@@ -387,7 +469,7 @@ function JugadorPerfil() {
               </div>
               <div style={{ fontSize: '1.2rem', color: 'var(--text-dim)', marginTop: '5px' }}>{jugadorSeleccionado.nombre} <span className="mono-accent" style={{marginLeft: '10px'}}>#{jugadorSeleccionado.dorsal}</span></div>
             </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: '25px', flexWrap: 'wrap' }}>
+            <div style={{ marginLeft: esMovil ? '0' : 'auto', display: 'flex', gap: '25px', flexWrap: 'wrap', justifyContent: 'center', width: esMovil ? '100%' : 'auto', borderTop: esMovil ? '1px solid #333' : 'none', paddingTop: esMovil ? '15px' : '0' }}>
                <div style={{ textAlign: 'center' }}>
                  <div className="stat-label">+/-</div>
                  <div className="stat-value" style={{ fontSize: '1.5rem', color: perfil.plusMinus > 0 ? 'var(--accent)' : (perfil.plusMinus < 0 ? '#ef4444' : '#fff') }}>
@@ -427,14 +509,14 @@ function JugadorPerfil() {
               <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '15px' }}>
                 🩺 WELLNESS {partidoFiltro === 'Todos' ? '(PROMEDIO ACTUAL)' : '(PROMEDIO SEMANA PREVIA AL PARTIDO)'}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', textAlign: 'center' }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr 1fr', gap: '20px', textAlign: 'center' }}>
+                <div style={{ paddingBottom: esMovil ? '15px' : '0', borderBottom: esMovil ? '1px solid #222' : 'none' }}>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>READINESS PRE-ENTRENO</div>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: metricasWellness.avgReadiness >= 80 ? '#10b981' : metricasWellness.avgReadiness >= 60 ? '#eab308' : '#ef4444' }}>
                     {metricasWellness.avgReadiness !== 'S/D' ? `${metricasWellness.avgReadiness}/100` : 'S/D'}
                   </div>
                 </div>
-                <div style={{ borderLeft: '1px solid #222', borderRight: '1px solid #222' }}>
+                <div style={{ borderLeft: esMovil ? 'none' : '1px solid #222', borderRight: esMovil ? 'none' : '1px solid #222', paddingBottom: esMovil ? '15px' : '0', borderBottom: esMovil ? '1px solid #222' : 'none' }}>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>RPE (ESFUERZO) POST-ENTRENO</div>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: metricasWellness.avgRPE >= 8 ? '#ef4444' : '#eab308' }}>
                     {metricasWellness.avgRPE !== 'S/D' ? `${metricasWellness.avgRPE}/10` : 'S/D'}
@@ -475,7 +557,7 @@ function JugadorPerfil() {
               <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong style={{color: 'var(--accent)'}}>{perfil.stats.recuperaciones}</strong></div>
               <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Presión Alta (Campo Rival)</span><strong style={{color:'#eab308'}}>{perfil.stats.recAltas}</strong></div>
               <div style={kpiFila}><span>PERDIDAS DE BALÓN</span><strong style={{color: '#ef4444'}}>{perfil.stats.perdidas}</strong></div>
-              <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Peligrosas (En propia salida)</span><strong style={{color:'#ef4444'}}>{perfil.stats.perdidasPeligrosas}</strong></div>
+              <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Peligrosas (En salida)</span><strong style={{color:'#ef4444'}}>{perfil.stats.perdidasPeligrosas}</strong></div>
               
               <div style={kpiFila}>
                 <span>DUELOS DEF. GANADOS</span>
@@ -534,7 +616,7 @@ function JugadorPerfil() {
           </div>
 
           <div className="bento-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+            <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div>
                 <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPA DE INFLUENCIA INDIVIDUAL</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '5px' }}>
@@ -542,8 +624,9 @@ function JugadorPerfil() {
                 </div>
               </div>
               
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} style={{ padding: '8px', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', outline: 'none', borderRadius: '4px' }}>
+              {/* FILTROS DE MAPA 100% WIDTH EN MÓVIL */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
+                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', outline: 'none', borderRadius: '4px' }}>
                   <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS SUS ACCIONES</option>
                   <option value="Gol" style={{ background: '#111', color: '#fff' }}>SOLO GOLES</option>
                   <option value="Remate" style={{ background: '#111', color: '#fff' }}>SOLO REMATES</option>
@@ -552,9 +635,9 @@ function JugadorPerfil() {
                   <option value="Duelo" style={{ background: '#111', color: '#fff' }}>SOLO DUELOS</option>
                 </select>
 
-                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                  <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>📍 PUNTOS</button>
-                  <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>🔥 CALOR</button>
+                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                  <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>📍 PUNTOS</button>
+                  <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>🔥 CALOR</button>
                 </div>
               </div>
             </div>
@@ -596,6 +679,26 @@ function JugadorPerfil() {
 
         </div>
       )}
+
+      {/* 🌟 OVERLAY DEL REPORTE PARA EXPORTAR 🌟 */}
+      {mostrarReporte && datosParaReporte && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px'
+        }}>
+          <div style={{ textAlign: 'right', maxWidth: '1000px', margin: '0 auto' }}>
+            <button 
+              onClick={() => setMostrarReporte(false)} 
+              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
+            >
+              CERRAR VISTA PREVIA ✖
+            </button>
+          </div>
+          
+          <ReportGenerator data={datosParaReporte} />
+        </div>
+      )}
+
     </div>
   );
 }

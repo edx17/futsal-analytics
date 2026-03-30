@@ -89,7 +89,7 @@ function OrigenGoles() {
     // 1. ORIGEN DEL GOL (Pie Chart)
     const conteoOrigen = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
-      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
+      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, '5v4 / 4v3': 0, '4v5 / 3v4': 0, 'No Especificado': 0
     };
 
     // 2. DISTRIBUCIÓN TEMPORAL (Histograma)
@@ -191,7 +191,7 @@ function OrigenGoles() {
 
   const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 'Contraataque': '#f59e0b', 'Recuperación Alta': '#10b981', 'Error No Forzado': '#ef4444', 
-    'Córner': '#a855f7', 'Lateral': '#06b6d4', 'Tiro Libre': '#f472b6', 'Penal / Sexta Falta': '#ffffff', 'No Especificado': '#4b5563' 
+    'Córner': '#a855f7', 'Lateral': '#06b6d4', 'Tiro Libre': '#f472b6', 'Penal / Sexta Falta': '#ffffff', '5v4 / 4v3': '#0a7fec', '4v5 / 3v4': '#b6df03', 'No Especificado': '#4b5563' 
   };
 
   const getNombre = (id) => {

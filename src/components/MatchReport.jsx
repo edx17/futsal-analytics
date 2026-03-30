@@ -193,7 +193,7 @@ const MatchReport = ({ data }) => {
         <KpiChip label="Al Arco"      vL={loc.rematesAlArco}  vV={vis.rematesAlArco} />
         
         {/* Acá hacemos el cambio clave: propias REC vs propias PERD */}
-        <KpiChip label="Rec vs Pérd"  vL={loc.recuperaciones} vV={loc.perdidas} />
+        <KpiChip label="Recuperaciones vs Pérdidas"  vL={loc.recuperaciones} vV={loc.perdidas} />
       </div>
 
       {/* ══ BODY 3 COLUMNAS ═════════════════════════════════ */}
@@ -208,7 +208,7 @@ const MatchReport = ({ data }) => {
             <StatBar label="xG"          vL={loc.xg}             vV={vis.xg}             isFloat />
             <StatBar label="Remates"     vL={loc.remates}        vV={vis.remates} />
             <StatBar label="Al Arco"     vL={loc.rematesAlArco}  vV={vis.rematesAlArco} />
-            <StatBar label="Recuperac."  vL={loc.recuperaciones} vV={vis.recuperaciones} />
+            <StatBar label="Recuperaciones"  vL={loc.recuperaciones} vV={vis.recuperaciones} />
             <StatBar label="Pérdidas"    vL={loc.perdidas}       vV={vis.perdidas} />
             <StatBar label="Faltas"      vL={loc.faltas}         vV={vis.faltas} />
           </div>
@@ -291,7 +291,7 @@ const MatchReport = ({ data }) => {
 {/* Mapa de Recuperaciones vs Pérdidas */}
           <div className="rcard" style={{ flex: '0 0 auto' }}>
             <div className="rcard-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Mapa de Rec. vs Pérdidas</span>
+              <span>Mapa de Recuperaciones vs Pérdidas</span>
               <span style={{ fontSize: '0.6rem', fontWeight: 900 }}>
                 <span style={{ color: '#33af14' }}>{loc.recuperaciones} REC</span>
                 <span style={{ margin: '0 4px', color: '#555' }}>|</span>
@@ -375,7 +375,7 @@ const MatchReport = ({ data }) => {
 
           {/* TOP 5 Recuperaciones */}
           <div className="rcard">
-            <div className="rcard-title">🛡️ Top 5 Recuperac.</div>
+            <div className="rcard-title">🛡️ Top 5 Recuperadores</div>
             {top5Rec.length === 0
               ? <span style={{ color: '#333', fontSize: '0.7rem' }}>Sin datos</span>
               : top5Rec.map((j, i) => (
@@ -391,7 +391,7 @@ const MatchReport = ({ data }) => {
 
           {/* TOP 5 Remates */}
           <div className="rcard">
-            <div className="rcard-title">🎯 Top 5 Remates</div>
+            <div className="rcard-title">🎯 Top 5 Finalizadores</div>
             {top5Remates.length === 0
               ? <span style={{ color: '#333', fontSize: '0.7rem' }}>Sin datos</span>
               : top5Remates.map((j, i) => (
@@ -431,7 +431,8 @@ const MatchReport = ({ data }) => {
       {/* ══ FOOTER ══════════════════════════════════════════ */}
       <div className="report-footer">
         <span>Reporte generado automáticamente · {info.fecha}</span>
-        <strong>VIRTUAL.CLUB © 2026 - Propiedad de VirtualFutsal - Todos los derechos reservados.</strong>
+      <strong>VIRTUAL.CLUB © 2026 - Propiedad de{" "} <span style={{ color: "#fd7d05" }}>VirtualFutsal</span> {" "} - Todos los derechos reservados.
+</strong>
       </div>
 
     </div>

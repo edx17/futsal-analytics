@@ -45,6 +45,15 @@ function Resumen() {
   const navigate = useNavigate();
   const { perfil } = useAuth();
 
+  // --- RESPONSIVE STATE ---
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setEsMovil(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const miClubGlobal = localStorage.getItem('mi_club') || perfil?.clubes?.nombre || 'MI EQUIPO';
   const miEscudoGlobal = localStorage.getItem('escudo_url') || perfil?.clubes?.escudo_url || null;
   const [partidos, setPartidos] = useState([]);
@@ -72,7 +81,6 @@ function Resumen() {
   const [offsetST, setOffsetST] = useState(0); 
   const [filtroVideoAcciones, setFiltroVideoAcciones] = useState([]);
   
-  // 🌟 ESTADO PARA MOSTRAR/OCULTAR EL REPORTE 🌟
   const [mostrarReporte, setMostrarReporte] = useState(false);
 
   useEffect(() => {
@@ -228,14 +236,18 @@ function Resumen() {
     
     const perfilRemate = { centro: 0, banda: 0, cerca: 0, lejos: 0 };
 
-    const origenGoles = {
+const origenGoles = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
-      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
+      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0,
+      '5v4 / 4v3': 0, '4v5 / 3v4': 0, 
+      'No Especificado': 0
     };
     
     const origenGolesRival = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
-      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
+      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0,
+      '5v4 / 4v3': 0, '4v5 / 3v4': 0, 
+      'No Especificado': 0
     };
 
     evFiltrados.forEach((ev, i) => {
@@ -363,7 +375,6 @@ function Resumen() {
       }
     });
 
-    // 🚀 INTEGRACIÓN DEL RATING: Extraemos eventos rivales para pasarlos a la función
     const eventosRivales = evFiltrados.filter(e => e.equipo === 'Rival');
 
     const ranking = Object.values(statsJugadores)
@@ -377,7 +388,6 @@ function Resumen() {
         if (ratioFinalizacion >= 2.5) rol = 'FINALIZADOR';
         else if (j.xgBuildup >= 0.5 && ratioFinalizacion < 1.5) rol = 'GENERADOR';
 
-        // USAMOS TU NUEVO RATING SYSTEM ACÁ
         const ratingFinal = calcularRatingJugador(j, j.eventos, eventosRivales, pm, mins);
 
         return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, rol }
@@ -570,13 +580,12 @@ function Resumen() {
   }, [evMapa, tipoMapa]);
 
 
-// ==========================================
+  // ==========================================
   // 🚀 ARMADO DINÁMICO DE DATOS PARA EXPORTACIÓN
   // ==========================================
   const datosParaReporte = useMemo(() => {
     if (!partidoSeleccionado || !analitica) return null;
     
-    // Armamos un xG flow acumulativo simple
     let accLocal = 0;
     let accVisita = 0;
     const xgFlow = [{ minuto: 0, xgLocal: 0, xgVisitante: 0 }];
@@ -593,7 +602,6 @@ function Resumen() {
     });
     xgFlow.push({ minuto: 40, xgLocal: Number(analitica.xgPropio.toFixed(2)), xgVisitante: Number(analitica.xgRival.toFixed(2)) });
 
-    // --- RESULTADO EXACTO DEL PRIMER TIEMPO (PT) ---
     let golesLocalPT = 0;
     let golesVisitaPT = 0;
     eventosPartido.forEach(ev => {
@@ -603,7 +611,6 @@ function Resumen() {
       }
     });
 
-    // --- MAPA DE RECUPERACIONES VS PÉRDIDAS PROPIAS ---
     const mapaRecuperacionesPerdidas = analitica.evFiltrados
       .filter(ev => ev.equipo === 'Propio' && (ev.accion === 'Recuperación' || ev.accion === 'Pérdida'))
       .map(ev => ({
@@ -654,33 +661,33 @@ function Resumen() {
   if (!partidoSeleccionado) {
     return (
       <div style={{ animation: 'fadeIn 0.3s' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
+        <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
             <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>MATCH CENTER</div>
             <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '5px' }}>Seleccioná un partido para acceder al reporte analítico.</div>
           </div>
 
-          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-            <div>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
+            <div style={{ flex: esMovil ? '1 1 100%' : 'auto' }}>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>MOSTRAR</div>
               <button 
                 onClick={() => setSoloAnalizados(!soloAnalizados)}
-                style={{ padding: '8px 12px', background: soloAnalizados ? 'rgba(0,255,136,0.1)' : '#111', color: soloAnalizados ? 'var(--accent)' : '#fff', border: `1px solid ${soloAnalizados ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '4px', cursor: 'pointer', outline: 'none', transition: '0.2s' }}
+                style={{ width: '100%', padding: '8px 12px', background: soloAnalizados ? 'rgba(0,255,136,0.1)' : '#111', color: soloAnalizados ? 'var(--accent)' : '#fff', border: `1px solid ${soloAnalizados ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '4px', cursor: 'pointer', outline: 'none', transition: '0.2s' }}
               >
                 {soloAnalizados ? 'SOLO ANALIZADOS ✓' : 'TODOS LOS PARTIDOS'}
               </button>
             </div>
 
-            <div>
+            <div style={{ flex: esMovil ? '1 1 45%' : 'auto' }}>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR CATEGORÍA</div>
-              <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
+              <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
                 <option value="Todas">TODAS</option>
                 {categoriasUnicas.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div>
+            <div style={{ flex: esMovil ? '1 1 45%' : 'auto' }}>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR COMPETICIÓN</div>
-              <select value={filtroCompeticionGrid} onChange={(e) => setFiltroCompeticionGrid(e.target.value)} style={{ padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
+              <select value={filtroCompeticionGrid} onChange={(e) => setFiltroCompeticionGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
                 <option value="Todas">TODAS</option>
                 {competicionesUnicas.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -699,8 +706,8 @@ function Resumen() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
                   {p.escudo_propio ? <img src={p.escudo_propio} alt="Local" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.2rem' }}>MI</div>}
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>
-  {p.nombre_propio || miClubGlobal}
-</span>
+                    {p.nombre_propio || miClubGlobal}
+                  </span>
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#333', fontStyle: 'italic', width: '20%', textAlign: 'center' }}>VS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
@@ -717,7 +724,7 @@ function Resumen() {
     );
   }
 
-  const COLORS_ORIGEN = {
+const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 
     'Contraataque': '#f59e0b', 
     'Recuperación Alta': '#10b981', 
@@ -726,6 +733,8 @@ function Resumen() {
     'Lateral': '#06b6d4', 
     'Tiro Libre': '#f472b6', 
     'Penal / Sexta Falta': '#ffffff', 
+    '5v4 / 4v3': '#0a7fec',
+    '4v5 / 3v4': '#b6df03',
     'No Especificado': '#4b5563' 
   };
 
@@ -734,18 +743,19 @@ function Resumen() {
       <style>{`
         .mci-bar { height: 6px; border-radius: 3px; background: #333; overflow: hidden; margin-top: 8px; display: flex; }
         .bento-card { overflow: visible !important; }
-        .table-wrapper { overflow-x: auto; overflow-y: visible; padding-bottom: 40px; }
+        .table-wrapper { overflow-x: auto; overflow-y: visible; padding-bottom: 20px; -webkit-overflow-scrolling: touch; }
         .pill-filtro { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: #000; color: var(--text-dim); transition: 0.2s; }
         .pill-filtro.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.1); }
       `}</style>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>⬅ VOLVER</button>
+      {/* HEADER DE ACCIONES MÓVIL/DESKTOP */}
+      <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'flex-end', marginBottom: '30px', gap: '15px' }}>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
+          <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flex: esMovil ? '1 1 auto' : 'none', justifyContent: 'center' }}>⬅ VOLVER</button>
           {partidoSeleccionado && (
-            <div>
+            <div style={{ flex: esMovil ? '1 1 auto' : 'none' }}>
               <div className="stat-label">PERIODO DE TIEMPO</div>
-              <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} style={{ marginTop: '5px', width: '180px', borderColor: 'var(--accent)', color: 'var(--accent)', background: '#000', outline: 'none', padding: '5px', borderRadius: '4px' }}>
+              <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: 'var(--accent)', color: 'var(--accent)', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
                 <option value="Todos">PARTIDO COMPLETO</option>
                 <option value="PT">PRIMER TIEMPO (PT)</option>
                 <option value="ST">SEGUNDO TIEMPO (ST)</option>
@@ -754,7 +764,7 @@ function Resumen() {
           )}
         </div>
         {partidoSeleccionado && (
-          <button onClick={() => setMostrarReporte(true)} className="btn-action">
+          <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto' }}>
             EXPORTAR REPORTE
           </button>
         )}
@@ -764,17 +774,17 @@ function Resumen() {
         <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           <div className="bento-card">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', textAlign: 'center', marginBottom: '20px' }}>
-              <div>
+            <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', textAlign: 'center', marginBottom: '20px', gap: esMovil ? '20px' : '0' }}>
+              <div style={{ order: esMovil ? 2 : 1, width: esMovil ? '45%' : 'auto', display: esMovil ? 'inline-block' : 'block' }}>
                 {partidoSeleccionado.escudo_propio ? <img src={partidoSeleccionado.escudo_propio} alt="club" style={escudoStyle} /> : <div style={escudoFallback}>MI</div>}
                 <div className="stat-label">{partidoSeleccionado.nombre_propio || 'MI EQUIPO'}</div>
               </div>
-              <div style={{ padding: '0 40px' }}>
-                <div style={{ fontSize: '3.5rem', fontWeight: 800, color: '#fff' }}>{analitica.stats.propio.goles} - {analitica.stats.rival.goles}</div>
+              <div style={{ order: esMovil ? 1 : 2, padding: esMovil ? '0' : '0 40px', width: esMovil ? '100%' : 'auto' }}>
+                <div style={{ fontSize: esMovil ? '2.5rem' : '3.5rem', fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{analitica.stats.propio.goles} - {analitica.stats.rival.goles}</div>
                 <div className="stat-label" style={{ color: 'var(--accent)' }}>{filtroPeriodo === 'Todos' ? 'RESULTADO FINAL' : `RESULTADO ${filtroPeriodo}`}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '5px' }}>{partidoSeleccionado.categoria} | {partidoSeleccionado.fecha}</div>
               </div>
-              <div>
+              <div style={{ order: esMovil ? 3 : 3, width: esMovil ? '45%' : 'auto', display: esMovil ? 'inline-block' : 'block' }}>
                 {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={escudoStyle} /> : <div style={{...escudoFallback, borderColor: '#555', color: '#fff'}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
                 <div className="stat-label">{partidoSeleccionado.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</div>
               </div>
@@ -782,7 +792,7 @@ function Resumen() {
 
             <div style={{ background: '#000', padding: '15px', borderRadius: '6px', border: '1px solid #333' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="stat-label" style={{ color: 'var(--accent)' }}>INDICE DE CONTROL DE PARTIDO <InfoBox texto="Fórmula: 40% Dominio xG + 30% Dominio Territorial + 30% Duelos Ganados." /></span>
+                <span className="stat-label" style={{ color: 'var(--accent)' }}>INDICE DE CONTROL <InfoBox texto="Fórmula: 40% Dominio xG + 30% Dominio Territorial + 30% Duelos Ganados." /></span>
                 <span style={{ fontWeight: 900, color: '#fff' }}>{analitica.matchControl}% NOSOTROS</span>
               </div>
               <div className="mci-bar">
@@ -818,9 +828,9 @@ function Resumen() {
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   🩺 CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios. Si no hay registros muestra 0." />
                 </div>
-                {wellness.length === 0 && (
+                {wellness.length === 0 && !esMovil && (
                   <span style={{ color: '#ef4444', fontSize: '0.65rem', border: '1px solid #ef4444', padding: '2px 6px', borderRadius: '4px' }}>
-                    ⚠️ TABLA VACÍA O SIN PERMISOS (Revisar BD)
+                    ⚠️ TABLA VACÍA
                   </span>
                 )}
               </div>
@@ -871,7 +881,7 @@ function Resumen() {
                             <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
                           ))}
                         </Pie>
-                        <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                      <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff', color: '#ffffff' }} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#ffffff' }}/>
                         <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
@@ -898,7 +908,7 @@ function Resumen() {
                             <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
                           ))}
                         </Pie>
-                        <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                        <RechartsTooltip  contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff', color: '#ffffff' }}  itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#ffffff' }}/>
                         <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
@@ -997,14 +1007,15 @@ function Resumen() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO TÁCTICO <InfoBox texto="Visualización espacial de las acciones del equipo en este partido." /></div>
               
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                  <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, background: filtroEquipoMapa === 'Ambos' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
-                  <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, background: filtroEquipoMapa === 'Propio' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
-                  <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, background: filtroEquipoMapa === 'Rival' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
+              {/* FILTROS MAPA RESPONSIVE */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
+                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                  <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Ambos' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
+                  <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Propio' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
+                  <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Rival' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
                 </div>
 
-                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '8px', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
+                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
                   <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS LAS ACCIONES</option>
                   <option value="Gol" style={{ background: '#111', color: '#fff' }}>GOLES</option>
                   <option value="Remate" style={{ background: '#111', color: '#fff' }}>REMATES</option>
@@ -1014,10 +1025,10 @@ function Resumen() {
                   <option value="Falta" style={{ background: '#111', color: '#fff' }}>FALTAS</option>
                 </select>
 
-                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                  <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
-                  <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
-                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
+                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                  <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
+                  <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
+                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
                 </div>
               </div>
             </div>
@@ -1089,9 +1100,12 @@ function Resumen() {
           </div>
 
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '20px' }}>RENDIMIENTO INDIVIDUAL</div>
-            <div className="table-wrapper">
-              <table>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+               <div className="stat-label" style={{ color: 'var(--accent)' }}>RENDIMIENTO INDIVIDUAL</div>
+               {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+            </div>
+            <div className="table-wrapper custom-scroll">
+              <table style={{ minWidth: '600px' }}>
                 <thead>
                   <tr>
                     <th>#</th>
@@ -1143,9 +1157,12 @@ function Resumen() {
           </div>
 
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
-              RENDIMIENTO POR QUINTETOS 
-              <InfoBox texto="Rendimiento del equipo al jugar con estas combinaciones específicas de 5 jugadores en este partido." />
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+              <div className="stat-label" style={{ color: 'var(--accent)' }}>
+                RENDIMIENTO POR QUINTETOS 
+                <InfoBox texto="Rendimiento del equipo al jugar con estas combinaciones específicas de 5 jugadores en este partido." />
+              </div>
+              {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
             </div>
             <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
@@ -1158,9 +1175,7 @@ function Resumen() {
                     <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
                     <th title="Amarillas / Rojas">🟨/🟥</th>
                     <th>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                        +/- 
-                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>+/-</div>
                     </th>
                     <th>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
@@ -1230,9 +1245,12 @@ function Resumen() {
           </div>
 
           <div className="bento-card">
-            <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)' }}>DETALLE DE REMATES</div>
-            <div className="table-wrapper">
-              <table>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+               <div className="stat-label" style={{ color: 'var(--accent)' }}>DETALLE DE REMATES</div>
+               {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+            </div>
+            <div className="table-wrapper custom-scroll">
+              <table style={{ minWidth: '500px' }}>
                 <thead>
                   <tr>
                     <th>MIN</th>
@@ -1267,7 +1285,7 @@ function Resumen() {
 
           <div className="bento-card" style={{ borderTop: '3px solid var(--accent)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem', margin: 0 }}>🎬 VIDEOTRACKING INTERACTIVO</div>
+              <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem', margin: 0 }}>🎬 VIDEOTRACKING</div>
               {partidoSeleccionado.video_url && (
                 <button onClick={desvincularVideo} style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem', padding: '4px 8px', fontWeight: 'bold' }}>
                   🗑️ QUITAR VIDEO
@@ -1276,10 +1294,10 @@ function Resumen() {
             </div>
             
             {!partidoSeleccionado.video_url ? (
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#111', padding: '20px', borderRadius: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '10px', alignItems: 'stretch', background: '#111', padding: '20px', borderRadius: '4px' }}>
                 <input 
                   type="text" 
-                  placeholder="Pegá el link de YouTube (No Listado)..."
+                  placeholder="Pegá el link de YouTube..."
                   value={videoUrl}
                   onChange={(e) => setVideoUrl(e.target.value)}
                   style={{ flex: 1, padding: '12px', background: '#000', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px' }}
@@ -1292,7 +1310,7 @@ function Resumen() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '10px' }}>FILTRAR TIMELINE:</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '10px' }}>FILTROS:</span>
                   {['Gol', 'Remate', 'Pérdida', 'Recuperación', 'Falta', 'Duelo'].map(acc => (
                     <button 
                       key={acc}
@@ -1306,7 +1324,8 @@ function Resumen() {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
                   
-                  <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {/* Contenedor del Iframe: 100% en movil, sino un min de 500px */}
+                  <div style={{ flex: '1 1 100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <div style={{ background: '#000', borderRadius: '4px', overflow: 'hidden', border: '1px solid #333', width: '100%', aspectRatio: '16/9' }}>
                       <iframe 
                         width="100%" 
@@ -1332,9 +1351,10 @@ function Resumen() {
                     </div>
                   </div>
 
-                  <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', maxHeight: '550px' }}>
+                  {/* Lista de Eventos: 100% en movil, acoplándose debajo del video */}
+                  <div style={{ flex: esMovil ? '1 1 100%' : '1 1 300px', display: 'flex', flexDirection: 'column', maxHeight: esMovil ? '400px' : '550px', minWidth: 0 }}>
                     <div className="stat-label" style={{ marginBottom: '10px' }}>EVENTOS DEL PARTIDO ({eventosTimeline.length})</div>
-                    <div style={{ flex: 1, overflowY: 'auto', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                       {eventosTimeline.length === 0 ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.8rem' }}>No hay eventos para estos filtros.</div>
                       ) : (
@@ -1372,7 +1392,7 @@ function Resumen() {
       {mostrarReporte && datosParaReporte && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: '20px'
+          background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px'
         }}>
           <div style={{ textAlign: 'right', maxWidth: '1000px', margin: '0 auto' }}>
             <button 
