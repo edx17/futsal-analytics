@@ -60,7 +60,7 @@ export default function Login() {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', width: '100%', background: 'var(--bg)' }}>
       <div style={{ background: 'var(--panel)', padding: '40px', borderRadius: '8px', border: '1px solid var(--border)', width: '100%', maxWidth: '400px' }}>
         <h2 style={{ textAlign: 'center', marginBottom: '30px', fontFamily: 'Outfit', fontWeight: 900 }}>
-          VIRTUAL<span style={{ color: 'var(--accent)' }}>.STATS</span>
+          VIRTUAL<span style={{ color: 'var(--accent)' }}>.CLUB</span>
         </h2>
         
         {error && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '0.8rem', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: '10px', borderRadius: '4px' }}>{error}</div>}

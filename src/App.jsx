@@ -43,38 +43,14 @@ const sidebarLinkStyle = { padding: '12px 20px', display: 'flex', alignItems: 'c
 const sidebarGroupTitle = { padding: '20px 20px 5px 20px', fontSize: '0.65rem', color: '#888', fontWeight: 900, letterSpacing: '1px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
 
 function AppLayout() {
-  const { perfil, logout } = useAuth();
+  // 1. TODOS LOS HOOKS ARRIBA DE TODO (Regla de Oro de React)
+  const { perfil, logout, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
-  const isLanding = location.pathname === '/'; 
-  const isLogin = location.pathname === '/login';
-  const isRegistro = location.pathname === '/registro'; 
-  const isTomaDatos = location.pathname === '/toma-datos'; 
-  const isKioscoAuth = location.pathname === '/kiosco';
-  const isKioscoPath = location.pathname.startsWith('/kiosco/');
-  
-  const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
-
-  const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
-  const rol = (perfil?.rol || '').toLowerCase();
-
-  const esSuperUser = rol === 'superuser';
-  const esAdmin = rol === 'admin';
-  const esManager = rol === 'manager'; // <--- NUEVO ROL
-  const esCT = rol === 'ct';
-  const esJugador = rol === 'jugador';
-
-  // --- PERMISOS ACTUALIZADOS ---
-  const puedeEscribirDeportivo = esSuperUser || esManager || esCT;
-  const puedeVerDeportivo = esSuperUser || esManager || esAdmin || esCT || esJugador;
-  const puedeControlarAdmin = esSuperUser || esManager || esAdmin;
-  const puedeConfigurar = esSuperUser || esManager || esAdmin;
-
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
 
-  // ESTADO ACTUALIZADO DE LOS MENÚS
   const [menusAbiertos, setMenusAbiertos] = useState({
     operaciones: true,
     competicion: false,
@@ -85,27 +61,54 @@ function AppLayout() {
     sistema: false
   });
 
-  const toggleMenu = (seccion) => {
-    setMenusAbiertos(prev => ({ ...prev, [seccion]: !prev[seccion] }));
-  };
-
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // =========================================================
-  // 🚧 EL GRAN MURO DE PAGO (ACTUALIZADO CON EXPIRACIÓN DE FECHA) 🚧
-  // =========================================================
+  // 2. AHORA SÍ, LOS EARLY RETURNS Y LÓGICA CONDICIONAL
+  // Bloqueo de seguridad: Si el perfil está cargando, no renderizamos nada para evitar bucles.
+  if (loading) return null;
+
+  const isLanding = location.pathname === '/'; 
+  const isLogin = location.pathname === '/login';
+  const isRegistro = location.pathname === '/registro'; 
+  const isTomaDatos = location.pathname === '/toma-datos'; 
+  const isKioscoAuth = location.pathname === '/kiosco';
+  const isKioscoPath = location.pathname.startsWith('/kiosco/');
+  const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
+
+  const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
+  
+  // Normalizamos el rol a minúsculas
+  const rol = (perfil?.rol || '').toLowerCase();
+
+  const esSuperUser = rol === 'superuser';
+  const esAdmin = rol === 'admin';
+  const esManager = rol === 'manager';
+  const esCT = rol === 'ct';
+  const esJugador = rol === 'jugador';
+
+  // --- PERMISOS ACTUALIZADOS ---
+  const puedeEscribirDeportivo = esSuperUser || esManager || esCT;
+  const puedeVerDeportivo = esSuperUser || esManager || esAdmin || esCT || esJugador;
+  const puedeControlarAdmin = esSuperUser || esManager || esAdmin;
+  const puedeConfigurar = esSuperUser || esManager || esAdmin;
+
+  const toggleMenu = (seccion) => {
+    setMenusAbiertos(prev => ({ ...prev, [seccion]: !prev[seccion] }));
+  };
+
+  // --- MURO DE PAGO ---
   const club = perfil?.clubes;
   const isVencido = club?.fecha_vencimiento ? new Date(club.fecha_vencimiento) < new Date() : false;
 
   if (perfil && !esSuperUser && club && (club.suscripcion_activa === false || isVencido) && !isSuscripcionPath) {
     return <Navigate to="/mi-suscripcion" replace />;
   }
-  // =========================================================
 
+  // Rutas de autenticación y especiales
   if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
@@ -143,13 +146,11 @@ function AppLayout() {
     );
   }
 
-  // Layout estándar de Staff
   return (
     <div style={{ display: 'flex', height: '100dvh', backgroundColor: 'var(--bg)', overflow: 'hidden' }}>
       {!esMovil && (
         <aside style={{ width: sidebarAbierta ? '250px' : '70px', backgroundColor: 'var(--panel)', borderRight: '1px solid var(--border)', transition: 'width 0.3s ease', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
           
-          {/* HEADER DEL SIDEBAR CON LOGO */}
           <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: sidebarAbierta ? 'space-between' : 'center', borderBottom: '1px solid var(--border)' }}>
             {sidebarAbierta && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -162,12 +163,10 @@ function AppLayout() {
           
           <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 20px 0', gap: '2px', overflowY: 'auto' }}>
             
-            {/* --- INICIO (FUERA DE GRUPO) --- */}
             <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
               🏠 {sidebarAbierta && <span>{esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}
             </NavLink>
 
-            {/* --- OPERACIONES --- */}
             {puedeEscribirDeportivo && (
               <>
                 {sidebarAbierta && (
@@ -184,7 +183,6 @@ function AppLayout() {
               </>
             )}
 
-            {/* --- COMPETICIÓN --- */}
             {!esJugador && puedeVerDeportivo && (
               <>
                 {sidebarAbierta && (
@@ -201,7 +199,6 @@ function AppLayout() {
               </>
             )}
 
-            {/* --- ANÁLISIS --- */}
             {puedeVerDeportivo && (
               <>
                 {sidebarAbierta && (
@@ -220,7 +217,6 @@ function AppLayout() {
               </>
             )}
 
-            {/* --- PLANIFICACIÓN --- */}
             {puedeVerDeportivo && !esJugador && (
               <>
                 {sidebarAbierta && (
@@ -243,7 +239,6 @@ function AppLayout() {
               </>
             )}
 
-            {/* --- PLANTEL --- */}
             {puedeVerDeportivo && (
               <>
                 {sidebarAbierta && (
@@ -262,7 +257,6 @@ function AppLayout() {
               </>
             )}
 
-            {/* --- ADMINISTRACIÓN --- */}
             {!esJugador && puedeControlarAdmin && (
               <>
                 {sidebarAbierta && (
@@ -285,7 +279,6 @@ function AppLayout() {
               </>
             )}
 
-            {/* --- SISTEMA --- */}
             {esSuperUser && (
               <>
                 {sidebarAbierta && (
@@ -309,25 +302,17 @@ function AppLayout() {
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '20px 15px' : '40px', paddingBottom: esMovil ? '90px' : '40px' }}>
         <Routes>
           <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
-          
-          {/* DEPORTIVO */}
           <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
           <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
           <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
           <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
           <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
           <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
-          
-          {/* ADMINISTRATIVO */}
           <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
           <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
           <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
           <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
-
-          {/* MASTER */}
           <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
-
-          {/* GENERALES */}
           <Route path="/temporada" element={<ProtectedRoute><Temporada /></ProtectedRoute>} />
           <Route path="/resumen" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
           <Route path="/resumen/:id" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
@@ -340,8 +325,6 @@ function AppLayout() {
           <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
           <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
           <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
-
-          {/* Fallback de seguridad */}
           <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Routes>
       </main>

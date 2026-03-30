@@ -11,6 +11,7 @@ import {
 import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
+import ReportGenerator from '../components/ReportGenerator';
 
 function Temporada() {
   const [partidos, setPartidos] = useState([]);
@@ -21,6 +22,9 @@ function Temporada() {
   const [filtroCompeticion, setFiltroCompeticion] = useState('Todas'); 
   const [filtroAccionMapa, setFiltroAccionMapa] = useState(''); 
   const [tipoMapa, setTipoMapa] = useState('calor'); 
+
+  // 🌟 ESTADO PARA MOSTRAR/OCULTAR EL REPORTE 🌟
+  const [mostrarReporte, setMostrarReporte] = useState(false);
 
   const heatmapRef = useRef(null);
 
@@ -341,24 +345,75 @@ function Temporada() {
     ];
   }, [analiticaGlobal]);
 
-  // --- NUEVA DATA PARA EL GRÁFICO DE APORTE OFENSIVO ---
   const dataCreacionFin = useMemo(() => {
     if (!analiticaGlobal || !analiticaGlobal.matrizTalento) return [];
     
-    // Filtramos para mostrar solo los que tienen algo de aporte y los ordenamos por impacto total
     const dataLimpia = analiticaGlobal.matrizTalento
       .filter(j => j.creacion > 0 || j.finalizacion > 0)
       .map(j => ({
-        nombre: j.nombre.substring(0, 10), // Acortamos el nombre para que entre bien
+        nombre: j.nombre.substring(0, 10), 
         Creación: Number(j.creacion.toFixed(2)),
         Finalización: Number(j.finalizacion.toFixed(2)),
         total: j.creacion + j.finalizacion
       }))
       .sort((a, b) => b.total - a.total)
-      .slice(0, 8); // Mostramos el Top 8 para que el gráfico no sea eterno
+      .slice(0, 8); 
 
     return dataLimpia;
   }, [analiticaGlobal]);
+
+  // ==========================================
+  // 🚀 ARMADO DINÁMICO DE DATOS PARA EXPORTACIÓN TEMPORADA
+  // ==========================================
+  const datosParaReporte = useMemo(() => {
+    if (!analiticaGlobal || partidos.length === 0) return null;
+    const stats = analiticaGlobal.statsEquipo;
+    const miClubGlobal = localStorage.getItem('mi_club') || 'MI EQUIPO';
+
+    return {
+      isTemporada: true,
+      equipos: {
+        local: { nombre: miClubGlobal, escudo: partidos[0]?.escudo_propio || null },
+        visitante: { nombre: 'RIVALES MÚLTIPLES', escudo: null }
+      },
+      resultado: {
+        final: `${analiticaGlobal.golesPropiosTotales} - ${analiticaGlobal.golesRivalesTotales}`,
+        primerTiempo: `${stats.golesFavorPT} - ${stats.golesContraPT}`
+      },
+      info: {
+        fecha: 'Resumen de Temporada',
+        torneo: filtroCompeticion === 'Todas' ? 'Todas las Competencias' : filtroCompeticion,
+        estadio: '-',
+        categoria: filtroCategoria === 'Todas' ? 'Todas las Categorías' : filtroCategoria,
+        balanceTemporada: `${stats.victorias}V - ${stats.empates}E - ${stats.derrotas}D`
+      },
+      stats: {
+        local: { 
+          xg: Number(stats.xgTotal.toFixed(2)), 
+          remates: analiticaGlobal.rematesPropiosTotales, 
+          rematesAlArco: analiticaGlobal.golesPropiosTotales + analiticaGlobal.desgloseRemates.propio.atajados, 
+          recuperaciones: analiticaGlobal.statsAdicionales.recuperaciones, 
+          perdidas: analiticaGlobal.statsAdicionales.perdidasPeligrosas, 
+          faltas: 0 
+        },
+        visitante: { 
+          xg: Number(stats.xgRival.toFixed(2)), 
+          remates: 0, 
+          rematesAlArco: analiticaGlobal.golesRivalesTotales + analiticaGlobal.desgloseRemates.rival.atajados, 
+          recuperaciones: 0, 
+          perdidas: 0, 
+          faltas: 0 
+        },
+        topJugadores: analiticaGlobal.topGoleadores.slice(0, 5).map(j => ({ nombre: `${j.dorsal || '-'} - ${(j.nombre || 'S/N').toUpperCase()}`, rating: j.goles })),
+        topJugadoresExt: analiticaGlobal.topAsistidores.slice(0, 5).map(j => ({ nombre: `${j.dorsal || '-'} - ${(j.nombre || 'S/N').toUpperCase()}`, rec: 0, remates: 0, goles: j.asistencias }))
+      },
+      tiros: [], 
+      xgFlow: [], 
+      recYPer: [], 
+      golesOrigen: { local: analiticaGlobal.dataOrigenGol.length > 0 ? analiticaGlobal.dataOrigenGol : [{name: 'Sin Goles', value: 1}] }
+    };
+  }, [analiticaGlobal, partidos, filtroCategoria, filtroCompeticion]);
+  // ==========================================
 
   const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 
@@ -413,7 +468,10 @@ function Temporada() {
             </select>
           </div>
         </div>
-        <button onClick={() => window.print()} className="btn-action">EXPORTAR REPORTE</button>
+        
+        <button onClick={() => setMostrarReporte(true)} className="btn-action">
+          EXPORTAR REPORTE
+        </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1072,6 +1130,25 @@ function Temporada() {
         </div>
 
       </div>
+
+      {/* 🌟 OVERLAY DEL REPORTE PARA EXPORTAR 🌟 */}
+      {mostrarReporte && datosParaReporte && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: '20px'
+        }}>
+          <div style={{ textAlign: 'right', maxWidth: '1000px', margin: '0 auto' }}>
+            <button 
+              onClick={() => setMostrarReporte(false)} 
+              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
+            >
+              CERRAR VISTA PREVIA ✖
+            </button>
+          </div>
+          <ReportGenerator data={datosParaReporte} />
+        </div>
+      )}
+
     </div>
   );
 }

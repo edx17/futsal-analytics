@@ -903,6 +903,8 @@ function TomaDatos() {
                         <BotonAccion label="LATERAL" color="#06b6d4" onClick={() => finalizarRegistroGol('Lateral')} />
                         <BotonAccion label="TIRO LIBRE" color="#a855f7" onClick={() => finalizarRegistroGol('Tiro Libre')} />
                         <BotonAccion label="PENAL" color="#ef4444" onClick={() => finalizarRegistroGol('Penal / Sexta Falta')} />
+                        <BotonAccion label="5v4 / 4v3" color="#0a7fec" onClick={() => finalizarRegistroGol('5v4 / 4v3')} />
+                        <BotonAccion label="4v5 / 3v4" color="#b6df03" onClick={() => finalizarRegistroGol('4v5 / 3v4')} />
                       </div>
                     </div>
                   )}

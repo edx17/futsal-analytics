@@ -9,7 +9,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const checkSession = async () => {
-    // Siempre buscamos la sesión real de Supabase
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.user) {
@@ -24,30 +23,29 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkSession();
-
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      checkSession();
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setPerfil(null);
+        setLoading(false);
+      } else {
+        checkSession();
+      }
     });
-
     return () => { authListener.subscription.unsubscribe(); };
   }, []);
 
   const cargarPerfil = async (userId) => {
-    // ACÁ ESTÁ LA MAGIA DE LAS SUSCRIPCIONES: 
-    // Ahora le pedimos a Supabase que nos traiga el plan, si está activa y el vencimiento.
-    const { data, error } = await supabase
-      .from('perfiles')
-      .select(`*, clubes ( nombre, plan_actual, suscripcion_activa, fecha_vencimiento )`)
-      .eq('id', userId)
-      .single();
-      
-    if (data) {
-      // MAGIA SEGURA: Si la DB dice que esta cuenta es el KIOSCO
-      if (data.rol === 'kiosco') {
-        const jugadorIdLocal = localStorage.getItem('kiosco_jugador_id');
-        
-        if (jugadorIdLocal) {
-          // Hay un jugador activo en el Kiosco, lo disfrazamos de "jugador"
+    try {
+      const { data, error } = await supabase
+        .from('perfiles')
+        .select(`*, clubes ( nombre, plan_actual, suscripcion_activa, fecha_vencimiento )`)
+        .eq('id', userId)
+        .maybeSingle(); // Usamos maybeSingle para evitar errores si no existe la fila
+
+      if (data) {
+        if (data.rol === 'kiosco') {
+          const jugadorIdLocal = localStorage.getItem('kiosco_jugador_id');
           setPerfil({
             ...data,
             jugador_id: jugadorIdLocal,
@@ -56,38 +54,24 @@ export const AuthProvider = ({ children }) => {
             club_id: localStorage.getItem('kiosco_club_id') || data.club_id
           });
         } else {
-          // El dispositivo está logueado pero nadie puso PIN todavía
           setPerfil(data);
-        }
-      } else {
-        // Es un Staff normal
-        setPerfil(data);
-        if (data.club_id) {
-          localStorage.setItem('club_id', data.club_id);
-          if (data.clubes && data.clubes.nombre) {
-            localStorage.setItem('mi_club', data.clubes.nombre);
-          }
+          if (data.club_id) localStorage.setItem('club_id', data.club_id);
         }
       }
-    } else if (error) {
-      console.error("Error cargando perfil:", error.message);
+    } catch (err) {
+      console.error("Error crítico en perfil:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const logout = async () => {
     const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
-
     if (isKioscoMode) {
-      // Si es el kiosco, NO CERRAMOS SESIÓN en Supabase. Solo borramos al jugador actual.
       localStorage.removeItem('kiosco_jugador_id');
-      localStorage.removeItem('kiosco_nombre');
-      localStorage.removeItem('kiosco_apellido');
       window.location.href = '/kiosco'; 
     } else {
-      // Limpieza total para Staff
-      localStorage.removeItem('club_id');
-      localStorage.removeItem('mi_club');
+      localStorage.clear();
       await supabase.auth.signOut();
       setUser(null);
       setPerfil(null);
@@ -96,7 +80,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ user, perfil, logout, loading }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

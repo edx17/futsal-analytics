@@ -3,146 +3,149 @@ export function calcularRatingJugador(jugador, eventosJugador, eventosRivales = 
 
   const pos = (jugador.posicion || '').toLowerCase();
   const esArquero = pos.includes('arquero') || pos.includes('portero');
-  const esCierre = pos.includes('cierre');
-
-  // ==========================================
-  // 1. SI ES ARQUERO, USAMOS SU PROPIO MODELO
-  // ==========================================
+  
   if (esArquero) {
     return calcularRatingArquero(jugador, eventosJugador, eventosRivales, plusMinus);
   }
 
-  // ==========================================
-  // 2. MODELO DE CAMPO (BAYESIANO: BASE 6.0)
-  // ==========================================
-  
-  let pesoPositivo = 0;
-  let pesoNegativo = 0;
+  // === SISTEMA DE PUNTOS FUTSAL ===
+  let scoreNeto = 0;
   let volumenAcciones = 0;
 
   if (eventosJugador && eventosJugador.length > 0) {
     eventosJugador.forEach(ev => {
-      // Usamos la coordenada normalizada para multiplicadores de zona
+      volumenAcciones++;
       const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
       const esAtaque = x > 66;
       const esSalida = x < 33;
-      const pesoAtaque = esAtaque ? 1.5 : 1.0;
-      const pesoPeligro = esSalida ? 2.0 : 1.0;
-
-      volumenAcciones++;
 
       switch (ev.accion) {
         case 'Gol': 
         case 'Remate - Gol':
-          pesoPositivo += esCierre ? 3.0 : 2.0; 
+          scoreNeto += 3.0; // El gol es lo que más vale
           break;
         case 'Remate - Atajado':
-        case 'Remate - Rebatido':
+          scoreNeto += 0.3; // Buen tiro, mérito del arquero rival
+          break;
         case 'Remate - Desviado':
-          // Todo remate que no es gol vale +1 según tu pedido (simplificamos para no penalizar el desvío)
-          pesoPositivo += 1.0; 
+        case 'Remate - Rebatido':
+          scoreNeto -= 0.1; // Ligera penalidad por mala decisión/ejecución
           break;
         case 'Recuperación': 
-          pesoPositivo += (0.5 * pesoAtaque); 
+          scoreNeto += esAtaque ? 1.0 : 0.5; // Robar alto vale más
           break;
         case 'Pérdida': 
-          pesoNegativo += (0.5 * pesoPeligro); 
+          scoreNeto -= esSalida ? 1.0 : 0.5; // Perderla en salida es letal
           break;
         case 'Falta recibida':
-          pesoPositivo += 1.0;
+          scoreNeto += 0.5;
           break;
         case 'Falta cometida': 
-          pesoNegativo += (1.0 * pesoPeligro); 
+          scoreNeto -= 0.5; 
           break;
         case 'Tarjeta Amarilla': 
-          pesoNegativo += 1.0; 
+          scoreNeto -= 1.5; 
           break;
         case 'Tarjeta Roja': 
-          pesoNegativo += 3.0; 
+          scoreNeto -= 4.0; // Expulsión arruina el partido
           break;
         case 'Duelo DEF Ganado': 
         case 'Duelo OFE Ganado':
-          pesoPositivo += 0.5; // (Le doy 0.5 a los duelos para asimilarlos a robos)
+          scoreNeto += 0.5; 
           break;
         case 'Duelo DEF Perdido': 
         case 'Duelo OFE Perdido':
-          pesoNegativo += 0.5; 
+          scoreNeto -= 0.3; 
           break;
       }
-      if (ev.tipoVirtual === 'Asistencia') pesoPositivo += 1.5;
+      if (ev.tipoVirtual === 'Asistencia') scoreNeto += 1.5;
     });
   }
 
-  // IMPACTO PLUS MINUS SEGÚN TU TABLA (Gol favor +2, Gol contra -2)
-  // Como acá el "PlusMinus" ya es la resta cruda (goles a favor que estuvo en cancha - goles en contra)
-  // lo multiplicamos por 2 para que respete tu consigna.
-  const impactoGolesCancha = (plusMinus * 2);
+  // 1. Base inicial estandar
+  let rating = 6.0;
 
-  let neto = pesoPositivo - pesoNegativo + impactoGolesCancha;
+  // 2. Sumamos el rendimiento individual
+  // Dividimos por 3 para que aprox 3 buenas acciones equivalgan a +1 en la nota
+  rating += (scoreNeto / 3); 
 
-  // Suavizado Bayesiano para estabilizar (Asumimos 15 acciones "neutras" invisibles)
-  // Si jugó minutos, le exigimos más volumen para el 10 perfecto
-  const volumenSuavizado = volumenAcciones + 15 + (minutosJugados * 0.5); 
-  
-  let eficiencia = neto / volumenSuavizado;
+  // 3. Impacto del Plus/Minus (Contexto de equipo)
+  // Cada gol de diferencia con él en cancha mueve la nota un 0.3 (Ayuda, pero no domina)
+  rating += (plusMinus * 0.3);
 
-  // Multiplicamos por 20 la eficiencia para abrir la brecha entre el 1 y el 10
-  let score = 6.0 + (eficiencia * 20); 
+  // 4. Si el jugador casi no tocó la pelota, lo acercamos al 6.0 por "falta de datos"
+  if (volumenAcciones < 3 && minutosJugados < 5) {
+    rating = 6.0 + (plusMinus * 0.1); 
+  }
 
-  // Restricción dura: Entre 1.0 y 10.0
-  return Number(Math.max(1, Math.min(10, score)).toFixed(1));
+  // Restricción dura: La nota nunca baja de 1 ni sube de 10
+  return Number(Math.max(1.0, Math.min(10.0, rating)).toFixed(1));
 }
+// === SISTEMA DE PUNTOS PARA ARQUEROS ===
+export function calcularRatingArquero(jugador, eventosJugador, eventosRivales = [], plusMinus = 0) {
+  if (!jugador) return 0;
 
+  let scoreNeto = 0;
+  let tirosAlArco = 0;
 
-// ==========================================
-// 3. NUEVO MODELO ESPECÍFICO PARA ARQUEROS (BASE 6.0)
-// ==========================================
-function calcularRatingArquero(jugador, eventosArquero, eventosRivales, plusMinus) {
-  let score = 6.0;
-
-  if (eventosRivales && eventosRivales.length > 0) {
-    const rematesRivales = eventosRivales.filter(e => 
-      e.accion === 'Remate - Gol' || e.accion === 'Remate - Atajado'
-    );
-
-    rematesRivales.forEach(r => {
-      const xg = r.xg_ev || r.xg || 0.15; 
-      if (r.accion === 'Remate - Gol') {
-        // Gol recibido: -2 nominal (agravado si era tiro fácil)
-        score -= (1.5 + (1 - xg)); 
-      } else if (r.accion === 'Remate - Atajado') {
-        // Tiro atajado: (lo tomamos como algo muy positivo)
-        score += (0.5 + xg * 2); 
-      }
-    });
-  }
-
-  if (eventosArquero && eventosArquero.length > 0) {
-    eventosArquero.forEach(ev => {
+  // 1. Acciones del propio arquero con la pelota
+  if (eventosJugador && eventosJugador.length > 0) {
+    eventosJugador.forEach(ev => {
       switch (ev.accion) {
-        case 'Recuperación': 
-        case 'Salida Exitosa':
-        case '1v1 Ganado':
-          score += 0.5; 
+        case 'Gol':
+        case 'Remate - Gol':
+          scoreNeto += 5.0; // Un gol de arquero es épico
           break;
-        case 'Pérdida': 
-        case 'Salida Fallida':
-        case '1v1 Perdido':
-          score -= 0.5; 
+        case 'Pérdida':
+          scoreNeto -= 1.5; // Perderla en salida siendo arquero es letal
           break;
-        case 'Falta cometida': 
-          score -= 1.0; 
+        case 'Recuperación':
+          scoreNeto += 1.0; // Anticipos o cortar pases filtrados
           break;
-        case 'Tarjeta Amarilla': 
-          score -= 1.0; 
+        case 'Falta cometida':
+          scoreNeto -= 0.8;
           break;
-        case 'Tarjeta Roja': 
-          score -= 3.0; 
+        case 'Tarjeta Amarilla':
+          scoreNeto -= 1.5;
+          break;
+        case 'Tarjeta Roja':
+          scoreNeto -= 4.0;
           break;
       }
-      if (ev.tipoVirtual === 'Asistencia') score += 1.5;
+      if (ev.tipoVirtual === 'Asistencia') scoreNeto += 3.0;
     });
   }
 
-  return Number(Math.max(1, Math.min(10, score)).toFixed(1));
+  // 2. Análisis del asedio rival (Atajadas vs Goles recibidos)
+  if (eventosRivales && eventosRivales.length > 0) {
+    eventosRivales.forEach(ev => {
+      if (ev.accion === 'Remate - Atajado') {
+        scoreNeto += 1.2; // Mucho mérito por salvar al equipo
+        tirosAlArco++;
+      } 
+      else if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
+        scoreNeto -= 0.6; // Penalidad ligera (a veces los goles son culpa de la defensa, no solo de él)
+        tirosAlArco++;
+      }
+    });
+  }
+
+  // 3. Base inicial estándar
+  let rating = 6.0;
+
+  // Sumamos el rendimiento individual
+  // Dividimos por 2.5 para que las atajadas impacten rápido en la nota
+  rating += (scoreNeto / 2.5);
+
+  // 4. Impacto del Plus/Minus (Contexto de equipo)
+  // El arquero es muy responsable del resultado general mientras está en cancha
+  rating += (plusMinus * 0.2);
+
+  // 5. Ajuste por falta de acción (Partido aburrido para el arquero)
+  if (tirosAlArco === 0 && eventosJugador.length === 0) {
+    rating = 6.0 + (plusMinus * 0.1); 
+  }
+
+  // Restricción dura: La nota nunca baja de 1 ni sube de 10
+  return Number(Math.max(1.0, Math.min(10.0, rating)).toFixed(1));
 }

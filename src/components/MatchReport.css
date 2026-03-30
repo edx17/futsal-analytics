@@ -1,0 +1,393 @@
+/* MatchReport.css — Lienzo 1080×1080 para Instagram/WhatsApp */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,900&family=Barlow:wght@400;500;600;700&display=swap');
+
+/* ─── VARIABLES ─────────────────────────────────────────── */
+:root {
+  --c-local:    #00e676;
+  --c-visita:   #ff1744;
+  --c-accent:   #ffd600;
+  --c-bg:       #0d0d0d;
+  --c-surface:  #161616;
+  --c-surface2: #1e1e1e;
+  --c-border:   rgba(255,255,255,0.07);
+  --c-dim:      #555;
+  --c-text:     #ffffff;
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body:    'Barlow', sans-serif;
+}
+
+/* ─── LIENZO FIJO 1080×1080 ─────────────────────────────── */
+.report-container {
+  width: 1080px;
+  height: 1080px;
+  background-color: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-body);
+  /* 4 filas: header | kpi-strip | body | footer */
+  display: grid;
+  grid-template-rows: 130px 52px 1fr 38px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+/* grain texture */
+.report-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.3;
+}
+
+/* ─── HEADER ─────────────────────────────────────────────── */
+.report-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 32px;
+  background: linear-gradient(180deg, #1c1c1c 0%, #111 100%);
+  border-bottom: 1px solid var(--c-border);
+  position: relative;
+}
+
+.report-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--c-local) 25%,
+    #2a2a2a 50%,
+    var(--c-visita) 75%,
+    transparent 100%);
+}
+
+.header-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+.header-team.visitante {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.team-logo {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.08));
+}
+.team-logo-fallback {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 2px solid var(--c-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.team-name {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.team-sub {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--c-dim);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+/* ── Score central ── */
+.header-score-board {
+  text-align: center;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.score-main {
+  font-family: var(--font-display);
+  font-size: 4.6rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  line-height: 1;
+}
+.score-dash { color: #2a2a2a; margin: 0 6px; }
+.score-ht {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  color: var(--c-dim);
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-top: 3px;
+}
+.score-ht em { color: var(--c-accent); font-style: normal; }
+.match-meta {
+  margin-top: 4px;
+  font-size: 0.64rem;
+  color: #3a3a3a;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  line-height: 1.6;
+}
+
+/* ─── KPI STRIP ──────────────────────────────────────────── */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--c-border);
+  background: #101010;
+}
+.kpi-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  border-right: 1px solid var(--c-border);
+}
+.kpi-chip:last-child { border-right: none; }
+.kpi-vals {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.kpi-sep { color: #2a2a2a; font-size: 1rem; }
+.kpi-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--c-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+/* ─── BODY ───────────────────────────────────────────────── */
+.report-body {
+  display: grid;
+  /* col-izq | sep | col-centro | sep | col-der */
+  grid-template-columns: 296px 1px 1fr 1px 296px;
+  overflow: hidden;
+}
+
+.col-sep {
+  background: var(--c-border);
+  margin: 12px 0;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+/* ─── SECTION CARD ───────────────────────────────────────── */
+.rcard {
+  background: var(--c-surface);
+  border-radius: 7px;
+  border: 1px solid var(--c-border);
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rcard-title {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--c-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+/* ─── STAT BARS ──────────────────────────────────────────── */
+.stat-row { margin-bottom: 7px; }
+.stat-row:last-child { margin-bottom: 0; }
+.stat-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+.stat-val {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  min-width: 30px;
+}
+.stat-val.local  { color: var(--c-local);  text-align: left; }
+.stat-val.visita { color: var(--c-visita); text-align: right; }
+.stat-name {
+  font-size: 0.57rem;
+  font-weight: 700;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  text-align: center;
+  flex: 1;
+  padding: 0 4px;
+}
+.bars-wrap {
+  display: flex;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: #1a1a1a;
+  gap: 1px;
+}
+.bar-l { height: 100%; background: var(--c-local);  border-radius: 2px 0 0 2px; }
+.bar-v { height: 100%; background: var(--c-visita); border-radius: 0 2px 2px 0; }
+
+/* ─── TOP 5 ──────────────────────────────────────────────── */
+.top5-row {
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--c-border);
+  gap: 6px;
+}
+.top5-row:last-child { border-bottom: none; }
+.top5-pos {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: #333;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.top5-name {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top5-val {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--c-surface2);
+  min-width: 34px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* ─── PITCH MAP ──────────────────────────────────────────── */
+.pitch-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  background: #0a180a;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  margin-bottom: 6px;
+}
+.shot-dot {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.pitch-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+.pitch-legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── ORIGEN GOLES LIST ──────────────────────────────────── */
+.origen-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 0.68rem;
+  gap: 6px;
+}
+.origen-row:last-child { border-bottom: none; }
+.origen-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #888;
+  font-weight: 600;
+  min-width: 0;
+}
+.origen-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.origen-val {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ─── FOOTER ─────────────────────────────────────────────── */
+.report-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 18px;
+  background: #080808;
+  border-top: 1px solid var(--c-border);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #2a2a2a;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.report-footer strong { color: #404040; }

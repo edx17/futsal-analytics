@@ -11,63 +11,15 @@ import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
+import ReportGenerator from '../components/ReportGenerator';
+
+// === IMPORTAMOS EL NUEVO MOTOR DE RATING INDIVIDUAL ===
+// (Ajustá esta ruta si tu rating.js está en otra carpeta)
+import { calcularRatingJugador } from '../analytics/rating';
 
 // ==========================================
-// 🧠 NUEVO MOTOR DE RATING ESTRUCTURAL
+// 🧠 MOTOR DE RATING ESTRUCTURAL (QUINTETOS)
 // ==========================================
-const calcularRatingAvanzado = (jugador, eventos, pm, mins) => {
-  let score = 0;
-  let goles = 0;
-  let rematesTotales = 0;
-  let numAcciones = eventos.length;
-
-  // 1. FILTRO DE MINUTOS (Muestra irrelevante)
-  // Si no hay minutos cargados, estimamos ~1 min por cada 1.5 acciones como fallback
-  const minutosReales = mins !== undefined && mins !== null ? mins : (numAcciones * 0.6); 
-  
-  if (minutosReales < 2) {
-    return '-'; // Menos de 2 minutos = Sin calificación
-  }
-
-  // Estimación de Goles en Contra recibidos en cancha basado en el +/- (pm)
-  let golesContraEstimados = Math.max(0, goles - pm);
-  if (pm < 0) golesContraEstimados = Math.abs(pm);
-
-  eventos.forEach(ev => {
-    if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') { goles++; score += 1.2; rematesTotales++; }
-    else if (ev.accion === 'Remate - Atajado') { score += 0.08; rematesTotales++; }
-    else if (ev.accion === 'Remate - Desviado' || ev.accion === 'Remate - Rebatido') { score -= 0.04; rematesTotales++; }
-    else if (ev.accion === 'Recuperación') { score += 0.25; }
-    else if (ev.accion === 'Pérdida') { score -= 0.25; }
-    else if (ev.accion === 'Falta recibida') { score += 0.12; }
-    else if (ev.accion === 'Falta cometida') { score -= 0.15; }
-    else if (ev.accion === 'Tarjeta Amarilla') { score -= 0.6; }
-    else if (ev.accion === 'Tarjeta Roja') { score -= 1.5; }
-  });
-
-  // Penalidad estructural por goles recibidos estando en cancha
-  score += (golesContraEstimados * -0.9);
-
-  // Factor de minutos (Filtra el ruido de muestras chicas)
-  const min_factor = Math.min(1, minutosReales / 20);
-
-  // 2. FACTOR DE EFICIENCIA DE REMATE
-  let bonus_eficiencia = 0;
-  if (rematesTotales > 0) {
-    const eficiencia = goles / rematesTotales;
-    if (eficiencia >= 0.25) bonus_eficiencia = 0.3;
-    else if (eficiencia < 0.10) bonus_eficiencia = -0.3;
-  }
-
-  // 3. AJUSTE POR VOLUMEN (Evita inflar stats, usa logaritmo base 10)
-  const log_factor = numAcciones > 0 ? Math.log10(1 + numAcciones) : 1;
-
-  // 4. FÓRMULA FINAL (Base 6.0 Aprobado)
-  let rating = 6.0 + (score * min_factor * log_factor) + bonus_eficiencia;
-  
-  return Math.max(1, Math.min(10, rating));
-};
-
 const calcularRatingQuintetoAvanzado = (q) => {
   const gf = q.golesFavor || 0;
   const gc = q.golesContra || 0;
@@ -76,21 +28,13 @@ const calcularRatingQuintetoAvanzado = (q) => {
   const rec = q.recuperaciones || 0;
   const per = q.perdidas || 0;
   
-  // Si no hay trackeo estricto de minutos del quinteto, lo aproximamos por volumen de eventos
   const volumenAcciones = gf + gc + rf + rc + rec + per;
   const mins = q.minutos !== undefined ? q.minutos : (volumenAcciones * 0.8); 
 
-  if (mins < 2) {
-    return '-'; // Quintetos que jugaron 1 minuto o menos no se califican
-  }
+  if (mins < 2) return '-'; 
 
-  // Factor de tiempo para quintetos (Base 10 min)
   const min_factor = Math.min(1, mins / 10);
-
-  // Diferencial de impacto colectivo
   const diferencial = (gf - gc) * 1.5 + (rf - rc) * 0.1 + (rec - per) * 0.2;
-
-  // Base 6.0 Aprobado
   let rating = 6.0 + (diferencial * min_factor);
   return Math.max(1, Math.min(10, rating));
 };
@@ -101,6 +45,8 @@ function Resumen() {
   const navigate = useNavigate();
   const { perfil } = useAuth();
 
+  const miClubGlobal = localStorage.getItem('mi_club') || perfil?.clubes?.nombre || 'MI EQUIPO';
+  const miEscudoGlobal = localStorage.getItem('escudo_url') || perfil?.clubes?.escudo_url || null;
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [partidoSeleccionado, setPartidoSeleccionado] = useState(null);
@@ -125,6 +71,9 @@ function Resumen() {
   const [offsetPT, setOffsetPT] = useState(0); 
   const [offsetST, setOffsetST] = useState(0); 
   const [filtroVideoAcciones, setFiltroVideoAcciones] = useState([]);
+  
+  // 🌟 ESTADO PARA MOSTRAR/OCULTAR EL REPORTE 🌟
+  const [mostrarReporte, setMostrarReporte] = useState(false);
 
   useEffect(() => {
     async function obtenerDatos() {
@@ -139,7 +88,6 @@ function Resumen() {
       if (wError) console.error("⚠️ Error leyendo wellness desde Supabase:", wError);
       setWellness(w || []);
 
-      // --- MAGIA: LECTURA PAGINADA PARA SALTAR EL LÍMITE DE 1000 FILAS ---
       let todosLosEventos = [];
       let rangoInicio = 0;
       let limiteAlcanzado = false;
@@ -153,17 +101,14 @@ function Resumen() {
         if (evs && evs.length > 0) {
           todosLosEventos = [...todosLosEventos, ...evs];
           rangoInicio += 1000;
-          // Si nos devolvió menos de 1000, significa que ya llegamos al final de la tabla
           if (evs.length < 1000) limiteAlcanzado = true;
         } else {
           limiteAlcanzado = true;
         }
       }
 
-      // Filtramos los IDs únicos
       const idsConDatos = [...new Set(todosLosEventos.map(e => e.id_partido))];
       setPartidosConDatos(idsConDatos);
-      // -------------------------------------------------------------------
 
       if (id && p) {
         const matchFound = p.find(partido => partido.id == id);
@@ -393,7 +338,7 @@ function Resumen() {
     jugadores.forEach(j => {
       const { xgChain, xgBuildup } = calcularCadenasValor(datosProcesados.posesiones, j.id);
       statsJugadores[j.id] = { 
-        id: j.id, nombre: j.apellido || j.nombre, dorsal: j.dorsal, eventos: [], 
+        id: j.id, nombre: j.apellido || j.nombre, dorsal: j.dorsal, posicion: j.posicion, eventos: [], 
         remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
         duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
         xgChain, xgBuildup
@@ -418,6 +363,9 @@ function Resumen() {
       }
     });
 
+    // 🚀 INTEGRACIÓN DEL RATING: Extraemos eventos rivales para pasarlos a la función
+    const eventosRivales = evFiltrados.filter(e => e.equipo === 'Rival');
+
     const ranking = Object.values(statsJugadores)
       .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
       .map(j => {
@@ -429,10 +377,12 @@ function Resumen() {
         if (ratioFinalizacion >= 2.5) rol = 'FINALIZADOR';
         else if (j.xgBuildup >= 0.5 && ratioFinalizacion < 1.5) rol = 'GENERADOR';
 
-        return { ...j, plusMinus: pm, minutos: mins, impacto: calcularRatingAvanzado(j, j.eventos, pm, mins), rol }
+        // USAMOS TU NUEVO RATING SYSTEM ACÁ
+        const ratingFinal = calcularRatingJugador(j, j.eventos, eventosRivales, pm, mins);
+
+        return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, rol }
       })
       .sort((a, b) => {
-        // Ordenamiento seguro: Si es un guion, se asume 0 para mandarlo abajo.
         const valA = a.impacto === '-' ? 0 : a.impacto;
         const valB = b.impacto === '-' ? 0 : b.impacto;
         return valB - valA;
@@ -619,6 +569,88 @@ function Resumen() {
     heat.draw();
   }, [evMapa, tipoMapa]);
 
+
+// ==========================================
+  // 🚀 ARMADO DINÁMICO DE DATOS PARA EXPORTACIÓN
+  // ==========================================
+  const datosParaReporte = useMemo(() => {
+    if (!partidoSeleccionado || !analitica) return null;
+    
+    // Armamos un xG flow acumulativo simple
+    let accLocal = 0;
+    let accVisita = 0;
+    const xgFlow = [{ minuto: 0, xgLocal: 0, xgVisitante: 0 }];
+    
+    rematesDetalle.forEach(r => {
+      if(r.equipo === 'Propio') accLocal += Number(r.xgCalculado);
+      else accVisita += Number(r.xgCalculado);
+      
+      xgFlow.push({
+        minuto: r.minuto,
+        xgLocal: Number(accLocal.toFixed(2)),
+        xgVisitante: Number(accVisita.toFixed(2))
+      });
+    });
+    xgFlow.push({ minuto: 40, xgLocal: Number(analitica.xgPropio.toFixed(2)), xgVisitante: Number(analitica.xgRival.toFixed(2)) });
+
+    // --- RESULTADO EXACTO DEL PRIMER TIEMPO (PT) ---
+    let golesLocalPT = 0;
+    let golesVisitaPT = 0;
+    eventosPartido.forEach(ev => {
+      if (ev.periodo === 'PT' && (ev.accion === 'Gol' || ev.accion === 'Remate - Gol')) {
+        if (ev.equipo === 'Propio') golesLocalPT++;
+        else golesVisitaPT++;
+      }
+    });
+
+    // --- MAPA DE RECUPERACIONES VS PÉRDIDAS PROPIAS ---
+    const mapaRecuperacionesPerdidas = analitica.evFiltrados
+      .filter(ev => ev.equipo === 'Propio' && (ev.accion === 'Recuperación' || ev.accion === 'Pérdida'))
+      .map(ev => ({
+        x: ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x,
+        y: ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y,
+        tipo: ev.accion
+      }));
+
+    return {
+      equipos: {
+        local: { nombre: partidoSeleccionado.nombre_propio || miClubGlobal, escudo: partidoSeleccionado.escudo_propio || miEscudoGlobal },
+        visitante: { nombre: partidoSeleccionado.rival || 'RIVAL', escudo: partidoSeleccionado.escudo_rival }
+      },
+      resultado: {
+        final: `${analitica.stats.propio.goles} - ${analitica.stats.rival.goles}`,
+        primerTiempo: `${golesLocalPT} - ${golesVisitaPT}`
+      },
+      info: {
+        fecha: partidoSeleccionado.fecha || '-',
+        torneo: partidoSeleccionado.competicion || 'Amistoso',
+        estadio: '-',
+        categoria: partidoSeleccionado.categoria || '-'
+      },
+      stats: {
+        local: { 
+          xg: analitica.xgPropio, remates: analitica.stats.propio.remates, rematesAlArco: analitica.stats.propio.goles + analitica.stats.propio.atajados, 
+          recuperaciones: analitica.stats.propio.rec, perdidas: analitica.stats.propio.perdidas, faltas: analitica.stats.propio.faltas 
+        },
+        visitante: { 
+          xg: analitica.xgRival, remates: analitica.stats.rival.remates, rematesAlArco: analitica.stats.rival.goles + analitica.stats.rival.atajados, 
+          recuperaciones: 0, perdidas: 0, faltas: analitica.stats.rival.faltas 
+        },
+        topJugadores: analitica.ranking.filter(j => j.impacto !== '-').slice(0, 5).map(j => ({ nombre: `${j.dorsal || '-'} - ${(j.nombre || 'S/N').toUpperCase()}`, rating: Number(j.impacto).toFixed(1) })),
+        topJugadoresExt: analitica.ranking.map(j => ({ nombre: `${j.dorsal || '-'} - ${(j.nombre || 'S/N').toUpperCase()}`, rec: j.rec || 0, remates: j.remates || 0, goles: j.goles || 0 }))
+      },
+      tiros: rematesDetalle.map(r => ({
+        x: r.zona_x_norm !== undefined ? r.zona_x_norm : r.zona_x, y: r.zona_y_norm !== undefined ? r.zona_y_norm : r.zona_y,
+        equipo: r.equipo === 'Propio' ? 'local' : 'visitante', esGol: r.accion === 'Remate - Gol' || r.accion === 'Gol', xg: Number(r.xgCalculado)
+      })),
+      xgFlow,
+      recYPer: mapaRecuperacionesPerdidas,
+      golesOrigen: { local: analitica.dataOrigenGol.length > 0 ? analitica.dataOrigenGol : [{name: 'Sin Goles', value: 1}] }
+    };
+  }, [partidoSeleccionado, analitica, rematesDetalle, eventosPartido, miClubGlobal, miEscudoGlobal]);
+  // ==========================================
+
+
   if (!partidoSeleccionado) {
     return (
       <div style={{ animation: 'fadeIn 0.3s' }}>
@@ -666,7 +698,9 @@ function Resumen() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
                   {p.escudo_propio ? <img src={p.escudo_propio} alt="Local" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.2rem' }}>MI</div>}
-                  <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{p.nombre_propio || 'MI EQUIPO'}</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>
+  {p.nombre_propio || miClubGlobal}
+</span>
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#333', fontStyle: 'italic', width: '20%', textAlign: 'center' }}>VS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
@@ -719,7 +753,11 @@ function Resumen() {
             </div>
           )}
         </div>
-        {partidoSeleccionado && <button onClick={() => window.print()} className="btn-action">EXPORTAR REPORTE</button>}
+        {partidoSeleccionado && (
+          <button onClick={() => setMostrarReporte(true)} className="btn-action">
+            EXPORTAR REPORTE
+          </button>
+        )}
       </div>
 
       {partidoSeleccionado && analitica && (
@@ -986,7 +1024,6 @@ function Resumen() {
             
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: '#111', border: '2px solid rgba(255,255,255,0.2)' }}>
-                {/* CANCHA DIBUJADA CON HTML/CSS */}
                 <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '2px', backgroundColor: 'rgba(255,255,255,0.2)', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', left: '50%', top: '50%', width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
@@ -1330,6 +1367,26 @@ function Resumen() {
 
         </div>
       )}
+
+      {/* 🌟 OVERLAY DEL REPORTE PARA EXPORTAR 🌟 */}
+      {mostrarReporte && datosParaReporte && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: '20px'
+        }}>
+          <div style={{ textAlign: 'right', maxWidth: '1000px', margin: '0 auto' }}>
+            <button 
+              onClick={() => setMostrarReporte(false)} 
+              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
+            >
+              CERRAR VISTA PREVIA ✖
+            </button>
+          </div>
+          
+          <ReportGenerator data={datosParaReporte} />
+        </div>
+      )}
+
     </div>
   );
 }
