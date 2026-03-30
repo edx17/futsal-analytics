@@ -11,7 +11,7 @@ import { calcularXGEvento } from '../analytics/xg';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
-import ReportGenerator from '../components/ReportGenerator'; // <-- IMPORTANTE: Agregar import
+import PlayerReportGenerator from '../components/PlayerReportGenerator'; // <-- IMPORT CORREGIDO
 
 function JugadorPerfil() {
   const [userRol, setUserRol] = useState(null);
@@ -306,69 +306,6 @@ function JugadorPerfil() {
 
   const COLORS_REMATES = { 'Gol': '#00ff88', 'Atajado': '#3b82f6', 'Desviado': '#888888', 'Rebatido': '#a855f7' };
 
-  // ==========================================
-  // 🚀 ARMADO DE DATOS PARA EXPORTACIÓN PDF
-  // ==========================================
-  const datosParaReporte = useMemo(() => {
-    if (!jugadorSeleccionado || !perfil || perfil.vacio) return null;
-
-    const mapaRecuperacionesPerdidas = perfil.accionesDirectas
-      .filter(ev => ev.accion === 'Recuperación' || ev.accion === 'Pérdida')
-      .map(ev => ({
-        x: ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x,
-        y: ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y,
-        tipo: ev.accion
-      }));
-
-    const tirosAdaptados = perfil.accionesDirectas
-      .filter(ev => ev.accion?.includes('Remate') || ev.accion === 'Gol')
-      .map(r => ({
-        x: r.zona_x_norm !== undefined ? r.zona_x_norm : r.zona_x,
-        y: r.zona_y_norm !== undefined ? r.zona_y_norm : r.zona_y,
-        equipo: 'local', // Lo seteamos así para que el ReportGenerator lo pinte a favor
-        esGol: r.accion === 'Remate - Gol' || r.accion === 'Gol',
-        xg: calcularXGEvento(r)
-      }));
-
-    return {
-      equipos: {
-        local: { nombre: `${jugadorSeleccionado.nombre} ${jugadorSeleccionado.apellido}`, escudo: jugadorSeleccionado.foto || null },
-        visitante: { nombre: 'REPORTE INDIVIDUAL', escudo: null }
-      },
-      resultado: {
-        final: `${perfil.stats.goles} GOL`,
-        primerTiempo: `${perfil.stats.asistencias} AST`
-      },
-      info: {
-        fecha: partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : partidos.find(p => p.id == partidoFiltro)?.fecha || '-',
-        torneo: jugadorSeleccionado.categoria || 'Plantel',
-        estadio: `Dorsal #${jugadorSeleccionado.dorsal || '-'}`,
-        categoria: perfil.rol || 'MIXTO'
-      },
-      stats: {
-        local: { 
-          xg: perfil.stats.xG, 
-          remates: perfil.stats.remates, 
-          rematesAlArco: perfil.stats.goles + perfil.stats.atajados, 
-          recuperaciones: perfil.stats.recuperaciones, 
-          perdidas: perfil.stats.perdidas, 
-          faltas: perfil.stats.faltas 
-        },
-        visitante: { 
-          xg: 0, remates: 0, rematesAlArco: 0, recuperaciones: 0, perdidas: 0, faltas: 0 
-        },
-        topJugadores: [], // Vaciamos para no generar ruido en el PDF del jugador
-        topJugadoresExt: []
-      },
-      tiros: tirosAdaptados,
-      xgFlow: [], // Podemos dejarlo vacío para el jugador individual
-      recYPer: mapaRecuperacionesPerdidas,
-      golesOrigen: { local: perfil.dataTortaRemates.length > 0 ? perfil.dataTortaRemates : [{name: 'Sin Goles', value: 1}] }
-    };
-  }, [jugadorSeleccionado, perfil, partidoFiltro, partidos]);
-  // ==========================================
-
-
   if (cargandoAuth) {
     return <div style={{ color: '#fff', textAlign: 'center', marginTop: '50px' }}>Verificando permisos...</div>;
   }
@@ -585,7 +522,7 @@ function JugadorPerfil() {
 
               <div style={{ ...kpiFila, marginTop: 'auto', borderTop: '1px solid #222', paddingTop: '15px' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  TRANSICIONES LETALES 
+                  TRANSICIONES FINALIZADAS 
                   <InfoBox texto="Cantidad de contraataques finalizados en tiro donde el jugador recuperó la pelota o ejecutó el remate." />
                 </span>
                 <strong style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>{perfil.transicionesInvolucrado}</strong>
@@ -681,7 +618,7 @@ function JugadorPerfil() {
       )}
 
       {/* 🌟 OVERLAY DEL REPORTE PARA EXPORTAR 🌟 */}
-      {mostrarReporte && datosParaReporte && (
+      {mostrarReporte && jugadorSeleccionado && perfil && !perfil.vacio && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
           background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px'
@@ -695,7 +632,12 @@ function JugadorPerfil() {
             </button>
           </div>
           
-          <ReportGenerator data={datosParaReporte} />
+          <PlayerReportGenerator 
+            jugador={jugadorSeleccionado} 
+            perfil={perfil} 
+            wellness={metricasWellness}
+            contexto={partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : partidos.find(p => p.id == partidoFiltro)?.fecha}
+          />
         </div>
       )}
 
