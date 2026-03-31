@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 import { 
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend 
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis 
 } from 'recharts';
 
 import { analizarPartido } from '../analytics/engine'; 
@@ -11,7 +12,30 @@ import { calcularXGEvento } from '../analytics/xg';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
-import PlayerReportGenerator from '../components/PlayerReportGenerator'; // <-- IMPORT CORREGIDO
+import PlayerReportGenerator from '../components/PlayerReportGenerator';
+
+// ==========================================
+// 🧠 MOTOR DE RATING ESTRUCTURAL (QUINTETOS)
+// ==========================================
+const calcularRatingQuintetoAvanzado = (q) => {
+  const gf = q.golesFavor || 0;
+  const gc = q.golesContra || 0;
+  const rf = q.rematesFavor || 0;
+  const rc = q.rematesContra || 0;
+  const rec = q.recuperaciones || 0;
+  const per = q.perdidas || 0;
+  
+  const volumenAcciones = gf + gc + rf + rc + rec + per;
+  const mins = (q.minutos !== undefined && q.minutos > 0) ? q.minutos : (volumenAcciones * 0.8); 
+
+  if (mins < 2) return '-'; 
+
+  const min_factor = Math.min(1, mins / 10);
+  const diferencial = (gf - gc) * 1.5 + (rf - rc) * 0.1 + (rec - per) * 0.2;
+  let rating = 6.0 + (diferencial * min_factor);
+  return Math.max(1, Math.min(10, rating));
+};
+// ==========================================
 
 function JugadorPerfil() {
   const [userRol, setUserRol] = useState(null);
@@ -28,6 +52,7 @@ function JugadorPerfil() {
 
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
+  const [clubInfo, setClubInfo] = useState({ nombre: 'VIRTUAL FUTSAL', escudo: '' });
   
   const [eventos, setEventos] = useState([]);
   const [eventosCompletos, setEventosCompletos] = useState([]);
@@ -58,9 +83,11 @@ function JugadorPerfil() {
         }
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: perfil } = await supabase.from('usuarios').select('rol').eq('id', user.id).single();
+          const { data: perfil } = await supabase.from('usuarios').select('rol, club_id').eq('id', user.id).single();
           if (perfil) {
             setUserRol(perfil.rol);
+            // Mockeamos escudo y nombre para el reporte (idealmente traer de tabla clubes)
+            setClubInfo({ nombre: 'CLUB ATLÉTICO FUTSAL', escudo: 'https://cdn-icons-png.flaticon.com/512/5110/5110754.png' });
           }
         }
       } catch (error) {
@@ -74,7 +101,7 @@ function JugadorPerfil() {
 
   useEffect(() => {
     async function cargarCatalogos() {
-      const { data: j } = await supabase.from('jugadores').select('*').order('dorsal');
+      const { data: j } = await supabase.from('jugadores').select('*').order('apellido', { ascending: true });
       const { data: p } = await supabase.from('partidos').select('*').order('fecha', { ascending: false });
       setJugadores(j || []);
       setPartidos(p || []);
@@ -131,13 +158,15 @@ function JugadorPerfil() {
       goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, 
       recuperaciones: 0, recAltas: 0, perdidas: 0, perdidasPeligrosas: 0, faltas: 0, xG: 0, 
       duelosDefGanados: 0, duelosDefPerdidos: 0, duelosDefTotales: 0, 
-      duelosOfeGanados: 0, duelosOfePerdidos: 0, duelosOfeTotales: 0
+      duelosOfeGanados: 0, duelosOfePerdidos: 0, duelosOfeTotales: 0,
+      faltasCometidas: 0, faltasRecibidas: 0, amarillas: 0, rojas: 0 
     };
     
     const partidosJugados = new Set(evFiltrados.map(e => e.id_partido)).size;
     const resultadosRemates = { Gol: 0, Atajado: 0, Desviado: 0, Rebatido: 0 };
     const accionesDirectas = []; 
     const perfilRemate = { centro: 0, banda: 0, cerca: 0, lejos: 0 };
+    const sociosData = {}; 
 
     evFiltrados.forEach(ev => {
       const zonaX = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
@@ -147,6 +176,7 @@ function JugadorPerfil() {
 
       if (ev.id_asistencia == jugadorId && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {
         stats.asistencias++;
+        if (ev.id_jugador) sociosData[ev.id_jugador] = (sociosData[ev.id_jugador] || 0) + 1;
       }
 
       if (ev.id_jugador == jugadorId) {
@@ -154,7 +184,10 @@ function JugadorPerfil() {
         const xgEvento = calcularXGEvento(ev);
 
         if (ev.accion?.includes('Remate') || ev.accion === 'Gol') {
-          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { stats.goles++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Gol++; }
+          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
+            stats.goles++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Gol++; 
+            if (ev.id_asistencia) sociosData[ev.id_asistencia] = (sociosData[ev.id_asistencia] || 0) + 1;
+          }
           else if (ev.accion === 'Remate - Atajado') { stats.atajados++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Atajado++; }
           else if (ev.accion === 'Remate - Desviado') { stats.desviados++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Desviado++; }
           else if (ev.accion === 'Remate - Rebatido') { stats.rebatidos++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Rebatido++; }
@@ -170,18 +203,35 @@ function JugadorPerfil() {
         }
         else if (ev.accion === 'Recuperación') { stats.recuperaciones++; if (esAtaque) stats.recAltas++; }
         else if (ev.accion === 'Pérdida') { stats.perdidas++; if (esDefensa) stats.perdidasPeligrosas++; }
-        else if (ev.accion === 'Falta cometida') { stats.faltas++; }
         else if (ev.accion === 'Duelo DEF Ganado') { stats.duelosDefGanados++; stats.duelosDefTotales++; }
         else if (ev.accion === 'Duelo DEF Perdido') { stats.duelosDefPerdidos++; stats.duelosDefTotales++; }
         else if (ev.accion === 'Duelo OFE Ganado') { stats.duelosOfeGanados++; stats.duelosOfeTotales++; }
         else if (ev.accion === 'Duelo OFE Perdido') { stats.duelosOfePerdidos++; stats.duelosOfeTotales++; }
+        else if (ev.accion?.includes('Falta cometida')) { stats.faltasCometidas++; stats.faltas++; }
+        else if (ev.accion?.includes('Falta recibida')) { stats.faltasRecibidas++; }
+        else if (ev.accion?.toLowerCase().includes('amarilla')) { stats.amarillas++; }
+        else if (ev.accion?.toLowerCase().includes('roja')) { stats.rojas++; }
       }
     });
+
+    // Encontrar a los 4 mejores socios para armar el quinteto directo (asistencias)
+    const topSociosIds = Object.entries(sociosData)
+      .sort((a, b) => b[1] - a[1]) // Ordenamos de mayor a menor cantidad de conexiones
+      .slice(0, 4) // Tomamos los 4 mejores
+      .map(entry => ({ id: entry[0], conexiones: entry[1] }));
+
+    const topSocios = topSociosIds.map(s => {
+      const j = jugadores.find(jug => jug.id == s.id);
+      return j ? { ...j, conexiones: s.conexiones } : null;
+    }).filter(Boolean);
 
     let xgBuildup = 0;
     let plusMinus = 0;
     let minutos = 0;
     let transicionesInvolucrado = 0;
+    
+    // Almacenamos los quintetos consolidados para evaluarlos
+    const quintetosAgregados = {};
 
     if (evCompletosFiltrados.length > 0) {
       const evsPorPartido = {};
@@ -210,12 +260,49 @@ function JugadorPerfil() {
               }
             });
           }
+
+          // ACUMULAR QUINTETOS DEL JUGADOR
+          if (analisis.quintetos) {
+            analisis.quintetos.forEach(q => {
+              // Verificamos si nuestro jugador está en este quinteto
+              if (q.ids.some(id => id == jugadorId)) {
+                const key = [...q.ids].sort().join('-');
+                if (!quintetosAgregados[key]) {
+                  quintetosAgregados[key] = {
+                    ids: q.ids,
+                    golesFavor: 0, golesContra: 0,
+                    rematesFavor: 0, rematesContra: 0,
+                    recuperaciones: 0, perdidas: 0,
+                    minutos: 0
+                  };
+                }
+                const agg = quintetosAgregados[key];
+                agg.golesFavor += (q.golesFavor || 0);
+                agg.golesContra += (q.golesContra || 0);
+                agg.rematesFavor += (q.rematesFavor || 0);
+                agg.rematesContra += (q.rematesContra || 0);
+                agg.recuperaciones += (q.recuperaciones || 0);
+                agg.perdidas += (q.perdidas || 0);
+                agg.minutos += (q.minutos || 0);
+              }
+            });
+          }
         }
       });
 
       const cadenas = calcularCadenasValor(posesionesTotales, jugadorId);
       xgBuildup = cadenas.xgBuildup;
     }
+
+    // Calcular Rating de cada quinteto y sacar el Mejor Quinteto Estructural
+    const quintetosFinales = Object.values(quintetosAgregados).map(q => {
+      const rating = calcularRatingQuintetoAvanzado(q);
+      const diffGoles = q.golesFavor - q.golesContra;
+      return { ...q, rating, diffGoles };
+    }).filter(q => q.rating !== '-'); // Excluir los que no cumplen el mínimo de tiempo/volumen
+
+    quintetosFinales.sort((a, b) => b.rating - a.rating);
+    const mejorQuinteto = quintetosFinales.length > 0 ? quintetosFinales[0] : null;
 
     const eficacia = stats.remates > 0 ? ((stats.goles / stats.remates) * 100).toFixed(0) : 0;
     const volumenAcciones = stats.recuperaciones + stats.perdidas;
@@ -225,10 +312,22 @@ function JugadorPerfil() {
 
     let rol = 'MIXTO';
     const ratioFinalizacion = stats.remates / (xgBuildup || 1);
-    if (ratioFinalizacion >= 2.5) rol = 'FINALIZADOR';
+    if (ratioFinalizacion >= 2.5 && stats.goles > 0) rol = 'FINALIZADOR';
     else if (xgBuildup >= 0.5 && ratioFinalizacion < 1.5) rol = 'GENERADOR';
-    if (stats.duelosDefTotales > 5 && (stats.duelosDefGanados / stats.duelosDefTotales) >= 0.7 && stats.remates <= 3) rol = 'MURO DEFENSIVO';
-    if (stats.asistencias >= 2 && stats.xG < 0.5) rol = 'CREADOR';
+    else if (stats.duelosDefTotales > 5 && (stats.duelosDefGanados / stats.duelosDefTotales) >= 0.7 && stats.remates <= 3) rol = 'MURO DEFENSIVO';
+    else if (stats.asistencias >= 2 && stats.xG < 0.5) rol = 'CREADOR';
+    else if (stats.recAltas >= 3) rol = 'PRESIÓN ALTA';
+
+    const norm = (val, max) => Math.min(100, Math.max(0, (val / max) * 100));
+    const p40 = minutos > 0 ? (40 / minutos) : 0;
+
+    const dataRadar = [
+      { subject: 'Ataque', A: norm((stats.remates * p40 * 2) + (stats.goles * p40 * 5) + (stats.xG * p40 * 10), 25) },
+      { subject: 'Defensa', A: norm((stats.recuperaciones * p40 * 2) + (stats.duelosDefGanados * p40 * 3), 30) },
+      { subject: 'Creación', A: norm((stats.asistencias * p40 * 10) + (xgBuildup * p40 * 20), 25) },
+      { subject: 'Posesión', A: norm(100 - (stats.perdidas * p40 * 2) - (stats.perdidasPeligrosas * p40 * 5), 100) },
+      { subject: 'Físico', A: norm((stats.recuperaciones + stats.duelosOfeTotales + stats.duelosDefTotales) * p40, 40) }
+    ];
 
     const dataTortaRemates = Object.keys(resultadosRemates)
       .filter(k => resultadosRemates[k] > 0)
@@ -237,7 +336,8 @@ function JugadorPerfil() {
     return { 
       stats, evFiltrados, accionesDirectas, partidosJugados, 
       eficacia, ratioSeguridad, impacto, dataTortaRemates, perfilRemate,
-      xgBuildup, plusMinus, minutos, transicionesInvolucrado, rol,
+      xgBuildup, plusMinus, minutos, transicionesInvolucrado, rol, dataRadar, topSocios,
+      mejorQuinteto,
       vacio: false 
     };
   }, [eventos, eventosCompletos, partidoFiltro, jugadorId, jugadorSeleccionado, partidos, jugadores]);
@@ -351,7 +451,7 @@ function JugadorPerfil() {
                 </div>
                 <div style={{ display: 'flex', gap: '8px', marginTop: '15px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
                   <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>{j.posicion || 'S/P'}</span>
-                  <span style={{ background: '#222', color: '#aaa', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>#{j.dorsal}</span>
+                  <span style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>#{j.dorsal}</span>
                 </div>
               </div>
             ))}
@@ -360,6 +460,8 @@ function JugadorPerfil() {
         </div>
       );
   }
+
+  const factor40 = perfil?.minutos > 0 ? (40 / perfil.minutos) : 1;
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
@@ -382,7 +484,7 @@ function JugadorPerfil() {
 
         {jugadorId && perfil && !perfil.vacio && (
           <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto' }}>
-            EXPORTAR REPORTE
+            EXPORTAR REPORTE PREMIUM
           </button>
         )}
       </div>
@@ -441,6 +543,47 @@ function JugadorPerfil() {
              </div>
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1.5fr 1fr', gap: '20px' }}>
+            <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div className="stat-label" style={{ marginBottom: '10px', color: 'var(--accent)', alignSelf: 'flex-start' }}>PERFIL DE RENDIMIENTO (TELA DE ARAÑA)</div>
+                <div style={{ width: '100%', height: '280px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={perfil.dataRadar}>
+                      <PolarGrid stroke="#333" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 12, fontWeight: 'bold' }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                      <Radar name={jugadorSeleccionado.apellido} dataKey="A" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.5} isAnimationActive={false} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+            </div>
+
+            <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="stat-label" style={{ marginBottom: '15px', color: '#facc15' }}>DISCIPLINA Y CONDUCTA</div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '20px', background: '#0a0a0a', padding: '15px', borderRadius: '10px', border: '1px solid #222' }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ width: '30px', height: '45px', background: '#facc15', borderRadius: '4px', margin: '0 auto 8px' }} />
+                        <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{perfil.stats.amarillas}</div>
+                    </div>
+                    <div style={{ width: '1px', background: '#333' }} />
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ width: '30px', height: '45px', background: '#ef4444', borderRadius: '4px', margin: '0 auto 8px' }} />
+                        <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{perfil.stats.rojas}</div>
+                    </div>
+                </div>
+
+                <div style={kpiFila}>
+                  <span style={{color: '#888'}}>Faltas Cometidas</span>
+                  <strong>{perfil.stats.faltasCometidas} <span style={{fontSize:'0.7rem', color:'#555'}}>({(perfil.stats.faltasCometidas * factor40).toFixed(1)} p40)</span></strong>
+                </div>
+                <div style={kpiFila}>
+                  <span style={{color: '#888'}}>Faltas Recibidas</span>
+                  <strong>{perfil.stats.faltasRecibidas} <span style={{fontSize:'0.7rem', color:'#555'}}>({(perfil.stats.faltasRecibidas * factor40).toFixed(1)} p40)</span></strong>
+                </div>
+            </div>
+          </div>
+
           {metricasWellness && (
             <div className="bento-card" style={{ background: '#0a0a0a', border: '1px solid #3b82f6' }}>
               <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '15px' }}>
@@ -475,7 +618,7 @@ function JugadorPerfil() {
               <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>RADIOGRAFÍA OFENSIVA</div>
               <div style={kpiFila}><span>EXPECTATIVA DE GOL (xG)</span><strong>{perfil.stats.xG.toFixed(2)}</strong></div>
               <div style={kpiFila}><span>ASISTENCIAS A GOL</span><strong style={{color:'var(--accent)'}}>{perfil.stats.asistencias}</strong></div>
-              <div style={kpiFila}><span>REMATES TOTALES</span><strong>{perfil.stats.remates}</strong></div>
+              <div style={kpiFila}><span>REMATES TOTALES</span><strong>{perfil.stats.remates} <span style={{fontSize:'0.7rem', color:'#555'}}>({(perfil.stats.remates * factor40).toFixed(1)} p40)</span></strong></div>
               
               <div style={kpiFila}>
                 <span>DUELOS OFE. GANADOS</span>
@@ -491,7 +634,7 @@ function JugadorPerfil() {
             
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '15px', color: '#ef4444' }}>RADIOGRAFIA DEFENSIVA</div>
-              <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong style={{color: 'var(--accent)'}}>{perfil.stats.recuperaciones}</strong></div>
+              <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong style={{color: 'var(--accent)'}}>{perfil.stats.recuperaciones} <span style={{fontSize:'0.7rem', color:'#555'}}>({(perfil.stats.recuperaciones * factor40).toFixed(1)} p40)</span></strong></div>
               <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Presión Alta (Campo Rival)</span><strong style={{color:'#eab308'}}>{perfil.stats.recAltas}</strong></div>
               <div style={kpiFila}><span>PERDIDAS DE BALÓN</span><strong style={{color: '#ef4444'}}>{perfil.stats.perdidas}</strong></div>
               <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Peligrosas (En salida)</span><strong style={{color:'#ef4444'}}>{perfil.stats.perdidasPeligrosas}</strong></div>
@@ -552,6 +695,81 @@ function JugadorPerfil() {
 
           </div>
 
+          {/* 🌟 NUEVA SECCIÓN: QUÍMICA Y SOCIEDADES 🌟 */}
+          <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1.5fr', gap: '20px' }}>
+            
+            {/* CONEXIONES DIRECTAS (Mejores Socios Antiguo) */}
+            <div className="bento-card" style={{ borderTop: '3px solid #facc15' }}>
+              <div className="stat-label" style={{ marginBottom: '15px', color: '#facc15' }}>MEJORES SOCIOS (ASISTENCIAS) <InfoBox texto="Jugadores que más se asociaron con él para generar un gol directo." /></div>
+              {perfil.topSocios.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {perfil.topSocios.map((socio, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: '10px', borderRadius: '6px', border: '1px solid #222' }}>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#222', border: '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: '#fff' }}>
+                           {socio.apellido ? socio.apellido.charAt(0) : ''}{socio.nombre ? socio.nombre.charAt(0) : ''}
+                        </div>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{socio.apellido ? socio.apellido.toUpperCase() : socio.nombre.toUpperCase()}</span>
+                      </div>
+                      <div style={{ fontWeight: 900, color: '#facc15' }}>{socio.conexiones} G</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', padding: '20px 0' }}>No hay conexiones directas de gol suficientes.</div>
+              )}
+            </div>
+
+            {/* QUINTETO IDEAL ESTRUCTURAL */}
+            <div className="bento-card" style={{ borderTop: '3px solid var(--accent)' }}>
+              <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>SU QUINTETO IDEAL <InfoBox texto="La alineación de 5 con la que el equipo sacó el mejor Rating Avanzado cuando él estuvo en cancha." /></div>
+              {perfil.mejorQuinteto ? (
+                <div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+                    {perfil.mejorQuinteto.ids.map(id => {
+                       const j = jugadores.find(jug => jug.id == id);
+                       const esElJugador = id == jugadorId;
+                       return j ? (
+                         <div key={id} style={{ 
+                           background: esElJugador ? 'var(--accent)' : '#111', 
+                           color: esElJugador ? '#000' : '#fff',
+                           border: `1px solid ${esElJugador ? 'var(--accent)' : '#333'}`,
+                           padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800,
+                           display: 'flex', alignItems: 'center', gap: '5px'
+                         }}>
+                           <span className="mono-accent" style={{ opacity: esElJugador ? 1 : 0.5 }}>{j.dorsal}</span> 
+                           {j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}
+                         </div>
+                       ) : null;
+                    })}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', background: '#0a0a0a', padding: '15px', borderRadius: '6px', border: '1px solid #222' }}>
+                    <div style={{ textAlign: 'center', borderRight: '1px solid #333' }}>
+                       <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '5px' }}>RATING ESTRUC.</div>
+                       <strong style={{ fontSize: '1.2rem', color: perfil.mejorQuinteto.rating >= 6.0 ? 'var(--accent)' : '#ef4444' }}>{perfil.mejorQuinteto.rating.toFixed(1)}</strong>
+                    </div>
+                    <div style={{ textAlign: 'center', borderRight: '1px solid #333' }}>
+                       <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '5px' }}>+/- GOLES</div>
+                       <strong style={{ fontSize: '1.2rem', color: perfil.mejorQuinteto.diffGoles > 0 ? 'var(--accent)' : '#fff' }}>{perfil.mejorQuinteto.diffGoles > 0 ? '+' : ''}{perfil.mejorQuinteto.diffGoles}</strong>
+                    </div>
+                    <div style={{ textAlign: 'center', borderRight: '1px solid #333' }}>
+                       <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '5px' }}>REMATES</div>
+                       <strong style={{ fontSize: '1.2rem', color: '#3b82f6' }}>{perfil.mejorQuinteto.rematesFavor} - {perfil.mejorQuinteto.rematesContra}</strong>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                       <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '5px' }}>MINUTOS</div>
+                       <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{perfil.mejorQuinteto.minutos.toFixed(0)}'</strong>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', padding: '20px 0' }}>No hay suficientes datos de rotaciones para evaluar un quinteto estructural.</div>
+              )}
+            </div>
+            
+          </div>
+
           <div className="bento-card">
             <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div>
@@ -561,7 +779,6 @@ function JugadorPerfil() {
                 </div>
               </div>
               
-              {/* FILTROS DE MAPA 100% WIDTH EN MÓVIL */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
                 <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', outline: 'none', borderRadius: '4px' }}>
                   <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS SUS ACCIONES</option>
@@ -623,21 +840,30 @@ function JugadorPerfil() {
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
           background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px'
         }}>
-          <div style={{ textAlign: 'right', maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'right', maxWidth: '1200px', margin: '0 auto' }}>
             <button 
               onClick={() => setMostrarReporte(false)} 
               style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
             >
-              CERRAR VISTA PREVIA ✖
+              ✖
             </button>
           </div>
           
-          <PlayerReportGenerator 
-            jugador={jugadorSeleccionado} 
-            perfil={perfil} 
-            wellness={metricasWellness}
-            contexto={partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : partidos.find(p => p.id == partidoFiltro)?.fecha}
-          />
+<PlayerReportGenerator 
+  jugador={jugadorSeleccionado} 
+  perfil={perfil} 
+  wellness={metricasWellness}
+  clubInfo={clubInfo}
+  jugadores={jugadores}  // <--- ¡AGREGÁ ESTA LÍNEA ACÁ!
+  contexto={
+    partidoFiltro === 'Todos' 
+      ? 'TODA LA TEMPORADA' 
+      : (() => {
+          const p = partidos.find(p => p.id == partidoFiltro);
+          return p ? `VS ${p.rival.toUpperCase()} (${p.fecha})` : '';
+        })()
+  }
+/>
         </div>
       )}
 
