@@ -26,7 +26,16 @@ function Temporada() {
   // 🌟 ESTADO PARA MOSTRAR/OCULTAR EL REPORTE 🌟
   const [mostrarReporte, setMostrarReporte] = useState(false);
 
+  // --- ESTADO RESPONSIVE ---
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+
   const heatmapRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => setEsMovil(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     async function obtenerDatosGlobales() {
@@ -122,7 +131,6 @@ function Temporada() {
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
     };
     
-    // Diccionario para los goles rivales
     const origenGolesRival = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
@@ -186,7 +194,6 @@ function Temporada() {
         else if (ev.accion === 'Duelo DEF Ganado') { statsAdicionales.duelosDefGanados++; statsAdicionales.duelosDefTotales++; }
         else if (ev.accion === 'Duelo DEF Perdido') { statsAdicionales.duelosDefTotales++; }
       } else {
-        // Lógica Rival
         if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
            golesRivalesTotales++;
            const origen = ev.origen_gol || 'No Especificado';
@@ -445,7 +452,8 @@ function Temporada() {
     <div style={{ animation: 'fadeIn 0.3s' }}>
       
       <style>{`
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll { -webkit-overflow-scrolling: touch; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
@@ -453,30 +461,30 @@ function Temporada() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div>
+          <div style={{ flex: esMovil ? '1 1 100%' : 'auto' }}>
             <div className="stat-label">RESUMEN DE TEMPORADA</div>
-            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={{ marginTop: '5px', width: '200px', background: '#111', color: 'var(--accent)', borderColor: 'var(--accent)', outline: 'none' }}>
+            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={{ marginTop: '5px', width: esMovil ? '100%' : '200px', background: '#111', color: 'var(--accent)', borderColor: 'var(--accent)', outline: 'none', padding: '8px', borderRadius: '4px' }}>
               <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS LAS CATEGORÍAS</option>
               {categoriasUnicas.map(c => <option key={c} value={c} style={{ background: '#111', color: '#fff' }}>{c.toUpperCase()}</option>)}
             </select>
           </div>
-          <div>
+          <div style={{ flex: esMovil ? '1 1 100%' : 'auto' }}>
             <div className="stat-label">COMPETICIÓN</div>
-            <select value={filtroCompeticion} onChange={(e) => setFiltroCompeticion(e.target.value)} style={{ marginTop: '5px', width: '200px', background: '#111', color: 'var(--accent)', borderColor: 'var(--accent)', outline: 'none' }}>
+            <select value={filtroCompeticion} onChange={(e) => setFiltroCompeticion(e.target.value)} style={{ marginTop: '5px', width: esMovil ? '100%' : '200px', background: '#111', color: 'var(--accent)', borderColor: 'var(--accent)', outline: 'none', padding: '8px', borderRadius: '4px' }}>
               <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS LAS COMPETENCIAS</option>
               {competicionesUnicas.map(c => <option key={c} value={c} style={{ background: '#111', color: '#fff' }}>{c.toUpperCase()}</option>)}
             </select>
           </div>
         </div>
         
-        <button onClick={() => setMostrarReporte(true)} className="btn-action">
+        <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto' }}>
           EXPORTAR REPORTE
         </button>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '20px' }}>
             <div className="bento-card" style={{ textAlign: 'center', padding: '20px', background: 'linear-gradient(180deg, #111 0%, #000 100%)', borderTop: '2px solid var(--accent)' }}>
                 <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>PARTIDOS (V-E-D) <InfoBox texto="Victorias, Empates y Derrotas en la temporada actual." /></div>
                 <div className="stat-value" style={{ color: 'var(--text)' }}>
@@ -509,7 +517,7 @@ function Temporada() {
             </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '20px' }}>
             
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
@@ -688,7 +696,7 @@ function Temporada() {
 
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
           
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
@@ -749,7 +757,7 @@ function Temporada() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '20px' }}>
           
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>TOP GOLEADORES <InfoBox texto="Máximos anotadores del equipo." /></div>
@@ -802,7 +810,7 @@ function Temporada() {
         </div>
 
         {/* --- INICIO ZONA DE QUINTETOS --- */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px', marginBottom: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '20px', marginBottom: '10px' }}>
           
           {/* MEJORES QUINTETOS */}
           <div className="bento-card">
@@ -810,7 +818,7 @@ function Temporada() {
               MEJORES QUINTETOS 
               <InfoBox texto="Rendimiento del equipo al jugar con estas combinaciones específicas de 5 jugadores. Todas las estadísticas están contempladas." />
             </div>
-            <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
+            <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
@@ -874,7 +882,7 @@ function Temporada() {
               PEORES QUINTETOS 
               <InfoBox texto="Combinaciones de jugadores con el peor Rating Promedio en cancha (con al menos 5 acciones registradas)." />
             </div>
-            <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
+            <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
@@ -935,9 +943,11 @@ function Temporada() {
         </div>
         {/* --- FIN ZONA DE QUINTETOS --- */}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        {/* --- ZONA INFERIOR CON FLEXBOX PARA INVERTIR EL ORDEN EN MÓVILES --- */}
+        <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '20px' }}>
           
-          <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* HISTORIAL DE PARTIDOS (Aparece abajo en móvil, izquierda en PC) */}
+          <div className="bento-card" style={{ flex: 1, order: esMovil ? 2 : 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
              <div className="stat-label" style={{ marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
                HISTORIAL DE PARTIDOS 
                <InfoBox texto="Registro de los últimos encuentros filtrados. Arriba podés ver la racha de forma (últimos 10 partidos, el de más a la derecha es el más reciente)." />
@@ -965,7 +975,7 @@ function Temporada() {
                 {analiticaGlobal.historialPartidos.length === 0 && <span style={{ fontSize: '0.7rem', color: '#555' }}>S/D</span>}
              </div>
 
-             <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', paddingRight: '5px' }}>
+             <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', maxHeight: esMovil ? '400px' : 'auto', paddingRight: '5px' }}>
                 {analiticaGlobal.historialPartidos.map(p => {
                   let badgeColor = '#333'; 
                   let textColor = 'var(--text-dim)';
@@ -1042,12 +1052,13 @@ function Temporada() {
              </div>
           </div>
           
-          <div className="bento-card">
+          {/* MAPEO ACUMULADO (Aparece arriba en móvil, derecha en PC) */}
+          <div className="bento-card" style={{ flex: 1, order: esMovil ? 1 : 2, minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO ACUMULADO <InfoBox texto="Visualización espacial de todas las acciones ofensivas del equipo a lo largo de la temporada. Útil para detectar zonas preferenciales de ataque." /></div>
               
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '5px', fontSize: '0.8rem', width: 'auto', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none' }}>
+                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '8px', fontSize: '0.8rem', width: 'auto', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
                   <option value="" style={{ background: '#111', color: '#fff' }}>TODAS LAS ACCIONES</option>
                   <option value="Gol" style={{ background: '#111', color: '#fff' }}>SOLO GOLES</option>
                   <option value="Remate" style={{ background: '#111', color: '#fff' }}>SOLO REMATES</option>
@@ -1057,7 +1068,7 @@ function Temporada() {
                   <option value="Falta recibida" style={{ background: '#111', color: '#fff' }}>FALTAS RECIBIDAS</option>
                 </select>
 
-                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
                   <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
@@ -1065,7 +1076,7 @@ function Temporada() {
               </div>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100% - 90px)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: esMovil ? 'auto' : 'calc(100% - 90px)' }}>
               <div className="pitch-container" style={{ width: '100%', maxWidth: '100%', aspectRatio: '2/1', overflow: 'hidden', position: 'relative' }}>
                 <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', backgroundColor: 'var(--border)', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 0 }}></div>
                 <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '1px solid var(--border)', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>

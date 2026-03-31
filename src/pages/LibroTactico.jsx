@@ -176,7 +176,6 @@ export default function LibroTactico() {
   const { showToast } = useToast();
   const { perfil } = useAuth();
   
-  // FIX: Validación a prueba de balas para que no rompa si el kiosco no carga el perfil bien
   const rolUsuario = perfil?.rol ? String(perfil.rol).toLowerCase() : '';
   const esStaff = ['superuser', 'admin', 'ct'].includes(rolUsuario);
 
@@ -187,7 +186,6 @@ export default function LibroTactico() {
   const cargarLibroTactico = async () => {
     setCargando(true);
     try {
-      // FIX: Fallback a perfil?.club_id por si el kiosco no lo guardó en el localStorage
       const club_id = localStorage.getItem('club_id') || perfil?.club_id || 'club_default';
       
       const { data, error } = await supabase
@@ -222,7 +220,7 @@ export default function LibroTactico() {
   const jugadasVisibles = tacticas.filter(t => t.fase_juego === tabActivo);
 
   return (
-    <div className="fade-in" style={{ paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="fade-in" style={{ padding: '20px', paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box' }}>
       
       {/* BOTÓN VOLVER ATRÁS */}
       <button 
@@ -262,8 +260,8 @@ export default function LibroTactico() {
         </div>
       </div>
 
-      {/* PESTAÑAS DE NAVEGACIÓN TÁCTICA */}
-      <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', marginBottom: '30px', paddingBottom: '10px' }}>
+      {/* PESTAÑAS DE NAVEGACIÓN TÁCTICA MEJORADAS (CHIPS ENVOLVENTES) */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '30px', justifyContent: 'flex-start' }}>
         {SITUACIONES.map(sit => {
           const count = tacticas.filter(t => t.fase_juego === sit).length;
           const activo = tabActivo === sit;
@@ -272,15 +270,23 @@ export default function LibroTactico() {
               key={sit} 
               onClick={() => setTabActivo(sit)}
               style={{
-                padding: '12px 20px', whiteSpace: 'nowrap', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', transition: '0.2s',
+                padding: '8px 14px', // Padding más compacto
+                borderRadius: '20px', // Estilo píldora
+                cursor: 'pointer', 
+                fontWeight: 'bold', 
+                fontSize: '0.8rem', 
+                transition: '0.2s',
                 background: activo ? '#3b82f6' : '#111', 
                 color: activo ? '#fff' : 'var(--text-dim)',
                 border: activo ? '1px solid #60a5fa' : '1px solid #333',
-                display: 'flex', alignItems: 'center', gap: '8px'
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                flexGrow: 0 // Evita que se estiren de más
               }}
             >
               {sit}
-              <span style={{ background: activo ? 'rgba(0,0,0,0.3)' : '#222', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem' }}>{count}</span>
+              <span style={{ background: activo ? 'rgba(0,0,0,0.3)' : '#222', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem' }}>{count}</span>
             </button>
           );
         })}
@@ -295,7 +301,7 @@ export default function LibroTactico() {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Las jugadas guardadas en la categoría "Libro Táctico" aparecerán aquí.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
           {jugadasVisibles.map(jugada => (
             <div 
               key={jugada.id}
@@ -326,26 +332,28 @@ export default function LibroTactico() {
         </div>
       )}
 
-      {/* MODAL DETALLE DE LA JUGADA (PLAYBOOK) */}
+      {/* MODAL DETALLE DE LA JUGADA (PLAYBOOK) MEJORADO PARA MÓVILES */}
       {jugadaSeleccionada && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px', boxSizing: 'border-box' }}>
           <div className="bento-card" style={{ background: '#0a0a0a', width: '100%', maxWidth: '900px', border: '2px solid #3b82f6', padding: '0', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             
-            <div style={{ padding: '20px', background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
+            <div style={{ padding: '20px', background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, paddingRight: '15px' }}>
                 <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#fff', background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
                   {jugadaSeleccionada.fase_juego}
                 </span>
-                <h2 style={{ margin: '10px 0 0 0', color: '#fff', fontSize: '1.8rem', textTransform: 'uppercase', fontWeight: '900' }}>
+                <h2 style={{ margin: '10px 0 5px 0', color: '#fff', fontSize: '1.5rem', textTransform: 'uppercase', fontWeight: '900', wordBreak: 'break-word' }}>
                   {jugadaSeleccionada.titulo}
                 </h2>
                 <span style={{ color: '#93c5fd', fontSize: '0.9rem', fontWeight: 'bold' }}>{jugadaSeleccionada.objetivo_principal}</span>
               </div>
-              <button onClick={() => setJugadaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
+              <button onClick={() => setJugadaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', width: '36px', height: '36px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', padding: '20px', gap: '20px' }}>
-              <div style={{ flex: '1 1 500px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', padding: '15px', gap: '20px' }}>
+              
+              {/* CANVAS ADAPTATIVO AL 100% EN MÓVILES */}
+              <div style={{ flex: '1 1 100%', minWidth: '0' }}>
                 <div style={{ background: '#000', borderRadius: '8px', border: '1px solid #333', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   {jugadaSeleccionada.editor_data?.frames?.length > 1 ? (
                     <ReproductorLoop editorData={jugadaSeleccionada.editor_data} />
@@ -357,7 +365,8 @@ export default function LibroTactico() {
                 </div>
               </div>
 
-              <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {/* TEXTO Y BOTONES ADAPTATIVOS */}
+              <div style={{ flex: '1 1 100%', minWidth: '250px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div>
                   <h4 style={{ margin: '0 0 10px 0', color: '#3b82f6', textTransform: 'uppercase', fontSize: '0.85rem' }}>Desarrollo / Movimientos:</h4>
                   <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222', color: '#ccc', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '250px', overflowY: 'auto' }}>
@@ -372,11 +381,11 @@ export default function LibroTactico() {
                 )}
 
                 {esStaff && (
-                  <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
-                    <button onClick={() => eliminarJugada(jugadaSeleccionada.id)} style={{ flex: 1, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  <div style={{ marginTop: 'auto', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button onClick={() => eliminarJugada(jugadaSeleccionada.id)} style={{ flex: '1 1 100px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                       ELIMINAR
                     </button>
-                    <button onClick={() => navigate('/creador-tareas', { state: { editando: jugadaSeleccionada } })} style={{ flex: 2, background: '#3b82f6', border: 'none', color: '#fff', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                    <button onClick={() => navigate('/creador-tareas', { state: { editando: jugadaSeleccionada } })} style={{ flex: '2 1 150px', background: '#3b82f6', border: 'none', color: '#fff', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                       EDITAR TÁCTICA
                     </button>
                   </div>

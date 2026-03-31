@@ -236,7 +236,7 @@ function Resumen() {
     
     const perfilRemate = { centro: 0, banda: 0, cerca: 0, lejos: 0 };
 
-const origenGoles = {
+    const origenGoles = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0,
       '5v4 / 4v3': 0, '4v5 / 3v4': 0, 
@@ -695,7 +695,7 @@ const origenGoles = {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
           {partidosGrid.map(p => (
             <div key={p.id} className="bento-card match-card" onClick={() => cargarPartido(p.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
@@ -744,6 +744,10 @@ const COLORS_ORIGEN = {
         .mci-bar { height: 6px; border-radius: 3px; background: #333; overflow: hidden; margin-top: 8px; display: flex; }
         .bento-card { overflow: visible !important; }
         .table-wrapper { overflow-x: auto; overflow-y: visible; padding-bottom: 20px; -webkit-overflow-scrolling: touch; }
+        .table-wrapper::-webkit-scrollbar { height: 6px; }
+        .table-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb:hover { background: var(--accent); }
         .pill-filtro { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: #000; color: var(--text-dim); transition: 0.2s; }
         .pill-filtro.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.1); }
       `}</style>
@@ -774,26 +778,40 @@ const COLORS_ORIGEN = {
         <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           <div className="bento-card">
-            <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', textAlign: 'center', marginBottom: '20px', gap: esMovil ? '20px' : '0' }}>
-              <div style={{ order: esMovil ? 2 : 1, width: esMovil ? '45%' : 'auto', display: esMovil ? 'inline-block' : 'block' }}>
-                {partidoSeleccionado.escudo_propio ? <img src={partidoSeleccionado.escudo_propio} alt="club" style={escudoStyle} /> : <div style={escudoFallback}>MI</div>}
-                <div className="stat-label">{partidoSeleccionado.nombre_propio || 'MI EQUIPO'}</div>
+            {/* SCOREBOARD MÓVIL OPTIMIZADO */}
+            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', textAlign: 'center', marginBottom: '20px' }}>
+              
+              {/* Equipo Local */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                {partidoSeleccionado.escudo_propio ? <img src={partidoSeleccionado.escudo_propio} alt="club" style={{ height: esMovil ? '40px' : '60px', objectFit: 'contain' }} /> : <div style={{...escudoFallback, width: esMovil ? '40px' : '60px', height: esMovil ? '40px' : '60px', fontSize: esMovil ? '1rem' : '1.5rem', marginBottom: 0}}>MI</div>}
+                <div className="stat-label" style={{ fontSize: esMovil ? '0.65rem' : '0.8rem', lineHeight: 1.2 }}>{partidoSeleccionado.nombre_propio || miClubGlobal}</div>
               </div>
-              <div style={{ order: esMovil ? 1 : 2, padding: esMovil ? '0' : '0 40px', width: esMovil ? '100%' : 'auto' }}>
-                <div style={{ fontSize: esMovil ? '2.5rem' : '3.5rem', fontWeight: 800, color: '#fff', lineHeight: 1.1 }}>{analitica.stats.propio.goles} - {analitica.stats.rival.goles}</div>
-                <div className="stat-label" style={{ color: 'var(--accent)' }}>{filtroPeriodo === 'Todos' ? 'RESULTADO FINAL' : `RESULTADO ${filtroPeriodo}`}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '5px' }}>{partidoSeleccionado.categoria} | {partidoSeleccionado.fecha}</div>
+              
+              {/* Marcador Central */}
+              <div style={{ flex: 1.5, padding: '0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontSize: esMovil ? '2rem' : '3.5rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
+                  {analitica.stats.propio.goles} - {analitica.stats.rival.goles}
+                </div>
+                <div className="stat-label" style={{ color: 'var(--accent)', marginTop: '5px', fontSize: esMovil ? '0.6rem' : '0.75rem' }}>
+                  {filtroPeriodo === 'Todos' ? 'RESULTADO FINAL' : `RESULTADO ${filtroPeriodo}`}
+                </div>
+                <div style={{ fontSize: esMovil ? '0.6rem' : '0.8rem', color: 'var(--text-dim)', marginTop: '3px' }}>
+                  {partidoSeleccionado.categoria} | {partidoSeleccionado.fecha}
+                </div>
               </div>
-              <div style={{ order: esMovil ? 3 : 3, width: esMovil ? '45%' : 'auto', display: esMovil ? 'inline-block' : 'block' }}>
-                {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={escudoStyle} /> : <div style={{...escudoFallback, borderColor: '#555', color: '#fff'}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
-                <div className="stat-label">{partidoSeleccionado.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</div>
+
+              {/* Equipo Rival */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={{ height: esMovil ? '40px' : '60px', objectFit: 'contain' }} /> : <div style={{...escudoFallback, borderColor: '#555', color: '#fff', width: esMovil ? '40px' : '60px', height: esMovil ? '40px' : '60px', fontSize: esMovil ? '1rem' : '1.5rem', marginBottom: 0}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
+                <div className="stat-label" style={{ fontSize: esMovil ? '0.65rem' : '0.8rem', lineHeight: 1.2 }}>{partidoSeleccionado.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</div>
               </div>
+              
             </div>
 
             <div style={{ background: '#000', padding: '15px', borderRadius: '6px', border: '1px solid #333' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="stat-label" style={{ color: 'var(--accent)' }}>INDICE DE CONTROL <InfoBox texto="Fórmula: 40% Dominio xG + 30% Dominio Territorial + 30% Duelos Ganados." /></span>
-                <span style={{ fontWeight: 900, color: '#fff' }}>{analitica.matchControl}% NOSOTROS</span>
+                <span style={{ fontWeight: 900, color: '#fff', fontSize: esMovil ? '0.8rem' : '1rem' }}>{analitica.matchControl}% NOSOTROS</span>
               </div>
               <div className="mci-bar">
                 <div style={{ width: `${analitica.matchControl}%`, background: 'var(--accent)', transition: '1s' }}></div>
@@ -802,7 +820,7 @@ const COLORS_ORIGEN = {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label">CALIDAD DE POSESIÓN <InfoBox texto="Mide la eficacia de los ataques." /></div>
                 <div className="stat-value" style={{ color: analitica.goalRate > 5 ? '#00ff88' : 'var(--text)' }}>
@@ -834,7 +852,7 @@ const COLORS_ORIGEN = {
                   </span>
                 )}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '20px' }}>
                 
                 <div style={{ background: '#000', padding: '15px', borderRadius: '6px', border: '1px solid #222' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '10px', textAlign: 'center', fontWeight: 'bold' }}>
@@ -866,7 +884,7 @@ const COLORS_ORIGEN = {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 230px), 1fr))', gap: '20px' }}>
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
                 ADN DE GOLES <InfoBox texto="El contexto táctico desde el cual marcamos." />
@@ -1105,7 +1123,7 @@ const COLORS_ORIGEN = {
                {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
             </div>
             <div className="table-wrapper custom-scroll">
-              <table style={{ minWidth: '600px' }}>
+              <table style={{ minWidth: '600px', width: '100%', textAlign: 'center' }}>
                 <thead>
                   <tr>
                     <th>#</th>
@@ -1250,7 +1268,7 @@ const COLORS_ORIGEN = {
                {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
             </div>
             <div className="table-wrapper custom-scroll">
-              <table style={{ minWidth: '500px' }}>
+              <table style={{ minWidth: '500px', width: '100%', textAlign: 'center' }}>
                 <thead>
                   <tr>
                     <th>MIN</th>
@@ -1411,8 +1429,7 @@ const COLORS_ORIGEN = {
   );
 }
 
-const escudoStyle = { height: '60px', marginBottom: '10px', objectFit: 'contain' };
-const escudoFallback = { width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.5rem', marginBottom: '10px', margin: '0 auto' };
+const escudoFallback = { borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, margin: '0 auto' };
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontSize: '0.9rem', alignItems: 'center' };
 const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };

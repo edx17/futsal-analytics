@@ -12,6 +12,10 @@ const CreadorTareas = () => {
   const tareaAEditar = location.state?.editando;
   const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null);
 
+  // --- RESPONSIVE STATE ---
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+  const [panelMovil, setPanelMovil] = useState(null); // 'elementos', 'trazos', 'animacion', 'config'
+
   const [frames, setFrames] = useState([
     { id: 'frame-0', elementos: [], lineas: [] }
   ]);
@@ -43,11 +47,12 @@ const CreadorTareas = () => {
   });
 
   const stageRef = useRef(null);
+  const mainGroupRef = useRef(null); // NUEVA REF: Para manejar la rotación lógica
   const trRef = useRef(null);
   const isDrawing = useRef(false);
 
   const containerRef = useRef(null);
-  const [stageSize, setStageSize] = useState({ containerW: 900, containerH: 500, scale: 1 });
+  const [stageSize, setStageSize] = useState({ containerW: 900, containerH: 500, scale: 1, rotation: 0 });
 
   const getDimensionesLógicas = () => {
     switch (canchaConfig.tamaño) {
@@ -61,17 +66,38 @@ const CreadorTareas = () => {
 
   useEffect(() => {
     const handleResize = () => {
+      const anchoVentana = window.innerWidth;
+      const esCelular = anchoVentana <= 768;
+      setEsMovil(esCelular);
+      
       if (containerRef.current) {
         const containerW = containerRef.current.clientWidth;
         const containerH = containerRef.current.clientHeight;
-        const scale = Math.min(containerW / logicalSize.w, containerH / logicalSize.h) * 0.95;
-        setStageSize({ containerW, containerH, scale });
+        const logW = logicalSize.w;
+        const logH = logicalSize.h;
+        
+        let scale;
+        let rotation = 0;
+
+        // Si es móvil y la pantalla está en vertical (Portrait), rotamos la cancha 90°
+        if (esCelular && containerH > containerW) {
+          rotation = 90;
+          // Al rotar, cruzamos las dimensiones para calcular la escala correcta
+          scale = Math.min(containerW / logH, containerH / logW) * 0.95;
+        } else {
+          rotation = 0;
+          scale = Math.min(containerW / logW, containerH / logH) * 0.95;
+        }
+
+        setStageSize({ containerW, containerH, scale, rotation });
       }
     };
+    
     handleResize();
     window.addEventListener('resize', handleResize);
+    setTimeout(handleResize, 150);
     return () => window.removeEventListener('resize', handleResize);
-  }, [canchaConfig.tamaño, logicalSize.w, logicalSize.h]);
+  }, [canchaConfig.tamaño, logicalSize.w, logicalSize.h, panelMovil]);
 
   useEffect(() => {
     if (tareaAEditar) {
@@ -111,6 +137,7 @@ const CreadorTareas = () => {
     setIsPlaying(true);
     setSelectedId(null);
     setModoAccion('mover');
+    if(esMovil) setPanelMovil(null);
 
     const DURATION = 800; 
     const PAUSE = 400; 
@@ -151,20 +178,15 @@ const CreadorTareas = () => {
           });
 
           const nuevosElements = (frameB.elementos || []).filter(b => !(frameA.elementos || []).find(a => a.id === b.id));
-
           setAnimElements([...interpolatedElements, ...(progress > 0.8 ? nuevosElements : [])]);
 
-          if (progress < 1) {
-            requestAnimationFrame(animate); 
-          } else {
-            resolve(); 
-          }
+          if (progress < 1) requestAnimationFrame(animate); 
+          else resolve(); 
         };
         requestAnimationFrame(animate); 
       });
 
       if (!isPlayingRef.current) break;
-      
       setCurrentFrameIdx(i + 1);
       setLineas(frameB.lineas || []);
       setAnimElements(frameB.elementos || []);
@@ -183,7 +205,6 @@ const CreadorTareas = () => {
     const newFrames = [...frames];
     newFrames[currentFrameIdx] = { ...newFrames[currentFrameIdx], elementos, lineas };
     setFrames(newFrames);
-
     setElementos(newFrames[newIdx].elementos || []);
     setLineas(newFrames[newIdx].lineas || []);
     setCurrentFrameIdx(newIdx);
@@ -195,10 +216,8 @@ const CreadorTareas = () => {
     const newFramesArray = [...frames];
     newFramesArray[currentFrameIdx] = { ...newFramesArray[currentFrameIdx], elementos, lineas };
     newFramesArray.push({ id: `frame-${Date.now()}`, elementos: [], lineas: [] });
-    
     setFrames(newFramesArray);
-    setElementos([]);
-    setLineas([]);
+    setElementos([]); setLineas([]);
     setCurrentFrameIdx(newFramesArray.length - 1);
   };
 
@@ -206,13 +225,7 @@ const CreadorTareas = () => {
     if (isPlaying) return;
     const newFramesArray = [...frames];
     newFramesArray[currentFrameIdx] = { ...newFramesArray[currentFrameIdx], elementos, lineas };
-    
-    const newFrame = { 
-      id: `frame-${Date.now()}`, 
-      elementos: JSON.parse(JSON.stringify(elementos)), 
-      lineas: JSON.parse(JSON.stringify(lineas)) 
-    };
-    
+    const newFrame = { id: `frame-${Date.now()}`, elementos: JSON.parse(JSON.stringify(elementos)), lineas: JSON.parse(JSON.stringify(lineas)) };
     newFramesArray.splice(currentFrameIdx + 1, 0, newFrame);
     setFrames(newFramesArray);
     setCurrentFrameIdx(currentFrameIdx + 1);
@@ -222,10 +235,8 @@ const CreadorTareas = () => {
     if (isPlaying) return;
     if (frames.length <= 1) return showToast("No podés borrar el único fotograma.", "warning");
     if (!window.confirm("¿Seguro que querés borrar este fotograma?")) return;
-
     const newFrames = frames.filter((_, index) => index !== idx);
     setFrames(newFrames);
-    
     const newIdx = currentFrameIdx >= newFrames.length ? newFrames.length - 1 : currentFrameIdx;
     setElementos(newFrames[newIdx].elementos || []);
     setLineas(newFrames[newIdx].lineas || []);
@@ -260,30 +271,20 @@ const CreadorTareas = () => {
     }
   }, [selectedId, elementos, lineas]);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (isPlaying) return;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !mostrarModal) {
-        setElementos(prev => prev.filter(el => el.id !== selectedId));
-        setLineas(prev => prev.filter(li => li.id !== selectedId));
-        setSelectedId(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, mostrarModal, isPlaying]);
-
   const deshacerUltimoTrazo = () => { if (!isPlaying && lineas.length > 0) setLineas(prev => prev.slice(0, -1)); };
 
   const getLogicalPointerPos = () => {
     const stage = stageRef.current;
     const pointerPos = stage.getPointerPosition();
-    const transform = stage.getAbsoluteTransform().copy();
+    if (!mainGroupRef.current) return pointerPos;
+    const transform = mainGroupRef.current.getAbsoluteTransform().copy();
     transform.invert(); 
     return transform.point(pointerPos);
   };
 
   const handleStageMouseDown = (e) => {
+    if (esMovil && panelMovil) setPanelMovil(null);
+
     if (isPlaying) return; 
     if (e.target.getParent()?.className === 'Transformer') return;
     const isBackground = e.target.name() === 'fondo_cancha' || e.target === e.target.getStage();
@@ -317,11 +318,9 @@ const CreadorTareas = () => {
       const nuevasLineas = [...prev];
       const ultima = { ...nuevasLineas[nuevasLineas.length - 1] };
       
-      if (modoAccion === 'dibujar_conduccion') {
-        ultima.puntos = [...ultima.puntos, pos.x, pos.y];
-      } else {
-        ultima.puntos = [ultima.puntos[0], ultima.puntos[1], pos.x, pos.y]; 
-      }
+      if (modoAccion === 'dibujar_conduccion') ultima.puntos = [...ultima.puntos, pos.x, pos.y];
+      else ultima.puntos = [ultima.puntos[0], ultima.puntos[1], pos.x, pos.y]; 
+      
       nuevasLineas[nuevasLineas.length - 1] = ultima;
       return nuevasLineas;
     });
@@ -396,34 +395,23 @@ const CreadorTareas = () => {
   const confirmarGuardado = async () => {
     if (!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea arriba a la izquierda.", "warning");
     setSelectedId(null); 
-    
     const prevFrame = currentFrameIdx;
     cambiarFrame(0); 
 
     setTimeout(async () => {
       try {
         const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
-        
         const finalFrames = [...frames];
         finalFrames[currentFrameIdx] = { ...finalFrames[currentFrameIdx], elementos, lineas };
-        
         const dataVectores = { frames: finalFrames, cancha: canchaConfig };
         const club_id = localStorage.getItem('club_id') || 'club_default';
 
         const payload = {
-          club_id: club_id, 
-          titulo: nombreTarea, 
-          espacio: canchaConfig.tamaño,
-          url_grafico: dataURL, 
-          editor_data: dataVectores,
-          categoria_ejercicio: fichaTecnica.categoria_ejercicio, 
-          fase_juego: fichaTecnica.fase_juego, 
-          duracion_estimada: parseInt(fichaTecnica.duracion_estimada) || 0, 
-          intensidad_rpe: parseInt(fichaTecnica.intensidad_rpe) || 0,
-          jugadores_involucrados: fichaTecnica.jugadores_involucrados, 
-          objetivo_principal: fichaTecnica.objetivo_principal, 
-          descripcion: fichaTecnica.descripcion, 
-          video_url: fichaTecnica.video_url,
+          club_id: club_id, titulo: nombreTarea, espacio: canchaConfig.tamaño, url_grafico: dataURL, 
+          editor_data: dataVectores, categoria_ejercicio: fichaTecnica.categoria_ejercicio, 
+          fase_juego: fichaTecnica.fase_juego, duracion_estimada: parseInt(fichaTecnica.duracion_estimada) || 0, 
+          intensidad_rpe: parseInt(fichaTecnica.intensidad_rpe) || 0, jugadores_involucrados: fichaTecnica.jugadores_involucrados, 
+          objetivo_principal: fichaTecnica.objetivo_principal, descripcion: fichaTecnica.descripcion, video_url: fichaTecnica.video_url,
         };
 
         if (tareaIdEditando) {
@@ -450,189 +438,294 @@ const CreadorTareas = () => {
 
   const elementosARenderizar = isPlaying && animElements ? animElements : elementos;
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', gap: '15px', color: 'white', padding: '15px', background: '#0a0a0a' }}>
+  // Renderizadores de Paneles Móviles (Bottom Sheets)
+  const renderMobileElementosPanel = () => (
+    <div style={mobileOverlayPanel}>
+      <span style={{...labelStyle, marginBottom: '10px'}}>JUGADORES Y STAFF</span>
+      <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '10px', scrollSnapType: 'x mandatory' }}>
+        {herramientas.filter(h => h.tipo === 'jugador' || h.tipo === 'arquero' || h.tipo === 'staff').map(h => (
+          <div key={h.id} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, flexShrink: 0, scrollSnapAlign: 'start', border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
+        ))}
+      </div>
+      <span style={{...labelStyle, marginBottom: '10px', marginTop: '10px'}}>MATERIALES</span>
+      <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '10px', scrollSnapType: 'x mandatory' }}>
+        {herramientas.filter(h => h.tipo !== 'jugador' && h.tipo !== 'arquero' && h.tipo !== 'staff').map(h => (
+          <div key={h.id} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, flexShrink: 0, scrollSnapAlign: 'start', border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderMobileTrazosPanel = () => (
+    <div style={mobileOverlayPanel}>
       
-      {/* HEADER TÁCTICO */}
-      <div className="bento-card" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', background: '#111', borderBottom: tareaIdEditando ? '2px solid #3b82f6' : '2px solid #333', padding: '10px 15px' }}>
-        {tareaIdEditando && (<div style={{ background: '#3b82f6', color: '#fff', padding: '5px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>MODO EDICIÓN</div>)}
-        <input placeholder="Titulo de Tarea..." value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} disabled={isPlaying} style={inputStyle} />
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <span style={headerLabelStyle}>Dimensión:</span>
-          <select value={canchaConfig.tamaño} onChange={(e) => setCanchaConfig({...canchaConfig, tamaño: e.target.value})} disabled={isPlaying} style={selectStyle}>
-            <option value="40x20">40x20</option><option value="28x20">28x20</option><option value="20x20_mitad">20x20 Finalización</option><option value="20x20_central">20x20 Media Pista</option>
-          </select>
+      {/* Fila 1: Herramienta (Pase vs Conducción) ocupando el 100% */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+        <button onClick={() => setModoAccion('dibujar_pase')} style={{...btnAccionModal, flex: 1, background: modoAccion === 'dibujar_pase' ? 'var(--accent)' : '#222', color: modoAccion === 'dibujar_pase' ? '#000' : '#fff'}}>↗️ Pase / Recta</button>
+        <button onClick={() => setModoAccion('dibujar_conduccion')} style={{...btnAccionModal, flex: 1, background: modoAccion === 'dibujar_conduccion' ? 'var(--accent)' : '#222', color: modoAccion === 'dibujar_conduccion' ? '#000' : '#fff'}}>〰️ Conducción</button>
+      </div>
+      
+      {/* Fila 2: Color y Estilo de Línea (Continua vs Punteada) */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={headerLabelStyle}>Color:</span>
-          <select value={canchaConfig.color} onChange={(e) => setCanchaConfig({...canchaConfig, color: e.target.value})} disabled={isPlaying} style={selectStyle}>
-            <option value="#064e3b">Verde</option><option value="#1e3a8a">Azul</option><option value="#b45309">Naranja</option><option value="#334155">Gris</option>
-          </select>
+          <input type="color" value={dibujoConfig.color} onChange={e => setDibujoConfig({...dibujoConfig, color: e.target.value})} style={{...colorInputStyle, border: `2px solid ${dibujoConfig.color}`}} />
         </div>
-        
-        <div style={{ flex: 1 }}></div>
-        
-        <div style={{ display: 'flex', background: '#000', padding: '4px', borderRadius: '8px', gap: '4px', border: '1px solid #222', opacity: isPlaying ? 0.3 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
-          <button onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(null); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'mover' && !herramientaSeleccionada ? 'var(--accent)' : 'transparent', color: modoAccion === 'mover' && !herramientaSeleccionada ? '#000' : '#fff'}} title="Mover / Rotar / Borrar">🖐️</button>
-          <button onClick={() => {setModoAccion('dibujar_pase'); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'dibujar_pase' ? 'var(--accent)' : 'transparent', color: modoAccion === 'dibujar_pase' ? '#000' : '#fff'}} title="Trazar Pase">↗️</button>
-          <button onClick={() => {setModoAccion('dibujar_conduccion'); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'dibujar_conduccion' ? 'var(--accent)' : 'transparent', color: modoAccion === 'dibujar_conduccion' ? '#000' : '#facc15'}} title="Trazar Conducción">〰️</button>
-          <div style={{ width: '1px', background: '#333', margin: '0 5px' }}></div>
-          <button onClick={deshacerUltimoTrazo} style={{...modeBtn, color: lineas.length > 0 ? '#fff' : '#555'}} disabled={lineas.length === 0} title="Deshacer último trazo">↩️</button>
+        <div style={{ display: 'flex', gap: '5px', background: '#222', padding: '4px', borderRadius: '8px' }}>
+          <button onClick={() => setDibujoConfig({...dibujoConfig, tipoTrazo: 'continua'})} style={{...toggleBtnStyle, background: dibujoConfig.tipoTrazo === 'continua' ? '#444' : 'transparent'}}>➖ Continua</button>
+          <button onClick={() => setDibujoConfig({...dibujoConfig, tipoTrazo: 'punteada'})} style={{...toggleBtnStyle, background: dibujoConfig.tipoTrazo === 'punteada' ? '#444' : 'transparent'}}>╍ Punteada</button>
         </div>
+      </div>
+
+      {/* Fila 3: Punta de flecha / Tope */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={headerLabelStyle}>Tope:</span>
+        <div style={{ display: 'flex', gap: '5px', background: '#222', padding: '4px', borderRadius: '8px' }}>
+          <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'ninguno'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'ninguno' ? '#444' : 'transparent'}}>—</button>
+          <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'punto'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'punto' ? '#444' : 'transparent'}}>⚫</button>
+          <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'triangulo'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'triangulo' ? '#444' : 'transparent'}}>▶</button>
+          <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'transversal'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'transversal' ? '#444' : 'transparent'}}>T</button>
+        </div>
+      </div>
+
+    </div>
+  );
+
+  const renderMobileAnimacionPanel = () => (
+    <div style={mobileOverlayPanel}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', overflowX: 'auto' }}>
+        <button onClick={togglePlay} style={{...playBtnMobile, background: isPlaying ? '#ef4444' : 'var(--accent)' }}>{isPlaying ? '🛑' : '▶'}</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {frames.map((frame, index) => (
+            <button key={frame.id} onClick={() => cambiarFrame(index)} style={{ ...frameBtnMobile, background: currentFrameIdx === index ? 'var(--accent)' : '#222', color: currentFrameIdx === index ? '#000' : '#fff' }}>
+              {index + 1}
+            </button>
+          ))}
+        </div>
+        <button onClick={duplicarFrameActual} style={{...frameBtnMobile, background: '#2563eb', border: 'none', width: 'auto', padding: '0 15px'}} title="Continuar Jugada">⏭️ Siguiente</button>
+        <button onClick={agregarFrameVacio} style={{...frameBtnMobile, background: '#333', border: 'none', width: 'auto', padding: '0 15px'}} title="Nuevo">➕ Vacío</button>
+      </div>
+    </div>
+  );
+
+const renderMobileConfigPanel = () => (
+    <div style={mobileOverlayPanel}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <label style={headerLabelStyle}>Dimensión de la Cancha:</label>
+        <select value={canchaConfig.tamaño} onChange={(e) => setCanchaConfig({...canchaConfig, tamaño: e.target.value})} style={selectStyle}>
+          <option value="40x20">40x20</option><option value="28x20">28x20</option><option value="20x20_mitad">Media Cancha</option><option value="20x20_central">Zona Central</option>
+        </select>
+
+        <label style={{ ...headerLabelStyle, marginTop: '10px' }}>Color del Suelo:</label>
+        <select value={canchaConfig.color} onChange={(e) => setCanchaConfig({...canchaConfig, color: e.target.value})} style={selectStyle}>
+          <option value="#064e3b">Verde</option><option value="#1e3a8a">Azul</option><option value="#b45309">Naranja</option><option value="#334155">Gris</option>
+        </select>
+      </div>
+    </div>
+  );
+
+  return (
+    // MaxHeight 100dvh + overflow hidden aseguran el comportamiento estilo APP nativa
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxHeight: '100dvh', background: '#0a0a0a', overflow: 'hidden', padding: 0, margin: 0, boxSizing: 'border-box' }}>
+      
+      {/* HEADER TÁCTICO (DIFERENTE EN MÓVIL Y PC) */}
+      {!esMovil ? (
+        <div className="bento-card" style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#111', borderBottom: tareaIdEditando ? '2px solid #3b82f6' : '2px solid #333', padding: '10px 15px', margin: '15px 15px 0 15px', flexShrink: 0 }}>
+          {tareaIdEditando && (<div style={{ background: '#3b82f6', color: '#fff', padding: '5px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>MODO EDICIÓN</div>)}
+          <input placeholder="Titulo de Tarea..." value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} disabled={isPlaying} style={inputStyle} />
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={headerLabelStyle}>Dimensión:</span>
+            <select value={canchaConfig.tamaño} onChange={(e) => setCanchaConfig({...canchaConfig, tamaño: e.target.value})} disabled={isPlaying} style={selectStyle}>
+              <option value="40x20">40x20</option><option value="28x20">28x20</option><option value="20x20_mitad">20x20 Finalización</option><option value="20x20_central">20x20 Media Pista</option>
+            </select>
+            <span style={headerLabelStyle}>Color:</span>
+            <select value={canchaConfig.color} onChange={(e) => setCanchaConfig({...canchaConfig, color: e.target.value})} disabled={isPlaying} style={selectStyle}>
+              <option value="#064e3b">Verde</option><option value="#1e3a8a">Azul</option><option value="#b45309">Naranja</option><option value="#334155">Gris</option>
+            </select>
+          </div>
+          
+          <div style={{ flex: 1 }}></div>
+          
+          <div style={{ display: 'flex', background: '#000', padding: '4px', borderRadius: '8px', gap: '4px', border: '1px solid #222' }}>
+            <button onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(null); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'mover' && !herramientaSeleccionada ? 'var(--accent)' : 'transparent', color: modoAccion === 'mover' && !herramientaSeleccionada ? '#000' : '#fff'}} title="Mover / Rotar / Borrar">🖐️</button>
+            <button onClick={() => {setModoAccion('dibujar_pase'); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'dibujar_pase' ? 'var(--accent)' : 'transparent', color: modoAccion === 'dibujar_pase' ? '#000' : '#fff'}} title="Trazar Pase">↗️</button>
+            <button onClick={() => {setModoAccion('dibujar_conduccion'); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'dibujar_conduccion' ? 'var(--accent)' : 'transparent', color: modoAccion === 'dibujar_conduccion' ? '#000' : '#facc15'}} title="Trazar Conducción">〰️</button>
+            <div style={{ width: '1px', background: '#333', margin: '0 5px' }}></div>
+            <button onClick={deshacerUltimoTrazo} style={{...modeBtn, color: lineas.length > 0 ? '#fff' : '#555'}} disabled={lineas.length === 0} title="Deshacer último trazo">↩️</button>
+          </div>
+          
+          {(modoAccion === 'dibujar_pase' || modoAccion === 'dibujar_conduccion') && (
+            <div className="bento-card" style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#1a1a1a', border: '1px solid var(--accent)', padding: '5px 10px', borderRadius: '8px', animation: 'fadeIn 0.2s' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold' }}>TRAZO:</span>
+              <input type="color" value={dibujoConfig.color} onChange={e => setDibujoConfig({...dibujoConfig, color: e.target.value})} style={{...colorInputStyle, border: `2px solid ${dibujoConfig.color}`}} title="Color" />
+              <select value={dibujoConfig.tipoTrazo} onChange={e => setDibujoConfig({...dibujoConfig, tipoTrazo: e.target.value})} style={miniSelectStyle}><option value="continua">Continua</option><option value="punteada">Punteada</option></select>
+              <input type="number" min="1" max="10" value={dibujoConfig.grosor} onChange={e => setDibujoConfig({...dibujoConfig, grosor: parseInt(e.target.value)})} style={miniInputStyle} title="Grosor (px)" />
+              <input type="number" min="0.1" max="1.0" step="0.1" value={dibujoConfig.transparencia} onChange={e => setDibujoConfig({...dibujoConfig, transparencia: parseFloat(e.target.value)})} style={miniInputStyle} title="Opacidad" />
+              <select value={dibujoConfig.topeFinal} onChange={e => setDibujoConfig({...dibujoConfig, topeFinal: e.target.value})} style={miniSelectStyle}><option value="ninguno">Ninguno</option><option value="punto">Punto</option><option value="triangulo">Triángulo</option><option value="transversal">T. Transversal</option></select>
+            </div>
+          )}
+
+          <div style={{ flex: 1, minWidth: '20px' }}></div>
+          <button onClick={() => { if(!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea.", "warning"); setMostrarModal(true); }} className="btn-action" style={{ background: tareaIdEditando ? '#3b82f6' : 'var(--accent)', color: tareaIdEditando ? '#fff' : '#000', padding: '8px 15px' }}>
+            {tareaIdEditando ? '💾 ACTUALIZAR' : '💾 GUARDAR'}
+          </button>
+        </div>
+      ) : (
+        /* HEADER APP MÓVIL */
+        <div style={{ display: 'flex', gap: '10px', padding: '10px 15px', background: '#111', borderBottom: '1px solid #333', alignItems: 'center', zIndex: 10, flexShrink: 0 }}>
+          <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem' }}>⬅</button>
+          <input placeholder="Título de la tarea..." value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} disabled={isPlaying} style={{...inputStyle, flex: 1, width: 'auto'}} />
+          <button onClick={() => setPanelMovil(p => p === 'config' ? null : 'config')} style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: panelMovil === 'config' ? 'var(--accent)' : '#fff' }}>⚙️</button>
+          <button onClick={() => { if(!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea.", "warning"); setMostrarModal(true); }} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem' }}>💾</button>
+        </div>
+      )}
+
+      {/* ÁREA CENTRAL: Flex=1 y minHeight=0 empuja el resto garantizando que no haya scroll overflow */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', padding: esMovil ? '0' : '0 15px', minHeight: 0 }}>
         
-        {(modoAccion === 'dibujar_pase' || modoAccion === 'dibujar_conduccion') && (
-          <div className="bento-card" style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#1a1a1a', border: '1px solid var(--accent)', padding: '5px 10px', borderRadius: '8px', animation: 'fadeIn 0.2s', opacity: isPlaying ? 0.3 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
-            <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold' }}>TRAZO:</span>
-            <input type="color" value={dibujoConfig.color} onChange={e => setDibujoConfig({...dibujoConfig, color: e.target.value})} style={{...colorInputStyle, border: `2px solid ${dibujoConfig.color}`}} title="Color" />
-            <select value={dibujoConfig.tipoTrazo} onChange={e => setDibujoConfig({...dibujoConfig, tipoTrazo: e.target.value})} style={miniSelectStyle} title="Tipo"><option value="continua">Continua</option><option value="punteada">Punteada</option></select>
-            <input type="number" min="1" max="10" value={dibujoConfig.grosor} onChange={e => setDibujoConfig({...dibujoConfig, grosor: parseInt(e.target.value)})} style={miniInputStyle} title="Grosor (px)" />
-            <input type="number" min="0.1" max="1.0" step="0.1" value={dibujoConfig.transparencia} onChange={e => setDibujoConfig({...dibujoConfig, transparencia: parseFloat(e.target.value)})} style={miniInputStyle} title="Opacidad" />
-            <select value={dibujoConfig.topeFinal} onChange={e => setDibujoConfig({...dibujoConfig, topeFinal: e.target.value})} style={miniSelectStyle} title="Final"><option value="ninguno">Ninguno</option><option value="punto">Punto</option><option value="triangulo">Triángulo</option><option value="transversal">T. Transversal</option></select>
+        {/* PALETA LATERAL (SOLO PC) */}
+        {!esMovil && (
+          <div className="bento-card custom-scroll" style={{ width: '220px', display: 'flex', flexDirection: 'column', gap: '20px', background: '#111', overflowY: 'auto', marginRight: '15px' }}>
+            <div>
+              <span style={labelStyle}>JUGADORES Y STAFF</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '10px' }}>
+                {herramientas.filter(h => h.tipo === 'jugador' || h.tipo === 'arquero' || h.tipo === 'staff').map(h => (
+                  <div key={h.id} title={h.label} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span style={labelStyle}>MATERIALES</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '10px' }}>
+                {herramientas.filter(h => h.tipo !== 'jugador' && h.tipo !== 'arquero' && h.tipo !== 'staff').map(h => (
+                  <div key={h.id} title={h.label} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
-        <div style={{ flex: 1, minWidth: '20px' }}></div>
-        <button onClick={() => {
-            if(!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea arriba a la izquierda.", "warning");
-            setMostrarModal(true);
-        }} disabled={isPlaying} className="btn-action" style={{ background: tareaIdEditando ? '#3b82f6' : 'var(--accent)', color: tareaIdEditando ? '#fff' : '#000', padding: '8px 15px', opacity: isPlaying ? 0.5 : 1 }}>{tareaIdEditando ? '💾 ACTUALIZAR' : '💾 GUARDAR'}</button>
-      </div>
-
-      {/* ÁREA CENTRAL */}
-      <div style={{ display: 'flex', flex: 1, gap: '15px', overflow: 'hidden' }}>
-        
-        {/* PALETA DE HERRAMIENTAS */}
-        <div className="bento-card" style={{ width: '220px', display: 'flex', flexDirection: 'column', gap: '20px', background: '#111', overflowY:'auto', opacity: isPlaying ? 0.3 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
-          <div>
-            <span style={labelStyle}>JUGADORES Y STAFF</span>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '10px' }}>
-              {herramientas.filter(h => h.tipo === 'jugador' || h.tipo === 'arquero' || h.tipo === 'staff').map(h => (
-                <div key={h.id} title={h.label} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <span style={labelStyle}>MATERIALES</span>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '10px' }}>
-              {herramientas.filter(h => h.tipo !== 'jugador' && h.tipo !== 'arquero' && h.tipo !== 'staff').map(h => (
-                <div key={h.id} title={h.label} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* CONTENEDOR DE PIZARRA Y TIMELINE */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
-          
-          {/* PIZARRA RESPONSIVA */}
-          <div ref={containerRef} style={{ flex: 1, background: '#000', borderRadius: '12px', overflow: 'hidden', border: '1px solid #222', position: 'relative' }}>
-            <Stage 
-              width={stageSize.containerW} 
-              height={stageSize.containerH}
-              scaleX={stageSize.scale}
-              scaleY={stageSize.scale}
-              x={(stageSize.containerW - logicalSize.w * stageSize.scale) / 2 || 0}
-              y={(stageSize.containerH - logicalSize.h * stageSize.scale) / 2 || 0}
-              ref={stageRef}
-              onMouseDown={handleStageMouseDown} onTouchStart={handleStageMouseDown}
-              onMouseMove={handleMouseMove} onTouchMove={handleMouseMove}
-              onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}
-            >
-              <Layer>
+        {/* CONTENEDOR DE LA PIZARRA */}
+        <div ref={containerRef} style={{ flex: 1, background: '#000', borderRadius: esMovil ? '0' : '12px', overflow: 'hidden', border: esMovil ? 'none' : '1px solid #222', position: 'relative', minHeight: 0 }}>
+          <Stage 
+            width={stageSize.containerW} 
+            height={stageSize.containerH}
+            ref={stageRef}
+            onMouseDown={handleStageMouseDown} onTouchStart={handleStageMouseDown}
+            onMouseMove={handleMouseMove} onTouchMove={handleMouseMove}
+            onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}
+          >
+            <Layer>
+              {/* LA MAGIA: Todo ocurre dentro de este grupo que centraliza, escala y rota */}
+              <Group
+                ref={mainGroupRef}
+                x={stageSize.containerW / 2}
+                y={stageSize.containerH / 2}
+                rotation={stageSize.rotation}
+                scaleX={stageSize.scale}
+                scaleY={stageSize.scale}
+                offsetX={logicalSize.w / 2}
+                offsetY={logicalSize.h / 2}
+              >
                 <DibujoCancha />
                 {lineas.map(li => <RenderLineaCustom key={li.id} li={li} />)}
                 
                 {elementosARenderizar.map(el => (
                   <Group 
-                    key={el.id} 
-                    id={el.id} 
-                    x={el.x} 
-                    y={el.y} 
-                    rotation={el.rotation} 
-                    scaleX={el.scaleX} 
-                    scaleY={el.scaleY} 
+                    key={el.id} id={el.id} x={el.x} y={el.y} rotation={el.rotation} scaleX={el.scaleX} scaleY={el.scaleY} 
                     draggable={modoAccion === 'mover' && !isPlaying} 
                     onClick={(e) => { e.cancelBubble = true; setSelectedId(el.id); }} 
                     onTap={(e) => { e.cancelBubble = true; setSelectedId(el.id); }} 
-                    onDragEnd={(e) => { 
-                      setElementos(elementos.map(item => item.id === el.id ? {...item, x: e.target.x(), y: e.target.y()} : item)); 
-                    }}
+                    onDragEnd={(e) => { setElementos(elementos.map(item => item.id === el.id ? {...item, x: e.target.x(), y: e.target.y()} : item)); }}
                     onTransformEnd={(e) => {
                       const node = e.target;
-                      setElementos(elementos.map(item => item.id === el.id ? {
-                        ...item, 
-                        x: node.x(), 
-                        y: node.y(), 
-                        rotation: node.rotation(), 
-                        scaleX: Math.max(0.1, node.scaleX()), 
-                        scaleY: Math.max(0.1, node.scaleY())
-                      } : item));
+                      setElementos(elementos.map(item => item.id === el.id ? { ...item, x: node.x(), y: node.y(), rotation: node.rotation(), scaleX: Math.max(0.1, node.scaleX()), scaleY: Math.max(0.1, node.scaleY()) } : item));
                     }}
                   >
                     <RenderElemento el={el} />
                   </Group>
                 ))}
-
                 {!isPlaying && <Transformer ref={trRef} boundBoxFunc={(oldBox, newBox) => Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5 ? oldBox : newBox} borderStroke="#00ff88" anchorStroke="#00ff88" anchorFill="#000" anchorSize={8} enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']} />}
-              </Layer>
-            </Stage>
-            {selectedId && !mostrarModal && !isPlaying && (
-              <div style={{ position:'absolute', bottom: 20, left: 20, background:'rgba(0,0,0,0.9)', padding:'10px 20px', borderRadius:'12px', display: 'flex', alignItems: 'center', gap: '15px', border:'1px solid #333', zIndex: 100 }}>
-                <span style={{ fontSize:'0.75rem', fontWeight:'bold', color: 'var(--text-dim)' }}>Objeto seleccionado</span>
-                <button onClick={() => { setElementos(prev => prev.filter(el => el.id !== selectedId)); setLineas(prev => prev.filter(li => li.id !== selectedId)); setSelectedId(null); }} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>🗑️ ELIMINAR</button>
-              </div>
-            )}
-          </div>
+              </Group>
+            </Layer>
+          </Stage>
 
-          {/* LÍNEA DE TIEMPO (TIMELINE) CON PLAY */}
-          <div className="bento-card" style={{ height: '70px', background: '#111', border: '1px solid #222', display: 'flex', alignItems: 'center', padding: '10px 20px', gap: '15px', overflowX: 'auto' }}>
-            <button 
-              onClick={togglePlay} 
-              style={{
-                width: '50px', height: '50px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                background: isPlaying ? '#ef4444' : 'var(--accent)', 
-                color: isPlaying ? '#fff' : '#000', 
-                fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: isPlaying ? '0 0 15px rgba(239, 68, 68, 0.5)' : '0 0 15px rgba(0, 255, 136, 0.3)',
-                transition: '0.3s'
-              }}
-              title={isPlaying ? "Detener Animación" : "Reproducir Animación"}
-            >
-              {isPlaying ? '🛑' : '▶'}
-            </button>
-            <div style={{ width: '1px', height: '30px', background: '#333', margin: '0 5px' }}></div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', opacity: isPlaying ? 0.5 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
-              {frames.map((frame, index) => (
-                <div key={frame.id} style={{ position: 'relative' }}>
-                  <button onClick={() => cambiarFrame(index)} style={{ width: '40px', height: '40px', borderRadius: '8px', cursor: 'pointer', background: currentFrameIdx === index ? 'var(--accent)' : '#222', border: currentFrameIdx === index ? '2px solid #fff' : '1px solid #444', color: currentFrameIdx === index ? '#000' : '#fff', fontWeight: '900', fontSize: '1rem', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {index + 1}
-                  </button>
-                  {currentFrameIdx === index && frames.length > 1 && (
-                    <button onClick={() => eliminarFrame(index)} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', border: 'none', color: '#fff', width: '20px', height: '20px', borderRadius: '50%', fontSize: '0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Borrar fotograma">✖</button>
-                  )}
-                </div>
-              ))}
+          {/* ACCIONES FLOTANTES (ELIMINAR / DESHACER) EN MÓVIL Y PC */}
+          {selectedId && !mostrarModal && !isPlaying && (
+            <div style={{ position:'absolute', top: 20, right: 20, background:'rgba(239, 68, 68, 0.9)', padding:'10px', borderRadius:'50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border:'1px solid #ef4444', zIndex: 100, cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }} onClick={() => { setElementos(prev => prev.filter(el => el.id !== selectedId)); setLineas(prev => prev.filter(li => li.id !== selectedId)); setSelectedId(null); }}>
+              <span style={{ fontSize: '1.2rem' }}>🗑️</span>
             </div>
-            <div style={{ width: '1px', height: '30px', background: '#333', margin: '0 10px' }}></div>
-            <div style={{ display: 'flex', gap: '10px', opacity: isPlaying ? 0.3 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
-              <button onClick={duplicarFrameActual} style={{...timelineBtnStyle, background: '#2563eb', color: '#fff'}} title="Duplicar fotograma actual (Mantiene la jugada para seguirla)">
-                ⏭️ Continuar Jugada
-              </button>
-              <button onClick={agregarFrameVacio} style={{...timelineBtnStyle, background: '#333', color: '#fff'}} title="Agregar fotograma en blanco">
-                ➕ Frame Vacío
-              </button>
+          )}
+          {esMovil && lineas.length > 0 && !isPlaying && !selectedId && (
+             <div style={{ position:'absolute', top: 20, right: 20, background:'rgba(255, 255, 255, 0.1)', padding:'10px', borderRadius:'50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border:'1px solid #555', zIndex: 100, cursor: 'pointer' }} onClick={deshacerUltimoTrazo}>
+              <span style={{ fontSize: '1.2rem' }}>↩️</span>
             </div>
-          </div>
+          )}
+
+          {/* PANELES DESLIZABLES OVERLAY PARA MÓVILES */}
+          {esMovil && panelMovil === 'elementos' && renderMobileElementosPanel()}
+          {esMovil && panelMovil === 'trazos' && renderMobileTrazosPanel()}
+          {esMovil && panelMovil === 'animacion' && renderMobileAnimacionPanel()}
+          {esMovil && panelMovil === 'config' && renderMobileConfigPanel()}
         </div>
       </div>
 
-      {/* MODAL FICHA TÉCNICA RECARGADO */}
+      {/* TIMELINE DE PC */}
+      {!esMovil && (
+        <div className="bento-card" style={{ height: '70px', background: '#111', border: '1px solid #222', display: 'flex', alignItems: 'center', padding: '10px 20px', gap: '15px', overflowX: 'auto', margin: '15px', flexShrink: 0 }}>
+          <button onClick={togglePlay} style={{ width: '50px', height: '50px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: isPlaying ? '#ef4444' : 'var(--accent)', color: isPlaying ? '#fff' : '#000', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.3s' }} title={isPlaying ? "Detener Animación" : "Reproducir Animación"}>
+            {isPlaying ? '🛑' : '▶'}
+          </button>
+          <div style={{ width: '1px', height: '30px', background: '#333', margin: '0 5px' }}></div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', opacity: isPlaying ? 0.5 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
+            {frames.map((frame, index) => (
+              <div key={frame.id} style={{ position: 'relative' }}>
+                <button onClick={() => cambiarFrame(index)} style={{ width: '40px', height: '40px', borderRadius: '8px', cursor: 'pointer', background: currentFrameIdx === index ? 'var(--accent)' : '#222', border: currentFrameIdx === index ? '2px solid #fff' : '1px solid #444', color: currentFrameIdx === index ? '#000' : '#fff', fontWeight: '900', fontSize: '1rem', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{index + 1}</button>
+                {currentFrameIdx === index && frames.length > 1 && (
+                  <button onClick={() => eliminarFrame(index)} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', border: 'none', color: '#fff', width: '20px', height: '20px', borderRadius: '50%', fontSize: '0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div style={{ width: '1px', height: '30px', background: '#333', margin: '0 10px' }}></div>
+          <div style={{ display: 'flex', gap: '10px', opacity: isPlaying ? 0.3 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
+            <button onClick={duplicarFrameActual} style={{...timelineBtnStyle, background: '#2563eb', color: '#fff'}} title="Duplicar fotograma actual (Mantiene la jugada para seguirla)">⏭️ Continuar Jugada</button>
+            <button onClick={agregarFrameVacio} style={{...timelineBtnStyle, background: '#333', color: '#fff', flexShrink: 0}}>➕ Frame Vacío</button>
+          </div>
+        </div>
+      )}
+
+      {/* APP BOTTOM NAVIGATION (SOLO MÓVIL) - flexShrink 0 asegura que nunca se achique y siempre se vea */}
+      {esMovil && (
+        <div style={{ display: 'flex', height: '65px', background: '#111', borderTop: '1px solid #333', zIndex: 20, flexShrink: 0 }}>
+          <button onClick={() => { setModoAccion('mover'); setPanelMovil(null); setHerramientaSeleccionada(null); }} style={{...mobileTabBtn, color: modoAccion === 'mover' && !herramientaSeleccionada && !panelMovil ? 'var(--accent)' : '#888'}}>
+            <span style={{ fontSize: '1.4rem' }}>🖐️</span>
+            <span>Mover</span>
+          </button>
+          <button onClick={() => { setPanelMovil(p => p === 'trazos' ? null : 'trazos'); if(!modoAccion.includes('dibujar')) setModoAccion('dibujar_pase'); }} style={{...mobileTabBtn, color: panelMovil === 'trazos' || modoAccion.includes('dibujar') ? 'var(--accent)' : '#888'}}>
+            <span style={{ fontSize: '1.4rem' }}>📐</span>
+            <span>Trazos</span>
+          </button>
+          <button onClick={() => { setPanelMovil(p => p === 'elementos' ? null : 'elementos'); setModoAccion('mover'); }} style={{...mobileTabBtn, color: panelMovil === 'elementos' || herramientaSeleccionada ? 'var(--accent)' : '#888'}}>
+            <span style={{ fontSize: '1.4rem' }}>🎒</span>
+            <span>Materiales</span>
+          </button>
+          <button onClick={() => { setPanelMovil(p => p === 'animacion' ? null : 'animacion'); setModoAccion('mover'); }} style={{...mobileTabBtn, color: panelMovil === 'animacion' ? 'var(--accent)' : '#888'}}>
+            <span style={{ fontSize: '1.4rem' }}>🎬</span>
+            <span>Animación</span>
+          </button>
+        </div>
+      )}
+
+      {/* MODAL FICHA TÉCNICA RECARGADO (RESPONSIVO) */}
       {mostrarModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-          <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '800px', border: '2px solid var(--accent)', padding: '30px', maxHeight: '95vh', overflowY: 'auto', animation: 'fadeIn 0.2s' }}>
-             
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: esMovil ? '10px' : '20px' }}>
+          <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '800px', border: '2px solid var(--accent)', padding: esMovil ? '20px' : '30px', maxHeight: '95vh', overflowY: 'auto', animation: 'fadeIn 0.2s' }}>
+              
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
               <div>
-                <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.5rem', textTransform: 'uppercase' }}>
+                <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: esMovil ? '1.2rem' : '1.5rem', textTransform: 'uppercase' }}>
                   {tareaIdEditando ? 'Actualizar Ficha Técnica' : 'Ficha Técnica de la Tarea'}
                 </h2>
                 <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>{nombreTarea} • {canchaConfig.tamaño}</span>
@@ -640,45 +733,42 @@ const CreadorTareas = () => {
               <button onClick={() => setMostrarModal(false)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
             </div>
 
-            {/* FORMULARIO DE FICHA TÉCNICA */}
-<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-  
-  <div>
-    <label style={modalLabel}>Enfoque Teórico</label>
-    <select style={modalInput} value={fichaTecnica.categoria_ejercicio} onChange={e => setFichaTecnica({...fichaTecnica, categoria_ejercicio: e.target.value})}>
-      <option value="Táctico">Táctico</option>
-      <option value="Técnico">Técnico</option>
-      <option value="Físico">Físico</option>
-      <option value="Cognitivo">Cognitivo</option>
-      <option value="ABP">ABP (Acción a Balón Parado)</option>
-      <option value="Libro Táctico">Libro Táctico</option>
-    </select>
-  </div>
+            <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
               <div>
-                <div>
-    <label style={modalLabel}>Objetivo Principal</label>
-    {fichaTecnica.categoria_ejercicio === 'Libro Táctico' ? (
-      <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
-        <option value="Salida de Presión">Salida de Presión</option>
-        <option value="Saque Inicial">Saque Inicial</option>
-        <option value="Laterales Bajos">Laterales Bajos</option>
-        <option value="Laterales Medios">Laterales Medios</option>
-        <option value="Laterales Altos">Laterales Altos</option>
-        <option value="Corners">Corners</option>
-        <option value="Tiros Libres">Tiros Libres</option>
-        <option value="5v4">5v4</option>
-      </select>
-    ) : (
-      <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
-        <option value="Ataque Posicional">Ataque</option>
-        <option value="Defensa Posicional">Defensa</option>
-        <option value="Transición Ofensiva">Transiciones</option>
-        <option value="Transición Defensiva">Situación Especial</option>
-      </select>
-    )}
-  </div>
-
-                <label style={modalLabel}>Duración Estimada (min)</label>
+                <label style={modalLabel}>Enfoque Teórico</label>
+                <select style={modalInput} value={fichaTecnica.categoria_ejercicio} onChange={e => setFichaTecnica({...fichaTecnica, categoria_ejercicio: e.target.value})}>
+                  <option value="Táctico">Táctico</option>
+                  <option value="Técnico">Técnico</option>
+                  <option value="Físico">Físico</option>
+                  <option value="Cognitivo">Cognitivo</option>
+                  <option value="ABP">ABP</option>
+                  <option value="Libro Táctico">Libro Táctico</option>
+                </select>
+              </div>
+              <div>
+                <label style={modalLabel}>Fase del Juego</label>
+                {fichaTecnica.categoria_ejercicio === 'Libro Táctico' ? (
+                  <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
+                    <option value="Salida de Presión">Salida de Presión</option>
+                    <option value="Saque Inicial">Saque Inicial</option>
+                    <option value="Laterales Bajos">Laterales Bajos</option>
+                    <option value="Laterales Medios">Laterales Medios</option>
+                    <option value="Laterales Altos">Laterales Altos</option>
+                    <option value="Corners">Corners</option>
+                    <option value="Tiros Libres">Tiros Libres</option>
+                    <option value="5v4">5v4</option>
+                  </select>
+                ) : (
+                  <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
+                    <option value="Ataque Posicional">Ataque Posicional</option>
+                    <option value="Defensa Posicional">Defensa Posicional</option>
+                    <option value="Transición Ofensiva">Transición Ofensiva</option>
+                    <option value="Transición Defensiva">Transición Defensiva</option>
+                  </select>
+                )}
+              </div>
+              <div>
+                <label style={modalLabel}>Duración (min)</label>
                 <input type="number" style={modalInput} value={fichaTecnica.duracion_estimada} onChange={e => setFichaTecnica({...fichaTecnica, duracion_estimada: e.target.value})} />
               </div>
               <div>
@@ -690,7 +780,7 @@ const CreadorTareas = () => {
                 <input type="text" placeholder="Ej: 4v4 + 2 Comodines" style={modalInput} value={fichaTecnica.jugadores_involucrados} onChange={e => setFichaTecnica({...fichaTecnica, jugadores_involucrados: e.target.value})} />
               </div>
               <div>
-                <label style={modalLabel}>Enfoque Principal</label>
+                <label style={modalLabel}>Objetivo Específico</label>
                 <input type="text" placeholder="Ej: Mantener posesión bajo presión" style={modalInput} value={fichaTecnica.objetivo_principal} onChange={e => setFichaTecnica({...fichaTecnica, objetivo_principal: e.target.value})} />
               </div>
             </div>
@@ -720,14 +810,22 @@ const inputStyle = { padding: '8px 12px', background: '#000', border: '1px solid
 const selectStyle = { padding: '8px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: 'var(--accent)', fontWeight: 'bold', fontSize: '0.8rem', outline: 'none' };
 const headerLabelStyle = { fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase' };
 const modeBtn = { width: '38px', height: '38px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1.2rem', display:'flex', alignItems:'center', justifyContent:'center', transition: '0.2s' };
-const labelStyle = { fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: '900', letterSpacing: '1px', borderBottom: '1px solid #333', paddingBottom: '5px', display: 'block' };
-const iconGridBtn = { width: '40px', height: '40px', borderRadius: '8px', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const colorInputStyle = { width: '26px', height: '26px', border: 'none', borderRadius: '50%', background: 'none', cursor: 'pointer', outline: 'none', padding: 0 };
-const miniSelectStyle = { padding: '5px', background: '#000', border: '1px solid #333', borderRadius: '5px', color: '#fff', fontSize: '0.7rem', outline: 'none', cursor: 'pointer' };
-const miniInputStyle = { width: '40px', padding: '5px', background: '#000', border: '1px solid #333', borderRadius: '5px', color: '#fff', fontSize: '0.7rem', outline: 'none', textAlign: 'center' };
-const timelineBtnStyle = { padding: '8px 15px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', transition: '0.2s' };
+const labelStyle = { fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: '900', letterSpacing: '1px', borderBottom: '1px solid #333', paddingBottom: '5px', display: 'block', flexShrink: 0 };
+const iconGridBtn = { width: '40px', height: '40px', borderRadius: '8px', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 };
+const colorInputStyle = { width: '26px', height: '26px', border: 'none', borderRadius: '50%', background: 'none', cursor: 'pointer', outline: 'none', padding: 0, flexShrink: 0 };
+const miniSelectStyle = { padding: '5px', background: '#000', border: '1px solid #333', borderRadius: '5px', color: '#fff', fontSize: '0.7rem', outline: 'none', cursor: 'pointer', flexShrink: 0 };
+const miniInputStyle = { width: '40px', padding: '5px', background: '#000', border: '1px solid #333', borderRadius: '5px', color: '#fff', fontSize: '0.7rem', outline: 'none', textAlign: 'center', flexShrink: 0 };
+const timelineBtnStyle = { padding: '8px 15px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', transition: '0.2s', flexShrink: 0 };
 
 const modalLabel = { display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '5px' };
 const modalInput = { width: '100%', padding: '10px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' };
+
+// Estilos nuevos para Móvil
+const mobileTabBtn = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', fontSize: '0.7rem', fontWeight: 'bold', gap: '4px', cursor: 'pointer' };
+const mobileOverlayPanel = { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(17,17,17,0.95)', borderTop: '1px solid var(--accent)', padding: '15px', zIndex: 50, animation: 'slideUp 0.2s ease-out' };
+const btnAccionModal = { padding: '8px 15px', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem' };
+const playBtnMobile = { width: '40px', height: '40px', borderRadius: '50%', border: 'none', color: '#fff', fontSize: '1rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const frameBtnMobile = { width: '35px', height: '35px', borderRadius: '6px', border: '1px solid #444', fontWeight: 'bold', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const toggleBtnStyle = { border: 'none', borderRadius: '4px', color: '#fff', padding: '6px 10px', fontSize: '0.9rem', cursor: 'pointer', transition: '0.2s' }; // <-- Nuevo estilo agregado
 
 export default CreadorTareas;
