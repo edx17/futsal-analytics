@@ -47,7 +47,7 @@ const CreadorTareas = () => {
   });
 
   const stageRef = useRef(null);
-  const mainGroupRef = useRef(null); // NUEVA REF: Para manejar la rotación lógica
+  const mainGroupRef = useRef(null);
   const trRef = useRef(null);
   const isDrawing = useRef(false);
 
@@ -79,10 +79,8 @@ const CreadorTareas = () => {
         let scale;
         let rotation = 0;
 
-        // Si es móvil y la pantalla está en vertical (Portrait), rotamos la cancha 90°
         if (esCelular && containerH > containerW) {
           rotation = 90;
-          // Al rotar, cruzamos las dimensiones para calcular la escala correcta
           scale = Math.min(containerW / logH, containerH / logW) * 0.95;
         } else {
           rotation = 0;
@@ -393,7 +391,7 @@ const CreadorTareas = () => {
   };
 
   const confirmarGuardado = async () => {
-    if (!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea arriba a la izquierda.", "warning");
+    if (!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea antes de guardar.", "warning");
     setSelectedId(null); 
     const prevFrame = currentFrameIdx;
     cambiarFrame(0); 
@@ -441,16 +439,19 @@ const CreadorTareas = () => {
   // Renderizadores de Paneles Móviles (Bottom Sheets)
   const renderMobileElementosPanel = () => (
     <div style={mobileOverlayPanel}>
-      <span style={{...labelStyle, marginBottom: '10px'}}>JUGADORES Y STAFF</span>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+        <span style={labelStyle}>JUGADORES Y STAFF</span>
+        <button onClick={() => setPanelMovil(null)} style={{background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem'}}>✖</button>
+      </div>
       <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '10px', scrollSnapType: 'x mandatory' }}>
         {herramientas.filter(h => h.tipo === 'jugador' || h.tipo === 'arquero' || h.tipo === 'staff').map(h => (
-          <div key={h.id} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, flexShrink: 0, scrollSnapAlign: 'start', border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
+          <div key={h.id} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null); setPanelMovil(null);}} style={{...iconGridBtn, flexShrink: 0, scrollSnapAlign: 'start', border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
         ))}
       </div>
       <span style={{...labelStyle, marginBottom: '10px', marginTop: '10px'}}>MATERIALES</span>
       <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '10px', scrollSnapType: 'x mandatory' }}>
         {herramientas.filter(h => h.tipo !== 'jugador' && h.tipo !== 'arquero' && h.tipo !== 'staff').map(h => (
-          <div key={h.id} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, flexShrink: 0, scrollSnapAlign: 'start', border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
+          <div key={h.id} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null); setPanelMovil(null);}} style={{...iconGridBtn, flexShrink: 0, scrollSnapAlign: 'start', border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
         ))}
       </div>
     </div>
@@ -458,14 +459,16 @@ const CreadorTareas = () => {
 
   const renderMobileTrazosPanel = () => (
     <div style={mobileOverlayPanel}>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+        <span style={labelStyle}>HERRAMIENTAS DE TRAZO</span>
+        <button onClick={() => setPanelMovil(null)} style={{background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem'}}>✖</button>
+      </div>
       
-      {/* Fila 1: Herramienta (Pase vs Conducción) ocupando el 100% */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
         <button onClick={() => setModoAccion('dibujar_pase')} style={{...btnAccionModal, flex: 1, background: modoAccion === 'dibujar_pase' ? 'var(--accent)' : '#222', color: modoAccion === 'dibujar_pase' ? '#000' : '#fff'}}>↗️ Pase / Recta</button>
         <button onClick={() => setModoAccion('dibujar_conduccion')} style={{...btnAccionModal, flex: 1, background: modoAccion === 'dibujar_conduccion' ? 'var(--accent)' : '#222', color: modoAccion === 'dibujar_conduccion' ? '#000' : '#fff'}}>〰️ Conducción</button>
       </div>
       
-      {/* Fila 2: Color y Estilo de Línea (Continua vs Punteada) */}
       <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={headerLabelStyle}>Color:</span>
@@ -477,7 +480,6 @@ const CreadorTareas = () => {
         </div>
       </div>
 
-      {/* Fila 3: Punta de flecha / Tope */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={headerLabelStyle}>Tope:</span>
         <div style={{ display: 'flex', gap: '5px', background: '#222', padding: '4px', borderRadius: '8px' }}>
@@ -487,12 +489,15 @@ const CreadorTareas = () => {
           <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'transversal'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'transversal' ? '#444' : 'transparent'}}>T</button>
         </div>
       </div>
-
     </div>
   );
 
   const renderMobileAnimacionPanel = () => (
     <div style={mobileOverlayPanel}>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+        <span style={labelStyle}>LÍNEA DE TIEMPO</span>
+        <button onClick={() => setPanelMovil(null)} style={{background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem'}}>✖</button>
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', overflowX: 'auto' }}>
         <button onClick={togglePlay} style={{...playBtnMobile, background: isPlaying ? '#ef4444' : 'var(--accent)' }}>{isPlaying ? '🛑' : '▶'}</button>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -502,34 +507,38 @@ const CreadorTareas = () => {
             </button>
           ))}
         </div>
-        <button onClick={duplicarFrameActual} style={{...frameBtnMobile, background: '#2563eb', border: 'none', width: 'auto', padding: '0 15px'}} title="Continuar Jugada">⏭️ Siguiente</button>
+        <button onClick={duplicarFrameActual} style={{...frameBtnMobile, background: '#2563eb', border: 'none', width: 'auto', padding: '0 15px'}} title="Continuar Jugada">⏭️ Sig.</button>
         <button onClick={agregarFrameVacio} style={{...frameBtnMobile, background: '#333', border: 'none', width: 'auto', padding: '0 15px'}} title="Nuevo">➕ Vacío</button>
       </div>
     </div>
   );
 
-const renderMobileConfigPanel = () => (
+  const renderMobileConfigPanel = () => (
     <div style={mobileOverlayPanel}>
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+        <span style={labelStyle}>CONFIGURACIÓN DE CANCHA</span>
+        <button onClick={() => setPanelMovil(null)} style={{background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem'}}>✖</button>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <label style={headerLabelStyle}>Dimensión de la Cancha:</label>
-        <select value={canchaConfig.tamaño} onChange={(e) => setCanchaConfig({...canchaConfig, tamaño: e.target.value})} style={selectStyle}>
+        <select value={canchaConfig.tamaño} onChange={(e) => setCanchaConfig({...canchaConfig, tamaño: e.target.value})} style={{...selectStyle, width: '100%'}}>
           <option value="40x20">40x20</option><option value="28x20">28x20</option><option value="20x20_mitad">Media Cancha</option><option value="20x20_central">Zona Central</option>
         </select>
 
         <label style={{ ...headerLabelStyle, marginTop: '10px' }}>Color del Suelo:</label>
-        <select value={canchaConfig.color} onChange={(e) => setCanchaConfig({...canchaConfig, color: e.target.value})} style={selectStyle}>
+        <select value={canchaConfig.color} onChange={(e) => setCanchaConfig({...canchaConfig, color: e.target.value})} style={{...selectStyle, width: '100%'}}>
           <option value="#064e3b">Verde</option><option value="#1e3a8a">Azul</option><option value="#b45309">Naranja</option><option value="#334155">Gris</option>
         </select>
       </div>
     </div>
   );
 
+  // ACÁ ESTÁ LA MAGIA: Rompemos el flujo con `position: 'absolute'`
   return (
-    // MaxHeight 100dvh + overflow hidden aseguran el comportamiento estilo APP nativa
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxHeight: '100dvh', background: '#0a0a0a', overflow: 'hidden', padding: 0, margin: 0, boxSizing: 'border-box' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', position: 'absolute', top: 0, left: 0, right: 0, bottom: esMovil ? '75px' : 0, background: '#0a0a0a', overflow: 'hidden', zIndex: 10 }}>
       
-      {/* HEADER TÁCTICO (DIFERENTE EN MÓVIL Y PC) */}
-      {!esMovil ? (
+      {/* HEADER PC (Solo se muestra si NO es móvil) */}
+      {!esMovil && (
         <div className="bento-card" style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#111', borderBottom: tareaIdEditando ? '2px solid #3b82f6' : '2px solid #333', padding: '10px 15px', margin: '15px 15px 0 15px', flexShrink: 0 }}>
           {tareaIdEditando && (<div style={{ background: '#3b82f6', color: '#fff', padding: '5px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>MODO EDICIÓN</div>)}
           <input placeholder="Titulo de Tarea..." value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} disabled={isPlaying} style={inputStyle} />
@@ -567,21 +576,13 @@ const renderMobileConfigPanel = () => (
           )}
 
           <div style={{ flex: 1, minWidth: '20px' }}></div>
-          <button onClick={() => { if(!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea.", "warning"); setMostrarModal(true); }} className="btn-action" style={{ background: tareaIdEditando ? '#3b82f6' : 'var(--accent)', color: tareaIdEditando ? '#fff' : '#000', padding: '8px 15px' }}>
+          <button onClick={() => setMostrarModal(true)} className="btn-action" style={{ background: tareaIdEditando ? '#3b82f6' : 'var(--accent)', color: tareaIdEditando ? '#fff' : '#000', padding: '8px 15px' }}>
             {tareaIdEditando ? '💾 ACTUALIZAR' : '💾 GUARDAR'}
           </button>
         </div>
-      ) : (
-        /* HEADER APP MÓVIL */
-        <div style={{ display: 'flex', gap: '10px', padding: '10px 15px', background: '#111', borderBottom: '1px solid #333', alignItems: 'center', zIndex: 10, flexShrink: 0 }}>
-          <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem' }}>⬅</button>
-          <input placeholder="Título de la tarea..." value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} disabled={isPlaying} style={{...inputStyle, flex: 1, width: 'auto'}} />
-          <button onClick={() => setPanelMovil(p => p === 'config' ? null : 'config')} style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: panelMovil === 'config' ? 'var(--accent)' : '#fff' }}>⚙️</button>
-          <button onClick={() => { if(!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea.", "warning"); setMostrarModal(true); }} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem' }}>💾</button>
-        </div>
       )}
 
-      {/* ÁREA CENTRAL: Flex=1 y minHeight=0 empuja el resto garantizando que no haya scroll overflow */}
+      {/* ÁREA CENTRAL: Flex=1. Ocupa TODO el espacio sobrante */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', padding: esMovil ? '0' : '0 15px', minHeight: 0 }}>
         
         {/* PALETA LATERAL (SOLO PC) */}
@@ -606,8 +607,44 @@ const renderMobileConfigPanel = () => (
           </div>
         )}
 
-        {/* CONTENEDOR DE LA PIZARRA */}
+        {/* CONTENEDOR DE LA PIZARRA (FULL SCREEN EN MÓVIL) */}
         <div ref={containerRef} style={{ flex: 1, background: '#000', borderRadius: esMovil ? '0' : '12px', overflow: 'hidden', border: esMovil ? 'none' : '1px solid #222', position: 'relative', minHeight: 0 }}>
+          
+          {/* OVERLAYS FLOTANTES (SOLO MÓVIL) */}
+          {esMovil && (
+            <>
+              {/* Degradados sutiles para asegurar lectura de botones flotantes */}
+              <div style={{position: 'absolute', top: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)', zIndex: 10, pointerEvents: 'none'}}></div>
+              <div style={{position: 'absolute', bottom: 0, left: 0, right: 0, height: '100px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 10, pointerEvents: 'none'}}></div>
+
+              {/* Botonera Flotante TOP */}
+              <button onClick={() => navigate(-1)} style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 20, background: 'rgba(0,0,0,0.6)', border: '1px solid #444', color: '#fff', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>⬅</button>
+              
+              <button onClick={() => setPanelMovil(p => p === 'config' ? null : 'config')} style={{ position: 'absolute', top: '15px', left: '65px', zIndex: 20, background: 'rgba(0,0,0,0.6)', border: panelMovil === 'config' ? '1px solid var(--accent)' : '1px solid #444', color: panelMovil === 'config' ? 'var(--accent)' : '#fff', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>⚙️</button>
+
+              <button onClick={() => setMostrarModal(true)} style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 20, background: tareaIdEditando ? '#3b82f6' : 'var(--accent)', color: tareaIdEditando ? '#fff' : '#000', border: 'none', padding: '0 20px', height: '40px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
+                {tareaIdEditando ? '💾 ACTUALIZAR' : '💾 GUARDAR'}
+              </button>
+
+              {/* Toolbar Flotante BOTTOM */}
+              <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', background: 'rgba(20,20,20,0.85)', padding: '5px', borderRadius: '30px', border: '1px solid #333', backdropFilter: 'blur(10px)', gap: '5px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+                <button onClick={() => { setModoAccion('mover'); setPanelMovil(null); setHerramientaSeleccionada(null); }} style={{...floatingToolBtn, background: modoAccion === 'mover' && !herramientaSeleccionada && !panelMovil ? 'var(--accent)' : 'transparent'}}>
+                  <span style={{ fontSize: '1.3rem' }}>🖐️</span>
+                </button>
+                <div style={{width: '1px', background: '#333', margin: '5px 0'}}></div>
+                <button onClick={() => { setPanelMovil(p => p === 'trazos' ? null : 'trazos'); if(!modoAccion.includes('dibujar')) setModoAccion('dibujar_pase'); }} style={{...floatingToolBtn, background: panelMovil === 'trazos' || modoAccion.includes('dibujar') ? 'var(--accent)' : 'transparent'}}>
+                  <span style={{ fontSize: '1.3rem' }}>📐</span>
+                </button>
+                <button onClick={() => { setPanelMovil(p => p === 'elementos' ? null : 'elementos'); setModoAccion('mover'); }} style={{...floatingToolBtn, background: panelMovil === 'elementos' || herramientaSeleccionada ? 'var(--accent)' : 'transparent'}}>
+                  <span style={{ fontSize: '1.3rem' }}>🎒</span>
+                </button>
+                <button onClick={() => { setPanelMovil(p => p === 'animacion' ? null : 'animacion'); setModoAccion('mover'); }} style={{...floatingToolBtn, background: panelMovil === 'animacion' ? 'var(--accent)' : 'transparent'}}>
+                  <span style={{ fontSize: '1.3rem' }}>🎬</span>
+                </button>
+              </div>
+            </>
+          )}
+
           <Stage 
             width={stageSize.containerW} 
             height={stageSize.containerH}
@@ -617,7 +654,6 @@ const renderMobileConfigPanel = () => (
             onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}
           >
             <Layer>
-              {/* LA MAGIA: Todo ocurre dentro de este grupo que centraliza, escala y rota */}
               <Group
                 ref={mainGroupRef}
                 x={stageSize.containerW / 2}
@@ -653,12 +689,12 @@ const renderMobileConfigPanel = () => (
 
           {/* ACCIONES FLOTANTES (ELIMINAR / DESHACER) EN MÓVIL Y PC */}
           {selectedId && !mostrarModal && !isPlaying && (
-            <div style={{ position:'absolute', top: 20, right: 20, background:'rgba(239, 68, 68, 0.9)', padding:'10px', borderRadius:'50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border:'1px solid #ef4444', zIndex: 100, cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }} onClick={() => { setElementos(prev => prev.filter(el => el.id !== selectedId)); setLineas(prev => prev.filter(li => li.id !== selectedId)); setSelectedId(null); }}>
+            <div style={{ position:'absolute', top: esMovil ? 80 : 20, right: 20, background:'rgba(239, 68, 68, 0.9)', padding:'10px', borderRadius:'50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border:'1px solid #ef4444', zIndex: 100, cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }} onClick={() => { setElementos(prev => prev.filter(el => el.id !== selectedId)); setLineas(prev => prev.filter(li => li.id !== selectedId)); setSelectedId(null); }}>
               <span style={{ fontSize: '1.2rem' }}>🗑️</span>
             </div>
           )}
           {esMovil && lineas.length > 0 && !isPlaying && !selectedId && (
-             <div style={{ position:'absolute', top: 20, right: 20, background:'rgba(255, 255, 255, 0.1)', padding:'10px', borderRadius:'50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border:'1px solid #555', zIndex: 100, cursor: 'pointer' }} onClick={deshacerUltimoTrazo}>
+             <div style={{ position:'absolute', top: 80, right: 20, background:'rgba(255, 255, 255, 0.1)', padding:'10px', borderRadius:'50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border:'1px solid #555', zIndex: 100, cursor: 'pointer', backdropFilter: 'blur(5px)' }} onClick={deshacerUltimoTrazo}>
               <span style={{ fontSize: '1.2rem' }}>↩️</span>
             </div>
           )}
@@ -696,41 +732,25 @@ const renderMobileConfigPanel = () => (
         </div>
       )}
 
-      {/* APP BOTTOM NAVIGATION (SOLO MÓVIL) - flexShrink 0 asegura que nunca se achique y siempre se vea */}
-      {esMovil && (
-        <div style={{ display: 'flex', height: '65px', background: '#111', borderTop: '1px solid #333', zIndex: 20, flexShrink: 0 }}>
-          <button onClick={() => { setModoAccion('mover'); setPanelMovil(null); setHerramientaSeleccionada(null); }} style={{...mobileTabBtn, color: modoAccion === 'mover' && !herramientaSeleccionada && !panelMovil ? 'var(--accent)' : '#888'}}>
-            <span style={{ fontSize: '1.4rem' }}>🖐️</span>
-            <span>Mover</span>
-          </button>
-          <button onClick={() => { setPanelMovil(p => p === 'trazos' ? null : 'trazos'); if(!modoAccion.includes('dibujar')) setModoAccion('dibujar_pase'); }} style={{...mobileTabBtn, color: panelMovil === 'trazos' || modoAccion.includes('dibujar') ? 'var(--accent)' : '#888'}}>
-            <span style={{ fontSize: '1.4rem' }}>📐</span>
-            <span>Trazos</span>
-          </button>
-          <button onClick={() => { setPanelMovil(p => p === 'elementos' ? null : 'elementos'); setModoAccion('mover'); }} style={{...mobileTabBtn, color: panelMovil === 'elementos' || herramientaSeleccionada ? 'var(--accent)' : '#888'}}>
-            <span style={{ fontSize: '1.4rem' }}>🎒</span>
-            <span>Materiales</span>
-          </button>
-          <button onClick={() => { setPanelMovil(p => p === 'animacion' ? null : 'animacion'); setModoAccion('mover'); }} style={{...mobileTabBtn, color: panelMovil === 'animacion' ? 'var(--accent)' : '#888'}}>
-            <span style={{ fontSize: '1.4rem' }}>🎬</span>
-            <span>Animación</span>
-          </button>
-        </div>
-      )}
-
-      {/* MODAL FICHA TÉCNICA RECARGADO (RESPONSIVO) */}
+      {/* MODAL FICHA TÉCNICA RECARGADO (CON INPUT DE NOMBRE INCLUIDO) */}
       {mostrarModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: esMovil ? '10px' : '20px' }}>
           <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '800px', border: '2px solid var(--accent)', padding: esMovil ? '20px' : '30px', maxHeight: '95vh', overflowY: 'auto', animation: 'fadeIn 0.2s' }}>
               
-             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
               <div>
                 <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: esMovil ? '1.2rem' : '1.5rem', textTransform: 'uppercase' }}>
                   {tareaIdEditando ? 'Actualizar Ficha Técnica' : 'Ficha Técnica de la Tarea'}
                 </h2>
-                <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>{nombreTarea} • {canchaConfig.tamaño}</span>
+                <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>{canchaConfig.tamaño}</span>
               </div>
               <button onClick={() => setMostrarModal(false)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+            </div>
+
+            {/* AHORA EL TÍTULO DE LA TAREA SE PONE ACÁ (ESPECIALMENTE PARA MÓVIL) */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{...modalLabel, color: 'var(--accent)'}}>Nombre de la Tarea *</label>
+              <input type="text" placeholder="Ej: Rondo 4v2 con finalización..." style={{...modalInput, border: '1px solid var(--accent)'}} value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
@@ -820,12 +840,11 @@ const timelineBtnStyle = { padding: '8px 15px', border: 'none', borderRadius: '6
 const modalLabel = { display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '5px' };
 const modalInput = { width: '100%', padding: '10px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' };
 
-// Estilos nuevos para Móvil
-const mobileTabBtn = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', fontSize: '0.7rem', fontWeight: 'bold', gap: '4px', cursor: 'pointer' };
-const mobileOverlayPanel = { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(17,17,17,0.95)', borderTop: '1px solid var(--accent)', padding: '15px', zIndex: 50, animation: 'slideUp 0.2s ease-out' };
-const btnAccionModal = { padding: '8px 15px', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem' };
-const playBtnMobile = { width: '40px', height: '40px', borderRadius: '50%', border: 'none', color: '#fff', fontSize: '1rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const frameBtnMobile = { width: '35px', height: '35px', borderRadius: '6px', border: '1px solid #444', fontWeight: 'bold', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const toggleBtnStyle = { border: 'none', borderRadius: '4px', color: '#fff', padding: '6px 10px', fontSize: '0.9rem', cursor: 'pointer', transition: '0.2s' }; // <-- Nuevo estilo agregado
+const mobileOverlayPanel = { position: 'absolute', bottom: '80px', left: '10px', right: '10px', background: 'rgba(20,20,20,0.95)', border: '1px solid #333', borderRadius: '16px', padding: '15px', zIndex: 50, backdropFilter: 'blur(10px)', boxShadow: '0 -10px 30px rgba(0,0,0,0.5)', animation: 'slideUp 0.2s ease-out' };
+const btnAccionModal = { padding: '10px 15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem' };
+const playBtnMobile = { width: '45px', height: '45px', borderRadius: '50%', border: 'none', color: '#000', fontSize: '1.2rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const frameBtnMobile = { width: '40px', height: '40px', borderRadius: '8px', border: '1px solid #444', fontWeight: 'bold', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const toggleBtnStyle = { border: 'none', borderRadius: '4px', color: '#fff', padding: '6px 10px', fontSize: '0.9rem', cursor: 'pointer', transition: '0.2s' };
+const floatingToolBtn = { width: '45px', height: '45px', borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s', color: '#fff' };
 
 export default CreadorTareas;
