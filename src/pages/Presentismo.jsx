@@ -122,7 +122,8 @@ function Presentismo() {
         estado: asistenciasHoy[j.id] || 'presente',
         categoria: categoria,
         fecha: fecha,
-        notas: notasHoy[j.id] || ''
+        // Si estaba presente, limpiamos las notas por las dudas
+        notas: (asistenciasHoy[j.id] && asistenciasHoy[j.id] !== 'presente') ? (notasHoy[j.id] || '') : ''
       }));
 
       const { error } = await supabase
@@ -252,14 +253,14 @@ function Presentismo() {
               </div>
               
               {esMovil ? (
-                // 📱 VERSIÓN MÓVIL: Tarjetas en lugar de tabla
+                // 📱 VERSIÓN MÓVIL: Tarjetas
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   {jugadores.map(j => (
                     <div key={j.id} style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222' }}>
                       <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
                         {j.apellido}, {j.nombre}
                       </div>
-                      <div style={{ marginBottom: '10px' }}>
+                      <div style={{ marginBottom: asistenciasHoy[j.id] !== 'presente' ? '10px' : '0' }}>
                         <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>ESTADO</span>
                         <select 
                           value={asistenciasHoy[j.id] || 'presente'} 
@@ -277,28 +278,32 @@ function Presentismo() {
                           <option value="justificado">📝 JUSTIF.</option>
                         </select>
                       </div>
-                      <div>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>OBSERVACIONES</span>
-                        <input 
-                          type="text" 
-                          value={notasHoy[j.id] || ''} 
-                          onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
-                          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '12px', color: '#fff', fontSize: '0.9rem', width: '100%', outline: 'none' }} 
-                          placeholder="Ej: Problemas familiares..." 
-                        />
-                      </div>
+                      
+                      {/* CAJA DE TEXTO CONDICIONAL PARA MÓVIL */}
+                      {(asistenciasHoy[j.id] && asistenciasHoy[j.id] !== 'presente') && (
+                        <div style={{ animation: 'fadeIn 0.2s ease-in-out' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>OBSERVACIONES (Motivo)</span>
+                          <input 
+                            type="text" 
+                            value={notasHoy[j.id] || ''} 
+                            onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
+                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '12px', color: '#fff', fontSize: '0.9rem', width: '100%', outline: 'none' }} 
+                            placeholder="Ej: Problemas familiares..." 
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               ) : (
-                // 💻 VERSIÓN DESKTOP: Tabla original
+                // 💻 VERSIÓN DESKTOP: Tabla
                 <div className="table-wrapper">
                   <table style={{ width: '100%', textAlign: 'left' }}>
                     <thead>
                       <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
                         <th style={{ padding: '10px' }}>JUGADOR</th>
-                        <th style={{ padding: '10px' }}>ESTADO</th>
-                        <th style={{ padding: '10px' }}>OBSERVACIONES PRIVADAS</th>
+                        <th style={{ padding: '10px', width: '20%' }}>ESTADO</th>
+                        <th style={{ padding: '10px', width: '40%' }}>OBSERVACIONES</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -311,6 +316,7 @@ function Presentismo() {
                               onChange={(e) => setAsistenciasHoy({...asistenciasHoy, [j.id]: e.target.value})} 
                               style={{ 
                                 ...inputStyle, 
+                                width: '100%',
                                 background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : '#1e3a8a' 
                               }}
                             >
@@ -321,13 +327,20 @@ function Presentismo() {
                             </select>
                           </td>
                           <td style={{ padding: '5px 10px' }}>
-                            <input 
-                              type="text" 
-                              value={notasHoy[j.id] || ''} 
-                              onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
-                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '0.8rem', width: '100%', outline: 'none' }} 
-                              placeholder="Ej: Problemas familiares, estudio..." 
-                            />
+                            {/* CAJA DE TEXTO CONDICIONAL PARA ESCRITORIO */}
+                            {(asistenciasHoy[j.id] && asistenciasHoy[j.id] !== 'presente') ? (
+                              <input 
+                                type="text" 
+                                value={notasHoy[j.id] || ''} 
+                                onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
+                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '0.8rem', width: '100%', outline: 'none', animation: 'fadeIn 0.2s ease-in-out' }} 
+                                placeholder="Indicar motivo..." 
+                              />
+                            ) : (
+                              <div style={{ color: '#444', fontSize: '0.8rem', padding: '8px', textAlign: 'center' }}>
+                                —
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

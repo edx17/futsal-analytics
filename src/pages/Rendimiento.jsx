@@ -77,22 +77,30 @@ export default function Rendimiento() {
   const [tab, setTab] = useState('resumen');
   const [jugadoresBD, setJugadoresBD] = useState([]);
   
-  // --- MODIFICACIÓN DE SEGURIDAD ---
-  const [historialGlobal, setHistorialGlobal] = useState([]); // Todos los datos para matemáticas
-  const [historial, setHistorial] = useState([]); // Solo datos permitidos para renderizar UI
+  const [historialGlobal, setHistorialGlobal] = useState([]); 
+  const [historial, setHistorial] = useState([]); 
 
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selId, setSelId] = useState(null);
 
+  // --- RESPONSIVE Y UX ESTADOS ---
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 800);
+  const [perfilExpandido, setPerfilExpandido] = useState(false); // Para colapsar perfil en móviles
+
   const { showToast } = useToast();
   const { perfil } = useAuth();
   
-  // FIX: Identificadores de Rol y Club robustos para evitar bugs en kiosco
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
   const esJugador = perfil?.rol === 'jugador' || isKioscoMode;
   const esStaff = !esJugador;
   const clubId = localStorage.getItem('club_id') || perfil?.club_id || localStorage.getItem('kiosco_club_id');
+
+  useEffect(() => {
+    const handleResize = () => setEsMovil(window.innerWidth <= 800);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -112,16 +120,13 @@ export default function Rendimiento() {
       .order('fecha_medicion', { ascending: false });
 
     const todosLosRegistros = r || [];
-    
-    // Guardamos la info de TODO EL EQUIPO para promedios y comparativas anónimas
     setHistorialGlobal(todosLosRegistros);
 
     if (esJugador) {
-      // Usar perfil oficial o fallback al local storage del kiosco
       const miId = perfil?.jugador_id || localStorage.getItem('kiosco_jugador_id');
       if (miId) {
         setHistorial(todosLosRegistros);
-        setSelId(Number(miId)); // Setear directamente
+        setSelId(Number(miId)); 
       } else {
         setHistorial([]); 
       }
@@ -134,14 +139,12 @@ export default function Rendimiento() {
 
   useEffect(() => { if (clubId) cargarDatos(); }, [clubId]);
 
-  // Cálculos globales (Matemática pura basada en historialGlobal)
   const ultimosDatosGlobal = useMemo(() => {
     const mapa = {};
     historialGlobal.forEach(reg => { if (!mapa[reg.id_jugador]) mapa[reg.id_jugador] = reg; });
     return Object.values(mapa);
   }, [historialGlobal]);
 
-  // Datos filtrados para la Interfaz
   const ultimosDatos = useMemo(() => {
     const mapa = {};
     historial.forEach(reg => { if (!mapa[reg.id_jugador]) mapa[reg.id_jugador] = reg; });
@@ -158,7 +161,6 @@ export default function Rendimiento() {
 
   const jug = ultimosDatos.find(j => j.id_jugador === selId);
 
-  // Los STATS se calculan con ultimosDatosGlobal para que el Radar de los jugadores siga funcionando vs equipo
   const stats = useMemo(() => ({
     cmj:    calcStats(ultimosDatosGlobal, 'cmj'),
     abk:    calcStats(ultimosDatosGlobal, 'abk'),
@@ -182,7 +184,6 @@ export default function Rendimiento() {
     </div>
   );
 
-  // Ocultamos TABS grupales si es jugador
   const TABS = [
     { id: 'resumen', lbl: '📊 RESUMEN',  col: null },
     { id: 'fisico',  lbl: '⚡ FÍSICO',   col: '#3b82f6' },
@@ -195,27 +196,16 @@ export default function Rendimiento() {
   ];
 
   return (
-    <div style={{ padding: '20px', maxWidth: 1500, margin: '0 auto', color: '#fff', paddingBottom: 80 }} className="fade-in">
+    <div style={{ padding: esMovil ? '15px' : '20px', maxWidth: 1500, margin: '0 auto', color: '#fff', paddingBottom: 80 }} className="fade-in">
 
       {/* --- BOTÓN VOLVER ATRÁS --- */}
       <button 
         onClick={() => navigate(-1)} 
         style={{ 
-          background: 'transparent', 
-          border: 'none', 
-          color: 'var(--text-dim)', 
-          cursor: 'pointer', 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '8px', 
-          fontWeight: 'bold', 
-          marginBottom: '15px', 
-          padding: '5px 0', 
-          fontSize: '0.9rem', 
-          transition: 'color 0.2s' 
+          background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', 
+          display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', 
+          marginBottom: '15px', padding: '5px 0', fontSize: '0.9rem', transition: 'color 0.2s' 
         }}
-        onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
       >
         ⬅ Volver atrás
       </button>
@@ -223,18 +213,18 @@ export default function Rendimiento() {
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '-1px', margin: 0 }}>Sports Science</h1>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '-1px', margin: 0 }}>Dpto. Rendimiento</h1>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: 4 }}>Rendimiento · Biomecánica · Antropometría · Nutrición</p>
         </div>
         {esStaff && <button onClick={() => setModalOpen(true)} className="btn-action" style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', fontWeight: 900 }}>+ NUEVA TOMA</button>}
       </div>
 
       {/* ── LAYOUT: SIDEBAR + CONTENT ──────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 24, alignItems: 'start' }} className="rend-layout-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '260px 1fr', gap: esMovil ? 15 : 24, alignItems: 'start' }} className="rend-layout-grid">
 
-        {/* ══ SIDEBAR — único punto de navegación ══ */}
-        <div style={{ position: 'sticky', top: 16 }}>
-          <div style={{ background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: 18, backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* ══ SIDEBAR OPTIMIZADO PARA MÓVIL ══ */}
+        <div style={{ position: esMovil ? 'relative' : 'sticky', top: esMovil ? 0 : 16, zIndex: 10 }}>
+          <div style={{ background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: esMovil ? 12 : 18, backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* ── SELECTOR GLOBAL ── */}
             <div>
@@ -260,9 +250,31 @@ export default function Rendimiento() {
               )}
             </div>
 
-            {/* ── PLAYER CARD ── */}
-            {jug ? (
-              <div style={{ background: 'rgba(2,6,23,0.7)', borderRadius: 12, padding: 16, border: '1px solid #0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {/* ── TABS EN MÓVIL (Arriba del perfil para fácil acceso) ── */}
+            {esMovil && (
+              <nav className="custom-scroll-hide" style={{ display: 'flex', overflowX: 'auto', gap: 8, paddingBottom: 5, marginTop: 5 }}>
+                {TABS.map(t => (
+                  <button key={t.id} onClick={() => setTab(t.id)}
+                    style={{ flex: '0 0 auto', background: tab === t.id ? (t.col ? `${t.col}22` : '#1e293b') : '#0a0f1e', border: `1px solid ${tab === t.id ? (t.col || 'var(--accent)') : '#1e293b'}`, color: tab === t.id ? (t.col || '#fff') : '#475569', padding: '8px 14px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer', transition: '0.2s' }}>
+                    {t.lbl}
+                  </button>
+                ))}
+              </nav>
+            )}
+
+            {/* ── BOTÓN TOGGLE PERFIL MÓVIL ── */}
+            {esMovil && jug && (
+              <button 
+                onClick={() => setPerfilExpandido(!perfilExpandido)} 
+                style={{ width: '100%', background: '#060a14', border: '1px solid #1e293b', color: '#94a3b8', padding: '10px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer' }}
+              >
+                {perfilExpandido ? 'Ocultar Resumen Atlético ▴' : 'Ver Resumen Atlético ▾'}
+              </button>
+            )}
+
+            {/* ── PLAYER CARD (Colapsable en móvil) ── */}
+            {(!esMovil || perfilExpandido) && jug && (
+              <div style={{ background: 'rgba(2,6,23,0.7)', borderRadius: 12, padding: 16, border: '1px solid #0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', animation: 'fadeIn 0.3s' }}>
                 <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#1e3a5f,#0f172a)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: 'var(--accent)', fontSize: '1.1rem', marginBottom: 10, letterSpacing: -1 }}>
                   {jug.jugadores?.apellido?.charAt(0)}{jug.jugadores?.nombre?.charAt(0)}
                 </div>
@@ -302,24 +314,24 @@ export default function Rendimiento() {
                   })}
                 </div>
               </div>
-            ) : (
-              <div style={{ textAlign: 'center', color: '#334155', padding: 20, fontSize: '0.82rem' }}>Sin datos del jugador.</div>
             )}
 
-            {/* ── NAV TABS (única botonera) ── */}
-            <nav style={{ borderTop: '1px solid #0f172a', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {TABS.map(t => (
-                <button key={t.id} onClick={() => setTab(t.id)}
-                  style={{ background: tab === t.id ? '#0a0f1e' : 'transparent', border: 'none', borderLeft: `3px solid ${tab === t.id ? (t.col || 'var(--accent)') : 'transparent'}`, color: tab === t.id ? (t.col || 'var(--accent)') : '#475569', padding: '10px 12px', textAlign: 'left', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer', borderRadius: '0 7px 7px 0', transition: '0.15s' }}>
-                  {t.lbl}
-                </button>
-              ))}
-            </nav>
+            {/* ── NAV TABS PARA ESCRITORIO (Verticales) ── */}
+            {!esMovil && (
+              <nav style={{ borderTop: '1px solid #0f172a', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {TABS.map(t => (
+                  <button key={t.id} onClick={() => setTab(t.id)}
+                    style={{ background: tab === t.id ? '#0a0f1e' : 'transparent', border: 'none', borderLeft: `3px solid ${tab === t.id ? (t.col || 'var(--accent)') : 'transparent'}`, color: tab === t.id ? (t.col || 'var(--accent)') : '#475569', padding: '10px 12px', textAlign: 'left', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer', borderRadius: '0 7px 7px 0', transition: '0.15s' }}>
+                    {t.lbl}
+                  </button>
+                ))}
+              </nav>
+            )}
 
           </div>
         </div>
 
-        {/* ══ MAIN CONTENT — sin botonera duplicada ══ */}
+        {/* ══ MAIN CONTENT ══ */}
         <div>
           <div style={{ animation: 'fadeUp 0.2s ease' }}>
             {tab === 'resumen' && <TabResumen jug={jug} stats={stats} historial={historial} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
@@ -353,12 +365,14 @@ export default function Rendimiento() {
         .scroll { overflow-y:auto; max-height:360px; }
         .scroll::-webkit-scrollbar { width:3px; }
         .scroll::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
+        .custom-scroll-hide::-webkit-scrollbar { display: none; }
+        .custom-scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
         /* Recharts tooltip override — texto siempre blanco */
         .recharts-tooltip-wrapper .recharts-default-tooltip { background:#0f172a !important; border:1px solid #1e293b !important; color:#f8fafc !important; }
         .recharts-tooltip-item { color:#f8fafc !important; }
         .recharts-tooltip-label { color:#94a3b8 !important; }
         @media(min-width:1280px) { .c2 { grid-template-columns:1fr 1fr; } .c3 { grid-template-columns:repeat(3,1fr); } .c4 { grid-template-columns:repeat(4,1fr); } }
-        @media(max-width:800px) { .rend-layout-grid { grid-template-columns:1fr !important; } .c4 { grid-template-columns:1fr 1fr; } }
       `}</style>
     </div>
   );
@@ -434,26 +448,28 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
 
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
           <SecTitle color="#f59e0b">🧬 Composición Corporal</SecTitle>
-          <table className="data-table">
-            <thead><tr><th>Métrica</th><th style={{ textAlign: 'center', color: '#f59e0b' }}>Jugador</th><th style={{ textAlign: 'center' }}>Equipo</th><th style={{ textAlign: 'center', color: '#10b981' }}>Élite</th><th>Rank</th></tr></thead>
-            <tbody>
-              {[
-                { lbl: 'Músculo %',   val: jug.musc,   eq: stats.musc,   elite: '48.5', c: '#3b82f6', h: true },
-                { lbl: 'Adiposidad %',val: jug.adip,   eq: stats.adip,   elite: '11.0', c: '#ef4444', h: false },
-                { lbl: 'IMC',         val: jug.imc,    eq: stats.imc,    elite: '23.0', c: '#fff',    h: false },
-                { lbl: 'Visceral',    val: jug.visc,   eq: stats.visc,   elite: '4.0',  c: '#fff',    h: false },
-                { lbl: 'Edad Met.',   val: jug.ed_met, eq: stats.ed_met, elite: '20.0', c: '#f59e0b', h: false },
-              ].map(r => (
-                <tr key={r.lbl}>
-                  <td style={{ color: '#475569', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>{r.lbl}</td>
-                  <td style={{ textAlign: 'center', fontWeight: 900, color: r.c }}>{r.val ?? '—'}</td>
-                  <td style={{ textAlign: 'center', color: '#334155' }}>{fmtNum(r.eq.mean)}</td>
-                  <td style={{ textAlign: 'center', color: '#10b981', fontWeight: 700 }}>{r.elite}</td>
-                  <td><PercBadge val={r.val} mean={r.eq.mean} sd={r.eq.sd} higher={r.h} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead><tr><th>Métrica</th><th style={{ textAlign: 'center', color: '#f59e0b' }}>Jugador</th><th style={{ textAlign: 'center' }}>Equipo</th><th style={{ textAlign: 'center', color: '#10b981' }}>Élite</th><th>Rank</th></tr></thead>
+              <tbody>
+                {[
+                  { lbl: 'Músculo %',   val: jug.musc,   eq: stats.musc,   elite: '48.5', c: '#3b82f6', h: true },
+                  { lbl: 'Adiposidad %',val: jug.adip,   eq: stats.adip,   elite: '11.0', c: '#ef4444', h: false },
+                  { lbl: 'IMC',         val: jug.imc,    eq: stats.imc,    elite: '23.0', c: '#fff',    h: false },
+                  { lbl: 'Visceral',    val: jug.visc,   eq: stats.visc,   elite: '4.0',  c: '#fff',    h: false },
+                  { lbl: 'Edad Met.',   val: jug.ed_met, eq: stats.ed_met, elite: '20.0', c: '#f59e0b', h: false },
+                ].map(r => (
+                  <tr key={r.lbl}>
+                    <td style={{ color: '#475569', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{r.lbl}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 900, color: r.c }}>{r.val ?? '—'}</td>
+                    <td style={{ textAlign: 'center', color: '#334155' }}>{fmtNum(r.eq.mean)}</td>
+                    <td style={{ textAlign: 'center', color: '#10b981', fontWeight: 700 }}>{r.elite}</td>
+                    <td><PercBadge val={r.val} mean={r.eq.mean} sd={r.eq.sd} higher={r.h} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -505,7 +521,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
                   { lbl: 'ABK cm',   tot: jug.abk,   der: '—',          izq: '—',          asim: null,         eq: stats.abk.mean,   c: '#8b5cf6' },
                 ].map(r => (
                   <tr key={r.lbl}>
-                    <td style={{ color: '#334155', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase' }}>{r.lbl}</td>
+                    <td style={{ color: '#334155', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{r.lbl}</td>
                     <td style={{ textAlign: 'center', fontWeight: 900, color: r.c }}>{r.tot ?? '—'}</td>
                     <td style={{ textAlign: 'center', color: '#475569' }}>{r.der ?? '—'}</td>
                     <td style={{ textAlign: 'center', color: '#475569' }}>{r.izq ?? '—'}</td>
@@ -526,7 +542,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
                 return (
                   <div key={l} style={{ background: '#060a14', padding: '7px 9px', borderRadius: 6, borderLeft: `2px solid ${ok ? '#10b981' : v ? '#f59e0b' : '#1e293b'}` }}>
                     <div style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900 }}>{l}</div>
-                    <div style={{ fontSize: '0.7rem', color: ok ? '#10b981' : v ? '#f59e0b' : '#334155', marginTop: 2 }}>{v || 'S/D'}</div>
+                    <div style={{ fontSize: '0.7rem', color: ok ? '#10b981' : v ? '#f59e0b' : '#334155', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v || 'S/D'}</div>
                   </div>
                 );
               })}
@@ -617,7 +633,7 @@ function TabFisico({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, se
               return (
                 <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 6, marginBottom: 3, background: isMe ? 'rgba(59,130,246,0.09)' : 'transparent', border: isMe ? '1px solid #3b82f622' : '1px solid transparent' }}>
                   <span style={{ color: i === 0 ? '#f59e0b' : '#1e293b', fontWeight: 900, fontSize: '0.72rem', minWidth: 20, textAlign: 'right' }}>{i + 1}</span>
-                  <span style={{ flex: 1, fontSize: '0.76rem', fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{esJugador && !isMe ? 'Compañero' : d.jugadores?.apellido}</span>
+                  <span style={{ flex: 1, fontSize: '0.76rem', fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{esJugador && !isMe ? 'Compañero' : d.jugadores?.apellido}</span>
                   <div style={{ width: 55, background: '#0f172a', borderRadius: 2, height: 4 }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: isMe ? '#3b82f6' : '#1e293b', borderRadius: 2 }} />
                   </div>
@@ -797,9 +813,9 @@ function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selI
               const isMe = j.id_jugador === selId;
               return (
                 <div key={j.id} style={{ background: isMe ? 'rgba(16,185,129,0.07)' : '#060a14', padding: 11, borderRadius: 8, border: isMe ? '1px solid #10b98133' : '1px solid #0f172a' }}>
-                  <strong style={{ color: isMe ? '#10b981' : '#475569', display: 'block', marginBottom: 5, fontSize: '0.8rem' }}>{isMe ? '👤 ' : ''}{j.jugadores?.apellido}</strong>
+                  <strong style={{ color: isMe ? '#10b981' : '#475569', display: 'block', marginBottom: 5, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isMe ? '👤 ' : ''}{j.jugadores?.apellido}</strong>
                   {[['Tob', j.kin_t], ['Cad', j.kin_c], ['ZM', j.kin_u]].map(([l, v]) => v ? (
-                    <div key={l} style={{ fontSize: '0.66rem' }}>
+                    <div key={l} style={{ fontSize: '0.66rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       <span style={{ color: '#0f172a' }}>{l}: </span>
                       <span style={{ color: v.includes('optim') || v.includes('óptim') ? '#10b981' : '#f59e0b' }}>{v}</span>
                     </div>
@@ -819,7 +835,7 @@ function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selI
               <h4 style={{ textTransform: 'uppercase', color: '#1e293b', margin: '0 0 9px', fontSize: '0.68rem', fontWeight: 900, letterSpacing: 1 }}>{cat}</h4>
               {vs.map((v, i) => (
                 <div key={i} style={{ marginBottom: 9 }}>
-                  <div style={{ fontSize: '0.7rem', color: '#475569', marginBottom: 3 }}>{v.t}</div>
+                  <div style={{ fontSize: '0.7rem', color: '#475569', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.t}</div>
                   <iframe src={getEmbedUrl(v.v)} style={{ width: '100%', height: 112, borderRadius: 6 }} frameBorder="0" allowFullScreen title={v.t} />
                 </div>
               ))}
@@ -1097,7 +1113,7 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
                 return (
                   <tr key={d.id} style={{ background: isMe ? 'rgba(59,130,246,0.07)' : 'transparent' }}>
                     <td style={{ color: i < 3 ? '#f59e0b' : '#1e293b', fontWeight: 900 }}>{i + 1}</td>
-                    <td style={{ fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569' }}>{isMe ? '👤 ' : ''}{d.jugadores?.apellido}</td>
+                    <td style={{ fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isMe ? '👤 ' : ''}{d.jugadores?.apellido}</td>
                     <td style={{ color: '#1e293b', fontSize: '0.68rem' }}>{d.jugadores?.posicion || '—'}</td>
                     <td style={{ textAlign: 'center', color: '#3b82f6', fontWeight: 700 }}>{d.cmj ?? '—'}</td>
                     <td style={{ textAlign: 'center', color: '#8b5cf6' }}>{d.abk ?? '—'}</td>
@@ -1165,7 +1181,7 @@ function TabVS({ datos, stats, selId, historial }) {
   return (
     <div className="rg">
       <div className="glass-panel" style={{ padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
           {[0, 1, 2, 3].map(i => (
             <div key={i}>
               <div style={{ fontSize: '0.58rem', color: COLS[i], fontWeight: 900, textTransform: 'uppercase', marginBottom: 5, letterSpacing: 1 }}>Jugador {i + 1}</div>
@@ -1218,8 +1234,8 @@ function TabVS({ datos, stats, selId, historial }) {
             </BarChart>
           </ResponsiveContainer>
 
-          <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 13 }}>
-            <table className="data-table">
+          <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 13, overflowX: 'auto' }}>
+            <table className="data-table" style={{ minWidth: 350 }}>
               <thead><tr><th>Jugador</th><th style={{ textAlign: 'center' }}>CMJ</th><th style={{ textAlign: 'center' }}>ABK</th><th style={{ textAlign: 'center' }}>Broad</th><th style={{ textAlign: 'center' }}>Asim</th><th style={{ textAlign: 'center' }}>Músculo</th></tr></thead>
               <tbody>
                 {active.map((id, i) => {
@@ -1227,7 +1243,7 @@ function TabVS({ datos, stats, selId, historial }) {
                   if (!d) return null;
                   return (
                     <tr key={id}>
-                      <td style={{ fontWeight: 900, color: COLS[i % 4] }}>{d.jugadores?.apellido}</td>
+                      <td style={{ fontWeight: 900, color: COLS[i % 4], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.jugadores?.apellido}</td>
                       <td style={{ textAlign: 'center', fontWeight: 700 }}>{d.cmj ?? '—'}</td>
                       <td style={{ textAlign: 'center' }}>{d.abk ?? '—'}</td>
                       <td style={{ textAlign: 'center' }}>{d.broad ?? '—'}</td>
