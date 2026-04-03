@@ -59,6 +59,27 @@ export default function Inicio() {
   const esAdmin = rol === 'admin';
   const esManager = rol === 'manager';
 
+  // NUEVO: PANTALLA DE NOVEDADES -----------------------
+  // Definimos la versión actual. Cambiá este string en el futuro para forzar que el modal vuelva a aparecer.
+  const VERSION_ACTUAL = 'v0.002604031832';
+  const [mostrarNovedades, setMostrarNovedades] = useState(false);
+
+  useEffect(() => {
+    // Si no es jugador ni es modo kiosco, evaluamos si ya vio esta versión
+    if (rol !== 'jugador' && !isKioscoMode) {
+      const versionVista = localStorage.getItem(`novedades_vista_${VERSION_ACTUAL}`);
+      if (!versionVista) {
+        setMostrarNovedades(true);
+      }
+    }
+  }, [rol, isKioscoMode]);
+
+  const cerrarModalNovedades = () => {
+    localStorage.setItem(`novedades_vista_${VERSION_ACTUAL}`, 'true');
+    setMostrarNovedades(false);
+  };
+  // ---------------------------------------------------
+
   const [clubMaster, setClubMaster] = useState(localStorage.getItem('club_id') || '');
   const clubActivo = esSuperUser ? clubMaster : (perfil?.club_id || '');
 
@@ -275,22 +296,14 @@ export default function Inicio() {
     }
   }   
 
-  // ==========================================
-  // HELPER PARA TRANSFORMAR EL SPAN EN CSS GRID 
-  // ¡Ahora respeta los tamaños también en el celular!
-  // ==========================================
   const getGridStyle = (spanStr) => {
     const [cols, rows] = spanStr.split('x').map(Number);
-    // Aseguramos que nunca supere las 3 columnas máximas
     return { 
       gridColumn: `span ${Math.min(cols, 3)}`, 
       gridRow: `span ${rows}` 
     };
   };
 
-  // ==========================================
-  // COMPONENTE: CAPA SUPERPUESTA DE EDICIÓN
-  // ==========================================
   const ControlesEdicion = ({ id, spanActual, index }) => {
     if (!modoEdicion) return null; 
     const opcionesSpan = ['1x1', '2x1', '3x1', '2x2'];
@@ -298,34 +311,29 @@ export default function Inicio() {
     return (
       <div style={{ 
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-        background: 'rgba(0,0,0,0.85)', zIndex: 10, borderRadius: 'inherit',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px', 
-        backdropFilter: 'blur(3px)', animation: 'fadeIn 0.2s'
+        background: 'rgba(0,0,0,0.3)', zIndex: 10, borderRadius: 'inherit',
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '5px', 
+        animation: 'fadeIn 0.2s'
       }}>
-        
-        {/* Flechas para reordenar en celular/PC */}
-        <div style={{ display: 'flex', gap: '15px' }}>
-            <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); moverWidget(index, 'prev'); }} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '6px 15px', borderRadius: '6px', cursor: 'pointer', fontSize: '1.2rem', boxShadow: '0 2px 5px rgba(0,0,0,0.5)' }}>◀</button>
-            <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); moverWidget(index, 'next'); }} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '6px 15px', borderRadius: '6px', cursor: 'pointer', fontSize: '1.2rem', boxShadow: '0 2px 5px rgba(0,0,0,0.5)' }}>▶</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); moverWidget(index, 'prev'); }} style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #555', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}>◀</button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); moverWidget(index, 'next'); }} style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #555', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}>▶</button>
         </div>
-
-        {/* Botones de tamaño (Adaptados para entrar en un 1x1) */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px', padding: '0 5px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '3px' }}>
           {opcionesSpan.map(op => (
             <button 
               key={op} type="button"
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); cambiarTamano(id, op); }}
               style={{ 
-                background: spanActual === op ? 'var(--accent)' : '#222', 
+                background: spanActual === op ? 'var(--accent)' : 'rgba(0,0,0,0.8)', 
                 color: spanActual === op ? '#000' : '#fff', 
-                border: '1px solid #444', fontSize: '0.7rem', padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
+                border: '1px solid #444', fontSize: '0.65rem', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
               }}
             >
               {op}
             </button>
           ))}
         </div>
-
       </div>
     );
   };
@@ -333,9 +341,8 @@ export default function Inicio() {
   return (
     <div style={{ animation: 'fadeIn 0.3s', maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
       
-      {/* HEADER Y FILTROS OPTIMIZADOS PARA MÓVIL */}
+      {/* HEADER Y FILTROS */}
       <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border)', gap: '15px' }}>
-        
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div style={{ width: esMovil ? '50px' : '60px', height: esMovil ? '50px' : '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: esMovil ? '1rem' : '1.5rem', overflow: 'hidden', flexShrink: 0 }}>
             {esSuperUser && !clubActivo ? '👑' : escudoClub ? <img src={escudoClub} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : nombreClub.substring(0, 2).toUpperCase()}
@@ -347,21 +354,18 @@ export default function Inicio() {
         </div>
         
         <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '10px', width: esMovil ? '100%' : 'auto' }}>
-            
             {rol !== 'jugador' && categoriasDisponibles.length > 0 && (
               <select value={categoriaActiva} onChange={handleCambioCategoria} style={{ padding: esMovil ? '12px' : '8px 10px', background: '#111', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px', outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' }}>
                 <option value="Todas">👉 TODAS LAS CATEGORÍAS</option>
                 {categoriasDisponibles.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
               </select>
             )}
-            
             {esSuperUser && (
               <select value={clubActivo} onChange={handleCambioClub} style={{ padding: esMovil ? '12px' : '8px 10px', background: '#111', border: '1px solid #c084fc', color: '#c084fc', borderRadius: '8px', outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' }}>
                 <option value="">🌍 VISIÓN GLOBAL (TODOS)</option>
                 {listaClubes.map(c => <option key={c.id} value={c.id}>🏢 GESTIONAR: {c.nombre}</option>)}
               </select>
             )}
-
             <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : '#222', color: modoEdicion ? '#000' : '#fff', border: 'none', padding: esMovil ? '12px' : '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold', width: '100%' }}>
               {modoEdicion ? '✅ Guardar Diseño' : '⚙️ Editar Pantalla'}
             </button>
@@ -372,7 +376,7 @@ export default function Inicio() {
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '50px' }}>CARGANDO DASHBOARD...</div>
       ) : (
         <>
-          {/* BARRA DE HERRAMIENTAS MODO EDICIÓN */}
+          {/* BARRA MODO EDICIÓN */}
           {modoEdicion && (
             <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px dashed #444', marginBottom: '20px', animation: 'fadeIn 0.2s' }}>
               <h3 style={{ margin: '0 0 15px 0', fontSize: '0.9rem', color: '#fff' }}>Agregá/Quitá accesos de tu pantalla principal:</h3>
@@ -389,10 +393,7 @@ export default function Inicio() {
             </div>
           )}
 
-          {/* BENTO GRID CONTAINER 
-            Mantenemos SIEMPRE 3 columnas, pero en celular achicamos la altura de las filas 
-            para que los cuadrados de 1x1 sigan siendo cuadrados perfectos en la pantalla chica.
-          */}
+          {/* GRID BENTO */}
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(3, 1fr)', 
@@ -407,8 +408,8 @@ export default function Inicio() {
               
               const spanActual = tamanosWidgets[config.id] || config.spanDefecto;
               const gridConfig = getGridStyle(spanActual);
+              const is1x1 = spanActual === '1x1';
               
-              // Eventos Drag & Drop (Nativos para PC)
               const dragEvents = !esMovil && modoEdicion ? {
                 draggable: true,
                 onDragStart: () => dragItem.current = index,
@@ -423,27 +424,27 @@ export default function Inicio() {
                 border: modoEdicion ? '2px dashed #666' : 'none',
                 cursor: modoEdicion && !esMovil ? 'grab' : 'default',
                 opacity: modoEdicion ? 0.9 : 1,
-                overflow: 'hidden' // Evita que se rompan cosas hacia afuera
+                overflow: 'hidden'
               };
 
               // --- WIDGET: V-E-P ANUAL ---
               if (config.id === 'w_vep_anual') {
                 return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #3b82f6', padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #3b82f6', padding: is1x1 ? '8px' : '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: '10px', color: '#3b82f6' }}>{config.titulo}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px', textAlign: 'center' }}>
-                      <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: esMovil ? '5px' : '10px', borderRadius: '8px' }}>
-                        <div style={{ color: '#10b981', fontSize: '1.2rem', fontWeight: 900 }}>{vepAnual.v}</div>
-                        <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>V</div>
+                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#3b82f6', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: is1x1 ? '2px' : '5px', textAlign: 'center' }}>
+                      <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
+                        <div style={{ color: '#10b981', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{vepAnual.v}</div>
+                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>V</div>}
                       </div>
-                      <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: esMovil ? '5px' : '10px', borderRadius: '8px' }}>
-                        <div style={{ color: '#f59e0b', fontSize: '1.2rem', fontWeight: 900 }}>{vepAnual.e}</div>
-                        <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>E</div>
+                      <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
+                        <div style={{ color: '#f59e0b', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{vepAnual.e}</div>
+                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>E</div>}
                       </div>
-                      <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: esMovil ? '5px' : '10px', borderRadius: '8px' }}>
-                        <div style={{ color: '#ef4444', fontSize: '1.2rem', fontWeight: 900 }}>{vepAnual.d}</div>
-                        <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>D</div>
+                      <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
+                        <div style={{ color: '#ef4444', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{vepAnual.d}</div>
+                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>D</div>}
                       </div>
                     </div>
                   </div>
@@ -454,52 +455,66 @@ export default function Inicio() {
               if (config.id === 'w_resultados_cat') {
                 const cats = Object.keys(resultadosRecientesCat);
                 return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #8b5cf6', padding: '15px', overflowY: 'auto' }}>
+                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #8b5cf6', padding: is1x1 ? '8px' : '15px', overflowY: 'auto' }}>
                     <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: '10px', color: '#8b5cf6' }}>{config.titulo}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#8b5cf6', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: is1x1 ? '4px' : '10px' }}>
                       {cats.length > 0 ? cats.map(cat => (
-                        <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>{cat}</div>
-                          {resultadosRecientesCat[cat].map((d, idx) => {
+                        <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {!is1x1 && <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>{cat}</div>}
+                          {resultadosRecientesCat[cat].slice(0, is1x1 ? 1 : 2).map((d, idx) => {
                             const colorRes = d.res === 'V' ? '#10b981' : d.res === 'E' ? '#f59e0b' : '#ef4444';
                             return (
-                              <div key={`${cat}-${idx}`} onClick={() => !modoEdicion && navigate(`/resumen/${d.id}`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: '8px 10px', borderRadius: '6px', border: '1px solid #333', cursor: modoEdicion ? 'grab' : 'pointer' }}>
+                              <div key={`${cat}-${idx}`} onClick={() => !modoEdicion && navigate(`/resumen/${d.id}`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: is1x1 ? '4px 6px' : '8px 10px', borderRadius: '6px', border: '1px solid #333', cursor: modoEdicion ? 'grab' : 'pointer' }}>
                                 <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>{d.fecha}</div>
-                                  <div style={{ fontSize: '0.75rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {d.rival?.toUpperCase()}</div>
+                                  {!is1x1 && <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>{d.fecha}</div>}
+                                  <div style={{ fontSize: is1x1 ? '0.65rem' : '0.75rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{is1x1 ? d.rival.substring(0,6) : `vs ${d.rival}`?.toUpperCase()}</div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                                  <strong style={{ fontSize: '0.9rem', color: '#fff' }}>{d.gf} - {d.gc}</strong>
-                                  <span style={{ background: colorRes, color: '#000', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontWeight: 900, fontSize: '0.7rem' }}>{d.res}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                                  <strong style={{ fontSize: is1x1 ? '0.7rem' : '0.9rem', color: '#fff' }}>{d.gf}-{d.gc}</strong>
+                                  <span style={{ background: colorRes, color: '#000', width: is1x1 ? '16px' : '20px', height: is1x1 ? '16px' : '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontWeight: 900, fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{d.res}</span>
                                 </div>
                               </div>
                             )
                           })}
                         </div>
-                      )) : <div style={{ textAlign: 'center', color: '#666', padding: '10px', fontSize:'0.8rem' }}>Sin resultados.</div>}
+                      )) : <div style={{ textAlign: 'center', color: '#666', padding: '10px', fontSize:'0.7rem' }}>N/A</div>}
                     </div>
                   </div>
                 );
               }
 
-              // --- WIDGET: GOLES POR CATEGORÍA ---
+              // --- WIDGET: GOLES POR CATEGORÍA (SUMARIZADOS Y CON DIFERENCIA) ---
               if (config.id === 'w_goles_cat') {
-                const cats = Object.keys(golesPorCat);
+                const totalGF = Object.values(golesPorCat).reduce((acc, cat) => acc + cat.favor, 0);
+                const totalGC = Object.values(golesPorCat).reduce((acc, cat) => acc + cat.contra, 0);
+                const dif = totalGF - totalGC;
+                const difColor = dif > 0 ? '#10b981' : dif < 0 ? '#ef4444' : '#f59e0b';
+                const difSigno = dif > 0 ? '+' : '';
+                
+                const difBg = dif > 0 ? 'rgba(16, 185, 129, 0.1)' : dif < 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)';
+                const difBorder = dif > 0 ? '1px solid rgba(16, 185, 129, 0.3)' : dif < 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)';
+
                 return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #0ea5e9', padding: '15px', overflowY: 'auto' }}>
+                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #0ea5e9', padding: is1x1 ? '8px' : '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: '10px', color: '#0ea5e9' }}>{config.titulo}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {cats.length > 0 ? cats.map(cat => (
-                         <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: '8px 10px', borderRadius: '6px', border: '1px solid #333' }}>
-                           <span style={{ fontSize: '0.7rem', color: '#ccc', fontWeight: 'bold', textTransform: 'uppercase' }}>{cat}</span>
-                           <div style={{ display: 'flex', gap: '8px', fontSize: '0.7rem' }}>
-                             <span style={{ color: '#10b981' }}>GF: <strong>{golesPorCat[cat].favor}</strong></span>
-                             <span style={{ color: '#ef4444' }}>GC: <strong>{golesPorCat[cat].contra}</strong></span>
-                           </div>
-                         </div>
-                      )) : <div style={{ textAlign: 'center', color: '#666', fontSize:'0.8rem' }}>Sin goles.</div>}
+                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#0ea5e9', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>
+                      {config.titulo} {categoriaActiva !== 'Todas' ? `(${categoriaActiva.substring(0,3)})` : ''}
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: is1x1 ? '2px' : '5px', textAlign: 'center' }}>
+                      <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
+                        <div style={{ color: '#10b981', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{totalGF}</div>
+                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.50rem', fontWeight: 'bold' }}>A FAVOR</div>}
+                      </div>
+                      <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
+                        <div style={{ color: '#ef4444', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{totalGC}</div>
+                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.50rem', fontWeight: 'bold' }}>EN CONTRA</div>}
+                      </div>
+                      <div style={{ background: difBg, border: difBorder, padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
+                        <div style={{ color: difColor, fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{difSigno}{dif}</div>
+                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.50rem', fontWeight: 'bold' }}>DIFERENCIA</div>}
+                      </div>
                     </div>
                   </div>
                 );
@@ -508,19 +523,19 @@ export default function Inicio() {
               // --- WIDGET: PRÓXIMO PARTIDO ---
               if (config.id === 'w_proximo') {
                 return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #10b981', padding: '15px' }}>
+                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #10b981', padding: is1x1 ? '8px' : '15px' }}>
                     <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: '10px', color: '#10b981' }}>{config.titulo}</div>
+                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#10b981', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
                     {proximoPartido ? (
-                      <div style={{ background: '#111', padding: '10px', borderRadius: '6px', border: '1px solid #333' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold' }}>📅 {proximoPartido.fecha?.split('-').reverse().join('/')}</span>
-                          <span style={{ background: '#222', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 800 }}>{proximoPartido.competicion}</span>
+                      <div style={{ background: '#111', padding: is1x1 ? '6px' : '10px', borderRadius: '6px', border: '1px solid #333' }}>
+                        <div style={{ display: 'flex', flexDirection: is1x1 ? 'column' : 'row', justifyContent: 'space-between', gap: is1x1 ? '4px' : '0', marginBottom: '4px' }}>
+                          <span style={{ fontSize: is1x1 ? '0.55rem' : '0.65rem', color: '#10b981', fontWeight: 'bold' }}>📅 {proximoPartido.fecha?.split('-').reverse().join('/')}</span>
+                          <span style={{ background: '#222', color: '#fff', padding: '2px 4px', borderRadius: '4px', fontSize: is1x1 ? '0.55rem' : '0.6rem', fontWeight: 800, alignSelf: 'flex-start' }}>{is1x1 ? proximoPartido.competicion.substring(0,8) : proximoPartido.competicion}</span>
                         </div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 900, textAlign: 'center', margin: '5px 0', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {proximoPartido.rival?.toUpperCase()}</div>
+                        <div style={{ fontSize: is1x1 ? '0.75rem' : '0.85rem', fontWeight: 900, textAlign: 'center', margin: '5px 0', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {proximoPartido.rival?.toUpperCase()}</div>
                       </div>
                     ) : (
-                      <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '15px', background: '#111', borderRadius: '6px', border: '1px dashed #333', fontSize: '0.75rem' }}>Sin partidos.</div>
+                      <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '10px', background: '#111', borderRadius: '6px', border: '1px dashed #333', fontSize: '0.7rem' }}>Sin partidos</div>
                     )}
                   </div>
                 );
@@ -529,20 +544,20 @@ export default function Inicio() {
               // --- WIDGET: ÚLTIMO PARTIDO ---
               if (config.id === 'w_ultimo') {
                 return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid var(--text-dim)', padding: '15px' }}>
+                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid var(--text-dim)', padding: is1x1 ? '8px' : '15px' }}>
                     <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: '10px', color: 'var(--text-dim)' }}>{config.titulo}</div>
+                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: 'var(--text-dim)', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
                     {ultimoPartido ? (
-                      <div style={{ background: '#111', padding: '10px', borderRadius: '6px', border: '1px solid #333' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{ultimoPartido.fecha?.split('-').reverse().join('/')}</span>
-                          <span style={{ background: '#222', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 800 }}>{ultimoPartido.competicion}</span>
+                      <div style={{ background: '#111', padding: is1x1 ? '6px' : '10px', borderRadius: '6px', border: '1px solid #333' }}>
+                        <div style={{ display: 'flex', flexDirection: is1x1 ? 'column' : 'row', justifyContent: 'space-between', gap: is1x1 ? '4px' : '0', marginBottom: '4px' }}>
+                          <span style={{ fontSize: is1x1 ? '0.55rem' : '0.65rem', color: 'var(--text-dim)' }}>{ultimoPartido.fecha?.split('-').reverse().join('/')}</span>
+                          <span style={{ background: '#222', color: '#fff', padding: '2px 4px', borderRadius: '4px', fontSize: is1x1 ? '0.55rem' : '0.6rem', fontWeight: 800, alignSelf: 'flex-start' }}>{is1x1 ? ultimoPartido.competicion.substring(0,8) : ultimoPartido.competicion}</span>
                         </div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 900, textAlign: 'center', margin: '5px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {ultimoPartido.rival?.toUpperCase()}</div>
-                        <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimoPartido.id}`)} className="btn-secondary" style={{ width: '100%', fontSize: '0.65rem', padding: '6px', cursor: modoEdicion ? 'grab' : 'pointer' }}>VER</button>
+                        <div style={{ fontSize: is1x1 ? '0.75rem' : '0.85rem', fontWeight: 900, textAlign: 'center', margin: '5px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {ultimoPartido.rival?.toUpperCase()}</div>
+                        {!is1x1 && <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimoPartido.id}`)} className="btn-secondary" style={{ width: '100%', fontSize: '0.65rem', padding: '6px', cursor: modoEdicion ? 'grab' : 'pointer' }}>VER RESUMEN</button>}
                       </div>
                     ) : (
-                      <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '15px', background: '#111', borderRadius: '6px', border: '1px dashed #333', fontSize: '0.75rem' }}>Sin registros.</div>
+                      <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '10px', background: '#111', borderRadius: '6px', border: '1px dashed #333', fontSize: '0.7rem' }}>Sin registros</div>
                     )}
                   </div>
                 );
@@ -551,15 +566,19 @@ export default function Inicio() {
               // --- WIDGET: ESTADO DE LA BASE ---
               if (config.id === 'w_stats_base') {
                 return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'center', padding: '15px' }}>
+                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', padding: is1x1 ? '8px' : '15px' }}>
                     <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div style={{ textAlign: 'center', padding: '10px', background: '#111', borderRadius: '6px', border: '1px solid #333' }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>{estadisticas.plantel}</div>
-                      <div className="stat-label" style={{ fontSize: '0.55rem', marginTop: '5px' }}>JUGADORES</div>
-                    </div>
-                    <div style={{ textAlign: 'center', padding: '10px', background: '#111', borderRadius: '6px', border: '1px solid #333' }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{estadisticas.jugados}</div>
-                      <div className="stat-label" style={{ fontSize: '0.55rem', marginTop: '5px' }}>PARTIDOS</div>
+                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#fff', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
+                    
+                    <div style={{ display: 'flex', flexDirection: is1x1 ? 'column' : 'row', gap: is1x1 ? '4px' : '10px', flex: 1, justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: is1x1 ? 'row' : 'column', alignItems: 'center', justifyContent: is1x1 ? 'space-between' : 'center', padding: is1x1 ? '4px 8px' : '10px', background: is1x1 ? 'transparent' : '#111', border: is1x1 ? 'none' : '1px solid #333', borderBottom: is1x1 ? '1px dashed #333' : '1px solid #333', borderRadius: is1x1 ? '0' : '6px', flex: 1 }}>
+                        <div style={{ fontSize: is1x1 ? '1.2rem' : '1.5rem', fontWeight: 900, color: '#fff' }}>{estadisticas.plantel}</div>
+                        <div className="stat-label" style={{ fontSize: '0.55rem', marginTop: is1x1 ? '0' : '5px' }}>JUGADORES</div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: is1x1 ? 'row' : 'column', alignItems: 'center', justifyContent: is1x1 ? 'space-between' : 'center', padding: is1x1 ? '4px 8px' : '10px', background: is1x1 ? 'transparent' : '#111', border: is1x1 ? 'none' : '1px solid #333', borderRadius: is1x1 ? '0' : '6px', flex: 1 }}>
+                        <div style={{ fontSize: is1x1 ? '1.2rem' : '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{estadisticas.jugados}</div>
+                        <div className="stat-label" style={{ fontSize: '0.55rem', marginTop: is1x1 ? '0' : '5px' }}>PARTIDOS</div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -568,16 +587,21 @@ export default function Inicio() {
               // --- WIDGETS TIPO LINK (Accesos Directos) ---
               if (config.tipo === 'link') {
                 const bgSoft = config.color ? `rgba(${hexToRgb(config.color)}, 0.05)` : 'rgba(255,255,255,0.05)';
+                const isHorizontal = spanActual === '2x1' || spanActual === '3x1';
+
                 return (
                   <div key={config.id} className="bento-card" {...dragEvents}
-                    style={{ ...cardBaseStyle, textAlign: 'center', padding: '10px', border: modoEdicion ? cardBaseStyle.border : `1px solid ${config.color || '#333'}`, background: `linear-gradient(180deg, ${bgSoft} 0%, rgba(0,0,0,0) 100%)`, transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }} 
+                    style={{ ...cardBaseStyle, textAlign: isHorizontal ? 'left' : 'center', padding: isHorizontal ? '10px 20px' : '10px', border: modoEdicion ? cardBaseStyle.border : `1px solid ${config.color || '#333'}`, background: `linear-gradient(${isHorizontal ? '90deg' : '180deg'}, ${bgSoft} 0%, rgba(0,0,0,0) 100%)`, transition: 'transform 0.2s', display: 'flex', flexDirection: isHorizontal ? 'row' : 'column', justifyContent: 'center', alignItems: 'center', gap: isHorizontal ? '15px' : '0' }} 
                     onClick={() => !modoEdicion && navigate(config.ruta)}
                     onMouseOver={(e) => !esMovil && !modoEdicion && (e.currentTarget.style.transform = 'translateY(-5px)')}
                     onMouseOut={(e) => !esMovil && !modoEdicion && (e.currentTarget.style.transform = 'translateY(0)')}
                   >
                     <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div style={{ fontSize: '2.2rem', marginBottom: '8px' }}>{config.icon}</div>
-                    <div className="stat-label" style={{ color: config.color || '#fff', fontSize: '0.75rem', lineHeight: '1.1' }}>{config.titulo}</div>
+                    <div style={{ fontSize: is1x1 ? '2rem' : '2.5rem', marginBottom: isHorizontal ? '0' : '8px' }}>{config.icon}</div>
+                    <div>
+                      <div className="stat-label" style={{ color: config.color || '#fff', fontSize: is1x1 ? '0.7rem' : '0.85rem', lineHeight: '1.1' }}>{config.titulo}</div>
+                      {(!is1x1 || config.desc.length < 15) && <p style={{ color: 'var(--text-dim)', margin: '4px 0 0 0', fontSize: '0.65rem' }}>{config.desc}</p>}
+                    </div>
                   </div>
                 );
               }
@@ -587,6 +611,73 @@ export default function Inicio() {
           </div>
         </>
       )}
+
+      {/* NUEVO: RENDERIZADO DEL MODAL DE NOVEDADES */}
+      {mostrarNovedades && (
+        <div style={{ 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', 
+          zIndex: 3000, padding: '20px' 
+        }}>
+          <div style={{ 
+            background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', 
+            padding: '30px', maxWidth: '500px', width: '100%', position: 'relative', 
+            animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' 
+          }}>
+            
+            <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+              <span style={{ 
+                background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', 
+                borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' 
+              }}>
+                VERSIÓN {VERSION_ACTUAL.replace('v', '')}
+              </span>
+              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
+                🚀 ¡Nuevas Mejoras!
+              </h2>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
+                Actualizamos el sistema con nuevas métricas avanzadas.
+              </p>
+            </div>
+            
+            <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
+              <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <li>
+                  <strong style={{color: '#10b981'}}>Optimización de xG (Goles Esperados):</strong> 
+                  <br/>Mejoramos el algoritmo interno para evaluar la probabilidad de gol basándonos no solo en la ubicación, sino en el origen del remate y sus modificadores.
+                </li>
+                <li>
+                  <strong style={{color: '#0ea5e9'}}>Incorporación de xA (Asistencias Esperadas):</strong> 
+                  <br/>Ahora la plataforma evalúa la "peligrosidad" de los pases previos a un remate (Pase Clave / Asistencia), recompensando a los creadores de juego.
+                </li>
+                <li>
+                  <strong style={{color: '#f59e0b'}}>Quintetos Optimizados:</strong> 
+                  <br/>Rediseño y mejoras de rendimiento en la visualización de los 5 iniciales, tanto en la temporada general como en el resumen de cada partido.
+                </li>
+                <li>
+                  <strong style={{color: '#8b5cf6'}}>Widgets del Dashboard:</strong> 
+                  <br/>Mejora visual y de respuesta de los botones de la pantalla de inicio para una carga más rápida.
+                </li>
+              </ul>
+            </div>
+            
+            <button 
+              onClick={cerrarModalNovedades}
+              className="btn-action" 
+              style={{ 
+                width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, 
+                padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer',
+                transition: 'transform 0.1s'
+              }}
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              ¡ENTENDIDO, A TRABAJAR!
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

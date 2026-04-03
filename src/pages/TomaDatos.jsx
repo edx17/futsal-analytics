@@ -38,6 +38,9 @@ function TomaDatos() {
   const [menuActivo, setMenuActivo] = useState(null); 
   const [autorGol, setAutorGol] = useState(null); 
   const [autorAsistencia, setAutorAsistencia] = useState(null);
+  
+  // NUEVO: ESTADO PARA LOS MODIFICADORES DE XG
+  const [modificadoresRemate, setModificadoresRemate] = useState([]);
 
   // --- ESTADOS DE EDICIÓN Y CIERRE ---
   const [eventoEditando, setEventoEditando] = useState(null); 
@@ -176,6 +179,7 @@ function TomaDatos() {
     setAccion('');
     setAutorGol(null);
     setAutorAsistencia(null);
+    setModificadoresRemate([]); // Resetear modificadores
     setMenuActivo(null);
     setTabActiva('registro'); 
   };
@@ -187,6 +191,7 @@ function TomaDatos() {
     setPasoRegistro(4); 
     setAutorGol(null);
     setAutorAsistencia(null);
+    setModificadoresRemate([]); // Resetear modificadores
     setMenuActivo(null);
     setTabActiva('registro');
   };
@@ -195,6 +200,13 @@ function TomaDatos() {
     setAccion(acc);
     setPasoRegistro(2);
     setMenuActivo(null);
+  };
+
+  // NUEVO: Alternar modificadores tácticos
+  const toggleModificador = (mod) => {
+    setModificadoresRemate(prev => 
+      prev.includes(mod) ? prev.filter(m => m !== mod) : [...prev, mod]
+    );
   };
 
   const guardarEventoRapido = async (equipoSeleccionado) => {
@@ -227,16 +239,21 @@ function TomaDatos() {
 
   const guardarEventoFinal = async (jugadorId) => {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
-    if (pasoRegistro === 2 && accion === 'Remate - Gol') {
+    
+    // MODIFICADO: Ahora TODOS los remates van a buscar Pase Previo (Paso 3) y Contexto (Paso 5)
+    const esRemate = accion.includes('Remate') || accion === 'Gol';
+
+    if (pasoRegistro === 2 && esRemate) {
       setAutorGol(jugadorId);
       setPasoRegistro(3); 
       return; 
     }
-    if (pasoRegistro === 3 && accion === 'Remate - Gol') {
+    if (pasoRegistro === 3 && esRemate) {
       setAutorAsistencia(jugadorId);
       setPasoRegistro(5); 
       return; 
     }
+
     let dbX = panelLateral.x;
     let dbY = panelLateral.y;
     if (direccionAtaque === 'izquierda') {
@@ -246,7 +263,7 @@ function TomaDatos() {
     
     const finalEquipo = jugadorId === null && pasoRegistro === 2 ? 'Rival' : equipo;
     
-    // 1. EVENTO PRINCIPAL (TIRADOR)
+    // 1. EVENTO PRINCIPAL (TIRADOR / ACCIÓN NORMAL)
     const eventoPrincipal = {
       club_id: clubId, 
       id_partido: partido.id, 
@@ -298,7 +315,8 @@ function TomaDatos() {
     }
   };
 
-  const finalizarRegistroGol = async (origenContexto) => {
+  // MODIFICADO: Antes finalizarRegistroGol, ahora finalizarRegistroRemate (sirve para errados también)
+  const finalizarRegistroRemate = async (origenContexto) => {
     let dbX = panelLateral.x;
     let dbY = panelLateral.y;
     if (direccionAtaque === 'izquierda') {
@@ -307,25 +325,33 @@ function TomaDatos() {
     }
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
     const eventosAInsertar = [];
+    
+    // Unimos origen con modificadores (Ej: "Ataque Posicional | 2do Palo")
+    const origenFinal = [origenContexto, ...modificadoresRemate].filter(Boolean).join(' | ');
+    const esGol = accion === 'Remate - Gol' || accion === 'Gol';
+
     eventosAInsertar.push({
       club_id: clubId, 
       id_partido: partido.id, 
       id_jugador: autorGol ? parseInt(autorGol, 10) : null,
-      accion: 'Remate - Gol', 
+      id_asistencia: autorAsistencia ? parseInt(autorAsistencia, 10) : null, // Guardamos la id del pasador acá
+      accion: accion, // Respeta si fue Atajado, Desviado, o Gol
       zona_x: dbX, 
       zona_y: dbY, 
       equipo: equipo, 
       periodo: periodo, 
       minuto: minuto, 
       quinteto_activo: quintetoActual,
-      origen_gol: origenContexto 
+      origen_gol: origenFinal 
     });
+
+    // Si hubo un pase previo, lo guardamos como Asistencia o Pase Clave
     if (autorAsistencia) {
       eventosAInsertar.push({
         club_id: clubId, 
         id_partido: partido.id, 
         id_jugador: parseInt(autorAsistencia, 10),
-        accion: 'Asistencia', 
+        accion: esGol ? 'Asistencia' : 'Pase Clave', 
         zona_x: dbX, 
         zona_y: dbY, 
         equipo: equipo,
@@ -334,16 +360,19 @@ function TomaDatos() {
         quinteto_activo: quintetoActual
       });
     }
+
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
     setAutorGol(null);
     setAutorAsistencia(null);
+    setModificadoresRemate([]);
+
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
-      showToast("¡Gol registrado en la base de datos!", "success");
+      showToast(esGol ? "¡Gol registrado en la base de datos!" : "Remate registrado", "success");
     } else {
-      showToast("Error de red al guardar el gol.", "error");
+      showToast("Error de red al guardar el evento.", "error");
     }
   };
 
@@ -353,6 +382,7 @@ function TomaDatos() {
     setMenuActivo(null);
     setAutorGol(null);
     setAutorAsistencia(null);
+    setModificadoresRemate([]); // Resetear modificadores
   };
 
   const eliminarEvento = async (idEvento) => {
@@ -784,7 +814,7 @@ function TomaDatos() {
                       {pasoRegistro === 2 && '2. AUTOR'}
                       {pasoRegistro === 3 && '3. ASISTENCIA'}
                       {pasoRegistro === 4 && 'CONFIRMAR EQUIPO'}
-                      {pasoRegistro === 5 && '4. ORIGEN'}
+                      {pasoRegistro === 5 && '4. CONTEXTO TÁCTICO (xG)'}
                     </div>
                     <button onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
                   </div>
@@ -867,7 +897,7 @@ function TomaDatos() {
                           <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>{j.dorsal}</span>
                         </button>
                       ))}
-                      <button onClick={() => guardarEventoFinal(null)} style={{ marginTop: '10px', background: 'none', border: '1px dashed #444', color: '#ffffff', padding: '10px', cursor: 'pointer' }}>JUGADA INDIVIDUAL (SIN ASISTENCIA)</button>
+                      <button onClick={() => guardarEventoFinal(null)} style={{ marginTop: '10px', background: 'none', border: '1px dashed #444', color: '#ffffff', padding: '10px', cursor: 'pointer' }}>SIN PASE PREVIO (JUGADA INDIVIDUAL)</button>
                     </div>
                   )}
 
@@ -890,21 +920,32 @@ function TomaDatos() {
 
                   {pasoRegistro === 5 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
-                      <div className="stat-label" style={{ color: '#00ff88', marginBottom: '5px' }}>¿CÓMO SE GESTÓ EL GOL?</div>
+                      <div className="stat-label" style={{ color: '#00ff88', marginBottom: '5px' }}>¿CÓMO SE GESTÓ EL TIRO?</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <BotonAccion label="A. POSICIONAL" color="#fff" onClick={() => finalizarRegistroGol('Ataque Posicional')} />
-                        <BotonAccion label="CONTRAATAQUE" color="#fff" onClick={() => finalizarRegistroGol('Contraataque')} />
-                        <BotonAccion label="RECUP. ALTA" color="#fff" onClick={() => finalizarRegistroGol('Recuperación Alta')} />
-                        <BotonAccion label="ERROR RIVAL" color="#fff" onClick={() => finalizarRegistroGol('Error No Forzado')} />
+                        <BotonAccion label="A. POSICIONAL" color="#fff" onClick={() => finalizarRegistroRemate('Ataque Posicional')} />
+                        <BotonAccion label="CONTRAATAQUE" color="#fff" onClick={() => finalizarRegistroRemate('Contraataque')} />
+                        <BotonAccion label="RECUP. ALTA" color="#fff" onClick={() => finalizarRegistroRemate('Recuperación Alta')} />
+                        <BotonAccion label="ERROR RIVAL" color="#fff" onClick={() => finalizarRegistroRemate('Error No Forzado')} />
                       </div>
+                      
                       <div className="stat-label" style={{ color: 'var(--text-dim)', marginTop: '10px', marginBottom: '5px' }}>PELOTA PARADA (ABP)</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <BotonAccion label="CÓRNER" color="#f97316" onClick={() => finalizarRegistroGol('Córner')} />
-                        <BotonAccion label="LATERAL" color="#06b6d4" onClick={() => finalizarRegistroGol('Lateral')} />
-                        <BotonAccion label="TIRO LIBRE" color="#a855f7" onClick={() => finalizarRegistroGol('Tiro Libre')} />
-                        <BotonAccion label="PENAL" color="#ef4444" onClick={() => finalizarRegistroGol('Penal / Sexta Falta')} />
-                        <BotonAccion label="5v4 / 4v3" color="#0a7fec" onClick={() => finalizarRegistroGol('5v4 / 4v3')} />
-                        <BotonAccion label="4v5 / 3v4" color="#b6df03" onClick={() => finalizarRegistroGol('4v5 / 3v4')} />
+                        <BotonAccion label="CÓRNER" color="#f97316" onClick={() => finalizarRegistroRemate('Córner')} />
+                        <BotonAccion label="LATERAL" color="#06b6d4" onClick={() => finalizarRegistroRemate('Lateral')} />
+                        <BotonAccion label="TIRO LIBRE" color="#a855f7" onClick={() => finalizarRegistroRemate('Tiro Libre')} />
+                        <BotonAccion label="PENAL" color="#ef4444" onClick={() => finalizarRegistroRemate('Penal / Sexta Falta')} />
+                        <BotonAccion label="5v4 / 4v3" color="#0a7fec" onClick={() => finalizarRegistroRemate('5v4 / 4v3')} />
+                        <BotonAccion label="4v5 / 3v4" color="#b6df03" onClick={() => finalizarRegistroRemate('4v5 / 3v4')} />
+                      </div>
+
+                      <div style={{ marginTop: '20px', borderTop: '1px dashed #444', paddingTop: '15px' }}>
+                        <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '10px' }}>MODIFICADORES TÁCTICOS (OPCIONAL)</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <BotonAccion label="2DO PALO" color={modificadoresRemate.includes('2do Palo') ? '#00ff88' : '#555'} onClick={() => toggleModificador('2do Palo')} />
+                          <BotonAccion label="MANO A MANO" color={modificadoresRemate.includes('Mano a Mano') ? '#00ff88' : '#555'} onClick={() => toggleModificador('Mano a Mano')} />
+                          <BotonAccion label="PUNTEO" color={modificadoresRemate.includes('Punteo') ? '#00ff88' : '#555'} onClick={() => toggleModificador('Punteo')} />
+                          <BotonAccion label="ARQ. ADELANTADO" color={modificadoresRemate.includes('Arq. Adelantado') ? '#00ff88' : '#555'} onClick={() => toggleModificador('Arq. Adelantado')} />
+                        </div>
                       </div>
                     </div>
                   )}

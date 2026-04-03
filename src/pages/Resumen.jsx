@@ -85,11 +85,24 @@ function Resumen() {
 
   useEffect(() => {
     async function obtenerDatos() {
-      const club_id = localStorage.getItem('club_id') || perfil?.club_id || 'club_default';
+      // 1. Obtenemos el club_id activo
+      const club_id = localStorage.getItem('club_id') || perfil?.club_id;
 
-      const { data: p } = await supabase.from('partidos').select('*').order('id', { ascending: false });
+      // 2. Preparamos las consultas
+      let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
+      let queryJugadores = supabase.from('jugadores').select('*');
+
+      // 3. Si hay un club_id, filtramos ambas consultas
+      if (club_id) {
+        queryPartidos = queryPartidos.eq('club_id', club_id);
+        queryJugadores = queryJugadores.eq('club_id', club_id);
+      }
+
+      // 4. Ejecutamos las consultas
+      const { data: p } = await queryPartidos;
       setPartidos(p || []);
-      const { data: j } = await supabase.from('jugadores').select('*');
+      
+      const { data: j } = await queryJugadores;
       setJugadores(j || []);
       
       const { data: w, error: wError } = await supabase.from('wellness').select('*');

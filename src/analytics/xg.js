@@ -1,18 +1,17 @@
-export function calcularXGEvento(ev, esTransicion = false, contextoAvanzado = {}) {
-  // Usamos la coordenada normalizada. Si no existe (ej. data vieja), fallamos de forma segura usando la normal.
+export function calcularXGEvento(ev, esTransicion = false) {
+  // Usamos la coordenada normalizada
   const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
   const y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
 
   if (x == null || y == null) return 0;
 
-  const {
-    arqueroAdelantado = false,
-    bajoPresion = false,
-    tipoRemate = 'normal'
-  } = contextoAvanzado;
+  // Analizamos los modificadores guardados en TomaDatos
+  const origen = ev.origen_gol || '';
+  const asistenciaSegundoPalo = origen.includes('2do Palo');
+  const manoAMano = origen.includes('Mano a Mano');
+  const punteo = origen.includes('Punteo');
+  const arqueroAdelantado = origen.includes('Arq. Adelantado');
 
-  // Como la cancha ya está normalizada (x=100 es siempre el arco rival),
-  // la distancia al arco a atacar siempre se mide desde 100.
   const distToGoalX = 100 - x; 
   
   // Escala Futsal: 40m largo x 20m ancho
@@ -22,7 +21,7 @@ export function calcularXGEvento(ev, esTransicion = false, contextoAvanzado = {}
 
   // 1. Curva de Distancia
   let xgBase = 0;
-  if (distMetros < 4) xgBase = 0.45;       // Pivoteo
+  if (distMetros < 4) xgBase = 0.45;       // Pivoteo / Abajo del arco
   else if (distMetros < 8) xgBase = 0.20;  // Media distancia
   else if (distMetros < 12) xgBase = 0.08; // Lejos / Tiro libre directo
   else if (distMetros < 20) xgBase = 0.02; // Propia cancha
@@ -33,10 +32,16 @@ export function calcularXGEvento(ev, esTransicion = false, contextoAvanzado = {}
   const factorAngulo = Math.sin(anguloRadianes);
   let xgFinal = xgBase * Math.pow(factorAngulo, 2); 
 
-  // 3. Contexto Táctico
+  // 3. Contexto Táctico Futsal
   if (esTransicion) xgFinal *= 1.45; 
-  if (tipoRemate === 'punteo') xgFinal *= 1.15; 
-  if (bajoPresion) xgFinal *= 0.60; 
+  if (punteo) xgFinal *= 1.15; 
+  
+  // 4. Sobreescrituras Letales (Modificadores)
+  if (asistenciaSegundoPalo) {
+    xgFinal = 0.85; // Pase de la muerte cruzado
+  } else if (manoAMano) {
+    xgFinal = Math.max(xgFinal, 0.50); // Piso del 50% si está solo contra el arquero
+  }
   
   if (arqueroAdelantado) xgFinal = Math.min(0.95, (xgFinal === 0 ? 0.2 : xgFinal * 5));
 

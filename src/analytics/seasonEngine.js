@@ -110,39 +110,36 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
   });
 
 // Ordenar y tomar los top 5 quintetos aplicando un Rating Promedio Suavizado
+ // Ordenar y tomar los top 5 quintetos aplicando un Rating Promedio Suavizado
   const topQuintetos = Object.values(quintetosGlobales)
     .filter(q => q.ids && q.ids.length > 0)
     .map(q => {
-      // 1. Calculamos el Impacto Neto (Puntos Positivos - Puntos Negativos)
-      let pesoPositivo = (q.golesFavor * 2) + (q.rematesFavor * 1) + (q.recuperaciones * 0.5) + (q.faltasRecibidas * 1);
-      let pesoNegativo = (q.golesContra * 2) + (q.rematesContra * 1) + (q.perdidas * 0.5) + (q.faltasCometidas * 1) + (q.amarillas * 1) + (q.rojas * 3);
+      let pesoPositivo = (q.golesFavor * 3) + (q.rematesFavor * 0.5) + (q.recuperaciones * 0.8) + (q.faltasRecibidas * 0.5);
+      let pesoNegativo = (q.golesContra * 3) + (q.rematesContra * 0.5) + (q.perdidas * 0.8) + (q.faltasCometidas * 0.5) + (q.amarillas * 1.5) + (q.rojas * 4);
       let neto = pesoPositivo - pesoNegativo;
 
-      // 2. Volumen de Juego (cuántas cosas pasaron mientras estaban en cancha)
       let volumenReal = q.golesFavor + q.golesContra + q.rematesFavor + q.rematesContra + 
                         q.recuperaciones + q.perdidas + q.faltasRecibidas + q.faltasCometidas + 
                         q.amarillas + q.rojas;
 
-      // 3. Suavizado (evita el "10 falso" de los que juegan un solo minuto)
-      let volumenSuavizado = volumenReal + 20; 
+      // Suavizado dinámico: mientras más juegan, más confiable es el dato.
+      // Sumamos 30 al denominador para anclar la nota inicial fuertemente a 6.0
+      let volumenSuavizado = volumenReal + 30; 
 
-      // 4. Eficiencia (Impacto por cada acción ocurrida)
       let eficiencia = neto / volumenSuavizado;
 
-      // 5. Escalar al Rating 1-10
-      // Base de 5.5 + la eficiencia amplificada por 25 para que se note la diferencia
-      let score = 5.5 + (eficiencia * 25); 
+      // Base 6.0 (neutro) + la eficiencia multiplicada por 15 (antes 25, que era muy explosivo)
+      let score = 6.0 + (eficiencia * 15); 
 
-      // Clavamos los topes para que nunca rompa la nota
       q.balanceRating = Number(Math.max(1, Math.min(10, score)).toFixed(1));
       q.volumen = volumenReal;
       return q;
     })
-    // Opcional pero recomendado: filtrar quintetos "fantasma" que tienen menos de 5 acciones reales
-    .filter(q => q.volumen >= 5)
-    .sort((a, b) => b.balanceRating - a.balanceRating) // Ordenamos del mejor al peor Rating
+    // Subimos el requisito a 10 acciones para que no aparezcan quintetos que tocaron la pelota 2 veces
+    .filter(q => q.volumen >= 10) 
+    .sort((a, b) => b.balanceRating - a.balanceRating)
     .slice(0, 5);
-
+    
   const peoresQuintetos = Object.values(quintetosGlobales)
   .filter(q => q.ids && q.ids.length > 0 && q.volumen >= 5) // Mismo filtro de volumen
   .sort((a, b) => a.balanceRating - b.balanceRating) // Orden inverso (del peor al mejor)
