@@ -63,11 +63,10 @@ function Plantel() {
           .from('jugadores')
           .update({ foto: urlFinal })
           .eq('id', formData.id)
-          .select(); // <-- ESTO ES CLAVE: Obliga a Supabase a devolver lo que actualizó
+          .select(); 
 
         if (updateError) throw updateError;
         
-        // Si Supabase no nos devuelve la fila, significa que el RLS nos bloqueó silenciosamente
         if (!updateData || updateData.length === 0) {
           throw new Error("Fallo silencioso: La política RLS de tu base de datos bloqueó la actualización.");
         }
@@ -111,53 +110,22 @@ function Plantel() {
         showToast("Error al actualizar: " + error.message, "error");
       }
     } else {
-      // --- MODO CREACIÓN (ALTA NUEVA) ---
+      // --- MODO CREACIÓN (ALTA NUEVA) - SIN AUTH ---
       try {
         showToast("Creando jugador y generando PIN...", "info");
         
         // 1. Generamos un PIN de 4 dígitos aleatorio
         const nuevoPin = Math.floor(1000 + Math.random() * 9000).toString();
         
-        // 2. Armamos un username base a prueba de duplicados (ej: messi_10_4821)
+        // 2. Armamos un username base a prueba de duplicados
         let baseUsername = `${payload.apellido || payload.nombre}_${payload.dorsal}_${nuevoPin}`.toLowerCase().replace(/\s+/g, '');
-        const emailFicticio = `${baseUsername}@virtualstats.com`;
-        const passwordConPrefijo = `VS${nuevoPin}`;
 
-        // 3. Creamos el usuario en Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: emailFicticio,
-          password: passwordConPrefijo,
-          options: {
-            data: {
-              nombre: payload.nombre,
-              apellido: payload.apellido || '',
-              rol: 'jugador'
-            }
-          }
-        });
-
-        if (authError) throw new Error("Error creando cuenta de Auth: " + authError.message);
-
-        const nuevoUserId = authData.user?.id;
-
-        if (nuevoUserId) {
-           // 4. Creamos el perfil (ignoramos error si tu Supabase ya lo crea con un Trigger automático)
-           await supabase.from('perfiles').insert([{
-             id: nuevoUserId,
-             username: baseUsername,
-             email: emailFicticio,
-             rol: 'jugador',
-             club_id: clubId
-           }]);
-           
-           payload.user_id = nuevoUserId;
-        }
-
-        // 5. Agregamos los datos de Kiosco al payload
+        // 3. Agregamos los datos de Kiosco al payload
         payload.username = baseUsername;
         payload.pin_kiosco = nuevoPin;
+        payload.user_id = null; // Aún no tiene cuenta de Auth asociada
 
-        // 6. Guardamos la ficha en la tabla jugadores
+        // 4. Guardamos la ficha en la tabla jugadores
         const { error: dbError } = await supabase.from('jugadores').insert([payload]);
         
         if (dbError) throw new Error("Error guardando ficha técnica: " + dbError.message);
