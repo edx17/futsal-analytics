@@ -5,6 +5,58 @@ import { useToast } from '../components/ToastContext';
 import { Stage, Layer, Circle, Rect, Text, Group, Line, Path } from 'react-konva';
 
 // =======================================================
+// UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
+// =======================================================
+const getIconoTarea = (tarea) => {
+  if (tarea.categoria_ejercicio === 'Físico') {
+    return tarea.espacio === 'Gimnasio' ? '🏋️‍♂️' : '🏃‍♂️';
+  }
+  return '⚽';
+};
+
+const RenderRutinaFisica = ({ data }) => {
+  if (!data || !data.bloques) return <div style={{padding: '20px', color: '#888'}}>Sin detalles físicos cargados.</div>;
+
+  return (
+    <div style={{ padding: '15px', width: '100%', height: '100%', overflowY: 'auto', background: '#0a0a0a', boxSizing: 'border-box', textAlign: 'left' }}>
+      <h4 style={{ color: '#f59e0b', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
+        {data.sub_modo === 'gimnasio' ? '🏋️‍♂️ Circuito de Gimnasio / Fuerza' : '🏃‍♂️ Bloques de Acondicionamiento en Cancha'}
+      </h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {data.bloques.map((b, i) => (
+          <div key={b.id || i} style={{ background: '#111', border: '1px solid #222', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #f59e0b' }}>
+            {data.sub_modo === 'gimnasio' ? (
+              <>
+                <div style={{ fontWeight: '900', color: '#fff', fontSize: '1.1rem' }}>{i + 1}. {b.nombre}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginTop: '10px' }}>
+                  <div style={{ background: '#000', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: '#888' }}>SERIES</span><strong style={{ color: '#fff' }}>{b.series || '-'}</strong></div>
+                  <div style={{ background: '#000', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: '#888' }}>REPS</span><strong style={{ color: '#fff' }}>{b.reps || '-'}</strong></div>
+                  <div style={{ background: '#000', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: '#888' }}>INTENSIDAD</span><strong style={{ color: '#fff' }}>{b.rir || '-'}</strong></div>
+                  <div style={{ background: '#000', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: '#888' }}>PAUSA</span><strong style={{ color: '#fff' }}>{b.pausa || '-'}</strong></div>
+                </div>
+                {b.notas && <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '10px', fontStyle: 'italic' }}>📌 {b.notas}</div>}
+              </>
+            ) : (
+              <>
+                <div style={{ fontWeight: '900', color: '#fff', fontSize: '1.1rem' }}>{b.nombreBloque}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '10px' }}>
+                  <div style={{ background: '#000', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: '#888' }}>Dist:</span> <strong style={{ color: '#fff' }}>{b.distancia}m</strong></div>
+                  <div style={{ background: '#000', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: '#888' }}>Trabajo:</span> <strong style={{ color: '#fff' }}>{b.tiempoTrabajo}s</strong></div>
+                  <div style={{ background: '#000', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: '#888' }}>Pausa:</span> <strong style={{ color: '#fff' }}>{b.micropausa}s</strong></div>
+                  <div style={{ background: '#000', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: '#888' }}>Pasadas:</span> <strong style={{ color: '#fff' }}>{b.pasadas}</strong></div>
+                  <div style={{ background: '#000', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: '#888' }}>Series:</span> <strong style={{ color: '#fff' }}>{b.series}</strong></div>
+                  <div style={{ background: '#000', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: '#888' }}>Macro:</span> <strong style={{ color: '#fff' }}>{b.macropausa}m</strong></div>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// =======================================================
 // COMPONENTE INTERNO: Reproductor Automático ("Modo GIF")
 // =======================================================
 const ReproductorLoop = ({ editorData }) => {
@@ -387,7 +439,7 @@ const PlanificadorSemanal = () => {
   const irACreadorYGuardarBorrador = () => {
     const borrador = { ...nuevaSesion, fechaStr: diaSeleccionado.fechaStr };
     sessionStorage.setItem('borradorSesion', JSON.stringify(borrador));
-    navigate('/creador-tareas');
+    navigate('/creador-tareas'); // Si quieren crear rutina, que vayan directo desde menú
   };
 
   const guardarSesion = async () => {
@@ -578,7 +630,7 @@ const PlanificadorSemanal = () => {
                                 <ul style={{ margin: 0, paddingLeft: '15px', color: '#fff', fontSize: '0.7rem', lineHeight: '1.4' }}>
                                   {tareasIds.map(id => {
                                     const t = tareasBanco.find(tb => tb.id === id);
-                                    return t ? <li key={id}>{t.titulo}</li> : null;
+                                    return t ? <li key={id}>{getIconoTarea(t)} {t.titulo}</li> : null;
                                   })}
                                 </ul>
                               </div>
@@ -672,13 +724,18 @@ const PlanificadorSemanal = () => {
                   {/* VISUAL Y MULTIMEDIA */}
                   <div style={{ flex: '1 1 100%', padding: esMovil ? '0 0 15px 0' : '10px', borderRight: esMovil ? 'none' : '1px solid #222', borderBottom: esMovil ? '1px solid #222' : 'none', minWidth: '0' }}>
                     <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                      {tareaSeleccionadaDetalle.editor_data?.frames?.length > 1 ? (
+                      
+                      {/* SI ES RUTINA FÍSICA RENDERIZAMOS LOS BLOQUES DEL PROFE */}
+                      {tareaSeleccionadaDetalle.categoria_ejercicio === 'Físico' && tareaSeleccionadaDetalle.editor_data?.tipo === 'rutina_fisica' ? (
+                        <RenderRutinaFisica data={tareaSeleccionadaDetalle.editor_data} />
+                      ) : tareaSeleccionadaDetalle.editor_data?.frames?.length > 1 ? (
                         <ReproductorLoop editorData={tareaSeleccionadaDetalle.editor_data} />
                       ) : tareaSeleccionadaDetalle.url_grafico ? (
                         <img src={tareaSeleccionadaDetalle.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                       ) : (
-                        <span style={{ color: '#444' }}>Sin gráfico</span>
+                        <span style={{ color: '#444', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionadaDetalle)}</span>
                       )}
+
                     </div>
                     {tareaSeleccionadaDetalle.video_url && (
                       <div style={{ marginTop: '15px' }}>
@@ -814,7 +871,7 @@ const PlanificadorSemanal = () => {
                           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: '#111', border: '1px solid #333' }}
                         >
                           <div style={{ width: '55px', height: '42px', borderRadius: '4px', background: '#000', border: '1px solid #222', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: '#444' }}>⚽</span>}
+                            {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: '#444' }}>{getIconoTarea(t)}</span>}
                           </div>
                           <div style={{ flex: 1, overflow: 'hidden' }}>
                             <span style={{ display: 'block', fontSize: '0.9rem', color: '#fff', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
@@ -959,7 +1016,7 @@ const PlanificadorSemanal = () => {
                         return (
                           <div key={t.id} onClick={() => toggleTarea(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: isSelected ? 'rgba(0, 255, 136, 0.1)' : '#111', border: isSelected ? '1px solid var(--accent)' : '1px solid #222' }}>
                             <div style={{ width: '50px', height: '38px', borderRadius: '4px', background: '#000', border: '1px solid #333', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: '#444' }}>⚽</span>}
+                              {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: '#444' }}>{getIconoTarea(t)}</span>}
                             </div>
                             <div style={{ flex: 1, overflow: 'hidden' }}>
                               <span style={{ display: 'block', fontSize: '0.85rem', color: isSelected ? '#fff' : '#ccc', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>

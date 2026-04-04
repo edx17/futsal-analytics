@@ -59,7 +59,7 @@ const CreadorTareas = () => {
       case '20x20_mitad': return { w: 500, h: 500 };
       case '20x20_central': return { w: 500, h: 500 };
       case '28x20': return { w: 700, h: 500 };
-      default: return { w: 900, h: 500 }; 
+      default: return { w: 900, h: 500 };
     }
   };
   const logicalSize = getDimensionesLógicas();
@@ -137,8 +137,8 @@ const CreadorTareas = () => {
     setModoAccion('mover');
     if(esMovil) setPanelMovil(null);
 
-    const DURATION = 800; 
-    const PAUSE = 400; 
+    const DURATION = 800;
+    const PAUSE = 400;
 
     for (let i = 0; i < frames.length - 1; i++) {
       if (!isPlayingRef.current) break;
@@ -163,7 +163,7 @@ const CreadorTareas = () => {
 
           const interpolatedElements = (frameA.elementos || []).map(elA => {
             const elB = (frameB.elementos || []).find(b => b.id === elA.id);
-            if (!elB) return elA; 
+            if (!elB) return elA;
 
             return {
               ...elA,
@@ -178,10 +178,10 @@ const CreadorTareas = () => {
           const nuevosElements = (frameB.elementos || []).filter(b => !(frameA.elementos || []).find(a => a.id === b.id));
           setAnimElements([...interpolatedElements, ...(progress > 0.8 ? nuevosElements : [])]);
 
-          if (progress < 1) requestAnimationFrame(animate); 
-          else resolve(); 
+          if (progress < 1) requestAnimationFrame(animate);
+          else resolve();
         };
-        requestAnimationFrame(animate); 
+        requestAnimationFrame(animate);
       });
 
       if (!isPlayingRef.current) break;
@@ -199,7 +199,7 @@ const CreadorTareas = () => {
   };
 
   const cambiarFrame = (newIdx) => {
-    if (isPlaying) return; 
+    if (isPlaying) return;
     const newFrames = [...frames];
     newFrames[currentFrameIdx] = { ...newFrames[currentFrameIdx], elementos, lineas };
     setFrames(newFrames);
@@ -276,25 +276,25 @@ const CreadorTareas = () => {
     const pointerPos = stage.getPointerPosition();
     if (!mainGroupRef.current) return pointerPos;
     const transform = mainGroupRef.current.getAbsoluteTransform().copy();
-    transform.invert(); 
+    transform.invert();
     return transform.point(pointerPos);
   };
 
   const handleStageMouseDown = (e) => {
     if (esMovil && panelMovil) setPanelMovil(null);
 
-    if (isPlaying) return; 
+    if (isPlaying) return;
     if (e.target.getParent()?.className === 'Transformer') return;
     const isBackground = e.target.name() === 'fondo_cancha' || e.target === e.target.getStage();
 
     if (isBackground) {
       setSelectedId(null);
-      const pos = getLogicalPointerPos(); 
+      const pos = getLogicalPointerPos();
 
       if (modoAccion === 'mover' && herramientaSeleccionada) {
         const nuevoElemento = { ...herramientaSeleccionada, id: 'el-' + Date.now(), x: pos.x, y: pos.y, rotation: 0, scaleX: 1, scaleY: 1 };
         setElementos([...elementos, nuevoElemento]);
-      } 
+      }
       else if (modoAccion !== 'mover') {
         isDrawing.current = true;
         const nuevaLinea = {
@@ -310,14 +310,14 @@ const CreadorTareas = () => {
 
   const handleMouseMove = (e) => {
     if (isPlaying || !isDrawing.current || modoAccion === 'mover') return;
-    const pos = getLogicalPointerPos(); 
+    const pos = getLogicalPointerPos();
     
     setLineas(prev => {
       const nuevasLineas = [...prev];
       const ultima = { ...nuevasLineas[nuevasLineas.length - 1] };
       
       if (modoAccion === 'dibujar_conduccion') ultima.puntos = [...ultima.puntos, pos.x, pos.y];
-      else ultima.puntos = [ultima.puntos[0], ultima.puntos[1], pos.x, pos.y]; 
+      else ultima.puntos = [ultima.puntos[0], ultima.puntos[1], pos.x, pos.y];
       
       nuevasLineas[nuevasLineas.length - 1] = ultima;
       return nuevasLineas;
@@ -327,7 +327,7 @@ const CreadorTareas = () => {
   const handleMouseUp = () => { isDrawing.current = false; };
 
   const RenderElemento = ({ el }) => {
-    const scaleFactor = el.radio / 35; 
+    const scaleFactor = el.radio / 35;
     switch(el.tipo) {
       case 'jugador': case 'arquero': case 'staff':
         return (
@@ -392,9 +392,9 @@ const CreadorTareas = () => {
 
   const confirmarGuardado = async () => {
     if (!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea antes de guardar.", "warning");
-    setSelectedId(null); 
+    setSelectedId(null);
     const prevFrame = currentFrameIdx;
-    cambiarFrame(0); 
+    cambiarFrame(0);
 
     setTimeout(async () => {
       try {
@@ -405,10 +405,10 @@ const CreadorTareas = () => {
         const club_id = localStorage.getItem('club_id') || 'club_default';
 
         const payload = {
-          club_id: club_id, titulo: nombreTarea, espacio: canchaConfig.tamaño, url_grafico: dataURL, 
-          editor_data: dataVectores, categoria_ejercicio: fichaTecnica.categoria_ejercicio, 
-          fase_juego: fichaTecnica.fase_juego, duracion_estimada: parseInt(fichaTecnica.duracion_estimada) || 0, 
-          intensidad_rpe: parseInt(fichaTecnica.intensidad_rpe) || 0, jugadores_involucrados: fichaTecnica.jugadores_involucrados, 
+          club_id: club_id, titulo: nombreTarea, espacio: canchaConfig.tamaño, url_grafico: dataURL,
+          editor_data: dataVectores, categoria_ejercicio: fichaTecnica.categoria_ejercicio,
+          fase_juego: fichaTecnica.fase_juego, duracion_estimada: parseInt(fichaTecnica.duracion_estimada) || 0,
+          intensidad_rpe: parseInt(fichaTecnica.intensidad_rpe) || 0, jugadores_involucrados: fichaTecnica.jugadores_involucrados,
           objetivo_principal: fichaTecnica.objetivo_principal, descripcion: fichaTecnica.descripcion, video_url: fichaTecnica.video_url,
         };
 
@@ -645,8 +645,8 @@ const CreadorTareas = () => {
             </>
           )}
 
-          <Stage 
-            width={stageSize.containerW} 
+          <Stage
+            width={stageSize.containerW}
             height={stageSize.containerH}
             ref={stageRef}
             onMouseDown={handleStageMouseDown} onTouchStart={handleStageMouseDown}
@@ -668,11 +668,11 @@ const CreadorTareas = () => {
                 {lineas.map(li => <RenderLineaCustom key={li.id} li={li} />)}
                 
                 {elementosARenderizar.map(el => (
-                  <Group 
-                    key={el.id} id={el.id} x={el.x} y={el.y} rotation={el.rotation} scaleX={el.scaleX} scaleY={el.scaleY} 
-                    draggable={modoAccion === 'mover' && !isPlaying} 
-                    onClick={(e) => { e.cancelBubble = true; setSelectedId(el.id); }} 
-                    onTap={(e) => { e.cancelBubble = true; setSelectedId(el.id); }} 
+                  <Group
+                    key={el.id} id={el.id} x={el.x} y={el.y} rotation={el.rotation} scaleX={el.scaleX} scaleY={el.scaleY}
+                    draggable={modoAccion === 'mover' && !isPlaying}
+                    onClick={(e) => { e.cancelBubble = true; setSelectedId(el.id); }}
+                    onTap={(e) => { e.cancelBubble = true; setSelectedId(el.id); }}
                     onDragEnd={(e) => { setElementos(elementos.map(item => item.id === el.id ? {...item, x: e.target.x(), y: e.target.y()} : item)); }}
                     onTransformEnd={(e) => {
                       const node = e.target;

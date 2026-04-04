@@ -13,8 +13,6 @@ import { getColorAccion } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import ReportGenerator from '../components/ReportGenerator';
 
-// === IMPORTAMOS EL NUEVO MOTOR DE RATING INDIVIDUAL ===
-// (Ajustá esta ruta si tu rating.js está en otra carpeta)
 import { calcularRatingJugador } from '../analytics/rating';
 
 // ==========================================
@@ -366,7 +364,8 @@ function Resumen() {
         id: j.id, nombre: j.apellido || j.nombre, dorsal: j.dorsal, posicion: j.posicion, eventos: [], 
         remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
         duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
-        xgChain, xgBuildup
+        xgChain, xgBuildup,
+        golesRecibidos: 0, atajadas: 0 // AGREGADO
       };
     });
 
@@ -382,6 +381,9 @@ function Resumen() {
         if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo OFE Ganado') { statsJugadores[ev.id_jugador].duelosOfeGan++; statsJugadores[ev.id_jugador].duelosOfeTot++; }
         if (ev.accion === 'Duelo OFE Perdido') { statsJugadores[ev.id_jugador].duelosOfeTot++; }
+        // AGREGADO PARA ARQUERO ESPECÍFICO
+        if (ev.accion === 'Gol Recibido') statsJugadores[ev.id_jugador].golesRecibidos++;
+        if (ev.accion === 'Atajada' || ev.accion?.toLowerCase().includes('atajada')) statsJugadores[ev.id_jugador].atajadas++;
       }
       if (ev.equipo === 'Propio' && ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
         if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_asistencia].asistencias++;
@@ -396,10 +398,29 @@ function Resumen() {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
         const mins = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
         
+        // --- 🧠 MOTOR DE ROLES INTELIGENTE ---
         let rol = 'MIXTO';
-        const ratioFinalizacion = j.remates / (j.xgBuildup || 1);
-        if (ratioFinalizacion >= 2.5) rol = 'FINALIZADOR';
-        else if (j.xgBuildup >= 0.5 && ratioFinalizacion < 1.5) rol = 'GENERADOR';
+        
+        // 1. Detectar Arquero (Por BD)
+        const esArqueroFijo = j.posicion && j.posicion.toLowerCase().includes('arquero');
+        
+        if (esArqueroFijo) {
+            rol = 'ARQUERO';
+        } else {
+            // 2. Dinámica para Jugadores de Campo
+            const ratioFinalizacion = j.remates / (j.xgBuildup || 1);
+            const ratioDefensivo = j.rec / (j.remates || 1);
+            
+            if (ratioFinalizacion >= 2.5 && j.remates >= 2) {
+                rol = 'FINALIZADOR';
+            } else if (j.xgBuildup >= 0.4 && ratioFinalizacion < 1.5) {
+                rol = 'GENERADOR';
+            } else if (j.rec >= 3 && ratioDefensivo > 2) {
+                rol = 'MURO DEFENSIVO';
+            } else {
+                rol = 'MIXTO';
+            }
+        }
 
         const ratingFinal = calcularRatingJugador(j, j.eventos, eventosRivales, pm, mins);
 
@@ -1130,61 +1151,123 @@ const COLORS_ORIGEN = {
             </div>
           </div>
 
-          <div className="bento-card">
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-               <div className="stat-label" style={{ color: 'var(--accent)' }}>RENDIMIENTO INDIVIDUAL</div>
-               {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
-            </div>
-            <div className="table-wrapper custom-scroll">
-              <table style={{ minWidth: '600px', width: '100%', textAlign: 'center' }}>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th style={{ textAlign: 'left' }}>JUGADOR</th>
-                    <th>MIN</th>
-                    <th>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                        RATING <InfoBox texto="Puntuación algorítmica (0-10) basada en volumen de acciones multiplicadas por pesos específicos. Filtrada logarítmicamente y por tiempo jugado para evitar ruido estadístico. Base: 6.0" />
-                      </div>
-                    </th>
-                    <th>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                        +/- <InfoBox texto="Diferencia de goles del equipo mientras el jugador estuvo en cancha (Goles a Favor - Goles en Contra)." />
-                      </div>
-                    </th>
-                    <th>REMATES (G)</th>
-                    <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
-                    <th style={{ color: '#10b981' }}>REC</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analitica.ranking.map(j => (
-                    <tr key={j.id} style={{ textAlign: 'center' }}>
-                      <td className="mono-accent">{j.dorsal}</td>
-                      <td style={{ textAlign: 'left', fontWeight: 700 }}>{j.nombre.toUpperCase()}</td>
-                      <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
-                      <td>
-                        {j.impacto === '-' ? (
-                          <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>
-                            -
-                          </div>
-                        ) : (
-                          <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
-                            {j.impacto.toFixed(1)}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
-                        {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
-                      </td>
-                      <td>{j.remates} ({j.goles})</td>
-                      <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
-                      <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
+          {/* ==========================================
+              TABLAS DE RENDIMIENTO INDIVIDUAL (DIVIDIDAS)
+              ========================================== */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* 1. JUGADORES DE CAMPO */}
+            <div className="bento-card">
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                 <div className="stat-label" style={{ color: 'var(--accent)' }}>RENDIMIENTO: JUGADORES DE CAMPO</div>
+                 {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+              </div>
+              <div className="table-wrapper custom-scroll">
+                <table style={{ minWidth: '650px', width: '100%', textAlign: 'center' }}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th style={{ textAlign: 'left' }}>JUGADOR</th>
+                      <th>ROL</th>
+                      <th>MIN</th>
+                      <th>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                          RATING <InfoBox texto="Puntuación algorítmica (0-10) basada en volumen de acciones multiplicadas por pesos específicos. Filtrada logarítmicamente y por tiempo jugado para evitar ruido estadístico. Base: 6.0" />
+                        </div>
+                      </th>
+                      <th>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                          +/- <InfoBox texto="Diferencia de goles del equipo mientras el jugador estuvo en cancha (Goles a Favor - Goles en Contra)." />
+                        </div>
+                      </th>
+                      <th>REMATES (G)</th>
+                      <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
+                      <th style={{ color: '#10b981' }}>REC</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {analitica.ranking.filter(j => j.rol !== 'ARQUERO').map(j => (
+                      <tr key={j.id} style={{ textAlign: 'center' }}>
+                        <td className="mono-accent">{j.dorsal}</td>
+                        <td style={{ textAlign: 'left', fontWeight: 700 }}>{j.nombre.toUpperCase()}</td>
+                        <td style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800 }}>{j.rol}</td>
+                        <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
+                        <td>
+                          {j.impacto === '-' ? (
+                            <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>-</div>
+                          ) : (
+                            <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
+                              {j.impacto.toFixed(1)}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
+                          {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
+                        </td>
+                        <td>{j.remates} ({j.goles})</td>
+                        <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
+                        <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
+            {/* 2. ARQUEROS */}
+            {analitica.ranking.some(j => j.rol === 'ARQUERO') && (
+              <div className="bento-card" style={{ borderTop: '2px solid #3b82f6' }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                   <div className="stat-label" style={{ color: '#3b82f6' }}>RENDIMIENTO: ARQUEROS</div>
+                   {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+                </div>
+                <div className="table-wrapper custom-scroll">
+                  <table style={{ minWidth: '500px', width: '100%', textAlign: 'center' }}>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th style={{ textAlign: 'left' }}>JUGADOR</th>
+                        <th>MIN</th>
+                        <th>RATING</th>
+                        <th>+/-</th>
+                        <th style={{ color: '#ef4444' }}>GOLES REC.</th>
+                        <th style={{ color: '#00ff88' }}>ATAJADAS</th>
+                        <th style={{ color: '#c084fc' }}>INICIO xG</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analitica.ranking.filter(j => j.rol === 'ARQUERO').map(j => (
+                        <tr key={j.id} style={{ textAlign: 'center' }}>
+                          <td className="mono-accent" style={{ color: '#3b82f6' }}>{j.dorsal}</td>
+                          <td style={{ textAlign: 'left', fontWeight: 700 }}>{j.nombre.toUpperCase()}</td>
+                          <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
+                          <td>
+                            {j.impacto === '-' ? (
+                              <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>-</div>
+                            ) : (
+                              <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? '#3b82f6' : '#ef4444', fontWeight: 800 }}>
+                                {j.impacto.toFixed(1)}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
+                            {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
+                          </td>
+                          <td style={{ fontWeight: 800, color: '#ef4444' }}>
+                            {j.golesRecibidos}
+                          </td>
+                          <td style={{ fontWeight: 800, color: '#00ff88' }}>
+                            {j.atajadas}
+                          </td>
+                          <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            
           </div>
 
           <div className="bento-card">

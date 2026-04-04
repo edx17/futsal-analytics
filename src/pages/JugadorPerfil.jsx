@@ -86,7 +86,6 @@ function JugadorPerfil() {
           const { data: perfil } = await supabase.from('usuarios').select('rol, club_id').eq('id', user.id).single();
           if (perfil) {
             setUserRol(perfil.rol);
-            // Mockeamos escudo y nombre para el reporte (idealmente traer de tabla clubes)
             setClubInfo({ nombre: 'CLUB ATLÉTICO FUTSAL', escudo: 'https://cdn-icons-png.flaticon.com/512/5110/5110754.png' });
           }
         }
@@ -159,7 +158,7 @@ function JugadorPerfil() {
       recuperaciones: 0, recAltas: 0, perdidas: 0, perdidasPeligrosas: 0, faltas: 0, xG: 0, 
       duelosDefGanados: 0, duelosDefPerdidos: 0, duelosDefTotales: 0, 
       duelosOfeGanados: 0, duelosOfePerdidos: 0, duelosOfeTotales: 0,
-      faltasCometidas: 0, faltasRecibidas: 0, amarillas: 0, rojas: 0 
+      faltasCometidas: 0, faltasRecibidas: 0, amarillas: 0, rojas: 0, atajadasDirectas: 0
     };
     
     const partidosJugados = new Set(evFiltrados.map(e => e.id_partido)).size;
@@ -183,7 +182,10 @@ function JugadorPerfil() {
         accionesDirectas.push(ev); 
         const xgEvento = calcularXGEvento(ev);
 
-        if (ev.accion?.includes('Remate') || ev.accion === 'Gol') {
+        if (ev.accion?.toLowerCase().includes('atajada') || ev.accion?.toLowerCase().includes('parada')) {
+          stats.atajadasDirectas++;
+        }
+        else if (ev.accion?.includes('Remate') || ev.accion === 'Gol') {
           if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
             stats.goles++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Gol++; 
             if (ev.id_asistencia) sociosData[ev.id_asistencia] = (sociosData[ev.id_asistencia] || 0) + 1;
@@ -214,10 +216,9 @@ function JugadorPerfil() {
       }
     });
 
-    // Encontrar a los 4 mejores socios para armar el quinteto directo (asistencias)
     const topSociosIds = Object.entries(sociosData)
-      .sort((a, b) => b[1] - a[1]) // Ordenamos de mayor a menor cantidad de conexiones
-      .slice(0, 4) // Tomamos los 4 mejores
+      .sort((a, b) => b[1] - a[1]) 
+      .slice(0, 4) 
       .map(entry => ({ id: entry[0], conexiones: entry[1] }));
 
     const topSocios = topSociosIds.map(s => {
@@ -230,7 +231,10 @@ function JugadorPerfil() {
     let minutos = 0;
     let transicionesInvolucrado = 0;
     
-    // Almacenamos los quintetos consolidados para evaluarlos
+    // Extracción específica para Arqueros
+    let rivalStats = { Gol: 0, Atajado: 0, Desviado: 0, Rebatido: 0 };
+    let eventosRivalEnCancha = [];
+    
     const quintetosAgregados = {};
 
     if (evCompletosFiltrados.length > 0) {
@@ -243,6 +247,23 @@ function JugadorPerfil() {
       let posesionesTotales = [];
 
       Object.values(evsPorPartido).forEach(evsPartido => {
+        // --- 🧤 LÓGICA DE TRACKEO DE ARQUEROS / EVENTOS RIVALES ---
+        const tieneTitular = evsPartido.some(e => e.accion === 'Quinteto Inicial');
+        const primeraAccion = evsPartido.find(e => e.id_jugador == jugadorId);
+        const primerCambioEntra = evsPartido.find(e => e.accion === 'Cambio Entra' && e.id_jugador == jugadorId);
+        
+        let enCancha = false;
+        if (tieneTitular) {
+            enCancha = evsPartido.some(e => e.accion === 'Quinteto Inicial' && e.id_jugador == jugadorId);
+        } else if (primeraAccion && primerCambioEntra && primeraAccion.minuto < primerCambioEntra.minuto) {
+            enCancha = true;
+        } else if (primeraAccion && !primerCambioEntra) {
+            enCancha = true; 
+        } else if (!tieneTitular) {
+            enCancha = true; // Fallback si no usan trackeo de cambios
+        }
+
+        // --- MOTOR DE ANÁLISIS ---
         const analisis = analizarPartido(evsPartido, 'Propio', false);
         if (analisis) {
           posesionesTotales = [...posesionesTotales, ...analisis.posesiones];
@@ -261,10 +282,8 @@ function JugadorPerfil() {
             });
           }
 
-          // ACUMULAR QUINTETOS DEL JUGADOR
           if (analisis.quintetos) {
             analisis.quintetos.forEach(q => {
-              // Verificamos si nuestro jugador está en este quinteto
               if (q.ids.some(id => id == jugadorId)) {
                 const key = [...q.ids].sort().join('-');
                 if (!quintetosAgregados[key]) {
@@ -288,18 +307,33 @@ function JugadorPerfil() {
             });
           }
         }
+        
+        // Iteramos los eventos del partido para capturar los remates rivales exactos
+        evsPartido.forEach(ev => {
+            if (ev.accion === 'Quinteto Inicial' && ev.id_jugador == jugadorId) enCancha = true;
+            if (ev.accion === 'Cambio Entra' && ev.id_jugador == jugadorId) enCancha = true;
+            if (ev.accion === 'Cambio Sale' && ev.id_jugador == jugadorId) enCancha = false;
+
+            if (enCancha && (ev.equipo === 'Rival' || ev.is_rival)) {
+                eventosRivalEnCancha.push(ev);
+                const accion = ev.accion || '';
+                if (accion === 'Remate - Gol' || accion === 'Gol') rivalStats.Gol++;
+                else if (accion === 'Remate - Atajado') rivalStats.Atajado++;
+                else if (accion === 'Remate - Desviado') rivalStats.Desviado++;
+                else if (accion === 'Remate - Rebatido') rivalStats.Rebatido++;
+            }
+        });
       });
 
       const cadenas = calcularCadenasValor(posesionesTotales, jugadorId);
       xgBuildup = cadenas.xgBuildup;
     }
 
-    // Calcular Rating de cada quinteto y sacar el Mejor Quinteto Estructural
     const quintetosFinales = Object.values(quintetosAgregados).map(q => {
       const rating = calcularRatingQuintetoAvanzado(q);
       const diffGoles = q.golesFavor - q.golesContra;
       return { ...q, rating, diffGoles };
-    }).filter(q => q.rating !== '-'); // Excluir los que no cumplen el mínimo de tiempo/volumen
+    }).filter(q => q.rating !== '-'); 
 
     quintetosFinales.sort((a, b) => b.rating - a.rating);
     const mejorQuinteto = quintetosFinales.length > 0 ? quintetosFinales[0] : null;
@@ -310,24 +344,49 @@ function JugadorPerfil() {
     const proxyPM = (stats.goles + stats.asistencias) - (stats.perdidasPeligrosas * 1.5);
     const impacto = calcularRatingJugador(jugadorSeleccionado, evFiltrados, proxyPM);
 
+    // --- 🧠 MOTOR DE ROLES INTELIGENTE ---
     let rol = 'MIXTO';
-    const ratioFinalizacion = stats.remates / (xgBuildup || 1);
-    if (ratioFinalizacion >= 2.5 && stats.goles > 0) rol = 'FINALIZADOR';
-    else if (xgBuildup >= 0.5 && ratioFinalizacion < 1.5) rol = 'GENERADOR';
-    else if (stats.duelosDefTotales > 5 && (stats.duelosDefGanados / stats.duelosDefTotales) >= 0.7 && stats.remates <= 3) rol = 'MURO DEFENSIVO';
-    else if (stats.asistencias >= 2 && stats.xG < 0.5) rol = 'CREADOR';
-    else if (stats.recAltas >= 3) rol = 'PRESIÓN ALTA';
+    const esArqueroFijo = jugadorSeleccionado.posicion && jugadorSeleccionado.posicion.toLowerCase().includes('arquero');
+    
+    if (esArqueroFijo) {
+      rol = 'ARQUERO';
+    } else {
+      const ratioFinalizacion = stats.remates / (xgBuildup || 1);
+      const ratioDefensivo = stats.recuperaciones / (stats.remates || 1);
+
+      if (ratioFinalizacion >= 2.5 && stats.remates >= 2) rol = 'FINALIZADOR';
+      else if (xgBuildup >= 0.4 && ratioFinalizacion < 1.5) rol = 'GENERADOR';
+      else if (stats.recuperaciones >= 3 && ratioDefensivo > 2) rol = 'MURO DEF.';
+      else if (stats.asistencias >= 2 && stats.xG < 0.5) rol = 'CREADOR';
+      else if (stats.recAltas >= 3) rol = 'PRESIÓN ALTA';
+    }
+
+    // Cálculos exactos para Arquero
+    const rematesAlArcoRival = rivalStats.Gol + rivalStats.Atajado;
+    const pctAtajadas = rematesAlArcoRival > 0 ? ((rivalStats.Atajado / rematesAlArcoRival) * 100).toFixed(1) : 0;
 
     const norm = (val, max) => Math.min(100, Math.max(0, (val / max) * 100));
     const p40 = minutos > 0 ? (40 / minutos) : 0;
 
-    const dataRadar = [
-      { subject: 'Ataque', A: norm((stats.remates * p40 * 2) + (stats.goles * p40 * 5) + (stats.xG * p40 * 10), 25) },
-      { subject: 'Defensa', A: norm((stats.recuperaciones * p40 * 2) + (stats.duelosDefGanados * p40 * 3), 30) },
-      { subject: 'Creación', A: norm((stats.asistencias * p40 * 10) + (xgBuildup * p40 * 20), 25) },
-      { subject: 'Posesión', A: norm(100 - (stats.perdidas * p40 * 2) - (stats.perdidasPeligrosas * p40 * 5), 100) },
-      { subject: 'Físico', A: norm((stats.recuperaciones + stats.duelosOfeTotales + stats.duelosDefTotales) * p40, 40) }
-    ];
+    // RADAR DINÁMICO
+    let dataRadar = [];
+    if (esArqueroFijo) {
+      dataRadar = [
+        { subject: 'Shot Stopping', A: norm(pctAtajadas, 100) }, // % Atajadas reales
+        { subject: 'Distribución', A: norm((xgBuildup * p40 * 30) + (stats.asistencias * p40 * 20), 25) },
+        { subject: 'Seguridad', A: norm(100 - (stats.perdidasPeligrosas * p40 * 10), 100) },
+        { subject: 'Anticipación', A: norm(stats.recuperaciones * p40 * 5, 20) },
+        { subject: 'Defensa Eq.', A: norm(100 - (rivalStats.Gol * p40 * 15), 100) }
+      ];
+    } else {
+      dataRadar = [
+        { subject: 'Ataque', A: norm((stats.remates * p40 * 2) + (stats.goles * p40 * 5) + (stats.xG * p40 * 10), 25) },
+        { subject: 'Defensa', A: norm((stats.recuperaciones * p40 * 2) + (stats.duelosDefGanados * p40 * 3), 30) },
+        { subject: 'Creación', A: norm((stats.asistencias * p40 * 10) + (xgBuildup * p40 * 20), 25) },
+        { subject: 'Posesión', A: norm(100 - (stats.perdidas * p40 * 2) - (stats.perdidasPeligrosas * p40 * 5), 100) },
+        { subject: 'Físico', A: norm((stats.recuperaciones + stats.duelosOfeTotales + stats.duelosDefTotales) * p40, 40) }
+      ];
+    }
 
     const dataTortaRemates = Object.keys(resultadosRemates)
       .filter(k => resultadosRemates[k] > 0)
@@ -337,25 +396,72 @@ function JugadorPerfil() {
       stats, evFiltrados, accionesDirectas, partidosJugados, 
       eficacia, ratioSeguridad, impacto, dataTortaRemates, perfilRemate,
       xgBuildup, plusMinus, minutos, transicionesInvolucrado, rol, dataRadar, topSocios,
-      mejorQuinteto,
+      mejorQuinteto, rivalStats, pctAtajadas, esArqueroFijo, eventosRivalEnCancha,
       vacio: false 
     };
   }, [eventos, eventosCompletos, partidoFiltro, jugadorId, jugadorSeleccionado, partidos, jugadores]);
 
   const evMapa = useMemo(() => {
     if (!perfil || perfil.vacio) return [];
-    return perfil.accionesDirectas.filter(ev => {
-      if (filtroAccionMapa === 'Todas') return true;
-      if (filtroAccionMapa === 'Gol' && (ev.accion === 'Gol' || ev.accion === 'Remate - Gol')) return true;
-      return ev.accion?.includes(filtroAccionMapa);
+    
+    let eventosAMostrar = [...perfil.accionesDirectas];
+    
+    // Si es arquero, inyectamos los tiros del rival para poder filtrarlos
+    if (perfil.esArqueroFijo) {
+        eventosAMostrar = [...eventosAMostrar, ...perfil.eventosRivalEnCancha];
+    }
+
+    return eventosAMostrar.filter(ev => {
+        const esRival = ev.equipo === 'Rival' || ev.is_rival;
+
+        if (filtroAccionMapa === 'Todas') {
+            if (esRival) {
+                return ev.accion === 'Remate - Atajado'; // En la vista general, destacamos las atajadas
+            }
+            return true;
+        }
+        if (filtroAccionMapa === 'Gol') {
+            if (esRival) return false;
+            return ev.accion === 'Gol' || ev.accion === 'Remate - Gol';
+        }
+        if (filtroAccionMapa === 'Goles Recibidos') {
+            if (esRival) return ev.accion === 'Remate - Gol' || ev.accion === 'Gol';
+            return false;
+        }
+        if (filtroAccionMapa === 'Atajada') {
+            if (esRival) return ev.accion === 'Remate - Atajado';
+            return ev.accion?.toLowerCase().includes('atajada') || ev.accion?.toLowerCase().includes('parada');
+        }
+        if (filtroAccionMapa === 'Remate') {
+            if (esRival) return false;
+            return ev.accion?.includes('Remate');
+        }
+        if (filtroAccionMapa === 'Recuperación') {
+            if (esRival) return false;
+            return ev.accion?.includes('Recuperación');
+        }
+        if (filtroAccionMapa === 'Pérdida') {
+            if (esRival) return false;
+            return ev.accion?.includes('Pérdida');
+        }
+        if (filtroAccionMapa === 'Duelo') {
+            if (esRival) return false;
+            return ev.accion?.includes('Duelo');
+        }
+        return false;
     });
   }, [perfil, filtroAccionMapa]);
 
   useEffect(() => {
-    if (tipoMapa !== 'calor' || !heatmapRef.current || !evMapa.length) return;
+    if (tipoMapa !== 'calor' || !heatmapRef.current) return;
     const canvas = heatmapRef.current;
     const ctx = canvas.getContext('2d');
+    
+    // Primero limpiamos el canvas independientemente de si hay datos o no
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Si no hay datos, retornamos para dejar el canvas vacío
+    if (!evMapa.length) return;
     
     const dataPoints = evMapa
       .filter(ev => (ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x) != null)
@@ -533,14 +639,31 @@ function JugadorPerfil() {
                 <div className="stat-label">xG BUILDUP <InfoBox texto="Valor que aporta el jugador en la gestación de jugadas que terminan en remate (sin contar tiro ni asistencia)." /></div>
                 <div className="stat-value" style={{ color: '#c084fc' }}>{perfil.xgBuildup.toFixed(2)}</div>
              </div>
-             <div className="bento-card" style={{ textAlign: 'center' }}>
-                <div className="stat-label">EFICACIA EN REMATES</div>
-                <div className="stat-value" style={{ color: perfil.eficacia >= 15 ? 'var(--accent)' : '#fff' }}>{perfil.eficacia}%</div>
-             </div>
-             <div className="bento-card" style={{ textAlign: 'center' }}>
-                <div className="stat-label">RATIO DEFENSIVO <InfoBox texto="Porcentaje de recuperaciones sobre el total de acciones defensivas y pérdidas." /></div>
-                <div className="stat-value" style={{ color: perfil.ratioSeguridad > 50 ? '#10b981' : '#ef4444' }}>{perfil.ratioSeguridad}%</div>
-             </div>
+             
+             {/* 🧤 REEMPLAZOS DINÁMICOS PARA ARQUEROS */}
+             {perfil.esArqueroFijo ? (
+               <>
+                 <div className="bento-card" style={{ textAlign: 'center' }}>
+                   <div className="stat-label">% ATAJADAS</div>
+                   <div className="stat-value" style={{ color: perfil.pctAtajadas >= 75 ? 'var(--accent)' : '#fff' }}>{perfil.pctAtajadas}%</div>
+                 </div>
+                 <div className="bento-card" style={{ textAlign: 'center' }}>
+                   <div className="stat-label">GOLES REC. p40</div>
+                   <div className="stat-value" style={{ color: '#ef4444' }}>{(perfil.rivalStats.Gol * factor40).toFixed(1)}</div>
+                 </div>
+               </>
+             ) : (
+               <>
+                 <div className="bento-card" style={{ textAlign: 'center' }}>
+                    <div className="stat-label">EFICACIA EN REMATES</div>
+                    <div className="stat-value" style={{ color: perfil.eficacia >= 15 ? 'var(--accent)' : '#fff' }}>{perfil.eficacia}%</div>
+                 </div>
+                 <div className="bento-card" style={{ textAlign: 'center' }}>
+                    <div className="stat-label">RATIO DEFENSIVO <InfoBox texto="Porcentaje de recuperaciones sobre el total de acciones defensivas y pérdidas." /></div>
+                    <div className="stat-value" style={{ color: perfil.ratioSeguridad > 50 ? '#10b981' : '#ef4444' }}>{perfil.ratioSeguridad}%</div>
+                 </div>
+               </>
+             )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1.5fr 1fr', gap: '20px' }}>
@@ -612,88 +735,113 @@ function JugadorPerfil() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-            
-            <div className="bento-card">
-              <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>RADIOGRAFÍA OFENSIVA</div>
-              <div style={kpiFila}><span>EXPECTATIVA DE GOL (xG)</span><strong>{perfil.stats.xG.toFixed(2)}</strong></div>
-              <div style={kpiFila}><span>ASISTENCIAS A GOL</span><strong style={{color:'var(--accent)'}}>{perfil.stats.asistencias}</strong></div>
-              <div style={kpiFila}><span>REMATES TOTALES</span><strong>{perfil.stats.remates} <span style={{fontSize:'0.7rem', color:'#555'}}>({(perfil.stats.remates * factor40).toFixed(1)} p40)</span></strong></div>
+          {/* 🌟 VISTAS SEPARADAS: ARQUERO vs JUGADOR CAMPO 🌟 */}
+          {perfil.esArqueroFijo ? (
+             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                <div className="bento-card">
+                  <div className="stat-label" style={{ marginBottom: '15px', color: '#0ea5e9' }}>RENDIMIENTO BAJO TRES PALOS</div>
+                  <div style={kpiFila}><span>GOLES RECIBIDOS</span><strong style={{color: '#ef4444'}}>{perfil.rivalStats.Gol}</strong></div>
+                  <div style={kpiFila}><span>REMATES AL ARCO EN CONTRA</span><strong>{perfil.rivalStats.Gol + perfil.rivalStats.Atajado}</strong></div>
+                  <div style={kpiFila}><span>ATAJADAS CLAVE</span><strong style={{color:'var(--accent)'}}>{perfil.rivalStats.Atajado}</strong></div>
+                  <div style={kpiFila}><span>DESVIADOS / REBATIDOS</span><strong>{perfil.rivalStats.Desviado + perfil.rivalStats.Rebatido}</strong></div>
+                  <div style={kpiFila}><span>EFECTIVIDAD DE ATAJADAS</span><strong>{perfil.pctAtajadas}%</strong></div>
+                  <div style={{ ...kpiFila, marginTop: '10px', borderTop: 'none', borderBottom: 'none' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Datos exactos de los remates rivales recibidos estando en cancha.</span>
+                  </div>
+                </div>
+                
+                <div className="bento-card">
+                  <div className="stat-label" style={{ marginBottom: '15px', color: '#facc15' }}>JUEGO DE PIES Y DISTRIBUCIÓN</div>
+                  <div style={kpiFila}><span>xG BUILDUP (ARMADO)</span><strong style={{color: '#c084fc'}}>{perfil.xgBuildup.toFixed(2)}</strong></div>
+                  <div style={kpiFila}><span>ASISTENCIAS A GOL</span><strong>{perfil.stats.asistencias}</strong></div>
+                  <div style={kpiFila}><span>PÉRDIDAS EN SALIDA</span><strong style={{color: '#ef4444'}}>{perfil.stats.perdidasPeligrosas}</strong></div>
+                  <div style={kpiFila}><span>RECUPERACIONES / CORTES LIBERO</span><strong style={{color: 'var(--accent)'}}>{perfil.stats.recuperaciones}</strong></div>
+                </div>
+             </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
               
-              <div style={kpiFila}>
-                <span>DUELOS OFE. GANADOS</span>
-                <strong>
-                  {perfil.stats.duelosOfeGanados} / {perfil.stats.duelosOfeTotales} 
-                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
-                    ({perfil.stats.duelosOfeTotales > 0 ? ((perfil.stats.duelosOfeGanados / perfil.stats.duelosOfeTotales) * 100).toFixed(0) : 0}%)
+              <div className="bento-card">
+                <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>RADIOGRAFÍA OFENSIVA</div>
+                <div style={kpiFila}><span>EXPECTATIVA DE GOL (xG)</span><strong>{perfil.stats.xG.toFixed(2)}</strong></div>
+                <div style={kpiFila}><span>ASISTENCIAS A GOL</span><strong style={{color:'var(--accent)'}}>{perfil.stats.asistencias}</strong></div>
+                <div style={kpiFila}><span>REMATES TOTALES</span><strong>{perfil.stats.remates} <span style={{fontSize:'0.7rem', color:'#555'}}>({(perfil.stats.remates * factor40).toFixed(1)} p40)</span></strong></div>
+                
+                <div style={kpiFila}>
+                  <span>DUELOS OFE. GANADOS</span>
+                  <strong>
+                    {perfil.stats.duelosOfeGanados} / {perfil.stats.duelosOfeTotales} 
+                    <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                      ({perfil.stats.duelosOfeTotales > 0 ? ((perfil.stats.duelosOfeGanados / perfil.stats.duelosOfeTotales) * 100).toFixed(0) : 0}%)
+                    </span>
+                  </strong>
+                </div>
+                <div style={kpiFila}><span>DUELOS OFE. PERDIDOS</span><strong style={{color: '#ef4444'}}>{perfil.stats.duelosOfePerdidos}</strong></div>
+              </div>
+              
+              <div className="bento-card">
+                <div className="stat-label" style={{ marginBottom: '15px', color: '#ef4444' }}>RADIOGRAFIA DEFENSIVA</div>
+                <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong style={{color: 'var(--accent)'}}>{perfil.stats.recuperaciones} <span style={{fontSize:'0.7rem', color:'#555'}}>({(perfil.stats.recuperaciones * factor40).toFixed(1)} p40)</span></strong></div>
+                <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Presión Alta (Campo Rival)</span><strong style={{color:'#eab308'}}>{perfil.stats.recAltas}</strong></div>
+                <div style={kpiFila}><span>PERDIDAS DE BALÓN</span><strong style={{color: '#ef4444'}}>{perfil.stats.perdidas}</strong></div>
+                <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Peligrosas (En salida)</span><strong style={{color:'#ef4444'}}>{perfil.stats.perdidasPeligrosas}</strong></div>
+                
+                <div style={kpiFila}>
+                  <span>DUELOS DEF. GANADOS</span>
+                  <strong>
+                    {perfil.stats.duelosDefGanados} / {perfil.stats.duelosDefTotales} 
+                    <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                      ({perfil.stats.duelosDefTotales > 0 ? ((perfil.stats.duelosDefGanados / perfil.stats.duelosDefTotales) * 100).toFixed(0) : 0}%)
+                    </span>
+                  </strong>
+                </div>
+                <div style={kpiFila}><span>DUELOS DEF. PERDIDOS</span><strong style={{color: '#ef4444'}}>{perfil.stats.duelosDefPerdidos}</strong></div>
+              </div>
+
+              <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="stat-label" style={{ marginBottom: '15px', color: '#c084fc' }}>PERFIL DE REMATE Y TRANSICIONES</div>
+                
+                <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginBottom: '15px' }}>
+                   <div style={{...zonePill, background: 'rgba(192, 132, 252, 0.1)'}}>ZONA CENTRAL<br/><strong style={{color:'#c084fc', fontSize:'1.2rem'}}>{perfil.perfilRemate.centro}</strong></div>
+                   <div style={{...zonePill, background: 'rgba(255,255,255,0.05)'}}>POR BANDAS<br/><strong style={{color:'#fff', fontSize:'1.2rem'}}>{perfil.perfilRemate.banda}</strong></div>
+                </div>
+                <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginBottom: '15px' }}>
+                   <div style={{...zonePill, background: 'rgba(0, 255, 136, 0.1)'}}>CERCANOS<br/><strong style={{color:'#00ff88', fontSize:'1.2rem'}}>{perfil.perfilRemate.cerca}</strong></div>
+                   <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.1)'}}>MEDIA DISTANCIA<br/><strong style={{color:'#ef4444', fontSize:'1.2rem'}}>{perfil.perfilRemate.lejos}</strong></div>
+                </div>
+
+                <div style={{ ...kpiFila, marginTop: 'auto', borderTop: '1px solid #222', paddingTop: '15px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    TRANSICIONES FINALIZADAS 
+                    <InfoBox texto="Cantidad de contraataques finalizados en tiro donde el jugador recuperó la pelota o ejecutó el remate." />
                   </span>
-                </strong>
-              </div>
-              <div style={kpiFila}><span>DUELOS OFE. PERDIDOS</span><strong style={{color: '#ef4444'}}>{perfil.stats.duelosOfePerdidos}</strong></div>
-            </div>
-            
-            <div className="bento-card">
-              <div className="stat-label" style={{ marginBottom: '15px', color: '#ef4444' }}>RADIOGRAFIA DEFENSIVA</div>
-              <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong style={{color: 'var(--accent)'}}>{perfil.stats.recuperaciones} <span style={{fontSize:'0.7rem', color:'#555'}}>({(perfil.stats.recuperaciones * factor40).toFixed(1)} p40)</span></strong></div>
-              <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Presión Alta (Campo Rival)</span><strong style={{color:'#eab308'}}>{perfil.stats.recAltas}</strong></div>
-              <div style={kpiFila}><span>PERDIDAS DE BALÓN</span><strong style={{color: '#ef4444'}}>{perfil.stats.perdidas}</strong></div>
-              <div style={kpiSubFila}><span style={{ display: 'flex', alignItems: 'center' }}>↳ Peligrosas (En salida)</span><strong style={{color:'#ef4444'}}>{perfil.stats.perdidasPeligrosas}</strong></div>
-              
-              <div style={kpiFila}>
-                <span>DUELOS DEF. GANADOS</span>
-                <strong>
-                  {perfil.stats.duelosDefGanados} / {perfil.stats.duelosDefTotales} 
-                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
-                    ({perfil.stats.duelosDefTotales > 0 ? ((perfil.stats.duelosDefGanados / perfil.stats.duelosDefTotales) * 100).toFixed(0) : 0}%)
-                  </span>
-                </strong>
-              </div>
-              <div style={kpiFila}><span>DUELOS DEF. PERDIDOS</span><strong style={{color: '#ef4444'}}>{perfil.stats.duelosDefPerdidos}</strong></div>
-            </div>
-
-            <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="stat-label" style={{ marginBottom: '15px', color: '#c084fc' }}>PERFIL DE REMATE Y TRANSICIONES</div>
-              
-              <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginBottom: '15px' }}>
-                 <div style={{...zonePill, background: 'rgba(192, 132, 252, 0.1)'}}>ZONA CENTRAL<br/><strong style={{color:'#c084fc', fontSize:'1.2rem'}}>{perfil.perfilRemate.centro}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(255,255,255,0.05)'}}>POR BANDAS<br/><strong style={{color:'#fff', fontSize:'1.2rem'}}>{perfil.perfilRemate.banda}</strong></div>
-              </div>
-              <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginBottom: '15px' }}>
-                 <div style={{...zonePill, background: 'rgba(0, 255, 136, 0.1)'}}>CERCANOS<br/><strong style={{color:'#00ff88', fontSize:'1.2rem'}}>{perfil.perfilRemate.cerca}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.1)'}}>MEDIA DISTANCIA<br/><strong style={{color:'#ef4444', fontSize:'1.2rem'}}>{perfil.perfilRemate.lejos}</strong></div>
+                  <strong style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>{perfil.transicionesInvolucrado}</strong>
+                </div>
               </div>
 
-              <div style={{ ...kpiFila, marginTop: 'auto', borderTop: '1px solid #222', paddingTop: '15px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  TRANSICIONES FINALIZADAS 
-                  <InfoBox texto="Cantidad de contraataques finalizados en tiro donde el jugador recuperó la pelota o ejecutó el remate." />
-                </span>
-                <strong style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>{perfil.transicionesInvolucrado}</strong>
+              <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="stat-label" style={{ marginBottom: '5px', color: '#3b82f6' }}>DESTINO DE SUS REMATES</div>
+                <div style={{ flex: 1, minHeight: '180px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+                  {perfil.dataTortaRemates && perfil.dataTortaRemates.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={perfil.dataTortaRemates} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">
+                          {perfil.dataTortaRemates.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS_REMATES[entry.name] || '#8884d8'} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }} itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }} />
+                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>No hay remates registrados.</div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="stat-label" style={{ marginBottom: '5px', color: '#3b82f6' }}>DESTINO DE SUS REMATES</div>
-              <div style={{ flex: 1, minHeight: '180px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-                {perfil.dataTortaRemates && perfil.dataTortaRemates.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={perfil.dataTortaRemates} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={5} dataKey="value">
-                        {perfil.dataTortaRemates.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS_REMATES[entry.name] || '#8884d8'} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }} itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }} />
-                      <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>No hay remates registrados.</div>
-                )}
-              </div>
             </div>
-
-          </div>
+          )}
 
           {/* 🌟 NUEVA SECCIÓN: QUÍMICA Y SOCIEDADES 🌟 */}
           <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1.5fr', gap: '20px' }}>
@@ -782,8 +930,10 @@ function JugadorPerfil() {
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
                 <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', outline: 'none', borderRadius: '4px' }}>
                   <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS SUS ACCIONES</option>
-                  <option value="Gol" style={{ background: '#111', color: '#fff' }}>SOLO GOLES</option>
-                  <option value="Remate" style={{ background: '#111', color: '#fff' }}>SOLO REMATES</option>
+                  <option value="Gol" style={{ background: '#111', color: '#fff' }}>SOLO GOLES (A FAVOR)</option>
+                  {perfil.esArqueroFijo && <option value="Goles Recibidos" style={{ background: '#111', color: '#fff' }}>SOLO GOLES RECIBIDOS</option>}
+                  {perfil.esArqueroFijo && <option value="Atajada" style={{ background: '#111', color: '#fff' }}>SOLO ATAJADAS</option>}
+                  <option value="Remate" style={{ background: '#111', color: '#fff' }}>SOLO REMATES (A FAVOR)</option>
                   <option value="Recuperación" style={{ background: '#111', color: '#fff' }}>SOLO RECUPERACIONES</option>
                   <option value="Pérdida" style={{ background: '#111', color: '#fff' }}>SOLO PÉRDIDAS</option>
                   <option value="Duelo" style={{ background: '#111', color: '#fff' }}>SOLO DUELOS</option>
@@ -854,7 +1004,7 @@ function JugadorPerfil() {
   perfil={perfil} 
   wellness={metricasWellness}
   clubInfo={clubInfo}
-  jugadores={jugadores}  // <--- ¡AGREGÁ ESTA LÍNEA ACÁ!
+  jugadores={jugadores}
   contexto={
     partidoFiltro === 'Todos' 
       ? 'TODA LA TEMPORADA' 

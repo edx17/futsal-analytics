@@ -24,6 +24,7 @@ import Torneos from './pages/Torneos';
 import ScoutingRivales from './pages/ScoutingRivales';
 import OrigenGoles from './pages/OrigenGoles'; 
 import CreadorTareas from './pages/CreadorTareas';
+import CreadorFisico from './pages/CreadorFisico'; // <-- AGREGADO: Importamos el creador del profe
 import BancoTareas from './pages/BancoTareas';
 import CargaWellness from './pages/CargaWellness';
 import PlanificadorSemanal from './pages/PlanificadorSemanal';
@@ -147,7 +148,7 @@ function AppLayout() {
     );
   }
 
-  // --- RENDERIZADO DEL MENÚ (COMPARTIDO ENTRE DESKTOP SIDEBAR Y MOBILE DRAWER) ---
+  // --- RENDERIZADO DEL MENÚ ---
   const renderNavLinks = () => (
     <>
       <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
@@ -209,6 +210,8 @@ function AppLayout() {
                 <>
                   <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗓️ <span>MICROCICLO</span></NavLink>
                   <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎨 <span>CREADOR TÁCTICO</span></NavLink>
+                  {/* AGREGADO: Enlace al Creador Físico */}
+                  <NavLink to="/creador-fisico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏋️‍♂️ <span>CREADOR FÍSICO</span></NavLink>
                 </>
               )}
               <NavLink to="/banco-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗃️ <span>BANCO DE TAREAS</span></NavLink>
@@ -287,7 +290,6 @@ function AppLayout() {
             <button onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.2rem' }}>{sidebarAbierta ? '◀' : '▶'}</button>
           </div>
           <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 20px 0', gap: '2px', overflowY: 'auto' }}>
-             {/* Renderizamos solo si está abierto o si usamos iconos solos (para esto último habria q adaptar el renderNavLinks) */}
              {sidebarAbierta ? renderNavLinks() : <div style={{textAlign: 'center', color: '#666', fontSize: '0.8rem', marginTop: '20px'}}>Menú<br/>Oculto</div>}
           </nav>
         </aside>
@@ -295,7 +297,6 @@ function AppLayout() {
 
       {/* CONTENIDO PRINCIPAL */}
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '0px 0px 85px 0px' : '40px', position: 'relative' }}>
-         {/* Wrapper interior para padding móvil, así el scrollbar queda al borde */}
         <div style={{ padding: esMovil ? '20px 15px' : '0' }}>
           <Routes>
             <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
@@ -305,6 +306,8 @@ function AppLayout() {
             <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
             <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
             <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
+            {/* AGREGADO: Ruta del Creador Físico protegida para el cuerpo técnico */}
+            <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
             <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
             <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
             <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
@@ -347,25 +350,25 @@ function AppLayout() {
              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
                 <button 
                   onClick={() => { setFabAbierto(!fabAbierto); setDrawerAbierto(false); }}
-style={{ 
-        position: 'absolute',
-        top: '0px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '40px',
-        height: '40px',
-        borderRadius: '50%',
-        background: 'var(--accent)',
-        color: '#000',
-        border: 'none',
-        fontSize: '1rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0 4px 15px rgba(0,255,136,0.3)',
-        zIndex: 1002,
-        transition: 'transform 0.2s'
-      }}
+                  style={{ 
+                    position: 'absolute',
+                    top: '0px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    color: '#000',
+                    border: 'none',
+                    fontSize: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 15px rgba(0,255,136,0.3)',
+                    zIndex: 1002,
+                    transition: 'transform 0.2s'
+                  }}
                 >
                   {fabAbierto ? '×' : '+'}
                 </button>
