@@ -22,45 +22,30 @@ export function calcularRatingJugador(jugador, eventosJugador, eventosRivales = 
       
       const xgDelTiro = ev.xg || calcularXGEvento(ev);
 
-      switch (ev.accion) {
-        case 'Gol': 
-        case 'Remate - Gol':
-          scoreNeto += 3.0 + (1 - xgDelTiro); // Si era muy difícil (xG bajo), premia más.
-          break;
-        case 'Remate - Atajado':
-          scoreNeto -= (xgDelTiro * 0.4); // Mérito del arquero, pero castigo leve si era muy clara.
-          break;
-        case 'Remate - Desviado':
-        case 'Remate - Rebatido':
-          scoreNeto -= xgDelTiro; // Castigo directo. Errar un gol hecho duele.
-          break;
-        case 'Recuperación': 
-          scoreNeto += esAtaque ? 1.5 : 0.8; 
-          break;
-        case 'Pérdida': 
-          scoreNeto -= esSalida ? 1.5 : 0.6; 
-          break;
-        case 'Falta recibida':
-          scoreNeto += 0.4;
-          break;
-        case 'Falta cometida': 
-          scoreNeto -= 0.4; 
-          break;
-        case 'Tarjeta Amarilla': 
-          scoreNeto -= 2.0; 
-          break;
-        case 'Tarjeta Roja': 
-          scoreNeto -= 5.0; 
-          break;
-        case 'Duelo DEF Ganado': 
-        case 'Duelo OFE Ganado':
-          scoreNeto += 0.6; 
-          break;
-        case 'Duelo DEF Perdido': 
-        case 'Duelo OFE Perdido':
-          scoreNeto -= 0.4; 
-          break;
+      if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
+        scoreNeto += 3.0 + (1 - xgDelTiro); // Si era muy difícil (xG bajo), premia más.
+      } else if (ev.accion === 'Remate - Atajado') {
+        scoreNeto -= (xgDelTiro * 0.4); // Mérito del arquero, pero castigo leve si era muy clara.
+      } else if (ev.accion === 'Remate - Desviado' || ev.accion === 'Remate - Rebatido' || ev.accion === 'Ocasión Fallada') {
+        scoreNeto -= xgDelTiro; // Castigo directo. Errar un gol hecho duele.
+      } else if (ev.accion === 'Recuperación') {
+        scoreNeto += esAtaque ? 1.5 : 0.8; 
+      } else if (ev.accion === 'Pérdida') {
+        scoreNeto -= esSalida ? 1.5 : 0.6; 
+      } else if (ev.accion?.includes('Falta recibida')) {
+        scoreNeto += 0.4;
+      } else if (ev.accion?.includes('Falta cometida')) { 
+        scoreNeto -= 0.4; 
+      } else if (ev.accion === 'Tarjeta Amarilla') {
+        scoreNeto -= 2.0; 
+      } else if (ev.accion === 'Tarjeta Roja') {
+        scoreNeto -= 5.0; 
+      } else if (ev.accion === 'Duelo DEF Ganado' || ev.accion === 'Duelo OFE Ganado') {
+        scoreNeto += 0.6; 
+      } else if (ev.accion === 'Duelo DEF Perdido' || ev.accion === 'Duelo OFE Perdido') {
+        scoreNeto -= 0.4; 
       }
+      
       // Premiar pases claves (asistencia en tiros errados) y asistencias directas
       if (ev.tipoVirtual === 'Asistencia') scoreNeto += 2.0;
       if (ev.tipoVirtual === 'Pase Clave') scoreNeto += 0.8; 
@@ -83,7 +68,6 @@ export function calcularRatingJugador(jugador, eventosJugador, eventosRivales = 
   return Number(Math.max(1.0, Math.min(10.0, rating)).toFixed(1));
 }
 
-// === SISTEMA DE PUNTOS PARA ARQUEROS ===
 export function calcularRatingArquero(jugador, eventosJugador, eventosRivales = [], plusMinus = 0) {
   if (!jugador) return 0;
 
@@ -92,26 +76,18 @@ export function calcularRatingArquero(jugador, eventosJugador, eventosRivales = 
 
   if (eventosJugador && eventosJugador.length > 0) {
     eventosJugador.forEach(ev => {
-      switch (ev.accion) {
-        case 'Gol':
-        case 'Remate - Gol':
-          scoreNeto += 5.0; 
-          break;
-        case 'Pérdida':
-          scoreNeto -= 1.5; 
-          break;
-        case 'Recuperación':
-          scoreNeto += 1.0; 
-          break;
-        case 'Falta cometida':
-          scoreNeto -= 0.8;
-          break;
-        case 'Tarjeta Amarilla':
-          scoreNeto -= 1.5;
-          break;
-        case 'Tarjeta Roja':
-          scoreNeto -= 4.0;
-          break;
+      if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
+        scoreNeto += 5.0; 
+      } else if (ev.accion === 'Pérdida') {
+        scoreNeto -= 1.5; 
+      } else if (ev.accion === 'Recuperación') {
+        scoreNeto += 1.0; 
+      } else if (ev.accion?.includes('Falta cometida')) {
+        scoreNeto -= 0.8;
+      } else if (ev.accion === 'Tarjeta Amarilla') {
+        scoreNeto -= 1.5;
+      } else if (ev.accion === 'Tarjeta Roja') {
+        scoreNeto -= 4.0;
       }
       if (ev.tipoVirtual === 'Asistencia') scoreNeto += 3.0;
     });

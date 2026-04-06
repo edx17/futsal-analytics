@@ -24,6 +24,8 @@ function TomaDatos() {
 
   // --- ESTADO DE NORMALIZACIÓN ESPACIAL ---
   const [direccionAtaque, setDireccionAtaque] = useState('derecha');
+  // NUEVO: CONTEXTO DE JUEGO (5v5, 5v4, etc)
+  const [contextoJuego, setContextoJuego] = useState('5v5');
 
   // --- ESTADOS DEL PANEL ---
   const [panelAbierto, setPanelAbierto] = useState(true);
@@ -51,10 +53,14 @@ function TomaDatos() {
   const [modalCambio, setModalCambio] = useState(false);
   const [jugadoresEnCancha, setJugadoresEnCancha] = useState([]);
   const [jugadoresEnBanco, setJugadoresEnBanco] = useState([]);
-  const [saleId, setSaleId] = useState('');
-  const [entraId, setEntraId] = useState('');
+  // MODIFICADO: ARRAYS PARA CAMBIOS MÚLTIPLES EN LUGAR DE STRINGS SIMPLES
+  const [salenIds, setSalenIds] = useState([]);
+  const [entranIds, setEntranIds] = useState([]);
   const [isSavingCambio, setIsSavingCambio] = useState(false); // NUEVO ESTADO PARA CARGA
   const [eventos, setEventos] = useState([]);
+  
+  // NUEVO: CUPO EN CANCHA (Para manejar expulsiones sin bloquear cambios)
+  const [cupoCancha, setCupoCancha] = useState(5);
 
   // --- ESTADOS: EDITAR 5 INICIAL ---
   const [modalEditarTitulares, setModalEditarTitulares] = useState(false);
@@ -143,7 +149,8 @@ function TomaDatos() {
     const stats = {
       golesMios: 0, golesRival: 0,
       rematesPT: 0, rematesST: 0,
-      faltasPT: 0, faltasST: 0
+      faltasPT: 0, faltasST: 0,
+      faltasRivalPT: 0, faltasRivalST: 0 // Agregado para el contador rival
     };
     eventos.forEach(ev => {
       const esGol = ev.accion === 'Remate - Gol' || ev.accion === 'Gol';
@@ -152,13 +159,19 @@ function TomaDatos() {
         else stats.golesRival++;
       }
       if (ev.equipo === 'Propio') {
-        if (ev.accion?.includes('Remate')) {
+        // También sumamos Ocasión Fallada como remate para la estadística
+        if (ev.accion?.includes('Remate') || ev.accion === 'Ocasión Fallada') {
           if (ev.periodo === 'PT') stats.rematesPT++;
           else stats.rematesST++;
         }
-        if (ev.accion === 'Falta cometida') {
+        if (ev.accion?.includes('Falta cometida')) {
           if (ev.periodo === 'PT') stats.faltasPT++;
           else stats.faltasST++;
+        }
+      } else if (ev.equipo === 'Rival') {
+        if (ev.accion?.includes('Falta cometida')) {
+          if (ev.periodo === 'PT') stats.faltasRivalPT++;
+          else stats.faltasRivalST++;
         }
       }
     });
@@ -209,6 +222,29 @@ function TomaDatos() {
     );
   };
 
+  // NUEVO: Registrar falta por ventaja (Sin coordenadas)
+  const sumarFaltaVentaja = async (equipoInfractor) => {
+    const quintetoActual = jugadoresEnCancha.map(j => j.id);
+    const evento = {
+      club_id: clubId, 
+      id_partido: partido.id,
+      accion: 'Falta cometida (Ventaja)',
+      equipo: equipoInfractor,
+      periodo: periodo, 
+      minuto: minuto,
+      quinteto_activo: quintetoActual,
+      contexto_juego: contextoJuego
+    };
+    
+    const { data: eventosGuardados, error } = await supabase.from('eventos').insert([evento]).select();
+    if (!error && eventosGuardados) {
+      setEventos(prev => [...prev, ...eventosGuardados]);
+      showToast(`Ley de ventaja registrada (${equipoInfractor})`, "info");
+    } else {
+      showToast("Error al registrar falta", "error");
+    }
+  };
+
   const guardarEventoRapido = async (equipoSeleccionado) => {
     let dbX = panelLateral.x;
     let dbY = panelLateral.y;
@@ -225,7 +261,8 @@ function TomaDatos() {
       zona_x: dbX, zona_y: dbY,
       equipo: equipoSeleccionado,
       periodo: periodo, minuto: minuto,
-      quinteto_activo: quintetoActual
+      quinteto_activo: quintetoActual,
+      contexto_juego: contextoJuego // NUEVO
     };
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
@@ -240,8 +277,8 @@ function TomaDatos() {
   const guardarEventoFinal = async (jugadorId) => {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
     
-    // MODIFICADO: Ahora TODOS los remates van a buscar Pase Previo (Paso 3) y Contexto (Paso 5)
-    const esRemate = accion.includes('Remate') || accion === 'Gol';
+    // MODIFICADO: Sumamos "Ocasión Fallada" al flujo de pedir asistencia
+    const esRemate = accion.includes('Remate') || accion === 'Gol' || accion === 'Ocasión Fallada';
 
     if (pasoRegistro === 2 && esRemate) {
       setAutorGol(jugadorId);
@@ -263,6 +300,21 @@ function TomaDatos() {
     
     const finalEquipo = jugadorId === null && pasoRegistro === 2 ? 'Rival' : equipo;
     
+    // NUEVO: LÓGICA DE TARJETA ROJA (Cupos y contexto)
+    if (accion === 'Tarjeta Roja') {
+      if (finalEquipo === 'Propio' && jugadorId) {
+        setCupoCancha(4); // Bajamos el límite de la cancha a 4
+        setContextoJuego('4v5');
+        // Lo sacamos de la cancha Y del banco para SIEMPRE
+        setJugadoresEnCancha(prev => prev.filter(j => j.id !== parseInt(jugadorId, 10)));
+        setJugadoresEnBanco(prev => prev.filter(j => j.id !== parseInt(jugadorId, 10)));
+        showToast("¡Roja! Jugador expulsado. Jugás con 4.", "warning");
+      } else if (finalEquipo === 'Rival') {
+        setContextoJuego('5v4');
+        showToast("¡Expulsión rival! Contexto en 5v4.", "info");
+      }
+    }
+
     // 1. EVENTO PRINCIPAL (TIRADOR / ACCIÓN NORMAL)
     const eventoPrincipal = {
       club_id: clubId, 
@@ -274,7 +326,8 @@ function TomaDatos() {
       equipo: finalEquipo,
       periodo: periodo, 
       minuto: minuto, 
-      quinteto_activo: quintetoActual
+      quinteto_activo: quintetoActual,
+      contexto_juego: contextoJuego // NUEVO
     };
 
     const eventosAInsertar = [eventoPrincipal];
@@ -298,7 +351,8 @@ function TomaDatos() {
         equipo: 'Propio',
         periodo: periodo,
         minuto: minuto,
-        quinteto_activo: quintetoActual
+        quinteto_activo: quintetoActual,
+        contexto_juego: contextoJuego // NUEVO
       });
     }
 
@@ -330,19 +384,27 @@ function TomaDatos() {
     const origenFinal = [origenContexto, ...modificadoresRemate].filter(Boolean).join(' | ');
     const esGol = accion === 'Remate - Gol' || accion === 'Gol';
 
+    // NUEVO: DESBLOQUEO DE CUPO SI NOS HACEN GOL Y ESTAMOS CON 4
+    if (esGol && equipo === 'Rival' && cupoCancha < 5) {
+      setCupoCancha(5);
+      setContextoJuego('5v5');
+      showToast("Sanción cumplida (Gol en contra). Ya podés ingresar al 5to jugador.", "info");
+    }
+
     eventosAInsertar.push({
       club_id: clubId, 
       id_partido: partido.id, 
       id_jugador: autorGol ? parseInt(autorGol, 10) : null,
       id_asistencia: autorAsistencia ? parseInt(autorAsistencia, 10) : null, // Guardamos la id del pasador acá
-      accion: accion, // Respeta si fue Atajado, Desviado, o Gol
+      accion: accion, // Respeta si fue Atajado, Desviado, Gol o Ocasión Fallada
       zona_x: dbX, 
       zona_y: dbY, 
       equipo: equipo, 
       periodo: periodo, 
       minuto: minuto, 
       quinteto_activo: quintetoActual,
-      origen_gol: origenFinal 
+      origen_gol: origenFinal,
+      contexto_juego: contextoJuego // NUEVO
     });
 
     // Si hubo un pase previo, lo guardamos como Asistencia o Pase Clave
@@ -357,7 +419,8 @@ function TomaDatos() {
         equipo: equipo,
         periodo: periodo, 
         minuto: minuto, 
-        quinteto_activo: quintetoActual
+        quinteto_activo: quintetoActual,
+        contexto_juego: contextoJuego // NUEVO
       });
     }
 
@@ -370,7 +433,7 @@ function TomaDatos() {
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
     if (!error && eventosGuardados) {
       setEventos(prev => [...prev, ...eventosGuardados]);
-      showToast(esGol ? "¡Gol registrado en la base de datos!" : "Remate registrado", "success");
+      showToast(esGol ? "¡Gol registrado en la base de datos!" : "Acción registrada", "success");
     } else {
       showToast("Error de red al guardar el evento.", "error");
     }
@@ -424,20 +487,34 @@ function TomaDatos() {
     }
   };
 
-  // --- LÓGICA MEJORADA DE CAMBIOS ---
+  // --- LÓGICA MEJORADA DE CAMBIOS MULTIPLES ---
+  const toggleSale = (id) => setSalenIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleEntra = (id) => setEntranIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
   const guardarCambio = async () => {
-    if (!saleId || !entraId) return;
-    setIsSavingCambio(true);
+    if (salenIds.length === 0 && entranIds.length === 0) return;
     
-    const jSale = jugadoresEnCancha.find(j => j.id == saleId);
-    const jEntra = jugadoresEnBanco.find(j => j.id == entraId);
-    
-    if (!jSale || !jEntra) {
-      setIsSavingCambio(false);
+    // Calculamos los huecos en base al CUPO ACTUAL, no siempre a 5
+    const huecos = cupoCancha - jugadoresEnCancha.length;
+    const entranRequeridos = salenIds.length + huecos;
+
+    if (entranIds.length !== entranRequeridos) {
+      showToast(huecos > 0 ? `Tenés ${huecos} cupo/s libres. Deben entrar ${entranRequeridos}.` : "Deben salir y entrar la misma cantidad", "warning");
       return;
     }
+
+    setIsSavingCambio(true);
     
-    const evtSalida = {
+    const jSalen = jugadoresEnCancha.filter(j => salenIds.includes(j.id));
+    const jEntran = jugadoresEnBanco.filter(j => entranIds.includes(j.id));
+    
+    // Si entró uno para cubrir un hueco (no tiene reemplazo directo), no lo atamos a un id_receptor
+    const nuevosEnCancha = [...jugadoresEnCancha.filter(j => !salenIds.includes(j.id)), ...jEntran];
+    const nuevosEnBanco = [...jugadoresEnBanco.filter(j => !entranIds.includes(j.id)), ...jSalen];
+    
+    // Solo generamos eventos de "Cambio" para los que efectivamente hicieron un swap 1 a 1.
+    // El que entra a "rellenar" el equipo no necesita figurar como un cambio con "id_receptor".
+    const eventosAInsertar = jSalen.map((jSale, index) => ({
       club_id: clubId, 
       id_partido: partido.id, 
       id_jugador: jSale.id, 
@@ -445,26 +522,31 @@ function TomaDatos() {
       equipo: 'Propio',
       periodo: periodo, 
       minuto: minuto, 
-      id_receptor: jEntra.id,
-      quinteto_activo: jugadoresEnCancha.map(j => j.id)
-    };
+      id_receptor: jEntran[index]?.id || null, // Prevenimos error si entran más de los que salen
+      quinteto_activo: nuevosEnCancha.map(j => j.id),
+      contexto_juego: contextoJuego
+    }));
     
     // Actualización visual rápida
-    setJugadoresEnCancha(prev => [...prev.filter(j => j.id != saleId), jEntra]);
-    setJugadoresEnBanco(prev => [...prev.filter(j => j.id != entraId), jSale]);
+    setJugadoresEnCancha(nuevosEnCancha);
+    setJugadoresEnBanco(nuevosEnBanco);
     
-    const { data: cambioGuardado, error } = await supabase.from('eventos').insert([evtSalida]).select();
-    
-    if (cambioGuardado && !error) {
-      setEventos(prev => [...prev, ...cambioGuardado]);
-      showToast("Cambio registrado correctamente", "success");
+    if (eventosAInsertar.length > 0) {
+        const { data: cambiosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
+        if (cambiosGuardados && !error) {
+          setEventos(prev => [...prev, ...cambiosGuardados]);
+          showToast("Cambios registrados", "success");
+        } else {
+           showToast("Error al guardar el cambio", "error");
+        }
     } else {
-       showToast("Error de red al guardar el cambio", "error");
+        // Si solo entró un jugador a rellenar sin que salga nadie, solo actualizamos los arrays
+        showToast("Equipo completado (Sanción cumplida)", "success");
     }
     
     setModalCambio(false); 
-    setSaleId(''); 
-    setEntraId('');
+    setSalenIds([]); 
+    setEntranIds([]);
     setIsSavingCambio(false);
   };
 
@@ -568,7 +650,7 @@ function TomaDatos() {
       <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', flex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap', gap: '10px' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
             <button 
               onClick={() => navigate(-1)} 
               style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', transition: '0.2s' }}
@@ -609,6 +691,24 @@ function TomaDatos() {
                 </button>
               </div>
             </div>
+
+            {/* NUEVO: DROPDOWN DE CONTEXTO TÁCTICO */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginLeft: '5px' }}>
+              <span style={{fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800}}>CONTEXTO:</span>
+              <select 
+                value={contextoJuego} 
+                onChange={e => setContextoJuego(e.target.value)}
+                style={{ background: '#111', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="5v5">5v5 (Normal)</option>
+                <option value="5v4">5v4 (A Favor)</option>
+                <option value="4v5">4v5 (En Contra)</option>
+                <option value="4v4">4v4</option>
+                <option value="4v3">4v3 (A Favor)</option>
+                <option value="3v4">3v4 (En Contra)</option>
+                <option value="3v3">3v3</option>
+              </select>
+            </div>
           </div>
           
           <button 
@@ -644,7 +744,29 @@ function TomaDatos() {
               <button onClick={abrirModalTitulares} className="btn-action" style={{ background: 'var(--accent)', color: '#000', border: '1px solid var(--accent)', fontSize: '0.7rem', fontWeight: 800 }}>EDITAR 5 INICIAL</button>
             )}
 
-            <button onClick={() => setModalCambio(true)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>CAMBIOS</button>
+            {/* BOTÓN CAMBIOS: Ya no se bloquea */}
+            <button 
+              onClick={() => setModalCambio(true)} 
+              className="btn-action" 
+              style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem', cursor: 'pointer' }}
+            >
+              CAMBIOS
+            </button>
+
+            {/* NUEVO BOTÓN: CUMPLIR SANCIÓN MANUAL (Aparece solo si te echaron a uno) */}
+            {cupoCancha < 5 && (
+              <button 
+                onClick={() => {
+                  setCupoCancha(5);
+                  setContextoJuego('5v5');
+                  showToast("Sanción de 2 min cumplida. Ya podés meter al 5to jugador en CAMBIOS.", "success");
+                }} 
+                className="btn-action" 
+                style={{ background: '#f59e0b', color: '#000', border: '1px solid #d97706', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', animation: 'pulse 2s infinite' }}
+              >
+                ⌛ CUMPLIR SANCIÓN
+              </button>
+            )}
             
             {/* RELOJ CON MODIFICACIÓN MANUAL */}
             <div style={relojContainer}>
@@ -695,9 +817,25 @@ function TomaDatos() {
               <div style={{ fontSize: '0.85rem', color: '#3b82f6', fontWeight: 900 }}>PT: {statsEnVivo.rematesPT} <span style={{color:'#555'}}>|</span> ST: {statsEnVivo.rematesST}</div>
             </div>
             <div style={{ width: '1px', background: 'var(--border)' }}></div>
+            
+            {/* MODIFICADO: FALTAS PROPIAS CON BOTON VENTAJA */}
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800 }}>FALTAS PROPIAS</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
+                FALTAS PROPIAS
+                <button onClick={() => sumarFaltaVentaja('Propio')} title="Falta por Ventaja" style={{ background: '#ec489922', color: '#ec4899', border: '1px solid #ec4899', borderRadius: '4px', fontSize: '0.6rem', padding: '1px 4px', cursor: 'pointer', fontWeight: 900 }}>+1</button>
+              </div>
               <div style={{ fontSize: '0.85rem', color: '#ec4899', fontWeight: 900 }}>PT: {statsEnVivo.faltasPT} <span style={{color:'#555'}}>|</span> ST: {statsEnVivo.faltasST}</div>
+            </div>
+            
+            <div style={{ width: '1px', background: 'var(--border)' }}></div>
+            
+            {/* NUEVO: FALTAS RIVALES CON BOTON VENTAJA */}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
+                FALTAS RIVAL
+                <button onClick={() => sumarFaltaVentaja('Rival')} title="Falta por Ventaja" style={{ background: '#ec489922', color: '#ec4899', border: '1px solid #ec4899', borderRadius: '4px', fontSize: '0.6rem', padding: '1px 4px', cursor: 'pointer', fontWeight: 900 }}>+1</button>
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#ec4899', fontWeight: 900 }}>PT: {statsEnVivo.faltasRivalPT} <span style={{color:'#555'}}>|</span> ST: {statsEnVivo.faltasRivalST}</div>
             </div>
           </div>
 
@@ -781,7 +919,7 @@ function TomaDatos() {
                   return (
                     <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', padding: '10px', borderRadius: '4px' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold' }}>{ev.periodo} {ev.minuto}'</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold' }}>{ev.periodo} {ev.minuto}' <span style={{color: '#666'}}>({ev.contexto_juego || '5v5'})</span></div>
                         <div style={{ fontSize: '0.85rem', color: getColorAccion(ev.accion), fontWeight: 'bold' }}>{labelAccion}</div>
                         <div style={{ fontSize: '0.75rem', color: '#ccc' }}>{nombreJugador} ({ev.equipo})</div>
                       </div>
@@ -840,6 +978,8 @@ function TomaDatos() {
                           ) : (
                             <BotonAccion label="REMATE" color="#3b82f6" span={2} onClick={() => setMenuActivo('remate')} />
                           )}
+                          {/* NUEVO: OCASIÓN FALLADA (Pase al segundo palo que no es remate) */}
+                          <BotonAccion label="OCASIÓN FALLADA (PASE)" color="#f59e0b" span={2} onClick={() => seleccionarAccion('Ocasión Fallada')} />
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -978,60 +1118,67 @@ function TomaDatos() {
         </div>
       )}
 
-      {/* --- MODAL DE CAMBIOS EN VIVO --- */}
+      {/* --- MODAL DE CAMBIOS EN VIVO (MÚLTIPLES) --- */}
       {modalCambio && (
         <div style={overlayStyle}>
           <div style={{ ...modalIndustrial, width: '450px' }}>
-            <div className="stat-label" style={{ marginBottom: '15px', color: '#fff' }}>🔄 GESTIÓN DE CAMBIOS</div>
+            <div className="stat-label" style={{ marginBottom: '15px', color: '#fff' }}>🔄 GESTIÓN DE CAMBIOS MÚLTIPLES</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '20px', lineHeight: 1.4 }}>
-              Seleccioná el jugador que <strong style={{color: '#ef4444'}}>SALE</strong> y el que <strong style={{color: '#10b981'}}>ENTRA</strong>.
+              Marcá los jugadores que <strong style={{color: '#ef4444'}}>SALEN</strong> y los que <strong style={{color: '#10b981'}}>ENTRAN</strong>. <br/>
+              Asegurate de que salga y entre la misma cantidad.
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
               {/* Columna Sale */}
               <div>
-                <div className="stat-label" style={{ marginBottom: '10px', color: saleId ? '#ef4444' : 'var(--text-dim)' }}>
-                  SALE (EN CANCHA)
+                <div className="stat-label" style={{ marginBottom: '10px', color: salenIds.length > 0 ? '#ef4444' : 'var(--text-dim)' }}>
+                  SALEN ({salenIds.length})
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  {jugadoresEnCancha.map(j => (
-                    <button 
-                      key={j.id} 
-                      onClick={() => setSaleId(j.id)} 
-                      style={{ 
-                        background: saleId === j.id ? 'rgba(239, 68, 68, 0.2)' : '#111', 
-                        border: `1px solid ${saleId === j.id ? '#ef4444' : '#333'}`, 
-                        color: saleId === j.id ? '#fff' : '#aaa', 
-                        padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' 
-                      }}
-                    >
-                      <span>{j.apellido || j.nombre}</span> <span style={{ fontWeight: 'bold' }}>{j.dorsal}</span>
-                    </button>
-                  ))}
+                  {jugadoresEnCancha.map(j => {
+                    const isSelected = salenIds.includes(j.id);
+                    return (
+                      <button 
+                        key={j.id} 
+                        onClick={() => toggleSale(j.id)} 
+                        style={{ 
+                          background: isSelected ? 'rgba(239, 68, 68, 0.2)' : '#111', 
+                          border: `1px solid ${isSelected ? '#ef4444' : '#333'}`, 
+                          color: isSelected ? '#fff' : '#aaa', 
+                          padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' 
+                        }}
+                      >
+                        <span>{j.apellido || j.nombre}</span> <span style={{ fontWeight: 'bold' }}>{j.dorsal}</span>
+                      </button>
+                    );
+                  })}
                   {jugadoresEnCancha.length === 0 && <div style={{ fontSize: '0.7rem', color: '#555' }}>Vacío</div>}
                 </div>
               </div>
 
               {/* Columna Entra */}
               <div>
-                <div className="stat-label" style={{ marginBottom: '10px', color: entraId ? '#10b981' : 'var(--text-dim)' }}>
-                  ENTRA (BANCO)
+                <div className="stat-label" style={{ marginBottom: '10px', color: entranIds.length > 0 ? '#10b981' : 'var(--text-dim)' }}>
+                  ENTRAN ({entranIds.length})
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '200px', overflowY: 'auto' }}>
-                  {jugadoresEnBanco.map(j => (
-                    <button 
-                      key={j.id} 
-                      onClick={() => setEntraId(j.id)} 
-                      style={{ 
-                        background: entraId === j.id ? 'rgba(16, 185, 129, 0.2)' : '#111', 
-                        border: `1px solid ${entraId === j.id ? '#10b981' : '#333'}`, 
-                        color: entraId === j.id ? '#fff' : '#aaa', 
-                        padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' 
-                      }}
-                    >
-                      <span>{j.apellido || j.nombre}</span> <span style={{ fontWeight: 'bold' }}>{j.dorsal}</span>
-                    </button>
-                  ))}
+                  {jugadoresEnBanco.map(j => {
+                    const isSelected = entranIds.includes(j.id);
+                    return (
+                      <button 
+                        key={j.id} 
+                        onClick={() => toggleEntra(j.id)} 
+                        style={{ 
+                          background: isSelected ? 'rgba(16, 185, 129, 0.2)' : '#111', 
+                          border: `1px solid ${isSelected ? '#10b981' : '#333'}`, 
+                          color: isSelected ? '#fff' : '#aaa', 
+                          padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' 
+                        }}
+                      >
+                        <span>{j.apellido || j.nombre}</span> <span style={{ fontWeight: 'bold' }}>{j.dorsal}</span>
+                      </button>
+                    );
+                  })}
                   {jugadoresEnBanco.length === 0 && <div style={{ fontSize: '0.7rem', color: '#555' }}>Vacío</div>}
                 </div>
               </div>
@@ -1039,26 +1186,38 @@ function TomaDatos() {
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
-                onClick={() => { setModalCambio(false); setSaleId(''); setEntraId(''); }} 
+                onClick={() => { setModalCambio(false); setSalenIds([]); setEntranIds([]); }} 
                 disabled={isSavingCambio}
                 className="btn-action" 
                 style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}
               >
                 CANCELAR
               </button>
-              <button 
-                onClick={guardarCambio} 
-                disabled={!saleId || !entraId || isSavingCambio} 
-                className="btn-action" 
-                style={{ 
-                  flex: 1, padding: '10px', 
-                  background: (saleId && entraId) ? '#fff' : '#555', 
-                  color: (saleId && entraId) ? '#000' : '#888', 
-                  fontWeight: 'bold', cursor: (saleId && entraId) ? 'pointer' : 'not-allowed', border: 'none' 
-                }}
-              >
-                {isSavingCambio ? 'GUARDANDO...' : 'CONFIRMAR CAMBIO'}
-              </button>
+              
+              {/* BOTON ESTRICTO E INTELIGENTE: Calcula si necesitás rellenar el equipo */}
+              {(() => {
+                const huecos = cupoCancha - jugadoresEnCancha.length;
+                const entranRequeridos = salenIds.length + huecos;
+                const esCambioValido = entranIds.length === entranRequeridos && entranIds.length > 0;
+
+                return (
+                  <button 
+                    onClick={guardarCambio} 
+                    disabled={!esCambioValido || isSavingCambio} 
+                    className="btn-action" 
+                    style={{ 
+                      flex: 1, padding: '10px', 
+                      background: esCambioValido ? '#fff' : '#555', 
+                      color: esCambioValido ? '#000' : '#888', 
+                      fontWeight: 'bold', 
+                      cursor: esCambioValido ? 'pointer' : 'not-allowed', 
+                      border: 'none' 
+                    }}
+                  >
+                    {isSavingCambio ? 'GUARDANDO...' : (huecos > 0 ? `CONFIRMAR INGRESO (${entranIds.length}/${entranRequeridos})` : 'CONFIRMAR CAMBIOS')}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

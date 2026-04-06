@@ -104,7 +104,6 @@ const SeccionRemates = ({ dataRemates, totalRemates }) => (
   </div>
 );
 
-// 🚨 NOTA: Agregamos la prop 'jugadores' para mapear el quinteto
 const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores = [] }) => {
   const [escala, setEscala] = useState(1);
   const [exportando, setExportando] = useState(false);
@@ -150,23 +149,33 @@ const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores 
 
   const exportarPNG = async () => {
     const scaleWrapper = document.getElementById('report-scale-wrapper');
+    const containerDiv = scaleWrapper.parentElement; // El contenedor estricto externo
     const el = document.getElementById('player-report-exportable');
-    if (!el || !scaleWrapper || exportando) return;
+    
+    if (!el || !scaleWrapper || !containerDiv || exportando) return;
     
     setExportando(true);
     
+    // 1. Guardamos estado original para restaurar sin parpadeos extraños
     const originalTransform = scaleWrapper.style.transform;
-    scaleWrapper.style.transform = 'scale(1)';
+    const originalWidth = containerDiv.style.width;
+    const originalHeight = containerDiv.style.height;
+    const originalOverflow = containerDiv.style.overflow;
     
+    // 2. Expandimos el DOM a tamaño real para que html2canvas capture todo perfecto
+    scaleWrapper.style.transform = 'scale(1)';
+    containerDiv.style.width = `${CANVAS_W}px`;
+    containerDiv.style.height = `${CANVAS_H}px`;
+    containerDiv.style.overflow = 'visible';
+    
+    // 3. Aumentamos a 300ms para asegurar que gráficos como Radar y Flexbox terminen de pintar a tamaño real
     setTimeout(async () => {
       try {
         const canvas = await html2canvas(el, { 
           scale: 2, 
           useCORS: true, 
           backgroundColor: '#0a0a0a', 
-          logging: false, 
-          width: CANVAS_W, 
-          height: CANVAS_H 
+          logging: false
         });
         const link = document.createElement('a');
         link.download = `Scouting_${jugador?.apellido}_${contexto === 'TODA LA TEMPORADA' ? new Date().getFullYear() : 'Partido'}.png`;
@@ -175,10 +184,14 @@ const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores 
       } catch (err) {
         alert('Hubo un error al generar la imagen.');
       } finally {
+        // 4. Restauramos el entorno
         scaleWrapper.style.transform = originalTransform;
+        containerDiv.style.width = originalWidth;
+        containerDiv.style.height = originalHeight;
+        containerDiv.style.overflow = originalOverflow;
         setExportando(false);
       }
-    }, 100);
+    }, 300);
   };
 
   if (!jugador || !perfil) return null;
@@ -201,7 +214,12 @@ const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid rgba(255,255,255,0.05)', paddingBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
                 <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: '#111', border: '4px solid #00e676', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {jugador.foto ? <img src={jugador.foto} style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" /> : <span style={{ fontSize: '3rem', color: '#00e676', fontWeight: 900 }}>{jugador.apellido?.charAt(0)}</span>}
+                  {/* FIX: Usamos background-image en lugar de <img /> para que html2canvas respete el object-fit: cover */}
+                  {jugador.foto ? (
+                    <div style={{ width: '100%', height: '100%', backgroundImage: `url(${jugador.foto})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  ) : (
+                    <span style={{ fontSize: '3rem', color: '#00e676', fontWeight: 900 }}>{jugador.apellido?.charAt(0)}</span>
+                  )}
                 </div>
                 <div>
                   <div style={{ fontSize: '1.2rem', color: '#aaa', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '4px', marginBottom: '5px' }}>{clubName} • SCOUTING</div>
@@ -237,7 +255,12 @@ const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores 
               </div>
               
               <div style={{ width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.9 }}>
-                {escudoUrl ? <img src={escudoUrl} style={{ width: '100%', height: 'auto', maxHeight: '100%', objectFit: 'contain' }} crossOrigin="anonymous" /> : <div style={{ width: '100px', height: '100px', border: '2px solid #333', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>ESCUDO</div>}
+                {/* FIX para el escudo también por si acaso */}
+                {escudoUrl ? (
+                  <div style={{ width: '100%', height: '100%', backgroundImage: `url(${escudoUrl})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+                ) : (
+                  <div style={{ width: '100px', height: '100px', border: '2px solid #333', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>ESCUDO</div>
+                )}
               </div>
             </div>
 
@@ -398,7 +421,12 @@ const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores 
                       {/* El Jugador Principal */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#111', border: '2px solid #00e676', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                          {jugador.foto ? <img src={jugador.foto} style={{width:'100%', height:'100%', objectFit:'cover'}} crossOrigin="anonymous"/> : <span style={{color:'#00e676', fontWeight:'bold', fontSize:'0.9rem'}}>{jugador.apellido?.substring(0,2).toUpperCase()}</span>}
+                          {/* FIX QUINTETO MAIN: Usar Background-Image */}
+                          {jugador.foto ? (
+                            <div style={{ width: '100%', height: '100%', backgroundImage: `url(${jugador.foto})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                          ) : (
+                            <span style={{color:'#00e676', fontWeight:'bold', fontSize:'0.9rem'}}>{jugador.apellido?.substring(0,2).toUpperCase()}</span>
+                          )}
                         </div>
                         <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#00e676', marginTop: '5px' }}>{jugador.apellido}</div>
                       </div>
@@ -411,7 +439,12 @@ const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores 
                         companerosQuinteto.map((socio, idx) => (
                           <div key={socio.id || idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#222', border: '2px solid #c084fc', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                              {socio.foto ? <img src={socio.foto} style={{width:'100%', height:'100%', objectFit:'cover'}} crossOrigin="anonymous"/> : <span style={{color:'#c084fc', fontWeight:'bold', fontSize:'0.8rem'}}>{socio.apellido?.substring(0,2).toUpperCase()}</span>}
+                              {/* FIX QUINTETO SOCIOS: Usar Background-Image */}
+                              {socio.foto ? (
+                                <div style={{ width: '100%', height: '100%', backgroundImage: `url(${socio.foto})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                              ) : (
+                                <span style={{color:'#c084fc', fontWeight:'bold', fontSize:'0.8rem'}}>{socio.apellido?.substring(0,2).toUpperCase()}</span>
+                              )}
                             </div>
                             <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#fff', marginTop: '5px', textAlign: 'center' }}>{socio.apellido}</div>
                           </div>

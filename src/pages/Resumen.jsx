@@ -38,6 +38,57 @@ const calcularRatingQuintetoAvanzado = (q) => {
 };
 // ==========================================
 
+// Componente para dibujar líneas de cancha de futsal realistas y proporcionales (40x20m)
+// Usado en Resumen y MatchReport. Viewbox 100x50 para mapeo porcentual fácil.
+export const PitchLinesOptimized = ({ stroke = "rgba(255,255,255,0.2)", strokeWidth = 0.5 }) => (
+  <svg
+    viewBox="0 0 100 50"
+    xmlns="http://www.w3.org/2000/svg"
+    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}
+  >
+    {/* Contorno externo */}
+    <rect x="0" y="0" width="100" height="50" fill="none" stroke={stroke} strokeWidth={strokeWidth} />
+    
+    {/* Línea Media */}
+    <line x1="50" y1="0" x2="50" y2="50" stroke={stroke} strokeWidth={strokeWidth} />
+    
+    {/* Círculo Central (Radio proporcional 3m -> r=7.5) */}
+    <circle cx="50" cy="25" r="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth} />
+    <circle cx="50" cy="25" r="0.6" fill={stroke} /> {/* Punto central */}
+
+    {/* Área Penal Izquierda (D-Zone proporcional 6m)
+        Postes asumidos en y=21.25 y y=28.75 (3m ancho real). Radio arco 15 units.
+        M baseline A r r orient swof endX endY L postY2 A ... */}
+    <path 
+      d="M 0 6.25 A 15 15 0 0 1 15 21.25 L 15 28.75 A 15 15 0 0 1 0 43.75" 
+      fill="none" stroke={stroke} strokeWidth={strokeWidth} 
+    />
+    <circle cx="25" cy="25" r="0.6" fill={stroke} opacity={0.5} /> {/* 2do punto penal 10m */}
+    <rect x="-2.5" y="21.25" width="2.5" height="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.8} strokeDasharray="1.5 1.5" /> {/* Arco */}
+
+    {/* Área Penal Derecha */}
+    <path 
+      d="M 100 6.25 A 15 15 0 0 0 85 21.25 L 85 28.75 A 15 15 0 0 0 100 43.75" 
+      fill="none" stroke={stroke} strokeWidth={strokeWidth} 
+    />
+    <circle cx="75" cy="25" r="0.6" fill={stroke} opacity={0.5} /> {/* 2do punto penal 10m */}
+    <rect x="100" y="21.25" width="2.5" height="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.8} strokeDasharray="1.5 1.5" /> {/* Arco rival */}
+
+    {/* Arcos de Córner (R=1m proporcional -> r=2.5) */}
+    <path d="M 2.5 0 A 2.5 2.5 0 0 1 0 2.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
+    <path d="M 0 47.5 A 2.5 2.5 0 0 1 2.5 50" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
+    <path d="M 97.5 50 A 2.5 2.5 0 0 1 100 47.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
+    <path d="M 100 2.5 A 2.5 2.5 0 0 1 97.5 0" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
+
+    {/* Marcas Zonas Sustitución (5m de ancho, a 5m de línea media -> x=37.5 y x=62.5) */}
+    <line x1="37.5" y1="0" x2="37.5" y2="1.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
+    <line x1="37.5" y1="50" x2="37.5" y2="48.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
+    <line x1="62.5" y1="0" x2="62.5" y2="1.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
+    <line x1="62.5" y1="50" x2="62.5" y2="48.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
+
+  </svg>
+);
+
 function Resumen() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -613,7 +664,6 @@ function Resumen() {
     heat.draw();
   }, [evMapa, tipoMapa]);
 
-
   // ==========================================
   // 🚀 ARMADO DINÁMICO DE DATOS PARA EXPORTACIÓN
   // ==========================================
@@ -634,7 +684,8 @@ function Resumen() {
         xgVisitante: Number(accVisita.toFixed(2))
       });
     });
-    xgFlow.push({ minuto: 40, xgLocal: Number(analitica.xgPropio.toFixed(2)), xgVisitante: Number(analitica.xgRival.toFixed(2)) });
+    // REPARADO: La última línea del xG Flow ya no cae a cero. Empata con el acumulado exacto en el min 40.
+    xgFlow.push({ minuto: 40, xgLocal: Number(accLocal.toFixed(2)), xgVisitante: Number(accVisita.toFixed(2)) });
 
     let golesLocalPT = 0;
     let golesVisitaPT = 0;
@@ -671,7 +722,10 @@ function Resumen() {
       stats: {
         local: { 
           xg: analitica.xgPropio, remates: analitica.stats.propio.remates, rematesAlArco: analitica.stats.propio.goles + analitica.stats.propio.atajados, 
-          recuperaciones: analitica.stats.propio.rec, perdidas: analitica.stats.propio.perdidas, faltas: analitica.stats.propio.faltas 
+          recuperaciones: analitica.stats.propio.rec, perdidas: analitica.stats.propio.perdidas, faltas: analitica.stats.propio.faltas,
+          matchControl: analitica.matchControl, chaosIndex: analitica.chaosIndex,
+          duelosGanados: analitica.duelos.defensivos.ganados + analitica.duelos.ofensivos.ganados,
+          duelosTotales: analitica.duelos.defensivos.total + analitica.duelos.ofensivos.total
         },
         visitante: { 
           xg: analitica.xgRival, remates: analitica.stats.rival.remates, rematesAlArco: analitica.stats.rival.goles + analitica.stats.rival.atajados, 
@@ -686,7 +740,10 @@ function Resumen() {
       })),
       xgFlow,
       recYPer: mapaRecuperacionesPerdidas,
-      golesOrigen: { local: analitica.dataOrigenGol.length > 0 ? analitica.dataOrigenGol : [{name: 'Sin Goles', value: 1}] }
+      golesOrigen: { 
+        local: analitica.dataOrigenGol?.length > 0 ? analitica.dataOrigenGol : [{name: 'Sin Goles', value: 1}],
+        rival: analitica.dataOrigenGolRival?.length > 0 ? analitica.dataOrigenGolRival : [{name: 'Sin Goles', value: 1}]
+      }
     };
   }, [partidoSeleccionado, analitica, rematesDetalle, eventosPartido, miClubGlobal, miEscudoGlobal]);
   // ==========================================
@@ -1087,12 +1144,8 @@ const COLORS_ORIGEN = {
             
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: '#111', border: '2px solid rgba(255,255,255,0.2)' }}>
-                <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '2px', backgroundColor: 'rgba(255,255,255,0.2)', transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 0 }}></div>
-                <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
-                <div style={{ position: 'absolute', left: '50%', top: '50%', width: '6px', height: '6px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', transform: 'translate(-50%, -50%)', pointerEvents: 'none', zIndex: 0 }}></div>
-
-                <div style={{ position: 'absolute', left: 0, top: '25%', bottom: '25%', width: '15%', border: '2px solid rgba(255,255,255,0.2)', borderLeft: 'none', borderRadius: '0 100px 100px 0', pointerEvents: 'none', zIndex: 0 }}></div>
-                <div style={{ position: 'absolute', right: 0, top: '25%', bottom: '25%', width: '15%', border: '2px solid rgba(255,255,255,0.2)', borderRight: 'none', borderRadius: '100px 0 0 100px', pointerEvents: 'none', zIndex: 0 }}></div>
+                {/* 🌟 NUEVAS LÍNEAS OPTIMIZADAS 🌟 */}
+                <PitchLinesOptimized />
                 
                 {tipoMapa === 'calor' && (
                   <canvas ref={heatmapRef} width={800} height={400} style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none', opacity: 0.85 }} />

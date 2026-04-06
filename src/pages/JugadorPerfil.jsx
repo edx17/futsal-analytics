@@ -13,6 +13,7 @@ import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import PlayerReportGenerator from '../components/PlayerReportGenerator';
+import PlayerReportIGStory from '../components/PlayerReportIGStory'; // <--- IMPORTAMOS EL NUEVO COMPONENTE
 
 // ==========================================
 // 🧠 MOTOR DE RATING ESTRUCTURAL (QUINTETOS)
@@ -50,6 +51,7 @@ function JugadorPerfil() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const [clubId, setClubId] = useState(localStorage.getItem('club_id') || null);
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
   const [clubInfo, setClubInfo] = useState({ nombre: 'VIRTUAL FUTSAL', escudo: '' });
@@ -72,6 +74,7 @@ function JugadorPerfil() {
 
   // --- ESTADO PARA EXPORTAR ---
   const [mostrarReporte, setMostrarReporte] = useState(false);
+  const [mostrarStory, setMostrarStory] = useState(false); // <--- NUEVO ESTADO PARA LA STORY
 
   useEffect(() => {
     async function checkPermisos() {
@@ -86,6 +89,7 @@ function JugadorPerfil() {
           const { data: perfil } = await supabase.from('usuarios').select('rol, club_id').eq('id', user.id).single();
           if (perfil) {
             setUserRol(perfil.rol);
+            if (perfil.club_id) setClubId(perfil.club_id);
             setClubInfo({ nombre: 'CLUB ATLÉTICO FUTSAL', escudo: 'https://cdn-icons-png.flaticon.com/512/5110/5110754.png' });
           }
         }
@@ -100,13 +104,22 @@ function JugadorPerfil() {
 
   useEffect(() => {
     async function cargarCatalogos() {
-      const { data: j } = await supabase.from('jugadores').select('*').order('apellido', { ascending: true });
-      const { data: p } = await supabase.from('partidos').select('*').order('fecha', { ascending: false });
+      let queryJugadores = supabase.from('jugadores').select('*').order('apellido', { ascending: true });
+      let queryPartidos = supabase.from('partidos').select('*').order('fecha', { ascending: false });
+
+      if (clubId) {
+        queryJugadores = queryJugadores.eq('club_id', clubId);
+        queryPartidos = queryPartidos.eq('club_id', clubId);
+      }
+
+      const { data: j } = await queryJugadores;
+      const { data: p } = await queryPartidos;
+      
       setJugadores(j || []);
       setPartidos(p || []);
     }
     cargarCatalogos();
-  }, []);
+  }, [clubId]);
 
   useEffect(() => {
     async function fetchDataJugador() {
@@ -247,7 +260,6 @@ function JugadorPerfil() {
       let posesionesTotales = [];
 
       Object.values(evsPorPartido).forEach(evsPartido => {
-        // --- 🧤 LÓGICA DE TRACKEO DE ARQUEROS / EVENTOS RIVALES ---
         const tieneTitular = evsPartido.some(e => e.accion === 'Quinteto Inicial');
         const primeraAccion = evsPartido.find(e => e.id_jugador == jugadorId);
         const primerCambioEntra = evsPartido.find(e => e.accion === 'Cambio Entra' && e.id_jugador == jugadorId);
@@ -260,10 +272,9 @@ function JugadorPerfil() {
         } else if (primeraAccion && !primerCambioEntra) {
             enCancha = true; 
         } else if (!tieneTitular) {
-            enCancha = true; // Fallback si no usan trackeo de cambios
+            enCancha = true; 
         }
 
-        // --- MOTOR DE ANÁLISIS ---
         const analisis = analizarPartido(evsPartido, 'Propio', false);
         if (analisis) {
           posesionesTotales = [...posesionesTotales, ...analisis.posesiones];
@@ -308,7 +319,6 @@ function JugadorPerfil() {
           }
         }
         
-        // Iteramos los eventos del partido para capturar los remates rivales exactos
         evsPartido.forEach(ev => {
             if (ev.accion === 'Quinteto Inicial' && ev.id_jugador == jugadorId) enCancha = true;
             if (ev.accion === 'Cambio Entra' && ev.id_jugador == jugadorId) enCancha = true;
@@ -344,7 +354,6 @@ function JugadorPerfil() {
     const proxyPM = (stats.goles + stats.asistencias) - (stats.perdidasPeligrosas * 1.5);
     const impacto = calcularRatingJugador(jugadorSeleccionado, evFiltrados, proxyPM);
 
-    // --- 🧠 MOTOR DE ROLES INTELIGENTE ---
     let rol = 'MIXTO';
     const esArqueroFijo = jugadorSeleccionado.posicion && jugadorSeleccionado.posicion.toLowerCase().includes('arquero');
     
@@ -361,18 +370,16 @@ function JugadorPerfil() {
       else if (stats.recAltas >= 3) rol = 'PRESIÓN ALTA';
     }
 
-    // Cálculos exactos para Arquero
     const rematesAlArcoRival = rivalStats.Gol + rivalStats.Atajado;
     const pctAtajadas = rematesAlArcoRival > 0 ? ((rivalStats.Atajado / rematesAlArcoRival) * 100).toFixed(1) : 0;
 
     const norm = (val, max) => Math.min(100, Math.max(0, (val / max) * 100));
     const p40 = minutos > 0 ? (40 / minutos) : 0;
 
-    // RADAR DINÁMICO
     let dataRadar = [];
     if (esArqueroFijo) {
       dataRadar = [
-        { subject: 'Shot Stopping', A: norm(pctAtajadas, 100) }, // % Atajadas reales
+        { subject: 'Shot Stopping', A: norm(pctAtajadas, 100) },
         { subject: 'Distribución', A: norm((xgBuildup * p40 * 30) + (stats.asistencias * p40 * 20), 25) },
         { subject: 'Seguridad', A: norm(100 - (stats.perdidasPeligrosas * p40 * 10), 100) },
         { subject: 'Anticipación', A: norm(stats.recuperaciones * p40 * 5, 20) },
@@ -406,7 +413,6 @@ function JugadorPerfil() {
     
     let eventosAMostrar = [...perfil.accionesDirectas];
     
-    // Si es arquero, inyectamos los tiros del rival para poder filtrarlos
     if (perfil.esArqueroFijo) {
         eventosAMostrar = [...eventosAMostrar, ...perfil.eventosRivalEnCancha];
     }
@@ -416,7 +422,7 @@ function JugadorPerfil() {
 
         if (filtroAccionMapa === 'Todas') {
             if (esRival) {
-                return ev.accion === 'Remate - Atajado'; // En la vista general, destacamos las atajadas
+                return ev.accion === 'Remate - Atajado'; 
             }
             return true;
         }
@@ -457,10 +463,8 @@ function JugadorPerfil() {
     const canvas = heatmapRef.current;
     const ctx = canvas.getContext('2d');
     
-    // Primero limpiamos el canvas independientemente de si hay datos o no
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Si no hay datos, retornamos para dejar el canvas vacío
     if (!evMapa.length) return;
     
     const dataPoints = evMapa
@@ -589,9 +593,14 @@ function JugadorPerfil() {
         </div>
 
         {jugadorId && perfil && !perfil.vacio && (
-          <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto' }}>
-            EXPORTAR REPORTE PREMIUM
-          </button>
+          <div style={{ display: 'flex', gap: '10px', width: esMovil ? '100%' : 'auto', flexDirection: esMovil ? 'column' : 'row' }}>
+            <button onClick={() => setMostrarStory(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', background: '#c084fc', color: '#fff', border: 'none', boxShadow: '0 4px 15px rgba(192, 132, 252, 0.2)' }}>
+              📱 EXPORTAR STORY
+            </button>
+            <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto' }}>
+              📸 REPORTE PREMIUM
+            </button>
+          </div>
         )}
       </div>
 
@@ -984,7 +993,38 @@ function JugadorPerfil() {
         </div>
       )}
 
-      {/* 🌟 OVERLAY DEL REPORTE PARA EXPORTAR 🌟 */}
+      {/* 🌟 OVERLAY DE LA HISTORIA IG PARA EXPORTAR 🌟 */}
+      {mostrarStory && jugadorSeleccionado && perfil && !perfil.vacio && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px'
+        }}>
+          <div style={{ textAlign: 'right', maxWidth: '1200px', margin: '0 auto' }}>
+            <button 
+              onClick={() => setMostrarStory(false)} 
+              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
+            >
+              ✖ CERRAR STORY
+            </button>
+          </div>
+          
+          <PlayerReportIGStory 
+            jugador={jugadorSeleccionado} 
+            perfil={perfil} 
+            jugadores={jugadores}
+            contexto={
+              partidoFiltro === 'Todos' 
+                ? 'TODA LA TEMPORADA' 
+                : (() => {
+                    const p = partidos.find(p => p.id == partidoFiltro);
+                    return p ? `VS ${p.rival.toUpperCase()} (${p.fecha})` : '';
+                  })()
+            }
+          />
+        </div>
+      )}
+
+      {/* 🌟 OVERLAY DEL REPORTE PREMIUM A4 PARA EXPORTAR 🌟 */}
       {mostrarReporte && jugadorSeleccionado && perfil && !perfil.vacio && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
@@ -995,25 +1035,25 @@ function JugadorPerfil() {
               onClick={() => setMostrarReporte(false)} 
               style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
             >
-              ✖
+              ✖ CERRAR REPORTE
             </button>
           </div>
           
-<PlayerReportGenerator 
-  jugador={jugadorSeleccionado} 
-  perfil={perfil} 
-  wellness={metricasWellness}
-  clubInfo={clubInfo}
-  jugadores={jugadores}
-  contexto={
-    partidoFiltro === 'Todos' 
-      ? 'TODA LA TEMPORADA' 
-      : (() => {
-          const p = partidos.find(p => p.id == partidoFiltro);
-          return p ? `VS ${p.rival.toUpperCase()} (${p.fecha})` : '';
-        })()
-  }
-/>
+          <PlayerReportGenerator 
+            jugador={jugadorSeleccionado} 
+            perfil={perfil} 
+            wellness={metricasWellness}
+            clubInfo={clubInfo}
+            jugadores={jugadores}
+            contexto={
+              partidoFiltro === 'Todos' 
+                ? 'TODA LA TEMPORADA' 
+                : (() => {
+                    const p = partidos.find(p => p.id == partidoFiltro);
+                    return p ? `VS ${p.rival.toUpperCase()} (${p.fecha})` : '';
+                  })()
+            }
+          />
         </div>
       )}
 

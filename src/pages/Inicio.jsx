@@ -630,29 +630,29 @@ export default function Inicio() {
                 background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', 
                 borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' 
               }}>
-                VERSIÓN 0.00202604040016
+                VERSIÓN 0.00202604052328
               </span>
               <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-                🏋️‍♂️ ¡Llegaron las Herramientas del Profe!
+                ¡Evolución en el Match Center!
               </h2>
               <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-                Actualizamos el sistema con un módulo integral de preparación física.
+                Optimizamos el tracking en vivo, automatizamos reglas y mejoramos la visualización.
               </p>
             </div>
             
             <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
               <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <li>
-                  <strong style={{color: '#f59e0b'}}>Nuevo Creador Físico:</strong> 
-                  <br/>Un apartado exclusivo para armar rutinas de Gimnasio (Fuerza) y Cancha (Acondicionamiento Metabólico) con control detallado de volumen, intensidad, pausas y RIR.
+                  <strong style={{color: '#f59e0b'}}>Gestor de Quintetos y Contexto:</strong> 
+                  <br/>Ahora podés hacer múltiples cambios simultáneos (Rolling Subs). Sumamos el selector táctico (5v5, 5v4, etc.) automatizado: si hay expulsión, saca al jugador, te pasa a 4v5 y bloquea los cambios hasta recibir un gol.
                 </li>
                 <li>
-                  <strong style={{color: '#10b981'}}>Banco de Tareas Inteligente:</strong> 
-                  <br/>Ahora el playbook reconoce automáticamente si la tarea es táctica o física. Las rutinas se visualizan con una tabla de ejercicios detallada y emojis personalizados (🏋️‍♂️, 🏃‍♂️, ⚽) en lugar de la pizarra virtual.
+                  <strong style={{color: '#10b981'}}>Ocasión Fallada y Ley de Ventaja:</strong> 
+                  <br/>Nuevo botón en "Finalización" para registrar esos "pases de la muerte" fallidos. En el marcador sumamos botones rápidos (+1) para agregar faltas por ley de ventaja sin salir de la pantalla táctil.
                 </li>
                 <li>
-                  <strong style={{color: '#0ea5e9'}}>Planificador Semanal Potenciado:</strong> 
-                  <br/>Se integraron las rutinas físicas directamente en el armado del microciclo. Agregá tus bloques de fuerza o pasadas a la sesión y consultá el desglose completo sin salir del calendario.
+                  <strong style={{color: '#0ea5e9'}}>Canchas Proporcionales (Reportes):</strong> 
+                  <br/>Rediseñamos el campo a escala real (40x20m). La misma precisión matemática y visual que tenés en la app, ahora se exporta directamente en los reportes de rendimiento.
                 </li>
               </ul>
             </div>
@@ -668,7 +668,7 @@ export default function Inicio() {
               onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
               onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
             >
-              ¡ENTENDIDO, A ENTRENAR!
+              ¡ENTENDIDO, A DIRIGIR!
             </button>
           </div>
         </div>
