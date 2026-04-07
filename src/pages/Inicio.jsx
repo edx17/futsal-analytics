@@ -16,7 +16,7 @@ const CATÁLOGO_WIDGETS = [
   
   // CT / MANAGER
   { id: 'nuevo_partido', tipo: 'link', spanDefecto: '1x1', titulo: 'Nuevo Partido', icon: '⚡', ruta: '/nuevo-partido', color: '#10b981', desc: 'Stats en vivo', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'planificador', tipo: 'link', spanDefecto: '1x1', titulo: 'Microciclo', icon: '🗓️', ruta: '/planificador-semanal', color: '#8b5cf6', desc: 'Cargas y sesiones', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'planificador', tipo: 'link', spanDefecto: '1x1', titulo: 'Microciclo', icon: '🗓️', ruta: '/microciclo', color: '#8b5cf6', desc: 'Cargas y sesiones', roles: ['superuser', 'manager', 'ct'] },
   { id: 'creador_tareas', tipo: 'link', spanDefecto: '1x1', titulo: 'Creador Tareas', icon: '🎨', ruta: '/creador-tareas', color: '#ec4899', desc: 'Pizarra gráfica', roles: ['superuser', 'manager', 'ct'] },
   { id: 'banco_tareas', tipo: 'link', spanDefecto: '1x1', titulo: 'Banco Tareas', icon: '📁', ruta: '/banco-tareas', color: '#f59e0b', desc: 'Archivo de ejercicios', roles: ['superuser', 'manager', 'ct'] },
   { id: 'libro_tactico', tipo: 'link', spanDefecto: '1x1', titulo: 'Libro Táctico', icon: '📋', ruta: '/libro-tactico', color: '#3b82f6', desc: 'Sistemas', roles: ['superuser', 'manager', 'ct'] },
@@ -24,7 +24,7 @@ const CATÁLOGO_WIDGETS = [
   { id: 'rendimiento', tipo: 'link', spanDefecto: '1x1', titulo: 'Sports Science', icon: '🧬', ruta: '/rendimiento', color: '#f43f5e', desc: 'Físico y Nutri', roles: ['superuser', 'manager', 'ct'] },
   { id: 'presentismo', tipo: 'link', spanDefecto: '1x1', titulo: 'Presentismo', icon: '✅', ruta: '/presentismo', color: '#14b8a6', desc: 'Asistencia', roles: ['superuser', 'manager', 'ct'] },
   { id: 'plantel', tipo: 'link', spanDefecto: '1x1', titulo: 'Mi Plantel', icon: '👥', ruta: '/plantel', color: '#0ea5e9', desc: 'Gestión', roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'wellness_ct', tipo: 'link', spanDefecto: '1x1', titulo: 'Monitor Wellness', icon: '🔋', ruta: '/carga-wellness', color: '#10b981', desc: 'Estado hoy', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'wellness_ct', tipo: 'link', spanDefecto: '1x1', titulo: 'Monitor Wellness', icon: '🔋', ruta: '/wellness', color: '#10b981', desc: 'Estado hoy', roles: ['superuser', 'manager', 'ct'] },
 
   // ADMIN / MANAGER
   { id: 'tesoreria', tipo: 'link', spanDefecto: '1x1', titulo: 'Tesorería', icon: '💰', ruta: '/tesoreria', color: '#eab308', desc: 'Caja y Cuotas', roles: ['superuser', 'manager', 'admin'] },
@@ -51,8 +51,8 @@ export default function Inicio() {
   }, []);
 
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
-  const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id') || localStorage.getItem('kiosco_user_id') || '';
-  const kioscoClubId = localStorage.getItem('kiosco_club_id') || perfil?.club_id || '';
+  const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id') || '';
+  const kioscoClubId = localStorage.getItem('kiosco_club_id') || '';
 
   const rol = (isKioscoMode ? 'jugador' : (perfil?.rol || 'jugador')).toLowerCase();
   const esSuperUser = rol === 'superuser';
@@ -60,12 +60,10 @@ export default function Inicio() {
   const esManager = rol === 'manager';
 
   // NUEVO: PANTALLA DE NOVEDADES -----------------------
-  // Definimos la versión actual. Cambiá este string en el futuro para forzar que el modal vuelva a aparecer.
   const VERSION_ACTUAL = 'v0.002604031832';
   const [mostrarNovedades, setMostrarNovedades] = useState(false);
 
   useEffect(() => {
-    // Si no es jugador ni es modo kiosco, evaluamos si ya vio esta versión
     if (rol !== 'jugador' && !isKioscoMode) {
       const versionVista = localStorage.getItem(`novedades_vista_${VERSION_ACTUAL}`);
       if (!versionVista) {
@@ -80,10 +78,18 @@ export default function Inicio() {
   };
   // ---------------------------------------------------
 
-  const [clubMaster, setClubMaster] = useState(localStorage.getItem('club_id') || '');
-  const clubActivo = esSuperUser ? clubMaster : (perfil?.club_id || '');
+  // Perfil que mostramos en pantalla (Kiosco o Logueado)
+  const [perfilVisual, setPerfilVisual] = useState(null);
 
-  const [nombreClub, setNombreClub] = useState(esSuperUser ? (clubMaster ? (localStorage.getItem('mi_club') || 'CARGANDO...') : 'VISTA GLOBAL MASTER') : (perfil?.clubes?.nombre || localStorage.getItem('mi_club') || 'CARGANDO...'));
+  const [clubMaster, setClubMaster] = useState(localStorage.getItem('club_id') || '');
+  // clubActivo: Si es kiosco, manda el ID del kiosco.
+  const clubActivo = isKioscoMode ? kioscoClubId : (esSuperUser ? clubMaster : (perfil?.club_id || ''));
+
+  // NUEVO: ESTADO PARA EL MODAL DEL QR
+  const [mostrarQR, setMostrarQR] = useState(false);
+  const linkKiosco = `${window.location.origin}/kiosco?club=${clubActivo}`;
+
+  const [nombreClub, setNombreClub] = useState('CARGANDO...');
   const [escudoClub, setEscudoClub] = useState(localStorage.getItem('escudo_url') || '');
 
   const [categoriaActiva, setCategoriaActiva] = useState(localStorage.getItem('dash_categoria') || 'Todas');
@@ -98,6 +104,7 @@ export default function Inicio() {
   const [vepAnual, setVepAnual] = useState({ v: 0, e: 0, d: 0 });
   const [golesPorCat, setGolesPorCat] = useState({});
   const [resultadosRecientesCat, setResultadosRecientesCat] = useState({});
+  const [datosWellness, setDatosWellness] = useState([]);
 
   const [modoEdicion, setModoEdicion] = useState(false);
   const widgetsPermitidos = CATÁLOGO_WIDGETS.filter(w => w.roles.includes(rol));
@@ -113,7 +120,8 @@ export default function Inicio() {
     : ['mi_wellness', 'mi_perfil', 'mi_rendimiento'];
 
   const [misWidgetsActivos, setMisWidgetsActivos] = useState(() => {
-    const guardado = localStorage.getItem(`dashboard_${perfil?.id}`);
+    const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
+    const guardado = localStorage.getItem(`dashboard_${idRef}`);
     if (guardado) {
       const idsValidos = JSON.parse(guardado).filter(id => widgetsPermitidos.some(w => w.id === id));
       return idsValidos.length > 0 ? idsValidos : defaultLayout;
@@ -122,8 +130,9 @@ export default function Inicio() {
   });
 
   const [tamanosWidgets, setTamanosWidgets] = useState(() => {
+    const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
     const defaultSizes = CATÁLOGO_WIDGETS.reduce((acc, w) => ({ ...acc, [w.id]: w.spanDefecto }), {});
-    const guardadoSizes = localStorage.getItem(`dashboard_sizes_${perfil?.id}`);
+    const guardadoSizes = localStorage.getItem(`dashboard_sizes_${idRef}`);
     return guardadoSizes ? { ...defaultSizes, ...JSON.parse(guardadoSizes) } : defaultSizes;
   });
 
@@ -133,7 +142,8 @@ export default function Inicio() {
   const toggleWidget = (id) => {
     setMisWidgetsActivos(prev => {
       const nuevo = prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id];
-      localStorage.setItem(`dashboard_${perfil?.id}`, JSON.stringify(nuevo));
+      const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
+      localStorage.setItem(`dashboard_${idRef}`, JSON.stringify(nuevo));
       return nuevo;
     });
   };
@@ -141,7 +151,8 @@ export default function Inicio() {
   const cambiarTamano = (id, nuevoSpan) => {
     setTamanosWidgets(prev => {
       const nuevo = { ...prev, [id]: nuevoSpan };
-      localStorage.setItem(`dashboard_sizes_${perfil?.id}`, JSON.stringify(nuevo));
+      const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
+      localStorage.setItem(`dashboard_sizes_${idRef}`, JSON.stringify(nuevo));
       return nuevo;
     });
   };
@@ -154,7 +165,8 @@ export default function Inicio() {
     dragItem.current = null;
     dragOverItem.current = null;
     setMisWidgetsActivos(_misWidgetsActivos);
-    localStorage.setItem(`dashboard_${perfil?.id}`, JSON.stringify(_misWidgetsActivos));
+    const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
+    localStorage.setItem(`dashboard_${idRef}`, JSON.stringify(_misWidgetsActivos));
   };
 
   const moverWidget = (index, direccion) => {
@@ -165,7 +177,8 @@ export default function Inicio() {
       [nuevos[index + 1], nuevos[index]] = [nuevos[index], nuevos[index + 1]];
     }
     setMisWidgetsActivos(nuevos);
-    localStorage.setItem(`dashboard_${perfil?.id}`, JSON.stringify(nuevos));
+    const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
+    localStorage.setItem(`dashboard_${idRef}`, JSON.stringify(nuevos));
   };
 
   const handleCambioCategoria = (e) => {
@@ -183,34 +196,66 @@ export default function Inicio() {
       }
       fetchClubes();
     }
-  }, [esSuperUser, isKioscoMode, kioscoJugadorId, kioscoClubId]);
+  }, [esSuperUser]);
 
   useEffect(() => {
-    if (isKioscoMode) { setCargando(false); return; }
-
     async function cargarDashboard() {
       setCargando(true);
-      if (!clubActivo && !esSuperUser) { setCargando(false); return; }
+      
+      const targetClubId = isKioscoMode ? kioscoClubId : clubActivo;
+      const targetJugadorId = isKioscoMode ? kioscoJugadorId : perfil?.jugador_id;
 
-      if (clubActivo) {
-        const { data: clubData } = await supabase.from('clubes').select('nombre, escudo_url').eq('id', clubActivo).single();
+      if (!targetClubId && !esSuperUser) { setCargando(false); return; }
+
+      // 1. Cargar Perfil Visual si hay un jugador
+      if (isKioscoMode) {
+        setPerfilVisual({
+          nombre: localStorage.getItem('kiosco_nombre') || 'Jugador',
+          apellido: localStorage.getItem('kiosco_apellido') || '',
+          foto: localStorage.getItem('kiosco_foto') || ''
+        });
+      } else if (targetJugadorId) {
+        const { data: pData } = await supabase.from('perfiles').select('*').eq('jugador_id', targetJugadorId).maybeSingle();
+        if (pData) setPerfilVisual(pData);
+      }
+
+      // 2. Cargar Club
+      if (targetClubId) {
+        const { data: clubData } = await supabase.from('clubes').select('nombre, escudo_url').eq('id', targetClubId).maybeSingle();
         if (clubData) {
-          if (clubData.nombre) { setNombreClub(clubData.nombre); localStorage.setItem('mi_club', clubData.nombre); }
-          if (clubData.escudo_url) { setEscudoClub(clubData.escudo_url); localStorage.setItem('escudo_url', clubData.escudo_url); } 
+          setNombreClub(clubData.nombre);
+          setEscudoClub(clubData.escudo_url);
         }
       } else if (esSuperUser) {
         setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub('');
       }
 
-      if (clubActivo) {
-        const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', clubActivo);
+      // 3. Cargar Categorías
+      if (targetClubId) {
+        const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', targetClubId);
         if (cats) {
           const unicas = [...new Set(cats.map(c => c.categoria).filter(Boolean))];
           setCategoriasDisponibles(unicas);
         }
       }
 
-      if (rol !== 'jugador') {
+      // 4. Lógica de Negocio (Stats / Wellness)
+      if (rol === 'jugador') {
+        if (targetJugadorId) {
+          let wellness = [];
+          if (isKioscoMode) {
+            const { data } = await supabase.rpc('kiosco_obtener_wellness', { 
+              p_jugador_id: targetJugadorId, 
+              p_club_id: targetClubId 
+            });
+            wellness = data;
+          } else {
+            const { data } = await supabase.from('wellness').select('*').eq('jugador_id', targetJugadorId).order('fecha', { ascending: false }).limit(7);
+            wellness = data;
+          }
+          if (wellness) setDatosWellness(wellness);
+        }
+      } else {
         const hoyStr = new Date().toISOString().split('T')[0];
         const anioActual = new Date().getFullYear().toString();
 
@@ -220,10 +265,10 @@ export default function Inicio() {
         let qJugadores = supabase.from('jugadores').select('*', { count: 'exact', head: true });
         let qPartidosTot = supabase.from('partidos').select('*', { count: 'exact', head: true });
 
-        if (clubActivo) {
-          qUltimo = qUltimo.eq('club_id', clubActivo); qProximo = qProximo.eq('club_id', clubActivo);
-          qAnual = qAnual.eq('club_id', clubActivo); qJugadores = qJugadores.eq('club_id', clubActivo);
-          qPartidosTot = qPartidosTot.eq('club_id', clubActivo);
+        if (targetClubId) {
+          qUltimo = qUltimo.eq('club_id', targetClubId); qProximo = qProximo.eq('club_id', targetClubId);
+          qAnual = qAnual.eq('club_id', targetClubId); qJugadores = qJugadores.eq('club_id', targetClubId);
+          qPartidosTot = qPartidosTot.eq('club_id', targetClubId);
         }
 
         if (categoriaActiva !== 'Todas') {
@@ -243,26 +288,20 @@ export default function Inicio() {
           resAnual.data.forEach(p => {
             const cat = p.categoria || 'Sin Categoría';
             let gf = parseInt(p.goles_propios) || 0; let gc = parseInt(p.goles_rival) || 0;
-
             if (gf > gc) v++; else if (gf === gc) e++; else d++;
-
             if (!golesCat[cat]) golesCat[cat] = { favor: 0, contra: 0 };
             golesCat[cat].favor += gf; golesCat[cat].contra += gc;
-
             if (!ultimosCat[cat]) ultimosCat[cat] = [];
             ultimosCat[cat].push({ id: p.id, rival: p.rival, gf, gc, res: gf > gc ? 'V' : (gf === gc ? 'E' : 'D'), fecha: p.fecha?.split('-').reverse().join('/') });
           });
-
           Object.keys(ultimosCat).forEach(cat => { ultimosCat[cat] = ultimosCat[cat].slice(-2).reverse(); });
           setVepAnual({ v, e, d }); setGolesPorCat(golesCat); setResultadosRecientesCat(ultimosCat);
-        } else {
-          setVepAnual({ v: 0, e: 0, d: 0 }); setGolesPorCat({}); setResultadosRecientesCat({});
         }
       }
       setCargando(false);
     }
     cargarDashboard();
-  }, [clubActivo, esSuperUser, rol, categoriaActiva]); 
+  }, [clubActivo, esSuperUser, rol, categoriaActiva, isKioscoMode, kioscoJugadorId]); 
 
   const handleCambioClub = (e) => {
     const nuevoId = e.target.value;
@@ -279,9 +318,7 @@ export default function Inicio() {
     }
   };
 
-  if (isKioscoMode) { return <div style={{padding:'20px', color:'#fff'}}>Kiosco Mode...</div>; }
-
-  if (!cargando && !clubActivo && !esSuperUser) {
+  if (!cargando && !clubActivo && !esSuperUser && !isKioscoMode) {
     if (esAdmin || esManager) {
       return (
         <div style={{ animation: 'fadeIn 0.3s', padding: '50px 20px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
@@ -345,10 +382,20 @@ export default function Inicio() {
       <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border)', gap: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div style={{ width: esMovil ? '50px' : '60px', height: esMovil ? '50px' : '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: esMovil ? '1rem' : '1.5rem', overflow: 'hidden', flexShrink: 0 }}>
-            {esSuperUser && !clubActivo ? '👑' : escudoClub ? <img src={escudoClub} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : nombreClub.substring(0, 2).toUpperCase()}
+            {isKioscoMode && perfilVisual?.foto ? (
+              <img src={perfilVisual.foto} alt="Perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : esSuperUser && !clubActivo ? (
+              '👑'
+            ) : escudoClub ? (
+              <img src={escudoClub} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              nombreClub.substring(0, 2).toUpperCase()
+            )}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="stat-label" style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>CENTRO DE MANDO • {rol?.toUpperCase()}</div>
+            <div className="stat-label" style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                {isKioscoMode ? `HOLA, ${perfilVisual?.nombre?.toUpperCase() || 'JUGADOR'}` : `CENTRO DE MANDO • ${rol?.toUpperCase()}`}
+            </div>
             <h1 style={{ margin: 0, fontSize: esMovil ? '1.5rem' : '1.8rem', fontWeight: 900, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nombreClub}</h1>
           </div>
         </div>
@@ -369,6 +416,31 @@ export default function Inicio() {
             <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : '#222', color: modoEdicion ? '#000' : '#fff', border: 'none', padding: esMovil ? '12px' : '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold', width: '100%' }}>
               {modoEdicion ? '✅ Guardar Diseño' : '⚙️ Editar Pantalla'}
             </button>
+            
+            {/* BOTÓN GENERADOR DE QR */}
+            {(esManager || esAdmin || esSuperUser) && clubActivo && (
+              <button 
+                onClick={() => setMostrarQR(true)} 
+                style={{ background: '#10b981', color: '#000', border: 'none', padding: esMovil ? '12px' : '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold', width: '100%' }}
+              >
+                📷 QR VESTUARIO
+              </button>
+            )}
+
+            {isKioscoMode && (
+              <button 
+                onClick={() => { 
+                  localStorage.removeItem('kiosco_mode'); 
+                  localStorage.removeItem('kiosco_jugador_id'); 
+                  localStorage.removeItem('kiosco_nombre'); 
+                  localStorage.removeItem('kiosco_apellido'); 
+                  window.location.href = '/kiosco'; 
+                }}
+                style={{ background: '#ef4444', color: '#fff', border: 'none', padding: esMovil ? '12px' : '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold', width: '100%' }}
+              >
+                🚪 SALIR
+              </button>
+            )}
         </div>
       </div>
 
@@ -484,7 +556,7 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGET: GOLES POR CATEGORÍA (SUMARIZADOS Y CON DIFERENCIA) ---
+              // --- WIDGET: GOLES POR CATEGORÍA ---
               if (config.id === 'w_goles_cat') {
                 const totalGF = Object.values(golesPorCat).reduce((acc, cat) => acc + cat.favor, 0);
                 const totalGC = Object.values(golesPorCat).reduce((acc, cat) => acc + cat.contra, 0);
@@ -584,7 +656,7 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGETS TIPO LINK (Accesos Directos) ---
+              // --- WIDGETS TIPO LINK ---
               if (config.tipo === 'link') {
                 const bgSoft = config.color ? `rgba(${hexToRgb(config.color)}, 0.05)` : 'rgba(255,255,255,0.05)';
                 const isHorizontal = spanActual === '2x1' || spanActual === '3x1';
@@ -612,64 +684,43 @@ export default function Inicio() {
         </>
       )}
 
-      {/* NUEVO: RENDERIZADO DEL MODAL DE NOVEDADES */}
+{/* MODAL DE NOVEDADES */}
       {mostrarNovedades && (
-        <div style={{ 
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', 
-          zIndex: 3000, padding: '20px' 
-        }}>
-          <div style={{ 
-            background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', 
-            padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', 
-            animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' 
-          }}>
-            
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
+          <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
             <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-              <span style={{ 
-                background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', 
-                borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' 
-              }}>
-                VERSIÓN 0.00202604052328
-              </span>
-              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-                ¡Evolución en el Match Center!
-              </h2>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-                Optimizamos el tracking en vivo, automatizamos reglas y mejoramos la visualización.
-              </p>
+              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>VERSIÓN 0.00202604071008</span>
+              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>¡Nuevos Accesos y Control Total!</h2>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Simplificamos tu ingreso a la app, agilizamos la llegada de jugadores y mantenemos las mejoras tácticas.</p>
             </div>
-            
             <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
               <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <li>
-                  <strong style={{color: '#f59e0b'}}>Gestor de Quintetos y Contexto:</strong> 
-                  <br/>Ahora podés hacer múltiples cambios simultáneos (Rolling Subs). Sumamos el selector táctico (5v5, 5v4, etc.) automatizado: si hay expulsión, saca al jugador, te pasa a 4v5 y bloquea los cambios hasta recibir un gol.
-                </li>
-                <li>
-                  <strong style={{color: '#10b981'}}>Ocasión Fallada y Ley de Ventaja:</strong> 
-                  <br/>Nuevo botón en "Finalización" para registrar esos "pases de la muerte" fallidos. En el marcador sumamos botones rápidos (+1) para agregar faltas por ley de ventaja sin salir de la pantalla táctil.
-                </li>
-                <li>
-                  <strong style={{color: '#0ea5e9'}}>Canchas Proporcionales (Reportes):</strong> 
-                  <br/>Rediseñamos el campo a escala real (40x20m). La misma precisión matemática y visual que tenés en la app, ahora se exporta directamente en los reportes de rendimiento.
-                </li>
+                <li><strong style={{color: '#ef4444'}}>Login con Google:</strong> Olvidate de las contraseñas. Acceso rápido y seguro a un solo clic.</li>
+                <li><strong style={{color: '#a855f7'}}>Acceso por QR:</strong> Incorporamos el escaneo de códigos QR para un ingreso de jugadores automático y sin demoras.</li>
+                <li><strong style={{color: '#f59e0b'}}>Gestor de Quintetos:</strong> Rolling Subs y selector táctico automatizado.</li>
+                <li><strong style={{color: '#10b981'}}>Ocasión Fallada:</strong> Nuevo registro para análisis de finalización.</li>
+                <li><strong style={{color: '#0ea5e9'}}>Canchas Pro:</strong> Rediseño a escala real 40x20m.</li>
               </ul>
             </div>
+            <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>¡ENTENDIDO, A DIRIGIR!</button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GENERADOR DE QR PARA EL VESTUARIO */}
+      {mostrarQR && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
+          <div style={{ background: '#111', border: '1px solid #10b981', borderRadius: '8px', padding: '30px', maxWidth: '400px', width: '100%', textAlign: 'center', position: 'relative', animation: 'fadeIn 0.3s' }}>
+            <h2 style={{ color: '#fff', marginTop: 0, marginBottom: '5px', fontSize: '1.4rem' }}>INGRESO <span style={{ color: '#10b981' }}>RÁPIDO</span></h2>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: '20px' }}>Imprimí este QR y pegalo en el vestuario para que los jugadores escaneen y entren directo al Kiosco de tu club.</p>
             
-            <button 
-              onClick={cerrarModalNovedades}
-              className="btn-action" 
-              style={{ 
-                width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, 
-                padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer',
-                transition: 'transform 0.1s'
-              }}
-              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              ¡ENTENDIDO, A DIRIGIR!
-            </button>
+            <div style={{ background: '#fff', padding: '15px', borderRadius: '8px', display: 'inline-block', marginBottom: '20px' }}>
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(linkKiosco)}`} alt="QR Kiosco" style={{ width: '250px', height: '250px' }} />
+            </div>
+
+            <input type="text" readOnly value={linkKiosco} style={{ width: '100%', padding: '10px', background: '#000', color: '#888', border: '1px solid #333', borderRadius: '4px', fontSize: '0.7rem', textAlign: 'center', marginBottom: '15px' }} />
+            
+            <button onClick={() => setMostrarQR(false)} className="btn-action" style={{ width: '100%', background: '#333', color: '#fff', fontWeight: 900, padding: '12px', fontSize: '0.9rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>CERRAR</button>
           </div>
         </div>
       )}

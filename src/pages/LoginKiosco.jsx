@@ -72,40 +72,52 @@ export default function LoginKiosco() {
   }, [pin]);
 
   const ejecutarLogin = async () => {
-    if (!jugadorSeleccionado?.id || !clubId) {
-      showToast('No se pudo identificar al jugador.', 'error');
-      setPin('');
-      return;
-    }
+    try {
+      console.log("1. Validando PIN...", pin);
 
-    setLoading(true);
+      if (!jugadorSeleccionado?.id || !clubId) {
+        showToast('No se pudo identificar al jugador.', 'error');
+        setPin('');
+        return;
+      }
 
-    const { data, error } = await supabase
-      .from('jugadores')
-      .select('id, nombre, apellido, user_id, club_id, username')
-      .eq('id', jugadorSeleccionado.id)
-      .eq('club_id', clubId)
-      .eq('pin_kiosco', pin.trim())
-      .single();
+      setLoading(true);
 
-    if (error || !data) {
-      showToast('PIN incorrecto.', 'error');
+      console.log("2. Enviando consulta a Supabase...");
+      const { data, error } = await supabase.rpc('verificar_pin_kiosco', {
+        p_jugador_id: jugadorSeleccionado.id,
+        p_club_id: clubId,
+        p_pin: pin.trim()
+      });
+
+      console.log("3. Respuesta de la base de datos:", { data, error });
+
+      if (error || !data) {
+        showToast('PIN incorrecto.', 'error');
+        setPin('');
+        setLoading(false);
+        return;
+      }
+
+      console.log("4. Guardando datos en el dispositivo...");
+      localStorage.setItem('kiosco_mode', 'true');
+      localStorage.setItem('kiosco_club_id', data.club_id);
+      localStorage.setItem('kiosco_jugador_id', data.id);
+      localStorage.setItem('kiosco_nombre', data.nombre || '');
+      localStorage.setItem('kiosco_apellido', data.apellido || '');
+      
+      console.log("5. Ejecutando alerta de éxito...");
+      showToast(`¡Bienvenido ${data.nombre}!`, 'success');
+      
+      console.log("6. Redirigiendo a home...");
+      window.location.href = '/kiosco/home';
+
+    } catch (err) {
+      console.error("🚨 EXPLOTÓ ALGO EN EL FRONTEND:", err);
+      showToast('Error de sistema', 'error');
       setPin('');
       setLoading(false);
-      return;
     }
-
-    // Setear contexto local del jugador
-    localStorage.setItem('kiosco_mode', 'true');
-    localStorage.setItem('kiosco_club_id', data.club_id);
-    localStorage.setItem('kiosco_jugador_id', data.id);
-    localStorage.setItem('kiosco_nombre', data.nombre || '');
-    localStorage.setItem('kiosco_apellido', data.apellido || '');
-    
-    showToast(`¡Bienvenido ${data.nombre}!`, 'success');
-    
-    // Forzamos recarga para que AuthContext lea los datos del localStorage y rearme el perfil híbrido
-    window.location.href = '/kiosco/home';
   };
 
   if (!clubId) {
