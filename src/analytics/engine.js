@@ -7,10 +7,6 @@ import { generarInsights } from './insights';
 export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = false) {
   const evSeguros = Array.isArray(eventos) ? eventos : [];
 
-  // ==========================================
-  // FASE 1: PRE-PROCESAMIENTO Y OPTIMIZACIÓN
-  // ==========================================
-
   const diccionarios = {
     porEquipo: { propio: [], rival: [] },
     porJugador: {},
@@ -48,19 +44,12 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
   const eventosPropios = diccionarios.porEquipo.propio;
   const eventosRivales = diccionarios.porEquipo.rival;
 
-  // ==========================================
-  // CÁLCULOS BASE
-  // ==========================================
-
   const posesiones = generarPosesiones(evSeguros);
   const transiciones = detectarTransiciones(evSeguros);
-
   const xgPropio = calcularXGPartido(eventosPropios, transiciones.filter(t => t.remate.equipo === equipoPropio));
   const xgRival = calcularXGPartido(eventosRivales, transiciones.filter(t => t.remate.equipo !== equipoPropio));
-
   const gridPropio = generarGrid(eventosPropios);
   const gridRival = generarGrid(eventosRivales);
-
   const goles = eventosPropios.filter(e => e.accion === 'Gol' || e.accion === 'Remate - Gol').length;
 
   const duelos = {
@@ -78,23 +67,27 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
   if (duelos.defensivos.total > 0) duelos.defensivos.eficacia = (duelos.defensivos.ganados / duelos.defensivos.total) * 100;
   if (duelos.ofensivos.total > 0) duelos.ofensivos.eficacia = (duelos.ofensivos.ganados / duelos.ofensivos.total) * 100;
 
-  // 🧠 ANÁLISIS DE QUINTETOS, PLUS/MINUS Y MINUTOS REALES
   const statsQuintetos = {};
   const plusMinusJugador = {};
   const setsMinutos = {}; 
+  const setsMinutosQuintetos = {}; // NUEVO: Para trackear minutos reales por quinteto
 
   evSeguros.forEach(ev => {
     if (!ev.quinteto_activo || ev.quinteto_activo.length === 0) return;
 
+    const idQuinteto = [...ev.quinteto_activo].sort((a, b) => a - b).join('-');
+
     if (ev.minuto != null) {
+      // Minutos por jugador
       ev.quinteto_activo.forEach(idJugador => {
         if (!setsMinutos[idJugador]) setsMinutos[idJugador] = new Set();
         setsMinutos[idJugador].add(ev.minuto);
       });
+      // Minutos por quinteto
+      if (!setsMinutosQuintetos[idQuinteto]) setsMinutosQuintetos[idQuinteto] = new Set();
+      setsMinutosQuintetos[idQuinteto].add(ev.minuto);
     }
 
-    const idQuinteto = [...ev.quinteto_activo].sort((a, b) => a - b).join('-');
-    
     if (!statsQuintetos[idQuinteto]) {
       statsQuintetos[idQuinteto] = {
         ids: ev.quinteto_activo, golesFavor: 0, golesContra: 0, 
@@ -124,9 +117,10 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
       if (ev.accion === 'Pérdida') statsQuintetos[idQuinteto].perdidas++;
       if (ev.accion === 'Duelo DEF Ganado' || ev.accion === 'Duelo OFE Ganado') statsQuintetos[idQuinteto].duelosGanados++;
       if (ev.accion === 'Duelo DEF Perdido' || ev.accion === 'Duelo OFE Perdido') statsQuintetos[idQuinteto].duelosPerdidos++;
-      
       if (ev.accion === 'Falta cometida') statsQuintetos[idQuinteto].faltasCometidas++;
       if (ev.accion === 'Falta recibida') statsQuintetos[idQuinteto].faltasRecibidas++;
+      
+      // Capturamos tarjetas para el quinteto
       if (ev.accion === 'Tarjeta Amarilla') statsQuintetos[idQuinteto].amarillas++;
       if (ev.accion === 'Tarjeta Roja') statsQuintetos[idQuinteto].rojas++;
     } else {
@@ -140,39 +134,30 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
     minutosJugados[id] = setsMinutos[id].size;
   });
 
-  // --- NUEVA LÓGICA DE RATING PARA QUINTETOS (1 al 10, Base 6) ---
   const quintetos = Object.values(statsQuintetos)
-    .filter(q => (q.golesFavor + q.golesContra + q.rematesFavor + q.recuperaciones + q.perdidas) > 0)
     .map(q => {
+      const hash = [...q.ids].sort((a,b)=>a-b).join('-');
+      q.minutos = setsMinutosQuintetos[hash] ? setsMinutosQuintetos[hash].size : 0;
+
       let pesoPositivo = (q.golesFavor * 2) + (q.rematesFavor * 1) + (q.recuperaciones * 0.5) + (q.faltasRecibidas * 1);
       let pesoNegativo = (q.golesContra * 2) + (q.rematesContra * 1) + (q.perdidas * 0.5) + (q.faltasCometidas * 1) + (q.amarillas * 1) + (q.rojas * 3);
       let neto = pesoPositivo - pesoNegativo;
 
       let volumenReal = q.golesFavor + q.golesContra + q.rematesFavor + q.rematesContra + q.recuperaciones + q.perdidas + q.faltasRecibidas + q.faltasCometidas + q.amarillas + q.rojas;
-      let volumenSuavizado = volumenReal + 10; // Suavizado un poco menor porque es solo 1 partido
+      let volumenSuavizado = volumenReal + 10;
       let eficiencia = neto / volumenSuavizado;
 
       let score = 6.0 + (eficiencia * 25); 
       q.balanceRating = Number(Math.max(1, Math.min(10, score)).toFixed(1));
       return q;
     })
-    .sort((a, b) => b.balanceRating - a.balanceRating); // Ordenamos de mejor a peor
+    .sort((a, b) => b.balanceRating - a.balanceRating);
 
   const insights = generarInsights({ posesiones, transiciones, xg: xgPropio, goles });
 
   return {
-    posesiones, 
-    xgPropio, 
-    xgRival, 
-    transiciones, 
-    gridPropio, 
-    gridRival, 
-    duelos, 
-    insights,
-    quintetos, 
-    plusMinusJugador,
-    minutosJugados,
-    diccionarios
+    posesiones, xgPropio, xgRival, transiciones, gridPropio, gridRival, 
+    duelos, insights, quintetos, plusMinusJugador, minutosJugados, diccionarios
   };
 }
 

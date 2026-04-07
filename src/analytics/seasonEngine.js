@@ -109,8 +109,7 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
     return { ...p, rival: p.rival || 'Desconocido', fechaCorta, fecha: p.fecha || 'Sin fecha', golesPropio, golesRival, resultado, xg };
   });
 
-// Ordenar y tomar los top 5 quintetos aplicando un Rating Promedio Suavizado
- // Ordenar y tomar los top 5 quintetos aplicando un Rating Promedio Suavizado
+  // Ordenar y tomar los top 5 quintetos aplicando un Rating Promedio Suavizado
   const topQuintetos = Object.values(quintetosGlobales)
     .filter(q => q.ids && q.ids.length > 0)
     .map(q => {

@@ -290,8 +290,8 @@ function Resumen() {
     const datosProcesados = analizarPartido(evFiltrados, 'Propio', false);
 
     const stats = { 
-      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, perdidasPeligrosas: 0, rec: 0, recAltas: 0, recMedias: 0, recBajas: 0, faltas: 0, accionesCampoRival: 0, totalAcciones: 0 }, 
-      rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0, totalAcciones: 0 } 
+      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, perdidasPeligrosas: 0, rec: 0, recAltas: 0, recMedias: 0, recBajas: 0, faltas: 0, amarillas: 0, rojas: 0, accionesCampoRival: 0, totalAcciones: 0 }, 
+      rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0, amarillas: 0, rojas: 0, totalAcciones: 0 } 
     };
 
     const abp = { corners: { favor: 0, contra: 0, rematesGenerados: 0 }, laterales: { favor: 0, contra: 0, rematesGenerados: 0 }, zonasLatFavor: { z1: 0, z2: 0, z3: 0, z4: 0 } };
@@ -377,7 +377,9 @@ function Resumen() {
         else if (xNorm > 33) stats.propio.recMedias++;
         else stats.propio.recBajas++;
       }
-      else if (ev.accion === 'Falta cometida') { p ? stats.propio.faltas++ : stats.rival.faltas++; }
+      else if (ev.accion === 'Falta cometida' || ev.accion?.toLowerCase().includes('falta')) { p ? stats.propio.faltas++ : stats.rival.faltas++; }
+      else if (ev.accion === 'Tarjeta Amarilla' || ev.accion?.toLowerCase().includes('amarilla')) { p ? stats.propio.amarillas++ : stats.rival.amarillas++; }
+      else if (ev.accion === 'Tarjeta Roja' || ev.accion?.toLowerCase().includes('roja')) { p ? stats.propio.rojas++ : stats.rival.rojas++; }
 
       if (ev.accion === 'Córner') {
         if (p) {
@@ -416,7 +418,7 @@ function Resumen() {
         remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
         duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
         xgChain, xgBuildup,
-        golesRecibidos: 0, atajadas: 0 // AGREGADO
+        golesRecibidos: 0, atajadas: 0, amarillas: 0, rojas: 0 // AGREGADO
       };
     });
 
@@ -427,12 +429,13 @@ function Resumen() {
         if (ev.accion?.includes('Remate')) statsJugadores[ev.id_jugador].remates++;
         if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
         if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
-        if (ev.accion === 'Falta cometida') statsJugadores[ev.id_jugador].faltas++;
+        if (ev.accion === 'Falta cometida' || ev.accion?.toLowerCase().includes('falta')) statsJugadores[ev.id_jugador].faltas++;
+        if (ev.accion === 'Tarjeta Amarilla' || ev.accion?.toLowerCase().includes('amarilla')) statsJugadores[ev.id_jugador].amarillas++;
+        if (ev.accion === 'Tarjeta Roja' || ev.accion?.toLowerCase().includes('roja')) statsJugadores[ev.id_jugador].rojas++;
         if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo OFE Ganado') { statsJugadores[ev.id_jugador].duelosOfeGan++; statsJugadores[ev.id_jugador].duelosOfeTot++; }
         if (ev.accion === 'Duelo OFE Perdido') { statsJugadores[ev.id_jugador].duelosOfeTot++; }
-        // AGREGADO PARA ARQUERO ESPECÍFICO
         if (ev.accion === 'Gol Recibido') statsJugadores[ev.id_jugador].golesRecibidos++;
         if (ev.accion === 'Atajada' || ev.accion?.toLowerCase().includes('atajada')) statsJugadores[ev.id_jugador].atajadas++;
       }
@@ -1067,13 +1070,20 @@ const COLORS_ORIGEN = {
                 <strong>
                   {analitica.duelos.defensivos.ganados} / {analitica.duelos.defensivos.total}
                   <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
-                    ({analitica.duelos.defensivos.total > 0 ? ((analitica.duelos.defensivos.ganados / analitica.duelos.defensivos.total) * 100).toFixed(0) : 0}%)
+                    ({analitica.duelos.defensivos.total > 0 ? ((analitica.duelos.defensivos.ganados / analitica.duelos.ofensivos.total) * 100).toFixed(0) : 0}%)
                   </span>
                 </strong>
               </div>
               <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong>{analitica.stats.propio.rec}</strong></div>
               <div style={kpiFila}><span>RECUPERACIONES ALTAS</span><strong>{analitica.stats.propio.recAltas}</strong></div>
               <div style={kpiFila}><span>PÉRDIDAS PELIGROSAS</span><strong style={{ color: analitica.stats.propio.perdidasPeligrosas > 3 ? '#ef4444' : '#00ff88' }}>{analitica.stats.propio.perdidasPeligrosas}</strong></div>
+            </div>
+
+            <div className="bento-card" style={{ borderTop: '3px solid #fbbf24' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#fbbf24' }}>DISCIPLINA Y SANCIONES</div>
+              <div style={kpiFila}><span>FALTAS COMETIDAS</span><strong><span style={{color: '#f59e0b'}}>{analitica.stats.propio.faltas}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.faltas}</span></strong></div>
+              <div style={kpiFila}><span>AMARILLAS</span><strong><span style={{color: '#fbbf24'}}>{analitica.stats.propio.amarillas}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.amarillas}</span></strong></div>
+              <div style={kpiFila}><span>ROJAS</span><strong><span style={{color: '#ef4444'}}>{analitica.stats.propio.rojas}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.rojas}</span></strong></div>
             </div>
             
             <div className="bento-card" style={{ borderTop: '3px solid #06b6d4' }}>
@@ -1336,6 +1346,7 @@ const COLORS_ORIGEN = {
                 <thead>
                   <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
                     <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETO</th>
+                    <th title="Minutos Jugados">MIN</th>
                     <th style={{ color: '#00ff88' }} title="Goles a Favor / En Contra">GOL</th>
                     <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
                     <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
@@ -1376,6 +1387,7 @@ const COLORS_ORIGEN = {
                         <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
                           [{nombresQuinteto}]
                         </td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-dim)' }}>{q.minutos || 0}'</td>
                         <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor || 0}</span> - <span style={{color: '#ef4444'}}>{q.golesContra || 0}</span></td>
                         <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#3b82f6'}}>{remF}</span> - <span style={{color: '#ef4444'}}>{remC}</span></td>
                         <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#f59e0b'}}>{rec}</span> - <span style={{color: '#ef4444'}}>{per}</span></td>
@@ -1404,7 +1416,7 @@ const COLORS_ORIGEN = {
                     )
                   })}
                   {(!analitica.quintetos || analitica.quintetos.length === 0) && (
-                    <tr><td colSpan="8" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay suficientes datos de rotaciones.</td></tr>
+                    <tr><td colSpan="9" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay suficientes datos de rotaciones.</td></tr>
                   )}
                 </tbody>
               </table>

@@ -1,4 +1,3 @@
-// src/analytics/posesiones.js
 import { calcularXGEvento } from './xg';
 
 export function generarPosesiones(eventos = []) {

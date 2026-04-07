@@ -1,5 +1,3 @@
-// src/analytics/insights.js
-
 export function generarInsights({
   posesiones,
   transiciones,
