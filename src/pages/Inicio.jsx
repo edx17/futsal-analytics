@@ -689,20 +689,20 @@ export default function Inicio() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
           <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
             <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>VERSIÓN 0.00202604071008</span>
-              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>¡Nuevos Accesos y Control Total!</h2>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Simplificamos tu ingreso a la app, agilizamos la llegada de jugadores y mantenemos las mejoras tácticas.</p>
+              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>VERSIÓN 0.00202604081626</span>
+              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>Segmentación de Partido y Precisión Analítica</h2>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Implementación de filtros de contexto (Game State), captura avanzada para arqueros y reestructuración de la base estadística.</p>
             </div>
             <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
               <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <li><strong style={{color: '#ef4444'}}>Login con Google:</strong> Olvidate de las contraseñas. Acceso rápido y seguro a un solo clic.</li>
-                <li><strong style={{color: '#a855f7'}}>Acceso por QR:</strong> Incorporamos el escaneo de códigos QR para un ingreso de jugadores automático y sin demoras.</li>
-                <li><strong style={{color: '#f59e0b'}}>Gestor de Quintetos:</strong> Rolling Subs y selector táctico automatizado.</li>
-                <li><strong style={{color: '#10b981'}}>Ocasión Fallada:</strong> Nuevo registro para análisis de finalización.</li>
-                <li><strong style={{color: '#0ea5e9'}}>Canchas Pro:</strong> Rediseño a escala real 40x20m.</li>
+                <li><strong style={{color: '#3b82f6'}}>Estado de Partido (Game State):</strong> Condicionamiento táctico total. Filtros para evaluar el rendimiento exacto en escenarios de ventaja, empate o desventaja.</li>
+                <li><strong style={{color: '#00ff88'}}>Tracking de Arqueros:</strong> Enlace automático de remates atajados al perfil del arquero en cancha y métricas defensivas consolidadas.</li>
+                <li><strong style={{color: '#c084fc'}}>Efectividad ABP:</strong> Segmentación directa de tiros libres en la eficacia de acciones a balón parado y corrección de métricas.</li>
+                <li><strong style={{color: '#f59e0b'}}>Control de Ruido Visual:</strong> Renderizado dinámico del módulo Cargas y Wellness. Ocultamiento automático ante falta de registros.</li>
+                <li><strong style={{color: '#ef4444'}}>Estabilidad del Motor:</strong> Captura de pérdidas del rival para estabilizar el Índice de Caos y supresión de valores nulos (NaN) en el procesamiento central.</li>
               </ul>
             </div>
-            <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>¡ENTENDIDO, A DIRIGIR!</button>
+            <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>CERRAR E INICIAR</button>
           </div>
         </div>
       )}

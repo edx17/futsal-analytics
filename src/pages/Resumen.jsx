@@ -12,12 +12,8 @@ import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import ReportGenerator from '../components/ReportGenerator';
-
 import { calcularRatingJugador } from '../analytics/rating';
 
-// ==========================================
-// 🧠 MOTOR DE RATING ESTRUCTURAL (QUINTETOS)
-// ==========================================
 const calcularRatingQuintetoAvanzado = (q) => {
   const gf = q.golesFavor || 0;
   const gc = q.golesContra || 0;
@@ -36,56 +32,41 @@ const calcularRatingQuintetoAvanzado = (q) => {
   let rating = 6.0 + (diferencial * min_factor);
   return Math.max(1, Math.min(10, rating));
 };
-// ==========================================
 
-// Componente para dibujar líneas de cancha de futsal realistas y proporcionales (40x20m)
-// Usado en Resumen y MatchReport. Viewbox 100x50 para mapeo porcentual fácil.
 export const PitchLinesOptimized = ({ stroke = "rgba(255,255,255,0.2)", strokeWidth = 0.5 }) => (
   <svg
     viewBox="0 0 100 50"
     xmlns="http://www.w3.org/2000/svg"
     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}
   >
-    {/* Contorno externo */}
     <rect x="0" y="0" width="100" height="50" fill="none" stroke={stroke} strokeWidth={strokeWidth} />
-    
-    {/* Línea Media */}
     <line x1="50" y1="0" x2="50" y2="50" stroke={stroke} strokeWidth={strokeWidth} />
-    
-    {/* Círculo Central (Radio proporcional 3m -> r=7.5) */}
     <circle cx="50" cy="25" r="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth} />
-    <circle cx="50" cy="25" r="0.6" fill={stroke} /> {/* Punto central */}
+    <circle cx="50" cy="25" r="0.6" fill={stroke} />
 
-    {/* Área Penal Izquierda (D-Zone proporcional 6m)
-        Postes asumidos en y=21.25 y y=28.75 (3m ancho real). Radio arco 15 units.
-        M baseline A r r orient swof endX endY L postY2 A ... */}
     <path 
       d="M 0 6.25 A 15 15 0 0 1 15 21.25 L 15 28.75 A 15 15 0 0 1 0 43.75" 
       fill="none" stroke={stroke} strokeWidth={strokeWidth} 
     />
-    <circle cx="25" cy="25" r="0.6" fill={stroke} opacity={0.5} /> {/* 2do punto penal 10m */}
-    <rect x="-2.5" y="21.25" width="2.5" height="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.8} strokeDasharray="1.5 1.5" /> {/* Arco */}
+    <circle cx="25" cy="25" r="0.6" fill={stroke} opacity={0.5} />
+    <rect x="-2.5" y="21.25" width="2.5" height="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.8} strokeDasharray="1.5 1.5" />
 
-    {/* Área Penal Derecha */}
     <path 
       d="M 100 6.25 A 15 15 0 0 0 85 21.25 L 85 28.75 A 15 15 0 0 0 100 43.75" 
       fill="none" stroke={stroke} strokeWidth={strokeWidth} 
     />
-    <circle cx="75" cy="25" r="0.6" fill={stroke} opacity={0.5} /> {/* 2do punto penal 10m */}
-    <rect x="100" y="21.25" width="2.5" height="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.8} strokeDasharray="1.5 1.5" /> {/* Arco rival */}
+    <circle cx="75" cy="25" r="0.6" fill={stroke} opacity={0.5} />
+    <rect x="100" y="21.25" width="2.5" height="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.8} strokeDasharray="1.5 1.5" />
 
-    {/* Arcos de Córner (R=1m proporcional -> r=2.5) */}
     <path d="M 2.5 0 A 2.5 2.5 0 0 1 0 2.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <path d="M 0 47.5 A 2.5 2.5 0 0 1 2.5 50" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <path d="M 97.5 50 A 2.5 2.5 0 0 1 100 47.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <path d="M 100 2.5 A 2.5 2.5 0 0 1 97.5 0" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
 
-    {/* Marcas Zonas Sustitución (5m de ancho, a 5m de línea media -> x=37.5 y x=62.5) */}
     <line x1="37.5" y1="0" x2="37.5" y2="1.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <line x1="37.5" y1="50" x2="37.5" y2="48.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <line x1="62.5" y1="0" x2="62.5" y2="1.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <line x1="62.5" y1="50" x2="62.5" y2="48.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
-
   </svg>
 );
 
@@ -94,7 +75,6 @@ function Resumen() {
   const navigate = useNavigate();
   const { perfil } = useAuth();
 
-  // --- RESPONSIVE STATE ---
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -115,6 +95,7 @@ function Resumen() {
   const [soloAnalizados, setSoloAnalizados] = useState(false);
 
   const [filtroPeriodo, setFiltroPeriodo] = useState('Todos');
+  const [filtroEstadoPartido, setFiltroEstadoPartido] = useState('Todos');
   const [tipoMapa, setTipoMapa] = useState('calor');
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
@@ -134,20 +115,16 @@ function Resumen() {
 
   useEffect(() => {
     async function obtenerDatos() {
-      // 1. Obtenemos el club_id activo
       const club_id = localStorage.getItem('club_id') || perfil?.club_id;
 
-      // 2. Preparamos las consultas
       let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
       let queryJugadores = supabase.from('jugadores').select('*');
 
-      // 3. Si hay un club_id, filtramos ambas consultas
       if (club_id) {
         queryPartidos = queryPartidos.eq('club_id', club_id);
         queryJugadores = queryJugadores.eq('club_id', club_id);
       }
 
-      // 4. Ejecutamos las consultas
       const { data: p } = await queryPartidos;
       setPartidos(p || []);
       
@@ -155,7 +132,7 @@ function Resumen() {
       setJugadores(j || []);
       
       const { data: w, error: wError } = await supabase.from('wellness').select('*');
-      if (wError) console.error("⚠️ Error leyendo wellness desde Supabase:", wError);
+      if (wError) console.error("Error leyendo wellness:", wError);
       setWellness(w || []);
 
       let todosLosEventos = [];
@@ -193,6 +170,7 @@ function Resumen() {
   const cargarPartidoDirecto = async (partido) => {
     setPartidoSeleccionado(partido);
     setFiltroPeriodo('Todos');
+    setFiltroEstadoPartido('Todos');
     setVideoUrl(partido.video_url || ''); 
     setTiempoVideo(0);
     const { data } = await supabase.from('eventos').select('*').eq('id_partido', partido.id).order('minuto', { ascending: true });
@@ -242,12 +220,10 @@ function Resumen() {
     const { error } = await supabase.from('partidos').update({ video_url: videoUrl }).eq('id', partidoSeleccionado.id);
     if (!error) {
       setPartidoSeleccionado({ ...partidoSeleccionado, video_url: videoUrl });
-      alert("¡URL vinculada correctamente!");
-    } else alert("Error: " + error.message);
+    }
   };
 
   const desvincularVideo = async () => {
-    if (!window.confirm("¿Querés quitar este video del partido?")) return;
     const { error } = await supabase.from('partidos').update({ video_url: null }).eq('id', partidoSeleccionado.id);
     if(!error){
       setPartidoSeleccionado({ ...partidoSeleccionado, video_url: null });
@@ -283,15 +259,34 @@ function Resumen() {
   const analitica = useMemo(() => {
     if (!eventosPartido.length) return null;
 
-    const evFiltrados = filtroPeriodo === 'Todos' 
+    let evFiltrados = filtroPeriodo === 'Todos' 
       ? eventosPartido 
       : eventosPartido.filter(ev => ev.periodo === filtroPeriodo);
+
+    evFiltrados.sort((a, b) => {
+      if (a.periodo === 'PT' && b.periodo === 'ST') return -1;
+      if (a.periodo === 'ST' && b.periodo === 'PT') return 1;
+      return ((a.minuto * 60) + (a.segundos || 0)) - ((b.minuto * 60) + (b.segundos || 0));
+    });
+
+    if (filtroEstadoPartido !== 'Todos') {
+      let gPropio = 0; 
+      let gRival = 0;
+      evFiltrados = evFiltrados.filter(ev => {
+        const diff = gPropio - gRival;
+        const estadoActual = diff > 0 ? 'Ganando' : (diff < 0 ? 'Perdiendo' : 'Empatando');
+        if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
+          if (ev.equipo === 'Propio') gPropio++; else gRival++;
+        }
+        return estadoActual === filtroEstadoPartido;
+      });
+    }
 
     const datosProcesados = analizarPartido(evFiltrados, 'Propio', false);
 
     const stats = { 
-      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, perdidasPeligrosas: 0, rec: 0, recAltas: 0, recMedias: 0, recBajas: 0, faltas: 0, amarillas: 0, rojas: 0, accionesCampoRival: 0, totalAcciones: 0 }, 
-      rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0, amarillas: 0, rojas: 0, totalAcciones: 0 } 
+      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, perdidasPeligrosas: 0, rec: 0, recAltas: 0, recMedias: 0, recBajas: 0, faltas: 0, amarillas: 0, rojas: 0, accionesCampoRival: 0, totalAcciones: 0, tirosLibres: 0 }, 
+      rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0, amarillas: 0, rojas: 0, totalAcciones: 0, perdidas: 0 } 
     };
 
     const abp = { corners: { favor: 0, contra: 0, rematesGenerados: 0 }, laterales: { favor: 0, contra: 0, rematesGenerados: 0 }, zonasLatFavor: { z1: 0, z2: 0, z3: 0, z4: 0 } };
@@ -325,26 +320,21 @@ function Resumen() {
         stats.rival.totalAcciones++;
       }
 
+      if (p && ev.accion === 'Tiro Libre') { stats.propio.tirosLibres++; }
+      else if (!p && ev.accion === 'Pérdida') { stats.rival.perdidas++; }
+
       if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
         if (p) {
           stats.propio.goles++;
           stats.propio.remates++;
           if (ev.id_asistencia) stats.propio.asistencias++;
           const origen = ev.origen_gol || 'No Especificado';
-          if (origenGoles[origen] !== undefined) {
-            origenGoles[origen]++;
-          } else {
-            origenGoles['No Especificado']++;
-          }
+          origenGoles[origen] = (origenGoles[origen] || 0) + 1;
         } else {
           stats.rival.goles++;
           stats.rival.remates++;
           const origen = ev.origen_gol || 'No Especificado';
-          if (origenGolesRival[origen] !== undefined) {
-            origenGolesRival[origen]++;
-          } else {
-            origenGolesRival['No Especificado']++;
-          }
+          origenGolesRival[origen] = (origenGolesRival[origen] || 0) + 1;
         }
       }
       else if (ev.accion === 'Remate - Atajado') { p ? stats.propio.atajados++ : stats.rival.atajados++; p ? stats.propio.remates++ : stats.rival.remates++; }
@@ -418,9 +408,12 @@ function Resumen() {
         remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
         duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
         xgChain, xgBuildup,
-        golesRecibidos: 0, atajadas: 0, amarillas: 0, rojas: 0 // AGREGADO
+        golesRecibidos: 0, atajadas: 0, amarillas: 0, rojas: 0
       };
     });
+
+    const arquerosPropios = jugadores.filter(j => j.posicion?.toLowerCase().includes('arquero')).map(j => j.id);
+    const idArqueroPrincipal = Object.values(statsJugadores).find(j => j.posicion?.toLowerCase().includes('arquero'))?.id;
 
     evFiltrados.forEach(ev => {
       if (ev.equipo === 'Propio' && ev.id_jugador && statsJugadores[ev.id_jugador]) {
@@ -436,9 +429,24 @@ function Resumen() {
         if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo OFE Ganado') { statsJugadores[ev.id_jugador].duelosOfeGan++; statsJugadores[ev.id_jugador].duelosOfeTot++; }
         if (ev.accion === 'Duelo OFE Perdido') { statsJugadores[ev.id_jugador].duelosOfeTot++; }
+        
         if (ev.accion === 'Gol Recibido') statsJugadores[ev.id_jugador].golesRecibidos++;
         if (ev.accion === 'Atajada' || ev.accion?.toLowerCase().includes('atajada')) statsJugadores[ev.id_jugador].atajadas++;
       }
+      
+      if (ev.equipo === 'Rival') {
+        arquerosPropios.forEach(arqId => {
+           if (statsJugadores[arqId]) {
+             if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqId].golesRecibidos++;
+             if (ev.accion === 'Remate - Atajado') statsJugadores[arqId].atajadas++;
+           }
+        });
+      }
+
+      if (ev.equipo === 'Rival' && ev.accion === 'Remate - Atajado' && idArqueroPrincipal && statsJugadores[idArqueroPrincipal]) {
+        statsJugadores[idArqueroPrincipal].atajadas++;
+      }
+
       if (ev.equipo === 'Propio' && ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
         if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_asistencia].asistencias++;
       }
@@ -452,16 +460,13 @@ function Resumen() {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
         const mins = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
         
-        // --- 🧠 MOTOR DE ROLES INTELIGENTE ---
         let rol = 'MIXTO';
         
-        // 1. Detectar Arquero (Por BD)
         const esArqueroFijo = j.posicion && j.posicion.toLowerCase().includes('arquero');
         
         if (esArqueroFijo) {
             rol = 'ARQUERO';
         } else {
-            // 2. Dinámica para Jugadores de Campo
             const ratioFinalizacion = j.remates / (j.xgBuildup || 1);
             const ratioDefensivo = j.rec / (j.remates || 1);
             
@@ -522,7 +527,7 @@ function Resumen() {
       insights: datosProcesados.insights, posesiones: datosProcesados.posesiones, transiciones: datosProcesados.transiciones,
       duelos: datosProcesados.duelos, quintetos: datosProcesados.quintetos, plusMinusJugador: datosProcesados.plusMinusJugador
     };
-  }, [eventosPartido, filtroPeriodo, jugadores]);
+  }, [eventosPartido, filtroPeriodo, filtroEstadoPartido, jugadores]);
 
   const eventosTimeline = useMemo(() => {
     if (!analitica) return [];
@@ -667,9 +672,6 @@ function Resumen() {
     heat.draw();
   }, [evMapa, tipoMapa]);
 
-  // ==========================================
-  // 🚀 ARMADO DINÁMICO DE DATOS PARA EXPORTACIÓN
-  // ==========================================
   const datosParaReporte = useMemo(() => {
     if (!partidoSeleccionado || !analitica) return null;
     
@@ -687,7 +689,7 @@ function Resumen() {
         xgVisitante: Number(accVisita.toFixed(2))
       });
     });
-    // REPARADO: La última línea del xG Flow ya no cae a cero. Empata con el acumulado exacto en el min 40.
+
     xgFlow.push({ minuto: 40, xgLocal: Number(accLocal.toFixed(2)), xgVisitante: Number(accVisita.toFixed(2)) });
 
     let golesLocalPT = 0;
@@ -749,7 +751,6 @@ function Resumen() {
       }
     };
   }, [partidoSeleccionado, analitica, rematesDetalle, eventosPartido, miClubGlobal, miEscudoGlobal]);
-  // ==========================================
 
 
   if (!partidoSeleccionado) {
@@ -846,7 +847,6 @@ const COLORS_ORIGEN = {
         .pill-filtro.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.1); }
       `}</style>
 
-      {/* HEADER DE ACCIONES MÓVIL/DESKTOP */}
       <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'flex-end', marginBottom: '30px', gap: '15px' }}>
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
           <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flex: esMovil ? '1 1 auto' : 'none', justifyContent: 'center' }}>⬅ VOLVER</button>
@@ -857,6 +857,17 @@ const COLORS_ORIGEN = {
                 <option value="Todos">PARTIDO COMPLETO</option>
                 <option value="PT">PRIMER TIEMPO (PT)</option>
                 <option value="ST">SEGUNDO TIEMPO (ST)</option>
+              </select>
+            </div>
+          )}
+          {partidoSeleccionado && (
+            <div style={{ flex: esMovil ? '1 1 auto' : 'none' }}>
+              <div className="stat-label">ESTADO DE PARTIDO</div>
+              <select value={filtroEstadoPartido} onChange={(e) => setFiltroEstadoPartido(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: '#3b82f6', color: '#3b82f6', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
+                <option value="Todos">SIN FILTRO</option>
+                <option value="Ganando">GANANDO</option>
+                <option value="Empatando">EMPATANDO</option>
+                <option value="Perdiendo">PERDIENDO</option>
               </select>
             </div>
           )}
@@ -872,16 +883,13 @@ const COLORS_ORIGEN = {
         <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           <div className="bento-card">
-            {/* SCOREBOARD MÓVIL OPTIMIZADO */}
             <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', textAlign: 'center', marginBottom: '20px' }}>
               
-              {/* Equipo Local */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                 {partidoSeleccionado.escudo_propio ? <img src={partidoSeleccionado.escudo_propio} alt="club" style={{ height: esMovil ? '40px' : '60px', objectFit: 'contain' }} /> : <div style={{...escudoFallback, width: esMovil ? '40px' : '60px', height: esMovil ? '40px' : '60px', fontSize: esMovil ? '1rem' : '1.5rem', marginBottom: 0}}>MI</div>}
                 <div className="stat-label" style={{ fontSize: esMovil ? '0.65rem' : '0.8rem', lineHeight: 1.2 }}>{partidoSeleccionado.nombre_propio || miClubGlobal}</div>
               </div>
               
-              {/* Marcador Central */}
               <div style={{ flex: 1.5, padding: '0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ fontSize: esMovil ? '2rem' : '3.5rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
                   {analitica.stats.propio.goles} - {analitica.stats.rival.goles}
@@ -894,7 +902,6 @@ const COLORS_ORIGEN = {
                 </div>
               </div>
 
-              {/* Equipo Rival */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                 {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={{ height: esMovil ? '40px' : '60px', objectFit: 'contain' }} /> : <div style={{...escudoFallback, borderColor: '#555', color: '#fff', width: esMovil ? '40px' : '60px', height: esMovil ? '40px' : '60px', fontSize: esMovil ? '1rem' : '1.5rem', marginBottom: 0}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
                 <div className="stat-label" style={{ fontSize: esMovil ? '0.65rem' : '0.8rem', lineHeight: 1.2 }}>{partidoSeleccionado.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</div>
@@ -934,17 +941,12 @@ const COLORS_ORIGEN = {
              </div>
           </div>
 
-          {reporteWellness && (
+          {reporteWellness && wellness.length > 0 && (
             <div className="bento-card" style={{ borderTop: '3px solid #10b981' }}>
               <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  🩺 CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios. Si no hay registros muestra 0." />
+                  🩺 CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios." />
                 </div>
-                {wellness.length === 0 && !esMovil && (
-                  <span style={{ color: '#ef4444', fontSize: '0.65rem', border: '1px solid #ef4444', padding: '2px 6px', borderRadius: '4px' }}>
-                    ⚠️ TABLA VACÍA
-                  </span>
-                )}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '20px' }}>
                 
@@ -1106,7 +1108,7 @@ const COLORS_ORIGEN = {
                   </span>
                 </strong>
               </div>
-              <div style={kpiFila}><span>GOLES DE TIRO LIBRE</span><strong>{analitica.dataOrigenGol?.find(d => d.name === 'Tiro Libre')?.value || 0}</strong></div>
+              <div style={kpiFila}><span>GOLES DE TIRO LIBRE</span><strong>{analitica.dataOrigenGol?.find(d => d.name === 'Tiro Libre')?.value || 0} / {analitica.stats.propio.tirosLibres}</strong></div>
             </div>
             
             <div className="bento-card" style={{ borderTop: '3px solid #c084fc' }}>
@@ -1126,7 +1128,6 @@ const COLORS_ORIGEN = {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO TÁCTICO <InfoBox texto="Visualización espacial de las acciones del equipo en este partido." /></div>
               
-              {/* FILTROS MAPA RESPONSIVE */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Ambos' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
@@ -1154,7 +1155,6 @@ const COLORS_ORIGEN = {
             
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: '#111', border: '2px solid rgba(255,255,255,0.2)' }}>
-                {/* 🌟 NUEVAS LÍNEAS OPTIMIZADAS 🌟 */}
                 <PitchLinesOptimized />
                 
                 {tipoMapa === 'calor' && (
@@ -1214,12 +1214,8 @@ const COLORS_ORIGEN = {
             </div>
           </div>
 
-          {/* ==========================================
-              TABLAS DE RENDIMIENTO INDIVIDUAL (DIVIDIDAS)
-              ========================================== */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            {/* 1. JUGADORES DE CAMPO */}
             <div className="bento-card">
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                  <div className="stat-label" style={{ color: 'var(--accent)' }}>RENDIMIENTO: JUGADORES DE CAMPO</div>
@@ -1277,7 +1273,6 @@ const COLORS_ORIGEN = {
               </div>
             </div>
 
-            {/* 2. ARQUEROS */}
             {analitica.ranking.some(j => j.rol === 'ARQUERO') && (
               <div className="bento-card" style={{ borderTop: '2px solid #3b82f6' }}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
@@ -1503,7 +1498,6 @@ const COLORS_ORIGEN = {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
                   
-                  {/* Contenedor del Iframe: 100% en movil, sino un min de 500px */}
                   <div style={{ flex: '1 1 100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <div style={{ background: '#000', borderRadius: '4px', overflow: 'hidden', border: '1px solid #333', width: '100%', aspectRatio: '16/9' }}>
                       <iframe 
@@ -1530,7 +1524,6 @@ const COLORS_ORIGEN = {
                     </div>
                   </div>
 
-                  {/* Lista de Eventos: 100% en movil, acoplándose debajo del video */}
                   <div style={{ flex: esMovil ? '1 1 100%' : '1 1 300px', display: 'flex', flexDirection: 'column', maxHeight: esMovil ? '400px' : '550px', minWidth: 0 }}>
                     <div className="stat-label" style={{ marginBottom: '10px' }}>EVENTOS DEL PARTIDO ({eventosTimeline.length})</div>
                     <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -1567,7 +1560,6 @@ const COLORS_ORIGEN = {
         </div>
       )}
 
-      {/* 🌟 OVERLAY DEL REPORTE PARA EXPORTAR 🌟 */}
       {mostrarReporte && datosParaReporte && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
