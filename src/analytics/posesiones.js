@@ -1,6 +1,6 @@
 import { calcularXGEvento } from './xg';
 
-export function generarPosesiones(eventos = []) {
+export function generarPosesiones(eventos = [], jugadores = []) {
   const posesiones = [];
   let actual = null;
 
@@ -14,11 +14,11 @@ export function generarPosesiones(eventos = []) {
         inicio: ev.minuto,
         eventos: [],
         xgGenerado: 0,
-        jugadoresInvolucrados: new Set()
+        jugadoresInvolucrados: new Set(),
+        conexionArquero: false
       };
     }
 
-    // Registramos a todos los jugadores que tocan el balón durante esta fase
     if (ev.equipo === actual.equipo) {
       actual.eventos.push(ev);
       if (ev.id_jugador) actual.jugadoresInvolucrados.add(ev.id_jugador);
@@ -29,16 +29,25 @@ export function generarPosesiones(eventos = []) {
       actual.fin = ev.minuto;
       actual.resultado = ev.accion;
 
-      // Si la jugada termina en tiro, asignamos el valor de la jugada
       if (esRemate) {
         actual.xgGenerado = calcularXGEvento(ev);
         actual.rematadorId = ev.id_jugador;
         actual.asistidorId = ev.id_asistencia;
+
+        if (actual.eventos.length > 0) {
+          const eventoInicio = actual.eventos[0];
+          const jugInicio = jugadores.find(j => j.id === eventoInicio.id_jugador);
+          
+          if (jugInicio?.posicion?.toLowerCase().includes('arquero')) {
+            const tInicio = (eventoInicio.minuto * 60) + (eventoInicio.segundos || 0);
+            const tRemate = (ev.minuto * 60) + (ev.segundos || 0);
+            actual.conexionArquero = (tRemate - tInicio) <= 5;
+          }
+        }
       }
 
       posesiones.push({
         ...actual,
-        // Convertimos el Set a Array para facilitar el manejo posterior
         jugadoresInvolucrados: Array.from(actual.jugadoresInvolucrados)
       });
       
@@ -49,18 +58,14 @@ export function generarPosesiones(eventos = []) {
   return posesiones;
 }
 
-// NUEVO MOTOR DE CADENAS DE VALOR (Ciencia de Datos)
-// Permite evaluar el impacto ofensivo de los Cierres y defensas.
 export function calcularCadenasValor(posesiones, jugadorId) {
-  let xgChain = 0;   // xG total de las jugadas donde el jugador participó
-  let xgBuildup = 0; // xG de las jugadas donde participó SIN ser el rematador ni el asistidor
+  let xgChain = 0;   
+  let xgBuildup = 0; 
 
   posesiones.forEach(pos => {
     if (pos.xgGenerado > 0 && pos.jugadoresInvolucrados.includes(jugadorId)) {
       xgChain += pos.xgGenerado;
-      
-      // Si el jugador no es quien patea ni quien asiste, su contribución es de "Construcción" (Buildup)
-      if (pos.rematadorId != jugadorId && pos.asistidorId != jugadorId) {
+      if (pos.rematadorId !== jugadorId && pos.asistidorId !== jugadorId) {
         xgBuildup += pos.xgGenerado;
       }
     }

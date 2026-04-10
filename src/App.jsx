@@ -5,12 +5,12 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 import { ToastProvider } from './components/ToastContext';
 
-// PANTALLAS ORIGINALES
 import Landing from './pages/Landing';
 import Inicio from './pages/Inicio';
 import NuevoPartido from './pages/NuevoPartido';
 import ContinuarPartido from './pages/ContinuarPartido';
 import TomaDatos from './pages/TomaDatos';
+import TomaDatosAsincrono from './pages/TomaDatosAsincrono';
 import Resumen from './pages/Resumen';
 import JugadorPerfil from './pages/JugadorPerfil';
 import Temporada from './pages/Temporada';
@@ -24,12 +24,11 @@ import Torneos from './pages/Torneos';
 import ScoutingRivales from './pages/ScoutingRivales';
 import OrigenGoles from './pages/OrigenGoles'; 
 import CreadorTareas from './pages/CreadorTareas';
-import CreadorFisico from './pages/CreadorFisico'; // <-- AGREGADO: Importamos el creador del profe
+import CreadorFisico from './pages/CreadorFisico';
 import BancoTareas from './pages/BancoTareas';
 import CargaWellness from './pages/CargaWellness';
 import PlanificadorSemanal from './pages/PlanificadorSemanal';
 
-// NUEVAS PANTALLAS
 import Presentismo from './pages/Presentismo';
 import Tesoreria from './pages/Tesoreria';
 import Sponsors from './pages/Sponsors';
@@ -39,7 +38,6 @@ import LoginKiosco from './pages/LoginKiosco';
 
 import './App.css';
 
-// --- ESTILOS INLINE MÓVILES ---
 const navMobileStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyItems: 'center', flex: 1, height: '100%', cursor: 'pointer', color: 'var(--text-dim)', textDecoration: 'none', fontWeight: 800, padding: '8px 0', transition: 'color 0.2s' };
 const sidebarLinkStyle = { padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '15px', textAlign: 'left' };
 const sidebarGroupTitle = { padding: '20px 20px 5px 20px', fontSize: '0.65rem', color: '#888', fontWeight: 900, letterSpacing: '1px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
@@ -52,7 +50,6 @@ function AppLayout() {
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
   
-  // --- NUEVO ESTADO PARA EL DRAWER Y EL FAB (MÓVIL) ---
   const [drawerAbierto, setDrawerAbierto] = useState(false);
   const [fabAbierto, setFabAbierto] = useState(false);
 
@@ -72,7 +69,6 @@ function AppLayout() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Cerrar menús al cambiar de ruta en móvil
   useEffect(() => {
     if (esMovil) {
       setDrawerAbierto(false);
@@ -86,6 +82,7 @@ function AppLayout() {
   const isLogin = location.pathname === '/login';
   const isRegistro = location.pathname === '/registro'; 
   const isTomaDatos = location.pathname === '/toma-datos'; 
+  const isTomaDatosAsincrono = location.pathname.includes('/analisis-video');
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
@@ -113,7 +110,7 @@ function AppLayout() {
     return <Navigate to="/mi-suscripcion" replace />;
   }
 
-  if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
+  if (isLanding || isLogin || isRegistro || isTomaDatos || isTomaDatosAsincrono || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
         <Routes>
@@ -122,6 +119,8 @@ function AppLayout() {
           <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
           <Route path="/kiosco" element={<LoginKiosco />} />
           <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
+          <Route path="/analisis-video" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosAsincrono /></ProtectedRoute>} />
+          <Route path="/partido/:id/analisis-video" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosAsincrono /></ProtectedRoute>} />
         </Routes>
       </main>
     );
@@ -148,7 +147,6 @@ function AppLayout() {
     );
   }
 
-  // --- RENDERIZADO DEL MENÚ ---
   const renderNavLinks = () => (
     <>
       <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
@@ -164,6 +162,7 @@ function AppLayout() {
             <>
               <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚡ <span>NUEVO PARTIDO</span></NavLink>
               <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⏯️ <span>CONTINUAR PARTIDO</span></NavLink>
+              <NavLink to="/analisis-video" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎥 <span>VIDEO ANÁLISIS</span></NavLink>
             </>
           )}
         </>
@@ -210,7 +209,6 @@ function AppLayout() {
                 <>
                   <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗓️ <span>MICROCICLO</span></NavLink>
                   <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎨 <span>CREADOR TÁCTICO</span></NavLink>
-                  {/* AGREGADO: Enlace al Creador Físico */}
                   <NavLink to="/creador-fisico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏋️‍♂️ <span>CREADOR FÍSICO</span></NavLink>
                 </>
               )}
@@ -277,7 +275,6 @@ function AppLayout() {
   return (
     <div style={{ display: 'flex', height: '100dvh', backgroundColor: 'var(--bg)', overflow: 'hidden' }}>
       
-      {/* SIDEBAR DESKTOP */}
       {!esMovil && (
         <aside style={{ width: sidebarAbierta ? '250px' : '70px', backgroundColor: 'var(--panel)', borderRight: '1px solid var(--border)', transition: 'width 0.3s ease', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
           <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: sidebarAbierta ? 'space-between' : 'center', borderBottom: '1px solid var(--border)' }}>
@@ -295,7 +292,6 @@ function AppLayout() {
         </aside>
       )}
 
-      {/* CONTENIDO PRINCIPAL */}
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '0px 0px 85px 0px' : '40px', position: 'relative' }}>
         <div style={{ padding: esMovil ? '20px 15px' : '0' }}>
           <Routes>
@@ -306,7 +302,6 @@ function AppLayout() {
             <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
             <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
             <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
-            {/* AGREGADO: Ruta del Creador Físico protegida para el cuerpo técnico */}
             <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
             <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
             <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
@@ -330,7 +325,6 @@ function AppLayout() {
         </div>
       </main>
 
-      {/* --- BOTTOM NAVIGATION (MÓVIL) --- */}
       {esMovil && (
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '70px', background: 'var(--panel)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 1000, paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <NavLink to="/inicio" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
@@ -345,7 +339,6 @@ function AppLayout() {
             </NavLink>
           )}
 
-          {/* BOTÓN FLOTANTE CENTRAL (FAB) */}
           {puedeEscribirDeportivo && (
              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
                 <button 
@@ -375,7 +368,6 @@ function AppLayout() {
              </div>
           )}
 
-          {/* Si es jugador mostramos otra cosa en lugar de Tareas */}
           {esJugador && (
             <NavLink to="/wellness" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
               <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>🌡️</span>
@@ -388,7 +380,6 @@ function AppLayout() {
             <span style={{fontSize: '0.65rem'}}>Stats</span>
           </NavLink>
 
-          {/* BOTÓN DRAWER */}
           <div onClick={() => { setDrawerAbierto(true); setFabAbierto(false); }} style={{...navMobileStyle, color: drawerAbierto ? 'var(--accent)' : 'var(--text-dim)'}}>
             <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>☰</span>
             <span style={{fontSize: '0.65rem'}}>Menú</span>
@@ -396,7 +387,6 @@ function AppLayout() {
         </nav>
       )}
 
-      {/* --- MODAL DEL FAB (Carga Rápida) --- */}
       {esMovil && fabAbierto && (
         <>
           <div onClick={() => setFabAbierto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000 }} />
@@ -409,13 +399,10 @@ function AppLayout() {
         </>
       )}
 
-      {/* --- OFF-CANVAS DRAWER (Menú lateral móvil) --- */}
       {esMovil && (
         <>
-          {/* Overlay oscuro de fondo */}
           {drawerAbierto && <div onClick={() => setDrawerAbierto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1005, animation: 'fadeIn 0.3s' }} />}
           
-          {/* Panel Lateral */}
           <div style={{
             position: 'fixed', top: 0, right: 0, bottom: '70px', width: '80%', maxWidth: '300px',
             background: 'var(--panel)', borderLeft: '1px solid var(--border)', zIndex: 1010,

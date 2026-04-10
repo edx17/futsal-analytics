@@ -3,9 +3,6 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
 
-// ==========================================
-// 1. CATÁLOGO DE WIDGETS Y TAMAÑOS POR DEFECTO
-// ==========================================
 const CATÁLOGO_WIDGETS = [
   { id: 'w_proximo', tipo: 'data', spanDefecto: '1x1', titulo: 'Próximo Partido', icon: '📅', roles: ['superuser', 'manager', 'ct'] },
   { id: 'w_ultimo', tipo: 'data', spanDefecto: '1x1', titulo: 'Último Registro', icon: '⏱️', roles: ['superuser', 'manager', 'ct'] },
@@ -14,8 +11,8 @@ const CATÁLOGO_WIDGETS = [
   { id: 'w_goles_cat', tipo: 'data', spanDefecto: '1x1', titulo: 'Goles Acumulados', icon: '⚽', roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'w_resultados_cat', tipo: 'data', spanDefecto: '2x2', titulo: 'Últimos Resultados', icon: '📈', roles: ['superuser', 'manager', 'ct', 'admin'] },
   
-  // CT / MANAGER
   { id: 'nuevo_partido', tipo: 'link', spanDefecto: '1x1', titulo: 'Nuevo Partido', icon: '⚡', ruta: '/nuevo-partido', color: '#10b981', desc: 'Stats en vivo', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'analisis_video', tipo: 'link', spanDefecto: '1x1', titulo: 'Video Análisis', icon: '🎥', ruta: '/analisis-video', color: '#f97316', desc: 'Tracking asíncrono', roles: ['superuser', 'manager', 'ct'] },
   { id: 'planificador', tipo: 'link', spanDefecto: '1x1', titulo: 'Microciclo', icon: '🗓️', ruta: '/microciclo', color: '#8b5cf6', desc: 'Cargas y sesiones', roles: ['superuser', 'manager', 'ct'] },
   { id: 'creador_tareas', tipo: 'link', spanDefecto: '1x1', titulo: 'Creador Tareas', icon: '🎨', ruta: '/creador-tareas', color: '#ec4899', desc: 'Pizarra gráfica', roles: ['superuser', 'manager', 'ct'] },
   { id: 'banco_tareas', tipo: 'link', spanDefecto: '1x1', titulo: 'Banco Tareas', icon: '📁', ruta: '/banco-tareas', color: '#f59e0b', desc: 'Archivo de ejercicios', roles: ['superuser', 'manager', 'ct'] },
@@ -26,13 +23,11 @@ const CATÁLOGO_WIDGETS = [
   { id: 'plantel', tipo: 'link', spanDefecto: '1x1', titulo: 'Mi Plantel', icon: '👥', ruta: '/plantel', color: '#0ea5e9', desc: 'Gestión', roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'wellness_ct', tipo: 'link', spanDefecto: '1x1', titulo: 'Monitor Wellness', icon: '🔋', ruta: '/wellness', color: '#10b981', desc: 'Estado hoy', roles: ['superuser', 'manager', 'ct'] },
 
-  // ADMIN / MANAGER
   { id: 'tesoreria', tipo: 'link', spanDefecto: '1x1', titulo: 'Tesorería', icon: '💰', ruta: '/tesoreria', color: '#eab308', desc: 'Caja y Cuotas', roles: ['superuser', 'manager', 'admin'] },
   { id: 'torneos', tipo: 'link', spanDefecto: '1x1', titulo: 'Torneos', icon: '🏆', ruta: '/torneos', color: '#fbbf24', desc: 'Gestión ligas', roles: ['superuser', 'manager', 'admin'] },
   { id: 'sponsors', tipo: 'link', spanDefecto: '1x1', titulo: 'Sponsors', icon: '🤝', ruta: '/sponsors', color: '#0284c7', desc: 'Patrocinadores', roles: ['superuser', 'manager', 'admin'] },
   { id: 'usuarios', tipo: 'link', spanDefecto: '1x1', titulo: 'Usuarios', icon: '👑', ruta: '/usuarios', color: '#c084fc', desc: 'Accesos', roles: ['superuser'] },
   
-  // JUGADORES
   { id: 'mi_wellness', tipo: 'link', spanDefecto: '1x1', titulo: 'Cargar Wellness', icon: '🌡️', ruta: '/wellness', color: '#f59e0b', desc: 'Fatiga y sueño', roles: ['jugador'] },
   { id: 'mi_perfil', tipo: 'link', spanDefecto: '1x1', titulo: 'Mi Perfil', icon: '🏃‍♂️', ruta: '/jugador-perfil', color: '#3b82f6', desc: 'Tus métricas', roles: ['jugador'] },
   { id: 'mi_rendimiento', tipo: 'link', spanDefecto: '1x1', titulo: 'Mi Biomecánica', icon: '🧬', ruta: '/rendimiento', color: '#f43f5e', desc: 'Tu evolución', roles: ['jugador'] },
@@ -59,8 +54,7 @@ export default function Inicio() {
   const esAdmin = rol === 'admin';
   const esManager = rol === 'manager';
 
-  // NUEVO: PANTALLA DE NOVEDADES -----------------------
-  const VERSION_ACTUAL = 'v0.002604031832';
+  const VERSION_ACTUAL = 'v0.00202604100023';
   const [mostrarNovedades, setMostrarNovedades] = useState(false);
 
   useEffect(() => {
@@ -76,16 +70,12 @@ export default function Inicio() {
     localStorage.setItem(`novedades_vista_${VERSION_ACTUAL}`, 'true');
     setMostrarNovedades(false);
   };
-  // ---------------------------------------------------
 
-  // Perfil que mostramos en pantalla (Kiosco o Logueado)
   const [perfilVisual, setPerfilVisual] = useState(null);
 
   const [clubMaster, setClubMaster] = useState(localStorage.getItem('club_id') || '');
-  // clubActivo: Si es kiosco, manda el ID del kiosco.
   const clubActivo = isKioscoMode ? kioscoClubId : (esSuperUser ? clubMaster : (perfil?.club_id || ''));
 
-  // NUEVO: ESTADO PARA EL MODAL DEL QR
   const [mostrarQR, setMostrarQR] = useState(false);
   const linkKiosco = `${window.location.origin}/kiosco?club=${clubActivo}`;
 
@@ -110,11 +100,11 @@ export default function Inicio() {
   const widgetsPermitidos = CATÁLOGO_WIDGETS.filter(w => w.roles.includes(rol));
   
   const defaultLayout = esSuperUser 
-    ? ['usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido'] 
+    ? ['usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido', 'analisis_video'] 
     : esManager
-    ? ['w_vep_anual', 'w_stats_base', 'nuevo_partido', 'planificador', 'plantel', 'tesoreria']
+    ? ['w_vep_anual', 'w_stats_base', 'nuevo_partido', 'analisis_video', 'planificador', 'plantel', 'tesoreria']
     : rol === 'ct' 
-    ? ['w_vep_anual', 'w_proximo', 'nuevo_partido', 'planificador', 'rendimiento', 'wellness_ct'] 
+    ? ['w_vep_anual', 'w_proximo', 'nuevo_partido', 'analisis_video', 'planificador', 'rendimiento', 'wellness_ct'] 
     : esAdmin 
     ? ['w_stats_base', 'tesoreria', 'torneos', 'sponsors', 'plantel'] 
     : ['mi_wellness', 'mi_perfil', 'mi_rendimiento'];
@@ -207,7 +197,6 @@ export default function Inicio() {
 
       if (!targetClubId && !esSuperUser) { setCargando(false); return; }
 
-      // 1. Cargar Perfil Visual si hay un jugador
       if (isKioscoMode) {
         setPerfilVisual({
           nombre: localStorage.getItem('kiosco_nombre') || 'Jugador',
@@ -219,7 +208,6 @@ export default function Inicio() {
         if (pData) setPerfilVisual(pData);
       }
 
-      // 2. Cargar Club
       if (targetClubId) {
         const { data: clubData } = await supabase.from('clubes').select('nombre, escudo_url').eq('id', targetClubId).maybeSingle();
         if (clubData) {
@@ -230,7 +218,6 @@ export default function Inicio() {
         setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub('');
       }
 
-      // 3. Cargar Categorías
       if (targetClubId) {
         const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', targetClubId);
         if (cats) {
@@ -239,7 +226,6 @@ export default function Inicio() {
         }
       }
 
-      // 4. Lógica de Negocio (Stats / Wellness)
       if (rol === 'jugador') {
         if (targetJugadorId) {
           let wellness = [];
@@ -334,9 +320,12 @@ export default function Inicio() {
   }   
 
   const getGridStyle = (spanStr) => {
-    const [cols, rows] = spanStr.split('x').map(Number);
+    let [cols, rows] = spanStr.split('x').map(Number);
+    if (esMovil) {
+      if (cols >= 2) cols = 2; 
+    }
     return { 
-      gridColumn: `span ${Math.min(cols, 3)}`, 
+      gridColumn: `span ${Math.min(cols, esMovil ? 2 : 3)}`, 
       gridRow: `span ${rows}` 
     };
   };
@@ -378,7 +367,6 @@ export default function Inicio() {
   return (
     <div style={{ animation: 'fadeIn 0.3s', maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
       
-      {/* HEADER Y FILTROS */}
       <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border)', gap: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div style={{ width: esMovil ? '50px' : '60px', height: esMovil ? '50px' : '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: esMovil ? '1rem' : '1.5rem', overflow: 'hidden', flexShrink: 0 }}>
@@ -417,7 +405,6 @@ export default function Inicio() {
               {modoEdicion ? '✅ Guardar Diseño' : '⚙️ Editar Pantalla'}
             </button>
             
-            {/* BOTÓN GENERADOR DE QR */}
             {(esManager || esAdmin || esSuperUser) && clubActivo && (
               <button 
                 onClick={() => setMostrarQR(true)} 
@@ -448,7 +435,6 @@ export default function Inicio() {
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '50px' }}>CARGANDO DASHBOARD...</div>
       ) : (
         <>
-          {/* BARRA MODO EDICIÓN */}
           {modoEdicion && (
             <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px dashed #444', marginBottom: '20px', animation: 'fadeIn 0.2s' }}>
               <h3 style={{ margin: '0 0 15px 0', fontSize: '0.9rem', color: '#fff' }}>Agregá/Quitá accesos de tu pantalla principal:</h3>
@@ -465,10 +451,9 @@ export default function Inicio() {
             </div>
           )}
 
-          {/* GRID BENTO */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(3, 1fr)', 
+            gridTemplateColumns: esMovil ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', 
             gridAutoRows: esMovil ? '110px' : '160px', 
             gap: esMovil ? '10px' : '15px', 
             gridAutoFlow: 'dense' 
@@ -499,7 +484,6 @@ export default function Inicio() {
                 overflow: 'hidden'
               };
 
-              // --- WIDGET: V-E-P ANUAL ---
               if (config.id === 'w_vep_anual') {
                 return (
                   <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #3b82f6', padding: is1x1 ? '8px' : '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -523,7 +507,6 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGET: ÚLTIMOS RESULTADOS ---
               if (config.id === 'w_resultados_cat') {
                 const cats = Object.keys(resultadosRecientesCat);
                 return (
@@ -556,7 +539,6 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGET: GOLES POR CATEGORÍA ---
               if (config.id === 'w_goles_cat') {
                 const totalGF = Object.values(golesPorCat).reduce((acc, cat) => acc + cat.favor, 0);
                 const totalGC = Object.values(golesPorCat).reduce((acc, cat) => acc + cat.contra, 0);
@@ -592,7 +574,6 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGET: PRÓXIMO PARTIDO ---
               if (config.id === 'w_proximo') {
                 return (
                   <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #10b981', padding: is1x1 ? '8px' : '15px' }}>
@@ -613,7 +594,6 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGET: ÚLTIMO PARTIDO ---
               if (config.id === 'w_ultimo') {
                 return (
                   <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid var(--text-dim)', padding: is1x1 ? '8px' : '15px' }}>
@@ -626,7 +606,23 @@ export default function Inicio() {
                           <span style={{ background: '#222', color: '#fff', padding: '2px 4px', borderRadius: '4px', fontSize: is1x1 ? '0.55rem' : '0.6rem', fontWeight: 800, alignSelf: 'flex-start' }}>{is1x1 ? ultimoPartido.competicion.substring(0,8) : ultimoPartido.competicion}</span>
                         </div>
                         <div style={{ fontSize: is1x1 ? '0.75rem' : '0.85rem', fontWeight: 900, textAlign: 'center', margin: '5px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {ultimoPartido.rival?.toUpperCase()}</div>
-                        {!is1x1 && <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimoPartido.id}`)} className="btn-secondary" style={{ width: '100%', fontSize: '0.65rem', padding: '6px', cursor: modoEdicion ? 'grab' : 'pointer' }}>VER RESUMEN</button>}
+                        {!is1x1 && (
+                          <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                            <button 
+                              onClick={() => !modoEdicion && navigate(`/resumen/${ultimoPartido.id}`)} 
+                              className="btn-secondary" 
+                              style={{ flex: 1, fontSize: '0.65rem', padding: '6px', cursor: modoEdicion ? 'grab' : 'pointer' }}
+                            >
+                              RESUMEN
+                            </button>
+                            <button 
+                              onClick={() => !modoEdicion && navigate(`/partido/${ultimoPartido.id}/analisis-video`)} 
+                              style={{ flex: 1, fontSize: '0.65rem', padding: '6px', cursor: modoEdicion ? 'grab' : 'pointer', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}
+                            >
+                              VIDEO
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '10px', background: '#111', borderRadius: '6px', border: '1px dashed #333', fontSize: '0.7rem' }}>Sin registros</div>
@@ -635,7 +631,6 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGET: ESTADO DE LA BASE ---
               if (config.id === 'w_stats_base') {
                 return (
                   <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', padding: is1x1 ? '8px' : '15px' }}>
@@ -656,10 +651,9 @@ export default function Inicio() {
                 );
               }
 
-              // --- WIDGETS TIPO LINK ---
               if (config.tipo === 'link') {
                 const bgSoft = config.color ? `rgba(${hexToRgb(config.color)}, 0.05)` : 'rgba(255,255,255,0.05)';
-                const isHorizontal = spanActual === '2x1' || spanActual === '3x1';
+                const isHorizontal = !esMovil && (spanActual === '2x1' || spanActual === '3x1');
 
                 return (
                   <div key={config.id} className="bento-card" {...dragEvents}
@@ -684,22 +678,21 @@ export default function Inicio() {
         </>
       )}
 
-{/* MODAL DE NOVEDADES */}
       {mostrarNovedades && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
-          <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
+          <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '600px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>VERSIÓN 0.00202604081626</span>
-              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>Segmentación de Partido y Precisión Analítica</h2>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Implementación de filtros de contexto (Game State), captura avanzada para arqueros y reestructuración de la base estadística.</p>
+              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>VERSIÓN 0.00202604100023</span>
+              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.4rem', textTransform: 'uppercase' }}>Tracking Asíncrono Avanzado y Motor Cero Latencia</h2>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Implementación de herramientas profesionales para video-análisis y reescritura del cronómetro para evitar desfasajes.</p>
             </div>
-            <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
+            <div style={{ color: '#ddd', fontSize: '0.85rem', lineHeight: '1.5', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
               <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <li><strong style={{color: '#3b82f6'}}>Estado de Partido (Game State):</strong> Condicionamiento táctico total. Filtros para evaluar el rendimiento exacto en escenarios de ventaja, empate o desventaja.</li>
-                <li><strong style={{color: '#00ff88'}}>Tracking de Arqueros:</strong> Enlace automático de remates atajados al perfil del arquero en cancha y métricas defensivas consolidadas.</li>
-                <li><strong style={{color: '#c084fc'}}>Efectividad ABP:</strong> Segmentación directa de tiros libres en la eficacia de acciones a balón parado y corrección de métricas.</li>
-                <li><strong style={{color: '#f59e0b'}}>Control de Ruido Visual:</strong> Renderizado dinámico del módulo Cargas y Wellness. Ocultamiento automático ante falta de registros.</li>
-                <li><strong style={{color: '#ef4444'}}>Estabilidad del Motor:</strong> Captura de pérdidas del rival para estabilizar el Índice de Caos y supresión de valores nulos (NaN) en el procesamiento central.</li>
+                <li><strong style={{color: '#3b82f6'}}>Nuevo Tracking de Video:</strong> Módulo de carga de archivos locales (MP4) sin latencia ni consumo de ancho de banda. Análisis secuencial offline y subida en bloque a la base de datos.</li>
+                <li><strong style={{color: '#00ff88'}}>Sincronización Absoluta (Reloj):</strong> Se reemplazó el temporizador de ciclos por cálculo de marcas de tiempo absolutas. El video y la línea de tiempo ya no sufren estrangulamiento de navegador.</li>
+                <li><strong style={{color: '#f59e0b'}}>Caché de Seguridad Anti-Pérdida:</strong> Guardado persistente automático en disco local. Si el navegador se cierra o colapsa, el buffer de eventos y el tiempo de reloj se restauran automáticamente.</li>
+                <li><strong style={{color: '#c084fc'}}>Bypass de Mapeo Espacial:</strong> Modificación del flujo lógico. Las acciones de volumen (Pases, Recuperaciones, Duelos) asignan al jugador de forma directa sin requerir posición XY, duplicando la velocidad de carga.</li>
+                <li><strong style={{color: '#ef4444'}}>Mapeo de Teclado Extendido:</strong> Incorporación de hotkeys operativas para Futsal: Duelos (W/Q), Faltas (F), Ley de Ventaja (V), Atajadas (G) y Bloqueos (B).</li>
               </ul>
             </div>
             <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>CERRAR E INICIAR</button>
@@ -707,7 +700,6 @@ export default function Inicio() {
         </div>
       )}
 
-      {/* MODAL GENERADOR DE QR PARA EL VESTUARIO */}
       {mostrarQR && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
           <div style={{ background: '#111', border: '1px solid #10b981', borderRadius: '8px', padding: '30px', maxWidth: '400px', width: '100%', textAlign: 'center', position: 'relative', animation: 'fadeIn 0.3s' }}>

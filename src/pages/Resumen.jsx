@@ -13,6 +13,7 @@ import { getColorAccion } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import ReportGenerator from '../components/ReportGenerator';
 import { calcularRatingJugador } from '../analytics/rating';
+import { exportarEventosCSV } from '../utils/exportadorVideo';
 
 const calcularRatingQuintetoAvanzado = (q) => {
   const gf = q.golesFavor || 0;
@@ -70,6 +71,40 @@ export const PitchLinesOptimized = ({ stroke = "rgba(255,255,255,0.2)", strokeWi
   </svg>
 );
 
+const MallaABP = ({ microZonas }) => {
+  if (!microZonas) return null;
+  const zX = ['Z1', 'Z2', 'Z3', 'Z4'];
+  const zY = ['I', 'C', 'D'];
+  
+  return (
+    <svg viewBox="0 0 100 50" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}>
+      {zX.map((xVal, colIdx) => (
+        zY.map((yVal, rowIdx) => {
+          const key = `${xVal}-${yVal}`;
+          const data = microZonas[key];
+          const efectividad = data && data.favor > 0 ? data.rematesGenerados / data.favor : 0;
+          return (
+            <g key={key}>
+              <rect 
+                x={colIdx * 25} y={rowIdx * 16.66} 
+                width="25" height="16.66" 
+                fill={`rgba(0, 230, 118, ${efectividad * 0.7})`} 
+                stroke="rgba(255,255,255,0.05)" 
+                strokeWidth="0.2" 
+              />
+              {data && data.favor > 0 && (
+                <text x={(colIdx * 25) + 12.5} y={(rowIdx * 16.66) + 9} fill="#fff" fontSize="3" textAnchor="middle" fontWeight="bold">
+                  {data.rematesGenerados}/{data.favor}
+                </text>
+              )}
+            </g>
+          );
+        })
+      ))}
+    </svg>
+  );
+};
+
 function Resumen() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -96,6 +131,8 @@ function Resumen() {
 
   const [filtroPeriodo, setFiltroPeriodo] = useState('Todos');
   const [filtroEstadoPartido, setFiltroEstadoPartido] = useState('Todos');
+  const [filtroAsimetria, setFiltroAsimetria] = useState('Todos');
+  
   const [tipoMapa, setTipoMapa] = useState('calor');
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
@@ -171,6 +208,7 @@ function Resumen() {
     setPartidoSeleccionado(partido);
     setFiltroPeriodo('Todos');
     setFiltroEstadoPartido('Todos');
+    setFiltroAsimetria('Todos');
     setVideoUrl(partido.video_url || ''); 
     setTiempoVideo(0);
     const { data } = await supabase.from('eventos').select('*').eq('id_partido', partido.id).order('minuto', { ascending: true });
@@ -263,10 +301,22 @@ function Resumen() {
       ? eventosPartido 
       : eventosPartido.filter(ev => ev.periodo === filtroPeriodo);
 
+    if (filtroAsimetria !== 'Todos') {
+      evFiltrados = evFiltrados.filter(ev => ev.estado_asimetria === filtroAsimetria);
+    }
+
     evFiltrados.sort((a, b) => {
       if (a.periodo === 'PT' && b.periodo === 'ST') return -1;
       if (a.periodo === 'ST' && b.periodo === 'PT') return 1;
       return ((a.minuto * 60) + (a.segundos || 0)) - ((b.minuto * 60) + (b.segundos || 0));
+    });
+
+    const marcadorReal = { propio: 0, rival: 0 };
+    evFiltrados.forEach(ev => {
+      if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
+        if (ev.equipo === 'Propio') marcadorReal.propio++;
+        else marcadorReal.rival++;
+      }
     });
 
     if (filtroEstadoPartido !== 'Todos') {
@@ -523,11 +573,11 @@ function Resumen() {
     return { 
       evFiltrados, stats, abp, ranking, eficaciaTiro, shotRate, goalRate, lossDanger, chaosIndex, matchControl, territoryPct,
       xgPorRemate, golesVsXg, rematesPorPosesion, perfilRemate, dataOrigenGol, dataOrigenGolRival,
-      xgPropio: datosProcesados.xgPropio, xgRival: datosProcesados.xgRival, 
+      xgPropio: datosProcesados.xgPropio, xgRival: datosProcesados.xgRival, marcadorReal,
       insights: datosProcesados.insights, posesiones: datosProcesados.posesiones, transiciones: datosProcesados.transiciones,
-      duelos: datosProcesados.duelos, quintetos: datosProcesados.quintetos, plusMinusJugador: datosProcesados.plusMinusJugador
+      duelos: datosProcesados.duelos, quintetos: datosProcesados.quintetos, plusMinusJugador: datosProcesados.plusMinusJugador, abpMicroZonas: datosProcesados.abpMicroZonas
     };
-  }, [eventosPartido, filtroPeriodo, filtroEstadoPartido, jugadores]);
+  }, [eventosPartido, filtroPeriodo, filtroEstadoPartido, filtroAsimetria, jugadores]);
 
   const eventosTimeline = useMemo(() => {
     if (!analitica) return [];
@@ -549,7 +599,6 @@ function Resumen() {
 
     return evs;
   }, [analitica, filtroVideoAcciones]);
-
 
   const reporteWellness = useMemo(() => {
     if (!partidoSeleccionado) return null;
@@ -862,7 +911,9 @@ const COLORS_ORIGEN = {
           )}
           {partidoSeleccionado && (
             <div style={{ flex: esMovil ? '1 1 auto' : 'none' }}>
-              <div className="stat-label">ESTADO DE PARTIDO</div>
+              <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                ESTADO DE PARTIDO <InfoBox texto="Aísla y analiza los eventos del partido según el resultado que había en el momento exacto en que ocurrieron." />
+              </div>
               <select value={filtroEstadoPartido} onChange={(e) => setFiltroEstadoPartido(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: '#3b82f6', color: '#3b82f6', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
                 <option value="Todos">SIN FILTRO</option>
                 <option value="Ganando">GANANDO</option>
@@ -871,11 +922,29 @@ const COLORS_ORIGEN = {
               </select>
             </div>
           )}
+          {partidoSeleccionado && (
+            <div style={{ flex: esMovil ? '1 1 auto' : 'none' }}>
+              <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                ASIMETRÍA <InfoBox texto="Aísla la matriz bajo estado de superioridad o inferioridad táctica." />
+              </div>
+              <select value={filtroAsimetria} onChange={(e) => setFiltroAsimetria(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: '#f59e0b', color: '#f59e0b', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
+                <option value="Todos">SIN FILTRO</option>
+                <option value="5v5">5v5</option>
+                <option value="5v4">5v4 (A favor)</option>
+                <option value="4v5">4v5 (En contra)</option>
+              </select>
+            </div>
+          )}
         </div>
         {partidoSeleccionado && (
-          <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto' }}>
-            EXPORTAR REPORTE
-          </button>
+          <div style={{ display: 'flex', gap: '10px', width: esMovil ? '100%' : 'auto' }}>
+            <button onClick={() => exportarEventosCSV(analitica.evFiltrados, partidoSeleccionado.rival)} className="btn-action" style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-dim)', color: 'var(--text-dim)' }}>
+              CSV VIDEO
+            </button>
+            <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ flex: 1 }}>
+              EXPORTAR REPORTE
+            </button>
+          </div>
         )}
       </div>
 
@@ -892,11 +961,22 @@ const COLORS_ORIGEN = {
               
               <div style={{ flex: 1.5, padding: '0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ fontSize: esMovil ? '2rem' : '3.5rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
-                  {analitica.stats.propio.goles} - {analitica.stats.rival.goles}
+                  {analitica.marcadorReal.propio} - {analitica.marcadorReal.rival}
                 </div>
                 <div className="stat-label" style={{ color: 'var(--accent)', marginTop: '5px', fontSize: esMovil ? '0.6rem' : '0.75rem' }}>
                   {filtroPeriodo === 'Todos' ? 'RESULTADO FINAL' : `RESULTADO ${filtroPeriodo}`}
                 </div>
+                {filtroEstadoPartido !== 'Todos' && (
+                  <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', color: '#3b82f6', padding: '4px 8px', borderRadius: '4px', marginTop: '10px', fontSize: '0.65rem', fontWeight: 800, textAlign: 'center' }}>
+                    CONTEXTO "ESTANDO {filtroEstadoPartido.toUpperCase()}"<br/>
+                    GOLES MARCADOS: {analitica.stats.propio.goles} | RECIBIDOS: {analitica.stats.rival.goles}
+                  </div>
+                )}
+                {filtroAsimetria !== 'Todos' && (
+                  <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid #f59e0b', color: '#f59e0b', padding: '4px 8px', borderRadius: '4px', marginTop: '5px', fontSize: '0.65rem', fontWeight: 800, textAlign: 'center' }}>
+                    SITUACIÓN ASIMÉTRICA: {filtroAsimetria}
+                  </div>
+                )}
                 <div style={{ fontSize: esMovil ? '0.6rem' : '0.8rem', color: 'var(--text-dim)', marginTop: '3px' }}>
                   {partidoSeleccionado.categoria} | {partidoSeleccionado.fecha}
                 </div>
@@ -1135,7 +1215,7 @@ const COLORS_ORIGEN = {
                   <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Rival' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
                 </div>
 
-                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
+                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones' || tipoMapa === 'abp'} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: (tipoMapa === 'transiciones' || tipoMapa === 'abp') ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
                   <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS LAS ACCIONES</option>
                   <option value="Gol" style={{ background: '#111', color: '#fff' }}>GOLES</option>
                   <option value="Remate" style={{ background: '#111', color: '#fff' }}>REMATES</option>
@@ -1148,7 +1228,8 @@ const COLORS_ORIGEN = {
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
-                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
+                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES <InfoBox texto="Muestra las rutas desde la recuperación del balón hasta la finalización. Identifica la peligrosidad del contraataque." /></button>
+                  <button onClick={() => setTipoMapa('abp')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'abp' ? '#06b6d4' : 'transparent', color: tipoMapa === 'abp' ? '#000' : 'var(--text-dim)' }}>ABP (MALLA) <InfoBox texto="Divide la cancha en microzonas para evaluar la eficacia de los saques de banda y córners según su punto de ejecución." /></button>
                 </div>
               </div>
             </div>
@@ -1209,6 +1290,10 @@ const COLORS_ORIGEN = {
                       );
                     })}
                   </svg>
+                )}
+
+                {tipoMapa === 'abp' && analitica.abpMicroZonas && (
+                   <MallaABP microZonas={analitica.abpMicroZonas} />
                 )}
               </div>
             </div>

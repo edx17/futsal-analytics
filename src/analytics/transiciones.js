@@ -1,6 +1,4 @@
-// src/analytics/transiciones.js
-
-export function detectarTransiciones(eventos = [], ventana = 5) {
+export function detectarTransiciones(eventos = [], ventanaSegundos = 15) {
   const transiciones = [];
 
   for (let i = 0; i < eventos.length; i++) {
@@ -8,11 +6,17 @@ export function detectarTransiciones(eventos = [], ventana = 5) {
 
     if (ev.accion === 'Recuperación') {
       const equipo = ev.equipo;
+      const tiempoEv = (ev.minuto * 60) + (ev.segundos || 0);
 
       for (let j = i + 1; j < eventos.length; j++) {
         const siguiente = eventos[j];
+        
+        if (siguiente.periodo !== ev.periodo) break;
 
-        if (siguiente.minuto - ev.minuto > ventana) break;
+        const tiempoSig = (siguiente.minuto * 60) + (siguiente.segundos || 0);
+        const latencia = tiempoSig - tiempoEv;
+
+        if (latencia > ventanaSegundos) break;
 
         if (
           siguiente.equipo === equipo &&
@@ -20,7 +24,8 @@ export function detectarTransiciones(eventos = [], ventana = 5) {
         ) {
           transiciones.push({
             recuperacion: ev,
-            remate: siguiente
+            remate: siguiente,
+            latenciaSegundos: latencia
           });
           break;
         }

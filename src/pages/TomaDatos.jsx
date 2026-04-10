@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { getColorAccion } from '../utils/helpers';
-
-// IMPORTAMOS EL HOOK DE NOTIFICACIONES
 import { useToast } from '../components/ToastContext';
 
 function TomaDatos() {
@@ -13,21 +11,17 @@ function TomaDatos() {
   const clubId = localStorage.getItem('club_id');
   const pitchRef = useRef(null);
   
-  const { showToast } = useToast(); // INICIALIZAMOS TOAST
+  const { showToast } = useToast();
 
-  // --- ESTADOS TÉCNICOS Y RESPONSIVE ---
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
   const [periodo, setPeriodo] = useState('PT');
   const [minuto, setMinuto] = useState(0);
   const [segundos, setSegundos] = useState(0);
   const [relojCorriendo, setRelojCorriendo] = useState(false);
 
-  // --- ESTADO DE NORMALIZACIÓN ESPACIAL ---
   const [direccionAtaque, setDireccionAtaque] = useState('derecha');
-  // NUEVO: CONTEXTO DE JUEGO (5v5, 5v4, etc)
   const [contextoJuego, setContextoJuego] = useState('5v5');
 
-  // --- ESTADOS DEL PANEL ---
   const [panelAbierto, setPanelAbierto] = useState(true);
   const [panelLateral, setPanelLateral] = useState({ activo: false, x: 0, y: 0 });
   const [pasoRegistro, setPasoRegistro] = useState(1);
@@ -36,33 +30,26 @@ function TomaDatos() {
   const [equipo, setEquipo] = useState('Propio');
   const [accion, setAccion] = useState('');
   
-  // --- ESTADOS PARA GOL, ASISTENCIA Y ORIGEN ---
   const [menuActivo, setMenuActivo] = useState(null); 
   const [autorGol, setAutorGol] = useState(null); 
   const [autorAsistencia, setAutorAsistencia] = useState(null);
   
-  // NUEVO: ESTADO PARA LOS MODIFICADORES DE XG
   const [modificadoresRemate, setModificadoresRemate] = useState([]);
 
-  // --- ESTADOS DE EDICIÓN Y CIERRE ---
   const [eventoEditando, setEventoEditando] = useState(null); 
   const [modalFinalizar, setModalFinalizar] = useState(false); 
   const [isFinishing, setIsFinishing] = useState(false); 
 
-  // --- ESTADOS DE PLANTILLA Y EVENTOS ---
   const [modalCambio, setModalCambio] = useState(false);
   const [jugadoresEnCancha, setJugadoresEnCancha] = useState([]);
   const [jugadoresEnBanco, setJugadoresEnBanco] = useState([]);
-  // MODIFICADO: ARRAYS PARA CAMBIOS MÚLTIPLES EN LUGAR DE STRINGS SIMPLES
   const [salenIds, setSalenIds] = useState([]);
   const [entranIds, setEntranIds] = useState([]);
-  const [isSavingCambio, setIsSavingCambio] = useState(false); // NUEVO ESTADO PARA CARGA
+  const [isSavingCambio, setIsSavingCambio] = useState(false); 
   const [eventos, setEventos] = useState([]);
   
-  // NUEVO: CUPO EN CANCHA (Para manejar expulsiones sin bloquear cambios)
   const [cupoCancha, setCupoCancha] = useState(5);
 
-  // --- ESTADOS: EDITAR 5 INICIAL ---
   const [modalEditarTitulares, setModalEditarTitulares] = useState(false);
   const [tempTitulares, setTempTitulares] = useState([]);
   const [tempSuplentes, setTempSuplentes] = useState([]);
@@ -128,12 +115,10 @@ function TomaDatos() {
     cargarDatos();
   }, [partido]);
 
-  // --- LÓGICA DE DESHACER (BOTÓN DE PÁNICO) ---
   const deshacerUltimaAccion = async () => {
     if (eventos.length === 0) return;
     const ultimoEvento = eventos[eventos.length - 1];
     
-    // Usamos tu lógica de eliminación directamente
     await eliminarEvento(ultimoEvento.id);
     showToast(`Deshecho: ${ultimoEvento.accion}`, "info");
   };
@@ -150,7 +135,7 @@ function TomaDatos() {
       golesMios: 0, golesRival: 0,
       rematesPT: 0, rematesST: 0,
       faltasPT: 0, faltasST: 0,
-      faltasRivalPT: 0, faltasRivalST: 0 // Agregado para el contador rival
+      faltasRivalPT: 0, faltasRivalST: 0
     };
     eventos.forEach(ev => {
       const esGol = ev.accion === 'Remate - Gol' || ev.accion === 'Gol';
@@ -159,7 +144,6 @@ function TomaDatos() {
         else stats.golesRival++;
       }
       if (ev.equipo === 'Propio') {
-        // También sumamos Ocasión Fallada como remate para la estadística
         if (ev.accion?.includes('Remate') || ev.accion === 'Ocasión Fallada') {
           if (ev.periodo === 'PT') stats.rematesPT++;
           else stats.rematesST++;
@@ -192,7 +176,7 @@ function TomaDatos() {
     setAccion('');
     setAutorGol(null);
     setAutorAsistencia(null);
-    setModificadoresRemate([]); // Resetear modificadores
+    setModificadoresRemate([]); 
     setMenuActivo(null);
     setTabActiva('registro'); 
   };
@@ -204,7 +188,7 @@ function TomaDatos() {
     setPasoRegistro(4); 
     setAutorGol(null);
     setAutorAsistencia(null);
-    setModificadoresRemate([]); // Resetear modificadores
+    setModificadoresRemate([]); 
     setMenuActivo(null);
     setTabActiva('registro');
   };
@@ -215,14 +199,12 @@ function TomaDatos() {
     setMenuActivo(null);
   };
 
-  // NUEVO: Alternar modificadores tácticos
   const toggleModificador = (mod) => {
     setModificadoresRemate(prev => 
       prev.includes(mod) ? prev.filter(m => m !== mod) : [...prev, mod]
     );
   };
 
-  // NUEVO: Registrar falta por ventaja (Sin coordenadas)
   const sumarFaltaVentaja = async (equipoInfractor) => {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
     const evento = {
@@ -232,6 +214,7 @@ function TomaDatos() {
       equipo: equipoInfractor,
       periodo: periodo, 
       minuto: minuto,
+      segundos: segundos,
       quinteto_activo: quintetoActual,
       contexto_juego: contextoJuego
     };
@@ -261,8 +244,9 @@ function TomaDatos() {
       zona_x: dbX, zona_y: dbY,
       equipo: equipoSeleccionado,
       periodo: periodo, minuto: minuto,
+      segundos: segundos,
       quinteto_activo: quintetoActual,
-      contexto_juego: contextoJuego // NUEVO
+      contexto_juego: contextoJuego
     };
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
@@ -277,7 +261,6 @@ function TomaDatos() {
   const guardarEventoFinal = async (jugadorId) => {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
     
-    // MODIFICADO: Sumamos "Ocasión Fallada" al flujo de pedir asistencia
     const esRemate = accion.includes('Remate') || accion === 'Gol' || accion === 'Ocasión Fallada';
 
     if (pasoRegistro === 2 && esRemate) {
@@ -300,12 +283,10 @@ function TomaDatos() {
     
     const finalEquipo = jugadorId === null && pasoRegistro === 2 ? 'Rival' : equipo;
     
-    // NUEVO: LÓGICA DE TARJETA ROJA (Cupos y contexto)
     if (accion === 'Tarjeta Roja') {
       if (finalEquipo === 'Propio' && jugadorId) {
-        setCupoCancha(4); // Bajamos el límite de la cancha a 4
+        setCupoCancha(4); 
         setContextoJuego('4v5');
-        // Lo sacamos de la cancha Y del banco para SIEMPRE
         setJugadoresEnCancha(prev => prev.filter(j => j.id !== parseInt(jugadorId, 10)));
         setJugadoresEnBanco(prev => prev.filter(j => j.id !== parseInt(jugadorId, 10)));
         showToast("¡Roja! Jugador expulsado. Jugás con 4.", "warning");
@@ -315,7 +296,6 @@ function TomaDatos() {
       }
     }
 
-    // 1. EVENTO PRINCIPAL (TIRADOR / ACCIÓN NORMAL)
     const eventoPrincipal = {
       club_id: clubId, 
       id_partido: partido.id, 
@@ -326,13 +306,13 @@ function TomaDatos() {
       equipo: finalEquipo,
       periodo: periodo, 
       minuto: minuto, 
+      segundos: segundos,
       quinteto_activo: quintetoActual,
-      contexto_juego: contextoJuego // NUEVO
+      contexto_juego: contextoJuego 
     };
 
     const eventosAInsertar = [eventoPrincipal];
 
-    // 2. LÓGICA DE INSERCIÓN DOBLE PARA ARQUEROS
     const esRemateAlArco = accion === 'Remate - Atajado' || accion === 'Remate - Gol';
     const esRival = finalEquipo === 'Rival';
 
@@ -351,15 +331,15 @@ function TomaDatos() {
         equipo: 'Propio',
         periodo: periodo,
         minuto: minuto,
+        segundos: segundos,
         quinteto_activo: quintetoActual,
-        contexto_juego: contextoJuego // NUEVO
+        contexto_juego: contextoJuego
       });
     }
 
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
     
-    // 3. ENVIAMOS TODO EL ARRAY JUNTO A LA BASE DE DATOS
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
     
     if (!error && eventosGuardados) {
@@ -369,7 +349,6 @@ function TomaDatos() {
     }
   };
 
-  // MODIFICADO: Antes finalizarRegistroGol, ahora finalizarRegistroRemate (sirve para errados también)
   const finalizarRegistroRemate = async (origenContexto) => {
     let dbX = panelLateral.x;
     let dbY = panelLateral.y;
@@ -380,11 +359,9 @@ function TomaDatos() {
     const quintetoActual = jugadoresEnCancha.map(j => j.id);
     const eventosAInsertar = [];
     
-    // Unimos origen con modificadores (Ej: "Ataque Posicional | 2do Palo")
     const origenFinal = [origenContexto, ...modificadoresRemate].filter(Boolean).join(' | ');
     const esGol = accion === 'Remate - Gol' || accion === 'Gol';
 
-    // NUEVO: DESBLOQUEO DE CUPO SI NOS HACEN GOL Y ESTAMOS CON 4
     if (esGol && equipo === 'Rival' && cupoCancha < 5) {
       setCupoCancha(5);
       setContextoJuego('5v5');
@@ -395,19 +372,19 @@ function TomaDatos() {
       club_id: clubId, 
       id_partido: partido.id, 
       id_jugador: autorGol ? parseInt(autorGol, 10) : null,
-      id_asistencia: autorAsistencia ? parseInt(autorAsistencia, 10) : null, // Guardamos la id del pasador acá
-      accion: accion, // Respeta si fue Atajado, Desviado, Gol o Ocasión Fallada
+      id_asistencia: autorAsistencia ? parseInt(autorAsistencia, 10) : null, 
+      accion: accion, 
       zona_x: dbX, 
       zona_y: dbY, 
       equipo: equipo, 
       periodo: periodo, 
       minuto: minuto, 
+      segundos: segundos,
       quinteto_activo: quintetoActual,
       origen_gol: origenFinal,
-      contexto_juego: contextoJuego // NUEVO
+      contexto_juego: contextoJuego 
     });
 
-    // Si hubo un pase previo, lo guardamos como Asistencia o Pase Clave
     if (autorAsistencia) {
       eventosAInsertar.push({
         club_id: clubId, 
@@ -419,8 +396,9 @@ function TomaDatos() {
         equipo: equipo,
         periodo: periodo, 
         minuto: minuto, 
+        segundos: segundos,
         quinteto_activo: quintetoActual,
-        contexto_juego: contextoJuego // NUEVO
+        contexto_juego: contextoJuego 
       });
     }
 
@@ -445,7 +423,7 @@ function TomaDatos() {
     setMenuActivo(null);
     setAutorGol(null);
     setAutorAsistencia(null);
-    setModificadoresRemate([]); // Resetear modificadores
+    setModificadoresRemate([]); 
   };
 
   const eliminarEvento = async (idEvento) => {
@@ -487,14 +465,12 @@ function TomaDatos() {
     }
   };
 
-  // --- LÓGICA MEJORADA DE CAMBIOS MULTIPLES ---
   const toggleSale = (id) => setSalenIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleEntra = (id) => setEntranIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const guardarCambio = async () => {
     if (salenIds.length === 0 && entranIds.length === 0) return;
     
-    // Calculamos los huecos en base al CUPO ACTUAL, no siempre a 5
     const huecos = cupoCancha - jugadoresEnCancha.length;
     const entranRequeridos = salenIds.length + huecos;
 
@@ -508,12 +484,9 @@ function TomaDatos() {
     const jSalen = jugadoresEnCancha.filter(j => salenIds.includes(j.id));
     const jEntran = jugadoresEnBanco.filter(j => entranIds.includes(j.id));
     
-    // Si entró uno para cubrir un hueco (no tiene reemplazo directo), no lo atamos a un id_receptor
     const nuevosEnCancha = [...jugadoresEnCancha.filter(j => !salenIds.includes(j.id)), ...jEntran];
     const nuevosEnBanco = [...jugadoresEnBanco.filter(j => !entranIds.includes(j.id)), ...jSalen];
     
-    // Solo generamos eventos de "Cambio" para los que efectivamente hicieron un swap 1 a 1.
-    // El que entra a "rellenar" el equipo no necesita figurar como un cambio con "id_receptor".
     const eventosAInsertar = jSalen.map((jSale, index) => ({
       club_id: clubId, 
       id_partido: partido.id, 
@@ -522,12 +495,12 @@ function TomaDatos() {
       equipo: 'Propio',
       periodo: periodo, 
       minuto: minuto, 
-      id_receptor: jEntran[index]?.id || null, // Prevenimos error si entran más de los que salen
+      segundos: segundos,
+      id_receptor: jEntran[index]?.id || null, 
       quinteto_activo: nuevosEnCancha.map(j => j.id),
       contexto_juego: contextoJuego
     }));
     
-    // Actualización visual rápida
     setJugadoresEnCancha(nuevosEnCancha);
     setJugadoresEnBanco(nuevosEnBanco);
     
@@ -540,7 +513,6 @@ function TomaDatos() {
            showToast("Error al guardar el cambio", "error");
         }
     } else {
-        // Si solo entró un jugador a rellenar sin que salga nadie, solo actualizamos los arrays
         showToast("Equipo completado (Sanción cumplida)", "success");
     }
     
@@ -550,7 +522,6 @@ function TomaDatos() {
     setIsSavingCambio(false);
   };
 
-  // --- FUNCIONES: EDITAR TITULARES ANTES DE INICIAR ---
   const abrirModalTitulares = () => {
     setTempTitulares([...jugadoresEnCancha]);
     setTempSuplentes([...jugadoresEnBanco]);
@@ -602,7 +573,6 @@ function TomaDatos() {
     }
   };
 
-  // --- LÓGICA: FINALIZAR PARTIDO Y GUARDAR GOLES ---
   const confirmarFinalizarPartido = async () => {
     try {
       setIsFinishing(true);
@@ -666,7 +636,6 @@ function TomaDatos() {
                 <span style={{ color: '#555' }}>-</span>
                 <span style={{ color: '#ef4444' }}>{statsEnVivo.golesRival}</span>
 
-                {/* BOTÓN DESHACER AL LADO DEL MARCADOR */}
                 <button 
                   onClick={deshacerUltimaAccion}
                   disabled={eventos.length === 0 || isDeleting}
@@ -692,7 +661,6 @@ function TomaDatos() {
               </div>
             </div>
 
-            {/* NUEVO: DROPDOWN DE CONTEXTO TÁCTICO */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginLeft: '5px' }}>
               <span style={{fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800}}>CONTEXTO:</span>
               <select 
@@ -720,7 +688,6 @@ function TomaDatos() {
 
           <div style={{ display: 'flex', gap: '10px' }}>
             
-            {/* NUEVO: BOTÓN DE RESUMEN PARCIAL */}
             <button 
               onClick={() => navigate(`/resumen/${partido.id}`)} 
               className="btn-action" 
@@ -729,7 +696,6 @@ function TomaDatos() {
               RESUMEN PARCIAL
             </button>
 
-            {/* BOTÓN FINALIZAR */}
             <button 
               onClick={() => setModalFinalizar(true)} 
               className="btn-action" 
@@ -744,7 +710,6 @@ function TomaDatos() {
               <button onClick={abrirModalTitulares} className="btn-action" style={{ background: 'var(--accent)', color: '#000', border: '1px solid var(--accent)', fontSize: '0.7rem', fontWeight: 800 }}>EDITAR 5 INICIAL</button>
             )}
 
-            {/* BOTÓN CAMBIOS: Ya no se bloquea */}
             <button 
               onClick={() => setModalCambio(true)} 
               className="btn-action" 
@@ -753,7 +718,6 @@ function TomaDatos() {
               CAMBIOS
             </button>
 
-            {/* NUEVO BOTÓN: CUMPLIR SANCIÓN MANUAL (Aparece solo si te echaron a uno) */}
             {cupoCancha < 5 && (
               <button 
                 onClick={() => {
@@ -768,17 +732,15 @@ function TomaDatos() {
               </button>
             )}
             
-            {/* RELOJ CON MODIFICACIÓN MANUAL */}
             <div style={relojContainer}>
               <button onClick={() => setRelojCorriendo(!relojCorriendo)} style={btnPlay}>{relojCorriendo ? '⏸' : '▶'}</button>
               
               <div style={{ display: 'flex', alignItems: 'center', padding: '0 5px', color: '#ffffff', fontWeight: 800 }}>
-                {/* INPUT MINUTOS */}
                 <input 
                   type="number"
                   value={minuto}
                   onChange={(e) => setMinuto(Math.max(0, parseInt(e.target.value) || 0))}
-                  onFocus={() => setRelojCorriendo(false)} // Pausa automática al editar
+                  onFocus={() => setRelojCorriendo(false)} 
                   style={{ 
                     background: 'transparent', border: 'none', color: '#ffffff', 
                     width: '35px', textAlign: 'right', fontSize: '1.2rem', 
@@ -787,12 +749,11 @@ function TomaDatos() {
                   }}
                 />
                 <span>:</span>
-                {/* INPUT SEGUNDOS */}
                 <input 
                   type="number"
                   value={segundos}
                   onChange={(e) => setSegundos(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                  onFocus={() => setRelojCorriendo(false)} // Pausa automática al editar
+                  onFocus={() => setRelojCorriendo(false)} 
                   style={{ 
                     background: 'transparent', border: 'none', color: '#ffffff', 
                     width: '35px', textAlign: 'left', fontSize: '1.2rem', 
@@ -818,7 +779,6 @@ function TomaDatos() {
             </div>
             <div style={{ width: '1px', background: 'var(--border)' }}></div>
             
-            {/* MODIFICADO: FALTAS PROPIAS CON BOTON VENTAJA */}
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
                 FALTAS PROPIAS
@@ -829,7 +789,6 @@ function TomaDatos() {
             
             <div style={{ width: '1px', background: 'var(--border)' }}></div>
             
-            {/* NUEVO: FALTAS RIVALES CON BOTON VENTAJA */}
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
                 FALTAS RIVAL
@@ -847,7 +806,6 @@ function TomaDatos() {
             <button onClick={() => triggerABP('Córner', 100, 100)} style={{...abpBtn, bottom: '-25px', right: '-25px', color: '#f97316', borderColor: '#f97316'}}>C</button>
 
             <button onClick={() => triggerABP('Lateral', 12.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(12.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
-            <button onClick={() => triggerABP('Lateral', 37.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(37.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
             <button onClick={() => triggerABP('Lateral', 37.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(37.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
             <button onClick={() => triggerABP('Lateral', 62.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(62.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
             <button onClick={() => triggerABP('Lateral', 87.5, 0)} style={{...abpBtn, top: '-25px', left: 'calc(87.5% - 15px)', color: '#06b6d4', borderColor: '#06b6d4'}}>L</button>
@@ -978,7 +936,6 @@ function TomaDatos() {
                           ) : (
                             <BotonAccion label="REMATE" color="#3b82f6" span={2} onClick={() => setMenuActivo('remate')} />
                           )}
-                          {/* NUEVO: OCASIÓN FALLADA (Pase al segundo palo que no es remate) */}
                           <BotonAccion label="OCASIÓN FALLADA (PASE)" color="#f59e0b" span={2} onClick={() => seleccionarAccion('Ocasión Fallada')} />
                         </div>
 
@@ -1096,7 +1053,6 @@ function TomaDatos() {
         </aside>
       )}
 
-      {/* --- MODAL DE EDICIÓN DE EVENTO --- */}
       {eventoEditando && (
         <div style={overlayStyle}>
           <div style={modalIndustrial}>
@@ -1118,7 +1074,6 @@ function TomaDatos() {
         </div>
       )}
 
-      {/* --- MODAL DE CAMBIOS EN VIVO (MÚLTIPLES) --- */}
       {modalCambio && (
         <div style={overlayStyle}>
           <div style={{ ...modalIndustrial, width: '450px' }}>
@@ -1129,7 +1084,6 @@ function TomaDatos() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
-              {/* Columna Sale */}
               <div>
                 <div className="stat-label" style={{ marginBottom: '10px', color: salenIds.length > 0 ? '#ef4444' : 'var(--text-dim)' }}>
                   SALEN ({salenIds.length})
@@ -1156,7 +1110,6 @@ function TomaDatos() {
                 </div>
               </div>
 
-              {/* Columna Entra */}
               <div>
                 <div className="stat-label" style={{ marginBottom: '10px', color: entranIds.length > 0 ? '#10b981' : 'var(--text-dim)' }}>
                   ENTRAN ({entranIds.length})
@@ -1194,7 +1147,6 @@ function TomaDatos() {
                 CANCELAR
               </button>
               
-              {/* BOTON ESTRICTO E INTELIGENTE: Calcula si necesitás rellenar el equipo */}
               {(() => {
                 const huecos = cupoCancha - jugadoresEnCancha.length;
                 const entranRequeridos = salenIds.length + huecos;
@@ -1223,7 +1175,6 @@ function TomaDatos() {
         </div>
       )}
 
-      {/* --- NUEVO MODAL: EDITAR 5 INICIAL --- */}
       {modalEditarTitulares && (
         <div style={overlayStyle}>
           <div style={{ ...modalIndustrial, width: '450px' }}>
@@ -1233,7 +1184,6 @@ function TomaDatos() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
-              {/* Columna Titulares */}
               <div>
                 <div className="stat-label" style={{ marginBottom: '10px', color: tempTitulares.length === 5 ? '#00ff88' : '#ef4444' }}>
                   TITULARES ({tempTitulares.length}/5)
@@ -1248,7 +1198,6 @@ function TomaDatos() {
                 </div>
               </div>
 
-              {/* Columna Suplentes */}
               <div>
                 <div className="stat-label" style={{ marginBottom: '10px', color: 'var(--text-dim)' }}>
                   AL BANCO
@@ -1279,7 +1228,6 @@ function TomaDatos() {
         </div>
       )}
 
-      {/* --- MODAL FINALIZAR PARTIDO --- */}
       {modalFinalizar && (
         <div style={overlayStyle}>
           <div style={modalIndustrial}>

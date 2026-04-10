@@ -1,8 +1,15 @@
 import { generarPosesiones } from './posesiones';
-import { calcularXGPartido } from './xg';
+import { calcularXGPartido, calcularXGEvento } from './xg';
 import { detectarTransiciones } from './transiciones';
 import { generarGrid } from './spatial';
 import { generarInsights } from './insights';
+
+const obtenerMicroZona = (x, y) => {
+  if (x == null || y == null) return null;
+  let zX = x < 25 ? 'Z1' : x < 50 ? 'Z2' : x < 75 ? 'Z3' : 'Z4';
+  let zY = y < 33 ? 'I' : y < 66 ? 'C' : 'D';
+  return `${zX}-${zY}`;
+};
 
 export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = false) {
   const evSeguros = Array.isArray(eventos) ? eventos : [];
@@ -14,7 +21,9 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
     porTramo: { '0-10': [], '10-20': [], '20-30': [], '30-40+': [] }
   };
 
-  evSeguros.forEach(ev => {
+  const abpMicroZonas = {};
+
+  evSeguros.forEach((ev, index) => {
     if (huboCambioDeLado && ev.periodo === 'ST' && ev.zona_x != null) {
       ev.zona_x_norm = 100 - ev.zona_x;
       ev.zona_y_norm = ev.zona_y != null ? 100 - ev.zona_y : null; 
@@ -39,6 +48,23 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
     else if (ev.minuto <= 20) diccionarios.porTramo['10-20'].push(ev);
     else if (ev.minuto <= 30) diccionarios.porTramo['20-30'].push(ev);
     else diccionarios.porTramo['30-40+'].push(ev);
+
+    // Motor Micro-Zonas ABP
+    if (esPropio && (ev.accion === 'Lateral' || ev.accion === 'Córner')) {
+        const mz = obtenerMicroZona(ev.zona_x_norm, ev.zona_y_norm);
+        if (mz) {
+            if (!abpMicroZonas[mz]) abpMicroZonas[mz] = { favor: 0, rematesGenerados: 0, xGTotal: 0 };
+            abpMicroZonas[mz].favor++;
+            
+            for(let j=1; j<=2 && index+j < evSeguros.length; j++) {
+                if (evSeguros[index+j].equipo === equipoPropio && evSeguros[index+j].accion?.includes('Remate')) {
+                    abpMicroZonas[mz].rematesGenerados++;
+                    abpMicroZonas[mz].xGTotal += (evSeguros[index+j].xg || calcularXGEvento(evSeguros[index+j])); 
+                    break;
+                }
+            }
+        }
+    }
   });
 
   const eventosPropios = diccionarios.porEquipo.propio;
@@ -70,7 +96,7 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
   const statsQuintetos = {};
   const plusMinusJugador = {};
   const setsMinutos = {}; 
-  const setsMinutosQuintetos = {}; // NUEVO: Para trackear minutos reales por quinteto
+  const setsMinutosQuintetos = {}; 
 
   evSeguros.forEach(ev => {
     if (!ev.quinteto_activo || ev.quinteto_activo.length === 0) return;
@@ -78,12 +104,10 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
     const idQuinteto = [...ev.quinteto_activo].sort((a, b) => a - b).join('-');
 
     if (ev.minuto != null) {
-      // Minutos por jugador
       ev.quinteto_activo.forEach(idJugador => {
         if (!setsMinutos[idJugador]) setsMinutos[idJugador] = new Set();
         setsMinutos[idJugador].add(ev.minuto);
       });
-      // Minutos por quinteto
       if (!setsMinutosQuintetos[idQuinteto]) setsMinutosQuintetos[idQuinteto] = new Set();
       setsMinutosQuintetos[idQuinteto].add(ev.minuto);
     }
@@ -120,7 +144,6 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
       if (ev.accion === 'Falta cometida') statsQuintetos[idQuinteto].faltasCometidas++;
       if (ev.accion === 'Falta recibida') statsQuintetos[idQuinteto].faltasRecibidas++;
       
-      // Capturamos tarjetas para el quinteto
       if (ev.accion === 'Tarjeta Amarilla') statsQuintetos[idQuinteto].amarillas++;
       if (ev.accion === 'Tarjeta Roja') statsQuintetos[idQuinteto].rojas++;
     } else {
@@ -157,7 +180,7 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
 
   return {
     posesiones, xgPropio, xgRival, transiciones, gridPropio, gridRival, 
-    duelos, insights, quintetos, plusMinusJugador, minutosJugados, diccionarios
+    duelos, insights, quintetos, plusMinusJugador, minutosJugados, diccionarios, abpMicroZonas
   };
 }
 

@@ -26,15 +26,13 @@ const RowStat = ({ label, value, subValue, valueColor="#fff" }) => (
 );
 
 // --- CANCHA DE FUTSAL NEÓN PLANA Y PRECISA (CORRECCIÓN HTML2CANVAS) ---
-// Se eliminó Perspective y RotateX para garantizar consistencia en exportación.
 const CanchaFutsalNeonDeep = ({ accionesMapa, dotSize = 10, colorLinea = '#00ff88' }) => (
   <div style={{ position: 'relative', width: '100%', aspectRatio: '2/1', background: 'transparent', overflow: 'hidden', border: `2px solid ${colorLinea}`, borderRadius: '4px', boxShadow: `0 5px 15px ${colorLinea}33` }}>
-    {/* DIBUJO DE LÍNEAS REGLAMENTARIAS FUTSAL (Área 6m, Marcas) */}
     {/* Áreas (Arcos reglamentarios compactados en CSS) */}
     <div style={{ position: 'absolute', left: 0, top: '20%', bottom: '20%', width: '15%', border: `1.5px solid ${colorLinea}`, borderLeft: 'none', borderRadius: '0 100px 100px 0' }} />
     <div style={{ position: 'absolute', right: 0, top: '20%', bottom: '20%', width: '15%', border: `1.5px solid ${colorLinea}`, borderRight: 'none', borderRadius: '100px 0 0 100px' }} />
     
-    {/* Marcas de Penal 6m y 10m (opcionales para mayor detalle) */}
+    {/* Marcas de Penal 6m y 10m */}
     <div style={{ position: 'absolute', left: '15%', top: '50%', width: '4px', height: '4px', background: colorLinea, borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 0.5 }} />
     <div style={{ position: 'absolute', right: '15%', top: '50%', width: '4px', height: '4px', background: colorLinea, borderRadius: '50%', transform: 'translate(50%, -50%)', opacity: 0.5 }} />
     <div style={{ position: 'absolute', left: '25%', top: '50%', width: '3px', height: '3px', background: colorLinea, borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 0.3 }} />
@@ -49,9 +47,15 @@ const CanchaFutsalNeonDeep = ({ accionesMapa, dotSize = 10, colorLinea = '#00ff8
     <div style={{ position: 'absolute', left: '50%', top: '50%', width: '18%', height: '36%', border: `1.5px solid ${colorLinea}`, borderRadius: '50%', transform: 'translate(-50%, -50%)' }} />
     <div style={{ position: 'absolute', left: '50%', top: '50%', width: '6px', height: '6px', background: colorLinea, borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 0.5 }} />
 
-    {accionesMapa.map((ev, i) => (
-      <div key={i} style={{ position: 'absolute', left: `${ev.x}%`, top: `${ev.y}%`, width: `${dotSize}px`, height: `${dotSize}px`, backgroundColor: getColorAccion(ev.accion), borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 1, boxShadow: `0 0 4px ${getColorAccion(ev.accion)}`, zIndex: 2 }} />
-    ))}
+    {accionesMapa.map((ev, i) => {
+      let col = getColorAccion(ev.accion);
+      if (ev.accion === 'Gol Recibido') col = '#ef4444';
+      if (ev.accion === 'Atajada') col = '#3b82f6';
+      
+      return (
+        <div key={i} style={{ position: 'absolute', left: `${ev.x}%`, top: `${ev.y}%`, width: `${dotSize}px`, height: `${dotSize}px`, backgroundColor: col, borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 1, boxShadow: `0 0 4px ${col}`, zIndex: 2 }} />
+      );
+    })}
   </div>
 );
 
@@ -70,14 +74,24 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [] }) => {
   const [exportando, setExportando] = useState(false);
   const wrapperRef = useRef(null);
 
+  const isArquero = perfil?.rol === 'ARQUERO' || (jugador?.posicion || '').toLowerCase().includes('arquero');
+
   const stats = perfil?.stats ?? {};
-  // clubName y escudoUrl se mantienen para lógica, aunque se sacó el texto de clubName de la visual
   const clubName = localStorage.getItem('mi_club') || 'VIRTUAL FUTSAL';
   const escudoUrl = localStorage.getItem('escudo_url') || null;
 
   const accionesMapa = (perfil?.accionesDirectas ?? []).map((ev) => ({ ...ev, x: ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x, y: ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y })).filter((ev) => ev.x != null && ev.y != null);
+  
   const accionesAtaque = accionesMapa.filter(ev => ['Gol', 'Remate - Gol', 'Remate - Atajado', 'Remate - Desviado', 'Remate - Rebatido', 'Asistencia'].includes(ev.accion) || ev.accion?.includes('Remate'));
   const accionesResto = accionesMapa.filter(ev => !['Gol', 'Remate - Gol', 'Remate - Atajado', 'Remate - Desviado', 'Remate - Rebatido', 'Asistencia'].includes(ev.accion) && !ev.accion?.includes('Remate'));
+
+  const accionesArco = accionesMapa.filter(ev => ['Atajada', 'Gol Recibido'].includes(ev.accion));
+  const accionesDistribucionGK = accionesMapa.filter(ev => !['Atajada', 'Gol Recibido'].includes(ev.accion));
+
+  const atajadas = stats.atajadas || 0;
+  const golesRecibidos = stats.golesRecibidos || 0;
+  const tirosRecibidos = atajadas + golesRecibidos;
+  const pctAtajadas = tirosRecibidos > 0 ? Math.round((atajadas / tirosRecibidos) * 100) : 0;
 
   let companerosQuinteto = [];
   let ratingEstruc = '-';
@@ -166,7 +180,6 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [] }) => {
               width: `${CANVAS_W}px`, height: `${CANVAS_H}px`, 
               background: 'linear-gradient(145deg, #0f172a 0%, #020617 100%)', 
               color: '#fff', 
-              // MODIFICACIÓN 1: Más margen superior (padding-top: 90px)
               padding: '90px 40px 60px',
               boxSizing: 'border-box', 
               display: 'flex', flexDirection: 'column', gap: '20px',
@@ -204,38 +217,58 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [] }) => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '20px' }}>
                   {escudoUrl ? (
-                    // MODIFICACIÓN 2 & 3: Escudo 25% más grande (70px -> 90px) y se eliminó el span `{clubName}`
                     <div style={{ width: '90px', height: '90px', backgroundImage: `url(${escudoUrl})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
                   ) : (
                     <div style={{ width: '90px', height: '90px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🛡️</div>
                   )}
-                  {/* Nombre del club eliminado (reemplazado por gap para estética si es necesario o simplemente sacado) */}
                 </div>
               </div>
 
               {/* KPIs BOXES */}
               <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                 <KpiBox label="RATING" value={`${(perfil.impacto || 0) > 0 ? '+' : ''}${Number(perfil.impacto || 0).toFixed(1)}`} color="#00ff88" borderColor="#00ff88" />
-                <KpiBox label="xG BUILDUP" value={Number(perfil.xgBuildup || 0).toFixed(2)} color="#c084fc" borderColor="#c084fc" />
-                <KpiBox label="+ / -" value={`${(perfil.plusMinus || 0) > 0 ? '+' : ''}${perfil.plusMinus || 0}`} color="#fff" borderColor="rgba(255,255,255,0.3)" />
+                
+                {isArquero ? (
+                  <>
+                    <KpiBox label="ATAJADAS" value={atajadas} color="#3b82f6" borderColor="#3b82f6" />
+                    <KpiBox label="% EFECT." value={`${pctAtajadas}%`} color="#c084fc" borderColor="#c084fc" />
+                  </>
+                ) : (
+                  <>
+                    <KpiBox label="xG BUILDUP" value={Number(perfil.xgBuildup || 0).toFixed(2)} color="#c084fc" borderColor="#c084fc" />
+                    <KpiBox label="+ / -" value={`${(perfil.plusMinus || 0) > 0 ? '+' : ''}${perfil.plusMinus || 0}`} color="#fff" borderColor="rgba(255,255,255,0.3)" />
+                  </>
+                )}
+
                 <KpiBox label="MINUTOS" value={`${perfil.minutos ?? 0}'`} color="#38bdf8" borderColor="#38bdf8" />
               </div>
 
-              {/* RADAR & STATS - Chart enlarged to 350px height */}
+              {/* RADAR & STATS */}
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '15px' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '350px' }}>
                    <RadarChart width={450} height={350} cx="50%" cy="50%" outerRadius="75%" data={perfil.dataRadar}>
                       <PolarGrid stroke="rgba(255,255,255,0.2)" />
                       <PolarAngleAxis dataKey="subject" tick={{ fill: '#e2e8f0', fontSize: 15, fontWeight: 700 }} />
                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar name="Jugador" dataKey="A" stroke="#00ff88" strokeWidth={3} fill="#00ff88" fillOpacity={0.3} isAnimationActive={false} />
+                      <Radar name="Jugador" dataKey="A" stroke={isArquero ? "#3b82f6" : "#00ff88"} strokeWidth={3} fill={isArquero ? "#3b82f6" : "#00ff88"} fillOpacity={0.3} isAnimationActive={false} />
                     </RadarChart>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <RowStat label="Goles" value={stats.goles ?? 0} />
-                  <RowStat label="Asistencias" value={stats.asistencias ?? 0} />
-                  <RowStat label="Remates Total" value={stats.remates ?? 0} />
-                  <RowStat label="xG Generado" value={Number(stats.xG || 0).toFixed(2)} valueColor="#c084fc"/>
+                  {isArquero ? (
+                    <>
+                      <RowStat label="Atajadas" value={atajadas} valueColor="#00e676" />
+                      <RowStat label="Goles Recibidos" value={golesRecibidos} valueColor="#ef4444" />
+                      <RowStat label="Tiros Recibidos" value={tirosRecibidos} />
+                      <RowStat label="xG Buildup" value={Number(perfil.xgBuildup || 0).toFixed(2)} valueColor="#c084fc"/>
+                    </>
+                  ) : (
+                    <>
+                      <RowStat label="Goles" value={stats.goles ?? 0} />
+                      <RowStat label="Asistencias" value={stats.asistencias ?? 0} />
+                      <RowStat label="Remates Total" value={stats.remates ?? 0} />
+                      <RowStat label="xG Generado" value={Number(stats.xG || 0).toFixed(2)} valueColor="#c084fc"/>
+                    </>
+                  )}
                   <RowStat label="Recuperaciones" value={stats.recuperaciones ?? 0} valueColor="#38bdf8" />
                   <RowStat label="Pérdidas Totales" value={stats.perdidas ?? 0} valueColor="#ef4444" />
                 </div>
@@ -256,7 +289,7 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [] }) => {
                       <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{asNumber(stats.rojas)}</div>
                     </div>
                   </div>
-                  <RowStat label="Faltas Cometidas" value={stats.faltasCometidas || 0} valueColor="#fff" />
+                  <RowStat label="Faltas Hechas" value={stats.faltasCometidas || 0} valueColor="#fff" />
                   <RowStat label="Faltas Recibidas" value={stats.faltasRecibidas || 0} valueColor="#00ff88" />
                 </div>
 
@@ -286,24 +319,35 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [] }) => {
 
               {/* ZONAS DE ACCIÓN SEPARADAS - Two distinct cards/columns */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                {/* Mapa Ataque */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '20px', border: '1px solid #00ff88', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#00ff88', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>Mapa de Ataque</div>
-                  <div style={{ padding: '0 20px' }}>
-                    <CanchaFutsalNeonDeep accionesMapa={accionesAtaque} dotSize={10} colorLinea="#00ff88" />
+                {/* Mapa Izquierdo */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '20px', border: `1px solid ${isArquero ? '#3b82f6' : '#00ff88'}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: isArquero ? '#3b82f6' : '#00ff88', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    {isArquero ? 'Mapa del Arco' : 'Mapa de Ataque'}
                   </div>
-                  <LegendMap items={[
-                    { label: 'Gol', color: '#fbbf24' },
-                    { label: 'Remate', color: '#00ff88' },
-                    { label: 'Asistencia', color: '#a3e635' }
-                  ]} />
+                  <div style={{ padding: '0 20px' }}>
+                    <CanchaFutsalNeonDeep accionesMapa={isArquero ? accionesArco : accionesAtaque} dotSize={10} colorLinea={isArquero ? '#3b82f6' : '#00ff88'} />
+                  </div>
+                  {isArquero ? (
+                     <LegendMap items={[
+                      { label: 'Atajada', color: '#3b82f6' },
+                      { label: 'Goles', color: '#ef4444' }
+                    ]} />
+                  ) : (
+                    <LegendMap items={[
+                      { label: 'Gol', color: '#fbbf24' },
+                      { label: 'Remate', color: '#00ff88' },
+                      { label: 'Asistencia', color: '#a3e635' }
+                    ]} />
+                  )}
                 </div>
 
-                {/* Mapa Recuperación */}
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '20px', border: '1px solid #38bdf8', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#38bdf8', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>Mapa de Disposción Táctica</div>
+                {/* Mapa Derecho */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '20px', border: `1px solid ${isArquero ? '#00ff88' : '#38bdf8'}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: isArquero ? '#00ff88' : '#38bdf8', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    {isArquero ? 'Juego con los Pies' : 'Disposición Táctica'}
+                  </div>
                   <div style={{ padding: '0 20px' }}>
-                    <CanchaFutsalNeonDeep accionesMapa={accionesResto} dotSize={10} colorLinea="#38bdf8" />
+                    <CanchaFutsalNeonDeep accionesMapa={isArquero ? accionesDistribucionGK : accionesResto} dotSize={10} colorLinea={isArquero ? '#00ff88' : '#38bdf8'} />
                   </div>
                   <LegendMap items={[
                     { label: 'Recuperaciones', color: '#38bdf8' },
@@ -352,7 +396,7 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [] }) => {
                 <div style={{ textAlign: 'center', fontSize: '1rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>QUINTETO IDEAL (Estructural)</div>
               </div>
 
-              {/* FOOTER - Actualizado 2026 */}
+              {/* FOOTER */}
               <div style={{ textAlign: 'center', fontSize: '1rem', color: 'rgba(255,255,255,0.3)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '2px', paddingBottom: '10px', marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '15px' }}>
                 VIRTUAL.CLUB © 2026 - Propiedad de{" "}
                 <span style={{ color: "#fd7d05", fontWeight: 'bold' }}>VirtualFutsal</span>{" "}
