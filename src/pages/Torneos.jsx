@@ -116,16 +116,26 @@ function Torneos() {
     } else showToast("Error al guardar: " + error.message, "error");
   };
 
-  const handleGuardarFixture = async () => {
+const handleGuardarFixture = async () => { // <-- Acá está el async clave
     if (!formFixture.rival_id || !formFixture.jornada) return showToast("Rival y Jornada son obligatorios", "warning");
     
     const rivalSeleccionado = rivales.find(r => r.id === formFixture.rival_id);
+    
+    // 1. Obtenemos los datos de tu club desde el localStorage para guardarlos en el partido
+    const miClubGlobal = localStorage.getItem('mi_club') || '';
+    const miEscudoGlobal = localStorage.getItem('escudo_url') || null;
 
     const nuevoPartido = {
       club_id: clubId,
       torneo_id: torneoActivo.id,
       rival_id: formFixture.rival_id,
       rival: rivalSeleccionado ? rivalSeleccionado.nombre : '',
+      
+      // 2. Agregamos los campos que faltaban:
+      escudo_rival: rivalSeleccionado ? rivalSeleccionado.escudo : null, // Guardamos el escudo del rival
+      nombre_propio: miClubGlobal,                                       // Guardamos tu nombre
+      escudo_propio: miEscudoGlobal,                                     // Guardamos tu escudo
+      
       jornada: formFixture.jornada,
       fecha: formFixture.fecha_partido, 
       condicion: formFixture.condicion,

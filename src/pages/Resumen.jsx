@@ -285,13 +285,31 @@ function Resumen() {
   const categoriasUnicas = useMemo(() => [...new Set(partidos.map(p => p.categoria).filter(Boolean))], [partidos]);
   const competicionesUnicas = useMemo(() => [...new Set(partidos.map(p => p.competicion).filter(Boolean))], [partidos]);
 
-  const partidosGrid = useMemo(() => {
-    return partidos.filter(p => {
+const partidosGrid = useMemo(() => {
+    const filtrados = partidos.filter(p => {
       const pasaCat = filtroCategoriaGrid === 'Todas' || p.categoria === filtroCategoriaGrid;
       const pasaComp = filtroCompeticionGrid === 'Todas' || p.competicion === filtroCompeticionGrid;
       const pasaAnalizados = soloAnalizados ? partidosConDatos.includes(p.id) : true;
       return pasaCat && pasaComp && pasaAnalizados;
     });
+
+    // Función para convertir la fecha (YYYY-MM-DD o DD/MM/YYYY) a un valor numérico para poder ordenar
+    const parseDateParaSort = (str) => {
+      if (!str) return 0;
+      try {
+        const clean = String(str).trim().split('T')[0];
+        let parts = clean.split('-');
+        if (parts.length < 3) parts = clean.split('/');
+        if (parts.length < 3) return 0;
+
+        if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
+        if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
+        return 0;
+      } catch (e) { return 0; }
+    };
+
+    // Ordenar de más reciente a más antiguo
+    return filtrados.sort((a, b) => parseDateParaSort(b.fecha) - parseDateParaSort(a.fecha));
   }, [partidos, filtroCategoriaGrid, filtroCompeticionGrid, soloAnalizados, partidosConDatos]);
 
   const analitica = useMemo(() => {
@@ -301,8 +319,12 @@ function Resumen() {
       ? eventosPartido 
       : eventosPartido.filter(ev => ev.periodo === filtroPeriodo);
 
-    if (filtroAsimetria !== 'Todos') {
-      evFiltrados = evFiltrados.filter(ev => ev.estado_asimetria === filtroAsimetria);
+if (filtroAsimetria !== 'Todos') {
+      const asimetriaLimpia = filtroAsimetria.toLowerCase().replace(/\s/g, '');
+      evFiltrados = evFiltrados.filter(ev => 
+        ev.contexto_juego && 
+        ev.contexto_juego.toLowerCase().replace(/\s/g, '') === asimetriaLimpia
+      );
     }
 
     evFiltrados.sort((a, b) => {
@@ -373,17 +395,30 @@ function Resumen() {
       if (p && ev.accion === 'Tiro Libre') { stats.propio.tirosLibres++; }
       else if (!p && ev.accion === 'Pérdida') { stats.rival.perdidas++; }
 
-      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
+if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
         if (p) {
           stats.propio.goles++;
           stats.propio.remates++;
           if (ev.id_asistencia) stats.propio.asistencias++;
-          const origen = ev.origen_gol || 'No Especificado';
+          
+          let origen = ev.origen_gol || 'No Especificado';
+          const origenClean = origen.toLowerCase().replace(/\s/g, '');
+          
+          // Agrupamos correctamente para el gráfico de torta
+          if (origenClean === '5v4' || origenClean === '4v3' || origenClean === '5v4/4v3') origen = '5v4 / 4v3';
+          else if (origenClean === '4v5' || origenClean === '3v4' || origenClean === '4v5/3v4') origen = '4v5 / 3v4';
+          
           origenGoles[origen] = (origenGoles[origen] || 0) + 1;
         } else {
           stats.rival.goles++;
           stats.rival.remates++;
-          const origen = ev.origen_gol || 'No Especificado';
+          
+          let origen = ev.origen_gol || 'No Especificado';
+          const origenClean = origen.toLowerCase().replace(/\s/g, '');
+          
+          if (origenClean === '5v4' || origenClean === '4v3' || origenClean === '5v4/4v3') origen = '5v4 / 4v3';
+          else if (origenClean === '4v5' || origenClean === '3v4' || origenClean === '4v5/3v4') origen = '4v5 / 3v4';
+          
           origenGolesRival[origen] = (origenGolesRival[origen] || 0) + 1;
         }
       }
@@ -930,8 +965,10 @@ const COLORS_ORIGEN = {
               <select value={filtroAsimetria} onChange={(e) => setFiltroAsimetria(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: '#f59e0b', color: '#f59e0b', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
                 <option value="Todos">SIN FILTRO</option>
                 <option value="5v5">5v5</option>
-                <option value="5v4">5v4 (A favor)</option>
-                <option value="4v5">4v5 (En contra)</option>
+                <option value="5v4">5v4</option>
+                <option value="4v5">4v5</option>
+                <option value="4v3">4v3</option>
+                <option value="3v4">3v4</option>
               </select>
             </div>
           )}

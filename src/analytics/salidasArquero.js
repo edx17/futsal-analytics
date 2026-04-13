@@ -6,7 +6,6 @@ export function evaluarDistribucionArquero(eventos = [], idArquero, ventanaSegun
   for (let i = 0; i < eventos.length; i++) {
     const ev = eventos[i];
 
-    // Detectar inicio de posesión del arquero
     if (ev.id_jugador === idArquero && (ev.accion === 'Pase Clave' || ev.accion === 'Asistencia' || ev.accion === 'Recuperación')) {
       const tiempoEv = (ev.minuto * 60) + (ev.segundos || 0);
       let decantoEnRemate = false;

@@ -34,6 +34,8 @@ body {
   color: var(--text);
   font-family: 'Outfit', sans-serif;
   letter-spacing: -0.2px;
+  /* Previene el pull-to-refresh en móviles */
+  overscroll-behavior-y: none;
 }
 
 h1 {

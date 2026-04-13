@@ -54,7 +54,7 @@ export default function Inicio() {
   const esAdmin = rol === 'admin';
   const esManager = rol === 'manager';
 
-  const VERSION_ACTUAL = 'v0.00202604100023';
+  const VERSION_ACTUAL = 'v0.002604031832';
   const [mostrarNovedades, setMostrarNovedades] = useState(false);
 
   useEffect(() => {
@@ -320,12 +320,9 @@ export default function Inicio() {
   }   
 
   const getGridStyle = (spanStr) => {
-    let [cols, rows] = spanStr.split('x').map(Number);
-    if (esMovil) {
-      if (cols >= 2) cols = 2; 
-    }
+    const [cols, rows] = spanStr.split('x').map(Number);
     return { 
-      gridColumn: `span ${Math.min(cols, esMovil ? 2 : 3)}`, 
+      gridColumn: `span ${Math.min(cols, 3)}`, 
       gridRow: `span ${rows}` 
     };
   };
@@ -453,7 +450,7 @@ export default function Inicio() {
 
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: esMovil ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', 
+            gridTemplateColumns: 'repeat(3, 1fr)', 
             gridAutoRows: esMovil ? '110px' : '160px', 
             gap: esMovil ? '10px' : '15px', 
             gridAutoFlow: 'dense' 
@@ -653,7 +650,7 @@ export default function Inicio() {
 
               if (config.tipo === 'link') {
                 const bgSoft = config.color ? `rgba(${hexToRgb(config.color)}, 0.05)` : 'rgba(255,255,255,0.05)';
-                const isHorizontal = !esMovil && (spanActual === '2x1' || spanActual === '3x1');
+                const isHorizontal = spanActual === '2x1' || spanActual === '3x1';
 
                 return (
                   <div key={config.id} className="bento-card" {...dragEvents}
@@ -680,19 +677,19 @@ export default function Inicio() {
 
       {mostrarNovedades && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
-          <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '600px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
             <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>VERSIÓN 0.00202604100023</span>
-              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.4rem', textTransform: 'uppercase' }}>Tracking Asíncrono Avanzado y Motor Cero Latencia</h2>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Implementación de herramientas profesionales para video-análisis y reescritura del cronómetro para evitar desfasajes.</p>
+              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>VERSIÓN 0.00202604081626</span>
+              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>Segmentación de Partido y Precisión Analítica</h2>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Implementación de filtros de contexto (Game State), captura avanzada para arqueros y reestructuración de la base estadística.</p>
             </div>
-            <div style={{ color: '#ddd', fontSize: '0.85rem', lineHeight: '1.5', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
+            <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
               <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <li><strong style={{color: '#3b82f6'}}>Nuevo Tracking de Video:</strong> Módulo de carga de archivos locales (MP4) sin latencia ni consumo de ancho de banda. Análisis secuencial offline y subida en bloque a la base de datos.</li>
-                <li><strong style={{color: '#00ff88'}}>Sincronización Absoluta (Reloj):</strong> Se reemplazó el temporizador de ciclos por cálculo de marcas de tiempo absolutas. El video y la línea de tiempo ya no sufren estrangulamiento de navegador.</li>
-                <li><strong style={{color: '#f59e0b'}}>Caché de Seguridad Anti-Pérdida:</strong> Guardado persistente automático en disco local. Si el navegador se cierra o colapsa, el buffer de eventos y el tiempo de reloj se restauran automáticamente.</li>
-                <li><strong style={{color: '#c084fc'}}>Bypass de Mapeo Espacial:</strong> Modificación del flujo lógico. Las acciones de volumen (Pases, Recuperaciones, Duelos) asignan al jugador de forma directa sin requerir posición XY, duplicando la velocidad de carga.</li>
-                <li><strong style={{color: '#ef4444'}}>Mapeo de Teclado Extendido:</strong> Incorporación de hotkeys operativas para Futsal: Duelos (W/Q), Faltas (F), Ley de Ventaja (V), Atajadas (G) y Bloqueos (B).</li>
+                <li><strong style={{color: '#3b82f6'}}>Estado de Partido (Game State):</strong> Condicionamiento táctico total. Filtros para evaluar el rendimiento exacto en escenarios de ventaja, empate o desventaja.</li>
+                <li><strong style={{color: '#00ff88'}}>Tracking de Arqueros:</strong> Enlace automático de remates atajados al perfil del arquero en cancha y métricas defensivas consolidadas.</li>
+                <li><strong style={{color: '#c084fc'}}>Efectividad ABP:</strong> Segmentación directa de tiros libres en la eficacia de acciones a balón parado y corrección de métricas.</li>
+                <li><strong style={{color: '#f59e0b'}}>Control de Ruido Visual:</strong> Renderizado dinámico del módulo Cargas y Wellness. Ocultamiento automático ante falta de registros.</li>
+                <li><strong style={{color: '#ef4444'}}>Estabilidad del Motor:</strong> Captura de pérdidas del rival para estabilizar el Índice de Caos y supresión de valores nulos (NaN) en el procesamiento central.</li>
               </ul>
             </div>
             <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>CERRAR E INICIAR</button>

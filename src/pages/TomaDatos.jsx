@@ -13,7 +13,7 @@ function TomaDatos() {
   
   const { showToast } = useToast();
 
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 1024);
   const [periodo, setPeriodo] = useState('PT');
   const [minuto, setMinuto] = useState(0);
   const [segundos, setSegundos] = useState(0);
@@ -60,7 +60,7 @@ function TomaDatos() {
   }, [partido, navigate]);
 
   useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
+    const handleResize = () => setEsMovil(window.innerWidth <= 1024);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);

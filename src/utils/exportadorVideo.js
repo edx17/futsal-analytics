@@ -28,7 +28,7 @@ export function exportarEventosCSV(eventos, nombrePartido) {
   
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `tracking_${nombrePartido.replace(/\s+/g, '_')}.csv`);
+  link.setAttribute('download', `tracking_${(nombrePartido || 'partido').replace(/\s+/g, '_')}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
