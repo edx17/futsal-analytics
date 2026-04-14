@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
-
 import { ToastProvider } from './components/ToastContext';
 
+// --- Pages ---
 import Landing from './pages/Landing';
 import Inicio from './pages/Inicio';
 import NuevoPartido from './pages/NuevoPartido';
@@ -28,7 +28,6 @@ import CreadorFisico from './pages/CreadorFisico';
 import BancoTareas from './pages/BancoTareas';
 import CargaWellness from './pages/CargaWellness';
 import PlanificadorSemanal from './pages/PlanificadorSemanal';
-
 import Presentismo from './pages/Presentismo';
 import Tesoreria from './pages/Tesoreria';
 import Sponsors from './pages/Sponsors';
@@ -38,9 +37,56 @@ import LoginKiosco from './pages/LoginKiosco';
 
 import './App.css';
 
+// ==========================================
+// ESTILOS ESTÁTICOS
+// ==========================================
 const navMobileStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyItems: 'center', flex: 1, height: '100%', cursor: 'pointer', color: 'var(--text-dim)', textDecoration: 'none', fontWeight: 800, padding: '8px 0', transition: 'color 0.2s' };
 const sidebarLinkStyle = { padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '15px', textAlign: 'left' };
 const sidebarGroupTitle = { padding: '20px 20px 5px 20px', fontSize: '0.65rem', color: '#888', fontWeight: 900, letterSpacing: '1px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const fabStyle = { position: 'absolute', top: '0px', left: '50%', transform: 'translateX(-50%)', width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)', color: '#000', border: 'none', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,255,136,0.3)', zIndex: 1002, transition: 'transform 0.2s' };
+
+// ==========================================
+// COMPONENTES DE ENRUTAMIENTO Y LAYOUT
+// ==========================================
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
+      <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
+      <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
+      <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
+      <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
+      <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
+      <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
+      <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
+      <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
+      <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
+      <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
+      <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
+      <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
+      
+      <Route path="/temporada" element={<ProtectedRoute><Temporada /></ProtectedRoute>} />
+      <Route path="/resumen" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
+      <Route path="/resumen/:id" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
+      <Route path="/torneos" element={<ProtectedRoute><Torneos /></ProtectedRoute>} />
+      <Route path="/scouting-rivales" element={<ProtectedRoute><ScoutingRivales /></ProtectedRoute>} />
+      
+      {/* RUTAS DE JUGADOR ARREGLADAS */}
+      <Route path="/jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
+      <Route path="/jugador-perfil" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
+      <Route path="/perfil-jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
+      
+      <Route path="/rendimiento" element={<ProtectedRoute><Rendimiento /></ProtectedRoute>} />
+      <Route path="/origen-goles" element={<ProtectedRoute><OrigenGoles /></ProtectedRoute>} />
+      <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
+      <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
+      <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
+      
+      <Route path="*" element={<Navigate to="/inicio" replace />} />
+    </Routes>
+  );
+}
 
 function AppLayout() {
   const { perfil, logout, loading } = useAuth();
@@ -49,7 +95,6 @@ function AppLayout() {
   
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
-  
   const [drawerAbierto, setDrawerAbierto] = useState(false);
   const [fabAbierto, setFabAbierto] = useState(false);
 
@@ -76,6 +121,21 @@ function AppLayout() {
     }
   }, [location.pathname, esMovil]);
 
+  // ==========================================
+  // PERMISOS Y VARIABLES DE ESTADO
+  // ==========================================
+  const permisos = useMemo(() => {
+    const rol = (perfil?.rol || '').toLowerCase();
+    return {
+      esSuperUser: rol === 'superuser',
+      esJugador: rol === 'jugador',
+      puedeEscribirDeportivo: ['superuser', 'manager', 'ct'].includes(rol),
+      puedeVerDeportivo: ['superuser', 'manager', 'admin', 'ct', 'jugador'].includes(rol),
+      puedeControlarAdmin: ['superuser', 'manager', 'admin'].includes(rol),
+      puedeConfigurar: ['superuser', 'manager', 'admin'].includes(rol),
+    };
+  }, [perfil]);
+
   if (loading) return null;
 
   const isLanding = location.pathname === '/'; 
@@ -88,28 +148,15 @@ function AppLayout() {
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
 
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
-  
-  const rol = (perfil?.rol || '').toLowerCase();
-  const esSuperUser = rol === 'superuser';
-  const esAdmin = rol === 'admin';
-  const esManager = rol === 'manager';
-  const esCT = rol === 'ct';
-  const esJugador = rol === 'jugador';
-
-  const puedeEscribirDeportivo = esSuperUser || esManager || esCT;
-  const puedeVerDeportivo = esSuperUser || esManager || esAdmin || esCT || esJugador;
-  const puedeControlarAdmin = esSuperUser || esManager || esAdmin;
-  const puedeConfigurar = esSuperUser || esManager || esAdmin;
-
-  const toggleMenu = (seccion) => setMenusAbiertos(prev => ({ ...prev, [seccion]: !prev[seccion] }));
-
   const club = perfil?.clubes;
   const isVencido = club?.fecha_vencimiento ? new Date(club.fecha_vencimiento) < new Date() : false;
 
-  if (perfil && !esSuperUser && club && (club.suscripcion_activa === false || isVencido) && !isSuscripcionPath) {
+  // Validación de suscripción
+  if (perfil && !permisos.esSuperUser && club && (club.suscripcion_activa === false || isVencido) && !isSuscripcionPath) {
     return <Navigate to="/mi-suscripcion" replace />;
   }
 
+  // Rutas de pantalla completa (Login, Toma de Datos, etc.)
   if (isLanding || isLogin || isRegistro || isTomaDatos || isTomaDatosAsincrono || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
@@ -126,8 +173,8 @@ function AppLayout() {
     );
   }
 
+  // Modo Kiosco
   if (isKioscoMode && !isKioscoPath) return <Navigate to="/kiosco/home" replace />;
-  
   if (isKioscoMode && isKioscoPath) {
     return (
       <main className="app-content-fullscreen">
@@ -147,13 +194,18 @@ function AppLayout() {
     );
   }
 
+  const toggleMenu = (seccion) => setMenusAbiertos(prev => ({ ...prev, [seccion]: !prev[seccion] }));
+
+  // ==========================================
+  // RENDERIZADO DEL MENÚ LATERAL
+  // ==========================================
   const renderNavLinks = () => (
     <>
       <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
-        🏠 <span>{esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>
+        🏠 <span>{permisos.esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>
       </NavLink>
 
-      {puedeEscribirDeportivo && (
+      {permisos.puedeEscribirDeportivo && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('operaciones')}>
             <span>OPERACIONES</span> <span>{menusAbiertos.operaciones ? '▼' : '▶'}</span>
@@ -168,7 +220,7 @@ function AppLayout() {
         </>
       )}
 
-      {!esJugador && puedeVerDeportivo && (
+      {!permisos.esJugador && permisos.puedeVerDeportivo && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('competicion')}>
             <span>COMPETICIÓN</span> <span>{menusAbiertos.competicion ? '▼' : '▶'}</span>
@@ -182,30 +234,30 @@ function AppLayout() {
         </>
       )}
 
-      {puedeVerDeportivo && (
+      {permisos.puedeVerDeportivo && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('analisis')}>
             <span>ANÁLISIS</span> <span>{menusAbiertos.analisis ? '▼' : '▶'}</span>
           </div>
           {menusAbiertos.analisis && (
             <>
-              {!esJugador && <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📈 <span>RESUMEN TEMPORADA</span></NavLink>}
+              {!permisos.esJugador && <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📈 <span>RESUMEN TEMPORADA</span></NavLink>}
               <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📊 <span>RESUMEN POR PARTIDO</span></NavLink>
-              <NavLink to="/perfil-jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👁️ <span>{esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
-              {!esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚽ <span>ORIGEN DE GOLES</span></NavLink>}
+              <NavLink to="/jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👁️ <span>{permisos.esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
+              {!permisos.esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚽ <span>ORIGEN DE GOLES</span></NavLink>}
             </>
           )}
         </>
       )}
 
-      {puedeVerDeportivo && !esJugador && (
+      {permisos.puedeVerDeportivo && !permisos.esJugador && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('planificacion')}>
             <span>PLANIFICACIÓN</span> <span>{menusAbiertos.planificacion ? '▼' : '▶'}</span>
           </div>
           {menusAbiertos.planificacion && (
             <>
-              {puedeEscribirDeportivo && (
+              {permisos.puedeEscribirDeportivo && (
                 <>
                   <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗓️ <span>MICROCICLO</span></NavLink>
                   <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎨 <span>CREADOR TÁCTICO</span></NavLink>
@@ -219,15 +271,15 @@ function AppLayout() {
         </>
       )}
 
-      {puedeVerDeportivo && (
+      {permisos.puedeVerDeportivo && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('plantel')}>
             <span>PLANTEL</span> <span>{menusAbiertos.plantel ? '▼' : '▶'}</span>
           </div>
           {menusAbiertos.plantel && (
             <>
-              {!esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👤 <span>MI PLANTEL</span></NavLink>}
-              {puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
+              {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👤 <span>MI PLANTEL</span></NavLink>}
+              {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
               <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🌡️ <span>WELLNESS</span></NavLink>
               <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
             </>
@@ -235,7 +287,7 @@ function AppLayout() {
         </>
       )}
 
-      {!esJugador && puedeControlarAdmin && (
+      {!permisos.esJugador && permisos.puedeControlarAdmin && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('administracion')}>
             <span>ADMINISTRACIÓN</span> <span>{menusAbiertos.administracion ? '▼' : '▶'}</span>
@@ -244,7 +296,7 @@ function AppLayout() {
             <>
               <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💰 <span>TESORERÍA</span></NavLink>
               <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🤝 <span>SPONSORS</span></NavLink>
-              {puedeConfigurar && (
+              {permisos.puedeConfigurar && (
                 <>
                   <NavLink to="/mi-suscripcion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💳 <span>MI SUSCRIPCIÓN</span></NavLink>
                   <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚙️ <span>CONFIG. DE CLUB</span></NavLink>
@@ -255,7 +307,7 @@ function AppLayout() {
         </>
       )}
 
-      {esSuperUser && (
+      {permisos.esSuperUser && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('sistema')}>
             <span>SISTEMA</span> <span>{menusAbiertos.sistema ? '▼' : '▶'}</span>
@@ -275,6 +327,7 @@ function AppLayout() {
   return (
     <div style={{ display: 'flex', height: '100dvh', backgroundColor: 'var(--bg)', overflow: 'hidden' }}>
       
+      {/* DESKTOP SIDEBAR */}
       {!esMovil && (
         <aside style={{ width: sidebarAbierta ? '250px' : '70px', backgroundColor: 'var(--panel)', borderRight: '1px solid var(--border)', transition: 'width 0.3s ease', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
           <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: sidebarAbierta ? 'space-between' : 'center', borderBottom: '1px solid var(--border)' }}>
@@ -292,39 +345,14 @@ function AppLayout() {
         </aside>
       )}
 
+      {/* ÁREA PRINCIPAL DE CONTENIDO */}
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '0px 0px 85px 0px' : '40px', position: 'relative' }}>
         <div style={{ padding: esMovil ? '20px 15px' : '0' }}>
-          <Routes>
-            <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
-            <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
-            <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
-            <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
-            <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
-            <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
-            <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
-            <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
-            <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
-            <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
-            <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
-            <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
-            <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
-            <Route path="/temporada" element={<ProtectedRoute><Temporada /></ProtectedRoute>} />
-            <Route path="/resumen" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
-            <Route path="/resumen/:id" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
-            <Route path="/torneos" element={<ProtectedRoute><Torneos /></ProtectedRoute>} />
-            <Route path="/scouting-rivales" element={<ProtectedRoute><ScoutingRivales /></ProtectedRoute>} />
-            <Route path="/jugador-perfil" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
-            <Route path="/perfil-jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
-            <Route path="/rendimiento" element={<ProtectedRoute><Rendimiento /></ProtectedRoute>} />
-            <Route path="/origen-goles" element={<ProtectedRoute><OrigenGoles /></ProtectedRoute>} />
-            <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
-            <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
-            <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
-            <Route path="*" element={<Navigate to="/inicio" replace />} />
-          </Routes>
+          <AppRoutes />
         </div>
       </main>
 
+      {/* MOBILE BOTTOM NAVIGATION */}
       {esMovil && (
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '70px', background: 'var(--panel)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 1000, paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <NavLink to="/inicio" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
@@ -332,43 +360,25 @@ function AppLayout() {
             <span style={{fontSize: '0.65rem'}}>Inicio</span>
           </NavLink>
           
-          {puedeVerDeportivo && !esJugador && (
+          {permisos.puedeVerDeportivo && !permisos.esJugador && (
             <NavLink to="/microciclo" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
               <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>🗓️</span>
               <span style={{fontSize: '0.65rem'}}>Hoy</span>
             </NavLink>
           )}
 
-          {puedeEscribirDeportivo && (
+          {permisos.puedeEscribirDeportivo && (
              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
                 <button 
                   onClick={() => { setFabAbierto(!fabAbierto); setDrawerAbierto(false); }}
-                  style={{ 
-                    position: 'absolute',
-                    top: '0px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: 'var(--accent)',
-                    color: '#000',
-                    border: 'none',
-                    fontSize: '1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 15px rgba(0,255,136,0.3)',
-                    zIndex: 1002,
-                    transition: 'transform 0.2s'
-                  }}
+                  style={fabStyle}
                 >
                   {fabAbierto ? '×' : '+'}
                 </button>
              </div>
           )}
 
-          {esJugador && (
+          {permisos.esJugador && (
             <NavLink to="/wellness" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
               <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>🌡️</span>
               <span style={{fontSize: '0.65rem'}}>Wellness</span>
@@ -387,6 +397,7 @@ function AppLayout() {
         </nav>
       )}
 
+      {/* MOBILE FAB ACCIONES RÁPIDAS */}
       {esMovil && fabAbierto && (
         <>
           <div onClick={() => setFabAbierto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000 }} />
@@ -399,6 +410,7 @@ function AppLayout() {
         </>
       )}
 
+      {/* MOBILE DRAWER LATERAL */}
       {esMovil && (
         <>
           {drawerAbierto && <div onClick={() => setDrawerAbierto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1005, animation: 'fadeIn 0.3s' }} />}

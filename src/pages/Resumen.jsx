@@ -285,7 +285,7 @@ function Resumen() {
   const categoriasUnicas = useMemo(() => [...new Set(partidos.map(p => p.categoria).filter(Boolean))], [partidos]);
   const competicionesUnicas = useMemo(() => [...new Set(partidos.map(p => p.competicion).filter(Boolean))], [partidos]);
 
-const partidosGrid = useMemo(() => {
+  const partidosGrid = useMemo(() => {
     const filtrados = partidos.filter(p => {
       const pasaCat = filtroCategoriaGrid === 'Todas' || p.categoria === filtroCategoriaGrid;
       const pasaComp = filtroCompeticionGrid === 'Todas' || p.competicion === filtroCompeticionGrid;
@@ -293,7 +293,6 @@ const partidosGrid = useMemo(() => {
       return pasaCat && pasaComp && pasaAnalizados;
     });
 
-    // Función para convertir la fecha (YYYY-MM-DD o DD/MM/YYYY) a un valor numérico para poder ordenar
     const parseDateParaSort = (str) => {
       if (!str) return 0;
       try {
@@ -308,7 +307,6 @@ const partidosGrid = useMemo(() => {
       } catch (e) { return 0; }
     };
 
-    // Ordenar de más reciente a más antiguo
     return filtrados.sort((a, b) => parseDateParaSort(b.fecha) - parseDateParaSort(a.fecha));
   }, [partidos, filtroCategoriaGrid, filtroCompeticionGrid, soloAnalizados, partidosConDatos]);
 
@@ -319,7 +317,7 @@ const partidosGrid = useMemo(() => {
       ? eventosPartido 
       : eventosPartido.filter(ev => ev.periodo === filtroPeriodo);
 
-if (filtroAsimetria !== 'Todos') {
+    if (filtroAsimetria !== 'Todos') {
       const asimetriaLimpia = filtroAsimetria.toLowerCase().replace(/\s/g, '');
       evFiltrados = evFiltrados.filter(ev => 
         ev.contexto_juego && 
@@ -395,7 +393,7 @@ if (filtroAsimetria !== 'Todos') {
       if (p && ev.accion === 'Tiro Libre') { stats.propio.tirosLibres++; }
       else if (!p && ev.accion === 'Pérdida') { stats.rival.perdidas++; }
 
-if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
+      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
         if (p) {
           stats.propio.goles++;
           stats.propio.remates++;
@@ -404,7 +402,6 @@ if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
           let origen = ev.origen_gol || 'No Especificado';
           const origenClean = origen.toLowerCase().replace(/\s/g, '');
           
-          // Agrupamos correctamente para el gráfico de torta
           if (origenClean === '5v4' || origenClean === '4v3' || origenClean === '5v4/4v3') origen = '5v4 / 4v3';
           else if (origenClean === '4v5' || origenClean === '3v4' || origenClean === '4v5/3v4') origen = '4v5 / 3v4';
           
@@ -519,25 +516,19 @@ if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
         if (ev.accion === 'Atajada' || ev.accion?.toLowerCase().includes('atajada')) statsJugadores[ev.id_jugador].atajadas++;
       }
       
-      if (ev.equipo === 'Rival') {
-        arquerosPropios.forEach(arqId => {
-           if (statsJugadores[arqId]) {
-             if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqId].golesRecibidos++;
-             if (ev.accion === 'Remate - Atajado') statsJugadores[arqId].atajadas++;
-           }
-        });
-      }
-
-      if (ev.equipo === 'Rival' && ev.accion === 'Remate - Atajado' && idArqueroPrincipal && statsJugadores[idArqueroPrincipal]) {
-        statsJugadores[idArqueroPrincipal].atajadas++;
-      }
+if (ev.equipo === 'Rival') {
+  arquerosPropios.forEach(arqId => {
+    if (statsJugadores[arqId]) {
+      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqId].golesRecibidos++;
+      if (ev.accion === 'Remate - Atajado') statsJugadores[arqId].atajadas++;
+    }
+  });
+}
 
       if (ev.equipo === 'Propio' && ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
         if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_asistencia].asistencias++;
       }
     });
-
-    const eventosRivales = evFiltrados.filter(e => e.equipo === 'Rival');
 
     const ranking = Object.values(statsJugadores)
       .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
@@ -566,8 +557,8 @@ if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
             }
         }
 
-        const ratingFinal = calcularRatingJugador(j, j.eventos, eventosRivales, pm, mins);
 
+        
         return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, rol }
       })
       .sort((a, b) => {
@@ -1370,7 +1361,16 @@ const COLORS_ORIGEN = {
                     {analitica.ranking.filter(j => j.rol !== 'ARQUERO').map(j => (
                       <tr key={j.id} style={{ textAlign: 'center' }}>
                         <td className="mono-accent">{j.dorsal}</td>
-                        <td style={{ textAlign: 'left', fontWeight: 700 }}>{j.nombre.toUpperCase()}</td>
+                        <td style={{ textAlign: 'left', fontWeight: 700 }}>
+                          <span 
+                            onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+                            style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
+                            onMouseOver={(e) => e.target.style.color = '#60a5fa'}
+                            onMouseOut={(e) => e.target.style.color = '#3b82f6'}
+                          >
+                            {j.nombre.toUpperCase()} {j.apellido ? j.apellido.toUpperCase() : ''}
+                          </span>
+                        </td>
                         <td style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800 }}>{j.rol}</td>
                         <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
                         <td>
@@ -1419,7 +1419,16 @@ const COLORS_ORIGEN = {
                       {analitica.ranking.filter(j => j.rol === 'ARQUERO').map(j => (
                         <tr key={j.id} style={{ textAlign: 'center' }}>
                           <td className="mono-accent" style={{ color: '#3b82f6' }}>{j.dorsal}</td>
-                          <td style={{ textAlign: 'left', fontWeight: 700 }}>{j.nombre.toUpperCase()}</td>
+                          <td style={{ textAlign: 'left', fontWeight: 700 }}>
+                            <span 
+                              onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+                              style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
+                              onMouseOver={(e) => e.target.style.color = '#60a5fa'}
+                              onMouseOut={(e) => e.target.style.color = '#3b82f6'}
+                            >
+                              {j.nombre.toUpperCase()} {j.apellido ? j.apellido.toUpperCase() : ''}
+                            </span>
+                          </td>
                           <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
                           <td>
                             {j.impacto === '-' ? (
