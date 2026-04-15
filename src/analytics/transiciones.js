@@ -1,10 +1,18 @@
+const clasificarZonaTransicion = (x) => {
+  if (x == null) return 'Desconocida';
+  if (x < 33) return 'Baja';
+  if (x < 66) return 'Media';
+  return 'Alta';
+};
+
 export function detectarTransiciones(eventos = [], ventanaSegundos = 15) {
   const transiciones = [];
 
   for (let i = 0; i < eventos.length; i++) {
     const ev = eventos[i];
 
-    if (ev.accion === 'Recuperación') {
+    // Ahora la transición puede nacer tanto de un robo físico como de leer un pase
+    if (ev.accion === 'Recuperación' || ev.accion === 'Intercepción') {
       const equipo = ev.equipo;
       const tiempoEv = (ev.minuto * 60) + (ev.segundos || 0);
 
@@ -20,12 +28,19 @@ export function detectarTransiciones(eventos = [], ventanaSegundos = 15) {
 
         if (
           siguiente.equipo === equipo &&
-          siguiente.accion?.includes('Remate')
+          (siguiente.accion?.includes('Remate') || siguiente.accion === 'Gol')
         ) {
+          
+          const coordX = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+          const peligrosidad = latencia < 5 ? 'Alta' : (latencia < 10 ? 'Media' : 'Normal');
+
           transiciones.push({
             recuperacion: ev,
             remate: siguiente,
-            latenciaSegundos: latencia
+            latenciaSegundos: latencia,
+            tipoOrigen: ev.accion,
+            zonaOrigen: clasificarZonaTransicion(coordX),
+            peligrosidad: peligrosidad
           });
           break;
         }

@@ -530,11 +530,16 @@ if (ev.equipo === 'Rival') {
       }
     });
 
-    const ranking = Object.values(statsJugadores)
+const evRivales = evFiltrados.filter(ev => ev.equipo === 'Rival');
+
+const ranking = Object.values(statsJugadores)
       .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
       .map(j => {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
         const mins = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
+        
+        // 👉 2. Pasamos los eventos rivales como TERCER parámetro a la función
+        const ratingFinal = calcularRatingJugador(j, j.eventos, evRivales, pm, mins);
         
         let rol = 'MIXTO';
         
@@ -557,9 +562,8 @@ if (ev.equipo === 'Rival') {
             }
         }
 
-
-        
-        return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, rol }
+        // 👉 2. AHORA SÍ ratingFinal EXISTE Y SE PUEDE ASIGNAR
+        return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, rol } 
       })
       .sort((a, b) => {
         const valA = a.impacto === '-' ? 0 : a.impacto;
@@ -1335,63 +1339,65 @@ const COLORS_ORIGEN = {
                  {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
               </div>
               <div className="table-wrapper custom-scroll">
-                <table style={{ minWidth: '650px', width: '100%', textAlign: 'center' }}>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th style={{ textAlign: 'left' }}>JUGADOR</th>
-                      <th>ROL</th>
-                      <th>MIN</th>
-                      <th>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                          RATING <InfoBox texto="Puntuación algorítmica (0-10) basada en volumen de acciones multiplicadas por pesos específicos. Filtrada logarítmicamente y por tiempo jugado para evitar ruido estadístico. Base: 6.0" />
-                        </div>
-                      </th>
-                      <th>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                          +/- <InfoBox texto="Diferencia de goles del equipo mientras el jugador estuvo en cancha (Goles a Favor - Goles en Contra)." />
-                        </div>
-                      </th>
-                      <th>REMATES (G)</th>
-                      <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
-                      <th style={{ color: '#10b981' }}>REC</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analitica.ranking.filter(j => j.rol !== 'ARQUERO').map(j => (
-                      <tr key={j.id} style={{ textAlign: 'center' }}>
-                        <td className="mono-accent">{j.dorsal}</td>
-                        <td style={{ textAlign: 'left', fontWeight: 700 }}>
-                          <span 
-                            onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
-                            style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
-                            onMouseOver={(e) => e.target.style.color = '#60a5fa'}
-                            onMouseOut={(e) => e.target.style.color = '#3b82f6'}
-                          >
-                            {j.nombre.toUpperCase()} {j.apellido ? j.apellido.toUpperCase() : ''}
-                          </span>
-                        </td>
-                        <td style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800 }}>{j.rol}</td>
-                        <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
-                        <td>
-                          {j.impacto === '-' ? (
-                            <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>-</div>
-                          ) : (
-                            <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
-                              {j.impacto.toFixed(1)}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
-                          {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
-                        </td>
-                        <td>{j.remates} ({j.goles})</td>
-                        <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
-                        <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+<table style={{ minWidth: '650px', width: '100%', textAlign: 'center' }}>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th style={{ textAlign: 'left' }}>JUGADOR</th>
+      <th>ROL</th>
+      <th>MIN</th>
+      <th>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+          RATING <InfoBox texto="Puntuación algorítmica (0-10) basada en volumen de acciones multiplicadas por pesos específicos. Filtrada logarítmicamente y por tiempo jugado para evitar ruido estadístico. Base: 6.0" />
+        </div>
+      </th>
+      <th>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+          +/- <InfoBox texto="Diferencia de goles del equipo mientras el jugador estuvo en cancha (Goles a Favor - Goles en Contra)." />
+        </div>
+      </th>
+      <th>REMATES (G)</th>
+      <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
+      <th style={{ color: '#10b981' }}>REC</th>
+      <th style={{ color: '#ef4444' }}>PERD</th> {/* <--- NUEVA COLUMNA */}
+    </tr>
+  </thead>
+  <tbody>
+    {analitica.ranking.filter(j => j.rol !== 'ARQUERO').map(j => (
+      <tr key={j.id} style={{ textAlign: 'center' }}>
+        <td className="mono-accent">{j.dorsal}</td>
+        <td style={{ textAlign: 'left', fontWeight: 700 }}>
+          <span 
+            onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+            style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
+            onMouseOver={(e) => e.target.style.color = '#60a5fa'}
+            onMouseOut={(e) => e.target.style.color = '#3b82f6'}
+          >
+            {j.nombre.toUpperCase()} {j.apellido ? j.apellido.toUpperCase() : ''}
+          </span>
+        </td>
+        <td style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800 }}>{j.rol}</td>
+        <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
+        <td>
+          {j.impacto === '-' ? (
+            <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>-</div>
+          ) : (
+            <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
+              {j.impacto.toFixed(1)}
+            </div>
+          )}
+        </td>
+        <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
+          {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
+        </td>
+        <td>{j.remates} ({j.goles})</td>
+        <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
+        <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
+        <td style={{ color: '#ef4444', fontWeight: 800 }}>{j.perdidas}</td> {/* <--- NUEVO DATO */}
+      </tr>
+    ))}
+  </tbody>
+</table>
               </div>
             </div>
 
@@ -1403,56 +1409,60 @@ const COLORS_ORIGEN = {
                 </div>
                 <div className="table-wrapper custom-scroll">
                   <table style={{ minWidth: '500px', width: '100%', textAlign: 'center' }}>
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th style={{ textAlign: 'left' }}>JUGADOR</th>
-                        <th>MIN</th>
-                        <th>RATING</th>
-                        <th>+/-</th>
-                        <th style={{ color: '#ef4444' }}>GOLES REC.</th>
-                        <th style={{ color: '#00ff88' }}>ATAJADAS</th>
-                        <th style={{ color: '#c084fc' }}>INICIO xG</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analitica.ranking.filter(j => j.rol === 'ARQUERO').map(j => (
-                        <tr key={j.id} style={{ textAlign: 'center' }}>
-                          <td className="mono-accent" style={{ color: '#3b82f6' }}>{j.dorsal}</td>
-                          <td style={{ textAlign: 'left', fontWeight: 700 }}>
-                            <span 
-                              onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
-                              style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
-                              onMouseOver={(e) => e.target.style.color = '#60a5fa'}
-                              onMouseOut={(e) => e.target.style.color = '#3b82f6'}
-                            >
-                              {j.nombre.toUpperCase()} {j.apellido ? j.apellido.toUpperCase() : ''}
-                            </span>
-                          </td>
-                          <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
-                          <td>
-                            {j.impacto === '-' ? (
-                              <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>-</div>
-                            ) : (
-                              <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? '#3b82f6' : '#ef4444', fontWeight: 800 }}>
-                                {j.impacto.toFixed(1)}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
-                            {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
-                          </td>
-                          <td style={{ fontWeight: 800, color: '#ef4444' }}>
-                            {j.golesRecibidos}
-                          </td>
-                          <td style={{ fontWeight: 800, color: '#00ff88' }}>
-                            {j.atajadas}
-                          </td>
-                          <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th style={{ textAlign: 'left' }}>JUGADOR</th>
+      <th>MIN</th>
+      <th>RATING</th>
+      <th>+/-</th>
+      <th style={{ color: '#ef4444' }}>GOLES REC.</th>
+      <th style={{ color: '#00ff88' }}>ATAJADAS</th>
+      <th style={{ color: '#f59e0b' }}>TIROS REC.</th> {/* <--- NUEVA COLUMNA */}
+      <th style={{ color: '#c084fc' }}>INICIO xG</th>
+    </tr>
+  </thead>
+  <tbody>
+    {analitica.ranking.filter(j => j.rol === 'ARQUERO').map(j => (
+      <tr key={j.id} style={{ textAlign: 'center' }}>
+        <td className="mono-accent" style={{ color: '#3b82f6' }}>{j.dorsal}</td>
+        <td style={{ textAlign: 'left', fontWeight: 700 }}>
+          <span 
+            onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+            style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
+            onMouseOver={(e) => e.target.style.color = '#60a5fa'}
+            onMouseOut={(e) => e.target.style.color = '#3b82f6'}
+          >
+            {j.nombre.toUpperCase()} {j.apellido ? j.apellido.toUpperCase() : ''}
+          </span>
+        </td>
+        <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
+        <td>
+          {j.impacto === '-' ? (
+            <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>-</div>
+          ) : (
+            <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? '#3b82f6' : '#ef4444', fontWeight: 800 }}>
+              {j.impacto.toFixed(1)}
+            </div>
+          )}
+        </td>
+        <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
+          {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
+        </td>
+        <td style={{ fontWeight: 800, color: '#ef4444' }}>
+          {j.golesRecibidos}
+        </td>
+        <td style={{ fontWeight: 800, color: '#00ff88' }}>
+          {j.atajadas}
+        </td>
+        <td style={{ fontWeight: 800, color: '#f59e0b' }}>
+          {j.golesRecibidos + j.atajadas} {/* <--- NUEVO DATO (Suma matemática) */}
+        </td>
+        <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
                 </div>
               </div>
             )}

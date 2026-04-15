@@ -55,6 +55,9 @@ function TomaDatos() {
   const [tempSuplentes, setTempSuplentes] = useState([]);
   const [isSavingTitulares, setIsSavingTitulares] = useState(false);
 
+  const [optDeEspaldas, setOptDeEspaldas] = useState(false);
+  const [optBajoPresion, setOptBajoPresion] = useState(false);
+
   useEffect(() => {
     if (!partido) navigate('/');
   }, [partido, navigate]);
@@ -1042,6 +1045,8 @@ function TomaDatos() {
                           <BotonAccion label="MANO A MANO" color={modificadoresRemate.includes('Mano a Mano') ? '#00ff88' : '#555'} onClick={() => toggleModificador('Mano a Mano')} />
                           <BotonAccion label="PUNTEO" color={modificadoresRemate.includes('Punteo') ? '#00ff88' : '#555'} onClick={() => toggleModificador('Punteo')} />
                           <BotonAccion label="ARQ. ADELANTADO" color={modificadoresRemate.includes('Arq. Adelantado') ? '#00ff88' : '#555'} onClick={() => toggleModificador('Arq. Adelantado')} />
+                          <BotonAccion label="👤 DE ESPALDAS" color={modificadoresRemate.includes('De Espaldas') ? '#f59e0b' : '#555'} onClick={() => toggleModificador('De Espaldas')} />
+                          <BotonAccion label="🛡️ BAJO PRESIÓN" color={modificadoresRemate.includes('Bajo Presión') ? '#ef4444' : '#555'} onClick={() => toggleModificador('Bajo Presión')} />
                         </div>
                       </div>
                     </div>

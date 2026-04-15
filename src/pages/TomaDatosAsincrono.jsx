@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -77,7 +77,8 @@ export default function TomaDatosAsincrono() {
   const [videoSrc, setVideoSrc] = useState(null);
   const [videoDuration, setVideoDuration] = useState(0);
 
-  // ─── RELOJ ─────────────────────────────────────────────────────────────────
+  // ─── RELOJ Y SINCRONIZACIÓN ────────────────────────────────────────────────
+  const [offsetVideo, setOffsetVideo] = useState(null);
   const [reloj, setReloj] = useState({ corriendo: false, minuto: 0, segundos: 0, periodo: 'PT' });
   const relojRef = useRef(reloj);
   useEffect(() => { relojRef.current = reloj; }, [reloj]);
@@ -95,10 +96,14 @@ export default function TomaDatosAsincrono() {
 
   // ─── ESTADO DE EVENTO ──────────────────────────────────────────────────────
   const [bufferEventos, setBufferEventos] = useState([]);
+  const [eventosBase, setEventosBase] = useState([]);
   const [eventoPendiente, setEventoPendiente] = useState(null);
   const [pasoRegistro, setPasoRegistro] = useState(0); // 0=idle 1=mapa 2=jugador 3=remate
   const [herramientaMapa, setHerramientaMapa] = useState('accion');
   const [etiquetaTactica, setEtiquetaTactica] = useState('—');
+  const [optDeEspaldas, setOptDeEspaldas] = useState(false);
+  const [optBajoPresion, setOptBajoPresion] = useState(false);
+  const [rotarCancha, setRotarCancha] = useState(false); // NUEVO ESTADO ROTACIÓN
 
   // ─── MODO TURBO: buffer de dígitos para preseleccionar jugador ─────────────
   const [dorsalBuffer, setDorsalBuffer] = useState('');
@@ -108,7 +113,7 @@ export default function TomaDatosAsincrono() {
   // ─── ESTADO FÚTSAL ESPECÍFICO ──────────────────────────────────────────────
   const [porteroJugador, setPorteroJugador] = useState(false);
   const [faltasAcumuladas, setFaltasAcumuladas] = useState({ PT: 0, ST: 0 });
-  const [formacionActual, setFormacionActual] = useState('1-2-2'); // fútsal típico
+  const [formacionActual, setFormacionActual] = useState('1-2-2');
   const [rotaciones, setRotaciones] = useState([]);
   const [secuenciaActiva, setSecuenciaActiva] = useState(null);
   const [equipoActivo, setEquipoActivo] = useState('Propio'); // 'Propio' | 'Rival'
@@ -152,6 +157,10 @@ export default function TomaDatosAsincrono() {
       } else {
         const { data: dbC } = await supabase.from('jugadores').select('*').in('id', idsPlantilla).order('dorsal', { ascending: true });
         setJugadoresConvocados(dbC || []);
+        
+        const { data: dbEv } = await supabase.from('eventos').select('*').eq('id_partido', id).order('minuto', { ascending: true });
+        setEventosBase(dbEv || []);
+
         setFase(2);
       }
       setCargando(false);
@@ -182,20 +191,37 @@ export default function TomaDatosAsincrono() {
     }
   }, [bufferEventos, reloj, faltasAcumuladas, rotaciones, fase, partidoActual?.id]);
 
-  // ─── RELOJ INTERVAL ────────────────────────────────────────────────────────
+  // ─── RELOJ ATADO AL VIDEO ──────────────────────────────────────────────────
   useEffect(() => {
-    let iv;
-    if (reloj.corriendo) {
-      const t0 = Date.now();
-      const m0 = reloj.minuto; const s0 = reloj.segundos;
-      iv = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - t0) / 1000);
-        const total = s0 + elapsed;
-        setReloj(r => ({ ...r, minuto: m0 + Math.floor(total / 60), segundos: total % 60 }));
-      }, 200);
-    }
-    return () => clearInterval(iv);
-  }, [reloj.corriendo]);
+    if (!videoRef.current || offsetVideo === null) return;
+    
+    const handleTimeUpdate = () => {
+      if (videoRef.current.currentTime >= offsetVideo && reloj.corriendo) {
+        const elapsedSeconds = Math.floor(videoRef.current.currentTime - offsetVideo);
+        setReloj(r => ({ ...r, minuto: Math.floor(elapsedSeconds / 60), segundos: elapsedSeconds % 60 }));
+      }
+    };
+
+    const videoEl = videoRef.current;
+    videoEl.addEventListener('timeupdate', handleTimeUpdate);
+    return () => videoEl.removeEventListener('timeupdate', handleTimeUpdate);
+  }, [offsetVideo, reloj.corriendo]);
+
+  // ─── QUINTETO ACTIVO ───────────────────────────────────────────────────────
+  const quintetoActivoIds = useMemo(() => {
+    let activos = new Set(jugadoresConvocados.slice(0, 5).map(j => j.id)); 
+    const tiempoActual = videoRef.current?.currentTime || 0;
+    const eventosHastaAhora = [...eventosBase, ...bufferEventos].filter(e => 
+      e.tiempo_video != null && e.tiempo_video <= tiempoActual
+    ).sort((a, b) => a.tiempo_video - b.tiempo_video);
+
+    eventosHastaAhora.forEach(ev => {
+      if (ev.accion === 'Cambio In' && ev.id_jugador) activos.add(ev.id_jugador);
+      if (ev.accion === 'Cambio Out' && ev.id_jugador) activos.delete(ev.id_jugador);
+    });
+
+    return Array.from(activos);
+  }, [eventosBase, bufferEventos, reloj.segundos, jugadoresConvocados]);
 
   // ─── MODO TURBO: dorsal buffer ─────────────────────────────────────────────
   const resolverDorsal = useCallback((buf) => {
@@ -208,6 +234,20 @@ export default function TomaDatosAsincrono() {
     }
     setDorsalBuffer('');
   }, [jugadoresConvocados]);
+
+  // ─── ENRIQUECER EVENTO DEL VIVO ────────────────────────────────────────────
+  const iniciarEnriquecimiento = useCallback((evBase) => {
+    if (!videoRef.current) return;
+    videoRef.current.pause();
+    setHerramientaMapa('accion');
+    
+    setEventoPendiente({
+      ...evBase,
+      tiempo_video: parseFloat(videoRef.current.currentTime.toFixed(3)),
+      isUpdate: true 
+    });
+    setPasoRegistro(1); 
+  }, []);
 
   // ─── INICIAR EVENTO ────────────────────────────────────────────────────────
   const iniciarEvento = useCallback((accionKey) => {
@@ -234,7 +274,6 @@ export default function TomaDatosAsincrono() {
       faltas_acumuladas_snap: faltasAcumuladas[relojRef.current.periodo],
       xT: null, xG: null, xA: null,
     });
-    // Si ya hay jugador preseleccionado, saltar paso 2
     setPasoRegistro(1);
   }, [partidoActual, clubId, equipoActivo, jugadorPreseleccionado, porteroJugador, etiquetaTactica, faltasAcumuladas]);
 
@@ -329,22 +368,54 @@ export default function TomaDatosAsincrono() {
   const registrarCoordenada = (e) => {
     if (!eventoPendiente) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = parseFloat((((e.clientX - rect.left) / rect.width) * 100).toFixed(2));
-    const y = parseFloat((((e.clientY - rect.top) / rect.height) * 100).toFixed(2));
+    
+    // Cálculo base con soporte a inversión de cancha
+    let x = parseFloat((((e.clientX - rect.left) / rect.width) * 100).toFixed(2));
+    let y = parseFloat((((e.clientY - rect.top) / rect.height) * 100).toFixed(2));
+
+    if (rotarCancha) {
+      x = parseFloat((100 - x).toFixed(2));
+      y = parseFloat((100 - y).toFixed(2));
+    }
+    
+    // MODO ABP: Si es Pelota Parada y estás en modo jugador
+    if (etiquetaTactica === 'Pelota Parada' && herramientaMapa !== 'accion' && herramientaMapa !== 'rival') {
+       setEventoPendiente(prev => ({ 
+         ...prev, 
+         posiciones: [...(prev.posiciones || []).filter(p => p.id_jugador !== herramientaMapa), { tipo: 'propio', id_jugador: herramientaMapa, x, y }] 
+       }));
+       showToast(`Posición fijada`, 'success');
+       return; 
+    }
+
     if (herramientaMapa === 'accion') {
       const xT = calcularXT(x, y);
       const xG = eventoPendiente.accion.includes('Remate') ? calcularXG(x, y) : null;
-      setEventoPendiente(prev => ({ ...prev, zona_x: x, zona_y: y, xT, xG }));
+      
+      // AUTO-CÁLCULO: Altura de Bloque en Recuperaciones
+      let alturaBloque = null;
+      if (eventoPendiente.accion === 'Recuperación') {
+        alturaBloque = x < 33.3 ? 'Baja' : x < 66.6 ? 'Media' : 'Alta';
+        showToast(`Recuperación en Altura ${alturaBloque}`, 'success');
+      }
+
+      setEventoPendiente(prev => ({ 
+        ...prev, 
+        zona_x: x, 
+        zona_y: y, 
+        xT, 
+        xG,
+        etiqueta_tactica: alturaBloque ? `Recup. ${alturaBloque}` : prev.etiqueta_tactica 
+      }));
     } else if (herramientaMapa === 'rival') {
-      setEventoPendiente(prev => ({ ...prev, posiciones: [...prev.posiciones, { tipo: 'rival', x, y }] }));
+      setEventoPendiente(prev => ({ ...prev, posiciones: [...(prev.posiciones || []), { tipo: 'rival', x, y }] }));
     } else {
-      setEventoPendiente(prev => ({ ...prev, posiciones: [...prev.posiciones, { tipo: 'propio', id_jugador: herramientaMapa, x, y }] }));
+      setEventoPendiente(prev => ({ ...prev, posiciones: [...(prev.posiciones || []), { tipo: 'propio', id_jugador: herramientaMapa, x, y }] }));
     }
   };
 
   const confirmarMapeoYContinuar = (skipMapa = false) => {
     if (!skipMapa && eventoPendiente?.zona_x == null) return;
-    // Si ya hay jugador preseleccionado, finalizar directo (skip paso 2)
     if (eventoPendiente?.id_jugador != null) {
       if (eventoPendiente.accion === 'Remate') {
         setPasoRegistro(3);
@@ -362,7 +433,6 @@ export default function TomaDatosAsincrono() {
     if (ev.accion === 'Remate') {
       setPasoRegistro(3);
     } else {
-      // Inicio de secuencia de posesión si es Pase
       if (ev.accion === 'Pase') {
         if (!secuenciaActiva) {
           setSecuenciaActiva({ inicio: ev.tiempo_video, jugadores: [jugadorId] });
@@ -370,7 +440,6 @@ export default function TomaDatosAsincrono() {
           setSecuenciaActiva(prev => ({ ...prev, jugadores: [...new Set([...prev.jugadores, jugadorId])] }));
         }
       } else {
-        // Rompe secuencia
         if (secuenciaActiva && (ev.accion === 'Pérdida' || ev.accion === 'Remate' || ev.accion === 'Falta cometida')) {
           setSecuenciaActiva(null);
         }
@@ -380,14 +449,21 @@ export default function TomaDatosAsincrono() {
   };
 
   const asignarResultadoRemate = (resultado, asistenciaId = null, origen = null) => {
-    // Calcular xA al asistente (xG del remate)
     const xG = eventoPendiente.xG;
-    finalizarEvento({ ...eventoPendiente, accion: resultado, id_asistencia: asistenciaId, origen_gol: origen });
-    // Si hay asistente, marcar su xA en el último Pase del buffer
+    let modificadores = [];
+    if (origen) modificadores.push(origen);
+    if (optDeEspaldas) modificadores.push('De Espaldas');
+    if (optBajoPresion) modificadores.push('Bajo Presión');
+    const origenFinal = modificadores.length > 0 ? modificadores.join(' | ') : null;
+    
+    finalizarEvento({ ...eventoPendiente, accion: resultado, id_asistencia: asistenciaId, origen_gol: origenFinal });
+    
+    setOptDeEspaldas(false);
+    setOptBajoPresion(false);    
+
     if (asistenciaId && xG) {
       setBufferEventos(prev => {
         const copia = [...prev];
-        // Buscar último Pase del mismo asistente
         for (let i = copia.length - 1; i >= 0; i--) {
           if (copia[i].id_jugador === asistenciaId && copia[i].accion === 'Pase') {
             copia[i] = { ...copia[i], xA: xG };
@@ -400,7 +476,6 @@ export default function TomaDatosAsincrono() {
   };
 
   const finalizarEvento = (ev) => {
-    // Faltas acumuladas
     if (ev.accion === 'Falta cometida' && ev.equipo === 'Propio') {
       setFaltasAcumuladas(prev => ({ ...prev, [ev.periodo]: prev[ev.periodo] + 1 }));
     }
@@ -416,6 +491,8 @@ export default function TomaDatosAsincrono() {
     setEventoPendiente(null);
     setPasoRegistro(0);
     setHerramientaMapa('accion');
+    setOptDeEspaldas(false);
+    setOptBajoPresion(false);
     if (videoRef.current) videoRef.current.play();
   };
 
@@ -423,13 +500,42 @@ export default function TomaDatosAsincrono() {
   const sincronizarBaseDatos = async () => {
     if (bufferEventos.length === 0) return;
     setCargando(true);
-    const { error } = await supabase.from('eventos').insert(bufferEventos);
-    if (!error) {
+
+    const eventosLimpios = bufferEventos.map(ev => {
+      const { isUpdate, xT, xG, xA, ...resto } = ev; 
+      
+      return { 
+        ...resto, 
+        xt: xT,  
+        xg: xG,  
+        xa: xA   
+      };
+    });
+
+    const eventosNuevos = eventosLimpios.filter(ev => !ev.id);
+    const eventosExistentes = eventosLimpios.filter(ev => ev.id);
+
+    let errorInsert = null;
+    let errorUpdate = null;
+
+    if (eventosNuevos.length > 0) {
+      const { error } = await supabase.from('eventos').insert(eventosNuevos);
+      errorInsert = error;
+    }
+
+    if (eventosExistentes.length > 0) {
+      const { error } = await supabase.from('eventos').upsert(eventosExistentes);
+      errorUpdate = error;
+    }
+
+    if (!errorInsert && !errorUpdate) {
       setBufferEventos([]);
+      setEventosBase(prev => prev.filter(eBase => !bufferEventos.some(b => b.id === eBase.id)));
       localStorage.removeItem(`tracking_async_${partidoActual.id}`);
       showToast(`${bufferEventos.length} eventos sincronizados`, 'success');
     } else {
-      showToast('Error al sincronizar', 'danger');
+      console.error("Error Insert:", errorInsert, "Error Update:", errorUpdate);
+      showToast('Error al sincronizar. Revisa la consola.', 'danger');
     }
     setCargando(false);
   };
@@ -604,7 +710,8 @@ export default function TomaDatosAsincrono() {
     return (
       <>
         <style>{`
-          .input-reloj { width:35px;background:transparent;border:none;color:#fff;font-size:1.2rem;font-weight:900;text-align:center;outline:none; }
+          /* AJUSTE DEL RELOJ: Más chico el font-size y se ajustó el width */
+          .input-reloj { width:24px;background:transparent;border:none;color:#fff;font-size:0.9rem;font-weight:900;text-align:center;outline:none; }
           @keyframes pulseRed { 0%,100%{opacity:1} 50%{opacity:0.6} }
           @keyframes fadeSlide { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
           .evento-badge { animation: fadeSlide 0.15s ease; }
@@ -625,7 +732,7 @@ export default function TomaDatosAsincrono() {
                 <div style={{ fontWeight: 900, color: '#f97316', fontSize: '1rem', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>VS {partidoActual?.rival}</div>
               </div>
 
-              {/* Reloj */}
+              {/* Reloj y Botón SYNC */}
               <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '6px', padding: '0 8px', gap: '8px', height: '36px' }}>
                 <button onClick={() => setReloj(r => ({ ...r, corriendo: !r.corriendo }))} style={{ background: reloj.corriendo ? '#ef4444' : '#10b981', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '3px', cursor: 'pointer', fontWeight: 900, fontSize: '0.65rem', flexShrink: 0 }}>
                   {reloj.corriendo ? '⏸' : '▶'}
@@ -640,6 +747,21 @@ export default function TomaDatosAsincrono() {
                   <option value="ST">ST</option>
                   <option value="TE">TE</option>
                 </select>
+                
+                {/* BOTÓN SYNC RELOJ */}
+                <button 
+                  onClick={() => {
+                    if (videoRef.current) {
+                      setOffsetVideo(videoRef.current.currentTime);
+                      setReloj({ corriendo: true, minuto: 0, segundos: 0, periodo: 'PT' });
+                      showToast('Reloj sincronizado con el video', 'success');
+                    }
+                  }} 
+                  style={{ background: offsetVideo !== null ? 'rgba(16,185,129,0.2)' : 'transparent', border: `1px solid ${offsetVideo !== null ? '#10b981' : '#444'}`, color: offsetVideo !== null ? '#10b981' : '#888', padding: '4px 8px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontSize: '0.65rem' }}
+                  title="Fijar el 00:00 del partido en el frame actual del video"
+                >
+                  {offsetVideo !== null ? '⏱️ SYNC OK' : '⏱️ FIJAR INICIO'}
+                </button>
               </div>
 
               {/* Faltas acumuladas */}
@@ -778,12 +900,20 @@ export default function TomaDatosAsincrono() {
                   <div style={{ padding: '12px', borderBottom: '1px solid #1a1a1a', flexShrink: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--accent)' }}>1. MAPA ESPACIAL — {eventoPendiente?.accion}</span>
-                      {eventoPendiente?.zona_x != null && (
-                        <span style={{ fontSize: '0.65rem', color: '#888' }}>
-                          {eventoPendiente.xT && <span style={{ color: '#f59e0b', marginRight: '8px' }}>xT {eventoPendiente.xT}</span>}
-                          {eventoPendiente.xG && <span style={{ color: '#3b82f6' }}>xG {eventoPendiente.xG}</span>}
-                        </span>
-                      )}
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* BOTÓN DE ROTAR CANCHA */}
+                        <button onClick={() => setRotarCancha(!rotarCancha)} style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #333', padding: '3px 8px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer', fontWeight: 900, transition: '0.2s' }}>
+                          🔄 {rotarCancha ? 'ATACANDO IZQ' : 'ATACANDO DER'}
+                        </button>
+                        
+                        {eventoPendiente?.zona_x != null && (
+                          <span style={{ fontSize: '0.65rem', color: '#888' }}>
+                            {eventoPendiente.xT && <span style={{ color: '#f59e0b', marginRight: '8px' }}>xT {eventoPendiente.xT}</span>}
+                            {eventoPendiente.xG && <span style={{ color: '#3b82f6' }}>xG {eventoPendiente.xG}</span>}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* CANCHA */}
@@ -800,19 +930,19 @@ export default function TomaDatosAsincrono() {
 
                       {/* Heatmap histórico del buffer */}
                       {bufferEventos.filter(e => e.zona_x != null).map((ev, i) => (
-                        <div key={i} style={{ position:'absolute',left:`${ev.zona_x}%`,top:`${ev.zona_y}%`,width:'8px',height:'8px',background:getColorAccion(ev.accion),borderRadius:'50%',transform:'translate(-50%,-50%)',opacity:0.25,pointerEvents:'none' }} />
+                        <div key={i} style={{ position:'absolute',left:`${rotarCancha ? 100 - ev.zona_x : ev.zona_x}%`,top:`${rotarCancha ? 100 - ev.zona_y : ev.zona_y}%`,width:'8px',height:'8px',background:getColorAccion(ev.accion),borderRadius:'50%',transform:'translate(-50%,-50%)',opacity:0.25,pointerEvents:'none' }} />
                       ))}
 
                       {/* Posiciones de jugadores/rivales en este evento */}
                       {eventoPendiente?.posiciones?.map((pos, i) => (
-                        <div key={i} style={{ position:'absolute',left:`${pos.x}%`,top:`${pos.y}%`,width:'14px',height:'14px',background:pos.tipo==='rival'?'#ef4444':'#3b82f6',borderRadius:'50%',transform:'translate(-50%,-50%)',border:'1px solid rgba(255,255,255,0.5)',pointerEvents:'none',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                        <div key={i} style={{ position:'absolute',left:`${rotarCancha ? 100 - pos.x : pos.x}%`,top:`${rotarCancha ? 100 - pos.y : pos.y}%`,width:'14px',height:'14px',background:pos.tipo==='rival'?'#ef4444':'#3b82f6',borderRadius:'50%',transform:'translate(-50%,-50%)',border:'1px solid rgba(255,255,255,0.5)',pointerEvents:'none',display:'flex',alignItems:'center',justifyContent:'center' }}>
                           {pos.tipo==='propio' && <span style={{ fontSize:'0.45rem',color:'#fff',fontWeight:900 }}>{jugadoresConvocados.find(j=>j.id===pos.id_jugador)?.dorsal}</span>}
                         </div>
                       ))}
 
                       {/* Marcador acción principal */}
                       {eventoPendiente?.zona_x != null && (
-                        <div style={{ position:'absolute',left:`${eventoPendiente.zona_x}%`,top:`${eventoPendiente.zona_y}%`,width:'18px',height:'18px',background:'#f97316',borderRadius:'50%',transform:'translate(-50%,-50%)',border:'2px solid #fff',zIndex:10,pointerEvents:'none',boxShadow:'0 0 0 4px rgba(249,115,22,0.25)' }} />
+                        <div style={{ position:'absolute',left:`${rotarCancha ? 100 - eventoPendiente.zona_x : eventoPendiente.zona_x}%`,top:`${rotarCancha ? 100 - eventoPendiente.zona_y : eventoPendiente.zona_y}%`,width:'18px',height:'18px',background:'#f97316',borderRadius:'50%',transform:'translate(-50%,-50%)',border:'2px solid #fff',zIndex:10,pointerEvents:'none',boxShadow:'0 0 0 4px rgba(249,115,22,0.25)' }} />
                       )}
 
                       {/* Grid xT overlay sutil */}
@@ -883,7 +1013,18 @@ export default function TomaDatosAsincrono() {
                       ))}
                     </div>
 
-                    <div style={{ fontSize: '0.6rem', color: '#555', fontWeight: 900, marginBottom: '6px' }}>MODIFICADORES</div>
+                    {/* FASE 3: BOTONES DE POSTURA Y PRESIÓN */}
+                    <div style={{ fontSize: '0.6rem', color: '#555', fontWeight: 900, marginBottom: '6px' }}>POSTURA Y PRESIÓN (xG)</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginBottom: '12px' }}>
+                      <button onClick={() => setOptDeEspaldas(!optDeEspaldas)} style={{ background: optDeEspaldas ? 'rgba(245,158,11,0.2)' : '#111', border: `1px solid ${optDeEspaldas ? '#f59e0b' : '#222'}`, color: optDeEspaldas ? '#f59e0b' : '#888', padding: '5px', borderRadius: '3px', cursor: 'pointer', fontWeight: 900, fontSize: '0.65rem', transition: '0.2s' }}>
+                        {optDeEspaldas ? '✓ DE ESPALDAS' : '👤 DE ESPALDAS'}
+                      </button>
+                      <button onClick={() => setOptBajoPresion(!optBajoPresion)} style={{ background: optBajoPresion ? 'rgba(239,68,68,0.2)' : '#111', border: `1px solid ${optBajoPresion ? '#ef4444' : '#222'}`, color: optBajoPresion ? '#ef4444' : '#888', padding: '5px', borderRadius: '3px', cursor: 'pointer', fontWeight: 900, fontSize: '0.65rem', transition: '0.2s' }}>
+                        {optBajoPresion ? '✓ BAJO PRESIÓN' : '🛡️ BAJO PRESIÓN'}
+                      </button>
+                    </div>
+
+                    <div style={{ fontSize: '0.6rem', color: '#555', fontWeight: 900, marginBottom: '6px' }}>MODIFICADORES RÁPIDOS</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                       <button onClick={() => asignarResultadoRemate('Remate - Gol', eventoPendiente?.id_asistencia, '2do Palo')} style={{ background:'#111',color:'#ccc',border:'1px solid #222',padding:'8px',borderRadius:'4px',cursor:'pointer',fontSize:'0.7rem',fontWeight:900 }}>GOL 2DO PALO</button>
                       <button onClick={() => asignarResultadoRemate('Remate - Atajado', null, 'Mano a Mano')} style={{ background:'#111',color:'#ccc',border:'1px solid #222',padding:'8px',borderRadius:'4px',cursor:'pointer',fontSize:'0.7rem',fontWeight:900 }}>ATAJADA 1v1</button>
@@ -892,11 +1033,11 @@ export default function TomaDatosAsincrono() {
                   </div>
                 )}
 
-                {/* ─── PASO 0: LISTA PLANTEL + ÚLTIMOS EVENTOS ──────── */}
+                {/* ─── PASO 0: LISTA PLANTEL + LÍNEA DE TIEMPO ──────── */}
                 {pasoRegistro === 0 && (
-                  <div style={{ padding: '12px' }}>
+                  <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
                     {/* Mini stats rápidas */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '6px', marginBottom: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '6px', marginBottom: '14px', flexShrink: 0 }}>
                       {[
                         { label: 'PASES', val: statsLive.pases, color: '#a78bfa' },
                         { label: 'REMA.', val: statsLive.remates, color: '#3b82f6' },
@@ -911,15 +1052,21 @@ export default function TomaDatosAsincrono() {
                     </div>
 
                     {/* Plantel */}
-                    <div style={{ fontSize: '0.6rem', color: '#555', fontWeight: 900, marginBottom: '8px' }}>PLANTEL EN CAMPO</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '0.6rem', color: '#555', fontWeight: 900, marginBottom: '8px', flexShrink: 0 }}>PLANTEL EN CAMPO</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', marginBottom: '14px', flexShrink: 0 }}>
                       {jugadoresConvocados.map(jug => {
+                        const enCancha = quintetoActivoIds.includes(jug.id);
                         const evJug = bufferEventos.filter(e => e.id_jugador === jug.id);
                         const xTJug = evJug.reduce((s,e)=>s+(e.xT||0),0).toFixed(2);
                         const gJug = evJug.filter(e=>e.accion==='Remate - Gol').length;
                         return (
-                          <div key={jug.id} style={{ background: '#0a0a0a', border: '1px solid #1a1a1a', padding: '8px', borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontWeight: 900, background: '#000', color: 'var(--accent)', padding: '2px 5px', borderRadius: '3px', minWidth: '26px', textAlign: 'center', fontSize: '0.8rem' }}>{jug.dorsal}</span>
+                          <div key={jug.id} style={{ 
+                            background: enCancha ? 'rgba(59,130,246,0.1)' : '#0a0a0a', 
+                            border: `1px solid ${enCancha ? '#3b82f6' : '#1a1a1a'}`, 
+                            padding: '8px', borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '8px',
+                            opacity: enCancha ? 1 : 0.4 
+                          }}>
+                            <span style={{ fontWeight: 900, background: '#000', color: enCancha ? '#3b82f6' : 'var(--accent)', padding: '2px 5px', borderRadius: '3px', minWidth: '26px', textAlign: 'center', fontSize: '0.8rem' }}>{jug.dorsal}</span>
                             <div style={{ overflow: 'hidden', flex: 1 }}>
                               <div style={{ fontSize: '0.7rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#ddd' }}>{jug.apellido || jug.nombre}</div>
                               <div style={{ fontSize: '0.6rem', color: '#555' }}>xT {xTJug}{gJug > 0 && <span style={{ color: '#10b981', marginLeft: '4px' }}>⚽{gJug}</span>}</div>
@@ -929,26 +1076,66 @@ export default function TomaDatosAsincrono() {
                       })}
                     </div>
 
-                    {/* Últimos 5 eventos */}
-                    {bufferEventos.length > 0 && (
-                      <>
-                        <div style={{ fontSize: '0.6rem', color: '#555', fontWeight: 900, marginBottom: '6px' }}>ÚLTIMOS EVENTOS</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                          {[...bufferEventos].reverse().slice(0, 6).map((ev, i) => {
-                            const jug = jugadoresConvocados.find(j => j.id === ev.id_jugador);
-                            return (
-                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 8px', background: '#080808', borderRadius: '3px', borderLeft: `2px solid ${getColorAccion(ev.accion)}` }}>
-                                <span style={{ fontSize: '0.6rem', color: '#555', fontWeight: 900, minWidth: '28px' }}>{ev.minuto}'</span>
-                                <span style={{ fontSize: '0.7rem', color: getColorAccion(ev.accion), fontWeight: 900, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.accion}</span>
-                                {jug && <span style={{ fontSize: '0.6rem', color: '#666' }}>#{jug.dorsal}</span>}
-                                {ev.xT && <span style={{ fontSize: '0.55rem', color: '#f59e0b' }}>xT{ev.xT}</span>}
-                                {ev.xG && <span style={{ fontSize: '0.55rem', color: '#3b82f6' }}>xG{ev.xG}</span>}
-                              </div>
-                            );
+                    {/* ── PANEL DE EVENTOS (PENDIENTES VS MAPEADOS) ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px', flex: 1, minHeight: 0 }}>
+                      
+                      {/* 1. EVENTOS DEL VIVO PENDIENTES DE MAPEAR */}
+                      {eventosBase.filter(e => e.tiempo_video == null).length > 0 && (
+                        <div style={{ flexShrink: 0 }}>
+                          <div style={{ fontSize: '0.6rem', color: '#f59e0b', fontWeight: 900, marginBottom: '6px' }}>
+                            📥 PENDIENTES DEL VIVO ({eventosBase.filter(e => e.tiempo_video == null).length})
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '120px', overflowY: 'auto', paddingRight: '4px' }}>
+                            {eventosBase
+                              .filter(e => e.tiempo_video == null)
+                              .sort((a, b) => {
+                                const periodos = { PT: 1, ST: 2, TE: 3 };
+                                if (periodos[a.periodo] !== periodos[b.periodo]) return (periodos[a.periodo] || 9) - (periodos[b.periodo] || 9);
+                                if (a.minuto !== b.minuto) return a.minuto - b.minuto;
+                                return (a.segundos || 0) - (b.segundos || 0);
+                              })
+                              .map(ev => {
+                              const jug = jugadoresConvocados.find(j => j.id === ev.id_jugador);
+                              return (
+                                <div key={ev.id} onClick={() => iniciarEnriquecimiento(ev)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', background: 'rgba(245,158,11,0.1)', border: '1px dashed #f59e0b', borderRadius: '4px', cursor: 'pointer' }}>
+                                  <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 900, minWidth: '30px' }}>{ev.periodo} {ev.minuto}'</span>
+                                  <span style={{ fontSize: '0.75rem', color: '#fff', fontWeight: 'bold', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.accion}</span>
+                                  {jug && <span style={{ fontSize: '0.65rem', color: '#fbbf24', fontWeight: 900 }}>#{jug.dorsal}</span>}
+                                  <span style={{ fontSize: '0.6rem', background: '#f59e0b', color: '#000', padding: '2px 6px', borderRadius: '3px', fontWeight: 900 }}>MAPEAR</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 2. LÍNEA DE TIEMPO UNIFICADA (ORDENADA POR SEGUNDO DE VIDEO) */}
+                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                        <div style={{ fontSize: '0.6rem', color: '#10b981', fontWeight: 900, marginBottom: '6px' }}>
+                          ⏱️ LÍNEA DE TIEMPO DEL VIDEO
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto', paddingRight: '4px', flex: 1 }}>
+                          {[...eventosBase.filter(e => e.tiempo_video != null), ...bufferEventos]
+                            .sort((a, b) => a.tiempo_video - b.tiempo_video)
+                            .map((ev, i) => {
+                              const jug = jugadoresConvocados.find(j => j.id === ev.id_jugador);
+                              const minsVideo = Math.floor(ev.tiempo_video / 60);
+                              const secsVideo = Math.floor(ev.tiempo_video % 60).toString().padStart(2, '0');
+                              
+                              return (
+                                <div key={ev.id || `buf-${i}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 8px', background: ev.isUpdate ? 'rgba(59,130,246,0.1)' : '#080808', borderRadius: '3px', borderLeft: `2px solid ${getColorAccion(ev.accion)}` }}>
+                                  <span style={{ fontSize: '0.6rem', color: '#888', fontWeight: 900, minWidth: '35px' }}>{minsVideo}:{secsVideo}</span>
+                                  <span style={{ fontSize: '0.7rem', color: getColorAccion(ev.accion), fontWeight: 900, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {ev.accion} {ev.origen_gol ? `(${ev.origen_gol})` : ''}
+                                  </span>
+                                  {jug && <span style={{ fontSize: '0.6rem', color: '#ccc' }}>#{jug.dorsal}</span>}
+                                  {ev.xT && <span style={{ fontSize: '0.55rem', color: '#f59e0b', background: '#222', padding: '1px 3px', borderRadius: '2px' }}>xT {ev.xT}</span>}
+                                </div>
+                              );
                           })}
                         </div>
-                      </>
-                    )}
+                      </div>
+                    </div>
                   </div>
                 )}
 

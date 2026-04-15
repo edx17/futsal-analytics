@@ -491,8 +491,9 @@ function JugadorPerfil() {
     const eficacia = stats.remates > 0 ? ((stats.goles / stats.remates) * 100).toFixed(0) : 0;
     const volumenAcciones = stats.recuperaciones + stats.perdidas;
     const ratioSeguridad = volumenAcciones > 0 ? ((stats.recuperaciones / volumenAcciones) * 100).toFixed(0) : 0;
-    const proxyPM = (stats.goles + stats.asistencias) - (stats.perdidasPeligrosas * 1.5);
-    const impacto = calcularRatingJugador(jugadorSeleccionado, evFiltrados, proxyPM);
+    
+    // 🔥 UNIFICACIÓN TOTAL: Se llama a la función de rating con todos los parámetros completos
+    const impacto = calcularRatingJugador(jugadorSeleccionado, evFiltrados, eventosRivalEnCancha, plusMinus, minutos);
 
     const esArqueroFijo = jugadorSeleccionado.posicion && jugadorSeleccionado.posicion.toLowerCase().includes('arquero');
     let rol = esArqueroFijo ? 'ARQUERO' : 'MIXTO';
