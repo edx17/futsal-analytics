@@ -12,7 +12,8 @@ const CATÁLOGO_WIDGETS = [
   { id: 'w_resultados_cat', tipo: 'data', spanDefecto: '2x2', titulo: 'Últimos Resultados', icon: '📈', roles: ['superuser', 'manager', 'ct', 'admin'] },
   
   { id: 'nuevo_partido', tipo: 'link', spanDefecto: '1x1', titulo: 'Nuevo Partido', icon: '⚡', ruta: '/nuevo-partido', color: '#10b981', desc: 'Stats en vivo', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'analisis_video', tipo: 'link', spanDefecto: '1x1', titulo: 'Video Análisis', icon: '🎥', ruta: '/analisis-video', color: '#f97316', desc: 'Tracking asíncrono', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'analisis_video', tipo: 'link', spanDefecto: '1x1', titulo: 'Video Análisis', icon: '🎥', ruta: '/analisis-video', color: '#f97316', desc: 'Tracking manual', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'tracking_ia', tipo: 'link', spanDefecto: '1x1', titulo: 'Tracking IA', icon: '🤖', ruta: '/tracking-ia', color: '#00ff88', desc: 'Procesamiento automático', roles: ['superuser', 'manager', 'ct'] },
   { id: 'planificador', tipo: 'link', spanDefecto: '1x1', titulo: 'Microciclo', icon: '🗓️', ruta: '/microciclo', color: '#8b5cf6', desc: 'Cargas y sesiones', roles: ['superuser', 'manager', 'ct'] },
   { id: 'creador_tareas', tipo: 'link', spanDefecto: '1x1', titulo: 'Creador Tareas', icon: '🎨', ruta: '/creador-tareas', color: '#ec4899', desc: 'Pizarra gráfica', roles: ['superuser', 'manager', 'ct'] },
   { id: 'banco_tareas', tipo: 'link', spanDefecto: '1x1', titulo: 'Banco Tareas', icon: '📁', ruta: '/banco-tareas', color: '#f59e0b', desc: 'Archivo de ejercicios', roles: ['superuser', 'manager', 'ct'] },
@@ -99,12 +100,12 @@ export default function Inicio() {
   const [modoEdicion, setModoEdicion] = useState(false);
   const widgetsPermitidos = CATÁLOGO_WIDGETS.filter(w => w.roles.includes(rol));
   
-  const defaultLayout = esSuperUser 
-    ? ['usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido', 'analisis_video'] 
+const defaultLayout = esSuperUser 
+    ? ['usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido', 'analisis_video', 'tracking_ia'] 
     : esManager
-    ? ['w_vep_anual', 'w_stats_base', 'nuevo_partido', 'analisis_video', 'planificador', 'plantel', 'tesoreria']
+    ? ['w_vep_anual', 'w_stats_base', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'plantel', 'tesoreria']
     : rol === 'ct' 
-    ? ['w_vep_anual', 'w_proximo', 'nuevo_partido', 'analisis_video', 'planificador', 'rendimiento', 'wellness_ct'] 
+    ? ['w_vep_anual', 'w_proximo', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'rendimiento', 'wellness_ct'] 
     : esAdmin 
     ? ['w_stats_base', 'tesoreria', 'torneos', 'sponsors', 'plantel'] 
     : ['mi_wellness', 'mi_perfil', 'mi_rendimiento'];

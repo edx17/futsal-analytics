@@ -34,6 +34,7 @@ import Sponsors from './pages/Sponsors';
 import Usuarios from './pages/Usuarios';
 import LibroTactico from './pages/LibroTactico';
 import LoginKiosco from './pages/LoginKiosco';
+import VideoTracingIA from './pages/VideoTracingIA';
 
 import './App.css';
 
@@ -83,6 +84,9 @@ function AppRoutes() {
       <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
       <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
       
+      {/* NUEVA RUTA: TRACKING IA */}
+      <Route path="/tracking-ia" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><VideoTracingIA /></ProtectedRoute>} />
+
       <Route path="*" element={<Navigate to="/inicio" replace />} />
     </Routes>
   );
@@ -205,7 +209,7 @@ function AppLayout() {
         🏠 <span>{permisos.esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>
       </NavLink>
 
-      {permisos.puedeEscribirDeportivo && (
+{permisos.puedeEscribirDeportivo && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('operaciones')}>
             <span>OPERACIONES</span> <span>{menusAbiertos.operaciones ? '▼' : '▶'}</span>
@@ -215,6 +219,7 @@ function AppLayout() {
               <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚡ <span>NUEVO PARTIDO</span></NavLink>
               <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⏯️ <span>CONTINUAR PARTIDO</span></NavLink>
               <NavLink to="/analisis-video" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎥 <span>VIDEO ANÁLISIS</span></NavLink>
+              <NavLink to="/tracking-ia" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🤖 <span>TRACKING IA</span></NavLink>
             </>
           )}
         </>
