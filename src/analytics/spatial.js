@@ -1,4 +1,4 @@
-export function generarGrid(eventos = [], cols = 8, rows = 4) {
+export function generarGrid(eventos = [], cols = 4, rows = 3) {
   // Aseguramos que cols y rows sean números
   const C = parseInt(cols);
   const R = parseInt(rows);

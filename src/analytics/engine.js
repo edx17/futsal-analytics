@@ -7,7 +7,7 @@ import { generarInsights } from './insights';
 const obtenerMicroZona = (x, y) => {
   if (x == null || y == null) return null;
   let zX = x < 25 ? 'Z1' : x < 50 ? 'Z2' : x < 75 ? 'Z3' : 'Z4';
-  let zY = y < 33 ? 'I' : y < 66 ? 'C' : 'D';
+  let zY = y < 33.33 ? 'I' : y < 66.66 ? 'C' : 'D';
   return `${zX}-${zY}`;
 };
 

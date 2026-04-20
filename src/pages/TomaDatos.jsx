@@ -151,14 +151,22 @@ function TomaDatos() {
           if (ev.periodo === 'PT') stats.rematesPT++;
           else stats.rematesST++;
         }
-        if (ev.accion?.includes('Falta cometida')) {
+        if (ev.accion?.includes('Falta cometida') || ev.accion === 'Penal en contra') {
           if (ev.periodo === 'PT') stats.faltasPT++;
           else stats.faltasST++;
         }
-      } else if (ev.equipo === 'Rival') {
-        if (ev.accion?.includes('Falta cometida')) {
+        if (ev.accion?.includes('Falta recibida') || ev.accion === 'Penal a favor') {
           if (ev.periodo === 'PT') stats.faltasRivalPT++;
           else stats.faltasRivalST++;
+        }
+      } else if (ev.equipo === 'Rival') {
+        if (ev.accion?.includes('Falta cometida') || ev.accion === 'Penal en contra') {
+          if (ev.periodo === 'PT') stats.faltasRivalPT++;
+          else stats.faltasRivalST++;
+        }
+        if (ev.accion?.includes('Falta recibida') || ev.accion === 'Penal a favor') {
+          if (ev.periodo === 'PT') stats.faltasPT++;
+          else stats.faltasST++;
         }
       }
     });
@@ -197,7 +205,41 @@ function TomaDatos() {
   };
 
   const seleccionarAccion = (acc) => {
-    setAccion(acc);
+    let finalAcc = acc;
+
+    // Calcular las coordenadas absolutas en la cancha (donde X=0 es arco propio y X=100 es arco rival)
+    let dbX = panelLateral.x;
+    let dbY = panelLateral.y;
+    if (direccionAtaque === 'izquierda') {
+      dbX = 100 - dbX;
+      dbY = 100 - dbY;
+    }
+
+    // Definición de las áreas según las medidas de tu pitch-container (width: 15%, Y: 25% al 75%)
+    const enAreaPropia = dbX <= 15 && dbY >= 25 && dbY <= 75;
+    const enAreaRival = dbX >= 85 && dbY >= 25 && dbY <= 75;
+
+    // LÓGICA DE PENALES AUTOMÁTICOS SEGÚN ZONA
+    if (equipo === 'Propio') {
+      if (acc === 'Falta cometida' && enAreaPropia) {
+        finalAcc = 'Penal en contra';
+        showToast("⚠️ ¡PENAL EN CONTRA! Falta cometida en área propia.", "error");
+      } else if (acc === 'Falta recibida' && enAreaRival) {
+        finalAcc = 'Penal a favor';
+        showToast("✅ ¡PENAL A FAVOR! Falta recibida en área rival.", "success");
+      }
+    } else if (equipo === 'Rival') {
+      // Si registras la acción como 'Rival' directamente
+      if (acc === 'Falta cometida' && enAreaRival) {
+        finalAcc = 'Penal en contra'; // del rival (a favor nuestro)
+        showToast("✅ ¡PENAL A FAVOR! El rival cometió falta en su área.", "success");
+      } else if (acc === 'Falta recibida' && enAreaPropia) {
+        finalAcc = 'Penal a favor'; // del rival (en contra nuestro)
+        showToast("⚠️ ¡PENAL EN CONTRA! El rival recibió falta en tu área.", "error");
+      }
+    }
+
+    setAccion(finalAcc);
     setPasoRegistro(2);
     setMenuActivo(null);
   };
@@ -829,6 +871,16 @@ function TomaDatos() {
               <div style={{ position: 'absolute', left: 0, top: '25%', bottom: '25%', width: '15%', border: '1px solid var(--border)', borderLeft: 'none', borderRadius: '0 50% 50% 0', pointerEvents: 'none', backgroundColor: direccionAtaque === 'izquierda' ? 'rgba(0,255,136,0.05)' : 'transparent' }}></div>
               <div style={{ position: 'absolute', right: 0, top: '25%', bottom: '25%', width: '15%', border: '1px solid var(--border)', borderRight: 'none', borderRadius: '50% 0 0 50%', pointerEvents: 'none', backgroundColor: direccionAtaque === 'derecha' ? 'rgba(0,255,136,0.05)' : 'transparent' }}></div>
 
+              {/* --- NUEVA GRILLA VISUAL: 4 ZONAS y 3 CARRILES --- */}
+              {/* Zonas Verticales (25% y 75% - El 50% ya está marcado por el medio campo) */}
+              <div style={{ position: 'absolute', left: '25%', top: 0, bottom: 0, width: '1px', borderLeft: '1px dashed rgba(255,255,255,0.15)', pointerEvents: 'none' }}></div>
+              <div style={{ position: 'absolute', left: '75%', top: 0, bottom: 0, width: '1px', borderLeft: '1px dashed rgba(255,255,255,0.15)', pointerEvents: 'none' }}></div>
+              
+              {/* Carriles Horizontales (33.33% y 66.66%) */}
+              <div style={{ position: 'absolute', top: '33.33%', left: 0, right: 0, height: '1px', borderTop: '1px dashed rgba(255,255,255,0.15)', pointerEvents: 'none' }}></div>
+              <div style={{ position: 'absolute', top: '66.66%', left: 0, right: 0, height: '1px', borderTop: '1px dashed rgba(255,255,255,0.15)', pointerEvents: 'none' }}></div>
+              {/* ------------------------------------------------ */}
+
               {eventos.filter(e => e.zona_x !== null).map((ev, index, arr) => {
                 const renderX = direccionAtaque === 'derecha' ? ev.zona_x : 100 - ev.zona_x;
                 const renderY = direccionAtaque === 'derecha' ? ev.zona_y : 100 - ev.zona_y;
@@ -946,6 +998,7 @@ function TomaDatos() {
                           <div className="stat-label" style={{ gridColumn: 'span 2', fontSize: '0.6rem' }}>POSESIÓN Y DUELOS</div>
                           <BotonAccion label="RECUPERACIÓN" color="#eab308" onClick={() => seleccionarAccion('Recuperación')} />
                           <BotonAccion label="PÉRDIDA" color="#ef4444" onClick={() => seleccionarAccion('Pérdida')} />
+                          <BotonAccion label="PASE INCOMPLETO" color="#f59e0b" span={2} onClick={() => seleccionarAccion('Pase Incompleto')} />
                           <BotonAccion label="DUELO DEF GANADO" color="#10b981" onClick={() => seleccionarAccion('Duelo DEF Ganado')} />
                           <BotonAccion label="DUELO DEF PERDIDO" color="#dc2626" onClick={() => seleccionarAccion('Duelo DEF Perdido')} />
                           <BotonAccion label="DUELO OFE GANADO" color="#0ea5e9" onClick={() => seleccionarAccion('Duelo OFE Ganado')} />
@@ -954,7 +1007,8 @@ function TomaDatos() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           <div className="stat-label" style={{ gridColumn: 'span 2', fontSize: '0.6rem' }}>DISCIPLINA</div>
-                          <BotonAccion label="FALTA" color="#ec4899" onClick={() => seleccionarAccion('Falta cometida')} />
+                          <BotonAccion label="FALTA COMETIDA" color="#ec4899" onClick={() => seleccionarAccion('Falta cometida')} />
+                          <BotonAccion label="FALTA RECIBIDA" color="#0ea5e9" onClick={() => seleccionarAccion('Falta recibida')} />
                           {menuActivo === 'tarjetas' ? (
                             <>
                               <BotonAccion label="AMARILLA" color="#facc15" onClick={() => seleccionarAccion('Tarjeta Amarilla')} />
@@ -962,7 +1016,7 @@ function TomaDatos() {
                               <BotonAccion label="✕" color="#fff" onClick={() => setMenuActivo(null)} />
                             </>
                           ) : (
-                            <BotonAccion label="TARJETAS" color="#facc15" onClick={() => setMenuActivo('tarjetas')} />
+                            <BotonAccion label="TARJETAS" color="#facc15" span={2} onClick={() => setMenuActivo('tarjetas')} />
                           )}
                         </div>
 
