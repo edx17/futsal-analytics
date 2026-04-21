@@ -1,850 +1,1354 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Stage, Layer, Circle, Rect, Text, Group, Line, Transformer, Path } from 'react-konva';
-import { supabase } from '../supabase';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useToast } from '../components/ToastContext';
+/**
+ * CreadorTareas.jsx — v2
+ * Motor táctico: FutsalBoard canvas (nativo, sin react-konva)
+ * Lógica preservada: frames + animación interpolada, Supabase, Ficha Técnica,
+ *   modo edición, export PNG, mobile responsive, ToastContext, navigate
+ *
+ * Fuentes (agregar en index.html):
+ *   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+ */
 
+import { useState, useRef, useEffect, useReducer, useCallback } from 'react'
+import { supabase } from '../supabase'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useToast } from '../components/ToastContext'
+
+// ─────────────────────────────────────────────────────────────────
+//  CONSTANTES DE PIZARRA
+// ─────────────────────────────────────────────────────────────────
+const PITCH_VARIANTS = {
+  '40x20':         { label: '40×20 · Reglamentaria', mW: 40, mH: 20 },
+  '28x20':         { label: '28×20 · Reducida',       mW: 28, mH: 20 },
+  '20x20_mitad':   { label: '20×20 · Finalización',   mW: 20, mH: 20 },
+  '20x20_central': { label: '20×20 · Media Pista',    mW: 20, mH: 20 },
+}
+
+const TEAM_COLORS = {
+  home:      { fill: '#2979ff', stroke: '#82b0ff' },
+  away:      { fill: '#ef4444', stroke: '#ff8a80' },
+  verde:     { fill: '#22c55e', stroke: '#86efac' },
+  rosa:      { fill: '#ec4899', stroke: '#f9a8d4' },
+  'gk-ama':  { fill: '#eab308', stroke: '#fde047' },
+  'gk-vio':  { fill: '#a855f7', stroke: '#d8b4fe' },
+  staff:     { fill: '#111',    stroke: '#555'     },
+}
+
+const ARROW_STYLES = {
+  'arrow-pase':       { color: '#ffffff', dash: [9,5],  width: 2.2, label: 'Pase'       },
+  'arrow-conduccion': { color: '#ffe600', dash: [],     width: 2.5, label: 'Conducción' },
+  'arrow-disparo':    { color: '#ff3860', dash: [],     width: 3,   label: 'Disparo'    },
+  'arrow-presion':    { color: '#00e5ff', dash: [4,3],  width: 2,   label: 'Presión'    },
+}
+
+const MATERIALS = {
+  verde:    (ctx,w,h) => { ctx.fillStyle='#064e3b'; ctx.fillRect(0,0,w,h) },
+  azul:     (ctx,w,h) => { ctx.fillStyle='#1e3a8a'; ctx.fillRect(0,0,w,h) },
+  naranja:  (ctx,w,h) => { ctx.fillStyle='#92400e'; ctx.fillRect(0,0,w,h) },
+  gris:     (ctx,w,h) => { ctx.fillStyle='#334155'; ctx.fillRect(0,0,w,h) },
+  parquet:  (ctx,w,h) => {
+    const g = ctx.createLinearGradient(0,0,w,0)
+    g.addColorStop(0,'#7c4f2a'); g.addColorStop(.5,'#9b6035'); g.addColorStop(1,'#7c4f2a')
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h)
+    ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = .8
+    const pw = w/22
+    for (let x=pw; x<w; x+=pw) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke() }
+  },
+  negro:    (ctx,w,h) => {
+    const g = ctx.createLinearGradient(0,0,w,h)
+    g.addColorStop(0,'#1a1c26'); g.addColorStop(1,'#12141c')
+    ctx.fillStyle = g; ctx.fillRect(0,0,w,h)
+  },
+}
+const MATERIAL_LABELS = { verde:'Verde', azul:'Azul', naranja:'Naranja', gris:'Gris', parquet:'Parquet', negro:'Oscuro' }
+
+// ─────────────────────────────────────────────────────────────────
+//  GEOMETRÍA
+// ─────────────────────────────────────────────────────────────────
+function getPitchLayout(cW, cH) {
+  const p = Math.min(cW, cH) * 0.045
+  return { px: p, py: p, ppw: cW-2*p, pph: cH-2*p }
+}
+function mX(m, mW, L) { return L.px + (m/mW)*L.ppw }
+function mY(m, mH, L) { return L.py + (m/mH)*L.pph }
+
+// ─────────────────────────────────────────────────────────────────
+//  RENDER PISTA
+// ─────────────────────────────────────────────────────────────────
+function renderPitch(ctx, cW, cH, pitchCfg) {
+  const { variant, material, lineColor, showZones, showDims, goals } = pitchCfg
+  const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20']
+  const MW = vrt.mW, MH = vrt.mH
+  const L = getPitchLayout(cW, cH)
+  const lc = lineColor || '#ffffff'
+  const alpha = material === 'negro' ? .9 : .8
+
+  // BG
+  ctx.fillStyle = '#0a0b0f'; ctx.fillRect(0,0,cW,cH)
+
+  // Material
+  ctx.save()
+  ctx.beginPath(); ctx.rect(L.px, L.py, L.ppw, L.pph); ctx.clip()
+  ctx.save(); ctx.translate(L.px, L.py)
+  ;(MATERIALS[material] || MATERIALS.verde)(ctx, L.ppw, L.pph)
+  ctx.restore(); ctx.restore()
+
+  // Pitch edge shadow
+  ctx.shadowBlur = 16; ctx.shadowColor = 'rgba(0,0,0,.8)'
+  ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 5
+  ctx.strokeRect(L.px, L.py, L.ppw, L.pph); ctx.shadowBlur = 0
+
+  function line(x1,y1,x2,y2,lw=1.5) {
+    ctx.strokeStyle=lc; ctx.lineWidth=lw; ctx.globalAlpha=alpha
+    ctx.beginPath()
+    ctx.moveTo(mX(x1,MW,L), mY(y1,MH,L))
+    ctx.lineTo(mX(x2,MW,L), mY(y2,MH,L))
+    ctx.stroke(); ctx.globalAlpha=1
+  }
+  function dot(x,y,r=3) {
+    ctx.fillStyle=lc; ctx.globalAlpha=alpha
+    ctx.beginPath(); ctx.arc(mX(x,MW,L), mY(y,MH,L), r, 0, Math.PI*2); ctx.fill()
+    ctx.globalAlpha=1
+  }
+  function circle(x,y,rm,lw=1.5) {
+    const rPx = mX(rm,MW,L)-mX(0,MW,L)
+    ctx.strokeStyle=lc; ctx.lineWidth=lw; ctx.globalAlpha=alpha
+    ctx.beginPath(); ctx.arc(mX(x,MW,L), mY(y,MH,L), rPx, 0, Math.PI*2); ctx.stroke()
+    ctx.globalAlpha=1
+  }
+
+  // Outer boundary
+  ctx.strokeStyle=lc; ctx.lineWidth=2; ctx.globalAlpha=alpha
+  ctx.strokeRect(L.px+.5, L.py+.5, L.ppw-1, L.pph-1); ctx.globalAlpha=1
+
+  const midX = MW/2, midY = MH/2
+
+  // Depending on variant
+  if (variant === '40x20' || variant === '28x20') {
+    line(midX,0, midX,MH, 2)
+    circle(midX, midY, MH/2 * .43)
+    dot(midX, midY)
+  }
+  if (variant === '20x20_central') {
+    line(midX,0, midX,MH, 2)
+    circle(midX, midY, MH/2 * .43)
+    dot(midX, midY)
+  }
+
+  if (showZones) {
+    const gy1 = midY - 1.5, gy2 = midY + 1.5
+    const pd = MW === 40 ? 6 : MW === 28 ? 5 : 4
+
+    ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.globalAlpha=.7
+
+    // Penalty areas
+    if (variant !== '20x20_central') {
+      // Left
+      ctx.strokeRect(mX(0,MW,L), mY(gy1-pd*.53,MH,L), mX(pd,MW,L)-mX(0,MW,L), mY(gy2+pd*.53,MH,L)-mY(gy1-pd*.53,MH,L))
+      // Right
+      ctx.strokeRect(mX(MW-pd,MW,L), mY(gy1-pd*.53,MH,L), mX(pd,MW,L)-mX(0,MW,L), mY(gy2+pd*.53,MH,L)-mY(gy1-pd*.53,MH,L))
+      ctx.globalAlpha=1
+
+      // Penalty spots
+      dot(pd*0.6, midY, 3); dot(MW-pd*0.6, midY, 3)
+    }
+
+    // Sub zone ticks
+    if (variant === '40x20' || variant === '28x20') {
+      [[midX-3,0],[midX+3,0],[midX-3,MH],[midX+3,MH]].forEach(([mx2,my2]) => {
+        const cx=mX(mx2,MW,L), cy=mY(my2,MH,L)
+        ctx.strokeStyle=lc; ctx.lineWidth=2; ctx.globalAlpha=.5
+        ctx.beginPath(); ctx.moveTo(cx-5,cy); ctx.lineTo(cx+5,cy); ctx.stroke()
+      })
+      ctx.globalAlpha=1
+    }
+  }
+
+  // Goals
+  if (goals !== 'none') {
+    const gDepth = Math.min(L.ppw, L.pph) * 0.022
+    const g1y = mY(midY-1.5, MH, L), g2y = mY(midY+1.5, MH, L)
+    ctx.strokeStyle=lc; ctx.lineWidth=2; ctx.globalAlpha=.85
+    if (goals === 'both' || goals === 'left') {
+      ctx.beginPath()
+      ctx.moveTo(L.px,g1y); ctx.lineTo(L.px-gDepth,g1y)
+      ctx.lineTo(L.px-gDepth,g2y); ctx.lineTo(L.px,g2y)
+      ctx.stroke()
+      ctx.fillStyle='rgba(255,255,255,.05)'; ctx.fillRect(L.px-gDepth,g1y,gDepth,g2y-g1y)
+    }
+    if (goals === 'both' || goals === 'right') {
+      ctx.beginPath()
+      ctx.moveTo(L.px+L.ppw,g1y); ctx.lineTo(L.px+L.ppw+gDepth,g1y)
+      ctx.lineTo(L.px+L.ppw+gDepth,g2y); ctx.lineTo(L.px+L.ppw,g2y)
+      ctx.stroke()
+      ctx.fillStyle='rgba(255,255,255,.05)'; ctx.fillRect(L.px+L.ppw,g1y,gDepth,g2y-g1y)
+    }
+    ctx.globalAlpha=1
+  }
+
+  // Dims
+  if (showDims) {
+    const fs = Math.max(9, cW*0.012)
+    ctx.fillStyle='rgba(255,255,255,.22)'; ctx.font=`${fs}px 'JetBrains Mono',monospace`
+    ctx.textAlign='center'; ctx.fillText(`${MW}×${MH} m`, L.px+L.ppw/2, L.py-7)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  RENDER ELEMENTOS
+// ─────────────────────────────────────────────────────────────────
+function playerRadius(cW) { return cW * 0.021 }
+
+function lighten(hex, amt) {
+  if (!hex || !hex.startsWith('#')) return hex||'#fff'
+  return '#'+hex.slice(1).match(/../g).map(h => Math.min(255,parseInt(h,16)+amt).toString(16).padStart(2,'0')).join('')
+}
+
+function renderElements(ctx, elements, arrows, selected, cW, tempArrow, tempZone) {
+  elements.filter(e => e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, selected, cW))
+  arrows.forEach(a => drawArrow(ctx, a, selected))
+  if (tempArrow) drawTempArrow(ctx, tempArrow)
+  if (tempZone)  drawTempZone(ctx, tempZone)
+  elements.filter(e => !e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, selected, cW))
+}
+
+function drawEl(ctx, el, selected, cW) {
+  const isSel = selected?.id === el.id
+  const { type: t, x, y } = el
+  ctx.shadowBlur = isSel ? 14 : 0; ctx.shadowColor = '#00e5ff'
+
+  const PLAYER_TYPES = ['home','away','verde','rosa','gk-ama','gk-vio','staff']
+
+  if (PLAYER_TYPES.includes(t)) {
+    const r = (el.size==='sm'?.8:el.size==='lg'?1.2:1)*playerRadius(cW)
+    const tc = TEAM_COLORS[t] || TEAM_COLORS.home
+    const fill = el.color || tc.fill
+    ctx.shadowBlur = isSel?14:5; ctx.shadowColor = isSel?'#00e5ff':'rgba(0,0,0,.5)'
+    const g = ctx.createRadialGradient(x-r*.3,y-r*.35,0,x,y,r)
+    g.addColorStop(0, lighten(fill,55)); g.addColorStop(1, fill)
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill()
+    ctx.strokeStyle = el.stroke || tc.stroke; ctx.lineWidth=1.8; ctx.stroke()
+    ctx.shadowBlur=0
+    // GK ring
+    if (t==='gk-ama'||t==='gk-vio') {
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.globalAlpha=.45
+      ctx.beginPath(); ctx.arc(x,y,r+3,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1
+    }
+    // Label
+    ctx.fillStyle='#fff'; ctx.font=`700 ${r*.85}px Syne,sans-serif`
+    ctx.textAlign='center'; ctx.textBaseline='middle'
+    ctx.fillText(el.label||'?', x, y+.5)
+    if (isSel) selRing(ctx,x,y,r+6)
+  }
+
+  else if (t==='ball') {
+    const r = cW*0.013
+    ctx.shadowBlur=isSel?14:4; ctx.shadowColor=isSel?'#00e5ff':'rgba(0,0,0,.5)'
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill()
+    ctx.strokeStyle='#444'; ctx.lineWidth=.8; ctx.stroke()
+    ctx.fillStyle='#333'
+    ctx.beginPath(); ctx.arc(x,y,r*.35,0,Math.PI*2); ctx.fill()
+    for(let i=0;i<5;i++){const a=(i/5)*Math.PI*2-Math.PI/2;ctx.beginPath();ctx.arc(x+Math.cos(a)*r*.6,y+Math.sin(a)*r*.6,r*.22,0,Math.PI*2);ctx.fill()}
+    ctx.shadowBlur=0; if(isSel) selRing(ctx,x,y,r+4)
+  }
+
+  else if (t==='cono_alto'||t==='cono') {
+    const s = cW*0.016
+    ctx.shadowBlur=isSel?14:3; ctx.shadowColor=isSel?'#00e5ff':'rgba(0,0,0,.5)'
+    const g=ctx.createLinearGradient(x-s,y,x+s,y)
+    g.addColorStop(0,'#ff6600');g.addColorStop(.5,'#ffaa00');g.addColorStop(1,'#ff6600')
+    ctx.fillStyle=g; ctx.beginPath(); ctx.moveTo(x,y-s); ctx.lineTo(x+s*.7,y+s*.55); ctx.lineTo(x-s*.7,y+s*.55); ctx.closePath(); ctx.fill()
+    ctx.strokeStyle='rgba(255,200,0,.4)'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0
+    if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);ctx.strokeRect(x-s-2,y-s-2,s*2+4,s*1.8+4);ctx.setLineDash([])}
+  }
+
+  else if (t==='cono_plato') {
+    const r=cW*0.013
+    ctx.fillStyle='#facc15'; ctx.beginPath(); ctx.ellipse(x,y,r,r*.4,0,0,Math.PI*2); ctx.fill()
+    ctx.strokeStyle='#ca8a04'; ctx.lineWidth=1; ctx.stroke()
+    if(isSel) selRing(ctx,x,y,r+4)
+  }
+
+  else if (t==='valla') {
+    const w=cW*.055,h=cW*.012
+    ctx.fillStyle='#fbbf24'; ctx.strokeStyle='#000'; ctx.lineWidth=.5
+    ctx.fillRect(x-w/2, y-h/2, w, h); ctx.strokeRect(x-w/2,y-h/2,w,h)
+    ctx.fillStyle='#555'; ctx.fillRect(x-w/2,y-h,4,h*2); ctx.fillRect(x+w/2-4,y-h,4,h*2)
+    if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);ctx.strokeRect(x-w/2-4,y-h-4,w+8,h*2+8);ctx.setLineDash([])}
+  }
+
+  else if (t==='mini_arco'||t==='arco') {
+    const w=t==='mini_arco'?cW*.055:cW*.09, h=cW*.03
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2
+    ctx.strokeRect(x-w/2, y-h, w, h)
+    ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(x-w/2,y-h,w,h)
+    if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);ctx.strokeRect(x-w/2-4,y-h-4,w+8,h+8);ctx.setLineDash([])}
+  }
+
+  else if (t==='zone-rect') {
+    ctx.globalAlpha=el.opacity??0.18; ctx.fillStyle=el.fill||'#00e5ff'; ctx.fillRect(el.x,el.y,el.w,el.h)
+    ctx.globalAlpha=1; ctx.strokeStyle=el.stroke||'#00e5ff'; ctx.lineWidth=el.lineW||1.8
+    ctx.setLineDash(el.dashed?[7,4]:[]); ctx.strokeRect(el.x,el.y,el.w,el.h); ctx.setLineDash([])
+    if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.strokeRect(el.x-5,el.y-5,el.w+10,el.h+10);ctx.setLineDash([])}
+  }
+
+  else if (t==='zone-ellipse') {
+    const ecx=el.x+el.w/2,ecy=el.y+el.h/2
+    ctx.globalAlpha=el.opacity??0.18; ctx.fillStyle=el.fill||'#ff3860'
+    ctx.beginPath(); ctx.ellipse(ecx,ecy,Math.abs(el.w/2),Math.abs(el.h/2),0,0,Math.PI*2); ctx.fill()
+    ctx.globalAlpha=1; ctx.strokeStyle=el.stroke||'#ff3860'; ctx.lineWidth=el.lineW||1.8
+    ctx.setLineDash(el.dashed?[7,4]:[]); ctx.stroke(); ctx.setLineDash([])
+    if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.beginPath();ctx.ellipse(ecx,ecy,Math.abs(el.w/2)+5,Math.abs(el.h/2)+5,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
+  }
+
+  else if (t==='text') {
+    ctx.font=`${el.bold?'700':'500'} ${el.fontSize||13}px Syne,sans-serif`
+    ctx.textAlign='left'; ctx.textBaseline='top'
+    if(el.bg!==false){const m=ctx.measureText(el.label||'');ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(x-4,y-4,m.width+8,(el.fontSize||13)+8)}
+    ctx.fillStyle=el.color||'#fff'; ctx.fillText(el.label||'',x,y)
+    if(isSel){const m=ctx.measureText(el.label||'');ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.3;ctx.setLineDash([3,2]);ctx.strokeRect(x-7,y-7,m.width+14,(el.fontSize||13)+14);ctx.setLineDash([])}
+  }
+
+  ctx.shadowBlur=0
+}
+
+function selRing(ctx,x,y,r) {
+  ctx.strokeStyle='#00e5ff'; ctx.lineWidth=1.8; ctx.setLineDash([5,3])
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([])
+}
+
+function drawArrow(ctx, a, selected) {
+  const isSel = selected?.id===a.id
+  const st = ARROW_STYLES[a.style]||ARROW_STYLES['arrow-pase']
+  const color = a.color||st.color
+  ctx.strokeStyle=color; ctx.lineWidth=a.lineW||st.width
+  ctx.setLineDash(a.dashed!==undefined?(a.dashed?[9,5]:[]):st.dash)
+  ctx.shadowBlur=isSel?12:0; ctx.shadowColor='#00e5ff'; ctx.globalAlpha=a.opacity??1
+  const curve=a.curve||0, mx2=(a.x1+a.x2)/2, my2=(a.y1+a.y2)/2
+  const dx=a.x2-a.x1, dy=a.y2-a.y1
+  const cpx=mx2-dy*curve, cpy=my2+dx*curve
+  ctx.beginPath(); ctx.moveTo(a.x1,a.y1); ctx.quadraticCurveTo(cpx,cpy,a.x2,a.y2); ctx.stroke()
+  ctx.setLineDash([]); ctx.globalAlpha=1; ctx.shadowBlur=0
+  const ang=Math.atan2(a.y2-cpy,a.x2-cpx), hs=(a.lineW||st.width)*3.5
+  ctx.fillStyle=color
+  ctx.beginPath(); ctx.moveTo(a.x2,a.y2)
+  ctx.lineTo(a.x2-hs*Math.cos(ang-.42),a.y2-hs*Math.sin(ang-.42))
+  ctx.lineTo(a.x2-hs*Math.cos(ang+.42),a.y2-hs*Math.sin(ang+.42))
+  ctx.closePath(); ctx.fill()
+}
+
+function drawTempArrow(ctx, ta) {
+  const st=ARROW_STYLES[ta.style]||ARROW_STYLES['arrow-pase']
+  ctx.strokeStyle=st.color+'88'; ctx.lineWidth=st.width; ctx.setLineDash([6,4])
+  ctx.beginPath(); ctx.moveTo(ta.x1,ta.y1); ctx.lineTo(ta.cx,ta.cy); ctx.stroke(); ctx.setLineDash([])
+}
+
+function drawTempZone(ctx, tz) {
+  ctx.globalAlpha=.12; ctx.fillStyle=tz.type==='zone-ellipse'?'#ff3860':'#00e5ff'
+  ctx.strokeStyle=tz.type==='zone-ellipse'?'#ff3860':'#00e5ff'; ctx.lineWidth=1.5; ctx.setLineDash([5,3])
+  if(tz.type==='zone-rect'){ctx.fillRect(tz.x,tz.y,tz.w,tz.h);ctx.globalAlpha=.7;ctx.strokeRect(tz.x,tz.y,tz.w,tz.h)}
+  else{const ecx=tz.x+tz.w/2,ecy=tz.y+tz.h/2;ctx.beginPath();ctx.ellipse(ecx,ecy,Math.abs(tz.w/2)||1,Math.abs(tz.h/2)||1,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.7;ctx.stroke()}
+  ctx.setLineDash([]); ctx.globalAlpha=1
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  HIT TEST
+// ─────────────────────────────────────────────────────────────────
+function hitEl(elements, x, y, cW) {
+  for (let i=elements.length-1;i>=0;i--) {
+    const el=elements[i]; const r=playerRadius(cW)*1.2
+    if(el.type?.startsWith('zone')) {
+      if(el.type==='zone-rect'){if(x>=el.x&&x<=el.x+el.w&&y>=el.y&&y<=el.y+el.h)return el}
+      else{if(((x-(el.x+el.w/2))/(el.w/2))**2+((y-(el.y+el.h/2))/(el.h/2))**2<=1)return el}
+    } else if(el.type==='text'){if(x>=el.x-6&&y>=el.y-6&&x<=el.x+200&&y<=el.y+(el.fontSize||13)+6)return el}
+    else{if(Math.hypot(x-el.x,y-el.y)<=r)return el}
+  }; return null
+}
+function hitArrow(arrows, x, y) {
+  for(let i=arrows.length-1;i>=0;i--){const a=arrows[i];if(distSeg(x,y,a.x1,a.y1,a.x2,a.y2)<9)return a}; return null
+}
+function distSeg(px,py,x1,y1,x2,y2) {
+  const dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy; if(!l2)return Math.hypot(px-x1,py-y1)
+  const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l2)); return Math.hypot(px-(x1+t*dx),py-(y1+t*dy))
+}
+
+let _uid=0
+function uid() { return 'e'+(++_uid)+'_'+Date.now() }
+
+// ─────────────────────────────────────────────────────────────────
+//  ESTADO BOARD (useReducer)
+// ─────────────────────────────────────────────────────────────────
+const INIT_BOARD = { elements:[], arrows:[], selected:null, history:[] }
+
+function boardReducer(state, action) {
+  const save = (s) => ({ ...s, history:[...s.history, {elements:JSON.parse(JSON.stringify(s.elements)),arrows:JSON.parse(JSON.stringify(s.arrows))}].slice(-50) })
+  switch(action.type) {
+    case 'ADD_EL':    { const s=save(state); return {...s, elements:[...s.elements, action.el]} }
+    case 'ADD_ARR':   { const s=save(state); return {...s, arrows:[...s.arrows, action.arr]} }
+    case 'MOVE_EL':   return {...state, elements:state.elements.map(e=>e.id===action.id?{...e,x:action.x,y:action.y}:e)}
+    case 'SELECT':    return {...state, selected:action.sel}
+    case 'UPDATE_SEL':{ const {id,isArrow,...patch}=action; return isArrow ? {...state,arrows:state.arrows.map(a=>a.id===id?{...a,...patch}:a)} : {...state,elements:state.elements.map(e=>e.id===id?{...e,...patch}:e)} }
+    case 'DEL_SEL':   { if(!state.selected)return state; const s=save(state); const{id,isArrow}=s.selected; return {...s,elements:isArrow?s.elements:s.elements.filter(e=>e.id!==id),arrows:isArrow?s.arrows.filter(a=>a.id!==id):s.arrows,selected:null} }
+    case 'LAYER':     { if(!state.selected||state.selected.isArrow)return state; const arr=[...state.elements]; const i=arr.findIndex(e=>e.id===state.selected.id); if(action.dir==='front'&&i<arr.length-1)[arr[i],arr[i+1]]=[arr[i+1],arr[i]]; if(action.dir==='back'&&i>0)[arr[i],arr[i-1]]=[arr[i-1],arr[i]]; return {...state,elements:arr} }
+    case 'UNDO':      { if(!state.history.length)return state; const prev=state.history[state.history.length-1]; return {...state,...prev,history:state.history.slice(0,-1),selected:null} }
+    case 'CLEAR':     { const s=save(state); return {...s,elements:[],arrows:[],selected:null} }
+    case 'LOAD':      return {...INIT_BOARD, elements:action.elements||[], arrows:action.arrows||[]}
+    default:          return state
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  ESTILOS CSS (inyectados una vez)
+// ─────────────────────────────────────────────────────────────────
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+.ct-root *,ct-root *::before,.ct-root *::after{box-sizing:border-box;margin:0;padding:0}
+.ct-root{
+  --bg:#0a0b0f;--s1:#111318;--s2:#181b23;--s3:#1f2230;
+  --border:#252836;--border2:#2e3245;
+  --accent:#00ff88;--accentb:#00e5ff;--red:#ef4444;--blue:#3b82f6;
+  --text:#dde1f0;--muted:#5a6080;--muted2:#3a3f55;
+  font-family:'Syne',sans-serif;color:var(--text);background:var(--bg);
+  display:flex;flex-direction:column;overflow:hidden;user-select:none;
+  position:absolute;top:0;left:0;right:0;bottom:0;z-index:10;
+}
+.ct-header{height:50px;background:var(--s1);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 14px;flex-shrink:0;overflow-x:auto}
+.ct-header.edit-mode{border-bottom-color:var(--blue)}
+.ct-workspace{flex:1;display:flex;overflow:hidden}
+.ct-sidebar{width:215px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0}
+.ct-sidebar::-webkit-scrollbar{width:3px}.ct-sidebar::-webkit-scrollbar-thumb{background:var(--border2)}
+.ct-sbl{font-size:9px;font-weight:700;letter-spacing:1.8px;color:var(--muted);text-transform:uppercase;padding:11px 14px 5px}
+.ct-sbb{padding:0 8px 8px}
+.ct-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.ct-grid.s1{grid-template-columns:1fr}
+.ct-tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px 4px;background:var(--s2);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:9px;color:var(--muted);transition:all .12s;text-align:center;line-height:1.3}
+.ct-tool .ti{font-size:17px;line-height:1}
+.ct-tool:hover{background:var(--s3);border-color:var(--border2);color:var(--text)}
+.ct-tool.on{background:rgba(0,255,136,.07);border-color:var(--accent);color:var(--accent)}
+.ct-tool.wide{grid-column:span 2;flex-direction:row;gap:8px;padding:6px 10px;font-size:10px;justify-content:flex-start}
+.ct-div{height:1px;background:var(--border);margin:4px 8px}
+.ct-canvas-area{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg);background-image:radial-gradient(ellipse at 30% 20%,rgba(0,229,255,.04) 0%,transparent 50%);overflow:hidden;position:relative}
+.ct-canvas{border-radius:3px;cursor:crosshair;display:block}
+.ct-propbar{width:195px;background:var(--s1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0}
+.ct-propbar::-webkit-scrollbar{width:3px}.ct-propbar::-webkit-scrollbar-thumb{background:var(--border2)}
+.ct-prop-title{font-size:9px;font-weight:700;letter-spacing:1.8px;color:var(--muted);text-transform:uppercase;padding:11px 14px 8px;border-bottom:1px solid var(--border)}
+.ct-prop-row{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;gap:8px;border-bottom:1px solid rgba(37,40,54,.8)}
+.ct-prop-lbl{font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.ct-pinput{background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'Syne',sans-serif;font-size:10px;padding:4px 7px;width:80px;text-align:right}
+.ct-pinput:focus{outline:none;border-color:var(--accentb)}
+.ct-pinput.w{width:110px}
+.ct-seg{display:flex;gap:2px;flex-wrap:wrap}
+.ct-sopt{padding:3px 7px;background:var(--s2);border:1px solid var(--border);border-radius:4px;font-size:9px;cursor:pointer;color:var(--muted);transition:all .1s}
+.ct-sopt:hover{border-color:var(--border2);color:var(--text)}
+.ct-sopt.on{background:rgba(0,229,255,.08);border-color:var(--accentb);color:var(--accentb)}
+.ct-psec{padding:9px 12px 3px}
+.ct-psec-title{font-size:8px;font-weight:700;letter-spacing:1.5px;color:var(--muted2);text-transform:uppercase;margin-bottom:5px}
+.ct-del-btn{margin:8px 12px 12px;padding:8px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:6px;color:var(--red);font-size:10px;font-weight:600;cursor:pointer;width:calc(100% - 24px);transition:all .13s;font-family:'Syne',sans-serif}
+.ct-del-btn:hover{background:rgba(239,68,68,.15);border-color:var(--red)}
+.ct-empty-prop{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:10px;padding:20px;text-align:center}
+.ct-bottombar{height:52px;background:var(--s1);border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0;overflow-x:auto}
+.ct-play-btn{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:bold;transition:.2s;flex-shrink:0}
+.ct-frame-chip{min-width:36px;height:36px;border-radius:7px;border:1px solid var(--border);background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;position:relative;flex-shrink:0}
+.ct-frame-chip:hover{border-color:var(--border2)}
+.ct-frame-chip.on{background:var(--accent);border-color:var(--accent);color:#000}
+.ct-frame-chip .del-x{position:absolute;top:-7px;right:-7px;background:var(--red);border:none;color:#fff;width:16px;height:16px;border-radius:50%;font-size:.55rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ct-tbtn{height:30px;padding:0 10px;background:transparent;border:1px solid transparent;border-radius:5px;color:var(--muted);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .13s;white-space:nowrap}
+.ct-tbtn:hover{background:var(--s3);border-color:var(--border2);color:var(--text)}
+.ct-tbtn.on{background:rgba(0,255,136,.07);border-color:var(--accent);color:var(--accent)}
+.ct-tbtn.blue{color:var(--blue)}
+.ct-tbtn.blue:hover{border-color:var(--blue);color:var(--blue)}
+.ct-save-btn{padding:7px 18px;border:none;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0}
+.ct-input{padding:7px 10px;background:#000;border:1px solid #333;border-radius:6px;color:#fff;font-family:'Syne',sans-serif;font-size:.85rem;outline:none}
+.ct-select{padding:6px 8px;background:#000;border:1px solid #333;border-radius:6px;color:var(--accent);font-weight:bold;font-size:.8rem;outline:none;cursor:pointer}
+.ct-status{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-left:auto;white-space:nowrap}
+/* Pitch config panel */
+.ct-ppanel{position:absolute;top:0;right:0;width:250px;height:100%;background:var(--s2);border-left:1px solid var(--border2);box-shadow:-8px 0 32px rgba(0,0,0,.5);z-index:50;display:flex;flex-direction:column;overflow-y:auto}
+.ct-ppanel::-webkit-scrollbar{width:3px}.ct-ppanel::-webkit-scrollbar-thumb{background:var(--border2)}
+.ct-pp-head{padding:12px 14px 10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.ct-pp-title{font-size:11px;font-weight:700}
+.ct-pp-close{width:22px;height:22px;border-radius:4px;background:var(--s3);border:1px solid var(--border);cursor:pointer;color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center}
+.ct-pp-row{display:flex;align-items:flex-start;justify-content:space-between;padding:8px 14px;gap:8px;border-bottom:1px solid rgba(37,40,54,.6);flex-shrink:0}
+.ct-pp-lbl{font-size:10px;color:var(--muted);padding-top:1px}
+.ct-mat-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:6px 14px 8px;flex-shrink:0}
+.ct-mat-opt{padding:7px 6px;border-radius:5px;background:var(--s3);border:1px solid var(--border);font-size:9px;cursor:pointer;text-align:center;transition:all .12s;color:var(--muted)}
+.ct-mat-opt:hover{border-color:var(--border2);color:var(--text)}
+.ct-mat-opt.on{border-color:var(--accentb);color:var(--accentb);background:rgba(0,229,255,.07)}
+.ct-swatch-row{display:flex;gap:5px;flex-wrap:wrap}
+.ct-swatch{width:22px;height:22px;border-radius:5px;border:2px solid transparent;cursor:pointer;transition:all .1s}
+.ct-swatch:hover,.ct-swatch.on{border-color:var(--accentb);transform:scale(1.15)}
+/* Mobile */
+.ct-mob-overlay-panel{position:absolute;bottom:60px;left:10px;right:10px;background:rgba(20,20,20,.95);border:1px solid #333;border-radius:16px;padding:14px;z-index:50;backdrop-filter:blur(10px);box-shadow:0 -10px 30px rgba(0,0,0,.5);max-height:60vh;overflow-y:auto}
+.ct-mob-float-bar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:20;display:flex;background:rgba(20,20,20,.88);padding:5px;border-radius:30px;border:1px solid #333;backdrop-filter:blur(10px);gap:4px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ct-mob-float-btn{width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;color:#fff;background:transparent;font-size:1.25rem}
+.ct-mob-float-btn.on{background:var(--accent);color:#000}
+/* Modal */
+.ct-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
+.ct-modal{background:#111;width:100%;max-width:800px;border:2px solid var(--accent);border-radius:12px;padding:28px;max-height:95vh;overflow-y:auto}
+.ct-modal.blue-border{border-color:var(--blue)}
+.ct-modal h2{margin:0;color:var(--accent);font-size:1.4rem;text-transform:uppercase}
+.ct-modal h2.blue{color:var(--blue)}
+.ct-modal-lbl{display:block;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.ct-modal-input{width:100%;padding:10px;background:#000;border:1px solid #333;border-radius:6px;color:#fff;font-family:'Syne',sans-serif;font-size:.9rem;outline:none;box-sizing:border-box}
+.ct-modal-input:focus{border-color:var(--accentb)}
+.ct-btn-primary{padding:8px 18px;background:var(--accent);color:#000;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
+.ct-btn-sec{padding:8px 14px;background:#1a1a1a;border:1px solid #333;border-radius:7px;color:#fff;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif}
+@keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.ct-modal{animation:fadeIn .2s}
+.ct-mob-overlay-panel{animation:slideUp .2s ease-out}
+`
+
+// ─────────────────────────────────────────────────────────────────
+//  COMPONENTE PRINCIPAL
+// ─────────────────────────────────────────────────────────────────
 const CreadorTareas = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { showToast } = useToast();
-  
-  const tareaAEditar = location.state?.editando;
-  const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null);
+  const location  = useLocation()
+  const navigate  = useNavigate()
+  const { showToast } = useToast()
 
-  // --- RESPONSIVE STATE ---
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-  const [panelMovil, setPanelMovil] = useState(null); // 'elementos', 'trazos', 'animacion', 'config'
+  const tareaAEditar = location.state?.editando
+  const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null)
 
-  const [frames, setFrames] = useState([
-    { id: 'frame-0', elementos: [], lineas: [] }
-  ]);
-  const [currentFrameIdx, setCurrentFrameIdx] = useState(0);
+  // ── Board state ──
+  const [board, dispatchBoard] = useReducer(boardReducer, INIT_BOARD)
+  const [tool, setTool] = useState('select')
 
-  const isPlayingRef = useRef(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [animElements, setAnimElements] = useState(null);
+  // ── Pista config ──
+  const [pitchCfg, setPitchCfg] = useState({
+    variant:   'selected' in (tareaAEditar?.editor_data?.cancha || {}) ? tareaAEditar.editor_data.cancha.tamaño : '40x20',
+    material:  'azul',
+    lineColor: '#ffffff',
+    showZones: true,
+    showDims:  true,
+    goals:     'both',
+  })
 
-  const [elementos, setElementos] = useState([]);
-  const [lineas, setLineas] = useState([]);
+  // ── Frames (animación) ──
+  const [frames, setFrames] = useState([{ id:'frame-0', elements:[], arrows:[] }])
+  const [frameIdx, setFrameIdx] = useState(0)
+  const isPlayingRef = useRef(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [animSnapshot, setAnimSnapshot] = useState(null) // {elements, arrows} durante anim
 
-  const [selectedId, setSelectedId] = useState(null);
-  const [herramientaSeleccionada, setHerramientaSeleccionada] = useState(null);
-  const [modoAccion, setModoAccion] = useState('mover');
-  
-  const [dibujoConfig, setDibujoConfig] = useState({
-    color: '#ffffff', tipoTrazo: 'continua', grosor: 3, transparencia: 1.0, topeFinal: 'triangulo'
-  });
+  // ── Flecha/zona dibujando ──
+  const tempRef = useRef({ arrow:null, zone:null })
+  const ixRef   = useRef({ dragging:false, dOffX:0, dOffY:0, drawingArrow:null, drawingZone:null, tempTextPos:null })
 
-  const [canchaConfig, setCanchaConfig] = useState({ tamaño: '40x20', color: '#064e3b' });
-  const [nombreTarea, setNombreTarea] = useState('');
-  const [mostrarModal, setMostrarModal] = useState(false);
-  
-  // --- ESTADO DE LA FICHA TÉCNICA ---
+  // ── Canvas / resize ──
+  const canvasRef  = useRef(null)
+  const areaRef    = useRef(null)
+  const [cvSize, setCvSize] = useState({ w:800, h:500 })
+  const [,forceUpdate] = useReducer(x=>x+1,0)
+
+  // ── UI state ──
+  const [showPitch, setShowPitch]   = useState(false)
+  const [showModal, setShowModal]   = useState(false)
+  const [esMovil, setEsMovil]       = useState(window.innerWidth<=768)
+  const [panelMovil, setPanelMovil] = useState(null) // 'elementos'|'trazos'|'anim'|'config'
+  const [nombreTarea, setNombreTarea] = useState(tareaAEditar?.titulo||'')
+  const [textModal, setTextModal]   = useState(false)
+  const [textValue, setTextValue]   = useState('')
+
   const [fichaTecnica, setFichaTecnica] = useState({
-    categoria_ejercicio: 'Táctico', fase_juego: 'Ataque Posicional', duracion_estimada: 15,
-    intensidad_rpe: 6, jugadores_involucrados: '4v4', objetivo_principal: '', descripcion: '', video_url: ''
-  });
+    categoria_ejercicio: tareaAEditar?.categoria_ejercicio || 'Táctico',
+    fase_juego:          tareaAEditar?.fase_juego          || 'Ataque Posicional',
+    duracion_estimada:   tareaAEditar?.duracion_estimada   || 15,
+    intensidad_rpe:      tareaAEditar?.intensidad_rpe      || 6,
+    jugadores_involucrados: tareaAEditar?.jugadores_involucrados || '',
+    objetivo_principal:  tareaAEditar?.objetivo_principal  || '',
+    descripcion:         tareaAEditar?.descripcion         || '',
+    video_url:           tareaAEditar?.video_url           || '',
+  })
 
-  const stageRef = useRef(null);
-  const mainGroupRef = useRef(null);
-  const trRef = useRef(null);
-  const isDrawing = useRef(false);
-
-  const containerRef = useRef(null);
-  const [stageSize, setStageSize] = useState({ containerW: 900, containerH: 500, scale: 1, rotation: 0 });
-
-  const getDimensionesLógicas = () => {
-    switch (canchaConfig.tamaño) {
-      case '20x20_mitad': return { w: 500, h: 500 };
-      case '20x20_central': return { w: 500, h: 500 };
-      case '28x20': return { w: 700, h: 500 };
-      default: return { w: 900, h: 500 };
-    }
-  };
-  const logicalSize = getDimensionesLógicas();
-
+  // ── CSS inject ──
   useEffect(() => {
-    const handleResize = () => {
-      const anchoVentana = window.innerWidth;
-      const esCelular = anchoVentana <= 768;
-      setEsMovil(esCelular);
-      
-      if (containerRef.current) {
-        const containerW = containerRef.current.clientWidth;
-        const containerH = containerRef.current.clientHeight;
-        const logW = logicalSize.w;
-        const logH = logicalSize.h;
-        
-        let scale;
-        let rotation = 0;
+    if (document.getElementById('ct-styles')) return
+    const s = document.createElement('style'); s.id='ct-styles'; s.textContent=CSS
+    document.head.appendChild(s)
+  }, [])
 
-        if (esCelular && containerH > containerW) {
-          rotation = 90;
-          scale = Math.min(containerW / logH, containerH / logW) * 0.95;
-        } else {
-          rotation = 0;
-          scale = Math.min(containerW / logW, containerH / logH) * 0.95;
-        }
-
-        setStageSize({ containerW, containerH, scale, rotation });
-      }
-    };
-    
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    setTimeout(handleResize, 150);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [canchaConfig.tamaño, logicalSize.w, logicalSize.h, panelMovil]);
-
+  // ── Load tarea a editar ──
   useEffect(() => {
-    if (tareaAEditar) {
-      setNombreTarea(tareaAEditar.titulo);
-      if (tareaAEditar.editor_data) {
-        setCanchaConfig(tareaAEditar.editor_data.cancha || { tamaño: '40x20', color: '#064e3b' });
-        
-        let loadedFrames = [];
-        if (tareaAEditar.editor_data.frames && tareaAEditar.editor_data.frames.length > 0) {
-           loadedFrames = tareaAEditar.editor_data.frames;
-        } else {
-           loadedFrames = [{
-             id: 'frame-0',
-             elementos: tareaAEditar.editor_data.elementos || [],
-             lineas: tareaAEditar.editor_data.lineas || []
-           }];
-        }
-        setFrames(loadedFrames);
-        setElementos(loadedFrames[0].elementos || []);
-        setLineas(loadedFrames[0].lineas || []);
-      }
-      setFichaTecnica({...tareaAEditar});
+    if (!tareaAEditar?.editor_data) return
+    const ed = tareaAEditar.editor_data
+    // Support old format (konva) and new format
+    let loadedFrames = []
+    if (ed.frames?.length) {
+      // Convert old konva format if needed
+      loadedFrames = ed.frames.map(f => ({
+        id:       f.id || uid(),
+        elements: f.elements || f.elementos?.map(convertOldEl) || [],
+        arrows:   f.arrows   || f.lineas?.map(convertOldLine)  || [],
+      }))
+    } else {
+      loadedFrames = [{
+        id:'frame-0',
+        elements: ed.elements || ed.elementos?.map(convertOldEl) || [],
+        arrows:   ed.arrows   || ed.lineas?.map(convertOldLine)  || [],
+      }]
     }
-  }, [tareaAEditar]);
+    setFrames(loadedFrames)
+    const f0 = loadedFrames[0]
+    dispatchBoard({ type:'LOAD', elements:f0.elements, arrows:f0.arrows })
+    if (ed.cancha) setPitchCfg(p=>({...p, variant: ed.cancha.tamaño||'40x20', material: ed.cancha.material||'verde' }))
+  }, [])
 
+  // ── Resize ──
+  useEffect(() => {
+    function measure() {
+      setEsMovil(window.innerWidth<=768)
+      if (!areaRef.current) return
+      const mW=areaRef.current.clientWidth-40, mH=areaRef.current.clientHeight-40
+      const vrt = PITCH_VARIANTS[pitchCfg.variant]||PITCH_VARIANTS['40x20']
+      const ratio = vrt.mW/vrt.mH
+      let w=Math.min(mW,mH*ratio), h=w/ratio
+      if(h>mH){h=mH;w=h*ratio}
+      setCvSize({w:Math.round(w),h:Math.round(h)})
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    const t = setTimeout(measure,150)
+    return () => { window.removeEventListener('resize', measure); clearTimeout(t) }
+  }, [pitchCfg.variant, panelMovil])
+
+  // ── Render loop ──
+  useEffect(() => {
+    const cv = canvasRef.current; if(!cv)return
+    const ctx = cv.getContext('2d')
+    // During animation, use animSnapshot if available
+    const displayEls  = isPlaying && animSnapshot ? animSnapshot.elements : board.elements
+    const displayArrs = isPlaying && animSnapshot ? animSnapshot.arrows   : board.arrows
+    renderPitch(ctx, cvSize.w, cvSize.h, pitchCfg)
+    renderElements(ctx, displayEls, displayArrs, board.selected, cvSize.w, tempRef.current.arrow, tempRef.current.zone)
+  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying])
+
+  // ── FRAME MANAGEMENT ──
+  // Save current board state into frames array
+  function syncCurrentFrame(overrideIdx) {
+    const idx = overrideIdx ?? frameIdx
+    setFrames(prev => {
+      const updated = [...prev]
+      updated[idx] = { ...updated[idx], elements: JSON.parse(JSON.stringify(board.elements)), arrows: JSON.parse(JSON.stringify(board.arrows)) }
+      return updated
+    })
+  }
+
+  function cambiarFrame(newIdx) {
+    if (isPlaying) return
+    syncCurrentFrame(frameIdx)
+    const f = frames[newIdx]
+    dispatchBoard({ type:'LOAD', elements: f.elements||[], arrows: f.arrows||[] })
+    setFrameIdx(newIdx)
+  }
+
+  function agregarFrameVacio() {
+    if (isPlaying) return
+    syncCurrentFrame(frameIdx)
+    const newFrame = { id:`frame-${Date.now()}`, elements:[], arrows:[] }
+    setFrames(prev => { const a=[...prev]; a.push(newFrame); return a })
+    dispatchBoard({ type:'LOAD', elements:[], arrows:[] })
+    setFrameIdx(prev => prev+1) // will be frames.length after state update
+  }
+
+  function duplicarFrameActual() {
+    if (isPlaying) return
+    syncCurrentFrame(frameIdx)
+    setFrames(prev => {
+      const a=[...prev]
+      a[frameIdx] = {...a[frameIdx], elements:JSON.parse(JSON.stringify(board.elements)), arrows:JSON.parse(JSON.stringify(board.arrows))}
+      const newFrame = { id:`frame-${Date.now()}`, elements:JSON.parse(JSON.stringify(board.elements)), arrows:JSON.parse(JSON.stringify(board.arrows)) }
+      a.splice(frameIdx+1, 0, newFrame)
+      return a
+    })
+    setFrameIdx(prev=>prev+1)
+  }
+
+  function eliminarFrame(idx) {
+    if (isPlaying) return
+    if (frames.length<=1) { showToast("No podés borrar el único fotograma.","warning"); return }
+    if (!window.confirm("¿Borrar este fotograma?")) return
+    const newFrames = frames.filter((_,i)=>i!==idx)
+    setFrames(newFrames)
+    const newIdx = frameIdx>=newFrames.length ? newFrames.length-1 : frameIdx
+    dispatchBoard({ type:'LOAD', elements:newFrames[newIdx].elements||[], arrows:newFrames[newIdx].arrows||[] })
+    setFrameIdx(newIdx)
+  }
+
+  // ── ANIMACIÓN INTERPOLADA (idéntica al original) ──
   const togglePlay = async () => {
     if (isPlayingRef.current) {
-      isPlayingRef.current = false;
-      setIsPlaying(false);
-      setAnimElements(null);
-      return;
+      isPlayingRef.current=false; setIsPlaying(false); setAnimSnapshot(null); return
     }
+    if (frames.length<2) { showToast("Necesitás al menos 2 fotogramas para reproducir una jugada.","warning"); return }
 
-    if (frames.length < 2) return showToast("Necesitás al menos 2 fotogramas para reproducir una jugada.", "warning");
+    // Save current frame before playing
+    syncCurrentFrame(frameIdx)
 
-    isPlayingRef.current = true;
-    setIsPlaying(true);
-    setSelectedId(null);
-    setModoAccion('mover');
-    if(esMovil) setPanelMovil(null);
+    isPlayingRef.current=true; setIsPlaying(true); setTool('select')
+    if(esMovil) setPanelMovil(null)
 
-    const DURATION = 800;
-    const PAUSE = 400;
+    const DURATION=800, PAUSE=400
 
-    for (let i = 0; i < frames.length - 1; i++) {
-      if (!isPlayingRef.current) break;
+    // Build the complete frames array with current state synced
+    const allFrames = [...frames]
+    allFrames[frameIdx] = { ...allFrames[frameIdx], elements:JSON.parse(JSON.stringify(board.elements)), arrows:JSON.parse(JSON.stringify(board.arrows)) }
 
-      setCurrentFrameIdx(i);
-      const frameA = frames[i];
-      const frameB = frames[i + 1];
-      
-      setLineas(frameA.lineas || []);
+    for (let i=0; i<allFrames.length-1; i++) {
+      if (!isPlayingRef.current) break
+      const fA = allFrames[i], fB = allFrames[i+1]
+
+      // Show frame A arrows
+      setAnimSnapshot({ elements: fA.elements||[], arrows: fA.arrows||[] })
 
       await new Promise(resolve => {
-        let startTime = null;
-        const animate = (timestamp) => {
-          if (!isPlayingRef.current) return resolve();
-          if (!startTime) startTime = timestamp;
-          
-          const elapsed = timestamp - startTime;
-          let progress = elapsed / DURATION;
-          if (progress > 1) progress = 1;
+        let startTime=null
+        const animate = (ts) => {
+          if (!isPlayingRef.current) return resolve()
+          if (!startTime) startTime=ts
+          const elapsed=ts-startTime
+          let progress=elapsed/DURATION; if(progress>1)progress=1
+          const ease = progress<.5 ? 2*progress*progress : 1-Math.pow(-2*progress+2,2)/2
 
-          const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+          const interpolated = (fA.elements||[]).map(elA => {
+            const elB=(fB.elements||[]).find(b=>b.id===elA.id)
+            if(!elB) return elA
+            return { ...elA, x:elA.x+(elB.x-elA.x)*ease, y:elA.y+(elB.y-elA.y)*ease }
+          })
+          const newEls = (fB.elements||[]).filter(b=>!(fA.elements||[]).find(a=>a.id===b.id))
+          setAnimSnapshot({ elements:[...interpolated,...(progress>.8?newEls:[])], arrows: fA.arrows||[] })
 
-          const interpolatedElements = (frameA.elementos || []).map(elA => {
-            const elB = (frameB.elementos || []).find(b => b.id === elA.id);
-            if (!elB) return elA;
-
-            return {
-              ...elA,
-              x: elA.x + (elB.x - elA.x) * ease,
-              y: elA.y + (elB.y - elA.y) * ease,
-              rotation: elA.rotation + (elB.rotation - elA.rotation) * ease,
-              scaleX: elA.scaleX + ((elB.scaleX || 1) - (elA.scaleX || 1)) * ease,
-              scaleY: elA.scaleY + ((elB.scaleY || 1) - (elA.scaleY || 1)) * ease,
-            };
-          });
-
-          const nuevosElements = (frameB.elementos || []).filter(b => !(frameA.elementos || []).find(a => a.id === b.id));
-          setAnimElements([...interpolatedElements, ...(progress > 0.8 ? nuevosElements : [])]);
-
-          if (progress < 1) requestAnimationFrame(animate);
-          else resolve();
-        };
-        requestAnimationFrame(animate);
-      });
-
-      if (!isPlayingRef.current) break;
-      setCurrentFrameIdx(i + 1);
-      setLineas(frameB.lineas || []);
-      setAnimElements(frameB.elementos || []);
-      
-      await new Promise(res => setTimeout(res, PAUSE));
-    }
-
-    isPlayingRef.current = false;
-    setIsPlaying(false);
-    setAnimElements(null);
-    setElementos(frames[frames.length - 1].elementos || []);
-  };
-
-  const cambiarFrame = (newIdx) => {
-    if (isPlaying) return;
-    const newFrames = [...frames];
-    newFrames[currentFrameIdx] = { ...newFrames[currentFrameIdx], elementos, lineas };
-    setFrames(newFrames);
-    setElementos(newFrames[newIdx].elementos || []);
-    setLineas(newFrames[newIdx].lineas || []);
-    setCurrentFrameIdx(newIdx);
-    setSelectedId(null);
-  };
-
-  const agregarFrameVacio = () => {
-    if (isPlaying) return;
-    const newFramesArray = [...frames];
-    newFramesArray[currentFrameIdx] = { ...newFramesArray[currentFrameIdx], elementos, lineas };
-    newFramesArray.push({ id: `frame-${Date.now()}`, elementos: [], lineas: [] });
-    setFrames(newFramesArray);
-    setElementos([]); setLineas([]);
-    setCurrentFrameIdx(newFramesArray.length - 1);
-  };
-
-  const duplicarFrameActual = () => {
-    if (isPlaying) return;
-    const newFramesArray = [...frames];
-    newFramesArray[currentFrameIdx] = { ...newFramesArray[currentFrameIdx], elementos, lineas };
-    const newFrame = { id: `frame-${Date.now()}`, elementos: JSON.parse(JSON.stringify(elementos)), lineas: JSON.parse(JSON.stringify(lineas)) };
-    newFramesArray.splice(currentFrameIdx + 1, 0, newFrame);
-    setFrames(newFramesArray);
-    setCurrentFrameIdx(currentFrameIdx + 1);
-  };
-
-  const eliminarFrame = (idx) => {
-    if (isPlaying) return;
-    if (frames.length <= 1) return showToast("No podés borrar el único fotograma.", "warning");
-    if (!window.confirm("¿Seguro que querés borrar este fotograma?")) return;
-    const newFrames = frames.filter((_, index) => index !== idx);
-    setFrames(newFrames);
-    const newIdx = currentFrameIdx >= newFrames.length ? newFrames.length - 1 : currentFrameIdx;
-    setElementos(newFrames[newIdx].elementos || []);
-    setLineas(newFrames[newIdx].lineas || []);
-    setCurrentFrameIdx(newIdx);
-  };
-
-  const herramientas = [
-    { id: 'j_rojo', tipo: 'jugador', color: '#ef4444', texto: '', label: 'Jugador Rojo', radio: 18 },
-    { id: 'j_azul', tipo: 'jugador', color: '#3b82f6', texto: '', label: 'Jugador Azul', radio: 18 },
-    { id: 'j_verde', tipo: 'jugador', color: '#22c55e', texto: '', label: 'Jugador Verde', radio: 18 },
-    { id: 'j_rosa', tipo: 'jugador', color: '#ec4899', texto: '', label: 'Jugador Rosa', radio: 18 },
-    { id: 'arq_ama', tipo: 'arquero', color: '#eab308', texto: 'A', label: 'Arquero Amarillo', radio: 20 },
-    { id: 'arq_vio', tipo: 'arquero', color: '#a855f7', texto: 'A', label: 'Arquero Violeta', radio: 20 },
-    { id: 'staff', tipo: 'staff', color: '#111', texto: 'DT', label: 'Staff Técnico', radio: 18 },
-    { id: 'pelota', tipo: 'pelota', label: 'Pelota', radio: 8 },
-    { id: 'cono_alto', tipo: 'cono_alto', color: '#f97316', label: 'Cono Alto', radio: 8 },
-    { id: 'cono_plato', tipo: 'cono_plato', color: '#facc15', label: 'Cono Plano', radio: 8 },
-    { id: 'valla', tipo: 'valla', color: '#fbbf24', label: 'Valla', w: 40, h: 10 },
-    { id: 'escalera', tipo: 'escalera', color: '#94a3b8', label: 'Escalera', w: 100, h: 25 },
-    { id: 'mini_arco', tipo: 'mini_arco', color: '#fff', label: 'Mini Arco', w: 40, h: 20 },
-    { id: 'arco_fijo', tipo: 'arco', color: '#fff', label: 'Arco Móvil', w: 80, h: 30 },
-  ];
-
-  useEffect(() => {
-    if (trRef.current) {
-      if (selectedId) {
-        const node = stageRef.current.findOne('#' + selectedId);
-        if (node) { trRef.current.nodes([node]); trRef.current.getLayer().batchDraw(); }
-      } else {
-        trRef.current.nodes([]);
-      }
-    }
-  }, [selectedId, elementos, lineas]);
-
-  const deshacerUltimoTrazo = () => { if (!isPlaying && lineas.length > 0) setLineas(prev => prev.slice(0, -1)); };
-
-  const getLogicalPointerPos = () => {
-    const stage = stageRef.current;
-    const pointerPos = stage.getPointerPosition();
-    if (!mainGroupRef.current) return pointerPos;
-    const transform = mainGroupRef.current.getAbsoluteTransform().copy();
-    transform.invert();
-    return transform.point(pointerPos);
-  };
-
-  const handleStageMouseDown = (e) => {
-    if (esMovil && panelMovil) setPanelMovil(null);
-
-    if (isPlaying) return;
-    if (e.target.getParent()?.className === 'Transformer') return;
-    const isBackground = e.target.name() === 'fondo_cancha' || e.target === e.target.getStage();
-
-    if (isBackground) {
-      setSelectedId(null);
-      const pos = getLogicalPointerPos();
-
-      if (modoAccion === 'mover' && herramientaSeleccionada) {
-        const nuevoElemento = { ...herramientaSeleccionada, id: 'el-' + Date.now(), x: pos.x, y: pos.y, rotation: 0, scaleX: 1, scaleY: 1 };
-        setElementos([...elementos, nuevoElemento]);
-      }
-      else if (modoAccion !== 'mover') {
-        isDrawing.current = true;
-        const nuevaLinea = {
-          id: 'li-' + Date.now(),
-          tipoTool: modoAccion,
-          puntos: [pos.x, pos.y, pos.x, pos.y],
-          ...dibujoConfig
-        };
-        setLineas([...lineas, nuevaLinea]);
-      }
-    }
-  };
-
-  const handleMouseMove = (e) => {
-    if (isPlaying || !isDrawing.current || modoAccion === 'mover') return;
-    const pos = getLogicalPointerPos();
-    
-    setLineas(prev => {
-      const nuevasLineas = [...prev];
-      const ultima = { ...nuevasLineas[nuevasLineas.length - 1] };
-      
-      if (modoAccion === 'dibujar_conduccion') ultima.puntos = [...ultima.puntos, pos.x, pos.y];
-      else ultima.puntos = [ultima.puntos[0], ultima.puntos[1], pos.x, pos.y];
-      
-      nuevasLineas[nuevasLineas.length - 1] = ultima;
-      return nuevasLineas;
-    });
-  };
-
-  const handleMouseUp = () => { isDrawing.current = false; };
-
-  const RenderElemento = ({ el }) => {
-    const scaleFactor = el.radio / 35;
-    switch(el.tipo) {
-      case 'jugador': case 'arquero': case 'staff':
-        return (
-          <Group scaleX={scaleFactor} scaleY={scaleFactor}>
-            <Group x={-67} y={-40}>
-                <Path data="M 80 10 A 40 40 0 0 0 80 70 L 65 65 A 25 25 0 0 1 65 15 Z M 84 40 A 10 10 0 1 1 50 40 A 10 10 0 1 1 84 40" fill={el.color} stroke="black" strokeWidth={2} />
-            </Group>
-            <Text text={el.texto} fontSize={22} fontStyle="bold" fill={el.color === '#fff' || el.color === '#eab308' ? '#000' : '#fff'} x={-15} y={-11} width={30} align="center" />
-          </Group>
-        );
-      case 'pelota': return (<Group><Circle radius={el.radio} fill="#fff" stroke="#000" strokeWidth={1.5} /><Circle radius={el.radio * 0.4} fill="#000" /><Line points={[0, -(el.radio*0.4), 0, -el.radio]} stroke="#000" strokeWidth={1} /><Line points={[-(el.radio*0.3), (el.radio*0.3), -(el.radio*0.7), (el.radio*0.7)]} stroke="#000" strokeWidth={1} /><Line points={[(el.radio*0.3), (el.radio*0.3), (el.radio*0.7), (el.radio*0.7)]} stroke="#000" strokeWidth={1} /></Group>);
-      case 'cono_alto': return (<Group><Circle radius={el.radio + 2} fill="rgba(0,0,0,0.3)" x={2} y={2} /><Circle radius={el.radio} fill={el.color} stroke="#c2410c" strokeWidth={1} /><Circle radius={el.radio * 0.4} fill="#fff" opacity={0.8} /></Group>);
-      case 'cono_plato': return (<Group><Circle radius={el.radio} fill={el.color} stroke="#ca8a04" strokeWidth={1} /><Circle radius={el.radio * 0.3} fill={canchaConfig.color} stroke="rgba(0,0,0,0.2)" strokeWidth={1} /></Group>);
-      case 'valla': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={2} y={0} width={4} height={el.h} fill="#333" /><Rect x={el.w - 6} y={0} width={4} height={el.h} fill="#333" /><Rect x={0} y={el.h/2 - 2} width={el.w} height={4} fill={el.color} stroke="#000" strokeWidth={0.5} /></Group>);
-      case 'escalera': const rungs = []; const rungCount = 6; const rungSpacing = el.w / rungCount; for(let i = 0; i <= rungCount; i++) { rungs.push(<Rect key={i} x={i * rungSpacing - 1} y={0} width={2} height={el.h} fill="#facc15" />); } return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={0} width={el.w} height={2} fill={el.color} /><Rect x={0} y={el.h - 2} width={el.w} height={2} fill={el.color} />{rungs}</Group>);
-      case 'arco': case 'mini_arco': return (<Group x={-el.w/2} y={-el.h/2}><Path data={`M 0 0 L ${el.w} 0 L ${el.w - 5} ${el.h} L 5 ${el.h} Z`} fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" strokeWidth={1} dash={[2, 2]} /><Rect x={0} y={0} width={el.w} height={3} fill="#fff" stroke="#999" strokeWidth={0.5} /><Rect x={0} y={0} width={3} height={el.h} fill="#fff" stroke="#999" strokeWidth={0.5} /><Rect x={el.w - 3} y={0} width={3} height={el.h} fill="#fff" stroke="#999" strokeWidth={0.5} /></Group>);
-      default: return <Rect width={el.w} height={el.h} fill={el.color} stroke="#000" strokeWidth={1} x={-el.w/2} y={-el.h/2} />;
-    }
-  };
-
-  const DibujoCancha = () => {
-    const stroke = "rgba(255,255,255,0.7)"; const sw = 3; const midX = logicalSize.w / 2; const midY = logicalSize.h / 2; const padding = 20; const t = canchaConfig.tamaño;
-    return (<Group><Rect name="fondo_cancha" width={logicalSize.w} height={logicalSize.h} fill={canchaConfig.color} /><Rect name="fondo_cancha" x={padding} y={padding} width={logicalSize.w - padding * 2} height={logicalSize.h - padding * 2} stroke={stroke} strokeWidth={sw} cornerRadius={5} />{(t === '40x20' || t === '28x20' || t === '20x20_central') && (<Group><Line name="fondo_cancha" points={[midX, padding, midX, logicalSize.h - padding]} stroke={stroke} strokeWidth={sw} /><Circle name="fondo_cancha" x={midX} y={midY} radius={70} stroke={stroke} strokeWidth={sw} /><Circle name="fondo_cancha" x={midX} y={midY} radius={4} fill={stroke} /></Group>)}{t !== '20x20_central' && (<Group><Rect name="fondo_cancha" x={padding} y={midY - 100} width={100} height={200} stroke={stroke} strokeWidth={sw} cornerRadius={[0, 70, 70, 0]} /><Circle name="fondo_cancha" x={padding + 80} y={midY} radius={4} fill={stroke} />{(t === '40x20' || t === '28x20') && (<Group><Rect name="fondo_cancha" x={logicalSize.w - padding - 100} y={midY - 100} width={100} height={200} stroke={stroke} strokeWidth={sw} cornerRadius={[70, 0, 0, 70]} /><Circle name="fondo_cancha" x={logicalSize.w - padding - 80} y={midY} radius={4} fill={stroke} /></Group>)}</Group>)}</Group>);
-  };
-
-  const renderIconoHerramienta = (h) => {
-    switch (h.tipo) {
-      case 'jugador': case 'arquero': case 'staff': return (<svg width="24" height="24" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.5)', borderRadius: '4px' }}><path d="M 80 10 A 40 40 0 0 0 80 70 L 65 65 A 25 25 0 0 1 65 15 Z M 84 40 A 10 10 0 1 1 50 40 A 10 10 0 1 1 84 40" fill={h.color} stroke="black" strokeWidth="3" /></svg>);
-      case 'pelota': return <span style={{ fontSize: '1.2rem' }}>⚽</span>;
-      case 'cono_alto': return <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: '16px solid #f97316' }}></div>;
-      case 'cono_plato': return <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '4px solid #facc15' }}></div>;
-      case 'valla': return <div style={{ width: '24px', height: '14px', borderLeft: '3px solid #666', borderRight: '3px solid #666', borderTop: '4px solid #fbbf24' }}></div>;
-      case 'escalera': return <div style={{ width: '12px', height: '24px', background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, #facc15 3px, #facc15 5px)', borderLeft: '2px solid #94a3b8', borderRight: '2px solid #94a3b8' }}></div>;
-      case 'mini_arco': case 'arco': return <div style={{ width: '26px', height: '14px', borderTop: '2px solid #fff', borderLeft: '2px solid #fff', borderRight: '2px solid #fff', background: 'rgba(255,255,255,0.2)' }}></div>;
-      default: return null;
-    }
-  };
-
-  const RenderLineaCustom = ({ li }) => {
-    const isRecta = li.tipoTool === 'dibujar_pase';
-    const points = li.puntos;
-    const dashPattern = li.tipoTrazo === 'punteada' ? [12, 6] : [];
-    const len = points.length;
-    let angleRad = 0;
-    let endX = points[len-2], endY = points[len-1];
-    if (len >= 4) { const p1x = points[len-4], p1y = points[len-3]; angleRad = Math.atan2(endY - p1y, endX - p1x); }
-    const angleDeg = angleRad * 180 / Math.PI;
-
-    return (
-      <Group id={li.id} draggable={modoAccion === 'mover'} onClick={(e) => { e.cancelBubble = true; setSelectedId(li.id); }} onTap={(e) => { e.cancelBubble = true; setSelectedId(li.id); }}>
-        <Line points={points} stroke={li.color} strokeWidth={li.grosor} opacity={li.transparencia} dash={dashPattern} lineCap="round" lineJoin="round" tension={isRecta ? 0 : 0.5} />
-        {modoAccion !== 'mover' && (
-          <Group x={endX} y={endY} rotation={angleDeg} opacity={li.transparencia}>
-            {li.topeFinal === 'punto' && (<Circle radius={li.grosor * 2} fill={li.color} stroke="#000" strokeWidth={0.5}/>)}
-            {li.topeFinal === 'triangulo' && (<Path data={`M 0 0 L -${li.grosor * 3} -${li.grosor * 1.5} L -${li.grosor * 3} ${li.grosor * 1.5} Z`} fill={li.color} stroke="#000" strokeWidth={0.5} x={0} y={0}/>)}
-            {li.topeFinal === 'transversal' && (<Rect width={2} height={li.grosor * 5} fill={li.color} stroke="#000" strokeWidth={0.5} x={-1} y={-(li.grosor * 2.5)}/>)}
-          </Group>
-        )}
-      </Group>
-    );
-  };
-
-  const confirmarGuardado = async () => {
-    if (!nombreTarea) return showToast("Por favor, ponéle un nombre a la tarea antes de guardar.", "warning");
-    setSelectedId(null);
-    const prevFrame = currentFrameIdx;
-    cambiarFrame(0);
-
-    setTimeout(async () => {
-      try {
-        const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
-        const finalFrames = [...frames];
-        finalFrames[currentFrameIdx] = { ...finalFrames[currentFrameIdx], elementos, lineas };
-        const dataVectores = { frames: finalFrames, cancha: canchaConfig };
-        const club_id = localStorage.getItem('club_id') || 'club_default';
-
-        const payload = {
-          club_id: club_id, titulo: nombreTarea, espacio: canchaConfig.tamaño, url_grafico: dataURL,
-          editor_data: dataVectores, categoria_ejercicio: fichaTecnica.categoria_ejercicio,
-          fase_juego: fichaTecnica.fase_juego, duracion_estimada: parseInt(fichaTecnica.duracion_estimada) || 0,
-          intensidad_rpe: parseInt(fichaTecnica.intensidad_rpe) || 0, jugadores_involucrados: fichaTecnica.jugadores_involucrados,
-          objetivo_principal: fichaTecnica.objetivo_principal, descripcion: fichaTecnica.descripcion, video_url: fichaTecnica.video_url,
-        };
-
-        if (tareaIdEditando) {
-          const { error } = await supabase.from('tareas').update(payload).eq('id', tareaIdEditando);
-          if (error) throw error;
-          showToast("¡Tarea ACTUALIZADA con éxito!", "success");
-          navigate('/banco-tareas');
-        } else {
-          const { error } = await supabase.from('tareas').insert([payload]);
-          if (error) throw error;
-          showToast("¡Nueva Ficha Táctica guardada!", "success");
-          setMostrarModal(false);
-          setFrames([{ id: 'frame-0', elementos: [], lineas: [] }]);
-          setElementos([]); setLineas([]);
-          setCurrentFrameIdx(0);
-          setNombreTarea('');
+          if(progress<1) requestAnimationFrame(animate)
+          else resolve()
         }
-      } catch (err) {
-        showToast("Error al guardar: " + err.message, "error");
-        cambiarFrame(prevFrame);
+        requestAnimationFrame(animate)
+      })
+
+      if (!isPlayingRef.current) break
+      setAnimSnapshot({ elements: fB.elements||[], arrows: fB.arrows||[] })
+      await new Promise(res=>setTimeout(res,PAUSE))
+    }
+
+    isPlayingRef.current=false; setIsPlaying(false); setAnimSnapshot(null)
+    // Go to last frame
+    const lastIdx=allFrames.length-1
+    dispatchBoard({ type:'LOAD', elements:allFrames[lastIdx].elements||[], arrows:allFrames[lastIdx].arrows||[] })
+    setFrameIdx(lastIdx)
+  }
+
+  // ── POINTER EVENTS ──
+  function getPos(e) {
+    const r=canvasRef.current.getBoundingClientRect()
+    const src=e.touches?e.touches[0]||e.changedTouches[0]:e
+    return {x:src.clientX-r.left, y:src.clientY-r.top}
+  }
+
+  const onPointerDown = useCallback((e) => {
+    e.preventDefault()
+    if (isPlaying) return
+    if (esMovil && panelMovil) setPanelMovil(null)
+    const p=getPos(e); const ix=ixRef.current
+
+    if (tool==='select') {
+      const arr=hitArrow(board.arrows,p.x,p.y)
+      if(arr){dispatchBoard({type:'SELECT',sel:{id:arr.id,isArrow:true}});return}
+      const el=hitEl(board.elements,p.x,p.y,cvSize.w)
+      if(el){dispatchBoard({type:'SELECT',sel:{id:el.id,isArrow:false}});ix.dragging=true;ix.dOffX=p.x-el.x;ix.dOffY=p.y-el.y}
+      else dispatchBoard({type:'SELECT',sel:null})
+      return
+    }
+
+    const placeables=['home','away','verde','rosa','gk-ama','gk-vio','staff','ball','cono_alto','cono_plato','valla','mini_arco','arco','cono']
+    if(placeables.includes(tool)){
+      const count=board.elements.filter(e=>e.type===tool).length+1
+      dispatchBoard({type:'ADD_EL',el:{id:uid(),type:tool,x:p.x,y:p.y,label:['ball','cono_alto','cono_plato','valla','mini_arco','arco','cono'].includes(tool)?'':String(count)}})
+      return
+    }
+    if(tool.startsWith('arrow-')){
+      ix.drawingArrow={x1:p.x,y1:p.y,cx:p.x,cy:p.y,style:tool}
+      tempRef.current.arrow=ix.drawingArrow; return
+    }
+    if(tool==='zone-rect'||tool==='zone-ellipse'){
+      ix.drawingZone={type:tool,x:p.x,y:p.y,sx:p.x,sy:p.y,w:0,h:0}
+      tempRef.current.zone=ix.drawingZone; return
+    }
+    if(tool==='text'){ix.tempTextPos=p;setTextModal(true)}
+  },[tool,board,cvSize,isPlaying,esMovil,panelMovil])
+
+  const onPointerMove = useCallback((e) => {
+    if(isPlaying) return
+    const p=getPos(e); const ix=ixRef.current
+    if(ix.dragging&&board.selected){dispatchBoard({type:'MOVE_EL',id:board.selected.id,x:p.x-ix.dOffX,y:p.y-ix.dOffY});return}
+    if(ix.drawingArrow){ix.drawingArrow.cx=p.x;ix.drawingArrow.cy=p.y;tempRef.current.arrow={...ix.drawingArrow};forceUpdate();return}
+    if(ix.drawingZone){ix.drawingZone.w=p.x-ix.drawingZone.sx;ix.drawingZone.h=p.y-ix.drawingZone.sy;tempRef.current.zone={...ix.drawingZone};forceUpdate()}
+  },[board.selected,isPlaying])
+
+  const onPointerUp = useCallback((e) => {
+    const p=getPos(e); const ix=ixRef.current; ix.dragging=false
+    if(ix.drawingArrow){
+      if(Math.hypot(p.x-ix.drawingArrow.x1,p.y-ix.drawingArrow.y1)>18){
+        const st=ARROW_STYLES[ix.drawingArrow.style]
+        dispatchBoard({type:'ADD_ARR',arr:{id:uid(),x1:ix.drawingArrow.x1,y1:ix.drawingArrow.y1,x2:p.x,y2:p.y,style:ix.drawingArrow.style,color:st.color,curve:0}})
       }
-    }, 300);
-  };
+      ix.drawingArrow=null;tempRef.current.arrow=null;forceUpdate()
+    }
+    if(ix.drawingZone){
+      if(Math.abs(ix.drawingZone.w)>16&&Math.abs(ix.drawingZone.h)>16){
+        const x=ix.drawingZone.w<0?ix.drawingZone.sx+ix.drawingZone.w:ix.drawingZone.sx
+        const y=ix.drawingZone.h<0?ix.drawingZone.sy+ix.drawingZone.h:ix.drawingZone.sy
+        dispatchBoard({type:'ADD_EL',el:{id:uid(),type:ix.drawingZone.type,x,y,w:Math.abs(ix.drawingZone.w),h:Math.abs(ix.drawingZone.h),fill:ix.drawingZone.type==='zone-ellipse'?'#ff3860':'#00e5ff',stroke:ix.drawingZone.type==='zone-ellipse'?'#ff3860':'#00e5ff',opacity:.18,dashed:false,lineW:1.8}})
+      }
+      ix.drawingZone=null;tempRef.current.zone=null;forceUpdate()
+    }
+  },[])
 
-  const elementosARenderizar = isPlaying && animElements ? animElements : elementos;
+  // ── KEYBOARD ──
+  useEffect(()=>{
+    function onKey(e){
+      if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return
+      if(e.key==='Delete'||e.key==='Backspace')dispatchBoard({type:'DEL_SEL'})
+      if((e.ctrlKey||e.metaKey)&&e.key==='z')dispatchBoard({type:'UNDO'})
+      if(e.key==='Escape')setTool('select')
+    }
+    window.addEventListener('keydown',onKey)
+    return ()=>window.removeEventListener('keydown',onKey)
+  },[])
 
-  // Renderizadores de Paneles Móviles (Bottom Sheets)
-  const renderMobileElementosPanel = () => (
-    <div style={mobileOverlayPanel}>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-        <span style={labelStyle}>JUGADORES Y STAFF</span>
-        <button onClick={() => setPanelMovil(null)} style={{background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem'}}>✖</button>
-      </div>
-      <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '10px', scrollSnapType: 'x mandatory' }}>
-        {herramientas.filter(h => h.tipo === 'jugador' || h.tipo === 'arquero' || h.tipo === 'staff').map(h => (
-          <div key={h.id} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null); setPanelMovil(null);}} style={{...iconGridBtn, flexShrink: 0, scrollSnapAlign: 'start', border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
-        ))}
-      </div>
-      <span style={{...labelStyle, marginBottom: '10px', marginTop: '10px'}}>MATERIALES</span>
-      <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '10px', scrollSnapType: 'x mandatory' }}>
-        {herramientas.filter(h => h.tipo !== 'jugador' && h.tipo !== 'arquero' && h.tipo !== 'staff').map(h => (
-          <div key={h.id} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null); setPanelMovil(null);}} style={{...iconGridBtn, flexShrink: 0, scrollSnapAlign: 'start', border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
-        ))}
-      </div>
-    </div>
-  );
+  // ── TEXT ──
+  function confirmText(){
+    const ix=ixRef.current
+    if(textValue.trim()&&ix.tempTextPos){
+      dispatchBoard({type:'ADD_EL',el:{id:uid(),type:'text',x:ix.tempTextPos.x,y:ix.tempTextPos.y,label:textValue.trim(),color:'#fff',fontSize:13,bold:false,bg:true}})
+    }
+    setTextModal(false);setTextValue('');ix.tempTextPos=null
+  }
 
-  const renderMobileTrazosPanel = () => (
-    <div style={mobileOverlayPanel}>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-        <span style={labelStyle}>HERRAMIENTAS DE TRAZO</span>
-        <button onClick={() => setPanelMovil(null)} style={{background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem'}}>✖</button>
-      </div>
-      
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-        <button onClick={() => setModoAccion('dibujar_pase')} style={{...btnAccionModal, flex: 1, background: modoAccion === 'dibujar_pase' ? 'var(--accent)' : '#222', color: modoAccion === 'dibujar_pase' ? '#000' : '#fff'}}>↗️ Pase / Recta</button>
-        <button onClick={() => setModoAccion('dibujar_conduccion')} style={{...btnAccionModal, flex: 1, background: modoAccion === 'dibujar_conduccion' ? 'var(--accent)' : '#222', color: modoAccion === 'dibujar_conduccion' ? '#000' : '#fff'}}>〰️ Conducción</button>
-      </div>
-      
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={headerLabelStyle}>Color:</span>
-          <input type="color" value={dibujoConfig.color} onChange={e => setDibujoConfig({...dibujoConfig, color: e.target.value})} style={{...colorInputStyle, border: `2px solid ${dibujoConfig.color}`}} />
-        </div>
-        <div style={{ display: 'flex', gap: '5px', background: '#222', padding: '4px', borderRadius: '8px' }}>
-          <button onClick={() => setDibujoConfig({...dibujoConfig, tipoTrazo: 'continua'})} style={{...toggleBtnStyle, background: dibujoConfig.tipoTrazo === 'continua' ? '#444' : 'transparent'}}>➖ Continua</button>
-          <button onClick={() => setDibujoConfig({...dibujoConfig, tipoTrazo: 'punteada'})} style={{...toggleBtnStyle, background: dibujoConfig.tipoTrazo === 'punteada' ? '#444' : 'transparent'}}>╍ Punteada</button>
-        </div>
-      </div>
+  // ── GUARDAR ──
+  const confirmarGuardado = async () => {
+    if (!nombreTarea.trim()) { showToast("Poné un nombre a la tarea antes de guardar.","warning"); return }
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={headerLabelStyle}>Tope:</span>
-        <div style={{ display: 'flex', gap: '5px', background: '#222', padding: '4px', borderRadius: '8px' }}>
-          <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'ninguno'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'ninguno' ? '#444' : 'transparent'}}>—</button>
-          <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'punto'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'punto' ? '#444' : 'transparent'}}>⚫</button>
-          <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'triangulo'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'triangulo' ? '#444' : 'transparent'}}>▶</button>
-          <button onClick={() => setDibujoConfig({...dibujoConfig, topeFinal: 'transversal'})} style={{...toggleBtnStyle, background: dibujoConfig.topeFinal === 'transversal' ? '#444' : 'transparent'}}>T</button>
-        </div>
-      </div>
-    </div>
-  );
+    // Sync current frame then capture canvas
+    const finalFrames=[...frames]
+    finalFrames[frameIdx]={...finalFrames[frameIdx],elements:JSON.parse(JSON.stringify(board.elements)),arrows:JSON.parse(JSON.stringify(board.arrows))}
 
-  const renderMobileAnimacionPanel = () => (
-    <div style={mobileOverlayPanel}>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-        <span style={labelStyle}>LÍNEA DE TIEMPO</span>
-        <button onClick={() => setPanelMovil(null)} style={{background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem'}}>✖</button>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', overflowX: 'auto' }}>
-        <button onClick={togglePlay} style={{...playBtnMobile, background: isPlaying ? '#ef4444' : 'var(--accent)' }}>{isPlaying ? '🛑' : '▶'}</button>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {frames.map((frame, index) => (
-            <button key={frame.id} onClick={() => cambiarFrame(index)} style={{ ...frameBtnMobile, background: currentFrameIdx === index ? 'var(--accent)' : '#222', color: currentFrameIdx === index ? '#000' : '#fff' }}>
-              {index + 1}
-            </button>
-          ))}
-        </div>
-        <button onClick={duplicarFrameActual} style={{...frameBtnMobile, background: '#2563eb', border: 'none', width: 'auto', padding: '0 15px'}} title="Continuar Jugada">⏭️ Sig.</button>
-        <button onClick={agregarFrameVacio} style={{...frameBtnMobile, background: '#333', border: 'none', width: 'auto', padding: '0 15px'}} title="Nuevo">➕ Vacío</button>
-      </div>
-    </div>
-  );
+    const dataURL = canvasRef.current.toDataURL('image/png')
+    const club_id = localStorage.getItem('club_id')||'club_default'
 
-  const renderMobileConfigPanel = () => (
-    <div style={mobileOverlayPanel}>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-        <span style={labelStyle}>CONFIGURACIÓN DE CANCHA</span>
-        <button onClick={() => setPanelMovil(null)} style={{background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem'}}>✖</button>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <label style={headerLabelStyle}>Dimensión de la Cancha:</label>
-        <select value={canchaConfig.tamaño} onChange={(e) => setCanchaConfig({...canchaConfig, tamaño: e.target.value})} style={{...selectStyle, width: '100%'}}>
-          <option value="40x20">40x20</option><option value="28x20">28x20</option><option value="20x20_mitad">Media Cancha</option><option value="20x20_central">Zona Central</option>
-        </select>
+    const payload = {
+      club_id, titulo:nombreTarea,
+      espacio: pitchCfg.variant,
+      url_grafico: dataURL,
+      editor_data: { frames:finalFrames, cancha:{ tamaño:pitchCfg.variant, material:pitchCfg.material } },
+      categoria_ejercicio:   fichaTecnica.categoria_ejercicio,
+      fase_juego:            fichaTecnica.fase_juego,
+      duracion_estimada:     parseInt(fichaTecnica.duracion_estimada)||0,
+      intensidad_rpe:        parseInt(fichaTecnica.intensidad_rpe)||0,
+      jugadores_involucrados:fichaTecnica.jugadores_involucrados,
+      objetivo_principal:    fichaTecnica.objetivo_principal,
+      descripcion:           fichaTecnica.descripcion,
+      video_url:             fichaTecnica.video_url,
+    }
 
-        <label style={{ ...headerLabelStyle, marginTop: '10px' }}>Color del Suelo:</label>
-        <select value={canchaConfig.color} onChange={(e) => setCanchaConfig({...canchaConfig, color: e.target.value})} style={{...selectStyle, width: '100%'}}>
-          <option value="#064e3b">Verde</option><option value="#1e3a8a">Azul</option><option value="#b45309">Naranja</option><option value="#334155">Gris</option>
-        </select>
-      </div>
-    </div>
-  );
+    try {
+      if (tareaIdEditando) {
+        const {error}=await supabase.from('tareas').update(payload).eq('id',tareaIdEditando)
+        if(error)throw error
+        showToast("¡Tarea ACTUALIZADA con éxito!","success")
+        navigate('/banco-tareas')
+      } else {
+        const {error}=await supabase.from('tareas').insert([payload])
+        if(error)throw error
+        showToast("¡Nueva Ficha Táctica guardada!","success")
+        setShowModal(false)
+        setFrames([{id:'frame-0',elements:[],arrows:[]}])
+        dispatchBoard({type:'LOAD',elements:[],arrows:[]})
+        setFrameIdx(0); setNombreTarea('')
+      }
+    } catch(err) { showToast("Error al guardar: "+err.message,"error") }
+  }
 
-  // ACÁ ESTÁ LA MAGIA: Rompemos el flujo con `position: 'absolute'`
+  // ── PITCH CONFIG HELPERS ──
+  const upPitch = (patch) => setPitchCfg(p=>({...p,...patch}))
+
+  // ── HERRAMIENTAS ──
+  const TOOLS_PLAYERS = [
+    {id:'home',    icon:'🔵', label:'Local'},
+    {id:'away',    icon:'🔴', label:'Visit.'},
+    {id:'verde',   icon:'🟢', label:'Verde'},
+    {id:'rosa',    icon:'🩷', label:'Rosa'},
+    {id:'gk-ama',  icon:'🟡', label:'Arq. Ama'},
+    {id:'gk-vio',  icon:'🟣', label:'Arq. Vio'},
+    {id:'staff',   icon:'👔', label:'Staff'},
+  ]
+  const TOOLS_MAT = [
+    {id:'ball',       icon:'⚽', label:'Pelota'},
+    {id:'cono_alto',  icon:'🔺', label:'Cono Alto'},
+    {id:'cono_plato', icon:'🟡', label:'Cono Plano'},
+    {id:'valla',      icon:'🟧', label:'Valla'},
+    {id:'mini_arco',  icon:'⬜', label:'Mini Arco'},
+    {id:'arco',       icon:'⬛', label:'Arco'},
+  ]
+  const TOOLS_ANNOT = [
+    {id:'arrow-pase',       icon:'⤳', label:'Pase'},
+    {id:'arrow-conduccion', icon:'⤴', label:'Conducción'},
+    {id:'arrow-disparo',    icon:'🎯', label:'Disparo'},
+    {id:'arrow-presion',    icon:'⚡', label:'Presión'},
+    {id:'zone-rect',        icon:'⬜', label:'Zona Rect.'},
+    {id:'zone-ellipse',     icon:'⭕', label:'Zona Elipse'},
+    {id:'text',             icon:'T',  label:'Texto'},
+  ]
+
+  // ── PROPS PANEL ──
+  const selData = board.selected
+    ? (board.selected.isArrow ? board.arrows.find(a=>a.id===board.selected.id) : board.elements.find(e=>e.id===board.selected.id))
+    : null
+
+  const upSel = (patch) => { if(!board.selected)return; dispatchBoard({type:'UPDATE_SEL',id:board.selected.id,isArrow:board.selected.isArrow,...patch}) }
+
+  const PLAYER_TYPES=['home','away','verde','rosa','gk-ama','gk-vio','staff']
+  const isPlayer = selData && PLAYER_TYPES.includes(selData.type)
+  const isZone   = selData && (selData.type==='zone-rect'||selData.type==='zone-ellipse')
+  const isArrow  = board.selected?.isArrow
+
+  function toHex(c){
+    if(!c)return'#ffffff'; if(c.startsWith('#'))return c.slice(0,7)
+    if(c.startsWith('rgb')){const m=c.match(/\d+/g);return'#'+[m[0],m[1],m[2]].map(x=>(+x).toString(16).padStart(2,'0')).join('')}
+    return'#ffffff'
+  }
+
+  // ── RENDER ──
+  const vrtLabel = PITCH_VARIANTS[pitchCfg.variant]?.label || ''
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', position: 'absolute', top: 0, left: 0, right: 0, bottom: esMovil ? '75px' : 0, background: '#0a0a0a', overflow: 'hidden', zIndex: 10 }}>
-      
-      {/* HEADER PC (Solo se muestra si NO es móvil) */}
-      {!esMovil && (
-        <div className="bento-card" style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#111', borderBottom: tareaIdEditando ? '2px solid #3b82f6' : '2px solid #333', padding: '10px 15px', margin: '15px 15px 0 15px', flexShrink: 0 }}>
-          {tareaIdEditando && (<div style={{ background: '#3b82f6', color: '#fff', padding: '5px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>MODO EDICIÓN</div>)}
-          <input placeholder="Titulo de Tarea..." value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} disabled={isPlaying} style={inputStyle} />
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={headerLabelStyle}>Dimensión:</span>
-            <select value={canchaConfig.tamaño} onChange={(e) => setCanchaConfig({...canchaConfig, tamaño: e.target.value})} disabled={isPlaying} style={selectStyle}>
-              <option value="40x20">40x20</option><option value="28x20">28x20</option><option value="20x20_mitad">20x20 Finalización</option><option value="20x20_central">20x20 Media Pista</option>
-            </select>
-            <span style={headerLabelStyle}>Color:</span>
-            <select value={canchaConfig.color} onChange={(e) => setCanchaConfig({...canchaConfig, color: e.target.value})} disabled={isPlaying} style={selectStyle}>
-              <option value="#064e3b">Verde</option><option value="#1e3a8a">Azul</option><option value="#b45309">Naranja</option><option value="#334155">Gris</option>
-            </select>
-          </div>
-          
-          <div style={{ flex: 1 }}></div>
-          
-          <div style={{ display: 'flex', background: '#000', padding: '4px', borderRadius: '8px', gap: '4px', border: '1px solid #222' }}>
-            <button onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(null); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'mover' && !herramientaSeleccionada ? 'var(--accent)' : 'transparent', color: modoAccion === 'mover' && !herramientaSeleccionada ? '#000' : '#fff'}} title="Mover / Rotar / Borrar">🖐️</button>
-            <button onClick={() => {setModoAccion('dibujar_pase'); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'dibujar_pase' ? 'var(--accent)' : 'transparent', color: modoAccion === 'dibujar_pase' ? '#000' : '#fff'}} title="Trazar Pase">↗️</button>
-            <button onClick={() => {setModoAccion('dibujar_conduccion'); setSelectedId(null);}} style={{...modeBtn, background: modoAccion === 'dibujar_conduccion' ? 'var(--accent)' : 'transparent', color: modoAccion === 'dibujar_conduccion' ? '#000' : '#facc15'}} title="Trazar Conducción">〰️</button>
-            <div style={{ width: '1px', background: '#333', margin: '0 5px' }}></div>
-            <button onClick={deshacerUltimoTrazo} style={{...modeBtn, color: lineas.length > 0 ? '#fff' : '#555'}} disabled={lineas.length === 0} title="Deshacer último trazo">↩️</button>
-          </div>
-          
-          {(modoAccion === 'dibujar_pase' || modoAccion === 'dibujar_conduccion') && (
-            <div className="bento-card" style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#1a1a1a', border: '1px solid var(--accent)', padding: '5px 10px', borderRadius: '8px', animation: 'fadeIn 0.2s' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold' }}>TRAZO:</span>
-              <input type="color" value={dibujoConfig.color} onChange={e => setDibujoConfig({...dibujoConfig, color: e.target.value})} style={{...colorInputStyle, border: `2px solid ${dibujoConfig.color}`}} title="Color" />
-              <select value={dibujoConfig.tipoTrazo} onChange={e => setDibujoConfig({...dibujoConfig, tipoTrazo: e.target.value})} style={miniSelectStyle}><option value="continua">Continua</option><option value="punteada">Punteada</option></select>
-              <input type="number" min="1" max="10" value={dibujoConfig.grosor} onChange={e => setDibujoConfig({...dibujoConfig, grosor: parseInt(e.target.value)})} style={miniInputStyle} title="Grosor (px)" />
-              <input type="number" min="0.1" max="1.0" step="0.1" value={dibujoConfig.transparencia} onChange={e => setDibujoConfig({...dibujoConfig, transparencia: parseFloat(e.target.value)})} style={miniInputStyle} title="Opacidad" />
-              <select value={dibujoConfig.topeFinal} onChange={e => setDibujoConfig({...dibujoConfig, topeFinal: e.target.value})} style={miniSelectStyle}><option value="ninguno">Ninguno</option><option value="punto">Punto</option><option value="triangulo">Triángulo</option><option value="transversal">T. Transversal</option></select>
-            </div>
-          )}
+    <div className="ct-root">
 
-          <div style={{ flex: 1, minWidth: '20px' }}></div>
-          <button onClick={() => setMostrarModal(true)} className="btn-action" style={{ background: tareaIdEditando ? '#3b82f6' : 'var(--accent)', color: tareaIdEditando ? '#fff' : '#000', padding: '8px 15px' }}>
-            {tareaIdEditando ? '💾 ACTUALIZAR' : '💾 GUARDAR'}
+      {/* ══ HEADER PC ══ */}
+      {!esMovil && (
+        <div className={`ct-header${tareaIdEditando?' edit-mode':''}`}>
+          {tareaIdEditando && <div style={{background:'var(--blue)',color:'#fff',padding:'4px 10px',borderRadius:'6px',fontSize:'0.75rem',fontWeight:'bold',flexShrink:0}}>MODO EDICIÓN</div>}
+
+          <input
+            className="ct-input" placeholder="Título de la tarea..."
+            value={nombreTarea} onChange={e=>setNombreTarea(e.target.value)}
+            disabled={isPlaying} style={{width:220}}
+          />
+
+          <div style={{display:'flex',alignItems:'center',gap:6}}>
+            <span style={{fontSize:'0.7rem',color:'var(--muted)',fontWeight:'bold',textTransform:'uppercase'}}>Dimensión:</span>
+            <select className="ct-select" value={pitchCfg.variant} disabled={isPlaying}
+              onChange={e=>upPitch({variant:e.target.value})}>
+              {Object.entries(PITCH_VARIANTS).map(([k,v])=>(
+                <option key={k} value={k}>{v.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <button className={`ct-tbtn${showPitch?' on':''}`} onClick={()=>setShowPitch(v=>!v)}>⚙ Pista</button>
+          <button className="ct-tbtn" onClick={()=>dispatchBoard({type:'UNDO'})} disabled={isPlaying}>↩ Deshacer</button>
+          <button className="ct-tbtn" style={{color:'var(--red)'}} onClick={()=>{if(confirm('¿Limpiar todo?'))dispatchBoard({type:'CLEAR'})}}>✕ Limpiar</button>
+
+          <div style={{flex:1}}/>
+
+          <button
+            className="ct-save-btn"
+            style={{background:tareaIdEditando?'var(--blue)':'var(--accent)',color:tareaIdEditando?'#fff':'#000'}}
+            onClick={()=>setShowModal(true)}
+          >
+            {tareaIdEditando?'💾 ACTUALIZAR':'💾 GUARDAR'}
           </button>
         </div>
       )}
 
-      {/* ÁREA CENTRAL: Flex=1. Ocupa TODO el espacio sobrante */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative', padding: esMovil ? '0' : '0 15px', minHeight: 0 }}>
-        
-        {/* PALETA LATERAL (SOLO PC) */}
+      {/* ══ WORKSPACE ══ */}
+      <div className="ct-workspace">
+
+        {/* LEFT SIDEBAR */}
         {!esMovil && (
-          <div className="bento-card custom-scroll" style={{ width: '220px', display: 'flex', flexDirection: 'column', gap: '20px', background: '#111', overflowY: 'auto', marginRight: '15px' }}>
-            <div>
-              <span style={labelStyle}>JUGADORES Y STAFF</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '10px' }}>
-                {herramientas.filter(h => h.tipo === 'jugador' || h.tipo === 'arquero' || h.tipo === 'staff').map(h => (
-                  <div key={h.id} title={h.label} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
+          <aside className="ct-sidebar">
+            <div className="ct-sbl">Jugadores</div>
+            <div className="ct-sbb">
+              <div className="ct-grid">
+                {TOOLS_PLAYERS.map(t=>(
+                  <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} onClick={()=>setTool(t.id)}>
+                    <span className="ti">{t.icon}</span>{t.label}
+                  </div>
                 ))}
               </div>
             </div>
-            <div>
-              <span style={labelStyle}>MATERIALES</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '10px' }}>
-                {herramientas.filter(h => h.tipo !== 'jugador' && h.tipo !== 'arquero' && h.tipo !== 'staff').map(h => (
-                  <div key={h.id} title={h.label} onClick={() => {setModoAccion('mover'); setHerramientaSeleccionada(h); setSelectedId(null);}} style={{...iconGridBtn, border: herramientaSeleccionada?.id === h.id ? '2px solid var(--accent)' : '1px solid #333', background: herramientaSeleccionada?.id === h.id ? 'rgba(0, 255, 136, 0.1)' : '#000'}}>{renderIconoHerramienta(h)}</div>
+
+            <div className="ct-div"/>
+            <div className="ct-sbl">Materiales</div>
+            <div className="ct-sbb">
+              <div className="ct-grid">
+                {TOOLS_MAT.map(t=>(
+                  <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} onClick={()=>setTool(t.id)}>
+                    <span className="ti">{t.icon}</span>{t.label}
+                  </div>
                 ))}
               </div>
             </div>
-          </div>
+
+            <div className="ct-div"/>
+            <div className="ct-sbl">Anotaciones</div>
+            <div className="ct-sbb">
+              <div className="ct-grid">
+                {TOOLS_ANNOT.map(t=>(
+                  <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} onClick={()=>setTool(t.id)}>
+                    <span className="ti">{t.icon}</span>{t.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="ct-div"/>
+            <div className="ct-sbl">Modos</div>
+            <div className="ct-sbb">
+              <div className="ct-grid s1">
+                <div className={`ct-tool wide${tool==='select'?' on':''}`} onClick={()=>setTool('select')}>↖ Seleccionar / Mover</div>
+              </div>
+            </div>
+          </aside>
         )}
 
-        {/* CONTENEDOR DE LA PIZARRA (FULL SCREEN EN MÓVIL) */}
-        <div ref={containerRef} style={{ flex: 1, background: '#000', borderRadius: esMovil ? '0' : '12px', overflow: 'hidden', border: esMovil ? 'none' : '1px solid #222', position: 'relative', minHeight: 0 }}>
-          
-          {/* OVERLAYS FLOTANTES (SOLO MÓVIL) */}
+        {/* CANVAS AREA */}
+        <div className="ct-canvas-area" ref={areaRef}>
+          {/* Mobile: back & save buttons */}
           {esMovil && (
             <>
-              {/* Degradados sutiles para asegurar lectura de botones flotantes */}
-              <div style={{position: 'absolute', top: 0, left: 0, right: 0, height: '80px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)', zIndex: 10, pointerEvents: 'none'}}></div>
-              <div style={{position: 'absolute', bottom: 0, left: 0, right: 0, height: '100px', background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', zIndex: 10, pointerEvents: 'none'}}></div>
+              <div style={{position:'absolute',top:0,left:0,right:0,height:70,background:'linear-gradient(to bottom,rgba(0,0,0,.7),transparent)',zIndex:10,pointerEvents:'none'}}/>
+              <div style={{position:'absolute',bottom:0,left:0,right:0,height:90,background:'linear-gradient(to top,rgba(0,0,0,.75),transparent)',zIndex:10,pointerEvents:'none'}}/>
 
-              {/* Botonera Flotante TOP */}
-              <button onClick={() => navigate(-1)} style={{ position: 'absolute', top: '15px', left: '15px', zIndex: 20, background: 'rgba(0,0,0,0.6)', border: '1px solid #444', color: '#fff', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>⬅</button>
-              
-              <button onClick={() => setPanelMovil(p => p === 'config' ? null : 'config')} style={{ position: 'absolute', top: '15px', left: '65px', zIndex: 20, background: 'rgba(0,0,0,0.6)', border: panelMovil === 'config' ? '1px solid var(--accent)' : '1px solid #444', color: panelMovil === 'config' ? 'var(--accent)' : '#fff', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(5px)' }}>⚙️</button>
-
-              <button onClick={() => setMostrarModal(true)} style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 20, background: tareaIdEditando ? '#3b82f6' : 'var(--accent)', color: tareaIdEditando ? '#fff' : '#000', border: 'none', padding: '0 20px', height: '40px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}>
-                {tareaIdEditando ? '💾 ACTUALIZAR' : '💾 GUARDAR'}
+              <button onClick={()=>navigate(-1)} style={{position:'absolute',top:14,left:14,zIndex:20,background:'rgba(0,0,0,.6)',border:'1px solid #444',color:'#fff',width:40,height:40,borderRadius:'50%',fontSize:'1.2rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(5px)'}}>⬅</button>
+              <button onClick={()=>setShowPitch(v=>!v)} style={{position:'absolute',top:14,left:62,zIndex:20,background:'rgba(0,0,0,.6)',border:showPitch?'1px solid var(--accentb)':'1px solid #444',color:showPitch?'var(--accentb)':'#fff',width:40,height:40,borderRadius:'50%',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(5px)'}}>⚙</button>
+              <button onClick={()=>setShowModal(true)} style={{position:'absolute',top:14,right:14,zIndex:20,background:tareaIdEditando?'var(--blue)':'var(--accent)',color:tareaIdEditando?'#fff':'#000',border:'none',padding:'0 20px',height:40,borderRadius:20,fontSize:'.9rem',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {tareaIdEditando?'💾 ACTUALIZAR':'💾 GUARDAR'}
               </button>
 
-              {/* Toolbar Flotante BOTTOM */}
-              <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 20, display: 'flex', background: 'rgba(20,20,20,0.85)', padding: '5px', borderRadius: '30px', border: '1px solid #333', backdropFilter: 'blur(10px)', gap: '5px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-                <button onClick={() => { setModoAccion('mover'); setPanelMovil(null); setHerramientaSeleccionada(null); }} style={{...floatingToolBtn, background: modoAccion === 'mover' && !herramientaSeleccionada && !panelMovil ? 'var(--accent)' : 'transparent'}}>
-                  <span style={{ fontSize: '1.3rem' }}>🖐️</span>
-                </button>
-                <div style={{width: '1px', background: '#333', margin: '5px 0'}}></div>
-                <button onClick={() => { setPanelMovil(p => p === 'trazos' ? null : 'trazos'); if(!modoAccion.includes('dibujar')) setModoAccion('dibujar_pase'); }} style={{...floatingToolBtn, background: panelMovil === 'trazos' || modoAccion.includes('dibujar') ? 'var(--accent)' : 'transparent'}}>
-                  <span style={{ fontSize: '1.3rem' }}>📐</span>
-                </button>
-                <button onClick={() => { setPanelMovil(p => p === 'elementos' ? null : 'elementos'); setModoAccion('mover'); }} style={{...floatingToolBtn, background: panelMovil === 'elementos' || herramientaSeleccionada ? 'var(--accent)' : 'transparent'}}>
-                  <span style={{ fontSize: '1.3rem' }}>🎒</span>
-                </button>
-                <button onClick={() => { setPanelMovil(p => p === 'animacion' ? null : 'animacion'); setModoAccion('mover'); }} style={{...floatingToolBtn, background: panelMovil === 'animacion' ? 'var(--accent)' : 'transparent'}}>
-                  <span style={{ fontSize: '1.3rem' }}>🎬</span>
-                </button>
+              {/* Floating toolbar */}
+              <div className="ct-mob-float-bar">
+                <button className={`ct-mob-float-btn${tool==='select'&&!panelMovil?' on':''}`} onClick={()=>{setTool('select');setPanelMovil(null)}}>🖐️</button>
+                <div style={{width:1,background:'#333',margin:'5px 0'}}/>
+                <button className={`ct-mob-float-btn${panelMovil==='trazos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='trazos'?null:'trazos')}>📐</button>
+                <button className={`ct-mob-float-btn${panelMovil==='elementos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='elementos'?null:'elementos')}>🎒</button>
+                <button className={`ct-mob-float-btn${panelMovil==='anim'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='anim'?null:'anim')}>🎬</button>
               </div>
             </>
           )}
 
-          <Stage
-            width={stageSize.containerW}
-            height={stageSize.containerH}
-            ref={stageRef}
-            onMouseDown={handleStageMouseDown} onTouchStart={handleStageMouseDown}
-            onMouseMove={handleMouseMove} onTouchMove={handleMouseMove}
-            onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}
-          >
-            <Layer>
-              <Group
-                ref={mainGroupRef}
-                x={stageSize.containerW / 2}
-                y={stageSize.containerH / 2}
-                rotation={stageSize.rotation}
-                scaleX={stageSize.scale}
-                scaleY={stageSize.scale}
-                offsetX={logicalSize.w / 2}
-                offsetY={logicalSize.h / 2}
-              >
-                <DibujoCancha />
-                {lineas.map(li => <RenderLineaCustom key={li.id} li={li} />)}
-                
-                {elementosARenderizar.map(el => (
-                  <Group
-                    key={el.id} id={el.id} x={el.x} y={el.y} rotation={el.rotation} scaleX={el.scaleX} scaleY={el.scaleY}
-                    draggable={modoAccion === 'mover' && !isPlaying}
-                    onClick={(e) => { e.cancelBubble = true; setSelectedId(el.id); }}
-                    onTap={(e) => { e.cancelBubble = true; setSelectedId(el.id); }}
-                    onDragEnd={(e) => { setElementos(elementos.map(item => item.id === el.id ? {...item, x: e.target.x(), y: e.target.y()} : item)); }}
-                    onTransformEnd={(e) => {
-                      const node = e.target;
-                      setElementos(elementos.map(item => item.id === el.id ? { ...item, x: node.x(), y: node.y(), rotation: node.rotation(), scaleX: Math.max(0.1, node.scaleX()), scaleY: Math.max(0.1, node.scaleY()) } : item));
-                    }}
-                  >
-                    <RenderElemento el={el} />
-                  </Group>
+          <canvas
+            ref={canvasRef}
+            className="ct-canvas"
+            width={cvSize.w} height={cvSize.h}
+            onMouseDown={onPointerDown} onMouseMove={onPointerMove} onMouseUp={onPointerUp}
+            onTouchStart={onPointerDown} onTouchMove={onPointerMove} onTouchEnd={onPointerUp}
+          />
+
+          {/* Pitch config panel */}
+          {showPitch && <PitchConfigPanel cfg={pitchCfg} onChange={upPitch} onClose={()=>setShowPitch(false)} />}
+
+          {/* Mobile panels */}
+          {esMovil && panelMovil==='elementos' && (
+            <div className="ct-mob-overlay-panel">
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <span style={{fontSize:'9px',fontWeight:'700',letterSpacing:'1.5px',color:'var(--muted)',textTransform:'uppercase'}}>JUGADORES Y MATERIALES</span>
+                <button onClick={()=>setPanelMovil(null)} style={{background:'none',border:'none',color:'#fff',fontSize:'1.2rem',cursor:'pointer'}}>✖</button>
+              </div>
+              <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                {[...TOOLS_PLAYERS,...TOOLS_MAT].map(t=>(
+                  <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} style={{width:50,padding:'8px 4px'}} onClick={()=>{setTool(t.id);setPanelMovil(null)}}>
+                    <span className="ti">{t.icon}</span><span style={{fontSize:8}}>{t.label}</span>
+                  </div>
                 ))}
-                {!isPlaying && <Transformer ref={trRef} boundBoxFunc={(oldBox, newBox) => Math.abs(newBox.width) < 5 || Math.abs(newBox.height) < 5 ? oldBox : newBox} borderStroke="#00ff88" anchorStroke="#00ff88" anchorFill="#000" anchorSize={8} enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']} />}
-              </Group>
-            </Layer>
-          </Stage>
-
-          {/* ACCIONES FLOTANTES (ELIMINAR / DESHACER) EN MÓVIL Y PC */}
-          {selectedId && !mostrarModal && !isPlaying && (
-            <div style={{ position:'absolute', top: esMovil ? 80 : 20, right: 20, background:'rgba(239, 68, 68, 0.9)', padding:'10px', borderRadius:'50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border:'1px solid #ef4444', zIndex: 100, cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }} onClick={() => { setElementos(prev => prev.filter(el => el.id !== selectedId)); setLineas(prev => prev.filter(li => li.id !== selectedId)); setSelectedId(null); }}>
-              <span style={{ fontSize: '1.2rem' }}>🗑️</span>
+              </div>
             </div>
           )}
-          {esMovil && lineas.length > 0 && !isPlaying && !selectedId && (
-             <div style={{ position:'absolute', top: 80, right: 20, background:'rgba(255, 255, 255, 0.1)', padding:'10px', borderRadius:'50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border:'1px solid #555', zIndex: 100, cursor: 'pointer', backdropFilter: 'blur(5px)' }} onClick={deshacerUltimoTrazo}>
-              <span style={{ fontSize: '1.2rem' }}>↩️</span>
+          {esMovil && panelMovil==='trazos' && (
+            <div className="ct-mob-overlay-panel">
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                <span style={{fontSize:'9px',fontWeight:'700',letterSpacing:'1.5px',color:'var(--muted)',textTransform:'uppercase'}}>ANOTACIONES</span>
+                <button onClick={()=>setPanelMovil(null)} style={{background:'none',border:'none',color:'#fff',fontSize:'1.2rem',cursor:'pointer'}}>✖</button>
+              </div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {TOOLS_ANNOT.map(t=>(
+                  <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} style={{width:70,padding:'8px 4px'}} onClick={()=>{setTool(t.id);setPanelMovil(null)}}>
+                    <span className="ti">{t.icon}</span><span style={{fontSize:8}}>{t.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-
-          {/* PANELES DESLIZABLES OVERLAY PARA MÓVILES */}
-          {esMovil && panelMovil === 'elementos' && renderMobileElementosPanel()}
-          {esMovil && panelMovil === 'trazos' && renderMobileTrazosPanel()}
-          {esMovil && panelMovil === 'animacion' && renderMobileAnimacionPanel()}
-          {esMovil && panelMovil === 'config' && renderMobileConfigPanel()}
+          {esMovil && panelMovil==='anim' && (
+            <div className="ct-mob-overlay-panel">
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <span style={{fontSize:'9px',fontWeight:'700',letterSpacing:'1.5px',color:'var(--muted)',textTransform:'uppercase'}}>LÍNEA DE TIEMPO</span>
+                <button onClick={()=>setPanelMovil(null)} style={{background:'none',border:'none',color:'#fff',fontSize:'1.2rem',cursor:'pointer'}}>✖</button>
+              </div>
+              <TimelineBar frames={frames} frameIdx={frameIdx} isPlaying={isPlaying} onPlay={togglePlay} onGo={cambiarFrame} onDup={duplicarFrameActual} onAdd={agregarFrameVacio} onDel={eliminarFrame} />
+            </div>
+          )}
         </div>
+
+        {/* RIGHT: PROPS (PC only) */}
+        {!esMovil && (
+          <aside className="ct-propbar">
+            <div className="ct-prop-title">Propiedades</div>
+            {!selData ? (
+              <div className="ct-empty-prop"><div style={{fontSize:28,opacity:.2}}>✦</div><div>Seleccioná un elemento</div></div>
+            ) : (
+              <>
+                <div className="ct-psec"><div className="ct-psec-title">Tipo</div></div>
+                <div className="ct-prop-row"><span className="ct-prop-lbl">Elemento</span><span style={{fontSize:10,color:'var(--accentb)'}}>{isArrow?(ARROW_STYLES[selData.style]?.label||selData.style):selData.type}</span></div>
+
+                {isPlayer && <>
+                  <div className="ct-psec"><div className="ct-psec-title">Jugador</div></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Número</span><input className="ct-pinput" value={selData.label||''} maxLength={3} onChange={e=>upSel({label:e.target.value})} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Color</span><input type="color" style={{width:50,height:26,borderRadius:5,border:'1px solid var(--border2)',cursor:'pointer'}} value={toHex(selData.color||TEAM_COLORS[selData.type]?.fill)} onChange={e=>upSel({color:e.target.value})} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Tamaño</span><div className="ct-seg">{[['sm','S'],['md','M'],['lg','L']].map(([v,l])=><div key={v} className={`ct-sopt${(selData.size||'md')===v?' on':''}`} onClick={()=>upSel({size:v})}>{l}</div>)}</div></div>
+                </>}
+
+                {selData.type==='text' && <>
+                  <div className="ct-psec"><div className="ct-psec-title">Texto</div></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Contenido</span><input className="ct-pinput w" value={selData.label||''} onChange={e=>upSel({label:e.target.value})} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Tamaño</span><input className="ct-pinput" type="number" value={selData.fontSize||13} min={8} max={60} onChange={e=>upSel({fontSize:+e.target.value})} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Color</span><input type="color" style={{width:50,height:26,borderRadius:5,border:'1px solid var(--border2)',cursor:'pointer'}} value={toHex(selData.color||'#fff')} onChange={e=>upSel({color:e.target.value})} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Negrita</span><div className="ct-seg"><div className={`ct-sopt${selData.bold?' on':''}`} onClick={()=>upSel({bold:!selData.bold})}>B</div></div></div>
+                </>}
+
+                {isZone && <>
+                  <div className="ct-psec"><div className="ct-psec-title">Zona</div></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Relleno</span><input type="color" style={{width:50,height:26,borderRadius:5,border:'1px solid var(--border2)',cursor:'pointer'}} value={toHex(selData.fill||'#00e5ff')} onChange={e=>upSel({fill:e.target.value,stroke:e.target.value})} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Opacidad</span><input className="ct-pinput" type="range" min={0.03} max={0.6} step={0.01} value={selData.opacity??0.18} onChange={e=>upSel({opacity:+e.target.value})} style={{width:80}} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Grosor</span><input className="ct-pinput" type="range" min={0.5} max={5} step={0.5} value={selData.lineW??1.8} onChange={e=>upSel({lineW:+e.target.value})} style={{width:80}} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Punteado</span><div className="ct-seg"><div className={`ct-sopt${selData.dashed?' on':''}`} onClick={()=>upSel({dashed:true})}>Sí</div><div className={`ct-sopt${!selData.dashed?' on':''}`} onClick={()=>upSel({dashed:false})}>No</div></div></div>
+                </>}
+
+                {isArrow && <>
+                  <div className="ct-psec"><div className="ct-psec-title">Flecha</div></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Color</span><input type="color" style={{width:50,height:26,borderRadius:5,border:'1px solid var(--border2)',cursor:'pointer'}} value={toHex(selData.color||'#fff')} onChange={e=>upSel({color:e.target.value})} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Curvatura</span><input className="ct-pinput" type="range" min={-0.5} max={0.5} step={0.05} value={selData.curve||0} onChange={e=>upSel({curve:+e.target.value})} style={{width:80}} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Grosor</span><input className="ct-pinput" type="range" min={1} max={6} step={0.5} value={selData.lineW||2} onChange={e=>upSel({lineW:+e.target.value})} style={{width:80}} /></div>
+                  <div className="ct-prop-row"><span className="ct-prop-lbl">Punteado</span><div className="ct-seg"><div className={`ct-sopt${selData.dashed?' on':''}`} onClick={()=>upSel({dashed:true})}>Sí</div><div className={`ct-sopt${!selData.dashed?' on':''}`} onClick={()=>upSel({dashed:false})}>No</div></div></div>
+                </>}
+
+                <div className="ct-psec">
+                  <div className="ct-psec-title">Capa</div>
+                  <div style={{display:'flex',gap:3,paddingBottom:4}}>
+                    <div className="ct-sopt" style={{flex:1,textAlign:'center'}} onClick={()=>dispatchBoard({type:'LAYER',dir:'front'})}>▲ Arriba</div>
+                    <div className="ct-sopt" style={{flex:1,textAlign:'center'}} onClick={()=>dispatchBoard({type:'LAYER',dir:'back'})}>▼ Abajo</div>
+                  </div>
+                </div>
+                <button className="ct-del-btn" onClick={()=>dispatchBoard({type:'DEL_SEL'})}>🗑 Eliminar elemento</button>
+              </>
+            )}
+          </aside>
+        )}
       </div>
 
-      {/* TIMELINE DE PC */}
+      {/* ══ BOTTOM: TIMELINE (PC) ══ */}
       {!esMovil && (
-        <div className="bento-card" style={{ height: '70px', background: '#111', border: '1px solid #222', display: 'flex', alignItems: 'center', padding: '10px 20px', gap: '15px', overflowX: 'auto', margin: '15px', flexShrink: 0 }}>
-          <button onClick={togglePlay} style={{ width: '50px', height: '50px', borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0, background: isPlaying ? '#ef4444' : 'var(--accent)', color: isPlaying ? '#fff' : '#000', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.3s' }} title={isPlaying ? "Detener Animación" : "Reproducir Animación"}>
-            {isPlaying ? '🛑' : '▶'}
-          </button>
-          <div style={{ width: '1px', height: '30px', background: '#333', margin: '0 5px' }}></div>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', opacity: isPlaying ? 0.5 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
-            {frames.map((frame, index) => (
-              <div key={frame.id} style={{ position: 'relative' }}>
-                <button onClick={() => cambiarFrame(index)} style={{ width: '40px', height: '40px', borderRadius: '8px', cursor: 'pointer', background: currentFrameIdx === index ? 'var(--accent)' : '#222', border: currentFrameIdx === index ? '2px solid #fff' : '1px solid #444', color: currentFrameIdx === index ? '#000' : '#fff', fontWeight: '900', fontSize: '1rem', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{index + 1}</button>
-                {currentFrameIdx === index && frames.length > 1 && (
-                  <button onClick={() => eliminarFrame(index)} style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', border: 'none', color: '#fff', width: '20px', height: '20px', borderRadius: '50%', fontSize: '0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
-                )}
-              </div>
-            ))}
-          </div>
-          <div style={{ width: '1px', height: '30px', background: '#333', margin: '0 10px' }}></div>
-          <div style={{ display: 'flex', gap: '10px', opacity: isPlaying ? 0.3 : 1, pointerEvents: isPlaying ? 'none' : 'auto' }}>
-            <button onClick={duplicarFrameActual} style={{...timelineBtnStyle, background: '#2563eb', color: '#fff'}} title="Duplicar fotograma actual (Mantiene la jugada para seguirla)">⏭️ Continuar Jugada</button>
-            <button onClick={agregarFrameVacio} style={{...timelineBtnStyle, background: '#333', color: '#fff', flexShrink: 0}}>➕ Frame Vacío</button>
+        <div className="ct-bottombar">
+          <TimelineBar
+            frames={frames} frameIdx={frameIdx} isPlaying={isPlaying}
+            onPlay={togglePlay} onGo={cambiarFrame} onDup={duplicarFrameActual}
+            onAdd={agregarFrameVacio} onDel={eliminarFrame}
+          />
+          <span className="ct-status">{vrtLabel} · FIFA Futsal</span>
+        </div>
+      )}
+
+      {/* ══ TEXT MODAL ══ */}
+      {textModal && (
+        <div className="ct-overlay">
+          <div style={{background:'var(--s2)',border:'1px solid var(--border2)',borderRadius:10,padding:20,width:280,boxShadow:'0 24px 60px rgba(0,0,0,.7)'}}>
+            <h3 style={{fontSize:13,marginBottom:12,fontWeight:700}}>Agregar texto</h3>
+            <input className="ct-modal-input" value={textValue} placeholder="Ej: Zona de presión alta" maxLength={60} autoFocus
+              onChange={e=>setTextValue(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter')confirmText();if(e.key==='Escape'){setTextModal(false);setTextValue('')}}}
+            />
+            <div style={{display:'flex',gap:6,justifyContent:'flex-end',marginTop:4}}>
+              <button className="ct-btn-sec" onClick={()=>{setTextModal(false);setTextValue('')}}>Cancelar</button>
+              <button className="ct-btn-primary" onClick={confirmText}>Agregar</button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* MODAL FICHA TÉCNICA RECARGADO (CON INPUT DE NOMBRE INCLUIDO) */}
-      {mostrarModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: esMovil ? '10px' : '20px' }}>
-          <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '800px', border: '2px solid var(--accent)', padding: esMovil ? '20px' : '30px', maxHeight: '95vh', overflowY: 'auto', animation: 'fadeIn 0.2s' }}>
-              
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+      {/* ══ MODAL FICHA TÉCNICA ══ */}
+      {showModal && (
+        <div className="ct-overlay">
+          <div className={`ct-modal${tareaIdEditando?' blue-border':''}`}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,borderBottom:'1px solid #333',paddingBottom:15}}>
               <div>
-                <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: esMovil ? '1.2rem' : '1.5rem', textTransform: 'uppercase' }}>
-                  {tareaIdEditando ? 'Actualizar Ficha Técnica' : 'Ficha Técnica de la Tarea'}
-                </h2>
-                <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>{canchaConfig.tamaño}</span>
+                <h2 className={tareaIdEditando?'blue':''}>{tareaIdEditando?'Actualizar Ficha Técnica':'Ficha Técnica de la Tarea'}</h2>
+                <span style={{color:'var(--muted)',fontSize:'0.8rem'}}>{vrtLabel}</span>
               </div>
-              <button onClick={() => setMostrarModal(false)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+              <button onClick={()=>setShowModal(false)} style={{background:'transparent',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer'}}>✖</button>
             </div>
 
-            {/* AHORA EL TÍTULO DE LA TAREA SE PONE ACÁ (ESPECIALMENTE PARA MÓVIL) */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{...modalLabel, color: 'var(--accent)'}}>Nombre de la Tarea *</label>
-              <input type="text" placeholder="Ej: Rondo 4v2 con finalización..." style={{...modalInput, border: '1px solid var(--accent)'}} value={nombreTarea} onChange={e => setNombreTarea(e.target.value)} />
+            <div style={{marginBottom:20}}>
+              <label className="ct-modal-lbl" style={{color:'var(--accent)'}}>Nombre de la Tarea *</label>
+              <input type="text" className="ct-modal-input" style={{borderColor:'var(--accent)'}} placeholder="Ej: Rondo 4v2 con finalización..." value={nombreTarea} onChange={e=>setNombreTarea(e.target.value)} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+            <div style={{display:'grid',gridTemplateColumns:esMovil?'1fr':'1fr 1fr',gap:15,marginBottom:15}}>
               <div>
-                <label style={modalLabel}>Enfoque Teórico</label>
-                <select style={modalInput} value={fichaTecnica.categoria_ejercicio} onChange={e => setFichaTecnica({...fichaTecnica, categoria_ejercicio: e.target.value})}>
-                  <option value="Táctico">Táctico</option>
-                  <option value="Técnico">Técnico</option>
-                  <option value="Físico">Físico</option>
-                  <option value="Cognitivo">Cognitivo</option>
-                  <option value="ABP">ABP</option>
-                  <option value="Libro Táctico">Libro Táctico</option>
+                <label className="ct-modal-lbl">Enfoque Teórico</label>
+                <select className="ct-modal-input" value={fichaTecnica.categoria_ejercicio} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_ejercicio:e.target.value})}>
+                  {['Táctico','Técnico','Físico','Cognitivo','ABP','Libro Táctico'].map(v=><option key={v}>{v}</option>)}
                 </select>
               </div>
               <div>
-                <label style={modalLabel}>Fase del Juego</label>
-                {fichaTecnica.categoria_ejercicio === 'Libro Táctico' ? (
-                  <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
-                    <option value="Salida de Presión">Salida de Presión</option>
-                    <option value="Saque Inicial">Saque Inicial</option>
-                    <option value="Laterales Bajos">Laterales Bajos</option>
-                    <option value="Laterales Medios">Laterales Medios</option>
-                    <option value="Laterales Altos">Laterales Altos</option>
-                    <option value="Corners">Corners</option>
-                    <option value="Tiros Libres">Tiros Libres</option>
-                    <option value="5v4">5v4</option>
+                <label className="ct-modal-lbl">Fase del Juego</label>
+                {fichaTecnica.categoria_ejercicio==='Libro Táctico' ? (
+                  <select className="ct-modal-input" value={fichaTecnica.fase_juego} onChange={e=>setFichaTecnica({...fichaTecnica,fase_juego:e.target.value})}>
+                    {['Salida de Presión','Saque Inicial','Laterales Bajos','Laterales Medios','Laterales Altos','Corners','Tiros Libres','5v4'].map(v=><option key={v}>{v}</option>)}
                   </select>
                 ) : (
-                  <select style={modalInput} value={fichaTecnica.fase_juego} onChange={e => setFichaTecnica({...fichaTecnica, fase_juego: e.target.value})}>
-                    <option value="Ataque Posicional">Ataque Posicional</option>
-                    <option value="Defensa Posicional">Defensa Posicional</option>
-                    <option value="Transición Ofensiva">Transición Ofensiva</option>
-                    <option value="Transición Defensiva">Transición Defensiva</option>
+                  <select className="ct-modal-input" value={fichaTecnica.fase_juego} onChange={e=>setFichaTecnica({...fichaTecnica,fase_juego:e.target.value})}>
+                    {['Ataque Posicional','Defensa Posicional','Transición Ofensiva','Transición Defensiva'].map(v=><option key={v}>{v}</option>)}
                   </select>
                 )}
               </div>
               <div>
-                <label style={modalLabel}>Duración (min)</label>
-                <input type="number" style={modalInput} value={fichaTecnica.duracion_estimada} onChange={e => setFichaTecnica({...fichaTecnica, duracion_estimada: e.target.value})} />
+                <label className="ct-modal-lbl">Duración (min)</label>
+                <input type="number" className="ct-modal-input" value={fichaTecnica.duracion_estimada} onChange={e=>setFichaTecnica({...fichaTecnica,duracion_estimada:e.target.value})} />
               </div>
               <div>
-                <label style={modalLabel}>Intensidad RPE (1-10)</label>
-                <input type="number" min="1" max="10" style={modalInput} value={fichaTecnica.intensidad_rpe} onChange={e => setFichaTecnica({...fichaTecnica, intensidad_rpe: e.target.value})} />
+                <label className="ct-modal-lbl">Intensidad RPE (1-10)</label>
+                <input type="number" min="1" max="10" className="ct-modal-input" value={fichaTecnica.intensidad_rpe} onChange={e=>setFichaTecnica({...fichaTecnica,intensidad_rpe:e.target.value})} />
               </div>
               <div>
-                <label style={modalLabel}>Jugadores Involucrados</label>
-                <input type="text" placeholder="Ej: 4v4 + 2 Comodines" style={modalInput} value={fichaTecnica.jugadores_involucrados} onChange={e => setFichaTecnica({...fichaTecnica, jugadores_involucrados: e.target.value})} />
+                <label className="ct-modal-lbl">Jugadores Involucrados</label>
+                <input type="text" placeholder="Ej: 4v4 + 2 Comodines" className="ct-modal-input" value={fichaTecnica.jugadores_involucrados} onChange={e=>setFichaTecnica({...fichaTecnica,jugadores_involucrados:e.target.value})} />
               </div>
               <div>
-                <label style={modalLabel}>Objetivo Específico</label>
-                <input type="text" placeholder="Ej: Mantener posesión bajo presión" style={modalInput} value={fichaTecnica.objetivo_principal} onChange={e => setFichaTecnica({...fichaTecnica, objetivo_principal: e.target.value})} />
+                <label className="ct-modal-lbl">Objetivo Específico</label>
+                <input type="text" placeholder="Ej: Mantener posesión bajo presión" className="ct-modal-input" value={fichaTecnica.objetivo_principal} onChange={e=>setFichaTecnica({...fichaTecnica,objetivo_principal:e.target.value})} />
               </div>
             </div>
 
-            <div style={{ marginBottom: '15px' }}>
-              <label style={modalLabel}>Reglas y Desarrollo</label>
-              <textarea rows="4" style={{...modalInput, height: 'auto', resize: 'vertical'}} placeholder="Describí paso a paso el desarrollo de la tarea..." value={fichaTecnica.descripcion} onChange={e => setFichaTecnica({...fichaTecnica, descripcion: e.target.value})}></textarea>
+            <div style={{marginBottom:15}}>
+              <label className="ct-modal-lbl">Reglas y Desarrollo</label>
+              <textarea rows={4} className="ct-modal-input" style={{height:'auto',resize:'vertical'}} placeholder="Describí paso a paso el desarrollo de la tarea..." value={fichaTecnica.descripcion} onChange={e=>setFichaTecnica({...fichaTecnica,descripcion:e.target.value})}/>
+            </div>
+            <div style={{marginBottom:25}}>
+              <label className="ct-modal-lbl">URL del Video (Opcional)</label>
+              <input type="text" placeholder="https://youtube.com/..." className="ct-modal-input" value={fichaTecnica.video_url} onChange={e=>setFichaTecnica({...fichaTecnica,video_url:e.target.value})} />
             </div>
 
-            <div style={{ marginBottom: '25px' }}>
-              <label style={modalLabel}>URL del Video (Opcional)</label>
-              <input type="text" placeholder="https://youtube.com/..." style={modalInput} value={fichaTecnica.video_url} onChange={e => setFichaTecnica({...fichaTecnica, video_url: e.target.value})} />
-            </div>
-
-             <button onClick={confirmarGuardado} className="btn-action" style={{ width: '100%', padding: '15px', fontSize: '1.1rem' }}>
-               {tareaIdEditando ? '💾 ACTUALIZAR TAREA' : '💾 GUARDAR EN EL BANCO'}
-             </button>
+            <button onClick={confirmarGuardado} className="ct-btn-primary" style={{width:'100%',padding:15,fontSize:'1.1rem',borderRadius:8}}>
+              {tareaIdEditando?'💾 ACTUALIZAR TAREA':'💾 GUARDAR EN EL BANCO'}
+            </button>
           </div>
         </div>
       )}
+
     </div>
-  );
-};
+  )
+}
 
-// --- ESTILOS ---
-const inputStyle = { padding: '8px 12px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '0.8rem', width: '220px' };
-const selectStyle = { padding: '8px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: 'var(--accent)', fontWeight: 'bold', fontSize: '0.8rem', outline: 'none' };
-const headerLabelStyle = { fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase' };
-const modeBtn = { width: '38px', height: '38px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1.2rem', display:'flex', alignItems:'center', justifyContent:'center', transition: '0.2s' };
-const labelStyle = { fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: '900', letterSpacing: '1px', borderBottom: '1px solid #333', paddingBottom: '5px', display: 'block', flexShrink: 0 };
-const iconGridBtn = { width: '40px', height: '40px', borderRadius: '8px', cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 };
-const colorInputStyle = { width: '26px', height: '26px', border: 'none', borderRadius: '50%', background: 'none', cursor: 'pointer', outline: 'none', padding: 0, flexShrink: 0 };
-const miniSelectStyle = { padding: '5px', background: '#000', border: '1px solid #333', borderRadius: '5px', color: '#fff', fontSize: '0.7rem', outline: 'none', cursor: 'pointer', flexShrink: 0 };
-const miniInputStyle = { width: '40px', padding: '5px', background: '#000', border: '1px solid #333', borderRadius: '5px', color: '#fff', fontSize: '0.7rem', outline: 'none', textAlign: 'center', flexShrink: 0 };
-const timelineBtnStyle = { padding: '8px 15px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', transition: '0.2s', flexShrink: 0 };
+// ─────────────────────────────────────────────────────────────────
+//  SUB-COMPONENTES
+// ─────────────────────────────────────────────────────────────────
+function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, onDel }) {
+  return (
+    <>
+      <button className="ct-play-btn"
+        style={{background:isPlaying?'#ef4444':'var(--accent)',color:isPlaying?'#fff':'#000'}}
+        onClick={onPlay} title={isPlaying?'Detener':'Reproducir animación'}>
+        {isPlaying?'🛑':'▶'}
+      </button>
+      <div style={{width:1,height:30,background:'var(--border)',flexShrink:0}}/>
+      <div style={{display:'flex',gap:8,alignItems:'center',opacity:isPlaying?.5:1,pointerEvents:isPlaying?'none':'auto'}}>
+        {frames.map((f,i)=>(
+          <div key={f.id} className={`ct-frame-chip${i===frameIdx?' on':''}`} onClick={()=>onGo(i)}>
+            {i+1}
+            {i===frameIdx&&frames.length>1&&(
+              <button className="del-x" onClick={e=>{e.stopPropagation();onDel(i)}}>✖</button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{width:1,height:30,background:'var(--border)',flexShrink:0}}/>
+      <button className="ct-tbtn" style={{background:'var(--blue)',color:'#fff',borderColor:'var(--blue)'}} onClick={onDup} title="Continuar jugada">⏭ Continuar</button>
+      <button className="ct-tbtn" style={{background:'#222',borderColor:'#333'}} onClick={onAdd}>➕ Vacío</button>
+    </>
+  )
+}
 
-const modalLabel = { display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '5px' };
-const modalInput = { width: '100%', padding: '10px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' };
+function PitchConfigPanel({ cfg, onChange, onClose }) {
+  const MATS=[{id:'verde',icon:'🌿',l:'Verde'},{id:'azul',icon:'🔵',l:'Azul'},{id:'naranja',icon:'🟠',l:'Naranja'},{id:'gris',icon:'⬜',l:'Gris'},{id:'parquet',icon:'🪵',l:'Parquet'},{id:'negro',icon:'⬛',l:'Oscuro'}]
+  const LCS=[{c:'#ffffff',id:'w'},{c:'#ffe600',id:'y'},{c:'#00e5ff',id:'cy'},{c:'#ff8800',id:'o'},{c:'#333344',id:'bk'}]
+  return (
+    <div className="ct-ppanel">
+      <div className="ct-pp-head">
+        <span className="ct-pp-title">⚙ Configurar Pista</span>
+        <div className="ct-pp-close" onClick={onClose}>✕</div>
+      </div>
+      <div style={{padding:'8px 14px 4px'}}>
+        <div style={{fontSize:10,color:'var(--muted)',marginBottom:6}}>Material</div>
+        <div className="ct-mat-grid">
+          {MATS.map(m=>(
+            <div key={m.id} className={`ct-mat-opt${cfg.material===m.id?' on':''}`} onClick={()=>onChange({material:m.id})}>
+              <div style={{fontSize:16,marginBottom:3}}>{m.icon}</div>{m.l}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="ct-pp-row">
+        <span className="ct-pp-lbl">Color líneas</span>
+        <div className="ct-swatch-row">
+          {LCS.map(lc=>(
+            <div key={lc.id} className={`ct-swatch${cfg.lineColor===lc.c?' on':''}`} style={{background:lc.c}} onClick={()=>onChange({lineColor:lc.c})}/>
+          ))}
+        </div>
+      </div>
+      <div className="ct-pp-row">
+        <span className="ct-pp-lbl">Mostrar</span>
+        <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end'}}>
+          {[{k:'showZones',l:'Zonas reglam.'},{k:'showDims',l:'Medidas'}].map(({k,l})=>(
+            <label key={k} style={{fontSize:10,color:'var(--muted)',display:'flex',alignItems:'center',gap:5,cursor:'pointer'}}>
+              <input type="checkbox" checked={cfg[k]} onChange={e=>onChange({[k]:e.target.checked})}/> {l}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="ct-pp-row">
+        <span className="ct-pp-lbl">Porterías</span>
+        <div className="ct-seg" style={{flexDirection:'column',gap:2}}>
+          {[['both','Ambas'],['left','Izq.'],['right','Der.'],['none','Ninguna']].map(([v,l])=>(
+            <div key={v} className={`ct-sopt${cfg.goals===v?' on':''}`} onClick={()=>onChange({goals:v})}>{l}</div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
-const mobileOverlayPanel = { position: 'absolute', bottom: '80px', left: '10px', right: '10px', background: 'rgba(20,20,20,0.95)', border: '1px solid #333', borderRadius: '16px', padding: '15px', zIndex: 50, backdropFilter: 'blur(10px)', boxShadow: '0 -10px 30px rgba(0,0,0,0.5)', animation: 'slideUp 0.2s ease-out' };
-const btnAccionModal = { padding: '10px 15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem' };
-const playBtnMobile = { width: '45px', height: '45px', borderRadius: '50%', border: 'none', color: '#000', fontSize: '1.2rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const frameBtnMobile = { width: '40px', height: '40px', borderRadius: '8px', border: '1px solid #444', fontWeight: 'bold', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const toggleBtnStyle = { border: 'none', borderRadius: '4px', color: '#fff', padding: '6px 10px', fontSize: '0.9rem', cursor: 'pointer', transition: '0.2s' };
-const floatingToolBtn = { width: '45px', height: '45px', borderRadius: '50%', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s', color: '#fff' };
+// ─────────────────────────────────────────────────────────────────
+//  CONVERSORES (compatibilidad con datos viejos de Konva)
+// ─────────────────────────────────────────────────────────────────
+function convertOldEl(el) {
+  // Old format: { tipo:'jugador', color:'#ef4444', x, y, radio, ... }
+  // New format: { type:'away', color:'#ef4444', x, y, label }
+  const typeMap = {
+    jugador: el.color==='#ef4444'?'away':el.color==='#3b82f6'?'home':el.color==='#22c55e'?'verde':'rosa',
+    arquero: el.color==='#eab308'?'gk-ama':'gk-vio',
+    staff:   'staff', pelota:'ball', cono_alto:'cono_alto',
+    cono_plato:'cono_plato', valla:'valla', mini_arco:'mini_arco', arco:'arco',
+  }
+  return { id:el.id||uid(), type:typeMap[el.tipo]||el.tipo, x:el.x, y:el.y, label:el.texto||'', color:el.color }
+}
 
-export default CreadorTareas;
+function convertOldLine(li) {
+  // Old format: { tipoTool:'dibujar_pase', puntos:[x1,y1,x2,y2], color, grosor, ... }
+  // New format: arrow { x1,y1,x2,y2,style,color }
+  const styleMap = { dibujar_pase:'arrow-pase', dibujar_conduccion:'arrow-conduccion' }
+  const pts = li.puntos||[]
+  return {
+    id:li.id||uid(), x1:pts[0]||0, y1:pts[1]||0,
+    x2:pts[pts.length-2]||0, y2:pts[pts.length-1]||0,
+    style:styleMap[li.tipoTool]||'arrow-pase', color:li.color||'#fff',
+    lineW:li.grosor||2, dashed:li.tipoTrazo==='punteada', curve:0, opacity:li.transparencia||1,
+  }
+}
+
+export default CreadorTareas
