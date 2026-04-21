@@ -677,40 +677,42 @@ const defaultLayout = esSuperUser
       )}
 
 {mostrarNovedades && (
-  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
+  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
     <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
         <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN 0.00202604202354
+          VERSIÓN 0.00202604211248
         </span>
         <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          Motor Analítico, Reloj y Quintetos
+          UX Reactiva y Mapas de Precisión
         </h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          Refactorización del motor de rating, precisión milimétrica en el cálculo de minutos y métricas estructurales avanzadas.
+          Implementación de leyendas inteligentes, desglose granular de eventos y optimización de la lectura visual en el perfil de jugador.
         </p>
       </div>
       <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
         <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <li>
-            <strong style={{color: '#00ff88'}}>Sincronía de Cronómetro:</strong> Nuevo sistema de ordenamiento de eventos por tiempo de creación real. Resuelve el salto entre tiempos (PT/ST) y garantiza que los minutos jugados sean 100% exactos en todas las pantallas.
+            <strong style={{color: '#00ff88'}}>Leyendas Inteligentes:</strong> El pie de página del mapa ahora es 100% reactivo. Si filtras por "Remates", la leyenda te muestra solo lo relevante a remates; si cambias a "Duelos", se adapta instantáneamente.
           </li>
           <li>
-            <strong style={{color: '#3b82f6'}}>Motor de Rating V2:</strong> Se corrigió la atribución de goles y asistencias. Ahora el algoritmo evalúa el impacto real sin duplicar puntajes, unificando la lógica de Resumen, Perfil de Jugador y Temporada.
+            <strong style={{color: '#3b82f6'}}>Desglose Granular:</strong> Ya no solo ves "puntos". Ahora el mapa y su leyenda discriminan entre Remates Atajados, Desviados o Rebatidos, y Duelos Ofensivos vs Defensivos con colores específicos.
           </li>
           <li>
-            <strong style={{color: '#c084fc'}}>Quintetos Estructurales:</strong> Nuevo análisis profundo de alineaciones. Ahora podés descubrir instantáneamente qué combinaciones de 5 jugadores generan el mejor diferencial de goles y el Rating más alto.
+            <li>
+            <strong style={{color: '#c084fc'}}>Sincronización Cromática:</strong> Se unificó la paleta de colores entre los puntos del mapa, los gráficos de torta y las etiquetas de la leyenda para una lectura intuitiva "a primer golpe de vista".
+          </li>
           </li>
           <li>
-            <strong style={{color: '#f59e0b'}}>Seguridad en Toma de Datos:</strong> Rediseño del modal de cierre de partido. Se implementó una botonera de doble confirmación ("SÍ, FINALIZAR" / "NO, CANCELAR") para evitar el cierre accidental de los registros.
+            <strong style={{color: '#f59e0b'}}>Filtro de Faltas:</strong> Nueva capa de visualización para faltas cometidas y recibidas, permitiendo identificar zonas de conflicto y comportamiento defensivo/ofensivo bajo presión.
           </li>
           <li>
-            <strong style={{color: '#ef4444'}}>Límites de Historial Rotos:</strong> Se eliminaron los topes de base de datos que cortaban el historial a 1000 filas. El Perfil de Jugador y la vista de Temporada ahora procesan y cruzan hasta 15,000 eventos en tiempo real sin perder datos.
+            <strong style={{color: '#ef4444'}}>Inteligencia por Posición:</strong> El motor ahora reconoce si el jugador es Arquero o Jugador de Campo, ocultando o mostrando métricas específicas (como Atajadas o Goles Recibidos) para limpiar la interfaz.
           </li>
         </ul>
       </div>
       <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-        CERRAR E INICIAR
+        ENTENDIDO Y CONTINUAR
       </button>
     </div>
   </div>

@@ -24,6 +24,7 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
   const abpMicroZonas = {};
 
   evSeguros.forEach((ev, index) => {
+    // Normalización de coordenadas
     if (huboCambioDeLado && ev.periodo === 'ST' && ev.zona_x !== undefined) {
       ev.zona_x_norm = 100 - ev.zona_x;
       ev.zona_y_norm = 100 - ev.zona_y;
@@ -50,28 +51,39 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
     else if (ev.minuto > 30) tramo = '30-40+';
     diccionarios.porTramo[tramo].push(ev);
 
+    // --- LÓGICA CORREGIDA PARA ABP (MALLA) ---
     if (ev.accion?.includes('Falta') || ev.accion === 'Lateral' || ev.accion === 'Córner') {
       const isRival = equipoKey === 'rival';
-      const sig1 = evSeguros[index + 1];
-      const sig2 = evSeguros[index + 2];
-      const sig3 = evSeguros[index + 3];
       
-      const ventana = [sig1, sig2, sig3].filter(e => e && e.periodo === ev.periodo && ((e.minuto * 60 + (e.segundos||0)) - (ev.minuto * 60 + (ev.segundos||0))) <= 6);
-      
-      let xgGenerado = 0;
-      let remateEncontrado = false;
-      ventana.forEach(v => {
-        if (!isRival && v.equipo === equipoPropio && v.accion?.includes('Remate')) {
-          xgGenerado += calcularXGEvento(v);
-          remateEncontrado = true;
-        }
-      });
-
+      // Solo procesamos ABPs a favor para la malla de efectividad
       if (!isRival) {
+        const sig1 = evSeguros[index + 1];
+        const sig2 = evSeguros[index + 2];
+        const sig3 = evSeguros[index + 3];
+        
+        const tInicio = (ev.minuto * 60) + (ev.segundos || 0);
+        
+        // Ventana de 10 segundos para considerar éxito
+        const ventana = [sig1, sig2, sig3].filter(e => 
+          e && 
+          e.periodo === ev.periodo && 
+          ((e.minuto * 60 + (e.segundos || 0)) - tInicio) <= 10
+        );
+        
+        let xgGenerado = 0;
+        let remateEncontrado = false;
+        ventana.forEach(v => {
+          if (v.equipo === equipoPropio && v.accion?.includes('Remate')) {
+            xgGenerado += calcularXGEvento(v);
+            remateEncontrado = true;
+          }
+        });
+
         const mz = obtenerMicroZona(ev.zona_x_norm, ev.zona_y_norm);
         if (mz) {
-          if (!abpMicroZonas[mz]) abpMicroZonas[mz] = { total: 0, rematesGenerados: 0, xGTotal: 0 };
-          abpMicroZonas[mz].total++;
+          // Usamos 'favor' en lugar de 'total' para que coincida con Resumen.jsx
+          if (!abpMicroZonas[mz]) abpMicroZonas[mz] = { favor: 0, rematesGenerados: 0, xGTotal: 0 };
+          abpMicroZonas[mz].favor++; 
           if (remateEncontrado) abpMicroZonas[mz].rematesGenerados++;
           abpMicroZonas[mz].xGTotal += xgGenerado;
         }
@@ -104,11 +116,10 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
   if (duelos.defensivos.total > 0) duelos.defensivos.eficacia = (duelos.defensivos.ganados / duelos.defensivos.total) * 100;
   if (duelos.ofensivos.total > 0) duelos.ofensivos.eficacia = (duelos.ofensivos.ganados / duelos.ofensivos.total) * 100;
 
-const trackingCancha = {};
+  const trackingCancha = {};
   const plusMinusJugador = {};
   const trackingQuintetos = {};
 
-  // 👉 1. INICIALIZAMOS LOS CRONÓMETROS PARA QUINTETOS
   let ultimoTiempoQuinteto = 0;
   let ultimoQuintetoIds = null;
 
@@ -139,12 +150,9 @@ const trackingCancha = {};
           };
         }
         
-        // 👉 2. LÓGICA DE TIEMPO DEL QUINTETO
-        // Convertimos el minuto a formato decimal absoluto
         let m = ev.minuto + ((ev.segundos || 0) / 60);
         if (ev.periodo === 'ST' && ev.minuto < 20) m += 20;
 
-        // Si el quinteto cambió, le adjudicamos los minutos jugados al quinteto que sale
         if (ultimoQuintetoIds && ultimoQuintetoIds !== idsOrdenados) {
            let delta = m - ultimoTiempoQuinteto;
            if (delta > 0 && trackingQuintetos[ultimoQuintetoIds]) {
@@ -153,7 +161,6 @@ const trackingCancha = {};
            ultimoTiempoQuinteto = m;
            ultimoQuintetoIds = idsOrdenados;
         } else if (!ultimoQuintetoIds) {
-           // Primer evento detectado, arranca el reloj
            ultimoTiempoQuinteto = m;
            ultimoQuintetoIds = idsOrdenados;
         }
@@ -177,7 +184,6 @@ const trackingCancha = {};
         }
       }
 
-      // Logica de plus/minus que ya tenías...
       if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
         const esGolPropio = ev.equipo === equipoPropio;
         idsEnCancha.forEach(id => {
@@ -190,28 +196,23 @@ const trackingCancha = {};
     }
   });
 
-  // 👉 3. CIERRE DE CRONÓMETRO AL FINALIZAR EL BUCLE
-  // Tenemos que cerrar los minutos del último quinteto que quedó en cancha
   if (ultimoQuintetoIds && trackingQuintetos[ultimoQuintetoIds] && evSeguros.length > 0) {
       const ultimoEv = evSeguros[evSeguros.length - 1];
       let m = ultimoEv.minuto + ((ultimoEv.segundos || 0) / 60);
       if (ultimoEv.periodo === 'ST' && ultimoEv.minuto < 20) m += 20;
       
-      // Asumimos el final del tiempo regular para cerrar la cuenta (20' o 40')
       const finAbsoluto = (ultimoEv.periodo === 'ST' || m > 20) ? Math.max(m, 40) : Math.max(m, 20);
       const delta = finAbsoluto - ultimoTiempoQuinteto;
       
       if (delta > 0) {
-         trackingQuintetos[ultimoQuintetoIds].minutos += delta;
+          trackingQuintetos[ultimoQuintetoIds].minutos += delta;
       }
   }
 
-  // Calculo real del Plus/Minus
   Object.keys(trackingCancha).forEach(id => {
     plusMinusJugador[id] = trackingCancha[id].pm || 0;
   });
 
-  // ✅ INYECCIÓN DEL CÁLCULO PERFECTO DE MINUTOS AQUI
   const minutosJugados = calcularMinutosPorJugador(evSeguros);
 
   const quintetos = Object.values(trackingQuintetos)
@@ -255,7 +256,6 @@ export function calcularStatsArquero(eventosArquero, eventosRivales) {
   };
 }
 
-// ✅ FUNCIÓN DE MINUTOS MEJORADA (Maneja "Cambio", "Cambio Sale" y "Cambio Entra")
 export function calcularMinutosPorJugador(eventos = []) {
   const minJugados = {};
   const entradas = {};
@@ -287,7 +287,6 @@ export function calcularMinutosPorJugador(eventos = []) {
     const minActual = getMinutoAbsoluto(ev);
     const accion = ev.accion || '';
     
-    // Soporta tanto un cambio doble ("Cambio") como eventos individuales ("Cambio Sale", "Cambio Entra")
     if (accion === 'Cambio' || accion === 'Cambio Sale' || accion === 'Cambio Entra') {
       const idSale = (accion === 'Cambio' || accion === 'Cambio Sale') && ev.id_jugador ? String(ev.id_jugador) : null;
       const idEntra = (accion === 'Cambio') && ev.id_receptor ? String(ev.id_receptor) :

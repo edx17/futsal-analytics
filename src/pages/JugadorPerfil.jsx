@@ -219,7 +219,6 @@ function JugadorPerfil() {
         setWellnessJugador([]);
         return;
       }
-      // Límite ampliado para no cortar el historial
       const { data: evsJugador } = await supabase
         .from('eventos').select('*')
         .or(`id_jugador.eq.${jugadorId},id_asistencia.eq.${jugadorId}`)
@@ -229,7 +228,6 @@ function JugadorPerfil() {
 
       const partidosIds = [...new Set((evsJugador || []).map(e => e.id_partido))];
       if (partidosIds.length > 0) {
-        // 🔥 ORDEN CRONOLÓGICO REAL: Evita que el engine mezcle el ST y PT si se usan solo los minutos numéricos
         const { data: evsFull } = await supabase.from('eventos').select('*')
           .in('id_partido', partidosIds)
           .order('id_partido', { ascending: true })
@@ -245,6 +243,12 @@ function JugadorPerfil() {
     }
     fetchDataJugador();
   }, [jugadorId]);
+
+  // 🔥 NUEVA LÓGICA: Filtrar partidos donde el jugador realmente participó
+  const partidosDondeJugo = useMemo(() => {
+    const idsParticipados = new Set(eventos.map(e => e.id_partido));
+    return partidos.filter(p => idsParticipados.has(p.id));
+  }, [eventos, partidos]);
 
   const jugadorSeleccionado = useMemo(() => jugadores.find(j => j.id == jugadorId), [jugadores, jugadorId]);
 
@@ -380,8 +384,6 @@ function JugadorPerfil() {
       let posesionesTotales = [];
 
       Object.values(evsPorPartido).forEach(evsPartido => {
-        
-        // 🔥 ORDEN CRONOLÓGICO: A prueba de balas para PT vs ST.
         evsPartido.sort((a, b) => {
           if (a.created_at && b.created_at) {
             return new Date(a.created_at) - new Date(b.created_at);
@@ -389,7 +391,6 @@ function JugadorPerfil() {
           const pA = a.periodo === 'ST' ? 1 : 0;
           const pB = b.periodo === 'ST' ? 1 : 0;
           if (pA !== pB) return pA - pB;
-          
           const tA = (a.minuto || 0) * 60 + (a.segundos || 0);
           const tB = (b.minuto || 0) * 60 + (b.segundos || 0);
           return tA - tB;
@@ -411,7 +412,6 @@ function JugadorPerfil() {
         const analisis = analizarPartido(evsPartido, 'Propio', false);
         if (analisis) {
           posesionesTotales = [...posesionesTotales, ...analisis.posesiones];
-          
           let minsPartido = analisis.minutosJugados ? (Number(analisis.minutosJugados[jugadorId]) || Number(analisis.minutosJugados[Number(jugadorId)]) || 0) : 0;
           const accionesJugadorEnPartido = evsPartido.filter(e => e.id_jugador == jugadorId).length;
 
@@ -605,6 +605,7 @@ function JugadorPerfil() {
       if (filtroAccionMapa === 'Recuperación') { if (esRival) return false; return accionStr.includes('recuperación'); }
       if (filtroAccionMapa === 'Pérdida') { if (esRival) return false; return accionStr.includes('pérdida'); }
       if (filtroAccionMapa === 'Duelo') { if (esRival) return false; return accionStr.includes('duelo'); }
+      if (filtroAccionMapa === 'Faltas') { if (esRival) return false; return accionStr.includes('falta'); }
       return false;
     });
   }, [perfil, filtroAccionMapa]);
@@ -630,6 +631,38 @@ function JugadorPerfil() {
     heat.max(dynamicMax);
     heat.draw();
   }, [evMapa, tipoMapa]);
+
+  // 🔥 LÓGICA DE LEYENDA REACTIVA TOTAL 🔥
+  const itemsLeyenda = useMemo(() => {
+    const config = {
+      // Remates
+      'GOL': { label: 'GOL', color: '#00ff88', tags: ['Todas', 'Gol', 'Remate'] },
+      'ATAJADO': { label: 'REM. ATAJADO', color: '#3b82f6', tags: ['Remate'] },
+      'DESVIADO': { label: 'REM. DESVIADO', color: '#6b7280', tags: ['Remate'] },
+      'REBATIDO': { label: 'REM. REBATIDO', color: '#a855f7', tags: ['Remate'] },
+      // Duelos
+      'DEF_GANADO': { label: 'DUELO DEF. GANADO', color: '#00ff88', tags: ['Todas', 'Duelo'] },
+      'DEF_PERDIDO': { label: 'DUELO DEF. PERDIDO', color: 'rgba(255,255,255,0.4)', tags: ['Duelo'] },
+      'OFE_GANADO': { label: 'DUELO OFE. GANADO', color: '#c084fc', tags: ['Todas', 'Duelo'] },
+      'OFE_PERDIDO': { label: 'DUELO OFE. PERDIDO', color: 'rgba(255,255,255,0.2)', tags: ['Duelo'] },
+      // Otros
+      'RECUPERACION': { label: 'RECUPERACIÓN', color: '#fbbf24', tags: ['Todas', 'Recuperación'] },
+      'PERDIDA': { label: 'PÉRDIDA', color: '#ef4444', tags: ['Todas', 'Pérdida'] },
+      'FALTA_COMETIDA': { label: 'FALTA COMETIDA', color: '#f97316', tags: ['Todas', 'Faltas'] },
+      'FALTA_RECIBIDA': { label: 'FALTA RECIBIDA', color: '#00ff88', tags: ['Faltas'] },
+      'ATAJADA': { label: 'ATAJADA', color: '#06b6d4', tags: ['Todas', 'Atajada'] },
+      'GOL_RECIBIDO': { label: 'GOL RECIBIDO', color: '#ef4444', tags: ['Todas', 'Goles Recibidos'] }
+    };
+
+    const itemsAMostrar = Object.values(config).filter(item => {
+      // Seguridad de arquero
+      if (!perfil?.esArqueroFijo && (item.label === 'ATAJADA' || item.label === 'GOL RECIBIDO')) return false;
+      // Filtro reactivo
+      return item.tags.includes(filtroAccionMapa);
+    });
+
+    return itemsAMostrar;
+  }, [filtroAccionMapa, perfil]);
 
   const metricasWellness = useMemo(() => {
     if (!wellnessJugador.length) return null;
@@ -798,7 +831,8 @@ function JugadorPerfil() {
             <div style={{ flex: esMovil ? '1 1 100%' : 'auto' }}>
               <select value={partidoFiltro} onChange={(e) => setPartidoFiltro(e.target.value)} style={{ width: '100%', minWidth: '220px', background: '#0a0a0a', color: accentColor, border: `1px solid ${esArquero ? 'rgba(251,191,36,0.3)' : 'rgba(0,255,136,0.3)'}`, padding: '8px 12px', borderRadius: '6px', outline: 'none', fontWeight: 700, fontSize: '0.8rem' }}>
                 <option value="Todos">TODA LA TEMPORADA</option>
-                {partidos.map(p => <option key={p.id} value={p.id}>{p.rival?.toUpperCase()} // {p.fecha}</option>)}
+                {/* 🔥 SOLO MOSTRAMOS PARTIDOS DONDE JUGÓ EL JUGADOR SELECCIONADO */}
+                {partidosDondeJugo.map(p => <option key={p.id} value={p.id}>{p.rival?.toUpperCase()} // {p.fecha}</option>)}
               </select>
             </div>
           )}
@@ -1023,7 +1057,7 @@ function JugadorPerfil() {
                           { label: 'ATAJADOS', val: perfil.totalAtajadas, color: '#00ff88' },
                           { label: 'GOLES', val: perfil.totalGolesRecibidos, color: '#ef4444' },
                           { label: 'DESVIADOS', val: perfil.rivalStats?.Desviado || 0, color: '#6b7280' },
-                          { label: 'REBATIDOS', val: perfil.rivalStats?.Rebatido || 0, color: '#a855f7' },
+                          { label: 'REMATES RECIBIDOS', val: perfil.rivalStats?.Rebatido || 0, color: '#a855f7' },
                           { label: 'AL PALO', val: perfil.rivalStats?.Palo || 0, color: '#facc15' },
                         ].map((item, i, arr) => {
                           const total = arr.reduce((s, x) => s + x.val, 0) || 1;
@@ -1156,7 +1190,7 @@ function JugadorPerfil() {
                     </div>
 
                     <div className="bento-card jp-section">
-                      <div className="stat-label" style={{ color: '#f97316', marginBottom: '14px' }}>🏃 TRANSICIONES</div>
+                      <div className="stat-label" style={{ color: '#f97316', marginBottom: '14px' }}>跑 TRANSICIONES</div>
                       <div style={{ textAlign: 'center', padding: '20px 0' }}>
                         <div style={{ fontSize: '4rem', fontWeight: 900, color: '#f97316', fontFamily: 'monospace', lineHeight: 1 }}>{perfil.transicionesInvolucrado}</div>
                         <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', marginTop: '6px', lineHeight: 1.5 }}>contraataques<br/>finalizados</div>
@@ -1216,6 +1250,7 @@ function JugadorPerfil() {
                     <option value="Recuperación">RECUPERACIONES</option>
                     <option value="Pérdida">PÉRDIDAS</option>
                     <option value="Duelo">DUELOS</option>
+                    <option value="Faltas">FALTAS</option>
                   </select>
 
                   <div style={{ display: 'flex', gap: '4px', background: '#0a0a0a', padding: '3px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)', flex: esMovil ? '1 1 100%' : 'auto' }}>
@@ -1238,6 +1273,23 @@ function JugadorPerfil() {
                     const yNorm = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
                     if (xNorm == null || yNorm == null) return null;
                     const esRival = ev.equipo === 'Rival';
+
+                    // 🔥 Lógica de Color Dinámica para puntos del mapa
+                    const dotColor = (() => {
+                      const a = (ev.accion || '').toLowerCase();
+                      if (a.includes('gol') && !a.includes('contra') && !a.includes('recibido')) return '#00ff88';
+                      if (a.includes('atajado')) return '#3b82f6';
+                      if (a.includes('desviado')) return '#6b7280';
+                      if (a.includes('rebatido')) return '#a855f7';
+                      if (a.includes('def') && a.includes('ganado')) return '#00ff88';
+                      if (a.includes('def') && a.includes('perdido')) return 'rgba(255,255,255,0.4)';
+                      if (a.includes('ofe') && a.includes('ganado')) return '#c084fc';
+                      if (a.includes('ofe') && a.includes('perdido')) return 'rgba(255,255,255,0.2)';
+                      if (a.includes('cometida')) return '#f97316';
+                      if (a.includes('recibida')) return '#00ff88';
+                      return getColorAccion(ev.accion);
+                    })();
+
                     return (
                       <div
                         key={ev.id || i}
@@ -1245,12 +1297,12 @@ function JugadorPerfil() {
                         style={{
                           position: 'absolute', left: `${xNorm}%`, top: `${yNorm}%`,
                           width: esRival ? '10px' : '11px', height: esRival ? '10px' : '11px',
-                          backgroundColor: getColorAccion(ev.accion),
+                          backgroundColor: dotColor,
                           border: esRival ? '1.5px solid rgba(0,0,0,0.8)' : '1.5px solid rgba(0,0,0,0.5)',
                           borderRadius: esRival ? '2px' : '50%',
                           transform: 'translate(-50%, -50%)',
                           opacity: 0.88, zIndex: 2,
-                          boxShadow: `0 0 6px ${getColorAccion(ev.accion)}66`
+                          boxShadow: `0 0 6px ${dotColor}66`
                         }}
                       />
                     );
@@ -1264,15 +1316,17 @@ function JugadorPerfil() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '14px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                {[
-                  { label: 'Gol', color: '#00ff88' }, { label: 'Remate', color: '#3b82f6' }, { label: 'Recuperación', color: '#fbbf24' },
-                  { label: 'Pérdida', color: '#ef4444' }, { label: 'Duelo Ganado', color: '#a855f7' },
-                  ...(esArquero ? [{ label: 'Atajada', color: '#06b6d4' }] : [])
-                ].map(l => (
-                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: l.color }} />
-                    {l.label}
+              {/* LEYENDA REACTIVA TOTALMENTE DETALLADA */}
+              <div style={{ 
+                display: 'flex', gap: '15px', flexWrap: 'wrap', marginTop: '16px', 
+                padding: '12px', background: 'rgba(255,255,255,0.02)', 
+                borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)',
+                justifyContent: esMovil ? 'center' : 'flex-start'
+              }}>
+                {itemsLeyenda.map(l => (
+                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: l.color, border: '1px solid rgba(0,0,0,0.3)' }} />
+                    {l.label.toUpperCase()}
                   </div>
                 ))}
               </div>

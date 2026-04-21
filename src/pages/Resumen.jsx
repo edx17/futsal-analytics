@@ -15,6 +15,67 @@ import ReportGenerator from '../components/ReportGenerator';
 import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
 
+// Componente para la Malla de Microzonas Tácticas (Filtro ZONAS)
+const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
+  const zX = ['Z1', 'Z2', 'Z3', 'Z4'];
+  const zY = ['I', 'C', 'D'];
+
+  const counts = useMemo(() => {
+    const map = {};
+    eventos.forEach(ev => {
+      const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+      const y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
+      if (x == null || y == null) return;
+      
+      const col = x < 25 ? 'Z1' : x < 50 ? 'Z2' : x < 75 ? 'Z3' : 'Z4';
+      const row = y < 33.33 ? 'I' : y < 66.66 ? 'C' : 'D';
+      const key = `${col}-${row}`;
+      map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [eventos]);
+
+  return (
+    <svg viewBox="0 0 100 50" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}>
+      {zX.map((xVal, colIdx) => (
+        zY.map((yVal, rowIdx) => {
+          const key = `${xVal}-${yVal}`;
+          const count = counts[key] || 0;
+          const opacity = count > 0 ? Math.min(0.8, (count / (maxCount || 10)) * 0.6 + 0.1) : 0;
+          return (
+            <g key={key}>
+              <rect 
+                x={colIdx * 25} y={rowIdx * 16.66} 
+                width="25" height="16.66" 
+                fill={count > 0 ? `rgba(59, 130, 246, ${opacity})` : 'transparent'} 
+                stroke="rgba(255,255,255,0.1)" 
+                strokeWidth="0.1" 
+              />
+              {/* NOMBRE DE LA ZONA - Chiquito y sutil */}
+              <text 
+                x={(colIdx * 25) + 1} y={(rowIdx * 16.66) + 3} 
+                fill="rgba(255,255,255,0.25)" fontSize="2" fontWeight="bold"
+              >
+                {key}
+              </text>
+              
+              {count > 0 && (
+                <text 
+                  x={(colIdx * 25) + 12.5} y={(rowIdx * 16.66) + 10} 
+                  fill="#fff" fontSize="6" textAnchor="middle" fontWeight="900" 
+                  style={{ filter: 'drop-shadow(0px 0px 2px rgba(0,0,0,1))' }}
+                >
+                  {count}
+                </text>
+              )}
+            </g>
+          );
+        })
+      ))}
+    </svg>
+  );
+};
+
 const calcularRatingQuintetoAvanzado = (q) => {
   const gf = Number(q.golesFavor) || 0;
   const gc = Number(q.golesContra) || 0;
@@ -26,10 +87,8 @@ const calcularRatingQuintetoAvanzado = (q) => {
   const mins = Number(q.minutos) || 0;
   const volumenAcciones = gf + gc + rf + rc + rec + per;
 
-  // Si no jugaron ni 1 minuto y no tocaron la pelota, dejamos guión
   if (mins <= 0 && volumenAcciones === 0) return '-'; 
 
-  // Ajuste matemático: piso de 0.3 para que acciones rápidas tengan impacto aunque jueguen poco
   const min_factor = Math.min(1, Math.max(0.3, mins / 10)); 
   const diferencial = (gf - gc) * 2.0 + (rf - rc) * 0.15 + (rec - per) * 0.1;
   let rating = 6.0 + (diferencial * min_factor);
@@ -85,6 +144,7 @@ const MallaABP = ({ microZonas }) => {
         zY.map((yVal, rowIdx) => {
           const key = `${xVal}-${yVal}`;
           const data = microZonas[key];
+          // Lógica de efectividad: Remates generados sobre el total de ABPs en esa zona
           const efectividad = data && data.favor > 0 ? data.rematesGenerados / data.favor : 0;
           return (
             <g key={key}>
@@ -498,7 +558,6 @@ function Resumen() {
     });
 
     const arquerosPropios = jugadores.filter(j => j.posicion?.toLowerCase().includes('arquero')).map(j => j.id);
-    const idArqueroPrincipal = Object.values(statsJugadores).find(j => j.posicion?.toLowerCase().includes('arquero'))?.id;
 
     evFiltrados.forEach(ev => {
       if (ev.equipo === 'Propio' && ev.id_jugador && statsJugadores[ev.id_jugador]) {
@@ -519,33 +578,30 @@ function Resumen() {
         if (ev.accion === 'Atajada' || ev.accion?.toLowerCase().includes('atajada')) statsJugadores[ev.id_jugador].atajadas++;
       }
       
-if (ev.equipo === 'Rival') {
-  arquerosPropios.forEach(arqId => {
-    if (statsJugadores[arqId]) {
-      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqId].golesRecibidos++;
-      if (ev.accion === 'Remate - Atajado') statsJugadores[arqId].atajadas++;
-    }
-  });
-}
+      if (ev.equipo === 'Rival') {
+        arquerosPropios.forEach(arqId => {
+          if (statsJugadores[arqId]) {
+            if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqId].golesRecibidos++;
+            if (ev.accion === 'Remate - Atajado') statsJugadores[arqId].atajadas++;
+          }
+        });
+      }
 
       if (ev.equipo === 'Propio' && ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
         if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_asistencia].asistencias++;
       }
     });
 
-const evRivales = evFiltrados.filter(ev => ev.equipo === 'Rival');
+    const evRivales = evFiltrados.filter(ev => ev.equipo === 'Rival');
 
-const ranking = Object.values(statsJugadores)
+    const ranking = Object.values(statsJugadores)
       .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
       .map(j => {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
         const mins = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
-        
-        // 👉 2. Pasamos los eventos rivales como TERCER parámetro a la función
         const ratingFinal = calcularRatingJugador(j, j.eventos, evRivales, pm, mins);
         
         let rol = 'MIXTO';
-        
         const esArqueroFijo = j.posicion && j.posicion.toLowerCase().includes('arquero');
         
         if (esArqueroFijo) {
@@ -565,7 +621,6 @@ const ranking = Object.values(statsJugadores)
             }
         }
 
-        // 👉 2. AHORA SÍ ratingFinal EXISTE Y SE PUEDE ASIGNAR
         return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, rol } 
       })
       .sort((a, b) => {
@@ -592,6 +647,11 @@ const ranking = Object.values(statsJugadores)
     const chaosIndex = posesionesTotales > 0 ? ((stats.propio.perdidas + stats.rival.perdidas + totalDuelosPartido + datosProcesados.transiciones.length) / posesionesTotales).toFixed(1) : 0;
 
     const xgDiff = (datosProcesados.xgPropio + datosProcesados.xgRival) > 0 ? (datosProcesados.xgPropio / (datosProcesados.xgPropio + datosProcesados.xgRival)) * 100 : 50;
+    
+    // CORRECCIÓN DEL 100% EN DUELOS DEFENSIVOS
+    const totalDuelosDef = datosProcesados.duelos.defensivos.total || 0;
+    const duelosDefPct = totalDuelosDef > 0 ? (datosProcesados.duelos.defensivos.ganados / totalDuelosDef) * 100 : 0;
+    
     const duelosPct = totalDuelosPartido > 0 ? ((datosProcesados.duelos.defensivos.ganados + datosProcesados.duelos.ofensivos.ganados) / totalDuelosPartido) * 100 : 50;
     const matchControl = ((xgDiff * 0.4) + (territoryPct * 0.3) + (duelosPct * 0.3)).toFixed(0);
 
@@ -1187,7 +1247,8 @@ const COLORS_ORIGEN = {
                 <strong>
                   {analitica.duelos.defensivos.ganados} / {analitica.duelos.defensivos.total}
                   <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
-                    ({analitica.duelos.defensivos.total > 0 ? ((analitica.duelos.defensivos.ganados / analitica.duelos.ofensivos.total) * 100).toFixed(0) : 0}%)
+                    {/* CORRECCIÓN: Usando total defensivo para el porcentaje */}
+                    ({analitica.duelos.defensivos.total > 0 ? ((analitica.duelos.defensivos.ganados / analitica.duelos.defensivos.total) * 100).toFixed(0) : 0}%)
                   </span>
                 </strong>
               </div>
@@ -1263,8 +1324,10 @@ const COLORS_ORIGEN = {
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
-                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES <InfoBox texto="Muestra las rutas desde la recuperación del balón hasta la finalización. Identifica la peligrosidad del contraataque." /></button>
-                  <button onClick={() => setTipoMapa('abp')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'abp' ? '#06b6d4' : 'transparent', color: tipoMapa === 'abp' ? '#000' : 'var(--text-dim)' }}>ABP (MALLA) <InfoBox texto="Divide la cancha en microzonas para evaluar la eficacia de los saques de banda y córners según su punto de ejecución." /></button>
+                  {/* NUEVO FILTRO ZONAS: DIVIDE LA CANCHA CON NÚMEROS */}
+                  <button onClick={() => setTipoMapa('zonas')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'zonas' ? '#333' : 'transparent', color: tipoMapa === 'zonas' ? 'var(--accent)' : 'var(--text-dim)' }}>ZONAS</button>
+                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
+                  <button onClick={() => setTipoMapa('abp')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'abp' ? '#06b6d4' : 'transparent', color: tipoMapa === 'abp' ? '#000' : 'var(--text-dim)' }}>ABP (MALLA)</button>
                 </div>
               </div>
             </div>
@@ -1295,6 +1358,10 @@ const COLORS_ORIGEN = {
                     />
                   )
                 })}
+
+                {tipoMapa === 'zonas' && (
+                   <MallaTacticaInteractiva eventos={evMapa} maxCount={15} />
+                )}
 
                 {tipoMapa === 'transiciones' && (
                   <svg style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }}>
@@ -1545,7 +1612,6 @@ const COLORS_ORIGEN = {
                     const ama = q.amarillas || 0;
                     const roj = q.rojas || 0;
 
-                    // CORRECCIÓN DE NOMBRES: Usamos String() para asegurar que matchee num con string
                     const nombresQuinteto = (q.ids || []).map(id => {
                       const jug = jugadores.find(j => String(j.id) === String(id));
                       if (!jug) return '?';
