@@ -677,26 +677,44 @@ const defaultLayout = esSuperUser
       )}
 
 {mostrarNovedades && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
-          <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
-            <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>VERSIÓN 0.00202604131241</span>
-              <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>UX, Estabilidad y Optimizaciones</h2>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>Ajustes en la experiencia de uso en móviles, reestructuración visual en el Match Center y prevención de errores críticos de servidor.</p>
-            </div>
-            <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
-              <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <li><strong style={{color: '#3b82f6'}}>Responsive Design:</strong> Ajuste estructural milimétrico en las dimensiones de la cancha para una carga y visualización perfecta en Tablets y dispositivos móviles.</li>
-                <li><strong style={{color: '#00ff88'}}>Cronología de Partidos:</strong> Nuevo motor de ordenamiento inteligente en el panel de Resumen. Ahora el historial se visualiza de forma natural: de más reciente a más antiguo.</li>
-                <li><strong style={{color: '#c084fc'}}>Identidad Visual:</strong> Integración y visualización automática de los escudos de ambos clubes (Propio vs Rival) en las tarjetas de creación de nuevos partidos.</li>
-                <li><strong style={{color: '#f59e0b'}}>Situaciones Asimétricas:</strong> Corrección y exposición de datos precisos al filtrar eventos bajo estado de superioridad o inferioridad táctica en el Match Center.</li>
-                <li><strong style={{color: '#ef4444'}}>Estabilidad de Navegación:</strong> Solución definitiva al Error 404 del servidor al refrescar la web. Además, se bloqueó el gesto móvil "tirar para actualizar" previniendo recargas accidentales durante la toma de datos.</li>
-              </ul>
-            </div>
-            <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>CERRAR E INICIAR</button>
-          </div>
-        </div>
-      )}
+  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
+    <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
+      <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+        <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
+          VERSIÓN 0.00202604202354
+        </span>
+        <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
+          Motor Analítico, Reloj y Quintetos
+        </h2>
+        <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
+          Refactorización del motor de rating, precisión milimétrica en el cálculo de minutos y métricas estructurales avanzadas.
+        </p>
+      </div>
+      <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
+        <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <li>
+            <strong style={{color: '#00ff88'}}>Sincronía de Cronómetro:</strong> Nuevo sistema de ordenamiento de eventos por tiempo de creación real. Resuelve el salto entre tiempos (PT/ST) y garantiza que los minutos jugados sean 100% exactos en todas las pantallas.
+          </li>
+          <li>
+            <strong style={{color: '#3b82f6'}}>Motor de Rating V2:</strong> Se corrigió la atribución de goles y asistencias. Ahora el algoritmo evalúa el impacto real sin duplicar puntajes, unificando la lógica de Resumen, Perfil de Jugador y Temporada.
+          </li>
+          <li>
+            <strong style={{color: '#c084fc'}}>Quintetos Estructurales:</strong> Nuevo análisis profundo de alineaciones. Ahora podés descubrir instantáneamente qué combinaciones de 5 jugadores generan el mejor diferencial de goles y el Rating más alto.
+          </li>
+          <li>
+            <strong style={{color: '#f59e0b'}}>Seguridad en Toma de Datos:</strong> Rediseño del modal de cierre de partido. Se implementó una botonera de doble confirmación ("SÍ, FINALIZAR" / "NO, CANCELAR") para evitar el cierre accidental de los registros.
+          </li>
+          <li>
+            <strong style={{color: '#ef4444'}}>Límites de Historial Rotos:</strong> Se eliminaron los topes de base de datos que cortaban el historial a 1000 filas. El Perfil de Jugador y la vista de Temporada ahora procesan y cruzan hasta 15,000 eventos en tiempo real sin perder datos.
+          </li>
+        </ul>
+      </div>
+      <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+        CERRAR E INICIAR
+      </button>
+    </div>
+  </div>
+)}
 
       {mostrarQR && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>

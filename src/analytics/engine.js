@@ -104,20 +104,29 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
   if (duelos.defensivos.total > 0) duelos.defensivos.eficacia = (duelos.defensivos.ganados / duelos.defensivos.total) * 100;
   if (duelos.ofensivos.total > 0) duelos.ofensivos.eficacia = (duelos.ofensivos.ganados / duelos.ofensivos.total) * 100;
 
-  // Calculo de Minutos y Plus/Minus Exacto
-  const trackingCancha = {};
-  const minutosJugados = {};
+const trackingCancha = {};
   const plusMinusJugador = {};
   const trackingQuintetos = {};
+
+  // 👉 1. INICIALIZAMOS LOS CRONÓMETROS PARA QUINTETOS
+  let ultimoTiempoQuinteto = 0;
+  let ultimoQuintetoIds = null;
 
   evSeguros.forEach(ev => {
     if (ev.quinteto_activo) {
       let idsEnCancha = [];
-      if (typeof ev.quinteto_activo === 'string') idsEnCancha = ev.quinteto_activo.split(',').map(id => id.trim());
-      else if (Array.isArray(ev.quinteto_activo)) idsEnCancha = ev.quinteto_activo;
+      if (typeof ev.quinteto_activo === 'string') {
+        try {
+          idsEnCancha = JSON.parse(ev.quinteto_activo).map(String);
+        } catch (e) {
+          idsEnCancha = ev.quinteto_activo.split(',').map(id => String(id).trim());
+        }
+      } else if (Array.isArray(ev.quinteto_activo)) {
+        idsEnCancha = ev.quinteto_activo.map(String);
+      }
 
       idsEnCancha.forEach(id => {
-        if (!trackingCancha[id]) trackingCancha[id] = { ultimoMinuto: 0, totalMinutos: 0, pm: 0 };
+        if (!trackingCancha[id]) trackingCancha[id] = { pm: 0 };
       });
 
       const idsOrdenados = [...idsEnCancha].sort().join('-');
@@ -130,6 +139,25 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
           };
         }
         
+        // 👉 2. LÓGICA DE TIEMPO DEL QUINTETO
+        // Convertimos el minuto a formato decimal absoluto
+        let m = ev.minuto + ((ev.segundos || 0) / 60);
+        if (ev.periodo === 'ST' && ev.minuto < 20) m += 20;
+
+        // Si el quinteto cambió, le adjudicamos los minutos jugados al quinteto que sale
+        if (ultimoQuintetoIds && ultimoQuintetoIds !== idsOrdenados) {
+           let delta = m - ultimoTiempoQuinteto;
+           if (delta > 0 && trackingQuintetos[ultimoQuintetoIds]) {
+              trackingQuintetos[ultimoQuintetoIds].minutos += delta;
+           }
+           ultimoTiempoQuinteto = m;
+           ultimoQuintetoIds = idsOrdenados;
+        } else if (!ultimoQuintetoIds) {
+           // Primer evento detectado, arranca el reloj
+           ultimoTiempoQuinteto = m;
+           ultimoQuintetoIds = idsOrdenados;
+        }
+
         const q = trackingQuintetos[idsOrdenados];
         const esPropio = ev.equipo === equipoPropio;
         const act = ev.accion || '';
@@ -149,6 +177,7 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
         }
       }
 
+      // Logica de plus/minus que ya tenías...
       if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
         const esGolPropio = ev.equipo === equipoPropio;
         idsEnCancha.forEach(id => {
@@ -159,33 +188,36 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
         });
       }
     }
-
-    if (ev.accion === 'Cambio Sale' && ev.id_jugador) {
-      if (trackingCancha[ev.id_jugador]) {
-        let minActual = (ev.minuto || 0) + ((ev.segundos || 0) / 60);
-        let m = minActual - trackingCancha[ev.id_jugador].ultimoMinuto;
-        if (m > 0 && m < 40) trackingCancha[ev.id_jugador].totalMinutos += m;
-      }
-    }
-    if (ev.accion === 'Cambio Entra' && ev.id_jugador) {
-      if (!trackingCancha[ev.id_jugador]) trackingCancha[ev.id_jugador] = { ultimoMinuto: 0, totalMinutos: 0, pm: 0 };
-      trackingCancha[ev.id_jugador].ultimoMinuto = (ev.minuto || 0) + ((ev.segundos || 0) / 60);
-    }
   });
 
+  // 👉 3. CIERRE DE CRONÓMETRO AL FINALIZAR EL BUCLE
+  // Tenemos que cerrar los minutos del último quinteto que quedó en cancha
+  if (ultimoQuintetoIds && trackingQuintetos[ultimoQuintetoIds] && evSeguros.length > 0) {
+      const ultimoEv = evSeguros[evSeguros.length - 1];
+      let m = ultimoEv.minuto + ((ultimoEv.segundos || 0) / 60);
+      if (ultimoEv.periodo === 'ST' && ultimoEv.minuto < 20) m += 20;
+      
+      // Asumimos el final del tiempo regular para cerrar la cuenta (20' o 40')
+      const finAbsoluto = (ultimoEv.periodo === 'ST' || m > 20) ? Math.max(m, 40) : Math.max(m, 20);
+      const delta = finAbsoluto - ultimoTiempoQuinteto;
+      
+      if (delta > 0) {
+         trackingQuintetos[ultimoQuintetoIds].minutos += delta;
+      }
+  }
+
+  // Calculo real del Plus/Minus
   Object.keys(trackingCancha).forEach(id => {
-    minutosJugados[id] = Math.ceil(trackingCancha[id].totalMinutos) || 1;
     plusMinusJugador[id] = trackingCancha[id].pm || 0;
   });
 
+  // ✅ INYECCIÓN DEL CÁLCULO PERFECTO DE MINUTOS AQUI
+  const minutosJugados = calcularMinutosPorJugador(evSeguros);
+
   const quintetos = Object.values(trackingQuintetos)
     .map(q => {
-      // Motor de Rating Avanzado para Quintetos
       let neto = (q.golesFavor * 5) - (q.golesContra * 4) + (q.rematesFavor * 0.5) - (q.rematesContra * 0.3) + (q.recuperaciones * 0.8) - (q.perdidas * 1.2);
-      
       const volumenReal = q.golesFavor + q.golesContra + q.rematesFavor + q.rematesContra + q.recuperaciones + q.perdidas + q.faltasRecibidas + q.faltasCometidas + q.amarillas + q.rojas;
-      
-      // ✅ SUAVIZADO INTELIGENTE PROPORCIONAL AL PARTIDO
       const suavizadorPartido = Math.max(5, Math.round(evSeguros.length * 0.05));
       let volumenSuavizado = volumenReal + suavizadorPartido;
       
@@ -196,7 +228,6 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
     })
     .sort((a, b) => b.balanceRating - a.balanceRating);
 
-  // Pasamos todos los diccionarios y contexto para los nuevos Insights Tácticos
   const insights = generarInsights({ posesiones, transiciones, xg: xgPropio, goles, diccionarios, duelos, abpMicroZonas });
 
   return {
@@ -222,4 +253,82 @@ export function calcularStatsArquero(eventosArquero, eventosRivales) {
     golesEvitables: Number((xgConcedido - goles).toFixed(2)),
     porcentajeAtajadas: rematesAlArco.length > 0 ? ((atajadas / rematesAlArco.length) * 100).toFixed(1) : 0
   };
+}
+
+// ✅ FUNCIÓN DE MINUTOS MEJORADA (Maneja "Cambio", "Cambio Sale" y "Cambio Entra")
+export function calcularMinutosPorJugador(eventos = []) {
+  const minJugados = {};
+  const entradas = {};
+  
+  const primerEvento = eventos.find(e => e.quinteto_activo && e.quinteto_activo.length > 0);
+  let titulares = [];
+  
+  if (primerEvento) {
+    let qa = primerEvento.quinteto_activo;
+    if (typeof qa === 'string') {
+      try { qa = JSON.parse(qa); } catch(e) { qa = qa.split(',').map(id => id.trim()); }
+    }
+    if (Array.isArray(qa)) titulares = qa.map(String);
+  }
+
+  titulares.forEach(id => {
+    entradas[id] = 0; 
+    minJugados[id] = 0;
+  });
+
+  const getMinutoAbsoluto = (ev) => {
+    let m = ev.minuto + ((ev.segundos || 0) / 60);
+    if (ev.periodo === 'ST' && ev.minuto < 20) m += 20; 
+    return m;
+  };
+
+  eventos.forEach(ev => {
+    if (ev.equipo !== 'Propio') return;
+    const minActual = getMinutoAbsoluto(ev);
+    const accion = ev.accion || '';
+    
+    // Soporta tanto un cambio doble ("Cambio") como eventos individuales ("Cambio Sale", "Cambio Entra")
+    if (accion === 'Cambio' || accion === 'Cambio Sale' || accion === 'Cambio Entra') {
+      const idSale = (accion === 'Cambio' || accion === 'Cambio Sale') && ev.id_jugador ? String(ev.id_jugador) : null;
+      const idEntra = (accion === 'Cambio') && ev.id_receptor ? String(ev.id_receptor) :
+                      (accion === 'Cambio Entra') && ev.id_jugador ? String(ev.id_jugador) : null;
+
+      if (idSale && entradas[idSale] !== undefined) {
+         minJugados[idSale] = (minJugados[idSale] || 0) + Math.max(0, minActual - entradas[idSale]);
+         delete entradas[idSale]; 
+      }
+      if (idEntra) {
+         entradas[idEntra] = minActual;
+         if (minJugados[idEntra] === undefined) minJugados[idEntra] = 0;
+      }
+    } else if (accion === 'Tarjeta Roja') {
+       const idRojo = ev.id_jugador ? String(ev.id_jugador) : null;
+       if (idRojo && entradas[idRojo] !== undefined) {
+         minJugados[idRojo] = (minJugados[idRojo] || 0) + Math.max(0, minActual - entradas[idRojo]);
+         delete entradas[idRojo];
+       }
+    } else {
+      const idActor = ev.id_jugador ? String(ev.id_jugador) : null;
+      if (idActor && entradas[idActor] === undefined && minJugados[idActor] === undefined) {
+         entradas[idActor] = 0; 
+         minJugados[idActor] = 0;
+      }
+    }
+  });
+  
+  const ultimoEvento = eventos[eventos.length - 1];
+  const finPartido = ultimoEvento ? getMinutoAbsoluto(ultimoEvento) : 40;
+  
+  Object.keys(entradas).forEach(id => {
+    minJugados[id] = (minJugados[id] || 0) + Math.max(0, finPartido - entradas[id]);
+  });
+  
+  Object.keys(minJugados).forEach(id => {
+    minJugados[id] = Math.round(minJugados[id]);
+    if (minJugados[id] === 0) {
+       minJugados[id] = 1; 
+    }
+  });
+  
+  return minJugados;
 }

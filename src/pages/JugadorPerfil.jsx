@@ -43,7 +43,6 @@ const calcularRatingQuintetoAvanzado = (q) => {
 // 🎨 COMPONENTES VISUALES
 // ==========================================
 
-// Mini ring de porcentaje para arquero
 const RingMeter = ({ value, max = 100, color = '#00ff88', size = 120, label, subLabel }) => {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   const r = 44;
@@ -69,7 +68,6 @@ const RingMeter = ({ value, max = 100, color = '#00ff88', size = 120, label, sub
   );
 };
 
-// Barra de doble valor (para distribuciones tipo centro/banda)
 const BarDual = ({ labelA, valA, colorA, labelB, valB, colorB }) => {
   const total = (valA + valB) || 1;
   const pctA = Math.round((valA / total) * 100);
@@ -92,7 +90,6 @@ const BarDual = ({ labelA, valA, colorA, labelB, valB, colorB }) => {
   );
 };
 
-// KPI stat row
 const StatRow = ({ label, value, sub, color, border = true }) => (
   <div style={{ 
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -108,7 +105,6 @@ const StatRow = ({ label, value, sub, color, border = true }) => (
   </div>
 );
 
-// Canchas SVG de futsal
 const PitchLines = ({ stroke = "rgba(255,255,255,0.18)", strokeWidth = 0.5 }) => (
   <svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"
     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}>
@@ -166,7 +162,7 @@ function JugadorPerfil() {
   const [tipoMapa, setTipoMapa] = useState('calor');
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState('Todas');
-  const [tabActiva, setTabActiva] = useState('estadisticas'); // 'estadisticas' | 'mapas' | 'quinteto'
+  const [tabActiva, setTabActiva] = useState('estadisticas'); 
 
   const heatmapRef = useRef(null);
 
@@ -223,15 +219,22 @@ function JugadorPerfil() {
         setWellnessJugador([]);
         return;
       }
+      // Límite ampliado para no cortar el historial
       const { data: evsJugador } = await supabase
         .from('eventos').select('*')
         .or(`id_jugador.eq.${jugadorId},id_asistencia.eq.${jugadorId}`)
-        .order('id_partido', { ascending: false });
+        .order('id_partido', { ascending: false })
+        .limit(10000);
       setEventos(evsJugador || []);
 
       const partidosIds = [...new Set((evsJugador || []).map(e => e.id_partido))];
       if (partidosIds.length > 0) {
-        const { data: evsFull } = await supabase.from('eventos').select('*').in('id_partido', partidosIds).order('minuto', { ascending: true });
+        // 🔥 ORDEN CRONOLÓGICO REAL: Evita que el engine mezcle el ST y PT si se usan solo los minutos numéricos
+        const { data: evsFull } = await supabase.from('eventos').select('*')
+          .in('id_partido', partidosIds)
+          .order('id_partido', { ascending: true })
+          .order('created_at', { ascending: true }) 
+          .limit(15000);
         setEventosCompletos(evsFull || []);
       } else {
         setEventosCompletos([]);
@@ -276,14 +279,12 @@ function JugadorPerfil() {
     const partidosJugados = new Set(evFiltrados.map(e => e.id_partido)).size;
     const resultadosRemates = { Gol: 0, Atajado: 0, Desviado: 0, Rebatido: 0 };
     const accionesDirectas = []; 
+    const eventosParaRating = []; 
+    
     const perfilRemate = { centro: 0, banda: 0, cerca: 0, lejos: 0 };
     const sociosData = {};
-    
-    // Contextos de gol para campo
     const contextoGoles = {};
-    // Contextos de presión/recuperaciones
     const contextoRecuperaciones = { alta: 0, media: 0, baja: 0 };
-    // Timeline de acciones para gráfico de impacto por minuto
     const accionesPorMinuto = {};
 
     evFiltrados.forEach(ev => {
@@ -297,13 +298,15 @@ function JugadorPerfil() {
       if (ev.id_asistencia == jugadorId && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {
         stats.asistencias++;
         if (ev.id_jugador) sociosData[ev.id_jugador] = (sociosData[ev.id_jugador] || 0) + 1;
+        eventosParaRating.push({ ...ev, id_jugador: jugadorId, tipoVirtual: 'Asistencia' });
       }
 
       if (ev.id_jugador == jugadorId) {
         accionesDirectas.push(ev);
+        eventosParaRating.push(ev); 
+        
         const xgEvento = calcularXGEvento(ev);
 
-        // Tracking por minuto (para heat de impacto)
         const minKey = ev.minuto !== undefined ? Math.floor(ev.minuto) : 0;
         if (!accionesPorMinuto[minKey]) accionesPorMinuto[minKey] = 0;
         accionesPorMinuto[minKey]++;
@@ -316,7 +319,6 @@ function JugadorPerfil() {
         } else if (accionStr.includes('remate') || accionStr === 'gol') {
           if (accionStr === 'remate - gol' || accionStr === 'gol') { 
             stats.goles++; stats.remates++; stats.xG += xgEvento; resultadosRemates.Gol++;
-            if (ev.id_asistencia) sociosData[ev.id_asistencia] = (sociosData[ev.id_asistencia] || 0) + 1;
             const origen = ev.origen_gol || ev.contexto_juego || 'Sin contexto';
             contextoGoles[origen] = (contextoGoles[origen] || 0) + 1;
           }
@@ -366,7 +368,6 @@ function JugadorPerfil() {
     let rivalStats = { Gol: 0, Atajado: 0, Desviado: 0, Rebatido: 0, Palo: 0 };
     let eventosRivalEnCancha = [];
     let xgEnContraBruto = 0;
-    
     const quintetosAgregados = {};
 
     if (evCompletosFiltrados.length > 0) {
@@ -379,6 +380,21 @@ function JugadorPerfil() {
       let posesionesTotales = [];
 
       Object.values(evsPorPartido).forEach(evsPartido => {
+        
+        // 🔥 ORDEN CRONOLÓGICO: A prueba de balas para PT vs ST.
+        evsPartido.sort((a, b) => {
+          if (a.created_at && b.created_at) {
+            return new Date(a.created_at) - new Date(b.created_at);
+          }
+          const pA = a.periodo === 'ST' ? 1 : 0;
+          const pB = b.periodo === 'ST' ? 1 : 0;
+          if (pA !== pB) return pA - pB;
+          
+          const tA = (a.minuto || 0) * 60 + (a.segundos || 0);
+          const tB = (b.minuto || 0) * 60 + (b.segundos || 0);
+          return tA - tB;
+        });
+
         const tieneTitular = evsPartido.some(e => e.accion === 'Quinteto Inicial' && e.id_jugador == jugadorId);
         const tieneCambioEntra = evsPartido.some(e => e.accion === 'Cambio Entra' && e.id_jugador == jugadorId);
         const primeraAccion = evsPartido.find(e => e.id_jugador == jugadorId);
@@ -396,7 +412,18 @@ function JugadorPerfil() {
         if (analisis) {
           posesionesTotales = [...posesionesTotales, ...analisis.posesiones];
           
-          const minsPartido = analisis.minutosJugados ? (analisis.minutosJugados[jugadorId] || analisis.minutosJugados[Number(jugadorId)] || 0) : 0;
+          let minsPartido = analisis.minutosJugados ? (Number(analisis.minutosJugados[jugadorId]) || Number(analisis.minutosJugados[Number(jugadorId)]) || 0) : 0;
+          const accionesJugadorEnPartido = evsPartido.filter(e => e.id_jugador == jugadorId).length;
+
+          if (minsPartido === 0 && accionesJugadorEnPartido > 0) {
+            minsPartido = accionesJugadorEnPartido * 0.8; 
+          } else if (minsPartido > 0 && accionesJugadorEnPartido > 0) {
+            const minsEstimadoMinimo = accionesJugadorEnPartido * 0.4;
+            if (minsEstimadoMinimo > minsPartido) {
+               minsPartido = minsEstimadoMinimo;
+            }
+          }
+
           minutos += minsPartido;
           const pmPartido = analisis.plusMinusJugador ? (analisis.plusMinusJugador[jugadorId] || analisis.plusMinusJugador[Number(jugadorId)] || 0) : 0;
           plusMinus += pmPartido;
@@ -437,10 +464,12 @@ function JugadorPerfil() {
 
           let jugadorEnCanchaExacta = enCancha;
           if (ev.quinteto_activo) {
-            const quintetoArray = Array.isArray(ev.quinteto_activo) 
-              ? ev.quinteto_activo 
-              : (typeof ev.quinteto_activo === 'string' ? ev.quinteto_activo.split(',') : []);
-            jugadorEnCanchaExacta = quintetoArray.some(id => String(id).trim() === String(jugadorId));
+            try {
+              const quintetoArray = typeof ev.quinteto_activo === 'string' ? JSON.parse(ev.quinteto_activo) : ev.quinteto_activo;
+              if (Array.isArray(quintetoArray)) {
+                jugadorEnCanchaExacta = quintetoArray.some(id => String(id) === String(jugadorId));
+              }
+            } catch(e) {}
           }
 
           const accionStr = (ev.accion || '').toLowerCase();
@@ -471,6 +500,11 @@ function JugadorPerfil() {
       xgBuildup = cadenas.xgBuildup;
     }
 
+    minutos = Math.round(minutos);
+    if (minutos === 0 && evFiltrados.length > 0) {
+       minutos = Math.round(Math.max(1, evFiltrados.length * 0.8));
+    }
+
     let golesContraEngine = 0;
     Object.values(quintetosAgregados).forEach(q => { golesContraEngine += (q.golesContra || 0); });
 
@@ -492,8 +526,7 @@ function JugadorPerfil() {
     const volumenAcciones = stats.recuperaciones + stats.perdidas;
     const ratioSeguridad = volumenAcciones > 0 ? ((stats.recuperaciones / volumenAcciones) * 100).toFixed(0) : 0;
     
-    // 🔥 UNIFICACIÓN TOTAL: Se llama a la función de rating con todos los parámetros completos
-    const impacto = calcularRatingJugador(jugadorSeleccionado, evFiltrados, eventosRivalEnCancha, plusMinus, minutos);
+    const impacto = calcularRatingJugador(jugadorSeleccionado, eventosParaRating, eventosRivalEnCancha, plusMinus, minutos);
 
     const esArqueroFijo = jugadorSeleccionado.posicion && jugadorSeleccionado.posicion.toLowerCase().includes('arquero');
     let rol = esArqueroFijo ? 'ARQUERO' : 'MIXTO';
@@ -538,7 +571,6 @@ function JugadorPerfil() {
       .filter(k => resultadosRemates[k] > 0)
       .map(k => ({ name: k, value: resultadosRemates[k] }));
 
-    // Datos para gráfico de impacto por minuto
     const impactoTimeline = Object.entries(accionesPorMinuto)
       .map(([min, count]) => ({ min: Number(min), count }))
       .sort((a, b) => a.min - b.min);
@@ -645,9 +677,6 @@ function JugadorPerfil() {
     );
   }
 
-  // ========================
-  // PANTALLA DIRECTORIO
-  // ========================
   if (!jugadorId) {
     const arqueros = jugadoresGrid.filter(j => j.posicion && j.posicion.toLowerCase().includes('arquero'));
     const jugadoresCampo = jugadoresGrid.filter(j => !j.posicion || !j.posicion.toLowerCase().includes('arquero'));
@@ -675,7 +704,6 @@ function JugadorPerfil() {
           </div>
         </div>
 
-        {/* Arqueros */}
         {arqueros.length > 0 && (
           <div style={{ marginBottom: '30px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
@@ -707,7 +735,6 @@ function JugadorPerfil() {
           </div>
         )}
 
-        {/* Jugadores de campo */}
         {jugadoresCampo.length > 0 && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
@@ -745,7 +772,6 @@ function JugadorPerfil() {
   const factor40 = perfil?.minutos > 0 ? (40 / perfil.minutos) : 1;
   const esArquero = perfil?.esArqueroFijo;
   const accentColor = esArquero ? '#fbbf24' : 'var(--accent)';
-  const accentBg = esArquero ? 'rgba(251,191,36,0.1)' : 'rgba(0,255,136,0.1)';
 
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
@@ -799,9 +825,7 @@ function JugadorPerfil() {
       {jugadorSeleccionado && perfil && !perfil.vacio && (
         <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              HEADER: IDENTIDAD DEL JUGADOR
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+          {/* HEADER: IDENTIDAD DEL JUGADOR */}
           <div className="bento-card jp-section" style={{
             background: `linear-gradient(135deg, #0d0d0d 0%, #111 50%, ${esArquero ? '#110e00' : '#001a0d'} 100%)`,
             borderLeft: `4px solid ${accentColor}`,
@@ -809,14 +833,12 @@ function JugadorPerfil() {
             position: 'relative',
             overflow: 'hidden'
           }}>
-            {/* Número decorativo de fondo */}
             <div style={{ position: 'absolute', right: esMovil ? '-10px' : '20px', top: '-20px', fontSize: esMovil ? '8rem' : '11rem', fontWeight: 900, color: 'rgba(255,255,255,0.025)', pointerEvents: 'none', lineHeight: 1, fontFamily: 'monospace' }}>
               {jugadorSeleccionado.dorsal}
             </div>
 
             <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: esMovil ? '18px' : '28px', alignItems: esMovil ? 'flex-start' : 'center', position: 'relative', zIndex: 1 }}>
               
-              {/* Avatar */}
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 <div style={{ width: esMovil ? '64px' : '80px', height: esMovil ? '64px' : '80px', borderRadius: '50%', background: esArquero ? '#1a1400' : '#0a1a0d', border: `3px solid ${accentColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '2rem', fontWeight: 800, color: accentColor }}>
                   {jugadorSeleccionado.foto
@@ -828,7 +850,6 @@ function JugadorPerfil() {
                 )}
               </div>
 
-              {/* Nombre + Rol */}
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
                   <div style={{ fontSize: esMovil ? '1.8rem' : '2.4rem', fontWeight: 900, textTransform: 'uppercase', color: '#fff', lineHeight: 1, letterSpacing: '-0.02em' }}>
@@ -848,7 +869,6 @@ function JugadorPerfil() {
                 )}
               </div>
 
-              {/* KPIs de cabecera */}
               <div style={{ display: 'flex', gap: esMovil ? '16px' : '24px', flexWrap: 'wrap', borderTop: esMovil ? `1px solid rgba(255,255,255,0.08)` : 'none', paddingTop: esMovil ? '14px' : '0', width: esMovil ? '100%' : 'auto', justifyContent: esMovil ? 'space-around' : 'flex-end' }}>
                 {[
                   { label: 'PARTIDOS', val: perfil.partidosJugados, color: '#fff' },
@@ -865,9 +885,7 @@ function JugadorPerfil() {
             </div>
           </div>
 
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              TABS DE NAVEGACIÓN
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+          {/* TABS DE NAVEGACIÓN */}
           <div style={{ display: 'flex', gap: '4px', background: '#0a0a0a', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
             {[
               { id: 'estadisticas', label: esArquero ? '🥅 RENDIMIENTO' : '⚽ ESTADÍSTICAS' },
@@ -893,13 +911,9 @@ function JugadorPerfil() {
             ))}
           </div>
 
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              TAB: ESTADÍSTICAS / RENDIMIENTO
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {tabActiva === 'estadisticas' && (
             <div className="jp-section" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               
-              {/* Radar */}
               <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1.4fr 1fr', gap: '18px' }}>
                 <div className="bento-card jp-stat-card">
                   <div className="stat-label" style={{ marginBottom: '8px', color: accentColor }}>
@@ -917,7 +931,6 @@ function JugadorPerfil() {
                   </div>
                 </div>
 
-                {/* Disciplina */}
                 <div className="bento-card jp-stat-card" style={{ display: 'flex', flexDirection: 'column' }}>
                   <div className="stat-label" style={{ marginBottom: '14px', color: '#facc15' }}>DISCIPLINA</div>
                   <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '18px', background: '#0a0a0a', padding: '16px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -938,7 +951,6 @@ function JugadorPerfil() {
                 </div>
               </div>
 
-              {/* Wellness */}
               {metricasWellness && (
                 <div className="bento-card jp-section" style={{ background: 'linear-gradient(135deg, #0a0a1a, #000)', border: '1px solid rgba(59,130,246,0.3)' }}>
                   <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '16px' }}>
@@ -963,7 +975,6 @@ function JugadorPerfil() {
               {esArquero ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                   
-                  {/* Métricas principales arquero */}
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '14px' }}>
                     {[
                       { label: 'EFECTIVIDAD', val: `${perfil.pctAtajadas}%`, sub: `${perfil.totalAtajadas}/${perfil.totalAtajadas + perfil.totalGolesRecibidos}`, color: '#00ff88', icon: '🛡️' },
@@ -980,7 +991,6 @@ function JugadorPerfil() {
                     ))}
                   </div>
 
-                  {/* Rings de métricas + desglose */}
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr', gap: '18px' }}>
                     
                     <div className="bento-card jp-section">
@@ -1030,7 +1040,6 @@ function JugadorPerfil() {
                     </div>
                   </div>
 
-                  {/* Juego de pies + socios */}
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr', gap: '18px' }}>
                     <div className="bento-card jp-section">
                       <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '16px' }}>🦶 JUEGO DE PIES Y DISTRIBUCIÓN</div>
@@ -1055,7 +1064,6 @@ function JugadorPerfil() {
               /* ────────── JUGADOR DE CAMPO ────────── */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                   
-                  {/* Métricas principales campo */}
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '12px' }}>
                     {[
                       { label: 'GOLES', val: perfil.stats.goles, color: '#00ff88', icon: '⚽' },
@@ -1072,7 +1080,6 @@ function JugadorPerfil() {
                     ))}
                   </div>
 
-                  {/* Ofensiva + Defensiva */}
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr', gap: '18px' }}>
                     <div className="bento-card jp-section">
                       <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '14px' }}>⚽ RADIOGRAFÍA OFENSIVA</div>
@@ -1096,7 +1103,6 @@ function JugadorPerfil() {
                       <div className="stat-label" style={{ color: '#ef4444', marginBottom: '14px' }}>🛡️ RADIOGRAFÍA DEFENSIVA</div>
                       <StatRow label="Recuperaciones totales" value={perfil.stats.recuperaciones} color="var(--accent)" sub={`(${(perfil.stats.recuperaciones * factor40).toFixed(1)} p40)`} />
                       
-                      {/* Distribución de recuperaciones */}
                       <div style={{ padding: '10px', background: '#0a0a0a', borderRadius: '6px', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.04)' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px', textAlign: 'center', fontSize: '0.65rem' }}>
                           {[
@@ -1126,7 +1132,6 @@ function JugadorPerfil() {
                     </div>
                   </div>
 
-                  {/* Torta de remates + Transiciones + Socios */}
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr 1fr', gap: '18px' }}>
                     
                     <div className="bento-card jp-section" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1187,9 +1192,6 @@ function JugadorPerfil() {
             </div>
           )}
 
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              TAB: MAPAS
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {tabActiva === 'mapas' && (
             <div className="jp-section bento-card">
               <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'center', marginBottom: '20px', gap: '12px', flexWrap: 'wrap' }}>
@@ -1262,7 +1264,6 @@ function JugadorPerfil() {
                 </div>
               </div>
 
-              {/* Leyenda */}
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '14px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)' }}>
                 {[
                   { label: 'Gol', color: '#00ff88' }, { label: 'Remate', color: '#3b82f6' }, { label: 'Recuperación', color: '#fbbf24' },
@@ -1278,9 +1279,6 @@ function JugadorPerfil() {
             </div>
           )}
 
-          {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              TAB: QUINTETO
-          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
           {tabActiva === 'quinteto' && (
             <div className="jp-section" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div className="bento-card" style={{ borderTop: `3px solid ${accentColor}` }}>
@@ -1290,7 +1288,6 @@ function JugadorPerfil() {
                 </div>
                 {perfil.mejorQuinteto ? (
                   <div>
-                    {/* Jugadores del quinteto */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
                       {perfil.mejorQuinteto.ids.map(id => {
                         const j = jugadores.find(jug => jug.id == id);
@@ -1314,7 +1311,6 @@ function JugadorPerfil() {
                       })}
                     </div>
 
-                    {/* Métricas del quinteto */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', background: '#0a0a0a', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
                       {[
                         { label: 'RATING', val: perfil.mejorQuinteto.rating.toFixed(1), color: perfil.mejorQuinteto.rating >= 6 ? accentColor : '#ef4444' },

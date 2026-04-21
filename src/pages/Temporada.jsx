@@ -275,6 +275,17 @@ function Temporada() {
     };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
+  // 📈 ORDENAMIENTO DE QUINTETOS
+  const mejoresQuintetos = useMemo(() => {
+    if (!analiticaGlobal?.topQuintetos) return [];
+    return [...analiticaGlobal.topQuintetos].sort((a, b) => b.balanceRating - a.balanceRating);
+  }, [analiticaGlobal]);
+
+  const peoresQuintetos = useMemo(() => {
+    if (!analiticaGlobal?.peoresQuintetos) return [];
+    return [...analiticaGlobal.peoresQuintetos].sort((a, b) => a.balanceRating - b.balanceRating);
+  }, [analiticaGlobal]);
+
   const evMapa = analiticaGlobal?.evFiltrados.filter(ev => {
     if (!filtroAccionMapa) return ev.equipo === 'Propio';
     
@@ -761,10 +772,10 @@ function Temporada() {
           
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>TOP GOLEADORES <InfoBox texto="Máximos anotadores del equipo." /></div>
-            {analiticaGlobal.topGoleadores.map((j, i) => (
-              <div key={j.id} style={{...rankingRow, position: 'relative', overflow: 'hidden'}}>
+            {analiticaGlobal.topGoleadores.slice(0, 5).map((j, i) => (
+              <div key={j.id} style={{...rankingRowSmall, position: 'relative', overflow: 'hidden'}}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', zIndex: 1 }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
-                <strong style={{ fontSize: '1.2rem', color: '#fff', zIndex: 1 }}>{j.goles}</strong>
+                <strong style={{ fontSize: '1.1rem', color: '#fff', zIndex: 1 }}>{j.goles}</strong>
                 <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, background: 'var(--accent)', opacity: 0.1, width: `${(j.goles / Math.max(1, analiticaGlobal.topGoleadores[0]?.goles)) * 100}%`, zIndex: 0 }} />
               </div>
             ))}
@@ -772,10 +783,10 @@ function Temporada() {
 
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '15px', color: '#00ff88', display: 'flex', alignItems: 'center' }}>TOP ASISTIDORES <InfoBox texto="Máximos repartidores de asistencias que terminaron en gol." /></div>
-            {analiticaGlobal.topAsistidores.map((j, i) => (
-              <div key={j.id} style={{...rankingRow, position: 'relative', overflow: 'hidden'}}>
+            {analiticaGlobal.topAsistidores.slice(0, 5).map((j, i) => (
+              <div key={j.id} style={{...rankingRowSmall, position: 'relative', overflow: 'hidden'}}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', zIndex: 1 }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
-                <strong style={{ fontSize: '1.2rem', color: '#00ff88', zIndex: 1 }}>{j.asistencias}</strong>
+                <strong style={{ fontSize: '1.1rem', color: '#00ff88', zIndex: 1 }}>{j.asistencias}</strong>
                 <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, background: '#00ff88', opacity: 0.1, width: `${(j.asistencias / Math.max(1, analiticaGlobal.topAsistidores[0]?.asistencias)) * 100}%`, zIndex: 0 }} />
               </div>
             ))}
@@ -783,11 +794,11 @@ function Temporada() {
           
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '15px', color: '#c084fc', display: 'flex', alignItems: 'center' }}>TOP CREADORES (xG) <InfoBox texto="xG Buildup: Valor que aportan los jugadores en la construcción de jugadas que terminan en tiro (excluyendo el tiro final y la asistencia)." /></div>
-            {analiticaGlobal.topCreadores.map((j, i) => (
-              <div key={j.id} style={{...rankingRow, position: 'relative', overflow: 'hidden'}}>
+            {analiticaGlobal.topCreadores.slice(0, 5).map((j, i) => (
+              <div key={j.id} style={{...rankingRowSmall, position: 'relative', overflow: 'hidden'}}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', zIndex: 1 }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
                 <div style={{ textAlign: 'right', zIndex: 1 }}>
-                  <strong style={{ fontSize: '1.2rem', color: '#c084fc' }}>{j.xgBuildup.toFixed(1)}</strong>
+                  <strong style={{ fontSize: '1.1rem', color: '#c084fc' }}>{j.xgBuildup.toFixed(1)}</strong>
                 </div>
                 <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, background: '#c084fc', opacity: 0.1, width: `${(j.xgBuildup / Math.max(0.1, analiticaGlobal.topCreadores[0]?.xgBuildup)) * 100}%`, zIndex: 0 }} />
               </div>
@@ -796,11 +807,11 @@ function Temporada() {
 
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981', display: 'flex', alignItems: 'center' }}>TOP DUELOS <InfoBox texto="Jugadores con el mejor porcentaje de éxito al disputar la pelota (mínimo 5 duelos totales en la temporada)." /></div>
-            {analiticaGlobal.topMuros.map((j, i) => (
-              <div key={j.id} style={{...rankingRow, position: 'relative', overflow: 'hidden'}}>
+            {analiticaGlobal.topMuros.slice(0, 5).map((j, i) => (
+              <div key={j.id} style={{...rankingRowSmall, position: 'relative', overflow: 'hidden'}}>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', zIndex: 1 }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
                 <div style={{ textAlign: 'right', zIndex: 1 }}>
-                  <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>{j.eficaciaDefensiva.toFixed(0)}%</strong>
+                  <strong style={{ fontSize: '1.1rem', color: '#10b981' }}>{j.eficaciaDefensiva.toFixed(0)}%</strong>
                 </div>
                 <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, background: '#10b981', opacity: 0.1, width: `${j.eficaciaDefensiva}%`, zIndex: 0 }} />
               </div>
@@ -810,13 +821,13 @@ function Temporada() {
         </div>
 
         {/* --- INICIO ZONA DE QUINTETOS --- */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '20px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '10px' }}>
           
           {/* MEJORES QUINTETOS */}
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
-              MEJORES QUINTETOS 
-              <InfoBox texto="Rendimiento del equipo al jugar con estas combinaciones específicas de 5 jugadores. Todas las estadísticas están contempladas." />
+              TOP QUINTETOS (RATING +) 
+              <InfoBox texto="Quintetos con mayor impacto positivo acumulado en la temporada. Todas las estadísticas están contempladas." />
             </div>
             <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
@@ -828,11 +839,11 @@ function Temporada() {
                     <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
                     <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
                     <th title="Amarillas / Rojas">🟨/🟥</th>
-                    <th>BALANCE</th>
+                    <th>RATING</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {analiticaGlobal.topQuintetos && analiticaGlobal.topQuintetos.map((q, idx) => {
+                  {mejoresQuintetos && mejoresQuintetos.map((q, idx) => {
                     const diffGoles = q.balanceRating;
                     
                     const remF = q.rematesFavor || 0;
@@ -845,14 +856,15 @@ function Temporada() {
                     const roj = q.rojas || 0;
 
                     const nombresQuinteto = q.ids.map(id => {
-                      const jug = jugadores.find(j => j.id === id);
-                      if (!jug) return '?';
-                      return jug.apellido ? jug.apellido.toUpperCase() : jug.nombre.toUpperCase();
+                      // Corrección: Forzamos la comparación como String para evitar el mismatch ID (Integer) vs ID (String)
+                      const jug = jugadores.find(j => String(j.id) === String(id));
+                      if (!jug) return id; // Mostramos el ID por defecto si no lo encuentra, en vez de '?'
+                      return jug.apellido ? jug.apellido.toUpperCase() : (jug.nombre ? jug.nombre.toUpperCase() : 'S/N');
                     }).join(' - ');
 
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
-                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
+                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.7rem' }}>
                           [{nombresQuinteto}]
                         </td>
                         <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor}</span> - <span style={{color: '#ef4444'}}>{q.golesContra}</span></td>
@@ -862,13 +874,13 @@ function Temporada() {
                         <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#fbbf24'}}>{ama}</span> / <span style={{color: '#ef4444'}}>{roj}</span></td>
                         <td>
                           <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: diffGoles >= 5.5 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: diffGoles >= 5.5 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
-                            {diffGoles}
+                            {diffGoles.toFixed(1)}
                           </div>
                         </td>
                       </tr>
                     )
                   })}
-                  {(!analiticaGlobal.topQuintetos || analiticaGlobal.topQuintetos.length === 0) && (
+                  {(!mejoresQuintetos || mejoresQuintetos.length === 0) && (
                     <tr><td colSpan="7" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay suficientes datos de rotaciones.</td></tr>
                   )}
                 </tbody>
@@ -879,8 +891,8 @@ function Temporada() {
           {/* PEORES QUINTETOS */}
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
-              PEORES QUINTETOS 
-              <InfoBox texto="Combinaciones de jugadores con el peor Rating Promedio en cancha (con al menos 5 acciones registradas)." />
+              QUINTETOS CRÍTICOS (RATING -) 
+              <InfoBox texto="Combinaciones de jugadores con menor efectividad o balance negativo en la temporada." />
             </div>
             <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
@@ -892,11 +904,11 @@ function Temporada() {
                     <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
                     <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
                     <th title="Amarillas / Rojas">🟨/🟥</th>
-                    <th>BALANCE</th>
+                    <th>RATING</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {analiticaGlobal.peoresQuintetos && analiticaGlobal.peoresQuintetos.map((q, idx) => {
+                  {peoresQuintetos && peoresQuintetos.map((q, idx) => {
                     const diffGoles = q.balanceRating;
                     
                     const remF = q.rematesFavor || 0;
@@ -909,14 +921,15 @@ function Temporada() {
                     const roj = q.rojas || 0;
 
                     const nombresQuinteto = q.ids.map(id => {
-                      const jug = jugadores.find(j => j.id === id);
-                      if (!jug) return '?';
-                      return jug.apellido ? jug.apellido.toUpperCase() : jug.nombre.toUpperCase();
+                      // Corrección: Forzamos la comparación como String
+                      const jug = jugadores.find(j => String(j.id) === String(id));
+                      if (!jug) return id; 
+                      return jug.apellido ? jug.apellido.toUpperCase() : (jug.nombre ? jug.nombre.toUpperCase() : 'S/N');
                     }).join(' - ');
 
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
-                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
+                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.7rem' }}>
                           [{nombresQuinteto}]
                         </td>
                         <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor}</span> - <span style={{color: '#ef4444'}}>{q.golesContra}</span></td>
@@ -925,14 +938,14 @@ function Temporada() {
                         <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#c084fc'}}>{fltR}</span> - <span style={{color: '#ef4444'}}>{fltC}</span></td>
                         <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#fbbf24'}}>{ama}</span> / <span style={{color: '#ef4444'}}>{roj}</span></td>
                         <td>
-                          <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: diffGoles >= 5.5 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: diffGoles >= 5.5 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
-                            {diffGoles}
+                          <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontWeight: 800 }}>
+                            {diffGoles.toFixed(1)}
                           </div>
                         </td>
                       </tr>
                     )
                   })}
-                  {(!analiticaGlobal.peoresQuintetos || analiticaGlobal.peoresQuintetos.length === 0) && (
+                  {(!peoresQuintetos || peoresQuintetos.length === 0) && (
                     <tr><td colSpan="7" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay suficientes datos de rotaciones.</td></tr>
                   )}
                 </tbody>
@@ -1165,6 +1178,7 @@ function Temporada() {
 }
 
 const rankingRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 10px', borderBottom: '1px solid #222' };
+const rankingRowSmall = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #222', fontSize: '0.75rem', fontWeight: 600 };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontSize: '0.9rem', alignItems: 'center' };
 const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };

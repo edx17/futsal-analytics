@@ -16,21 +16,24 @@ import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
 
 const calcularRatingQuintetoAvanzado = (q) => {
-  const gf = q.golesFavor || 0;
-  const gc = q.golesContra || 0;
-  const rf = q.rematesFavor || 0;
-  const rc = q.rematesContra || 0;
-  const rec = q.recuperaciones || 0;
-  const per = q.perdidas || 0;
+  const gf = Number(q.golesFavor) || 0;
+  const gc = Number(q.golesContra) || 0;
+  const rf = Number(q.rematesFavor) || 0;
+  const rc = Number(q.rematesContra) || 0;
+  const rec = Number(q.recuperaciones) || 0;
+  const per = Number(q.perdidas) || 0;
   
+  const mins = Number(q.minutos) || 0;
   const volumenAcciones = gf + gc + rf + rc + rec + per;
-  const mins = q.minutos !== undefined ? q.minutos : (volumenAcciones * 0.8); 
 
-  if (mins < 2) return '-'; 
+  // Si no jugaron ni 1 minuto y no tocaron la pelota, dejamos guión
+  if (mins <= 0 && volumenAcciones === 0) return '-'; 
 
-  const min_factor = Math.min(1, mins / 10);
-  const diferencial = (gf - gc) * 1.5 + (rf - rc) * 0.1 + (rec - per) * 0.2;
+  // Ajuste matemático: piso de 0.3 para que acciones rápidas tengan impacto aunque jueguen poco
+  const min_factor = Math.min(1, Math.max(0.3, mins / 10)); 
+  const diferencial = (gf - gc) * 2.0 + (rf - rc) * 0.15 + (rec - per) * 0.1;
   let rating = 6.0 + (diferencial * min_factor);
+  
   return Math.max(1, Math.min(10, rating));
 };
 
@@ -1339,7 +1342,7 @@ const COLORS_ORIGEN = {
                  {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
               </div>
               <div className="table-wrapper custom-scroll">
-<table style={{ minWidth: '650px', width: '100%', textAlign: 'center' }}>
+<table style={{ minWidth: '750px', width: '100%', textAlign: 'center' }}>
   <thead>
     <tr>
       <th>#</th>
@@ -1359,7 +1362,9 @@ const COLORS_ORIGEN = {
       <th>REMATES (G)</th>
       <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
       <th style={{ color: '#10b981' }}>REC</th>
-      <th style={{ color: '#ef4444' }}>PERD</th> {/* <--- NUEVA COLUMNA */}
+      <th style={{ color: '#ef4444' }}>PERD</th>
+      <th style={{ color: '#f97316' }}>FALTAS (C/R)</th>
+      <th style={{ color: '#fbbf24' }}>🟨/🟥</th>
     </tr>
   </thead>
   <tbody>
@@ -1393,7 +1398,17 @@ const COLORS_ORIGEN = {
         <td>{j.remates} ({j.goles})</td>
         <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
         <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
-        <td style={{ color: '#ef4444', fontWeight: 800 }}>{j.perdidas}</td> {/* <--- NUEVO DATO */}
+        <td style={{ color: '#ef4444', fontWeight: 800 }}>{j.perdidas}</td>
+        
+        <td style={{ color: '#f97316', fontSize: '0.8rem', fontWeight: 600 }}>
+          {j.faltas || 0} / {j.eventos.filter(e => e.accion === 'Falta recibida').length || 0}
+        </td>
+        <td style={{ fontSize: '0.8rem' }}>
+          <span style={{ color: '#fbbf24', fontWeight: 800 }}>{j.amarillas || 0}</span>
+          <span style={{ color: '#555', margin: '0 4px' }}>-</span>
+          <span style={{ color: '#ef4444', fontWeight: 800 }}>{j.rojas || 0}</span>
+        </td>
+
       </tr>
     ))}
   </tbody>
@@ -1408,61 +1423,71 @@ const COLORS_ORIGEN = {
                    {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
                 </div>
                 <div className="table-wrapper custom-scroll">
-                  <table style={{ minWidth: '500px', width: '100%', textAlign: 'center' }}>
-  <thead>
-    <tr>
-      <th>#</th>
-      <th style={{ textAlign: 'left' }}>JUGADOR</th>
-      <th>MIN</th>
-      <th>RATING</th>
-      <th>+/-</th>
-      <th style={{ color: '#ef4444' }}>GOLES REC.</th>
-      <th style={{ color: '#00ff88' }}>ATAJADAS</th>
-      <th style={{ color: '#f59e0b' }}>TIROS REC.</th> {/* <--- NUEVA COLUMNA */}
-      <th style={{ color: '#c084fc' }}>INICIO xG</th>
-    </tr>
-  </thead>
-  <tbody>
-    {analitica.ranking.filter(j => j.rol === 'ARQUERO').map(j => (
-      <tr key={j.id} style={{ textAlign: 'center' }}>
-        <td className="mono-accent" style={{ color: '#3b82f6' }}>{j.dorsal}</td>
-        <td style={{ textAlign: 'left', fontWeight: 700 }}>
-          <span 
-            onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
-            style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
-            onMouseOver={(e) => e.target.style.color = '#60a5fa'}
-            onMouseOut={(e) => e.target.style.color = '#3b82f6'}
-          >
-            {j.nombre.toUpperCase()} {j.apellido ? j.apellido.toUpperCase() : ''}
-          </span>
-        </td>
-        <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
-        <td>
-          {j.impacto === '-' ? (
-            <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>-</div>
-          ) : (
-            <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? '#3b82f6' : '#ef4444', fontWeight: 800 }}>
-              {j.impacto.toFixed(1)}
-            </div>
-          )}
-        </td>
-        <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
-          {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
-        </td>
-        <td style={{ fontWeight: 800, color: '#ef4444' }}>
-          {j.golesRecibidos}
-        </td>
-        <td style={{ fontWeight: 800, color: '#00ff88' }}>
-          {j.atajadas}
-        </td>
-        <td style={{ fontWeight: 800, color: '#f59e0b' }}>
-          {j.golesRecibidos + j.atajadas} {/* <--- NUEVO DATO (Suma matemática) */}
-        </td>
-        <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+                  <table style={{ minWidth: '650px', width: '100%', textAlign: 'center' }}>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th style={{ textAlign: 'left' }}>JUGADOR</th>
+                        <th>MIN</th>
+                        <th>RATING</th>
+                        <th>+/-</th>
+                        <th style={{ color: '#ef4444' }}>GOLES REC.</th>
+                        <th style={{ color: '#00ff88' }}>ATAJADAS</th>
+                        <th style={{ color: '#f59e0b' }}>TIROS REC.</th> 
+                        <th style={{ color: '#c084fc' }}>INICIO xG</th>
+                        <th style={{ color: '#f97316' }}>FALTAS (C/R)</th> 
+                        <th style={{ color: '#fbbf24' }}>🟨/🟥</th> 
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analitica.ranking.filter(j => j.rol === 'ARQUERO').map(j => (
+                        <tr key={j.id} style={{ textAlign: 'center' }}>
+                          <td className="mono-accent" style={{ color: '#3b82f6' }}>{j.dorsal}</td>
+                          <td style={{ textAlign: 'left', fontWeight: 700 }}>
+                            <span 
+                              onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+                              style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
+                              onMouseOver={(e) => e.target.style.color = '#60a5fa'}
+                              onMouseOut={(e) => e.target.style.color = '#3b82f6'}
+                            >
+                              {j.nombre.toUpperCase()} {j.apellido ? j.apellido.toUpperCase() : ''}
+                            </span>
+                          </td>
+                          <td style={{ color: 'var(--text-dim)' }}>{j.minutos}'</td>
+                          <td>
+                            {j.impacto === '-' ? (
+                              <div style={{ display: 'inline-block', padding: '2px 6px', color: 'var(--text-dim)', fontWeight: 800 }}>-</div>
+                            ) : (
+                              <div style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', background: j.impacto >= 6.0 ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239,68,68,0.1)', color: j.impacto >= 6.0 ? '#3b82f6' : '#ef4444', fontWeight: 800 }}>
+                                {j.impacto.toFixed(1)}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ fontWeight: 900, color: j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff') }}>
+                            {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
+                          </td>
+                          <td style={{ fontWeight: 800, color: '#ef4444' }}>
+                            {j.golesRecibidos}
+                          </td>
+                          <td style={{ fontWeight: 800, color: '#00ff88' }}>
+                            {j.atajadas}
+                          </td>
+                          <td style={{ fontWeight: 800, color: '#f59e0b' }}>
+                            {j.golesRecibidos + j.atajadas} 
+                          </td>
+                          <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
+                          <td style={{ color: '#f97316', fontSize: '0.8rem', fontWeight: 600 }}>
+                            {j.faltas || 0} / {j.eventos.filter(e => e.accion === 'Falta recibida').length || 0}
+                          </td>
+                          <td style={{ fontSize: '0.8rem' }}>
+                            <span style={{ color: '#fbbf24', fontWeight: 800 }}>{j.amarillas || 0}</span>
+                            <span style={{ color: '#555', margin: '0 4px' }}>-</span>
+                            <span style={{ color: '#ef4444', fontWeight: 800 }}>{j.rojas || 0}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -1499,7 +1524,15 @@ const COLORS_ORIGEN = {
                   </tr>
                 </thead>
                 <tbody>
-                  {analitica.quintetos.map((q, idx) => {
+                  {[...analitica.quintetos]
+                    .sort((a, b) => {
+                      const ratingA = calcularRatingQuintetoAvanzado(a);
+                      const ratingB = calcularRatingQuintetoAvanzado(b);
+                      const valA = ratingA === '-' ? 0 : Number(ratingA);
+                      const valB = ratingB === '-' ? 0 : Number(ratingB);
+                      return valB - valA;
+                    })
+                    .map((q, idx) => {
                     const diffGoles = (q.golesFavor || 0) - (q.golesContra || 0);
                     const ratingQuinteto = calcularRatingQuintetoAvanzado(q);
                     
@@ -1512,8 +1545,9 @@ const COLORS_ORIGEN = {
                     const ama = q.amarillas || 0;
                     const roj = q.rojas || 0;
 
-                    const nombresQuinteto = q.ids.map(id => {
-                      const jug = jugadores.find(j => j.id === id);
+                    // CORRECCIÓN DE NOMBRES: Usamos String() para asegurar que matchee num con string
+                    const nombresQuinteto = (q.ids || []).map(id => {
+                      const jug = jugadores.find(j => String(j.id) === String(id));
                       if (!jug) return '?';
                       return jug.apellido ? jug.apellido.toUpperCase() : jug.nombre.toUpperCase();
                     }).join(' - ');
@@ -1523,7 +1557,9 @@ const COLORS_ORIGEN = {
                         <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
                           [{nombresQuinteto}]
                         </td>
-                        <td style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-dim)' }}>{q.minutos || 0}'</td>
+                        <td style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-dim)' }}>
+                          {Number(q.minutos || 0).toFixed(1)}'
+                        </td>
                         <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor || 0}</span> - <span style={{color: '#ef4444'}}>{q.golesContra || 0}</span></td>
                         <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#3b82f6'}}>{remF}</span> - <span style={{color: '#ef4444'}}>{remC}</span></td>
                         <td style={{ fontSize: '0.8rem', fontWeight: 600 }}><span style={{color: '#f59e0b'}}>{rec}</span> - <span style={{color: '#ef4444'}}>{per}</span></td>
@@ -1544,7 +1580,7 @@ const COLORS_ORIGEN = {
                             </div>
                           ) : (
                             <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: ratingQuinteto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: ratingQuinteto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
-                              {ratingQuinteto.toFixed(1)}
+                              {Number(ratingQuinteto).toFixed(1)}
                             </div>
                           )}
                         </td>
