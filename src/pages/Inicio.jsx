@@ -678,42 +678,54 @@ const defaultLayout = esSuperUser
 
 {mostrarNovedades && (
   <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
-    <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '550px', width: '100%', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
+    <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
+      
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
         <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN 0.00202604211248
+          VERSIÓN 0.00202604221347
         </span>
         <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          UX Reactiva y Mapas de Precisión
+          Motor Gráfico PRO & UX Reactiva
         </h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          Implementación de leyendas inteligentes, desglose granular de eventos y optimización de la lectura visual en el perfil de jugador.
+          Nuevo Creador Táctico, animaciones fluidas, y optimización espacial.
         </p>
       </div>
+
       <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
-        <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          
           <li>
-            <strong style={{color: '#00ff88'}}>Leyendas Inteligentes:</strong> El pie de página del mapa ahora es 100% reactivo. Si filtras por "Remates", la leyenda te muestra solo lo relevante a remates; si cambias a "Duelos", se adapta instantáneamente.
+            <strong style={{color: '#ff3860'}}>Creador Táctico PRO:</strong> Desplegamos un nuevo motor canvas nativo. Coordenadas virtuales escalables, rotación milimétrica, renderizado perfecto y animaciones interpoladas súper fluidas para tus jugadas.
           </li>
+          
           <li>
-            <strong style={{color: '#3b82f6'}}>Desglose Granular:</strong> Ya no solo ves "puntos". Ahora el mapa y su leyenda discriminan entre Remates Atajados, Desviados o Rebatidos, y Duelos Ofensivos vs Defensivos con colores específicos.
+            <strong style={{color: '#facc15'}}>Banco de Tareas 2.0:</strong> Adaptamos toda la biblioteca táctica al nuevo motor. Ahora podés reproducir las animaciones tácticas directamente desde la Ficha Técnica de la tarea con máxima fidelidad.
           </li>
+
           <li>
-            <li>
-            <strong style={{color: '#c084fc'}}>Sincronización Cromática:</strong> Se unificó la paleta de colores entre los puntos del mapa, los gráficos de torta y las etiquetas de la leyenda para una lectura intuitiva "a primer golpe de vista".
+            <strong style={{color: '#00ff88'}}>Mapeo por Microzonas:</strong> Activamos la grilla técnica (Z1-Z4). Ahora el sistema entiende pasillos (I/C/D) y profundidad para calcular con precisión métricas de presión alta y peligrosidad de pérdida.
           </li>
-          </li>
+          
           <li>
-            <strong style={{color: '#f59e0b'}}>Filtro de Faltas:</strong> Nueva capa de visualización para faltas cometidas y recibidas, permitiendo identificar zonas de conflicto y comportamiento defensivo/ofensivo bajo presión.
+            <strong style={{color: '#3b82f6'}}>Leyendas Reactivas:</strong> El pie de página del mapa cambia según tu filtro. Si ves Duelos, te explica los colores de duelos. Si ves Remates, te desglosa goles, atajados y desviados.
           </li>
+          
           <li>
-            <strong style={{color: '#ef4444'}}>Inteligencia por Posición:</strong> El motor ahora reconoce si el jugador es Arquero o Jugador de Campo, ocultando o mostrando métricas específicas (como Atajadas o Goles Recibidos) para limpiar la interfaz.
+            <strong style={{color: '#c084fc'}}>Rating Estructural:</strong> Refactorización total de los Quintetos. El algoritmo cruza minutos reales con impacto neto para decirte quiénes son los 5 que mejor funcionan juntos en cancha.
           </li>
+          
+          <li>
+            <strong style={{color: '#ef4444'}}>Posiciones & Faltas:</strong> La analítica es asimétrica (prioriza métricas distintas para arqueros y jugadores de campo) y suma una nueva capa visual diferenciando faltas cometidas vs. recibidas.
+          </li>
+
         </ul>
       </div>
-      <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-        ENTENDIDO Y CONTINUAR
+
+      <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase' }}>
+        CONFIRMAR ACTUALIZACIÓN
       </button>
+
     </div>
   </div>
 )}
