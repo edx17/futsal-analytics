@@ -9,8 +9,11 @@ const CargaWellness = () => {
   const { showToast } = useToast();
   const { perfil } = useAuth();
 
-  // --- LÓGICA DE ROLES ---
-  const esJugador = perfil?.rol?.toLowerCase() === 'jugador';
+  // --- LÓGICA DE ROLES Y KIOSCO ---
+  const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
+  const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id');
+  const esJugador = isKiosco || perfil?.rol?.toLowerCase() === 'jugador';
+  const miJugadorId = isKiosco ? kioscoJugadorId : perfil?.jugador_id;
 
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(false);
@@ -41,24 +44,26 @@ const CargaWellness = () => {
   const [cargandoReporte, setCargandoReporte] = useState(false);
   const [detalleRegistro, setDetalleRegistro] = useState(null);
 
+  // --- CARGA DE JUGADORES CON LOGICA KIOSCO ---
   useEffect(() => {
     const inicializarJugador = async () => {
-      if (esJugador) {
-        if (perfil?.jugador_id) {
-          setJugadorSeleccionado(perfil.jugador_id);
-        } else {
-          const kioscoUid = localStorage.getItem('kiosco_user_id');
-          if (kioscoUid) {
-            const { data } = await supabase.from('jugadores').select('id').eq('user_id', kioscoUid).single();
-            if (data) setJugadorSeleccionado(data.id);
-          }
+      const club_id = localStorage.getItem('club_id') || 'club_default';
+      const { data, error } = await supabase.from('jugadores').select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id).order('apellido', { ascending: true });
+      
+      if (!error && data) {
+        setJugadores(data);
+        
+        // Si es jugador o Kiosco, forzamos su ID y lo ocultamos
+        if (esJugador && miJugadorId) {
+          const yo = data.find(j => j.id == miJugadorId);
+          if (yo) setJugadorSeleccionado(yo.id);
+        } else if (data.length > 0 && !esJugador) {
+          setJugadorSeleccionado(data[0].id);
         }
-      } else {
-        cargarJugadores();
       }
     };
     inicializarJugador();
-  }, [esJugador, perfil]);
+  }, [esJugador, miJugadorId]);
 
   useEffect(() => {
     if (jugadorSeleccionado && fecha && vistaActiva === 'carga') {
@@ -71,17 +76,6 @@ const CargaWellness = () => {
       calcularPeriodoYTraerDatos();
     }
   }, [fechaReferenciaReporte, filtroCategoria, vistaActiva, modoVistaReporte]);
-
-  const cargarJugadores = async () => {
-    const club_id = localStorage.getItem('club_id') || 'club_default';
-    let query = supabase.from('jugadores').select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id).order('apellido', { ascending: true });
-    
-    const { data, error } = await query;
-    if (!error && data) {
-      setJugadores(data);
-      if (data.length > 0 && !esJugador) setJugadorSeleccionado(data[0].id);
-    }
-  };
 
   const verificarDatosDelDia = async () => {
     const { data } = await supabase.from('wellness').select('*').eq('jugador_id', jugadorSeleccionado).eq('fecha', fecha).single();
@@ -117,7 +111,7 @@ const CargaWellness = () => {
     }
   };
 
-  // --- NUEVO: CÁLCULO DINÁMICO DE PERIODOS (Día / Semana / Mes) ---
+  // --- CÁLCULO DINÁMICO DE PERIODOS (Día / Semana / Mes) ---
   const calcularPeriodoYTraerDatos = async () => {
     setCargandoReporte(true);
     // Usamos hora 12:00 segura para evitar saltos de zona horaria al manipular días
@@ -574,6 +568,7 @@ const CargaWellness = () => {
             
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center' }}>
               
+              {/* --- OCULTAMOS SELECTOR SI ES KIOSCO/JUGADOR --- */}
               {!esJugador && (
                 <>
                   <div style={{ flex: 1, minWidth: '130px' }}>
@@ -605,6 +600,7 @@ const CargaWellness = () => {
                 </>
               )}
 
+              {/* --- MENSAJE DE VINCULACIÓN PARA KIOSCO --- */}
               {esJugador && (
                 <div style={{ flex: 2, padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', textAlign: 'center' }}>
                   <span style={{ color: '#10b981', fontWeight: 'bold' }}>

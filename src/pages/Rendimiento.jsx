@@ -91,8 +91,12 @@ export default function Rendimiento() {
   const { showToast } = useToast();
   const { perfil } = useAuth();
   
-  const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
-  const esJugador = perfil?.rol === 'jugador' || isKioscoMode;
+  // --- KIOSCO Y ROLES ---
+  const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
+  const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id');
+  const esJugador = isKiosco || perfil?.rol?.toLowerCase() === 'jugador';
+  const miJugadorId = isKiosco ? kioscoJugadorId : perfil?.jugador_id;
+  
   const esStaff = !esJugador;
   const clubId = localStorage.getItem('club_id') || perfil?.club_id || localStorage.getItem('kiosco_club_id');
 
@@ -123,10 +127,9 @@ export default function Rendimiento() {
     setHistorialGlobal(todosLosRegistros);
 
     if (esJugador) {
-      const miId = perfil?.jugador_id || localStorage.getItem('kiosco_jugador_id');
-      if (miId) {
+      if (miJugadorId) {
         setHistorial(todosLosRegistros);
-        setSelId(Number(miId)); 
+        setSelId(Number(miJugadorId)); 
       } else {
         setHistorial([]); 
       }
@@ -152,12 +155,12 @@ export default function Rendimiento() {
   }, [historial]);
 
   useEffect(() => {
-    if (esJugador && (perfil?.jugador_id || localStorage.getItem('kiosco_jugador_id'))) { 
-      setSelId(Number(perfil?.jugador_id || localStorage.getItem('kiosco_jugador_id'))); 
+    if (esJugador && miJugadorId) { 
+      setSelId(Number(miJugadorId)); 
       return; 
     }
     if (ultimosDatos.length && !selId) setSelId(ultimosDatos[0].id_jugador);
-  }, [ultimosDatos, esJugador, perfil]);
+  }, [ultimosDatos, esJugador, miJugadorId]);
 
   const jug = ultimosDatos.find(j => j.id_jugador === selId);
 

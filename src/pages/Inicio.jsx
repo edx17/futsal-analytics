@@ -38,6 +38,57 @@ export default function Inicio() {
   const navigate = useNavigate();
   const { perfil } = useAuth(); 
   
+const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
+  const kioscoNombre = localStorage.getItem('kiosco_nombre');
+
+  const salirKiosco = async () => {
+    localStorage.removeItem('kiosco_mode');
+    localStorage.removeItem('kiosco_jugador_id');
+    localStorage.removeItem('kiosco_nombre');
+    localStorage.removeItem('kiosco_apellido');
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
+  if (isKiosco) {
+    return (
+      <div style={{ padding: '30px 20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center', animation: 'fadeIn 0.3s' }}>
+        <h1 style={{ color: 'var(--accent)', fontSize: '2.2rem', marginBottom: '5px', textTransform: 'uppercase' }}>¡Hola, {kioscoNombre}!</h1>
+        <p style={{ color: 'var(--text-dim)', marginBottom: '40px' }}>¿Qué necesitás hacer hoy?</p>
+        
+        <div style={{ display: 'grid', gap: '20px' }}>
+          <button onClick={() => navigate('/wellness')} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '20px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px', borderRadius: '12px', color: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
+            <span style={{ fontSize: '2.5rem' }}>⚖️</span>
+            <div>
+              <strong style={{ display: 'block', fontSize: '1.2rem' }}>Cargar Wellness</strong>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Sueño, estrés, fatiga y dolor</span>
+            </div>
+          </button>
+
+          <button onClick={() => navigate('/rendimiento')} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '20px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px', borderRadius: '12px', color: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
+            <span style={{ fontSize: '2.5rem' }}>🏋️‍♂️</span>
+            <div>
+              <strong style={{ display: 'block', fontSize: '1.2rem' }}>Rendimiento / Prevención</strong>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Cargar RPE y Kinesiología</span>
+            </div>
+          </button>
+
+          <button onClick={() => navigate('/perfil')} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '20px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px', borderRadius: '12px', color: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
+            <span style={{ fontSize: '2.5rem' }}>📊</span>
+            <div>
+              <strong style={{ display: 'block', fontSize: '1.2rem' }}>Mi Perfil de Juego</strong>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Estadísticas, videos y quintetos</span>
+            </div>
+          </button>
+        </div>
+
+        <button onClick={salirKiosco} style={{ marginTop: '50px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '12px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+          SALIR DEL KIOSCO
+        </button>
+      </div>
+    );
+  }
+
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -46,6 +97,7 @@ export default function Inicio() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
   const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id') || '';
   const kioscoClubId = localStorage.getItem('kiosco_club_id') || '';
@@ -682,13 +734,13 @@ const defaultLayout = esSuperUser
       
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
         <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN 0.00202604221347
+          VERSIÓN 0.00202604231430
         </span>
         <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          Motor Gráfico PRO & UX Reactiva
+          Hub Kiosco & Autogestión
         </h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          Nuevo Creador Táctico, animaciones fluidas, y optimización espacial.
+          El vestuario se digitaliza: nueva experiencia interactiva exclusiva para los jugadores.
         </p>
       </div>
 
@@ -696,11 +748,15 @@ const defaultLayout = esSuperUser
         <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           <li>
-            <strong style={{color: '#ff3860'}}>Creador Táctico PRO:</strong> Desplegamos un nuevo motor canvas nativo. Coordenadas virtuales escalables, rotación milimétrica, renderizado perfecto y animaciones interpoladas súper fluidas para tus jugadas.
+            <strong style={{color: '#10b981'}}>📲 Nuevo Hub Kiosco:</strong> Los jugadores ahora acceden con su PIN a un menú centralizado exclusivo. Desde un solo lugar pueden ver su perfil de estadísticas, cargar su Wellness y registrar su Rendimiento físico.
           </li>
-          
+
           <li>
-            <strong style={{color: '#facc15'}}>Banco de Tareas 2.0:</strong> Adaptamos toda la biblioteca táctica al nuevo motor. Ahora podés reproducir las animaciones tácticas directamente desde la Ficha Técnica de la tarea con máxima fidelidad.
+            <strong style={{color: '#facc15'}}>🔒 Auto-Logout & Privacidad:</strong> Sistema inteligente anti-espías. Si un jugador deja la pantalla abierta de su perfil en la tablet del vestuario, a los 60 segundos se cierra la sesión automáticamente.
+          </li>
+
+          <li>
+            <strong style={{color: '#ff3860'}}>Creador Táctico PRO:</strong> Desplegamos un nuevo motor canvas nativo. Coordenadas virtuales escalables, rotación milimétrica, renderizado perfecto y animaciones interpoladas súper fluidas para tus jugadas.
           </li>
 
           <li>
@@ -714,10 +770,6 @@ const defaultLayout = esSuperUser
           <li>
             <strong style={{color: '#c084fc'}}>Rating Estructural:</strong> Refactorización total de los Quintetos. El algoritmo cruza minutos reales con impacto neto para decirte quiénes son los 5 que mejor funcionan juntos en cancha.
           </li>
-          
-          <li>
-            <strong style={{color: '#ef4444'}}>Posiciones & Faltas:</strong> La analítica es asimétrica (prioriza métricas distintas para arqueros y jugadores de campo) y suma una nueva capa visual diferenciando faltas cometidas vs. recibidas.
-          </li>
 
         </ul>
       </div>
@@ -729,7 +781,6 @@ const defaultLayout = esSuperUser
     </div>
   </div>
 )}
-
       {mostrarQR && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
           <div style={{ background: '#111', border: '1px solid #10b981', borderRadius: '8px', padding: '30px', maxWidth: '400px', width: '100%', textAlign: 'center', position: 'relative', animation: 'fadeIn 0.3s' }}>

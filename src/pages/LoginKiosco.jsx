@@ -10,6 +10,9 @@ export default function LoginKiosco() {
   const [loading, setLoading] = useState(false);
   const [inputCodigo, setInputCodigo] = useState('');
   
+  // 🔥 NUEVO ESTADO: Controla si mostramos el teclado numérico o el menú de opciones
+  const [mostrarMenu, setMostrarMenu] = useState(false);
+  
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [searchParams] = useSearchParams();
@@ -22,7 +25,7 @@ export default function LoginKiosco() {
       if (!session) {
         await supabase.auth.signInWithPassword({
           email: 'kiosco@virtualstats.com',
-          password: 'KioscoTuClub2024!' // <--- CAMBIAR ESTO
+          password: 'KioscoTuClub2024!' // <--- Asegurate de que esto coincida con tu base
         });
       }
     };
@@ -32,6 +35,7 @@ export default function LoginKiosco() {
   useEffect(() => {
     if (clubId) {
       localStorage.setItem('kiosco_club_id', clubId);
+      localStorage.setItem('club_id', clubId); // <-- CLAVE PARA EL RESTO DE LA APP
       fetchPlantel(clubId);
     }
   }, [clubId]);
@@ -65,6 +69,9 @@ export default function LoginKiosco() {
   const volverAtras = () => {
     setJugadorSeleccionado(null);
     setPin('');
+    setMostrarMenu(false);
+    localStorage.removeItem('kiosco_jugador_id');
+    localStorage.removeItem('kiosco_mode');
   };
 
   useEffect(() => {
@@ -73,8 +80,6 @@ export default function LoginKiosco() {
 
   const ejecutarLogin = async () => {
     try {
-      console.log("1. Validando PIN...", pin);
-
       if (!jugadorSeleccionado?.id || !clubId) {
         showToast('No se pudo identificar al jugador.', 'error');
         setPin('');
@@ -83,14 +88,11 @@ export default function LoginKiosco() {
 
       setLoading(true);
 
-      console.log("2. Enviando consulta a Supabase...");
       const { data, error } = await supabase.rpc('verificar_pin_kiosco', {
         p_jugador_id: jugadorSeleccionado.id,
         p_club_id: clubId,
         p_pin: pin.trim()
       });
-
-      console.log("3. Respuesta de la base de datos:", { data, error });
 
       if (error || !data) {
         showToast('PIN incorrecto.', 'error');
@@ -99,18 +101,17 @@ export default function LoginKiosco() {
         return;
       }
 
-      console.log("4. Guardando datos en el dispositivo...");
       localStorage.setItem('kiosco_mode', 'true');
       localStorage.setItem('kiosco_club_id', data.club_id);
+      localStorage.setItem('club_id', data.club_id); 
       localStorage.setItem('kiosco_jugador_id', data.id);
       localStorage.setItem('kiosco_nombre', data.nombre || '');
       localStorage.setItem('kiosco_apellido', data.apellido || '');
       
-      console.log("5. Ejecutando alerta de éxito...");
       showToast(`¡Bienvenido ${data.nombre}!`, 'success');
       
-      console.log("6. Redirigiendo a home...");
-      window.location.href = '/kiosco/home';
+      setLoading(false);
+      setMostrarMenu(true);
 
     } catch (err) {
       console.error("🚨 EXPLOTÓ ALGO EN EL FRONTEND:", err);
@@ -130,6 +131,43 @@ export default function LoginKiosco() {
             <button type="submit" style={btnSubmit}>VINCULAR</button>
             <button type="button" onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }} style={btnSecundario}>VOLVER</button>
           </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔥 NUEVA PANTALLA: HUB DE NAVEGACIÓN DEL JUGADOR
+  if (mostrarMenu) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', padding: '20px', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.3s ease' }}>
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div style={avatarGigante}>
+            {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span>{jugadorSeleccionado.nombre.charAt(0)}</span>}
+          </div>
+          <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#fff', textTransform: 'uppercase', margin: '15px 0 5px 0' }}>
+            ¡HOLA, <span style={{ color: 'var(--accent)' }}>{jugadorSeleccionado.nombre}</span>!
+          </h1>
+          <p style={{ color: 'var(--text-dim)', fontSize: '1rem' }}>¿Qué querés hacer hoy?</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', width: '100%', maxWidth: '350px' }}>
+          {/* 🔥 RUTAS CORREGIDAS AL FORMATO DEL KIOSCO */}
+          <button onClick={() => navigate('/kiosco/wellness')} style={btnHub}>
+            🩺 CARGAR WELLNESS
+          </button>
+          <button onClick={() => navigate('/kiosco/rendimiento')} style={btnHub}>
+            🏋️ CARGAR RENDIMIENTO
+          </button>
+          <button onClick={() => navigate('/kiosco/jugador-perfil')} style={btnHub}>
+            📊 VER MI PERFIL / STATS
+          </button>
+          <button onClick={() => navigate('/kiosco/resumen')} style={btnHub}>
+            🗓️ VER PARTIDOS / RESUMEN
+          </button>
+
+          <button onClick={volverAtras} style={{ ...btnSecundario, marginTop: '20px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+            🚪 SALIR / CERRAR SESIÓN
+          </button>
         </div>
       </div>
     );
@@ -186,6 +224,12 @@ const btnSubmit = { padding: '15px', background: 'var(--accent)', color: '#000',
 const btnSecundario = { padding: '15px', background: 'transparent', color: 'var(--text-dim)', fontWeight: 800, border: '1px solid #333', cursor: 'pointer', borderRadius: '4px' };
 const btnVolver = { background: 'rgba(255,255,255,0.05)', border: '1px solid #333', color: '#fff', padding: '8px 15px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' };
 const btnDesvincular = { background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: '0.7rem', textDecoration: 'underline', cursor: 'pointer' };
-const cardJugador = { background: 'var(--panel)', padding: '15px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)' };
+
+// Estilos de las cards y numpad
+const cardJugador = { background: 'var(--panel)', padding: '15px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', transition: 'transform 0.1s' };
 const avatar = { width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', margin: '0 auto 10px auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent)' };
 const btnNumpad = { width: '80px', height: '80px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', color: '#fff', fontSize: '1.8rem', fontWeight: 800, cursor: 'pointer' };
+
+// Estilos para el nuevo HUB de Jugador
+const avatarGigante = { width: '90px', height: '90px', borderRadius: '50%', background: '#222', border: '3px solid var(--accent)', margin: '0 auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)' };
+const btnHub = { padding: '18px', background: 'var(--panel)', color: '#fff', fontWeight: 900, border: '1px solid var(--border)', cursor: 'pointer', borderRadius: '8px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' };

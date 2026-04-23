@@ -142,6 +142,7 @@ function JugadorPerfil() {
 
   const [clubId, setClubId] = useState(localStorage.getItem('club_id') || null);
   const [jugadores, setJugadores] = useState([]);
+  
   const [partidos, setPartidos] = useState([]);
   const [clubInfo, setClubInfo] = useState({ nombre: 'VIRTUAL FUTSAL', escudo: '' });
   
@@ -149,7 +150,12 @@ function JugadorPerfil() {
   const [eventosCompletos, setEventosCompletos] = useState([]);
   const [wellnessJugador, setWellnessJugador] = useState([]);
   
-  const isKiosco = !!localStorage.getItem('kiosco_jugador_id');
+
+  const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
+  const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id');
+  // Se obtiene perfil de AuthContext si se necesitara, pero aquí asumimos lo original
+  const miJugadorId = isKiosco ? kioscoJugadorId : null; 
+  const esJugador = isKiosco; // O simplificado para el kiosco
   
   const [jugadorId, setJugadorId] = useState(
     location.state?.jugadorId || localStorage.getItem('kiosco_jugador_id') || ''
@@ -195,6 +201,31 @@ function JugadorPerfil() {
     checkPermisos();
   }, []);
 
+  // 🔥 MEJORA KIOSCO 1: Auto-Logout por inactividad (60 segundos)
+  useEffect(() => {
+    if (!isKiosco) return;
+
+    let timeout;
+    const resetTimer = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        // Limpia el jugador activo y vuelve a la pantalla del Kiosco
+        localStorage.removeItem('kiosco_jugador_id');
+        navigate('/kiosco'); // Asegúrate de que esta sea la ruta de tu login de kiosco
+      }, 60000); // 60.000 ms = 60 segundos
+    };
+
+    // Escuchar eventos de interacción para reiniciar el temporizador
+    const events = ['touchstart', 'mousemove', 'click', 'scroll'];
+    events.forEach(evt => window.addEventListener(evt, resetTimer));
+    resetTimer(); // Iniciar la primera vez
+
+    return () => {
+      clearTimeout(timeout);
+      events.forEach(evt => window.removeEventListener(evt, resetTimer));
+    };
+  }, [isKiosco, navigate]);
+
   useEffect(() => {
     async function cargarCatalogos() {
       let queryJugadores = supabase.from('jugadores').select('*').order('apellido', { ascending: true });
@@ -205,11 +236,17 @@ function JugadorPerfil() {
       }
       const { data: j } = await queryJugadores;
       const { data: p } = await queryPartidos;
-      setJugadores(j || []);
+      
+      const data = j || [];
+      setJugadores(data);
+      if (esJugador && miJugadorId) {
+        const yo = data.find(jug => jug.id == miJugadorId);
+        if (yo) setJugadorId(yo.id); // Lo selecciona automáticamente
+      }
       setPartidos(p || []);
     }
     cargarCatalogos();
-  }, [clubId]);
+  }, [clubId, esJugador, miJugadorId]);
 
   useEffect(() => {
     async function fetchDataJugador() {
@@ -827,6 +864,20 @@ function JugadorPerfil() {
               ← PLANTEL
             </button>
           )}
+          
+          {/* 🔥 MEJORA KIOSCO 2: Botón gigante para salir en touch screen */}
+          {isKiosco && (
+            <button 
+              onClick={() => {
+                localStorage.removeItem('kiosco_jugador_id');
+                navigate('/kiosco');
+              }} 
+              style={{ padding: '12px 20px', background: '#ef4444', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 900, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', border: 'none', width: esMovil ? '100%' : 'auto', justifyContent: 'center' }}
+            >
+              👋 SALIR / CERRAR MI PERFIL
+            </button>
+          )}
+
           {jugadorId && (
             <div style={{ flex: esMovil ? '1 1 100%' : 'auto' }}>
               <select value={partidoFiltro} onChange={(e) => setPartidoFiltro(e.target.value)} style={{ width: '100%', minWidth: '220px', background: '#0a0a0a', color: accentColor, border: `1px solid ${esArquero ? 'rgba(251,191,36,0.3)' : 'rgba(0,255,136,0.3)'}`, padding: '8px 12px', borderRadius: '6px', outline: 'none', fontWeight: 700, fontSize: '0.8rem' }}>
@@ -1206,8 +1257,8 @@ function JugadorPerfil() {
                       {perfil.topSocios.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {perfil.topSocios.map((socio, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0a0a0a', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
-                              onClick={() => navigate('/jugador', { state: { jugadorId: socio.id, partidoFiltro } })}>
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0a0a0a', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', cursor: isKiosco ? 'default' : 'pointer', opacity: isKiosco ? 0.9 : 1 }}
+                              onClick={() => !isKiosco && navigate('/jugador', { state: { jugadorId: socio.id, partidoFiltro } })}>
                               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
                                 {socio.apellido?.charAt(0)}{socio.nombre?.charAt(0)}
                               </div>
@@ -1347,14 +1398,14 @@ function JugadorPerfil() {
                         const j = jugadores.find(jug => jug.id == id);
                         const esEl = id == jugadorId;
                         return j ? (
-                          <div key={id} onClick={() => !esEl && navigate('/jugador', { state: { jugadorId: id, partidoFiltro } })}
+                          <div key={id} onClick={() => !esEl && !isKiosco && navigate('/jugador', { state: { jugadorId: id, partidoFiltro } })}
                             style={{ 
                               background: esEl ? accentColor : '#111',
                               color: esEl ? '#000' : '#fff',
                               border: `1px solid ${esEl ? accentColor : 'rgba(255,255,255,0.1)'}`,
                               padding: '8px 14px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 800,
                               display: 'flex', alignItems: 'center', gap: '8px',
-                              cursor: esEl ? 'default' : 'pointer',
+                              cursor: (esEl || isKiosco) ? 'default' : 'pointer',
                               transition: 'all 0.15s'
                             }}>
                             <span style={{ opacity: esEl ? 1 : 0.45, fontFamily: 'monospace', fontSize: '0.75rem' }}>{j.dorsal}</span>
