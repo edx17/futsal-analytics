@@ -97,6 +97,36 @@ function Usuarios() {
     setProcesando(false);
   };
 
+  // --- NUEVA FUNCIÓN PARA ELIMINAR USUARIOS ---
+  const eliminarUsuario = async (idAEliminar, username) => {
+    // Evitar que el usuario se elimine a sí mismo
+    if (idAEliminar === perfil.id) {
+      alert("No podés eliminar tu propia cuenta mientras estás logueado.");
+      return;
+    }
+
+    // Confirmación de seguridad
+    const confirmar = window.confirm(`¿Estás seguro que querés eliminar el acceso del usuario "${username}"?\n\nEsto le quitará el acceso a la plataforma.`);
+    if (!confirmar) return;
+
+    setLoading(true);
+
+    // Eliminamos el registro de la tabla 'perfiles'
+    const { error } = await supabase
+      .from('perfiles')
+      .delete()
+      .eq('id', idAEliminar);
+
+    if (error) {
+      alert("Error al eliminar el usuario: " + error.message);
+    } else {
+      // Si salió bien, volvemos a cargar la lista
+      fetchUsuarios();
+    }
+    
+    setLoading(false);
+  };
+
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -142,7 +172,7 @@ function Usuarios() {
                 <select value={nuevoUser.rol} onChange={e => setNuevoUser({...nuevoUser, rol: e.target.value})} style={{ width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px' }}>
                   <option value="jugador">Jugador</option>
                   <option value="ct">Cuerpo Técnico</option>
-                  <option value="manager">Manager / Coordinador</option> {/* NUEVO ROL AQUI */}
+                  <option value="manager">Manager / Coordinador</option>
                   {esSuperUser && <option value="admin">Administrativo (Dirigente)</option>}
                   <option value="tesorero">Tesorero</option>
                   {esSuperUser && <option value="superuser">Super User</option>}
@@ -182,6 +212,7 @@ function Usuarios() {
                     <th style={{ padding: '10px' }}>ROL</th>
                     {esSuperUser && <th style={{ padding: '10px' }}>CLUB</th>}
                     <th style={{ padding: '10px' }}>CONTACTO</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>ACCIONES</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -192,7 +223,6 @@ function Usuarios() {
                       <td style={{ padding: '12px 10px' }}>
                         <span style={{ 
                           fontSize: '0.65rem', padding: '4px 8px', borderRadius: '4px', fontWeight: 800,
-                          // COLORCITO NUEVO PARA EL MANAGER
                           background: u.rol === 'superuser' ? '#c084fc' : u.rol === 'manager' ? '#f97316' : u.rol === 'admin' ? '#3b82f6' : u.rol === 'ct' ? '#10b981' : '#222',
                           color: u.rol === 'jugador' ? 'var(--text-dim)' : '#000'
                         }}>
@@ -205,11 +235,45 @@ function Usuarios() {
                         </td>
                       )}
                       <td style={{ padding: '12px 10px', color: 'var(--text-dim)' }}>{u.email || '-'}</td>
+                      
+                      {/* BOTÓN DE ELIMINAR */}
+                      <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                        <button 
+                          onClick={() => eliminarUsuario(u.id, u.username)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid #ef4444',
+                            color: '#ef4444',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            cursor: u.id === perfil.id ? 'not-allowed' : 'pointer',
+                            opacity: u.id === perfil.id ? 0.3 : 1,
+                            fontSize: '0.8rem',
+                            transition: '0.2s'
+                          }}
+                          onMouseOver={(e) => { 
+                            if(u.id !== perfil.id) {
+                              e.currentTarget.style.background = '#ef4444'; 
+                              e.currentTarget.style.color = '#fff'; 
+                            }
+                          }}
+                          onMouseOut={(e) => { 
+                            if(u.id !== perfil.id) {
+                              e.currentTarget.style.background = 'transparent'; 
+                              e.currentTarget.style.color = '#ef4444'; 
+                            }
+                          }}
+                          title={u.id === perfil.id ? "No podés eliminarte a vos mismo" : "Eliminar usuario"}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+
                     </tr>
                   ))}
                   {usuarios.length === 0 && (
                     <tr>
-                      <td colSpan={esSuperUser ? "5" : "4"} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>
+                      <td colSpan={esSuperUser ? "6" : "5"} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>
                         No hay usuarios registrados en este club.
                       </td>
                     </tr>

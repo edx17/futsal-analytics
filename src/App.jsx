@@ -32,6 +32,7 @@ import Presentismo from './pages/Presentismo';
 import Tesoreria from './pages/Tesoreria';
 import Sponsors from './pages/Sponsors';
 import Usuarios from './pages/Usuarios';
+import AdmSuscripciones from './pages/AdmSuscripciones';
 import LibroTactico from './pages/LibroTactico';
 import LoginKiosco from './pages/LoginKiosco';
 import VideoTracingIA from './pages/VideoTracingIA';
@@ -66,6 +67,7 @@ function AppRoutes() {
       <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
       <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
+      <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
       
       <Route path="/temporada" element={<ProtectedRoute><Temporada /></ProtectedRoute>} />
       <Route path="/resumen" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
@@ -209,7 +211,7 @@ function AppLayout() {
         🏠 <span>{permisos.esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>
       </NavLink>
 
-{permisos.puedeEscribirDeportivo && (
+      {permisos.puedeEscribirDeportivo && (
         <>
           <div style={sidebarGroupTitle} onClick={() => toggleMenu('operaciones')}>
             <span>OPERACIONES</span> <span>{menusAbiertos.operaciones ? '▼' : '▶'}</span>
@@ -318,7 +320,10 @@ function AppLayout() {
             <span>SISTEMA</span> <span>{menusAbiertos.sistema ? '▼' : '▶'}</span>
           </div>
           {menusAbiertos.sistema && (
-            <NavLink to="/usuarios" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👑 <span>GESTIÓN MASTER</span></NavLink>
+            <>
+              <NavLink to="/usuarios" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👑 <span>GESTIÓN MASTER</span></NavLink>
+              <NavLink to="/admin/suscripciones" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💳 <span>SUSCRIPCIONES</span></NavLink>
+            </>
           )}
         </>
       )}
