@@ -734,13 +734,13 @@ const defaultLayout = esSuperUser
       
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
         <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN 0.00202604231430
+          VERSIÓN 0.00202604241330
         </span>
         <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          Hub Kiosco & Autogestión
+          Kiosco PRO & Experiencia Nativa
         </h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          El vestuario se digitaliza: nueva experiencia interactiva exclusiva para los jugadores.
+          El hub del jugador evoluciona con diseño de app móvil y navegación inteligente.
         </p>
       </div>
 
@@ -748,27 +748,27 @@ const defaultLayout = esSuperUser
         <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           <li>
-            <strong style={{color: '#10b981'}}>📲 Nuevo Hub Kiosco:</strong> Los jugadores ahora acceden con su PIN a un menú centralizado exclusivo. Desde un solo lugar pueden ver su perfil de estadísticas, cargar su Wellness y registrar su Rendimiento físico.
+            <strong style={{color: '#10b981'}}>📱 Interfaz Kiosco PRO:</strong> Transformamos el menú del jugador en un dashboard estilo App Nativa (iOS/Android). Grilla táctil bloqueada sin desbordes, optimizada para celulares y con íconos vectoriales minimalistas.
           </li>
 
           <li>
-            <strong style={{color: '#facc15'}}>🔒 Auto-Logout & Privacidad:</strong> Sistema inteligente anti-espías. Si un jugador deja la pantalla abierta de su perfil en la tablet del vestuario, a los 60 segundos se cierra la sesión automáticamente.
+            <strong style={{color: '#facc15'}}>🧠 Memoria de Sesión:</strong> Navegación más rápida. El Kiosco ahora recuerda tu sesión temporal; si entrás a ver tu perfil y volvés atrás, no tenés que volver a escribir tu PIN de 4 dígitos.
           </li>
 
           <li>
-            <strong style={{color: '#ff3860'}}>Creador Táctico PRO:</strong> Desplegamos un nuevo motor canvas nativo. Coordenadas virtuales escalables, rotación milimétrica, renderizado perfecto y animaciones interpoladas súper fluidas para tus jugadas.
+            <strong style={{color: '#ff3860'}}>🔒 Privacidad & Auto-Logout:</strong> Sistema anti-espías. Si dejás la tablet encendida en el vestuario, el sistema cierra tu sesión automáticamente tras unos segundos de inactividad.
           </li>
 
           <li>
-            <strong style={{color: '#00ff88'}}>Mapeo por Microzonas:</strong> Activamos la grilla técnica (Z1-Z4). Ahora el sistema entiende pasillos (I/C/D) y profundidad para calcular con precisión métricas de presión alta y peligrosidad de pérdida.
+            <strong style={{color: '#00ff88'}}>Creador Táctico PRO:</strong> Nuevo motor canvas nativo. Coordenadas virtuales escalables, rotación milimétrica, renderizado perfecto y animaciones súper fluidas para las jugadas.
           </li>
           
           <li>
-            <strong style={{color: '#3b82f6'}}>Leyendas Reactivas:</strong> El pie de página del mapa cambia según tu filtro. Si ves Duelos, te explica los colores de duelos. Si ves Remates, te desglosa goles, atajados y desviados.
+            <strong style={{color: '#3b82f6'}}>Mapeo por Microzonas:</strong> Activamos la grilla técnica (Z1-Z4). Ahora el sistema entiende pasillos y profundidad para calcular métricas de presión alta y peligrosidad.
           </li>
           
           <li>
-            <strong style={{color: '#c084fc'}}>Rating Estructural:</strong> Refactorización total de los Quintetos. El algoritmo cruza minutos reales con impacto neto para decirte quiénes son los 5 que mejor funcionan juntos en cancha.
+            <strong style={{color: '#c084fc'}}>Rating Estructural:</strong> Refactorización total. El algoritmo cruza minutos reales con impacto neto para revelar los 5 jugadores que mejor funcionan juntos en cancha.
           </li>
 
         </ul>

@@ -173,12 +173,13 @@ function Plantel() {
   // --- COPIAR TODOS LOS PINS ---
   const copiarTodosLosPINs = () => {
     let texto = "🔐 *ACCESOS AL SISTEMA VIRTUAL.STATS*\n\n";
+    texto += `📍 *CÓDIGO DE CLUB (UUID):* \n${clubId}\n\n`;
+    texto += `----------------------------\n\n`;
     
     jugadoresOrdenados.forEach(j => {
       const nombreCompleto = `${j.nombre} ${j.apellido || ''}`.trim().toUpperCase();
-      texto += `👤 *${nombreCompleto}*\n`;
-      texto += `Usuario (Casa): ${j.username || 'No generado'}\n`;
-      texto += `PIN (Kiosco): ${j.pin_kiosco || 'No generado'}\n\n`;
+      texto += `👤 *${nombreCompleto}* (#${j.dorsal})\n`;
+      texto += `🔢 PIN: ${j.pin_kiosco || 'S/P'}\n\n`;
     });
 
     navigator.clipboard.writeText(texto)
@@ -186,13 +187,14 @@ function Plantel() {
       .catch(err => showToast("Error al copiar", "error"));
   };
 
-  // --- COPIAR PIN INDIVIDUAL ---
+  // --- COPIAR PIN INDIVIDUAL (PARA WHATSAPP) ---
   const copiarPinIndividual = (j) => {
     const nombreCompleto = `${j.nombre} ${j.apellido || ''}`.trim().toUpperCase();
-    let texto = `🔐 *ACCESO VIRTUAL.STATS*\n\n`;
-    texto += `👤 *${nombreCompleto}*\n`;
-    texto += `Usuario (Casa): ${j.username || 'No generado'}\n`;
-    texto += `PIN (Kiosco): ${j.pin_kiosco || 'No generado'}\n`;
+    let texto = `🔐 *ACCESO KIOSCO - VIRTUAL.STATS*\n\n`;
+    texto += `Hola *${j.nombre.toUpperCase()}*, acá tenés tus datos para ingresar al sistema desde el celu o la tablet del club:\n\n`;
+    texto += `📍 *CÓDIGO DE CLUB (UUID):*\n\`${clubId}\`\n\n`;
+    texto += `🔢 *TU PIN PERSONAL:*\n\`${j.pin_kiosco || 'No generado'}\`\n\n`;
+    texto += `_Copiá el código largo, pegalo en el inicio y luego ingresá tu PIN._`;
 
     navigator.clipboard.writeText(texto)
       .then(() => showToast(`¡Acceso de ${j.nombre} copiado!`, "success"))
@@ -235,7 +237,7 @@ function Plantel() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <div className="stat-label" style={{ fontSize: '1.2rem', color: '#fff' }}>MI PLANTEL ({jugadoresOrdenados.length})</div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)' }}>📋 COPIAR PINs</button>
+            <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)' }}>📋 COPIAR TODOS</button>
             <button onClick={abrirNuevo} className="btn-action" style={{ background: '#00ff88', color: '#000' }}>+ NUEVO JUGADOR</button>
           </div>
         </div>
@@ -344,14 +346,33 @@ function Plantel() {
               </div>
             </div>
 
-            {/* --- SECCIÓN DE ACCESO AL KIOSCO --- */}
+            {/* SECCIÓN DE ACCESO RÁPIDO (KIOSCO) */}
             <div style={{ background: 'rgba(0, 255, 136, 0.05)', border: '1px solid var(--accent)', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                 <div className="section-title" style={{ margin: 0, color: 'var(--accent)' }}>ACCESO AL SISTEMA</div>
-                 <button onClick={() => copiarPinIndividual(jugadorSeleccionado)} style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '4px 10px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', transition: '0.2s' }}>📋 COPIAR ACCESO</button>
+                 <div className="section-title" style={{ margin: 0, color: 'var(--accent)' }}>ACCESO RÁPIDO</div>
+                 <button 
+                  onClick={() => copiarPinIndividual(jugadorSeleccionado)} 
+                  style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', gap: '5px' }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)'; }}
+                 >
+                  📋 COPIAR PARA WHATSAPP
+                 </button>
                </div>
-               <div style={fichaRow}><span>Usuario (Login Normal):</span> <strong style={{ color: '#fff' }}>{jugadorSeleccionado.username || 'No generado'}</strong></div>
-               <div style={fichaRow}><span>PIN (Kiosco):</span> <strong style={{ fontSize: '1.2rem', color: 'var(--accent)', letterSpacing: '2px' }}>{jugadorSeleccionado.pin_kiosco || 'N/A'}</strong></div>
+               
+               <div style={fichaRow}>
+                <span>Código de Club (UUID):</span> 
+                <strong style={{ color: '#fff', fontSize: '0.75rem', fontFamily: 'monospace' }}>{clubId}</strong>
+               </div>
+               
+               <div style={fichaRow}>
+                <span>PIN Jugador:</span> 
+                <strong style={{ fontSize: '1.2rem', color: 'var(--accent)', letterSpacing: '3px' }}>{jugadorSeleccionado.pin_kiosco || 'N/A'}</strong>
+               </div>
+
+               <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '10px', marginBottom: 0, fontStyle: 'italic', textAlign: 'center' }}>
+                * Presioná el botón de arriba para copiar estos datos y enviarlos por WhatsApp.
+               </p>
             </div>
 
             <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
