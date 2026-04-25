@@ -77,7 +77,7 @@ function Usuarios() {
     }
 
     // 2. Insertar en nuestra tabla de perfiles (Usamos el supabase ORIGINAL)
-    const { error: profileError } = await supabase.from('perfiles').insert([
+const { error: profileError } = await supabase.from('perfiles').upsert([
       {
         id: authData.user.id,
         username: nuevoUser.username.trim(),
