@@ -287,7 +287,7 @@ export default function Rendimiento() {
                 <div style={{ fontSize: '0.76rem', color: '#334155', marginTop: 4, fontWeight: 900 }}>#{jug.jugadores?.dorsal}</div>
 
                 <div style={{ width: '100%', marginTop: 14, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {[['Fecha', jug.fecha_medicion?.slice(0, 10) || '—'], ['Pierna', jug.pierna || '—'], ['Peso', jug.peso ? `${jug.peso} kg` : '—'], ['Talla', jug.talla ? `${jug.talla} cm` : '—']].map(([k, v]) => (
+                  {[['Fecha', jug.fecha_medicion?.slice(0, 10) || '—'], ['Pierna', jug.pierna || '—'], ['Peso', jug.peso ? `${jug.peso} kg` : '—'], ['Altura', jug.altura ? `${jug.altura} cm` : '—']].map(([k, v]) => (
                     <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 9px', background: '#060a14', borderRadius: 6 }}>
                       <span style={{ fontSize: '0.68rem', color: '#334155', fontWeight: 800, textTransform: 'uppercase' }}>{k}</span>
                       <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#94a3b8' }}>{v}</span>
@@ -871,7 +871,7 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
         <KpiCard label="Músculo %"    value={jug.musc ?? '—'}  color="#3b82f6" accent="#3b82f6" sub={`Eq: ${fmtNum(stats.musc.mean)}% · Él: ${ELITE.musc}%`} />
         <KpiCard label="Adiposidad %" value={jug.adip ?? '—'}  color="#ef4444" accent="#ef4444" sub={`Eq: ${fmtNum(stats.adip.mean)}% · Él: ${ELITE.adip}%`} />
         <KpiCard label="∑ 6 Pliegues" value={jug.sum6 ?? '—'} unit=" mm" color="#f59e0b" accent="#f59e0b" sub={`Eq: ${fmtNum(stats.sum6.mean)}mm · Él: ${ELITE.sum6}mm`} />
-        <KpiCard label="Peso"         value={jug.peso ?? '—'} unit=" kg" color="#fff"    accent="#334155" sub={jug.talla ? `Talla: ${jug.talla}cm` : 'Talla: —'} />
+        <KpiCard label="Peso"         value={jug.peso ?? '—'} unit=" kg" color="#fff"    accent="#334155" sub={jug.altura ? `Altura: ${jug.altura}cm` : 'Altura: —'} />
       </div>
 
       <div className="c2">
@@ -896,7 +896,7 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
 
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#f59e0b">🥗 Plan Nutricional</SecTitle>
-          {[['Peso', `${jug.peso ?? '—'} kg`], ['∑ 6 Pliegues', `${jug.sum6 ?? '—'} mm`], ['Talla', `${jug.talla ?? '—'} cm`], ['Adiposidad', `${jug.adip ?? '—'} %`]].map(([l, v]) => (
+          {[['Peso', `${jug.peso ?? '—'} kg`], ['∑ 6 Pliegues', `${jug.sum6 ?? '—'} mm`], ['Altura', `${jug.altura ?? '—'} cm`], ['Adiposidad', `${jug.adip ?? '—'} %`]].map(([l, v]) => (
             <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 10px', background: '#060a14', borderRadius: 6, marginBottom: 5, border: '1px solid #0f172a' }}>
               <span style={{ color: '#1e293b', fontSize: '0.7rem' }}>{l}</span>
               <strong style={{ color: '#64748b' }}>{v}</strong>
@@ -1337,7 +1337,14 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   const [fF, setFF] = useState({ cmj: '', cmj_de: '', cmj_iz: '', broad: '', broad_de: '', broad_iz: '', y25: '', y26: '', abk: '' });
-  const [fN, setFN] = useState({ peso: '', talla: '', musc: '', adip: '', visc: '', imc: '', ed_met: '', sum6: '', plan_nutricional: '', pl_tri: '', pl_sub: '', pl_bic: '', pl_cre: '', pl_sup: '', pl_abd: '' });
+  
+  // Se agregaron los campos faltantes en el estado
+  const [fN, setFN] = useState({ 
+    peso: '', talla: '', musc: '', adip: '', visc: '', imc: '', ed_met: '', sum6: '', plan_nutricional: '', 
+    pl_tri: '', pl_sub: '', pl_bic: '', pl_cre: '', pl_sup: '', pl_abd: '',
+    icc: '', pl_mus: '', pl_pan: '', per_bra_r: '', per_bra_f: '', per_cin: '', per_cad: '', per_pan: '', dia_hum: '', dia_fem: '' 
+  });
+  
   const [fK, setFK] = useState({ kin_t: '', kin_c: '', kin_u: '', kin_s: '', pierna: '' });
 
   const calcAsim = (a, b) => { if (!a || !b) return null; const mx = Math.max(+a, +b), mn = Math.min(+a, +b); return mx > 0 ? ((mx - mn) / mx) * 100 * (+a > +b ? 1 : -1) : 0; };
@@ -1351,11 +1358,16 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
         cmj: fF.cmj || null, cmj_de: fF.cmj_de || null, cmj_iz: fF.cmj_iz || null, asym_cmj: calcAsim(fF.cmj_de, fF.cmj_iz),
         broad: fF.broad || null, broad_de: fF.broad_de || null, broad_iz: fF.broad_iz || null, asym_br: calcAsim(fF.broad_de, fF.broad_iz),
         y25: fF.y25 || null, y26: fF.y26 || null, abk: fF.abk || null,
-        peso: fN.peso || null, talla: fN.talla || null, musc: fN.musc || null, adip: fN.adip || null,
+        peso: fN.peso || null, altura: fN.talla || null, musc: fN.musc || null, adip: fN.adip || null, // Se corrigió mapeo a 'altura'
         visc: fN.visc || null, imc: fN.imc || null, ed_met: fN.ed_met || null,
         sum6: fN.sum6 || null, plan_nutricional: fN.plan_nutricional || null,
+        icc: fN.icc || null,
         pl_tri: fN.pl_tri || null, pl_sub: fN.pl_sub || null, pl_bic: fN.pl_bic || null,
         pl_cre: fN.pl_cre || null, pl_sup: fN.pl_sup || null, pl_abd: fN.pl_abd || null,
+        pl_mus: fN.pl_mus || null, pl_pan: fN.pl_pan || null,
+        per_bra_r: fN.per_bra_r || null, per_bra_f: fN.per_bra_f || null,
+        per_cin: fN.per_cin || null, per_cad: fN.per_cad || null, per_pan: fN.per_pan || null,
+        dia_hum: fN.dia_hum || null, dia_fem: fN.dia_fem || null,
         kin_t: fK.kin_t || null, kin_c: fK.kin_c || null, kin_u: fK.kin_u || null, kin_s: fK.kin_s || null, pierna: fK.pierna || null,
       };
       const { error } = await supabase.from('rendimiento').insert([payload]);
@@ -1366,30 +1378,31 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
     finally { setLoading(false); }
   };
 
-  const F = ({ label, val, set, step = '0.1', type = 'number', ph = '' }) => (
+  // Función de renderizado pura (NO COMPONENTE) para evitar pérdida de foco
+  const renderField = (label, val, set, step = '0.1', type = 'number', ph = '') => (
     <div>
-      <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{label}</label>
+      <label style={{ fontSize: '0.65rem', color: '#e2e8f0', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{label}</label>
       <input type={type} step={step} value={val} onChange={e => set(e.target.value)} className="select-dark" placeholder={ph} />
     </div>
   );
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.93)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-      <div style={{ background: '#060a14', width: '100%', maxWidth: 580, padding: 24, maxHeight: '92vh', overflowY: 'auto', border: '1px solid #1e293b', borderRadius: 14 }}>
+      <div style={{ background: '#060a14', width: '100%', maxWidth: 650, padding: 24, maxHeight: '92vh', overflowY: 'auto', border: '1px solid #1e293b', borderRadius: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid #0f172a', paddingBottom: 14 }}>
           <h2 style={{ margin: 0, color: 'var(--accent)', fontWeight: 900, fontSize: '1.05rem' }}>NUEVA TOMA DE DATOS</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#334155', fontSize: '1.3rem', cursor: 'pointer' }}>✕</button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 15 }}>
           <div>
-            <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Jugador</label>
+            <label style={{ fontSize: '0.65rem', color: '#e2e8f0', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Jugador</label>
             <select className="select-dark" value={jugId} onChange={e => setJugId(e.target.value)}>
               <option value="">Seleccionar...</option>
               {jugadores.map(j => <option key={j.id} value={j.id}>{j.dorsal} — {j.apellido} {j.nombre}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Fecha</label>
+            <label style={{ fontSize: '0.65rem', color: '#e2e8f0', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Fecha</label>
             <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="select-dark" />
           </div>
         </div>
@@ -1405,39 +1418,59 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
 
         {tipo === 'fisico' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-            <F label="CMJ (bi) cm" val={fF.cmj} set={v => setFF({ ...fF, cmj: v })} />
-            <F label="ABK cm"      val={fF.abk} set={v => setFF({ ...fF, abk: v })} />
+            {renderField('CMJ (bi) cm', fF.cmj, v => setFF({ ...fF, cmj: v }))}
+            {renderField('ABK cm', fF.abk, v => setFF({ ...fF, abk: v }))}
             <div />
-            <F label="CMJ Der" val={fF.cmj_de} set={v => setFF({ ...fF, cmj_de: v })} />
-            <F label="CMJ Izq" val={fF.cmj_iz} set={v => setFF({ ...fF, cmj_iz: v })} />
+            {renderField('CMJ Der', fF.cmj_de, v => setFF({ ...fF, cmj_de: v }))}
+            {renderField('CMJ Izq', fF.cmj_iz, v => setFF({ ...fF, cmj_iz: v }))}
             <div />
-            <F label="Broad (bi) m" val={fF.broad}    set={v => setFF({ ...fF, broad: v })}    step="0.01" />
-            <F label="Broad Der"    val={fF.broad_de}  set={v => setFF({ ...fF, broad_de: v })} step="0.01" />
-            <F label="Broad Izq"    val={fF.broad_iz}  set={v => setFF({ ...fF, broad_iz: v })} step="0.01" />
-            <F label="Yo-Yo 2025"   val={fF.y25} set={v => setFF({ ...fF, y25: v })} ph="ej: 18.5" />
-            <div style={{ gridColumn: 'span 2' }}><F label="Yo-Yo 2026 (actual)" val={fF.y26} set={v => setFF({ ...fF, y26: v })} ph="ej: 19.2" /></div>
+            {renderField('Broad (bi) m', fF.broad, v => setFF({ ...fF, broad: v }), '0.01')}
+            {renderField('Broad Der', fF.broad_de, v => setFF({ ...fF, broad_de: v }), '0.01')}
+            {renderField('Broad Izq', fF.broad_iz, v => setFF({ ...fF, broad_iz: v }), '0.01')}
+            {renderField('Yo-Yo 2025', fF.y25, v => setFF({ ...fF, y25: v }), '0.1', 'number', 'ej: 18.5')}
+            <div style={{ gridColumn: 'span 2' }}>
+              {renderField('Yo-Yo 2026 (actual)', fF.y26, v => setFF({ ...fF, y26: v }), '0.1', 'number', 'ej: 19.2')}
+            </div>
           </div>
         )}
 
         {tipo === 'nutri' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <F label="Peso (kg)"        val={fN.peso}   set={v => setFN({ ...fN, peso: v })} />
-              <F label="Talla (cm)"       val={fN.talla}  set={v => setFN({ ...fN, talla: v })} />
-              <F label="Músculo %"        val={fN.musc}   set={v => setFN({ ...fN, musc: v })} />
-              <F label="Adiposidad %"     val={fN.adip}   set={v => setFN({ ...fN, adip: v })} />
-              <F label="IMC"              val={fN.imc}    set={v => setFN({ ...fN, imc: v })} />
-              <F label="Visceral"         val={fN.visc}   set={v => setFN({ ...fN, visc: v })} step="1" />
-              <F label="Edad Metabólica"  val={fN.ed_met} set={v => setFN({ ...fN, ed_met: v })} step="1" />
-              <F label="∑ 6 Pliegues mm"  val={fN.sum6}   set={v => setFN({ ...fN, sum6: v })} />
-            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-              {[['Tricipital', 'pl_tri'], ['Subescapular', 'pl_sub'], ['Bicipital', 'pl_bic'], ['C. Ilíaca', 'pl_cre'], ['Supraespinal', 'pl_sup'], ['Abdominal', 'pl_abd']].map(([lbl, k]) => (
-                <F key={k} label={lbl + ' mm'} val={fN[k]} set={v => setFN({ ...fN, [k]: v })} />
+              {renderField('Peso (kg)', fN.peso, v => setFN({ ...fN, peso: v }))}
+              {renderField('Altura (cm)', fN.talla, v => setFN({ ...fN, talla: v }))}
+              {renderField('Músculo %', fN.musc, v => setFN({ ...fN, musc: v }))}
+              {renderField('Adiposidad %', fN.adip, v => setFN({ ...fN, adip: v }))}
+              {renderField('IMC', fN.imc, v => setFN({ ...fN, imc: v }))}
+              {renderField('Visceral', fN.visc, v => setFN({ ...fN, visc: v }), '1')}
+              {renderField('Edad Metabólica', fN.ed_met, v => setFN({ ...fN, ed_met: v }), '1')}
+              {renderField('∑ 6 Pliegues mm', fN.sum6, v => setFN({ ...fN, sum6: v }))}
+              {renderField('ICC', fN.icc, v => setFN({ ...fN, icc: v }))}
+            </div>
+            
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 900, marginTop: 10, borderBottom: '1px solid #1e293b', paddingBottom: 5 }}>PLIEGUES (mm)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+              {[['Tricipital', 'pl_tri'], ['Subescapular', 'pl_sub'], ['Bicipital', 'pl_bic'], ['C. Ilíaca', 'pl_cre'], ['Supraespinal', 'pl_sup'], ['Abdominal', 'pl_abd'], ['Muslo', 'pl_mus'], ['Pantorrilla', 'pl_pan']].map(([lbl, k]) => (
+                <div key={k}>{renderField(lbl, fN[k], v => setFN({ ...fN, [k]: v }))}</div>
               ))}
             </div>
-            <div>
-              <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Plan Nutricional</label>
+
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 900, marginTop: 10, borderBottom: '1px solid #1e293b', paddingBottom: 5 }}>PERÍMETROS (cm)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+              {[['Brazo Relaj.', 'per_bra_r'], ['Brazo Flex.', 'per_bra_f'], ['Cintura', 'per_cin'], ['Cadera', 'per_cad'], ['Pantorrilla', 'per_pan']].map(([lbl, k]) => (
+                <div key={k}>{renderField(lbl, fN[k], v => setFN({ ...fN, [k]: v }))}</div>
+              ))}
+            </div>
+
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 900, marginTop: 10, borderBottom: '1px solid #1e293b', paddingBottom: 5 }}>DIÁMETROS (cm)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {[['Húmero', 'dia_hum'], ['Fémur', 'dia_fem']].map(([lbl, k]) => (
+                <div key={k}>{renderField(lbl, fN[k], v => setFN({ ...fN, [k]: v }))}</div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 10 }}>
+              <label style={{ fontSize: '0.65rem', color: '#e2e8f0', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Plan Nutricional</label>
               <textarea value={fN.plan_nutricional} onChange={e => setFN({ ...fN, plan_nutricional: e.target.value })} className="select-dark" rows="4" placeholder="Pegá acá la dieta..." style={{ resize: 'vertical' }} />
             </div>
           </div>
@@ -1447,7 +1480,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[['Tobillo / Pie', 'kin_t', 'ej: movilidad'], ['Cadera (Jurdan)', 'kin_c', 'ej: isquio'], ['Zona Media', 'kin_u', 'ej: pelvica'], ['Sentadilla', 'kin_s', 'ej: optimo'], ['Pierna Hábil', 'pierna', 'Derecho / Izquierdo']].map(([lbl, k, ph]) => (
               <div key={k}>
-                <label style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{lbl}</label>
+                <label style={{ fontSize: '0.65rem', color: '#e2e8f0', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{lbl}</label>
                 <input type="text" value={fK[k]} onChange={e => setFK({ ...fK, [k]: e.target.value })} className="select-dark" placeholder={ph} />
               </div>
             ))}
