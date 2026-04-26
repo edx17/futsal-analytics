@@ -173,6 +173,11 @@ function Resumen() {
   const navigate = useNavigate();
   const { perfil } = useAuth();
 
+  // --- Lógica de roles y categorías permitidas ---
+  const rol = (perfil?.rol || '').toLowerCase();
+  const esCT = rol === 'ct';
+  const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
+
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -200,7 +205,12 @@ function Resumen() {
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
 
-  const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState('Todas');
+  // Inicializamos el filtro priorizando la categoría asignada si es CT
+  const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState(() => {
+    if (esCT && misCategorias.length > 0) return misCategorias[0];
+    return 'Todas';
+  });
+  
   const [filtroCompeticionGrid, setFiltroCompeticionGrid] = useState('Todas');
 
   const heatmapRef = useRef(null);
@@ -213,55 +223,71 @@ function Resumen() {
   
   const [mostrarReporte, setMostrarReporte] = useState(false);
 
+  // --- EFECTO DE PROTECCIÓN CT ---
+  // Si por algún motivo cambia el estado y es CT, lo forzamos a sus categorías
+  useEffect(() => {
+    if (esCT && misCategorias.length > 0) {
+      if (filtroCategoriaGrid === 'Todas' || !misCategorias.includes(filtroCategoriaGrid)) {
+        setFiltroCategoriaGrid(misCategorias[0]);
+      }
+    }
+  }, [esCT, misCategorias, filtroCategoriaGrid]);
+
   useEffect(() => {
     async function obtenerDatos() {
-      const club_id = localStorage.getItem('club_id') || perfil?.club_id;
+      try {
+        const club_id = localStorage.getItem('club_id') || perfil?.club_id;
 
-      let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
-      let queryJugadores = supabase.from('jugadores').select('*');
+        let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
+        let queryJugadores = supabase.from('jugadores').select('*');
 
-      if (club_id) {
-        queryPartidos = queryPartidos.eq('club_id', club_id);
-        queryJugadores = queryJugadores.eq('club_id', club_id);
-      }
-
-      const { data: p } = await queryPartidos;
-      setPartidos(p || []);
-      
-      const { data: j } = await queryJugadores;
-      setJugadores(j || []);
-      
-      const { data: w, error: wError } = await supabase.from('wellness').select('*');
-      if (wError) console.error("Error leyendo wellness:", wError);
-      setWellness(w || []);
-
-      let todosLosEventos = [];
-      let rangoInicio = 0;
-      let limiteAlcanzado = false;
-
-      while (!limiteAlcanzado) {
-        const { data: evs } = await supabase
-          .from('eventos')
-          .select('id_partido')
-          .range(rangoInicio, rangoInicio + 999);
-
-        if (evs && evs.length > 0) {
-          todosLosEventos = [...todosLosEventos, ...evs];
-          rangoInicio += 1000;
-          if (evs.length < 1000) limiteAlcanzado = true;
-        } else {
-          limiteAlcanzado = true;
+        if (club_id) {
+          queryPartidos = queryPartidos.eq('club_id', club_id);
+          queryJugadores = queryJugadores.eq('club_id', club_id);
         }
-      }
 
-      const idsConDatos = [...new Set(todosLosEventos.map(e => e.id_partido))];
-      setPartidosConDatos(idsConDatos);
+        const { data: p } = await queryPartidos;
+        setPartidos(p || []);
+        
+        const { data: j } = await queryJugadores;
+        setJugadores(j || []);
+        
+        const { data: w, error: wError } = await supabase.from('wellness').select('*');
+        if (wError) console.error("Error leyendo wellness:", wError);
+        setWellness(w || []);
 
-      if (id && p) {
-        const matchFound = p.find(partido => partido.id == id);
-        if (matchFound) {
-          cargarPartidoDirecto(matchFound);
+        let todosLosEventos = [];
+        let rangoInicio = 0;
+        let limiteAlcanzado = false;
+
+        while (!limiteAlcanzado) {
+          const { data: evs, error } = await supabase
+            .from('eventos')
+            .select('id_partido')
+            .range(rangoInicio, rangoInicio + 999);
+            
+          if (error) break;
+
+          if (evs && evs.length > 0) {
+            todosLosEventos = [...todosLosEventos, ...evs];
+            rangoInicio += 1000;
+            if (evs.length < 1000) limiteAlcanzado = true;
+          } else {
+            limiteAlcanzado = true;
+          }
         }
+
+        const idsConDatos = [...new Set(todosLosEventos.map(e => e.id_partido))];
+        setPartidosConDatos(idsConDatos);
+
+        if (id && p) {
+          const matchFound = p.find(partido => String(partido.id) === String(id));
+          if (matchFound) {
+            cargarPartidoDirecto(matchFound);
+          }
+        }
+      } catch (error) {
+        console.error("Error cargando el resumen general:", error);
       }
     }
     obtenerDatos();
@@ -345,8 +371,28 @@ function Resumen() {
     );
   };
 
-  const categoriasUnicas = useMemo(() => [...new Set(partidos.map(p => p.categoria).filter(Boolean))], [partidos]);
-  const competicionesUnicas = useMemo(() => [...new Set(partidos.map(p => p.competicion).filter(Boolean))], [partidos]);
+  // Filtramos las opciones del select según el rol
+  const categoriasUnicas = useMemo(() => {
+    const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
+    if (esCT && misCategorias.length > 0) {
+      // El CT solo ve las que tiene asignadas Y que además existan en la DB de partidos
+      return catPartidos.filter(c => misCategorias.includes(c));
+    }
+    return catPartidos;
+  }, [partidos, esCT, misCategorias]);
+
+  const competicionesUnicas = useMemo(() => {
+    const filtradosPorCategoria = partidos.filter(p => 
+      filtroCategoriaGrid === 'Todas' || p.categoria === filtroCategoriaGrid
+    );
+    return [...new Set(filtradosPorCategoria.map(p => p.competicion).filter(Boolean))];
+  }, [partidos, filtroCategoriaGrid]);
+
+  useEffect(() => {
+    if (filtroCompeticionGrid !== 'Todas' && !competicionesUnicas.includes(filtroCompeticionGrid)) {
+      setFiltroCompeticionGrid('Todas');
+    }
+  }, [competicionesUnicas, filtroCompeticionGrid]);
 
   const partidosGrid = useMemo(() => {
     const filtrados = partidos.filter(p => {
@@ -918,7 +964,10 @@ function Resumen() {
             <div style={{ flex: esMovil ? '1 1 45%' : 'auto' }}>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR CATEGORÍA</div>
               <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
-                <option value="Todas">TODAS</option>
+                {/* Solo mostramos "Todas" si NO es CT, o si es CT pero por alguna razón no tiene categorías */}
+                {!(esCT && misCategorias.length > 0) && (
+                  <option value="Todas">TODAS</option>
+                )}
                 {categoriasUnicas.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>

@@ -15,6 +15,10 @@ const CargaWellness = () => {
   const esJugador = isKiosco || perfil?.rol?.toLowerCase() === 'jugador';
   const miJugadorId = isKiosco ? kioscoJugadorId : perfil?.jugador_id;
 
+  // --- VARIABLES DEL GRAN FILTRO ---
+  const esCT = perfil?.rol === 'ct';
+  const misCategorias = perfil?.categorias_asignadas || [];
+
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(false);
   
@@ -44,11 +48,27 @@ const CargaWellness = () => {
   const [cargandoReporte, setCargandoReporte] = useState(false);
   const [detalleRegistro, setDetalleRegistro] = useState(null);
 
+  // --- EFECTO DEL GRAN FILTRO: Auto-seleccionar categoría permitida ---
+  useEffect(() => {
+    if (esCT && misCategorias.length > 0 && filtroCategoria === 'Todas') {
+      setFiltroCategoria(misCategorias[0]); // Seleccionamos la primera por defecto
+    }
+  }, [esCT, misCategorias, filtroCategoria]);
+
   // --- CARGA DE JUGADORES CON LOGICA KIOSCO ---
   useEffect(() => {
     const inicializarJugador = async () => {
       const club_id = localStorage.getItem('club_id') || 'club_default';
-      const { data, error } = await supabase.from('jugadores').select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id).order('apellido', { ascending: true });
+      
+      // 1. Consulta base
+      let query = supabase.from('jugadores').select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id);
+      
+      // 2. ¡EL GRAN FILTRO EN LA BASE DE DATOS!
+      if (esCT && misCategorias.length > 0) {
+        query = query.in('categoria', misCategorias);
+      }
+
+      const { data, error } = await query.order('apellido', { ascending: true });
       
       if (!error && data) {
         setJugadores(data);
@@ -58,12 +78,14 @@ const CargaWellness = () => {
           const yo = data.find(j => j.id == miJugadorId);
           if (yo) setJugadorSeleccionado(yo.id);
         } else if (data.length > 0 && !esJugador) {
-          setJugadorSeleccionado(data[0].id);
+          // Asegurarnos de que el primer jugador seleccionado coincida con el filtro actual (si aplica)
+          const primeraOpcionValida = filtroCategoria === 'Todas' ? data[0].id : (data.find(j => j.categoria === filtroCategoria)?.id || data[0].id);
+          setJugadorSeleccionado(primeraOpcionValida);
         }
       }
     };
     inicializarJugador();
-  }, [esJugador, miJugadorId]);
+  }, [esJugador, miJugadorId, esCT, misCategorias]);
 
   useEffect(() => {
     if (jugadorSeleccionado && fecha && vistaActiva === 'carga') {
@@ -146,9 +168,19 @@ const CargaWellness = () => {
     const fechaInicio = diasArray[0].fechaStr;
     const fechaFin = diasArray[diasArray.length - 1].fechaStr;
 
+    // Filtramos los registros de wellness SOLO para los jugadores que el DT puede ver
+    const idsPermitidos = jugadores.map(j => j.id);
+
+    if (idsPermitidos.length === 0) {
+      setDatosReporte([]);
+      setCargandoReporte(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('wellness')
       .select('*')
+      .in('jugador_id', idsPermitidos) // Aplicamos filtro de seguridad en la consulta
       .gte('fecha', fechaInicio)
       .lte('fecha', fechaFin);
 
@@ -185,7 +217,13 @@ const CargaWellness = () => {
     }
   };
 
-  const categoriasUnicas = ['Todas', ...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
+  // --- OPCIONES DEL SELECTOR DE CATEGORÍAS ---
+  // Si es CT, armamos la lista solo con sus categorías. Si es Admin/Manager, usamos las extraídas de la DB + 'Todas'
+  const categoriasExtraidas = [...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
+  const categoriasMostrar = (esCT && misCategorias.length > 0)
+    ? misCategorias
+    : ['Todas', ...categoriasExtraidas];
+
   const jugadoresFiltrados = filtroCategoria === 'Todas' ? jugadores : jugadores.filter(j => j.categoria === filtroCategoria);
 
   // --- LÓGICA DE ANALÍTICA ---
@@ -295,7 +333,7 @@ const CargaWellness = () => {
               <div style={{ flex: '1 1 120px' }}>
                 <label style={labelStyle}>Categoría</label>
                 <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={{...inputStyle, padding: '8px'}}>
-                  {categoriasUnicas.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  {categoriasMostrar.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
 
@@ -583,7 +621,7 @@ const CargaWellness = () => {
                       }} 
                       style={inputStyle}
                     >
-                      {categoriasUnicas.map(cat => (
+                      {categoriasMostrar.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
+import { useAuth } from '../context/AuthContext'; // <-- IMPORTAMOS EL CONTEXTO DE AUTENTICACIÓN
 
 function Plantel() {
+  const { perfil } = useAuth(); // <-- OBTENEMOS EL PERFIL
   const [jugadores, setJugadores] = useState([]);
   const [mostrarModalAlta, setMostrarModalAlta] = useState(false);
   const [jugadorSeleccionado, setJugadorSeleccionado] = useState(null);
@@ -17,6 +19,10 @@ function Plantel() {
   const clubId = localStorage.getItem('club_id');
   const { showToast } = useToast(); 
 
+  // --- VARIABLES DEL GRAN FILTRO ---
+  const esCT = perfil?.rol === 'ct';
+  const misCategorias = perfil?.categorias_asignadas || [];
+
   const estadoInicial = {
     nombre: '', apellido: '', dorsal: '', posicion: 'Ala', categoria: 'Primera',
     pierna: 'Diestro', fechanac: '', dni: '', contacto: '',
@@ -30,7 +36,16 @@ function Plantel() {
   }, [clubId]);
 
   const fetchJugadores = async () => {
-    const { data } = await supabase.from('jugadores').select('*').eq('club_id', clubId).order('dorsal', { ascending: true });
+    // 1. Armamos la consulta base
+    let query = supabase.from('jugadores').select('*').eq('club_id', clubId);
+
+    // 2. ¡EL GRAN FILTRO DE CATEGORÍAS!
+    if (esCT && misCategorias.length > 0) {
+      query = query.in('categoria', misCategorias);
+    }
+
+    // 3. Ejecutamos la consulta con el ordenamiento
+    const { data } = await query.order('dorsal', { ascending: true });
     setJugadores(data || []);
   };
 

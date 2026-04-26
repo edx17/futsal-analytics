@@ -43,8 +43,31 @@ import './App.css';
 // ESTILOS ESTÁTICOS
 // ==========================================
 const navMobileStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyItems: 'center', flex: 1, height: '100%', cursor: 'pointer', color: 'var(--text-dim)', textDecoration: 'none', fontWeight: 800, padding: '8px 0', transition: 'color 0.2s' };
-const sidebarLinkStyle = { padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '15px', textAlign: 'left' };
-const sidebarGroupTitle = { padding: '20px 20px 5px 20px', fontSize: '0.65rem', color: '#888', fontWeight: 900, letterSpacing: '1px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+
+// ACTUALIZADO: Estilo dinámico para los links de la sidebar
+const getSidebarLinkStyle = (isCollapsed) => ({
+  padding: '12px 20px', 
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: isCollapsed ? 'center' : 'flex-start', 
+  gap: isCollapsed ? '0' : '15px', 
+  textAlign: 'left',
+  transition: 'all 0.3s ease'
+});
+
+const getSidebarGroupTitle = (isCollapsed) => ({ 
+  padding: isCollapsed ? '20px 0 5px 0' : '20px 20px 5px 20px', 
+  fontSize: '0.65rem', 
+  color: '#888', 
+  fontWeight: 900, 
+  letterSpacing: '1px', 
+  cursor: 'pointer', 
+  display: 'flex', 
+  justifyContent: isCollapsed ? 'center' : 'space-between', 
+  alignItems: 'center',
+  textAlign: 'center'
+});
+
 const fabStyle = { position: 'absolute', top: '0px', left: '50%', transform: 'translateX(-50%)', width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)', color: '#000', border: 'none', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,255,136,0.3)', zIndex: 1002, transition: 'transform 0.2s' };
 
 // ==========================================
@@ -127,6 +150,23 @@ function AppLayout() {
     }
   }, [location.pathname, esMovil]);
 
+  // Si la sidebar se minimiza, opcionalmente cerramos los menús desplegables 
+  // para que la vista quede más limpia (comportamiento habitual de las mini-sidebars)
+  useEffect(() => {
+    if (!sidebarAbierta && !esMovil) {
+      setMenusAbiertos({
+        operaciones: false,
+        competicion: false,
+        analisis: false,
+        planificacion: false,
+        plantel: false,
+        administracion: false,
+        sistema: false
+      });
+    }
+  }, [sidebarAbierta, esMovil]);
+
+
   // ==========================================
   // PERMISOS Y VARIABLES DE ESTADO
   // ==========================================
@@ -200,157 +240,191 @@ function AppLayout() {
     );
   }
 
-  const toggleMenu = (seccion) => setMenusAbiertos(prev => ({ ...prev, [seccion]: !prev[seccion] }));
+  const toggleMenu = (seccion) => {
+    // Si la sidebar está minimizada, la abrimos al intentar desplegar un menú
+    if (!sidebarAbierta && !esMovil) {
+      setSidebarAbierta(true);
+    }
+    setMenusAbiertos(prev => ({ ...prev, [seccion]: !prev[seccion] }));
+  };
 
   // ==========================================
-  // RENDERIZADO DEL MENÚ LATERAL
+  // RENDERIZADO DEL MENÚ LATERAL (AHORA RECIBE isCollapsed)
   // ==========================================
-  const renderNavLinks = () => (
-    <>
-      <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>
-        🏠 <span>{permisos.esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>
-      </NavLink>
+  const renderNavLinks = (isCollapsed = false) => {
+    const linkStyle = getSidebarLinkStyle(isCollapsed);
+    const titleStyle = getSidebarGroupTitle(isCollapsed);
 
-      {permisos.puedeEscribirDeportivo && (
-        <>
-          <div style={sidebarGroupTitle} onClick={() => toggleMenu('operaciones')}>
-            <span>OPERACIONES</span> <span>{menusAbiertos.operaciones ? '▼' : '▶'}</span>
-          </div>
-          {menusAbiertos.operaciones && (
-            <>
-              <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚡ <span>NUEVO PARTIDO</span></NavLink>
-              <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⏯️ <span>CONTINUAR PARTIDO</span></NavLink>
-              <NavLink to="/analisis-video" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎥 <span>VIDEO ANÁLISIS</span></NavLink>
-              <NavLink to="/tracking-ia" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🤖 <span>TRACKING IA</span></NavLink>
-            </>
-          )}
-        </>
-      )}
+    return (
+      <>
+        <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle} title={isCollapsed ? "Inicio" : ""}>
+          <span style={{ fontSize: '1.2rem' }}>🏠</span> {!isCollapsed && <span>{permisos.esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}
+        </NavLink>
 
-      {!permisos.esJugador && permisos.puedeVerDeportivo && (
-        <>
-          <div style={sidebarGroupTitle} onClick={() => toggleMenu('competicion')}>
-            <span>COMPETICIÓN</span> <span>{menusAbiertos.competicion ? '▼' : '▶'}</span>
-          </div>
-          {menusAbiertos.competicion && (
-            <>
-              <NavLink to="/torneos" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏆 <span>MIS TORNEOS</span></NavLink>
-              <NavLink to="/scouting-rivales" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🕵️‍♂️ <span>RIVALES</span></NavLink>
-            </>
-          )}
-        </>
-      )}
+        {permisos.puedeEscribirDeportivo && (
+          <>
+            <div style={titleStyle} onClick={() => toggleMenu('operaciones')} title={isCollapsed ? "Operaciones" : ""}>
+              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>⚙️</span> : <><span>OPERACIONES</span> <span>{menusAbiertos.operaciones ? '▼' : '▶'}</span></>}
+            </div>
+            {menusAbiertos.operaciones && !isCollapsed && (
+              <>
+                <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚡ <span>NUEVO PARTIDO</span></NavLink>
+                <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⏯️ <span>CONTINUAR PARTIDO</span></NavLink>
+                <NavLink to="/analisis-video" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎥 <span>VIDEO ANÁLISIS</span></NavLink>
+                <NavLink to="/tracking-ia" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🤖 <span>TRACKING IA</span></NavLink>
+              </>
+            )}
+          </>
+        )}
 
-      {permisos.puedeVerDeportivo && (
-        <>
-          <div style={sidebarGroupTitle} onClick={() => toggleMenu('analisis')}>
-            <span>ANÁLISIS</span> <span>{menusAbiertos.analisis ? '▼' : '▶'}</span>
-          </div>
-          {menusAbiertos.analisis && (
-            <>
-              {!permisos.esJugador && <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📈 <span>RESUMEN TEMPORADA</span></NavLink>}
-              <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📊 <span>RESUMEN POR PARTIDO</span></NavLink>
-              <NavLink to="/jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👁️ <span>{permisos.esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
-              {!permisos.esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚽ <span>ORIGEN DE GOLES</span></NavLink>}
-            </>
-          )}
-        </>
-      )}
+        {!permisos.esJugador && permisos.puedeVerDeportivo && (
+          <>
+            <div style={titleStyle} onClick={() => toggleMenu('competicion')} title={isCollapsed ? "Competición" : ""}>
+              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>🏆</span> : <><span>COMPETICIÓN</span> <span>{menusAbiertos.competicion ? '▼' : '▶'}</span></>}
+            </div>
+            {menusAbiertos.competicion && !isCollapsed && (
+              <>
+                <NavLink to="/torneos" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏆 <span>MIS TORNEOS</span></NavLink>
+                <NavLink to="/scouting-rivales" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🕵️‍♂️ <span>RIVALES</span></NavLink>
+              </>
+            )}
+          </>
+        )}
 
-      {permisos.puedeVerDeportivo && !permisos.esJugador && (
-        <>
-          <div style={sidebarGroupTitle} onClick={() => toggleMenu('planificacion')}>
-            <span>PLANIFICACIÓN</span> <span>{menusAbiertos.planificacion ? '▼' : '▶'}</span>
-          </div>
-          {menusAbiertos.planificacion && (
-            <>
-              {permisos.puedeEscribirDeportivo && (
-                <>
-                  <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗓️ <span>MICROCICLO</span></NavLink>
-                  <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🎨 <span>CREADOR TÁCTICO</span></NavLink>
-                  <NavLink to="/creador-fisico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏋️‍♂️ <span>CREADOR FÍSICO</span></NavLink>
-                </>
-              )}
-              <NavLink to="/banco-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🗃️ <span>BANCO DE TAREAS</span></NavLink>
-              <NavLink to="/libro-tactico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📘 <span>LIBRO TÁCTICO</span></NavLink>
-            </>
-          )}
-        </>
-      )}
+        {permisos.puedeVerDeportivo && (
+          <>
+            <div style={titleStyle} onClick={() => toggleMenu('analisis')} title={isCollapsed ? "Análisis" : ""}>
+               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>📊</span> : <><span>ANÁLISIS</span> <span>{menusAbiertos.analisis ? '▼' : '▶'}</span></>}
+            </div>
+            {menusAbiertos.analisis && !isCollapsed && (
+              <>
+                {!permisos.esJugador && <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📈 <span>RESUMEN TEMPORADA</span></NavLink>}
+                <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📊 <span>RESUMEN POR PARTIDO</span></NavLink>
+                <NavLink to="/jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👁️ <span>{permisos.esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
+                {!permisos.esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚽ <span>ORIGEN DE GOLES</span></NavLink>}
+              </>
+            )}
+          </>
+        )}
 
-      {permisos.puedeVerDeportivo && (
-        <>
-          <div style={sidebarGroupTitle} onClick={() => toggleMenu('plantel')}>
-            <span>PLANTEL</span> <span>{menusAbiertos.plantel ? '▼' : '▶'}</span>
-          </div>
-          {menusAbiertos.plantel && (
-            <>
-              {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👤 <span>MI PLANTEL</span></NavLink>}
-              {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
-              <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🌡️ <span>WELLNESS</span></NavLink>
-              <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
-            </>
-          )}
-        </>
-      )}
+        {permisos.puedeVerDeportivo && !permisos.esJugador && (
+          <>
+            <div style={titleStyle} onClick={() => toggleMenu('planificacion')} title={isCollapsed ? "Planificación" : ""}>
+               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>🗓️</span> : <><span>PLANIFICACIÓN</span> <span>{menusAbiertos.planificacion ? '▼' : '▶'}</span></>}
+            </div>
+            {menusAbiertos.planificacion && !isCollapsed && (
+              <>
+                {permisos.puedeEscribirDeportivo && (
+                  <>
+                    <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🗓️ <span>MICROCICLO</span></NavLink>
+                    <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎨 <span>CREADOR TÁCTICO</span></NavLink>
+                    <NavLink to="/creador-fisico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏋️‍♂️ <span>CREADOR FÍSICO</span></NavLink>
+                  </>
+                )}
+                <NavLink to="/banco-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🗃️ <span>BANCO DE TAREAS</span></NavLink>
+                <NavLink to="/libro-tactico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📘 <span>LIBRO TÁCTICO</span></NavLink>
+              </>
+            )}
+          </>
+        )}
 
-      {!permisos.esJugador && permisos.puedeControlarAdmin && (
-        <>
-          <div style={sidebarGroupTitle} onClick={() => toggleMenu('administracion')}>
-            <span>ADMINISTRACIÓN</span> <span>{menusAbiertos.administracion ? '▼' : '▶'}</span>
-          </div>
-          {menusAbiertos.administracion && (
-            <>
-              <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💰 <span>TESORERÍA</span></NavLink>
-              <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>🤝 <span>SPONSORS</span></NavLink>
-              {permisos.puedeConfigurar && (
-                <>
-                  <NavLink to="/mi-suscripcion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💳 <span>MI SUSCRIPCIÓN</span></NavLink>
-                  <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>⚙️ <span>CONFIG. DE CLUB</span></NavLink>
-                </>
-              )}
-            </>
-          )}
-        </>
-      )}
+        {permisos.puedeVerDeportivo && (
+          <>
+            <div style={titleStyle} onClick={() => toggleMenu('plantel')} title={isCollapsed ? "Plantel" : ""}>
+               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>👥</span> : <><span>PLANTEL</span> <span>{menusAbiertos.plantel ? '▼' : '▶'}</span></>}
+            </div>
+            {menusAbiertos.plantel && !isCollapsed && (
+              <>
+                {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👤 <span>MI PLANTEL</span></NavLink>}
+                {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
+                <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🌡️ <span>WELLNESS</span></NavLink>
+                <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
+              </>
+            )}
+          </>
+        )}
 
-      {permisos.esSuperUser && (
-        <>
-          <div style={sidebarGroupTitle} onClick={() => toggleMenu('sistema')}>
-            <span>SISTEMA</span> <span>{menusAbiertos.sistema ? '▼' : '▶'}</span>
-          </div>
-          {menusAbiertos.sistema && (
-            <>
-              <NavLink to="/usuarios" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>👑 <span>GESTIÓN MASTER</span></NavLink>
-              <NavLink to="/admin/suscripciones" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={sidebarLinkStyle}>💳 <span>SUSCRIPCIONES</span></NavLink>
-            </>
-          )}
-        </>
-      )}
+        {!permisos.esJugador && permisos.puedeControlarAdmin && (
+          <>
+            <div style={titleStyle} onClick={() => toggleMenu('administracion')} title={isCollapsed ? "Administración" : ""}>
+               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>💰</span> : <><span>ADMINISTRACIÓN</span> <span>{menusAbiertos.administracion ? '▼' : '▶'}</span></>}
+            </div>
+            {menusAbiertos.administracion && !isCollapsed && (
+              <>
+                <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💰 <span>TESORERÍA</span></NavLink>
+                <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🤝 <span>SPONSORS</span></NavLink>
+                {permisos.puedeConfigurar && (
+                  <>
+                    <NavLink to="/mi-suscripcion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💳 <span>MI SUSCRIPCIÓN</span></NavLink>
+                    <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚙️ <span>CONFIG. DE CLUB</span></NavLink>
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
 
-      <button onClick={logout} className="nav-item" style={{ marginTop: '20px', background: 'transparent', color: '#ef4444', borderTop: '1px solid var(--border)', textAlign: 'left', cursor: 'pointer', padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '15px' }}>
-        🚪 <span style={{fontWeight: 'bold'}}>CERRAR SESIÓN</span>
-      </button>
-    </>
-  );
+        {permisos.esSuperUser && (
+          <>
+            <div style={titleStyle} onClick={() => toggleMenu('sistema')} title={isCollapsed ? "Sistema" : ""}>
+               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>👑</span> : <><span>SISTEMA</span> <span>{menusAbiertos.sistema ? '▼' : '▶'}</span></>}
+            </div>
+            {menusAbiertos.sistema && !isCollapsed && (
+              <>
+                <NavLink to="/usuarios" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👑 <span>GESTIÓN MASTER</span></NavLink>
+                <NavLink to="/admin/suscripciones" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💳 <span>SUSCRIPCIONES</span></NavLink>
+              </>
+            )}
+          </>
+        )}
+
+        <button 
+          onClick={logout} 
+          className="nav-item" 
+          title={isCollapsed ? "Cerrar Sesión" : ""}
+          style={{ 
+            marginTop: 'auto', 
+            background: 'transparent', 
+            color: '#ef4444', 
+            borderTop: '1px solid var(--border)', 
+            borderBottom: 'none',
+            borderRight: 'none',
+            borderLeft: 'none',
+            textAlign: 'left', 
+            cursor: 'pointer', 
+            padding: isCollapsed ? '20px 0' : '20px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: isCollapsed ? 'center' : 'flex-start', 
+            gap: isCollapsed ? '0' : '15px' 
+          }}
+        >
+          <span style={{ fontSize: '1.2rem' }}>🚪</span> {!isCollapsed && <span style={{fontWeight: 'bold'}}>CERRAR SESIÓN</span>}
+        </button>
+      </>
+    );
+  };
 
   return (
     <div style={{ display: 'flex', height: '100dvh', backgroundColor: 'var(--bg)', overflow: 'hidden' }}>
       
       {/* DESKTOP SIDEBAR */}
       {!esMovil && (
-        <aside style={{ width: sidebarAbierta ? '250px' : '70px', backgroundColor: 'var(--panel)', borderRight: '1px solid var(--border)', transition: 'width 0.3s ease', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
+        <aside style={{ width: sidebarAbierta ? '250px' : '70px', backgroundColor: 'var(--panel)', borderRight: '1px solid var(--border)', transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 10 }}>
           <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: sidebarAbierta ? 'space-between' : 'center', borderBottom: '1px solid var(--border)' }}>
             {sidebarAbierta && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                 <img src="/favicon-32x32.png" alt="VS" style={{ height: '26px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none' }} />
                 <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '1px' }}>VIRTUAL<span style={{ color: 'var(--accent)' }}>.CLUB</span></div>
               </div>
             )}
-            <button onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.2rem' }}>{sidebarAbierta ? '◀' : '▶'}</button>
+            <button onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}>
+              {sidebarAbierta ? '◀' : '▶'}
+            </button>
           </div>
-          <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 20px 0', gap: '2px', overflowY: 'auto' }}>
-             {sidebarAbierta ? renderNavLinks() : <div style={{textAlign: 'center', color: '#666', fontSize: '0.8rem', marginTop: '20px'}}>Menú<br/>Oculto</div>}
+          <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 0 0', gap: '2px', overflowY: 'auto', overflowX: 'hidden', flex: 1 }}>
+             {/* Renderizamos enviando el flag isCollapsed = !sidebarAbierta */}
+             {renderNavLinks(!sidebarAbierta)}
           </nav>
         </aside>
       )}
@@ -437,8 +511,9 @@ function AppLayout() {
               <span style={{ fontWeight: 900, color: 'var(--accent)', letterSpacing: '1px' }}>VIRTUAL.CLUB</span>
               <button onClick={() => setDrawerAbierto(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', padding: 0 }}>×</button>
             </div>
-            <nav style={{ flex: 1, paddingBottom: '20px' }}>
-              {renderNavLinks()}
+            <nav style={{ flex: 1, paddingBottom: '20px', display: 'flex', flexDirection: 'column' }}>
+              {/* Para mobile enviamos false para que el drawer sí despliegue todo */}
+              {renderNavLinks(false)}
             </nav>
           </div>
         </>

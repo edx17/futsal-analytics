@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { Stage, Layer, Circle, Rect, Text, Group, Line, Path } from 'react-konva';
 
+// IMPORTAMOS AUTH PARA EL GRAN FILTRO
+import { useAuth } from '../context/AuthContext';
+
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
 // =======================================================
@@ -216,6 +219,12 @@ const ReproductorLoop = ({ editorData }) => {
 
 const PlanificadorSemanal = () => {
   const navigate = useNavigate(); 
+  const { perfil } = useAuth(); // <-- GRAN FILTRO AUTH
+
+  // --- GRAN FILTRO ---
+  const misCategorias = perfil?.categorias_asignadas || [];
+  const categoriaInicial = misCategorias.length > 0 ? misCategorias[0] : 'Primera';
+
   const [fechaReferencia, setFechaReferencia] = useState(new Date());
   const [modoVista, setModoVista] = useState('semanal'); 
   const [diasCalendario, setDiasCalendario] = useState([]);
@@ -233,8 +242,8 @@ const PlanificadorSemanal = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const [filtroCategoria, setFiltroCategoria] = useState('Primera'); 
-  const [categoriasGuardadas, setCategoriasGuardadas] = useState(['Primera', 'Tercera']);
+  // Por defecto si tiene más de 1 categoría ve "Todas" (las suyas), sino la única que tiene
+  const [filtroCategoria, setFiltroCategoria] = useState(misCategorias.length > 1 ? 'Todas' : categoriaInicial); 
 
   // Modal State
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -250,7 +259,7 @@ const PlanificadorSemanal = () => {
     tipo_sesion: 'Entrenamiento',
     objetivo: '',
     nivel_carga: 'Media', 
-    categoria_equipo: filtroCategoria,
+    categoria_equipo: categoriaInicial,
     tareas_ids: [],
     comentarios: '',
     bloque_fisico: false,
@@ -316,12 +325,12 @@ const PlanificadorSemanal = () => {
     calcularCalendario();
   }, [fechaReferencia, modoVista]);
 
-  // 2. Traer Datos (Sesiones Y Partidos)
+  // 2. Traer Datos (Sesiones Y Partidos aplicando el Gran Filtro)
   useEffect(() => {
     if (diasCalendario.length > 0) {
       cargarDatos();
     }
-  }, [diasCalendario, filtroCategoria]);
+  }, [diasCalendario, filtroCategoria, misCategorias.length]);
 
   // 3. RECUPERAR SESIÓN EN BORRADOR
   useEffect(() => {
@@ -347,16 +356,31 @@ const PlanificadorSemanal = () => {
       const inicio = diasCalendario[0].fechaStr;
       const fin = diasCalendario[diasCalendario.length - 1].fechaStr;
 
+      // --- FILTROS DE SESIONES ---
       let querySesiones = supabase.from('sesiones').select('*').eq('club_id', club_id).gte('fecha', inicio).lte('fecha', fin);
-      if (filtroCategoria !== 'Todas') querySesiones = querySesiones.eq('categoria_equipo', filtroCategoria);
+      
+      if (filtroCategoria !== 'Todas') {
+        querySesiones = querySesiones.eq('categoria_equipo', filtroCategoria);
+      } else if (misCategorias.length > 0) {
+        querySesiones = querySesiones.in('categoria_equipo', misCategorias); // Ve "Todas SUS categorías"
+      }
+
       const { data: dataSesiones, error: errSesiones } = await querySesiones;
       if (errSesiones) throw errSesiones;
 
+      // --- FILTROS DE PARTIDOS ---
       let queryPartidos = supabase.from('partidos').select('*').eq('club_id', club_id).gte('fecha', inicio).lte('fecha', fin);
-      if (filtroCategoria !== 'Todas') queryPartidos = queryPartidos.eq('categoria', filtroCategoria);
+      
+      if (filtroCategoria !== 'Todas') {
+        queryPartidos = queryPartidos.eq('categoria', filtroCategoria);
+      } else if (misCategorias.length > 0) {
+        queryPartidos = queryPartidos.in('categoria', misCategorias);
+      }
+
       const { data: dataPartidos, error: errPartidos } = await queryPartidos;
       if (errPartidos) throw errPartidos;
       
+      // --- TAREAS (Todo el club) ---
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
         .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, fase_juego, objetivo_principal')
@@ -368,11 +392,6 @@ const PlanificadorSemanal = () => {
       setSesiones(dataSesiones || []);
       setPartidosOficiales(dataPartidos || []); 
       setTareasBanco(dataTareas || []);
-
-      const categoriasUnicas = [...new Set((dataSesiones || []).map(s => s.categoria_equipo).filter(Boolean))];
-      if (categoriasUnicas.length > 0) {
-        setCategoriasGuardadas(prev => [...new Set([...prev, ...categoriasUnicas])]);
-      }
 
     } catch (error) {
       console.error("Error cargando datos:", error.message);
@@ -403,7 +422,7 @@ const PlanificadorSemanal = () => {
         tipo_sesion: sesionExistente.tipo_sesion,
         objetivo: sesionExistente.objetivo || '',
         nivel_carga: sesionExistente.nivel_carga || 'Media',
-        categoria_equipo: sesionExistente.categoria_equipo || filtroCategoria,
+        categoria_equipo: sesionExistente.categoria_equipo || categoriaInicial,
         tareas_ids: sesionExistente.tareas_ids || [],
         comentarios: sesionExistente.comentarios || '',
         bloque_fisico: sesionExistente.bloque_fisico || false,
@@ -417,7 +436,7 @@ const PlanificadorSemanal = () => {
         tipo_sesion: 'Entrenamiento', 
         objetivo: '', 
         nivel_carga: 'Media',
-        categoria_equipo: filtroCategoria === 'Todas' ? 'Primera' : filtroCategoria,
+        categoria_equipo: filtroCategoria === 'Todas' ? categoriaInicial : filtroCategoria,
         tareas_ids: [],
         comentarios: '',
         bloque_fisico: false,
@@ -439,7 +458,7 @@ const PlanificadorSemanal = () => {
   const irACreadorYGuardarBorrador = () => {
     const borrador = { ...nuevaSesion, fechaStr: diaSeleccionado.fechaStr };
     sessionStorage.setItem('borradorSesion', JSON.stringify(borrador));
-    navigate('/creador-tareas'); // Si quieren crear rutina, que vayan directo desde menú
+    navigate('/creador-tareas'); 
   };
 
   const guardarSesion = async () => {
@@ -537,8 +556,9 @@ const PlanificadorSemanal = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', display: esMovil ? 'none' : 'block' }}>Categoría:</span>
             <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={{ padding: '10px', background: '#111', color: '#fff', border: '1px solid var(--accent)', borderRadius: '6px', outline: 'none', fontWeight: 'bold', flex: esMovil ? 1 : 'none', minHeight: '40px' }}>
-              <option value="Todas">TODAS LAS CATEGORÍAS</option>
-              {categoriasGuardadas.map(c => <option key={c} value={c}>{c}</option>)}
+              {misCategorias.length > 1 && <option value="Todas">TODAS MIS CATEGORÍAS</option>}
+              {misCategorias.length === 0 && <option value="Todas">TODAS LAS CATEGORÍAS</option>}
+              {misCategorias.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
@@ -900,7 +920,9 @@ const PlanificadorSemanal = () => {
                     <div style={{ display: 'flex', gap: '12px', flexDirection: esMovil ? 'column' : 'row' }}>
                       <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Categoría</label>
-                        <input type="text" value={nuevaSesion.categoria_equipo} onChange={e => setNuevaSesion({...nuevaSesion, categoria_equipo: e.target.value})} style={inputStyle} />
+                        <select value={nuevaSesion.categoria_equipo} onChange={e => setNuevaSesion({...nuevaSesion, categoria_equipo: e.target.value})} style={inputStyle}>
+                          {misCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
                       </div>
                       <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Tipo de Sesión</label>

@@ -1,26 +1,25 @@
 /**
- * CreadorTareas.jsx — v3.3 Pro (Rotación de Elementos + Emoji Ball)
+ * CreadorTareas.jsx — v3.4 Pro (Categorías Recomendadas)
  * Motor táctico: FutsalBoard canvas (nativo, sin react-konva)
  * Lógica preservada: frames + animación interpolada, Supabase, Ficha Técnica,
  * modo edición, export PNG, mobile responsive, ToastContext, navigate
- *
- * Fuentes (agregar en index.html):
- * <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
  */
 
 import { useState, useRef, useEffect, useReducer, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/ToastContext'
+// IMPORTAMOS AUTH para sacar las categorías del usuario
+import { useAuth } from '../context/AuthContext' 
 
 // ─────────────────────────────────────────────────────────────────
 //  CONSTANTES DE PIZARRA Y SISTEMA VIRTUAL
 // ─────────────────────────────────────────────────────────────────
 const PITCH_VARIANTS = {
   '40x20':         { label: '40×20 · Reglamentaria', mW: 40, mH: 20 },
-  '28x20':         { label: '28×20 · Reducida',       mW: 28, mH: 20 },
-  '20x20_mitad':   { label: '20×20 · Finalización',   mW: 20, mH: 20 },
-  '20x20_central': { label: '20×20 · Media Pista',    mW: 20, mH: 20 },
+  '28x20':         { label: '28×20 · Reducida',      mW: 28, mH: 20 },
+  '20x20_mitad':   { label: '20×20 · Finalización',  mW: 20, mH: 20 },
+  '20x20_central': { label: '20×20 · Media Pista',   mW: 20, mH: 20 },
 }
 
 const TEAM_COLORS = {
@@ -79,7 +78,7 @@ function mX(m, mW, L) { return L.px + (m/mW)*L.ppw }
 function mY(m, mH, L) { return L.py + (m/mH)*L.pph }
 
 // ─────────────────────────────────────────────────────────────────
-//  RENDER PISTA (FIFA FIEL + CUADRÍCULA MICROZONAS)
+//  RENDER PISTA
 // ─────────────────────────────────────────────────────────────────
 function renderPitch(ctx, cW, cH, pitchCfg) {
   const { variant, material, lineColor, showZones, showGrid, showDims, goals } = pitchCfg
@@ -89,17 +88,14 @@ function renderPitch(ctx, cW, cH, pitchCfg) {
   const lc = lineColor || '#ffffff'
   const alpha = material === 'negro' ? .9 : .8
 
-  // Fondo canvas
   ctx.fillStyle = '#0a0b0f'; ctx.fillRect(0,0,cW,cH)
 
-  // Material de pista
   ctx.save()
   ctx.beginPath(); ctx.rect(L.px, L.py, L.ppw, L.pph); ctx.clip()
   ctx.save(); ctx.translate(L.px, L.py)
   ;(MATERIALS[material] || MATERIALS.azul)(ctx, L.ppw, L.pph)
   ctx.restore(); ctx.restore()
 
-  // Sombra y marco exterior
   ctx.shadowBlur = 16; ctx.shadowColor = 'rgba(0,0,0,.8)'
   ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 5
   ctx.strokeRect(L.px, L.py, L.ppw, L.pph); ctx.shadowBlur = 0
@@ -118,36 +114,27 @@ function renderPitch(ctx, cW, cH, pitchCfg) {
     ctx.globalAlpha=1
   }
 
-  // APLICAMOS CLIPPING PARA QUE LAS LÍNEAS NO SALGAN DEL CAMPO
   ctx.save()
   ctx.beginPath(); ctx.rect(L.px, L.py, L.ppw, L.pph); ctx.clip()
 
   const midX = MW/2, midY = MH/2
 
-  // Cuadrícula MicroZonas (12 cuadrados)
   if (showGrid) {
     const gAlpha = 0.25
     ctx.strokeStyle = lc; ctx.lineWidth = 1; ctx.globalAlpha = gAlpha; ctx.setLineDash([5,5])
-    
-    // Divisiones verticales (3 a lo ancho -> 2 líneas interiores)
     const yDivs = [MH / 3, (MH * 2) / 3]
     yDivs.forEach(y => {
       ctx.beginPath(); ctx.moveTo(L.px, mY(y, MH, L)); ctx.lineTo(L.px + L.ppw, mY(y, MH, L)); ctx.stroke()
     })
-    
-    // Divisiones horizontales (4 a lo largo -> 3 líneas interiores)
     const xDivs = [MW / 4, MW / 2, (MW * 3) / 4]
     xDivs.forEach(x => {
       ctx.beginPath(); ctx.moveTo(mX(x, MW, L), L.py); ctx.lineTo(mX(x, MW, L), L.py + L.pph); ctx.stroke()
     })
-    
     ctx.globalAlpha = 1; ctx.setLineDash([])
   }
 
-  // Línea central
   if (variant === '40x20' || variant === '28x20' || variant === '20x20_central') {
     line(midX,0, midX,MH, 2)
-    // Círculo central 3m
     const rPxCentral = (3/MW)*L.ppw
     ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.globalAlpha=alpha
     ctx.beginPath(); ctx.arc(mX(midX,MW,L), mY(midY,MH,L), rPxCentral, 0, Math.PI*2); ctx.stroke()
@@ -155,7 +142,6 @@ function renderPitch(ctx, cW, cH, pitchCfg) {
     dot(midX, midY)
   }
 
-  // Áreas FIFA (Arcos geométricos perfectos de 6m)
   if (showZones) {
     const gy1 = midY - 1.5, gy2 = midY + 1.5
     ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.globalAlpha=.8
@@ -167,21 +153,19 @@ function renderPitch(ctx, cW, cH, pitchCfg) {
       
       ctx.beginPath()
       if (isLeft) {
-        ctx.arc(mX(baseX,MW,L), mY(gy1,MH,L), rPx, -Math.PI/2, 0, false) // Arco superior
-        ctx.lineTo(mX(baseX + 6, MW, L), mY(gy2, MH, L)) // Linea recta
-        ctx.arc(mX(baseX,MW,L), mY(gy2,MH,L), rPx, 0, Math.PI/2, false) // Arco inferior
+        ctx.arc(mX(baseX,MW,L), mY(gy1,MH,L), rPx, -Math.PI/2, 0, false) 
+        ctx.lineTo(mX(baseX + 6, MW, L), mY(gy2, MH, L)) 
+        ctx.arc(mX(baseX,MW,L), mY(gy2,MH,L), rPx, 0, Math.PI/2, false) 
       } else {
-        ctx.arc(mX(baseX,MW,L), mY(gy1,MH,L), rPx, -Math.PI/2, Math.PI, true) // Arco superior (CCW)
-        ctx.lineTo(mX(baseX - 6, MW, L), mY(gy2, MH, L)) // Linea recta
-        ctx.arc(mX(baseX,MW,L), mY(gy2,MH,L), rPx, Math.PI, Math.PI/2, true) // Arco inferior (CCW)
+        ctx.arc(mX(baseX,MW,L), mY(gy1,MH,L), rPx, -Math.PI/2, Math.PI, true) 
+        ctx.lineTo(mX(baseX - 6, MW, L), mY(gy2, MH, L)) 
+        ctx.arc(mX(baseX,MW,L), mY(gy2,MH,L), rPx, Math.PI, Math.PI/2, true) 
       }
       ctx.stroke()
 
-      // Puntos 6m (penal) y 10m (doble penal)
       dot(baseX + 6*sign, midY, 2.5)
       dot(baseX + 10*sign, midY, 2.5)
 
-      // Córners (cuadrante de 25cm)
       const cr = (0.25/MW)*L.ppw
       ctx.beginPath(); ctx.arc(mX(baseX,MW,L), mY(0,MH,L), cr, isLeft?0:Math.PI/2, isLeft?Math.PI/2:Math.PI, false); ctx.stroke()
       ctx.beginPath(); ctx.arc(mX(baseX,MW,L), mY(MH,MH,L), cr, isLeft?-Math.PI/2:Math.PI, isLeft?0:-Math.PI/2, false); ctx.stroke()
@@ -192,25 +176,21 @@ function renderPitch(ctx, cW, cH, pitchCfg) {
       drawArea(false)
     }
     
-    // Marcas de sustitución (5m del centro, 5m de largo)
     if (variant === '40x20' || variant === '28x20') {
       [[midX-5,0],[midX+5,0]].forEach(([mx2,my2]) => {
         const cx=mX(mx2,MW,L), cy=mY(my2,MH,L)
         ctx.strokeStyle=lc; ctx.lineWidth=2; ctx.globalAlpha=.6
-        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx,cy+8); ctx.stroke() // 8px para que se note en el borde
+        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx,cy+8); ctx.stroke() 
       })
     }
     ctx.globalAlpha=1
   }
 
-  // Restaurar clipping (para poder dibujar el borde grueso y los arcos fuera de pista)
   ctx.restore()
 
-  // Línea exterior principal (Gruesa)
   ctx.strokeStyle=lc; ctx.lineWidth=2; ctx.globalAlpha=alpha
   ctx.strokeRect(L.px, L.py, L.ppw, L.pph); ctx.globalAlpha=1
 
-  // Porterías de la pista (afuera de los límites)
   if (goals !== 'none') {
     const gDepth = Math.min(L.ppw, L.pph) * 0.022
     const g1y = mY(midY-1.5, MH, L), g2y = mY(midY+1.5, MH, L)
@@ -222,7 +202,6 @@ function renderPitch(ctx, cW, cH, pitchCfg) {
       ctx.lineTo(gx+(gDepth*dir),g2y); ctx.lineTo(gx,g2y)
       ctx.stroke()
       ctx.fillStyle='rgba(255,255,255,.08)'; ctx.fillRect(dir===-1?gx-gDepth:gx,g1y,gDepth,g2y-g1y)
-      // Detalle de malla
       ctx.beginPath(); ctx.setLineDash([1,2]); ctx.lineWidth=1; ctx.strokeStyle='rgba(255,255,255,0.4)'
       for(let step=1; step<4; step++){
         let currY = g1y + ((g2y-g1y)/4)*step
@@ -237,7 +216,6 @@ function renderPitch(ctx, cW, cH, pitchCfg) {
     ctx.globalAlpha=1
   }
 
-  // Medidas
   if (showDims) {
     const fs = Math.max(9, cW*0.012)
     ctx.fillStyle='rgba(255,255,255,.25)'; ctx.font=`${fs}px 'JetBrains Mono',monospace`
@@ -270,7 +248,6 @@ function drawEl(ctx, el, selected, cW) {
 
   ctx.save()
 
-  // ── SISTEMA DE ROTACIÓN INDIVIDUAL ──
   let cx = x, cy = y
   if (t === 'zone-rect' || t === 'zone-ellipse') {
     cx = x + el.w/2
@@ -297,54 +274,39 @@ function drawEl(ctx, el, selected, cW) {
     ctx.strokeStyle = el.stroke || tc.stroke; ctx.lineWidth=1.8; ctx.stroke()
     ctx.shadowBlur=0
     
-    // Anillo exterior para porteros o staff
     if (t==='gk-ama'||t==='gk-vio'||t==='staff') {
       ctx.strokeStyle=t==='staff'?'#fff':'#fff'; ctx.lineWidth=1; ctx.globalAlpha=.45
       ctx.beginPath(); ctx.arc(x,y,r+3,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1
     }
     
-    // Label (Número o texto)
     ctx.fillStyle='#fff'; ctx.font=`700 ${r*.85}px Syne,sans-serif`
     ctx.textAlign='center'; ctx.textBaseline='middle'
     ctx.fillText(el.label||'', x, y+.5)
     if (isSel) selRing(ctx,x,y,r+6)
   }
-
   else if (t==='ball') {
-    const r = cW*0.013 // Mismo radio que el cono plato
-    
-    ctx.globalAlpha = 1 // Fuerza opacidad total
+    const r = cW*0.013 
+    ctx.globalAlpha = 1 
     ctx.shadowBlur=isSel?14:4; ctx.shadowColor=isSel?'#00e5ff':'rgba(0,0,0,.5)'
-    
-    // Base sólida para darle cuerpo y matar cualquier pixel semi-transparente del emoji
     ctx.fillStyle='#ffffff'; 
     ctx.beginPath(); 
     ctx.arc(x, y, r*0.9, 0, Math.PI*2); 
     ctx.fill()
-
-    // Renderizado del emoji ajustado exactamente al volumen del cono
     ctx.font = `${r*2.2}px sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText('⚽', x, y + r*0.08)
-    
     ctx.shadowBlur=0; if(isSel) selRing(ctx,x,y,r+4)
   }
-
-
   else if (t==='cono_alto'||t==='cono') {
     const r = cW*0.012
     ctx.shadowBlur = isSel?14:4; ctx.shadowColor = isSel?'#00e5ff':'rgba(0,0,0,.4)'
-    // Base naranja base
     ctx.fillStyle = '#ea580c'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill()
-    // Centro más claro (perspectiva superior)
     ctx.fillStyle = '#fb923c'; ctx.beginPath(); ctx.arc(x,y,r*0.6,0,Math.PI*2); ctx.fill()
-    // Agujero blanco
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x,y,r*0.2,0,Math.PI*2); ctx.fill()
     ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0
     if(isSel) selRing(ctx,x,y,r+4)
   }
-
   else if (t==='cono_plato') {
     const r = cW*0.013
     ctx.shadowBlur = isSel?14:2; ctx.shadowColor = isSel?'#00e5ff':'rgba(0,0,0,.4)'
@@ -353,41 +315,30 @@ function drawEl(ctx, el, selected, cW) {
     ctx.strokeStyle = '#a16207'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0
     if(isSel) selRing(ctx,x,y,r+4)
   }
-
   else if (t==='valla') {
     const w=cW*.055, h=cW*.012
     ctx.shadowBlur = isSel?14:4; ctx.shadowColor = isSel?'#00e5ff':'rgba(0,0,0,.5)'
-    
-    // Gradiente para textura de valla
     const g = ctx.createLinearGradient(x, y-h/2, x, y+h/2)
     g.addColorStop(0, '#fcd34d'); g.addColorStop(1, '#d97706')
     ctx.fillStyle=g; ctx.fillRect(x-w/2, y-h/2, w, h)
-    
-    // Borde
     ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.strokeRect(x-w/2,y-h/2,w,h)
-    
-    // Soportes/Pies oscuros
     ctx.fillStyle='#222'; ctx.fillRect(x-w/2+2,y-h,4,h*2); ctx.fillRect(x+w/2-6,y-h,4,h*2)
     ctx.shadowBlur=0
     if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);ctx.strokeRect(x-w/2-4,y-h-4,w+8,h*2+8);ctx.setLineDash([])}
   }
-
   else if (t==='mini_arco'||t==='arco') {
     const w = t==='mini_arco' ? cW*.05 : cW*.09
     const depth = t==='mini_arco' ? w*0.4 : w*0.35
-
     ctx.shadowBlur = isSel?14:5; ctx.shadowColor = isSel?'#00e5ff':'rgba(0,0,0,0.5)'
 
-    // Fondo de la red (trapecio semitransparente)
     ctx.beginPath()
-    ctx.moveTo(x - w/2, y) // poste izq
-    ctx.lineTo(x - w/2 * 0.8, y - depth) // fondo izq
-    ctx.lineTo(x + w/2 * 0.8, y - depth) // fondo der
-    ctx.lineTo(x + w/2, y) // poste der
+    ctx.moveTo(x - w/2, y) 
+    ctx.lineTo(x - w/2 * 0.8, y - depth) 
+    ctx.lineTo(x + w/2 * 0.8, y - depth) 
+    ctx.lineTo(x + w/2, y) 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
     ctx.fill()
 
-    // Dibujo de la malla
     ctx.save()
     ctx.clip()
     ctx.beginPath(); ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; ctx.lineWidth = 0.5
@@ -397,31 +348,26 @@ function drawEl(ctx, el, selected, cW) {
     }
     ctx.stroke(); ctx.restore()
 
-    // Marco exterior (redondo y postes traseros)
     ctx.beginPath()
     ctx.moveTo(x - w/2, y); ctx.lineTo(x - w/2 * 0.8, y - depth)
     ctx.lineTo(x + w/2 * 0.8, y - depth); ctx.lineTo(x + w/2, y)
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke()
 
-    // Travesaño (Línea frontal fuerte)
     ctx.beginPath(); ctx.moveTo(x - w/2, y); ctx.lineTo(x + w/2, y)
     ctx.strokeStyle = t==='arco' ? '#ff3860' : '#ffffff'; ctx.lineWidth = 3; ctx.stroke()
 
-    // Postes frontales (círculos)
     ctx.beginPath(); ctx.arc(x - w/2, y, 2.5, 0, Math.PI*2); ctx.arc(x + w/2, y, 2.5, 0, Math.PI*2)
     ctx.fillStyle = '#fff'; ctx.fill()
 
     ctx.shadowBlur=0
     if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([3,2]);ctx.strokeRect(x-w/2-4,y-depth-4,w+8,depth+8);ctx.setLineDash([])}
   }
-
   else if (t==='zone-rect') {
     ctx.globalAlpha=el.opacity??0.18; ctx.fillStyle=el.fill||'#00e5ff'; ctx.fillRect(el.x,el.y,el.w,el.h)
     ctx.globalAlpha=1; ctx.strokeStyle=el.stroke||'#00e5ff'; ctx.lineWidth=el.lineW||1.8
     ctx.setLineDash(el.dashed?[7,4]:[]); ctx.strokeRect(el.x,el.y,el.w,el.h); ctx.setLineDash([])
     if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.strokeRect(el.x-5,el.y-5,el.w+10,el.h+10);ctx.setLineDash([])}
   }
-
   else if (t==='zone-ellipse') {
     const ecx=el.x+el.w/2,ecy=el.y+el.h/2
     ctx.globalAlpha=el.opacity??0.18; ctx.fillStyle=el.fill||'#ff3860'
@@ -430,7 +376,6 @@ function drawEl(ctx, el, selected, cW) {
     ctx.setLineDash(el.dashed?[7,4]:[]); ctx.stroke(); ctx.setLineDash([])
     if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.beginPath();ctx.ellipse(ecx,ecy,Math.abs(el.w/2)+5,Math.abs(el.h/2)+5,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
   }
-
   else if (t==='text') {
     ctx.font=`${el.bold?'700':'500'} ${el.fontSize||13}px Syne,sans-serif`
     ctx.textAlign='left'; ctx.textBaseline='top'
@@ -482,13 +427,12 @@ function drawTempZone(ctx, tz) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-//  HIT TEST (Adaptado para Elementos Rotados)
+//  HIT TEST 
 // ─────────────────────────────────────────────────────────────────
 function hitEl(elements, px, py, cW) {
   for (let i=elements.length-1;i>=0;i--) {
     const el=elements[i]; const r=playerRadius(cW)*1.2
     
-    // Algoritmo de rotación inversa para detectar clicks con precisión en objetos rotados
     let cx = el.x, cy = el.y
     if(el.type?.startsWith('zone')){ cx = el.x + el.w/2; cy = el.y + el.h/2; }
     
@@ -634,6 +578,10 @@ const CreadorTareas = () => {
   const location  = useLocation()
   const navigate  = useNavigate()
   const { showToast } = useToast()
+  
+  // EXTRAEMOS CATEGORÍAS DEL PERFIL
+  const { perfil } = useAuth()
+  const misCategorias = perfil?.categorias_asignadas || []
 
   const tareaAEditar = location.state?.editando
   const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null)
@@ -678,7 +626,9 @@ const CreadorTareas = () => {
   const [textModal, setTextModal]   = useState(false)
   const [textValue, setTextValue]   = useState('')
 
+  // ── AGREGAMOS categoria_recomendada A LA FICHA ──
   const [fichaTecnica, setFichaTecnica] = useState({
+    categoria_recomendada: tareaAEditar?.categoria_recomendada || 'Todas',
     categoria_ejercicio: tareaAEditar?.categoria_ejercicio || 'Táctico',
     fase_juego:          tareaAEditar?.fase_juego          || 'Ataque Posicional',
     duracion_estimada:   tareaAEditar?.duracion_estimada   || 15,
@@ -747,11 +697,9 @@ const CreadorTareas = () => {
 
     const baseH = getBaseH(pitchCfg.variant)
 
-    // Limpiamos la pantalla en resolución nativa
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, cvSize.w, cvSize.h)
 
-    // APLICAMOS LA MAGIA: Escalar todo el contexto al tamaño virtual base de 800px
     ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH)
 
     renderPitch(ctx, BASE_W, baseH, pitchCfg)
@@ -875,7 +823,6 @@ const CreadorTareas = () => {
     const rawX = src.clientX - r.left
     const rawY = src.clientY - r.top
     
-    // Convertimos la coordenada del click real a nuestra coordenada virtual de 800px
     const scaleX = r.width ? BASE_W / r.width : 1
     const scaleY = r.height ? getBaseH(pitchCfg.variant) / r.height : 1
     
@@ -944,12 +891,10 @@ const CreadorTareas = () => {
   // ── KEYBOARD ROBUSTO (Fix Bug Desaparición) ──
   useEffect(()=>{
     function onKey(e){
-      // Si estamos editando un input, textarea, select o campo editable, IGNORAR atajo
       const tag = e.target.tagName.toUpperCase()
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable
       if (isInput) return
 
-      // Solo borrar si no estamos escribiendo en la UI
       if (e.key === 'Delete' || e.key === 'Backspace') {
         dispatchBoard({type:'DEL_SEL'})
       }
@@ -989,6 +934,7 @@ const CreadorTareas = () => {
       espacio: pitchCfg.variant,
       url_grafico: dataURL,
       editor_data: { frames:finalFrames, cancha:{ tamaño:pitchCfg.variant, material:pitchCfg.material } },
+      categoria_recomendada: fichaTecnica.categoria_recomendada, // <--- NUEVO DATO
       categoria_ejercicio:   fichaTecnica.categoria_ejercicio,
       fase_juego:            fichaTecnica.fase_juego,
       duracion_estimada:     parseInt(fichaTecnica.duracion_estimada)||0,
@@ -1388,6 +1334,16 @@ const CreadorTareas = () => {
             </div>
 
             <div style={{display:'grid',gridTemplateColumns:esMovil?'1fr':'1fr 1fr',gap:15,marginBottom:15}}>
+              
+              {/* NUEVO CAMPO: CATEGORÍA RECOMENDADA */}
+              <div>
+                <label className="ct-modal-lbl" style={{color: '#facc15'}}>Categoría de la Tarea</label>
+                <select className="ct-modal-input" style={{borderColor: '#ca8a04'}} value={fichaTecnica.categoria_recomendada} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_recomendada:e.target.value})}>
+                  <option value="Todas">Todas las Categorías</option>
+                  {misCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
               <div>
                 <label className="ct-modal-lbl">Enfoque Teórico</label>
                 <select className="ct-modal-input" value={fichaTecnica.categoria_ejercicio} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_ejercicio:e.target.value})}>
@@ -1418,7 +1374,7 @@ const CreadorTareas = () => {
                 <label className="ct-modal-lbl">Jugadores Involucrados</label>
                 <input type="text" placeholder="Ej: 4v4 + 2 Comodines" className="ct-modal-input" value={fichaTecnica.jugadores_involucrados} onChange={e=>setFichaTecnica({...fichaTecnica,jugadores_involucrados:e.target.value})} />
               </div>
-              <div>
+              <div style={{gridColumn: esMovil ? 'span 1' : 'span 2'}}>
                 <label className="ct-modal-lbl">Objetivo Específico</label>
                 <input type="text" placeholder="Ej: Mantener posesión bajo presión" className="ct-modal-input" value={fichaTecnica.objetivo_principal} onChange={e=>setFichaTecnica({...fichaTecnica,objetivo_principal:e.target.value})} />
               </div>

@@ -86,7 +86,7 @@ export default function Rendimiento() {
 
   // --- RESPONSIVE Y UX ESTADOS ---
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 800);
-  const [perfilExpandido, setPerfilExpandido] = useState(false); // Para colapsar perfil en móviles
+  const [perfilExpandido, setPerfilExpandido] = useState(false); 
 
   const { showToast } = useToast();
   const { perfil } = useAuth();
@@ -99,6 +99,7 @@ export default function Rendimiento() {
   
   const esStaff = !esJugador;
   const clubId = localStorage.getItem('club_id') || perfil?.club_id || localStorage.getItem('kiosco_club_id');
+  const misCategorias = perfil?.categorias_asignadas || [];
 
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth <= 800);
@@ -115,15 +116,28 @@ export default function Rendimiento() {
       return;
     }
 
-    const { data: j } = await supabase.from('jugadores').select('id,nombre,apellido,dorsal,posicion').eq('club_id', clubId).order('dorsal');
+    // --- FILTRO JUGADORES ---
+    let qJugadores = supabase.from('jugadores').select('id,nombre,apellido,dorsal,posicion,categoria').eq('club_id', clubId).order('dorsal');
+    if (misCategorias.length > 0) {
+      qJugadores = qJugadores.in('categoria', misCategorias);
+    }
+    const { data: j } = await qJugadores;
     setJugadoresBD(j || []);
     
+    const idsPermitidos = j ? j.map(jug => jug.id) : [];
+
+    // --- FILTRO RENDIMIENTO ---
     const { data: r } = await supabase.from('rendimiento')
-      .select('*,jugadores(nombre,apellido,posicion,dorsal)')
+      .select('*,jugadores!inner(nombre,apellido,posicion,dorsal,categoria)')
       .eq('club_id', clubId)
       .order('fecha_medicion', { ascending: false });
 
-    const todosLosRegistros = r || [];
+    // Filtramos los registros de rendimiento solo para los jugadores permitidos
+    let todosLosRegistros = r || [];
+    if (misCategorias.length > 0) {
+      todosLosRegistros = todosLosRegistros.filter(reg => idsPermitidos.includes(reg.id_jugador));
+    }
+
     setHistorialGlobal(todosLosRegistros);
 
     if (esJugador) {

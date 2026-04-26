@@ -3,26 +3,32 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
-// IMPORTAMOS EL HOOK DE NOTIFICACIONES Y COMPONENTES REUTILIZABLES
+// IMPORTAMOS EL HOOK DE NOTIFICACIONES, CONTEXTO DE AUTH Y COMPONENTES REUTILIZABLES
 import { useToast } from '../components/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import InfoBox from '../components/InfoBox';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { perfil } = useAuth(); // <-- AGREGAMOS AUTH PARA EL GRAN FILTRO
+
+  // --- GRAN FILTRO ---
+  const misCategorias = perfil?.categorias_asignadas || [];
+  const categoriaInicial = misCategorias.length > 0 ? misCategorias[0] : 'Primera';
 
   const [torneos, setTorneos] = useState([]);
   const [rivales, setRivales] = useState([]);
   
-  const [filtroCategoria, setFiltroCategoria] = useState('Primera');
+  const [filtroCategoria, setFiltroCategoria] = useState(categoriaInicial);
   const [torneoActivo, setTorneoActivo] = useState(null);
   const [fixture, setFixture] = useState([]);
   
   const [mostrarModalTorneo, setMostrarModalTorneo] = useState(false);
   const [mostrarModalFixture, setMostrarModalFixture] = useState(false);
   
-  const [formTorneo, setFormTorneo] = useState({ nombre: '', categoria: 'Primera', tipo: 'Oficial' });
+  const [formTorneo, setFormTorneo] = useState({ nombre: '', categoria: categoriaInicial, tipo: 'Oficial' });
   const [formFixture, setFormFixture] = useState({
     rival_id: '', jornada: '', fecha_partido: '', condicion: 'Local', estado: 'Pendiente', goles_propios: 0, goles_rival: 0
   });
@@ -32,10 +38,17 @@ function Torneos() {
       fetchTorneos();
       fetchRivales();
     }
-  }, [clubId]);
+  }, [clubId]); // Aquí podríamos agregar dependencias si perfil tardara en cargar, pero clubId y useEffect suelen bastar.
 
   const fetchTorneos = async () => {
-    const { data } = await supabase.from('torneos').select('*').eq('club_id', clubId).order('id', { ascending: false });
+    // Aplicamos el Gran Filtro a la consulta de Torneos
+    let query = supabase.from('torneos').select('*').eq('club_id', clubId).order('id', { ascending: false });
+    
+    if (misCategorias.length > 0) {
+      query = query.in('categoria', misCategorias);
+    }
+
+    const { data } = await query;
     if (data) {
       setTorneos(data);
       if (data.length > 0 && !torneoActivo) {
@@ -50,8 +63,15 @@ function Torneos() {
   };
 
   const categoriasUnicas = useMemo(() => {
-    return Array.from(new Set(['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', ...torneos.map(t => t.categoria)]));
-  }, [torneos]);
+    const categoriasPorDefecto = ['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava'];
+    let base = Array.from(new Set([...categoriasPorDefecto, ...torneos.map(t => t.categoria)]));
+    
+    // Si tiene categorías asignadas, filtramos la lista para que solo vea las suyas
+    if (misCategorias.length > 0) {
+      base = base.filter(c => misCategorias.includes(c));
+    }
+    return base;
+  }, [torneos, misCategorias]);
 
   const torneosFiltrados = useMemo(() => {
     return torneos.filter(t => t.categoria === filtroCategoria);
@@ -84,7 +104,6 @@ function Torneos() {
     }
 
     // 2. Verificamos si tienen eventos usando "count" para evitar saturar el servidor
-    // Esto es rapidísimo y 100% preciso sin importar cuántos miles de eventos haya.
     const partidosConStatus = await Promise.all(partidosData.map(async (p) => {
       const { count } = await supabase
         .from('eventos')
@@ -110,13 +129,13 @@ function Torneos() {
     if (!error) {
       setMostrarModalTorneo(false);
       setFiltroCategoria(formTorneo.categoria); 
-      setFormTorneo({ nombre: '', categoria: 'Primera' });
+      setFormTorneo({ nombre: '', categoria: categoriaInicial, tipo: 'Oficial' });
       fetchTorneos();
       showToast("¡Torneo guardado con éxito!", "success");
     } else showToast("Error al guardar: " + error.message, "error");
   };
 
-const handleGuardarFixture = async () => { // <-- Acá está el async clave
+  const handleGuardarFixture = async () => {
     if (!formFixture.rival_id || !formFixture.jornada) return showToast("Rival y Jornada son obligatorios", "warning");
     
     const rivalSeleccionado = rivales.find(r => r.id === formFixture.rival_id);
@@ -473,13 +492,9 @@ const handleGuardarFixture = async () => { // <-- Acá está el async clave
             <div style={{ marginBottom: '20px' }}>
               <div className="section-title">CATEGORÍA</div>
               <select value={formTorneo.categoria} onChange={e => setFormTorneo({...formTorneo, categoria: e.target.value})} style={inputIndustrial}>
-                <option value="Primera">Primera</option>
-                <option value="Tercera">Tercera</option>
-                <option value="Cuarta">Cuarta</option>
-                <option value="Quinta">Quinta</option>
-                <option value="Sexta">Sexta</option>
-                <option value="Séptima">Séptima</option>
-                <option value="Octava">Octava</option>
+                {categoriasUnicas.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
               </select>
             </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
@@ -38,7 +38,7 @@ export default function Inicio() {
   const navigate = useNavigate();
   const { perfil } = useAuth(); 
   
-const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
+  const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
   const kioscoNombre = localStorage.getItem('kiosco_nombre');
 
   const salirKiosco = async () => {
@@ -106,6 +106,12 @@ const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
   const esSuperUser = rol === 'superuser';
   const esAdmin = rol === 'admin';
   const esManager = rol === 'manager';
+  const esCT = rol === 'ct';
+
+  // FIX: Se memoiza misCategorias para evitar loops de renderizado si el usuario no tiene categorías
+  const misCategorias = useMemo(() => {
+    return perfil?.categorias_asignadas || [];
+  }, [perfil?.categorias_asignadas]);
 
   const VERSION_ACTUAL = 'v0.002604031832';
   const [mostrarNovedades, setMostrarNovedades] = useState(false);
@@ -138,6 +144,16 @@ const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
   const [categoriaActiva, setCategoriaActiva] = useState(localStorage.getItem('dash_categoria') || 'Todas');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
 
+  // --- EFECTO DEL GRAN FILTRO: Auto-seleccionar categoría en el Dashboard ---
+  useEffect(() => {
+    if (esCT && misCategorias.length > 0) {
+      if (categoriaActiva === 'Todas' || !misCategorias.includes(categoriaActiva)) {
+        setCategoriaActiva(misCategorias[0]);
+        localStorage.setItem('dash_categoria', misCategorias[0]);
+      }
+    }
+  }, [esCT, misCategorias, categoriaActiva]);
+
   const [cargando, setCargando] = useState(true);
   const [listaClubes, setListaClubes] = useState([]);
 
@@ -152,7 +168,7 @@ const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
   const [modoEdicion, setModoEdicion] = useState(false);
   const widgetsPermitidos = CATÁLOGO_WIDGETS.filter(w => w.roles.includes(rol));
   
-const defaultLayout = esSuperUser 
+  const defaultLayout = esSuperUser 
     ? ['usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido', 'analisis_video', 'tracking_ia'] 
     : esManager
     ? ['w_vep_anual', 'w_stats_base', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'plantel', 'tesoreria']
@@ -243,104 +259,122 @@ const defaultLayout = esSuperUser
 
   useEffect(() => {
     async function cargarDashboard() {
-      setCargando(true);
-      
-      const targetClubId = isKioscoMode ? kioscoClubId : clubActivo;
-      const targetJugadorId = isKioscoMode ? kioscoJugadorId : perfil?.jugador_id;
+      // FIX: Todo envuelto en try/catch para que el finally rompa el loop si hay error
+      try {
+        setCargando(true);
+        
+        const targetClubId = isKioscoMode ? kioscoClubId : clubActivo;
+        const targetJugadorId = isKioscoMode ? kioscoJugadorId : perfil?.jugador_id;
 
-      if (!targetClubId && !esSuperUser) { setCargando(false); return; }
-
-      if (isKioscoMode) {
-        setPerfilVisual({
-          nombre: localStorage.getItem('kiosco_nombre') || 'Jugador',
-          apellido: localStorage.getItem('kiosco_apellido') || '',
-          foto: localStorage.getItem('kiosco_foto') || ''
-        });
-      } else if (targetJugadorId) {
-        const { data: pData } = await supabase.from('perfiles').select('*').eq('jugador_id', targetJugadorId).maybeSingle();
-        if (pData) setPerfilVisual(pData);
-      }
-
-      if (targetClubId) {
-        const { data: clubData } = await supabase.from('clubes').select('nombre, escudo_url').eq('id', targetClubId).maybeSingle();
-        if (clubData) {
-          setNombreClub(clubData.nombre);
-          setEscudoClub(clubData.escudo_url);
+        if (!targetClubId && !esSuperUser) { 
+          return; // Saldrá y pasará por el finally
         }
-      } else if (esSuperUser) {
-        setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub('');
-      }
 
-      if (targetClubId) {
-        const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', targetClubId);
-        if (cats) {
-          const unicas = [...new Set(cats.map(c => c.categoria).filter(Boolean))];
-          setCategoriasDisponibles(unicas);
+        if (isKioscoMode) {
+          setPerfilVisual({
+            nombre: localStorage.getItem('kiosco_nombre') || 'Jugador',
+            apellido: localStorage.getItem('kiosco_apellido') || '',
+            foto: localStorage.getItem('kiosco_foto') || ''
+          });
+        } else if (targetJugadorId) {
+          const { data: pData } = await supabase.from('perfiles').select('*').eq('jugador_id', targetJugadorId).maybeSingle();
+          if (pData) setPerfilVisual(pData);
         }
-      }
-
-      if (rol === 'jugador') {
-        if (targetJugadorId) {
-          let wellness = [];
-          if (isKioscoMode) {
-            const { data } = await supabase.rpc('kiosco_obtener_wellness', { 
-              p_jugador_id: targetJugadorId, 
-              p_club_id: targetClubId 
-            });
-            wellness = data;
-          } else {
-            const { data } = await supabase.from('wellness').select('*').eq('jugador_id', targetJugadorId).order('fecha', { ascending: false }).limit(7);
-            wellness = data;
-          }
-          if (wellness) setDatosWellness(wellness);
-        }
-      } else {
-        const hoyStr = new Date().toISOString().split('T')[0];
-        const anioActual = new Date().getFullYear().toString();
-
-        let qUltimo = supabase.from('partidos').select('*').in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(1);
-        let qProximo = supabase.from('partidos').select('*').eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(1);
-        let qAnual = supabase.from('partidos').select('*').gte('fecha', `${anioActual}-01-01`).in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: true });
-        let qJugadores = supabase.from('jugadores').select('*', { count: 'exact', head: true });
-        let qPartidosTot = supabase.from('partidos').select('*', { count: 'exact', head: true });
 
         if (targetClubId) {
-          qUltimo = qUltimo.eq('club_id', targetClubId); qProximo = qProximo.eq('club_id', targetClubId);
-          qAnual = qAnual.eq('club_id', targetClubId); qJugadores = qJugadores.eq('club_id', targetClubId);
-          qPartidosTot = qPartidosTot.eq('club_id', targetClubId);
+          const { data: clubData } = await supabase.from('clubes').select('nombre, escudo_url').eq('id', targetClubId).maybeSingle();
+          if (clubData) {
+            setNombreClub(clubData.nombre);
+            setEscudoClub(clubData.escudo_url);
+          }
+        } else if (esSuperUser) {
+          setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub('');
         }
 
-        if (categoriaActiva !== 'Todas') {
-          qUltimo = qUltimo.eq('categoria', categoriaActiva); qProximo = qProximo.eq('categoria', categoriaActiva);
-          qAnual = qAnual.eq('categoria', categoriaActiva); qJugadores = qJugadores.eq('categoria', categoriaActiva);
-          qPartidosTot = qPartidosTot.eq('categoria', categoriaActiva);
+        // --- FILTRO DE CATEGORÍAS DISPONIBLES EN EL SELECTOR ---
+        if (targetClubId) {
+          if (esCT && misCategorias.length > 0) {
+            // Si es CT, forzamos que sus únicas opciones sean las que tiene asignadas
+            setCategoriasDisponibles(misCategorias);
+          } else {
+            // Manager/Admin: Consultamos qué categorías existen realmente en la DB del club
+            const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', targetClubId);
+            if (cats) {
+              const unicas = [...new Set(cats.map(c => c.categoria).filter(Boolean))];
+              setCategoriasDisponibles(unicas);
+            }
+          }
         }
 
-        const [resUltimo, resProximo, resAnual, resJugadores, resPartTot] = await Promise.all([qUltimo, qProximo, qAnual, qJugadores, qPartidosTot]);
+        if (rol === 'jugador') {
+          if (targetJugadorId) {
+            let wellness = [];
+            if (isKioscoMode) {
+              const { data } = await supabase.rpc('kiosco_obtener_wellness', { 
+                p_jugador_id: targetJugadorId, 
+                p_club_id: targetClubId 
+              });
+              wellness = data;
+            } else {
+              const { data } = await supabase.from('wellness').select('*').eq('jugador_id', targetJugadorId).order('fecha', { ascending: false }).limit(7);
+              wellness = data;
+            }
+            if (wellness) setDatosWellness(wellness);
+          }
+        } else {
+          const hoyStr = new Date().toISOString().split('T')[0];
+          const anioActual = new Date().getFullYear().toString();
 
-        setUltimoPartido(resUltimo.data?.[0] || null);
-        setProximoPartido(resProximo.data?.[0] || null);
-        setEstadisticas({ jugados: resPartTot.count || 0, plantel: resJugadores.count || 0 });
+          let qUltimo = supabase.from('partidos').select('*').in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(1);
+          let qProximo = supabase.from('partidos').select('*').eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(1);
+          let qAnual = supabase.from('partidos').select('*').gte('fecha', `${anioActual}-01-01`).in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: true });
+          let qJugadores = supabase.from('jugadores').select('*', { count: 'exact', head: true });
+          let qPartidosTot = supabase.from('partidos').select('*', { count: 'exact', head: true });
 
-        if (resAnual.data && resAnual.data.length > 0) {
-          let v = 0, e = 0, d = 0; let golesCat = {}; let ultimosCat = {};
-          resAnual.data.forEach(p => {
-            const cat = p.categoria || 'Sin Categoría';
-            let gf = parseInt(p.goles_propios) || 0; let gc = parseInt(p.goles_rival) || 0;
-            if (gf > gc) v++; else if (gf === gc) e++; else d++;
-            if (!golesCat[cat]) golesCat[cat] = { favor: 0, contra: 0 };
-            golesCat[cat].favor += gf; golesCat[cat].contra += gc;
-            if (!ultimosCat[cat]) ultimosCat[cat] = [];
-            ultimosCat[cat].push({ id: p.id, rival: p.rival, gf, gc, res: gf > gc ? 'V' : (gf === gc ? 'E' : 'D'), fecha: p.fecha?.split('-').reverse().join('/') });
-          });
-          Object.keys(ultimosCat).forEach(cat => { ultimosCat[cat] = ultimosCat[cat].slice(-2).reverse(); });
-          setVepAnual({ v, e, d }); setGolesPorCat(golesCat); setResultadosRecientesCat(ultimosCat);
+          if (targetClubId) {
+            qUltimo = qUltimo.eq('club_id', targetClubId); qProximo = qProximo.eq('club_id', targetClubId);
+            qAnual = qAnual.eq('club_id', targetClubId); qJugadores = qJugadores.eq('club_id', targetClubId);
+            qPartidosTot = qPartidosTot.eq('club_id', targetClubId);
+          }
+
+          if (categoriaActiva !== 'Todas') {
+            qUltimo = qUltimo.eq('categoria', categoriaActiva); qProximo = qProximo.eq('categoria', categoriaActiva);
+            qAnual = qAnual.eq('categoria', categoriaActiva); qJugadores = qJugadores.eq('categoria', categoriaActiva);
+            qPartidosTot = qPartidosTot.eq('categoria', categoriaActiva);
+          }
+
+          const [resUltimo, resProximo, resAnual, resJugadores, resPartTot] = await Promise.all([qUltimo, qProximo, qAnual, qJugadores, qPartidosTot]);
+
+          setUltimoPartido(resUltimo.data?.[0] || null);
+          setProximoPartido(resProximo.data?.[0] || null);
+          setEstadisticas({ jugados: resPartTot.count || 0, plantel: resJugadores.count || 0 });
+
+          if (resAnual.data && resAnual.data.length > 0) {
+            let v = 0, e = 0, d = 0; let golesCat = {}; let ultimosCat = {};
+            resAnual.data.forEach(p => {
+              const cat = p.categoria || 'Sin Categoría';
+              let gf = parseInt(p.goles_propios) || 0; let gc = parseInt(p.goles_rival) || 0;
+              if (gf > gc) v++; else if (gf === gc) e++; else d++;
+              if (!golesCat[cat]) golesCat[cat] = { favor: 0, contra: 0 };
+              golesCat[cat].favor += gf; golesCat[cat].contra += gc;
+              if (!ultimosCat[cat]) ultimosCat[cat] = [];
+              ultimosCat[cat].push({ id: p.id, rival: p.rival, gf, gc, res: gf > gc ? 'V' : (gf === gc ? 'E' : 'D'), fecha: p.fecha?.split('-').reverse().join('/') });
+            });
+            Object.keys(ultimosCat).forEach(cat => { ultimosCat[cat] = ultimosCat[cat].slice(-2).reverse(); });
+            setVepAnual({ v, e, d }); setGolesPorCat(golesCat); setResultadosRecientesCat(ultimosCat);
+          } else {
+            // Si no hay datos, reseteamos a cero
+            setVepAnual({ v: 0, e: 0, d: 0 }); setGolesPorCat({}); setResultadosRecientesCat({});
+          }
         }
+      } catch (error) {
+        console.error("Error al cargar dashboard:", error);
+      } finally {
+        setCargando(false);
       }
-      setCargando(false);
     }
     cargarDashboard();
-  }, [clubActivo, esSuperUser, rol, categoriaActiva, isKioscoMode, kioscoJugadorId]); 
+  }, [clubActivo, esSuperUser, rol, categoriaActiva, isKioscoMode, kioscoJugadorId, esCT, misCategorias]); 
 
   const handleCambioClub = (e) => {
     const nuevoId = e.target.value;
@@ -441,7 +475,9 @@ const defaultLayout = esSuperUser
         <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '10px', width: esMovil ? '100%' : 'auto' }}>
             {rol !== 'jugador' && categoriasDisponibles.length > 0 && (
               <select value={categoriaActiva} onChange={handleCambioCategoria} style={{ padding: esMovil ? '12px' : '8px 10px', background: '#111', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px', outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' }}>
-                <option value="Todas">👉 TODAS LAS CATEGORÍAS</option>
+                {!(esCT && misCategorias.length > 0) && (
+                  <option value="Todas">👉 TODAS LAS CATEGORÍAS</option>
+                )}
                 {categoriasDisponibles.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
               </select>
             )}
@@ -734,13 +770,13 @@ const defaultLayout = esSuperUser
       
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
         <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN 0.00202604241330
+          VERSIÓN 0.00202604262011
         </span>
         <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          Kiosco PRO & Experiencia Nativa
+          Match Center Inteligente & ABP
         </h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          El hub del jugador evoluciona con diseño de app móvil y navegación inteligente.
+          El motor de análisis evoluciona con filtros dinámicos, mallas de rendimiento y controles de video.
         </p>
       </div>
 
@@ -748,27 +784,23 @@ const defaultLayout = esSuperUser
         <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           <li>
-            <strong style={{color: '#10b981'}}>📱 Interfaz Kiosco PRO:</strong> Transformamos el menú del jugador en un dashboard estilo App Nativa (iOS/Android). Grilla táctil bloqueada sin desbordes, optimizada para celulares y con íconos vectoriales minimalistas.
+            <strong style={{color: '#10b981'}}>🎯 Filtros Dinámicos de Torneos:</strong> Navegación inteligente. Ahora al seleccionar una categoría, la grilla de torneos mostrará *exclusivamente* las competiciones en las que participó ese equipo. ¡Chau a las listas interminables!
           </li>
 
           <li>
-            <strong style={{color: '#facc15'}}>🧠 Memoria de Sesión:</strong> Navegación más rápida. El Kiosco ahora recuerda tu sesión temporal; si entrás a ver tu perfil y volvés atrás, no tenés que volver a escribir tu PIN de 4 dígitos.
+            <strong style={{color: '#06b6d4'}}>🥅 Efectividad ABP (Malla Térmica):</strong> Nueva visualización en el mapa táctico. Ahora podés ver la eficacia real de las Acciones a Balón Parado (Laterales y Córners) por microzonas (Z1-Z4), cruzando ejecuciones totales vs. remates generados.
           </li>
 
           <li>
-            <strong style={{color: '#ff3860'}}>🔒 Privacidad & Auto-Logout:</strong> Sistema anti-espías. Si dejás la tablet encendida en el vestuario, el sistema cierra tu sesión automáticamente tras unos segundos de inactividad.
+            <strong style={{color: '#3b82f6'}}>🎬 Videotracking PRO:</strong> Mejoras en el sincronizador de video. Ahora podés establecer "offsets" independientes para el Primer y Segundo Tiempo (PT/ST), garantizando que los clics en la línea de tiempo del partido salten al segundo exacto en YouTube.
           </li>
 
           <li>
-            <strong style={{color: '#00ff88'}}>Creador Táctico PRO:</strong> Nuevo motor canvas nativo. Coordenadas virtuales escalables, rotación milimétrica, renderizado perfecto y animaciones súper fluidas para las jugadas.
+            <strong style={{color: '#facc15'}}>🛡️ Privacidad Cuerpos Técnicos (CT):</strong> Refinamiento en los roles. Los usuarios CT ahora entran directamente a la vista filtrada de sus categorías asignadas por defecto, agilizando su flujo de trabajo diario.
           </li>
           
           <li>
-            <strong style={{color: '#3b82f6'}}>Mapeo por Microzonas:</strong> Activamos la grilla técnica (Z1-Z4). Ahora el sistema entiende pasillos y profundidad para calcular métricas de presión alta y peligrosidad.
-          </li>
-          
-          <li>
-            <strong style={{color: '#c084fc'}}>Rating Estructural:</strong> Refactorización total. El algoritmo cruza minutos reales con impacto neto para revelar los 5 jugadores que mejor funcionan juntos en cancha.
+            <strong style={{color: '#c084fc'}}>📊 Matriz de Zonas Tácticas:</strong> Agregamos un nuevo modo "ZONAS" al mapa táctico para visualizar de forma matemática la densidad de eventos en 12 microzonas de la cancha.
           </li>
 
         </ul>

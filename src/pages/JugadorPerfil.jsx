@@ -131,6 +131,7 @@ function JugadorPerfil() {
   const location = useLocation();
   const navigate = useNavigate();
   const [userRol, setUserRol] = useState(null);
+  const [userCats, setUserCats] = useState([]); // ── CAMBIO: Nuevo estado para blindar categorías
   const [cargandoAuth, setCargandoAuth] = useState(true);
 
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
@@ -185,10 +186,20 @@ function JugadorPerfil() {
         }
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: perfil } = await supabase.from('usuarios').select('rol, club_id').eq('id', user.id).single();
-          if (perfil) {
-            setUserRol(perfil.rol);
-            if (perfil.club_id) setClubId(perfil.club_id);
+          // ── CAMBIO: Traemos categorias_asignadas de la BD
+          const { data: perfilData } = await supabase.from('usuarios').select('rol, club_id, categorias_asignadas').eq('id', user.id).single();
+          if (perfilData) {
+            setUserRol(perfilData.rol);
+            if (perfilData.club_id) setClubId(perfilData.club_id);
+            
+            let cats = [];
+            if (Array.isArray(perfilData.categorias_asignadas)) {
+              cats = perfilData.categorias_asignadas;
+            } else if (typeof perfilData.categorias_asignadas === 'string') {
+              cats = perfilData.categorias_asignadas.split(',');
+            }
+            setUserCats(cats.filter(c => c != null).map(c => String(c).trim().toLowerCase()));
+
             setClubInfo({ nombre: 'CLUB ATLÉTICO FUTSAL', escudo: 'https://cdn-icons-png.flaticon.com/512/5110/5110754.png' });
           }
         }
@@ -227,6 +238,8 @@ function JugadorPerfil() {
   }, [isKiosco, navigate]);
 
   useEffect(() => {
+    if (cargandoAuth) return; // ── CAMBIO: Esperamos a tener el rol y categorías antes de buscar
+    
     async function cargarCatalogos() {
       let queryJugadores = supabase.from('jugadores').select('*').order('apellido', { ascending: true });
       let queryPartidos = supabase.from('partidos').select('*').order('fecha', { ascending: false });
@@ -237,16 +250,29 @@ function JugadorPerfil() {
       const { data: j } = await queryJugadores;
       const { data: p } = await queryPartidos;
       
-      const data = j || [];
+      let jFiltrados = j || [];
+      let pFiltrados = p || [];
+
+      // ── CAMBIO: Filtramos por las categorías permitidas si es rol CT
+      if (userRol === 'CT' && userCats.length > 0) {
+        jFiltrados = jFiltrados.filter(jug => 
+          jug.categoria && userCats.includes(String(jug.categoria).trim().toLowerCase())
+        );
+        pFiltrados = pFiltrados.filter(part => 
+          part.categoria && userCats.includes(String(part.categoria).trim().toLowerCase())
+        );
+      }
+
+      const data = jFiltrados;
       setJugadores(data);
       if (esJugador && miJugadorId) {
         const yo = data.find(jug => jug.id == miJugadorId);
         if (yo) setJugadorId(yo.id); // Lo selecciona automáticamente
       }
-      setPartidos(p || []);
+      setPartidos(pFiltrados);
     }
     cargarCatalogos();
-  }, [clubId, esJugador, miJugadorId]);
+  }, [clubId, esJugador, miJugadorId, cargandoAuth, userRol, userCats]);
 
   useEffect(() => {
     async function fetchDataJugador() {
@@ -1125,7 +1151,7 @@ function JugadorPerfil() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr', gap: '18px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr 1fr', gap: '18px' }}>
                     <div className="bento-card jp-section">
                       <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '16px' }}>🦶 JUEGO DE PIES Y DISTRIBUCIÓN</div>
                       <StatRow label="Inicio de jugada (xG buildup)" value={perfil.xgBuildup.toFixed(3)} color="#3b82f6" />

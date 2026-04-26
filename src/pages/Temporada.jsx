@@ -11,9 +11,12 @@ import {
 import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
-import ReportGenerator from '../components/ReportGenerator';
+import SeasonReport from '../components/SeasonReport';
+import { useAuth } from '../context/AuthContext'; 
 
 function Temporada() {
+  const { perfil } = useAuth(); 
+
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [eventos, setEventos] = useState([]);
@@ -23,10 +26,8 @@ function Temporada() {
   const [filtroAccionMapa, setFiltroAccionMapa] = useState(''); 
   const [tipoMapa, setTipoMapa] = useState('calor'); 
 
-  // 🌟 ESTADO PARA MOSTRAR/OCULTAR EL REPORTE 🌟
   const [mostrarReporte, setMostrarReporte] = useState(false);
 
-  // --- ESTADO RESPONSIVE ---
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
 
   const heatmapRef = useRef(null);
@@ -37,15 +38,61 @@ function Temporada() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ── 1. AUTOSELECCIÓN DE CATEGORÍA SÚPER SEGURA ──
+  useEffect(() => {
+    const rolStr = typeof perfil?.rol === 'string' ? perfil.rol.trim().toUpperCase() : '';
+    
+    let cats = [];
+    if (Array.isArray(perfil?.categorias_asignadas)) {
+      cats = perfil.categorias_asignadas;
+    } else if (typeof perfil?.categorias_asignadas === 'string') {
+      cats = [perfil.categorias_asignadas];
+    }
+
+    if (rolStr === 'CT' && cats.length === 1) {
+      setFiltroCategoria(cats[0]); 
+    }
+  }, [perfil]);
+
+  // ── 2. CARGA DE DATOS Y FILTRO DE PERMISOS BLINDADO ──
   useEffect(() => {
     async function obtenerDatosGlobales() {
+      // 1. Traer partidos
       const { data: p } = await supabase
         .from('partidos')
         .select('*')
         .in('estado', ['Finalizado', 'Jugado'])
         .order('fecha', { ascending: false });
         
+      // 2. Traer jugadores
       const { data: j } = await supabase.from('jugadores').select('*');
+      
+      // ─── APLICAMOS EL FILTRO CT A PARTIDOS Y JUGADORES ───
+      let pFiltrados = p || [];
+      let jFiltrados = j || [];
+      
+      const rolStr = typeof perfil?.rol === 'string' ? perfil.rol.trim().toUpperCase() : '';
+      
+      if (rolStr === 'CT') {
+        let catPermitidas = [];
+        if (Array.isArray(perfil?.categorias_asignadas)) {
+          catPermitidas = perfil.categorias_asignadas;
+        } else if (typeof perfil?.categorias_asignadas === 'string') {
+          catPermitidas = perfil.categorias_asignadas.split(',');
+        }
+
+        const catNormalizadas = catPermitidas
+          .filter(c => c != null)
+          .map(c => String(c).trim().toLowerCase());
+        
+        pFiltrados = pFiltrados.filter(part => 
+          part.categoria && catNormalizadas.includes(String(part.categoria).trim().toLowerCase())
+        );
+        jFiltrados = jFiltrados.filter(jug => 
+          jug.categoria && catNormalizadas.includes(String(jug.categoria).trim().toLowerCase())
+        );
+      }
+      // ─────────────────────────────────────────────────────
       
       const clubId = localStorage.getItem('club_id');
       let escudoMiClub = null;
@@ -56,7 +103,7 @@ function Temporada() {
       
       const { data: r } = await supabase.from('rivales').select('id, escudo');
 
-      const pConEscudos = (p || []).map(part => {
+      const pConEscudos = pFiltrados.map(part => {
            const rivalInfo = (r || []).find(riv => riv.id === part.rival_id);
            return {
                ...part,
@@ -65,6 +112,7 @@ function Temporada() {
            };
       });
 
+      // 3. Traer eventos en chunks
       let todosLosEventos = [];
       let start = 0;
       const step = 1000;
@@ -89,12 +137,18 @@ function Temporada() {
         }
       }
       
+      const idsPartidosPermitidos = pConEscudos.map(part => part.id);
+      todosLosEventos = todosLosEventos.filter(ev => idsPartidosPermitidos.includes(ev.id_partido));
+
       setPartidos(pConEscudos);
-      setJugadores(j || []);
+      setJugadores(jFiltrados); 
       setEventos(todosLosEventos);
     }
-    obtenerDatosGlobales();
-  }, []);
+    
+    if (perfil) {
+      obtenerDatosGlobales();
+    }
+  }, [perfil]);
 
   const analiticaGlobal = useMemo(() => {
     const baseAnalytics = analizarTemporadaGlobal(partidos, eventos, jugadores, {
@@ -210,7 +264,7 @@ function Temporada() {
       } else if (ev.accion === 'Remate - Atajado') {
         p ? desgloseRemates.propio.atajados++ : desgloseRemates.rival.atajados++;
       } else if (ev.accion === 'Remate - Desviado') {
-        p ? desgloseRemates.propio.desviados++ : desgloseRemates.rival.desviados++;
+        p ? desgloseRemates.propio.desviados++ : desgloseRemates.rival.atajados++;
       } else if (ev.accion === 'Remate - Rebatido') {
         p ? desgloseRemates.propio.rebatidos++ : desgloseRemates.rival.rebatidos++;
       }
@@ -275,7 +329,6 @@ function Temporada() {
     };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
-  // 📈 ORDENAMIENTO DE QUINTETOS
   const mejoresQuintetos = useMemo(() => {
     if (!analiticaGlobal?.topQuintetos) return [];
     return [...analiticaGlobal.topQuintetos].sort((a, b) => b.balanceRating - a.balanceRating);
@@ -288,14 +341,12 @@ function Temporada() {
 
   const evMapa = analiticaGlobal?.evFiltrados.filter(ev => {
     if (!filtroAccionMapa) return ev.equipo === 'Propio';
-    
     if (filtroAccionMapa === 'Falta recibida') {
       return ev.equipo === 'Rival' && ev.accion === 'Falta cometida';
     }
     if (filtroAccionMapa === 'Gol') {
       return ev.equipo === 'Propio' && (ev.accion === 'Gol' || ev.accion === 'Remate - Gol');
     }
-    
     return ev.equipo === 'Propio' && ev.accion?.includes(filtroAccionMapa);
   }) || [];
 
@@ -365,7 +416,6 @@ function Temporada() {
 
   const dataCreacionFin = useMemo(() => {
     if (!analiticaGlobal || !analiticaGlobal.matrizTalento) return [];
-    
     const dataLimpia = analiticaGlobal.matrizTalento
       .filter(j => j.creacion > 0 || j.finalizacion > 0)
       .map(j => ({
@@ -380,13 +430,19 @@ function Temporada() {
     return dataLimpia;
   }, [analiticaGlobal]);
 
-  // ==========================================
-  // 🚀 ARMADO DINÁMICO DE DATOS PARA EXPORTACIÓN TEMPORADA
-  // ==========================================
   const datosParaReporte = useMemo(() => {
     if (!analiticaGlobal || partidos.length === 0) return null;
     const stats = analiticaGlobal.statsEquipo;
     const miClubGlobal = localStorage.getItem('mi_club') || 'MI EQUIPO';
+    const pj = stats.partidosJugados || 1;
+
+    const radarData = [
+      { subject: 'Ataque (xG)', A: Math.min(100, (stats.xgTotal / pj) * 25) },
+      { subject: 'Presión Alta', A: Math.min(100, (analiticaGlobal.statsAdicionales.recuperacionesAltas / pj) * 20) },
+      { subject: 'Duelos',       A: stats.duelosDefTotales > 0 ? (stats.duelosDefGanados / stats.duelosDefTotales) * 100 : 0 },
+      { subject: 'Construcción', A: Math.min(100, (stats.asistenciasTotales / pj) * 30) },
+      { subject: 'Solidez Def.', A: 100 - Math.min(100, (stats.xgRival / pj) * 25) },
+    ];
 
     return {
       isTemporada: true,
@@ -399,7 +455,7 @@ function Temporada() {
         primerTiempo: `${stats.golesFavorPT} - ${stats.golesContraPT}`
       },
       info: {
-        fecha: 'Resumen de Temporada',
+        fecha: 'Temporada 2025/2026',
         torneo: filtroCompeticion === 'Todas' ? 'Todas las Competencias' : filtroCompeticion,
         estadio: '-',
         categoria: filtroCategoria === 'Todas' ? 'Todas las Categorías' : filtroCategoria,
@@ -422,16 +478,38 @@ function Temporada() {
           perdidas: 0, 
           faltas: 0 
         },
-        topJugadores: analiticaGlobal.topGoleadores.slice(0, 5).map(j => ({ nombre: `${j.dorsal || '-'} - ${(j.nombre || 'S/N').toUpperCase()}`, rating: j.goles })),
-        topJugadoresExt: analiticaGlobal.topAsistidores.slice(0, 5).map(j => ({ nombre: `${j.dorsal || '-'} - ${(j.nombre || 'S/N').toUpperCase()}`, rec: 0, remates: 0, goles: j.asistencias }))
+        topJugadores: analiticaGlobal.topGoleadores.slice(0, 5).map(j => ({
+          nombre: `${j.dorsal || '-'} ${(j.nombre || 'S/N').toUpperCase()}`,
+          rating: j.goles
+        })),
+        topJugadoresExt: analiticaGlobal.topAsistidores.slice(0, 5).map(j => ({
+          nombre: `${j.dorsal || '-'} ${(j.nombre || 'S/N').toUpperCase()}`,
+          goles: j.asistencias,
+          rec: 0,
+          remates: 0
+        }))
       },
-      tiros: [], 
-      xgFlow: [], 
-      recYPer: [], 
-      golesOrigen: { local: analiticaGlobal.dataOrigenGol.length > 0 ? analiticaGlobal.dataOrigenGol : [{name: 'Sin Goles', value: 1}] }
+      radarData,
+      statsAdicionales: analiticaGlobal.statsAdicionales,
+      abp: analiticaGlobal.abp,
+      desgloseRemates: analiticaGlobal.desgloseRemates,
+      desgasteData: [
+        { name: '1er TIEMPO', Anotados: stats.golesFavorPT, Recibidos: stats.golesContraPT },
+        { name: '2do TIEMPO', Anotados: stats.golesFavorST, Recibidos: stats.golesContraST },
+      ],
+      golesOrigen: {
+        local: analiticaGlobal.dataOrigenGol.length > 0
+          ? analiticaGlobal.dataOrigenGol
+          : [{ name: 'Sin Goles', value: 1 }],
+        rival: analiticaGlobal.dataOrigenGolRival?.length > 0
+          ? analiticaGlobal.dataOrigenGolRival
+          : []
+      },
+      tiros: [],
+      xgFlow: [],
+      recYPer: [],
     };
   }, [analiticaGlobal, partidos, filtroCategoria, filtroCompeticion]);
-  // ==========================================
 
   const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 
@@ -570,7 +648,6 @@ function Temporada() {
               </div>
             </div>
 
-            {/* GRÁFICO NUEVO: ADN GOL RIVAL */}
             <div className="bento-card" style={{ borderTop: '3px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
                 ADN DEL GOL RIVAL<InfoBox texto="El contexto táctico desde el cual nos marcan los goles." />
@@ -726,10 +803,7 @@ function Temporada() {
                     itemStyle={{ fontSize: '0.8rem', fontWeight: 800 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#888', paddingTop: '10px' }} />
-                  
-                  {/* Barra de Creación (xG Buildup) */}
                   <Bar dataKey="Creación" stackId="a" fill="#c084fc" barSize={15} />
-                  {/* Barra de Finalización (Goles) */}
                   <Bar dataKey="Finalización" stackId="a" fill="#00ff88" barSize={15} radius={[0, 4, 4, 0]} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -820,10 +894,9 @@ function Temporada() {
 
         </div>
 
-        {/* --- INICIO ZONA DE QUINTETOS --- */}
+        {/* --- ZONA DE QUINTETOS --- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '10px' }}>
           
-          {/* MEJORES QUINTETOS */}
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
               TOP QUINTETOS (RATING +) 
@@ -845,7 +918,6 @@ function Temporada() {
                 <tbody>
                   {mejoresQuintetos && mejoresQuintetos.map((q, idx) => {
                     const diffGoles = q.balanceRating;
-                    
                     const remF = q.rematesFavor || 0;
                     const remC = q.rematesContra || 0;
                     const rec = q.recuperaciones || 0;
@@ -856,9 +928,8 @@ function Temporada() {
                     const roj = q.rojas || 0;
 
                     const nombresQuinteto = q.ids.map(id => {
-                      // Corrección: Forzamos la comparación como String para evitar el mismatch ID (Integer) vs ID (String)
                       const jug = jugadores.find(j => String(j.id) === String(id));
-                      if (!jug) return id; // Mostramos el ID por defecto si no lo encuentra, en vez de '?'
+                      if (!jug) return id;
                       return jug.apellido ? jug.apellido.toUpperCase() : (jug.nombre ? jug.nombre.toUpperCase() : 'S/N');
                     }).join(' - ');
 
@@ -888,7 +959,6 @@ function Temporada() {
             </div>
           </div>
 
-          {/* PEORES QUINTETOS */}
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
               QUINTETOS CRÍTICOS (RATING -) 
@@ -910,7 +980,6 @@ function Temporada() {
                 <tbody>
                   {peoresQuintetos && peoresQuintetos.map((q, idx) => {
                     const diffGoles = q.balanceRating;
-                    
                     const remF = q.rematesFavor || 0;
                     const remC = q.rematesContra || 0;
                     const rec = q.recuperaciones || 0;
@@ -921,7 +990,6 @@ function Temporada() {
                     const roj = q.rojas || 0;
 
                     const nombresQuinteto = q.ids.map(id => {
-                      // Corrección: Forzamos la comparación como String
                       const jug = jugadores.find(j => String(j.id) === String(id));
                       if (!jug) return id; 
                       return jug.apellido ? jug.apellido.toUpperCase() : (jug.nombre ? jug.nombre.toUpperCase() : 'S/N');
@@ -956,10 +1024,10 @@ function Temporada() {
         </div>
         {/* --- FIN ZONA DE QUINTETOS --- */}
 
-        {/* --- ZONA INFERIOR CON FLEXBOX PARA INVERTIR EL ORDEN EN MÓVILES --- */}
+        {/* --- ZONA INFERIOR CON FLEXBOX --- */}
         <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '20px' }}>
           
-          {/* HISTORIAL DE PARTIDOS (Aparece abajo en móvil, izquierda en PC) */}
+          {/* HISTORIAL DE PARTIDOS */}
           <div className="bento-card" style={{ flex: 1, order: esMovil ? 2 : 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
              <div className="stat-label" style={{ marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
                HISTORIAL DE PARTIDOS 
@@ -1065,7 +1133,7 @@ function Temporada() {
              </div>
           </div>
           
-          {/* MAPEO ACUMULADO (Aparece arriba en móvil, derecha en PC) */}
+          {/* MAPEO ACUMULADO */}
           <div className="bento-card" style={{ flex: 1, order: esMovil ? 1 : 2, minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO ACUMULADO <InfoBox texto="Visualización espacial de todas las acciones ofensivas del equipo a lo largo de la temporada. Útil para detectar zonas preferenciales de ataque." /></div>
@@ -1155,21 +1223,56 @@ function Temporada() {
 
       </div>
 
-      {/* 🌟 OVERLAY DEL REPORTE PARA EXPORTAR 🌟 */}
+      {/* ══ OVERLAY DEL REPORTE ══ */}
       {mostrarReporte && datosParaReporte && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: '20px'
         }}>
-          <div style={{ textAlign: 'right', maxWidth: '1000px', margin: '0 auto' }}>
-            <button 
-              onClick={() => setMostrarReporte(false)} 
-              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
+          <div style={{
+            maxWidth: '1100px', margin: '0 auto', marginBottom: '10px',
+            display: 'flex', gap: '10px', justifyContent: 'flex-end'
+          }}>
+            <button
+              onClick={async () => {
+                try {
+                  const html2canvas = (await import('html2canvas')).default;
+                  const el = document.getElementById('season-report-exportable');
+                  const canvas = await html2canvas(el, {
+                    scale: 1,
+                    useCORS: true,
+                    backgroundColor: '#0d0d0d'
+                  });
+                  const link = document.createElement('a');
+                  link.download = `temporada-${Date.now()}.png`;
+                  link.href = canvas.toDataURL('image/png');
+                  link.click();
+                } catch (e) {
+                  console.error('Error exportando:', e);
+                  alert('No se pudo exportar. Intentá hacer captura de pantalla.');
+                }
+              }}
+              style={{
+                background: '#00e676', color: '#000', border: 'none',
+                padding: '10px 20px', fontWeight: 900, cursor: 'pointer',
+                borderRadius: '4px', fontSize: '0.85rem'
+              }}
             >
-              CERRAR VISTA PREVIA ✖
+              DESCARGAR PNG ↓
+            </button>
+            <button
+              onClick={() => setMostrarReporte(false)}
+              style={{
+                background: '#ef4444', color: '#fff', border: 'none',
+                padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px'
+              }}
+            >
+              CERRAR ✖
             </button>
           </div>
-          <ReportGenerator data={datosParaReporte} />
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <SeasonReport data={datosParaReporte} />
+          </div>
         </div>
       )}
 
@@ -1177,7 +1280,6 @@ function Temporada() {
   );
 }
 
-const rankingRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 10px', borderBottom: '1px solid #222' };
 const rankingRowSmall = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #222', fontSize: '0.75rem', fontWeight: 600 };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontSize: '0.9rem', alignItems: 'center' };

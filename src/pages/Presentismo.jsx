@@ -14,6 +14,10 @@ function Presentismo() {
   const clubId = perfil?.club_id || localStorage.getItem('club_id');
   const esJugador = perfil?.rol?.toLowerCase() === 'jugador';
 
+  // --- VARIABLES DEL GRAN FILTRO ---
+  const esCT = perfil?.rol === 'ct';
+  const misCategorias = perfil?.categorias_asignadas || [];
+
   // --- RESPONSIVE STATE ---
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
 
@@ -39,6 +43,13 @@ function Presentismo() {
   const [asistenciasHoy, setAsistenciasHoy] = useState({});
   const [notasHoy, setNotasHoy] = useState({});
 
+  // --- EFECTO DEL GRAN FILTRO: Auto-seleccionar categoría permitida ---
+  useEffect(() => {
+    if (esCT && misCategorias.length > 0 && !misCategorias.includes(categoria)) {
+      setCategoria(misCategorias[0]); // Selecciona la primera que tenga permitida
+    }
+  }, [esCT, misCategorias, categoria]);
+
   useEffect(() => {
     if (!esJugador && categoria && clubId) {
       cargarBaseDatos();
@@ -63,6 +74,9 @@ function Presentismo() {
   }, [fecha, historial, jugadores]);
 
   const cargarBaseDatos = async () => {
+    // Seguridad adicional: Si es CT y trata de forzar una categoría no permitida, abortamos
+    if (esCT && misCategorias.length > 0 && !misCategorias.includes(categoria)) return;
+
     setCargando(true);
     try {
       // 1) roster principal
@@ -202,6 +216,11 @@ function Presentismo() {
 
   if (esJugador) return <div style={{ textAlign: 'center', padding: '50px' }}>🚫 ACCESO RESTRINGIDO</div>;
 
+  // Lista de categorías dinámica (Si es CT, solo las suyas. Si es Manager/Admin, todas)
+  const categoriasMostrar = (esCT && misCategorias.length > 0)
+    ? misCategorias
+    : ['Primera', 'Reserva', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', '2016', '2017', '2018', '2019'];
+
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>
       
@@ -216,10 +235,9 @@ function Presentismo() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: esMovil ? '1 1 100%' : 'auto' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>CATEGORÍA</span>
               <select value={categoria} onChange={(e) => setCategoria(e.target.value)} style={{...selectStyle, width: '100%'}}>
-                <option value="Primera">Primera</option>
-                <option value="Reserva">Reserva</option>
-                <option value="Tercera">Tercera</option>
-                <option value="Cuarta">Cuarta</option>
+                {categoriasMostrar.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
               </select>
             </div>
 

@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
+// IMPORTAMOS AUTH para sacar las categorías del usuario
+import { useAuth } from '../context/AuthContext'; 
 
 const CreadorFisico = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { showToast } = useToast();
+
+  // EXTRAEMOS CATEGORÍAS DEL PERFIL
+  const { perfil } = useAuth();
+  const misCategorias = perfil?.categorias_asignadas || [];
 
   const tareaAEditar = location.state?.editando;
   const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null);
@@ -22,6 +28,7 @@ const CreadorFisico = () => {
   // --- ESTADO GENERAL DE LA FICHA ---
   const [fichaTecnica, setFichaTecnica] = useState({
     titulo: '',
+    categoria_recomendada: 'Todas', // <-- NUEVO CAMPO
     objetivo_principal: '',
     duracion_estimada: 45,
     intensidad_rpe: 8,
@@ -49,6 +56,7 @@ const CreadorFisico = () => {
     if (tareaAEditar) {
       setFichaTecnica({
         titulo: tareaAEditar.titulo || '',
+        categoria_recomendada: tareaAEditar.categoria_recomendada || 'Todas', // <-- CARGAR DATO
         objetivo_principal: tareaAEditar.objetivo_principal || '',
         duracion_estimada: tareaAEditar.duracion_estimada || 45,
         intensidad_rpe: tareaAEditar.intensidad_rpe || 8,
@@ -122,9 +130,10 @@ const CreadorFisico = () => {
       const payload = {
         club_id: club_id,
         titulo: fichaTecnica.titulo,
+        categoria_recomendada: fichaTecnica.categoria_recomendada, // <-- GUARDAR DATO
         espacio: fichaTecnica.espacio,
         url_grafico: null, // No hay canvas
-        editor_data: dataFisica, // Acá viaja la magia del profe
+        editor_data: dataFisica, 
         categoria_ejercicio: 'Físico', // Fijo para el filtro del Banco
         fase_juego: modoFisico === 'gimnasio' ? 'Fuerza / Prevención' : 'Acondicionamiento Metabólico',
         duracion_estimada: parseInt(fichaTecnica.duracion_estimada) || 0,
@@ -185,6 +194,19 @@ const CreadorFisico = () => {
             <div style={{ marginBottom: '15px' }}>
               <label style={labelStyle}>Nombre de la Sesión/Rutina *</label>
               <input type="text" placeholder="Ej: Fuerza Máxima - Tren Inferior" style={{ ...inputStyle, border: '1px solid #f59e0b' }} value={fichaTecnica.titulo} onChange={e => setFichaTecnica({ ...fichaTecnica, titulo: e.target.value })} />
+            </div>
+
+            {/* NUEVO CAMPO: CATEGORÍA RECOMENDADA */}
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ ...labelStyle, color: '#f59e0b' }}>Categoría de la Rutina</label>
+              <select 
+                style={{ ...inputStyle, borderColor: '#ca8a04' }} 
+                value={fichaTecnica.categoria_recomendada} 
+                onChange={e => setFichaTecnica({ ...fichaTecnica, categoria_recomendada: e.target.value })}
+              >
+                <option value="Todas">Todas las Categorías</option>
+                {misCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
 
             <div style={{ marginBottom: '15px' }}>

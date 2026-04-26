@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
+import { useAuth } from '../context/AuthContext'; // NUEVO: Importamos el contexto para saber quién es
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -31,53 +32,94 @@ const InfoBox = ({ texto }) => {
 };
 
 function OrigenGoles() {
+  const { perfil } = useAuth(); // Obtenemos el perfil del usuario activo
+  
+  // Lógica de roles y categorías permitidas
+  const rol = (perfil?.rol || '').toLowerCase();
+  const esCT = rol === 'ct';
+  const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
+
   const [eventos, setEventos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
+  const [cargando, setCargando] = useState(true); 
   
-  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
+  // Inicializamos el filtro priorizando la categoría asignada si es CT
+  const [filtroCategoria, setFiltroCategoria] = useState(() => {
+    if (esCT && misCategorias.length > 0) return misCategorias[0];
+    return 'Todas';
+  });
+  
   const [filtroEquipo, setFiltroEquipo] = useState('Propio');
+
+  // --- EFECTO DE PROTECCIÓN CT ---
+  // Si por algún motivo cambia el estado y es CT, lo forzamos a sus categorías
+  useEffect(() => {
+    if (esCT && misCategorias.length > 0) {
+      if (filtroCategoria === 'Todas' || !misCategorias.includes(filtroCategoria)) {
+        setFiltroCategoria(misCategorias[0]);
+      }
+    }
+  }, [esCT, misCategorias, filtroCategoria]);
 
   useEffect(() => {
     async function obtenerDatos() {
-      const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria');
-      const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal');
-      
-      let todosLosGoles = [];
-      let start = 0;
-      const step = 1000;
-
-      while (true) {
-        // Solo traemos los eventos que son goles
-        const { data: chunk, error } = await supabase
-          .from('eventos')
-          .select('*')
-          .in('accion', ['Gol', 'Remate - Gol'])
-          .range(start, start + step - 1);
+      try {
+        setCargando(true);
+        // Podríamos filtrar directamente en Supabase, pero como la data 
+        // global se procesa rápido, mantenemos la consistencia actual
+        const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria');
+        const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal');
         
-        if (error) break;
+        let todosLosGoles = [];
+        let start = 0;
+        const step = 1000;
 
-        if (chunk && chunk.length > 0) {
-          todosLosGoles = [...todosLosGoles, ...chunk];
-          if (chunk.length < step) break; 
-          start += step;
-        } else {
-          break;
+        while (true) {
+          const { data: chunk, error } = await supabase
+            .from('eventos')
+            .select('*')
+            .in('accion', ['Gol', 'Remate - Gol'])
+            .range(start, start + step - 1);
+          
+          if (error) break;
+
+          if (chunk && chunk.length > 0) {
+            todosLosGoles = [...todosLosGoles, ...chunk];
+            if (chunk.length < step) break; 
+            start += step;
+          } else {
+            break;
+          }
         }
+        
+        setPartidos(p || []);
+        setJugadores(j || []);
+        setEventos(todosLosGoles);
+      } catch (error) {
+        console.error("Error cargando goles:", error);
+      } finally {
+        setCargando(false);
       }
-      
-      setPartidos(p || []);
-      setJugadores(j || []);
-      setEventos(todosLosGoles);
     }
     obtenerDatos();
   }, []);
 
-  const categoriasUnicas = useMemo(() => [...new Set(partidos.map(p => p.categoria).filter(Boolean))], [partidos]);
+  // Filtramos las opciones del select según el rol
+  const categoriasUnicas = useMemo(() => {
+    const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
+    if (esCT && misCategorias.length > 0) {
+      // El CT solo ve las que tiene asignadas Y que además existan en la DB
+      return catPartidos.filter(c => misCategorias.includes(c));
+    }
+    return catPartidos;
+  }, [partidos, esCT, misCategorias]);
 
   // --- MOTOR DE PROCESAMIENTO (DATA SCIENCE) ---
   const dataAnalizada = useMemo(() => {
-    if (!eventos.length) return null;
+    if (!eventos || eventos.length === 0) {
+      return { total: 0, dataPieOrigen: [], dataBarTiempo: [], topConexiones: [], pctAsistidos: 0, distPromedio: 0, tablaGoles: [], mapaGoles: [] };
+    }
 
     let golesFiltrados = eventos.filter(ev => {
       const partido = partidos.find(p => p.id === ev.id_partido);
@@ -86,35 +128,28 @@ function OrigenGoles() {
       return pasaCat && pasaEq;
     });
 
-    // 1. ORIGEN DEL GOL (Pie Chart)
     const conteoOrigen = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, '5v4 / 4v3': 0, '4v5 / 3v4': 0, 'No Especificado': 0
     };
 
-    // 2. DISTRIBUCIÓN TEMPORAL (Histograma)
     const binsTiempo = {
       'PT 0-10': 0, 'PT 10-20': 0, 'PT 20+': 0,
       'ST 0-10': 0, 'ST 10-20': 0, 'ST 20+': 0
     };
 
-    // 3. CONEXIONES LETALES (Red de Asistencias)
     const conexiones = {};
 
-    // 4. METRICAS ESPACIALES Y AVANZADAS
     let golesAsistidos = 0;
     let sumaDistancia = 0;
     let golesConDistancia = 0;
-
     const mapaGoles = [];
 
     golesFiltrados.forEach(gol => {
-      // Origen
       const origen = gol.origen_gol || 'No Especificado';
       if (conteoOrigen[origen] !== undefined) conteoOrigen[origen]++;
       else conteoOrigen['No Especificado']++;
 
-      // Temporal
       if (gol.minuto !== null && gol.minuto !== undefined) {
         if (gol.periodo === 'PT') {
           if (gol.minuto <= 10) binsTiempo['PT 0-10']++;
@@ -127,7 +162,6 @@ function OrigenGoles() {
         }
       }
 
-      // Asistencias y Conexiones
       if (gol.id_asistencia) {
         golesAsistidos++;
         const key = `${gol.id_asistencia}-${gol.id_jugador}`;
@@ -135,20 +169,16 @@ function OrigenGoles() {
         conexiones[key].cantidad++;
       }
 
-      // Espacial y Distancia
       let xNorm = gol.zona_x_norm !== undefined ? gol.zona_x_norm : gol.zona_x;
       let yNorm = gol.zona_y_norm !== undefined ? gol.zona_y_norm : gol.zona_y;
       
       if (xNorm != null && yNorm != null) {
-        // --- FIX DE NORMALIZACIÓN ESPACIAL ---
-        // Si el gol es del rival, invertimos la cancha para que la métrica de distancia 
-        // y el dibujo en el mapa sean siempre hacia el arco derecho (x=100)
         if (gol.equipo === 'Rival') {
           xNorm = 100 - xNorm;
           yNorm = 100 - yNorm;
         }
 
-        const dx = (100 - xNorm) * 0.4; // Estimación campo 40x20m
+        const dx = (100 - xNorm) * 0.4; 
         const dy = Math.abs(50 - yNorm) * 0.2;
         const dist = Math.sqrt(dx*dx + dy*dy);
         sumaDistancia += dist;
@@ -167,7 +197,6 @@ function OrigenGoles() {
     const pctAsistidos = golesFiltrados.length > 0 ? ((golesAsistidos / golesFiltrados.length) * 100).toFixed(0) : 0;
     const distPromedio = golesConDistancia > 0 ? (sumaDistancia / golesConDistancia).toFixed(1) : 0;
 
-    // Enriquecer detalle de goles para tabla
     const tablaGoles = mapaGoles.map(g => {
       const p = partidos.find(px => px.id === g.id_partido);
       const jAutor = jugadores.find(jx => jx.id === g.id_jugador);
@@ -207,7 +236,10 @@ function OrigenGoles() {
           <div>
             <div className="stat-label">ORIGEN DE LOS GOLES</div>
             <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={selectStyle}>
-              <option value="Todas">TODAS LAS CATEGORÍAS</option>
+              {/* Solo mostramos "Todas" si NO es CT, o si es CT pero por alguna razón no tiene categorías */}
+              {!(esCT && misCategorias.length > 0) && (
+                <option value="Todas">TODAS LAS CATEGORÍAS</option>
+              )}
               {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
             </select>
           </div>
@@ -221,10 +253,12 @@ function OrigenGoles() {
         </div>
       </div>
 
-      {!dataAnalizada ? (
+      {cargando ? (
         <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-dim)' }}>PROCESANDO DATOS...</div>
       ) : dataAnalizada.total === 0 ? (
-        <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-dim)' }}>NO HAY GOLES REGISTRADOS CON ESTOS FILTROS.</div>
+        <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-dim)', padding: '40px', background: 'var(--panel)', borderRadius: '12px', border: '1px dashed #333' }}>
+          NO HAY GOLES REGISTRADOS CON ESTOS FILTROS.
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
