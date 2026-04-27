@@ -58,35 +58,41 @@ const CargaWellness = () => {
   // --- CARGA DE JUGADORES CON LOGICA KIOSCO ---
   useEffect(() => {
     const inicializarJugador = async () => {
-      // 🔥 CORRECCIÓN: Priorizamos el club_id seguro de la base de datos (perfil) para evitar bugs de caché en móviles nuevos
-      const club_id = isKiosco 
-        ? (localStorage.getItem('kiosco_club_id') || localStorage.getItem('club_id')) 
-        : (perfil?.club_id || localStorage.getItem('club_id') || 'club_default');
-      
-      if (!club_id || club_id === 'club_default') return;
-
-      // 1. Consulta base
-      let query = supabase.from('jugadores').select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id);
-      
-      // 2. ¡EL GRAN FILTRO EN LA BASE DE DATOS!
-      if (esCT && misCategorias.length > 0) {
-        query = query.in('categoria', misCategorias);
-      }
-
-      const { data, error } = await query.order('apellido', { ascending: true });
-      
-      if (!error && data) {
-        setJugadores(data);
+      try {
+        // 🔥 CORRECCIÓN: Priorizamos el club_id seguro de la base de datos (perfil) para evitar bugs de caché en móviles nuevos
+        const club_id = isKiosco 
+          ? (localStorage.getItem('kiosco_club_id') || localStorage.getItem('club_id')) 
+          : (perfil?.club_id || localStorage.getItem('club_id') || 'club_default');
         
-        // Si es jugador o Kiosco, forzamos su ID y lo ocultamos
-        if (esJugador && miJugadorId) {
-          const yo = data.find(j => j.id == miJugadorId);
-          if (yo) setJugadorSeleccionado(yo.id);
-        } else if (data.length > 0 && !esJugador) {
-          // Asegurarnos de que el primer jugador seleccionado coincida con el filtro actual (si aplica)
-          const primeraOpcionValida = filtroCategoria === 'Todas' ? data[0].id : (data.find(j => j.categoria === filtroCategoria)?.id || data[0].id);
-          setJugadorSeleccionado(primeraOpcionValida);
+        if (!club_id || club_id === 'club_default') return;
+
+        // 1. Consulta base
+        let query = supabase.from('jugadores').select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id);
+        
+        // 2. ¡EL GRAN FILTRO EN LA BASE DE DATOS!
+        if (esCT && misCategorias.length > 0) {
+          query = query.in('categoria', misCategorias);
         }
+
+        const { data, error } = await query.order('apellido', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (data) {
+          setJugadores(data);
+          
+          // Si es jugador o Kiosco, forzamos su ID y lo ocultamos
+          if (esJugador && miJugadorId) {
+            const yo = data.find(j => j.id == miJugadorId);
+            if (yo) setJugadorSeleccionado(yo.id);
+          } else if (data.length > 0 && !esJugador) {
+            // Asegurarnos de que el primer jugador seleccionado coincida con el filtro actual (si aplica)
+            const primeraOpcionValida = filtroCategoria === 'Todas' ? data[0].id : (data.find(j => j.categoria === filtroCategoria)?.id || data[0].id);
+            setJugadorSeleccionado(primeraOpcionValida);
+          }
+        }
+      } catch (err) {
+        console.error("Error al inicializar jugadores:", err);
       }
     };
     inicializarJugador();
@@ -105,15 +111,25 @@ const CargaWellness = () => {
   }, [fechaReferenciaReporte, filtroCategoria, vistaActiva, modoVistaReporte]);
 
   const verificarDatosDelDia = async () => {
-    const { data } = await supabase.from('wellness').select('*').eq('jugador_id', jugadorSeleccionado).eq('fecha', fecha).single();
-    if (data) {
-      setReadiness({ sueno: data.sueno || 3, estres: data.estres || 3, fatiga: data.fatiga || 3, dolor_muscular: data.dolor_muscular || 3 });
-      setCargaPost({ tipo_sesion: data.tipo_sesion || 'Entrenamiento', rpe: data.rpe || 5, minutos_actividad: data.minutos_actividad || 90 });
-      setMental({ animo: data.animo || 3, motivacion: data.motivacion || 3, ansiedad: data.ansiedad || 3, confianza: data.confianza || 3, notas: data.notas_mentales || '' });
-    } else {
-      setReadiness({ sueno: 3, estres: 3, fatiga: 3, dolor_muscular: 3 });
-      setCargaPost({ tipo_sesion: 'Entrenamiento', rpe: 5, minutos_actividad: 90 });
-      setMental({ animo: 3, motivacion: 3, ansiedad: 3, confianza: 3, notas: '' });
+    try {
+      // 🔥 REEMPLAZO CLAVE: Se usa .maybeSingle() en lugar de .single() para que no crashee si no hay datos previos
+      const { data, error } = await supabase.from('wellness').select('*').eq('jugador_id', jugadorSeleccionado).eq('fecha', fecha).maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (data) {
+        setReadiness({ sueno: data.sueno || 3, estres: data.estres || 3, fatiga: data.fatiga || 3, dolor_muscular: data.dolor_muscular || 3 });
+        setCargaPost({ tipo_sesion: data.tipo_sesion || 'Entrenamiento', rpe: data.rpe || 5, minutos_actividad: data.minutos_actividad || 90 });
+        setMental({ animo: data.animo || 3, motivacion: data.motivacion || 3, ansiedad: data.ansiedad || 3, confianza: data.confianza || 3, notas: data.notas_mentales || '' });
+      } else {
+        setReadiness({ sueno: 3, estres: 3, fatiga: 3, dolor_muscular: 3 });
+        setCargaPost({ tipo_sesion: 'Entrenamiento', rpe: 5, minutos_actividad: 90 });
+        setMental({ animo: 3, motivacion: 3, ansiedad: 3, confianza: 3, notas: '' });
+      }
+    } catch (err) {
+      console.error("Error silencioso evitado al verificar wellness:", err);
     }
   };
 
@@ -145,58 +161,65 @@ const CargaWellness = () => {
   // --- CÁLCULO DINÁMICO DE PERIODOS (Día / Semana / Mes) ---
   const calcularPeriodoYTraerDatos = async () => {
     setCargandoReporte(true);
-    // Usamos hora 12:00 segura para evitar saltos de zona horaria al manipular días
-    const date = new Date(fechaReferenciaReporte.getFullYear(), fechaReferenciaReporte.getMonth(), fechaReferenciaReporte.getDate(), 12, 0, 0);
-    let diasArray = [];
-    const nombresDias = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'];
-    
-    if (modoVistaReporte === 'dia') {
-      diasArray.push({ nombre: nombresDias[date.getDay()], numero: date.getDate(), fechaStr: obtenerFechaLocal(date) });
-    } 
-    else if (modoVistaReporte === 'semana') {
-      const day = date.getDay();
-      const diffToMonday = date.getDate() - day + (day === 0 ? -6 : 1);
-      const lunes = new Date(date.getTime());
-      lunes.setDate(diffToMonday);
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(lunes.getTime());
-        d.setDate(lunes.getDate() + i);
-        diasArray.push({ nombre: nombresDias[d.getDay()], numero: d.getDate(), fechaStr: obtenerFechaLocal(d) });
+    try {
+      // Usamos hora 12:00 segura para evitar saltos de zona horaria al manipular días
+      const date = new Date(fechaReferenciaReporte.getFullYear(), fechaReferenciaReporte.getMonth(), fechaReferenciaReporte.getDate(), 12, 0, 0);
+      let diasArray = [];
+      const nombresDias = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'];
+      
+      if (modoVistaReporte === 'dia') {
+        diasArray.push({ nombre: nombresDias[date.getDay()], numero: date.getDate(), fechaStr: obtenerFechaLocal(date) });
+      } 
+      else if (modoVistaReporte === 'semana') {
+        const day = date.getDay();
+        const diffToMonday = date.getDate() - day + (day === 0 ? -6 : 1);
+        const lunes = new Date(date.getTime());
+        lunes.setDate(diffToMonday);
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(lunes.getTime());
+          d.setDate(lunes.getDate() + i);
+          diasArray.push({ nombre: nombresDias[d.getDay()], numero: d.getDate(), fechaStr: obtenerFechaLocal(d) });
+        }
+      } 
+      else if (modoVistaReporte === 'mes') {
+        const firstDay = new Date(date.getFullYear(), date.getMonth(), 1, 12, 0, 0);
+        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0, 12, 0, 0);
+        for (let d = new Date(firstDay.getTime()); d <= lastDay; d.setDate(d.getDate() + 1)) {
+          diasArray.push({ nombre: nombresDias[d.getDay()], numero: d.getDate(), fechaStr: obtenerFechaLocal(d) });
+        }
       }
-    } 
-    else if (modoVistaReporte === 'mes') {
-      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1, 12, 0, 0);
-      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0, 12, 0, 0);
-      for (let d = new Date(firstDay.getTime()); d <= lastDay; d.setDate(d.getDate() + 1)) {
-        diasArray.push({ nombre: nombresDias[d.getDay()], numero: d.getDate(), fechaStr: obtenerFechaLocal(d) });
+
+      setDiasReporte(diasArray);
+
+      const fechaInicio = diasArray[0].fechaStr;
+      const fechaFin = diasArray[diasArray.length - 1].fechaStr;
+
+      // Filtramos los registros de wellness SOLO para los jugadores que el DT puede ver
+      const idsPermitidos = jugadores.map(j => j.id);
+
+      if (idsPermitidos.length === 0) {
+        setDatosReporte([]);
+        setCargandoReporte(false);
+        return;
       }
-    }
 
-    setDiasReporte(diasArray);
+      const { data, error } = await supabase
+        .from('wellness')
+        .select('*')
+        .in('jugador_id', idsPermitidos) // Aplicamos filtro de seguridad en la consulta
+        .gte('fecha', fechaInicio)
+        .lte('fecha', fechaFin);
 
-    const fechaInicio = diasArray[0].fechaStr;
-    const fechaFin = diasArray[diasArray.length - 1].fechaStr;
+      if (error) throw error;
 
-    // Filtramos los registros de wellness SOLO para los jugadores que el DT puede ver
-    const idsPermitidos = jugadores.map(j => j.id);
-
-    if (idsPermitidos.length === 0) {
-      setDatosReporte([]);
+      if (data) {
+        setDatosReporte(data);
+      }
+    } catch (err) {
+      console.error("Error al traer datos de reporte:", err);
+    } finally {
       setCargandoReporte(false);
-      return;
     }
-
-    const { data, error } = await supabase
-      .from('wellness')
-      .select('*')
-      .in('jugador_id', idsPermitidos) // Aplicamos filtro de seguridad en la consulta
-      .gte('fecha', fechaInicio)
-      .lte('fecha', fechaFin);
-
-    if (!error && data) {
-      setDatosReporte(data);
-    }
-    setCargandoReporte(false);
   };
 
   const navegarPeriodo = (direccion) => {
