@@ -17,7 +17,6 @@ const CargaWellness = () => {
 
   // --- VARIABLES DEL GRAN FILTRO ---
   const esCT = perfil?.rol === 'ct';
-  // 🔥 SOLUCIÓN: Memorizamos el array para evitar que se recree en cada render y resetee el jugador seleccionado.
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [JSON.stringify(perfil?.categorias_asignadas)]);
 
   const [jugadores, setJugadores] = useState([]);
@@ -59,8 +58,13 @@ const CargaWellness = () => {
   // --- CARGA DE JUGADORES CON LOGICA KIOSCO ---
   useEffect(() => {
     const inicializarJugador = async () => {
-      const club_id = localStorage.getItem('club_id') || 'club_default';
+      // 🔥 CORRECCIÓN: Priorizamos el club_id seguro de la base de datos (perfil) para evitar bugs de caché en móviles nuevos
+      const club_id = isKiosco 
+        ? (localStorage.getItem('kiosco_club_id') || localStorage.getItem('club_id')) 
+        : (perfil?.club_id || localStorage.getItem('club_id') || 'club_default');
       
+      if (!club_id || club_id === 'club_default') return;
+
       // 1. Consulta base
       let query = supabase.from('jugadores').select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id);
       
@@ -86,7 +90,7 @@ const CargaWellness = () => {
       }
     };
     inicializarJugador();
-  }, [esJugador, miJugadorId, esCT, misCategorias]);
+  }, [esJugador, miJugadorId, esCT, misCategorias, perfil?.club_id, isKiosco]);
 
   useEffect(() => {
     if (jugadorSeleccionado && fecha && vistaActiva === 'carga') {
@@ -117,7 +121,11 @@ const CargaWellness = () => {
     if (!jugadorSeleccionado) return showToast("Aguardá un segundo, vinculando perfil...", "warning");
     setCargando(true);
     try {
-      const club_id = localStorage.getItem('club_id') || localStorage.getItem('kiosco_club_id') || 'club_default';
+      // 🔥 CORRECCIÓN AQUÍ TAMBIÉN: Mismo blindaje al guardar
+      const club_id = isKiosco 
+        ? (localStorage.getItem('kiosco_club_id') || localStorage.getItem('club_id')) 
+        : (perfil?.club_id || localStorage.getItem('club_id') || 'club_default');
+
       const payload = {
         club_id, jugador_id: jugadorSeleccionado, fecha,
         sueno: readiness.sueno, estres: readiness.estres, fatiga: readiness.fatiga, dolor_muscular: readiness.dolor_muscular,
