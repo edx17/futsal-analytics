@@ -69,15 +69,21 @@ export default function LoginKiosco() {
   // Buscar UUID en la URL primero, luego en LocalStorage
   const [clubId, setClubId] = useState(searchParams.get('club') || localStorage.getItem('kiosco_club_id'));
 
-  // Logueamos al dispositivo en Supabase con la cuenta genérica del Kiosco
+  // 🔥 SOLUCIÓN DEL BUG: Logueamos al dispositivo en Supabase con la cuenta genérica y alertamos si falla
   useEffect(() => {
     const loginDispositivo = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email: 'kiosco@virtualstats.com',
-          password: 'KioscoTuClub2024!' // <--- Asegurate de que esto coincida con tu base
+          password: 'KioscoTuClub2024!' 
         });
+
+        // 🚨 TRAMPA DE SEGURIDAD: Si falla, frenamos todo y avisamos al administrador
+        if (error) {
+          console.error("🚨 ERROR CRÍTICO DE KIOSCO:", error);
+          alert("ERROR DE CONFIGURACIÓN DEL KIOSCO:\n\nEl sistema intentó conectar la tablet, pero la cuenta de acceso general no existe.\n\nPor favor, ve a tu panel de Supabase -> Authentication -> Add User y crea una cuenta con:\nEmail: kiosco@virtualstats.com\nContraseña: KioscoTuClub2024!\n\nDe lo contrario, las fichas no cargarán.");
+        }
       }
     };
     loginDispositivo();
