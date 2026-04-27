@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
@@ -48,6 +48,9 @@ export default function LoginKiosco() {
   const [loading, setLoading] = useState(false);
   const [inputCodigo, setInputCodigo] = useState('');
   
+  // 🔥 ESTADOS PARA EL FILTRO DE CATEGORÍAS
+  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
+
   // 🔥 NUEVO ESTADO: Controla si mostramos el teclado numérico o el menú de opciones
   const [mostrarMenu, setMostrarMenu] = useState(false);
   
@@ -183,6 +186,17 @@ export default function LoginKiosco() {
     }
   };
 
+  // 🔥 LÓGICA DE FILTRADO DE CATEGORÍAS
+  const categoriasUnicas = useMemo(() => {
+    return [...new Set(jugadores.map(j => j.categoria).filter(Boolean))].sort();
+  }, [jugadores]);
+
+  const jugadoresFiltrados = useMemo(() => {
+    if (filtroCategoria === 'Todas') return jugadores;
+    return jugadores.filter(j => j.categoria === filtroCategoria);
+  }, [jugadores, filtroCategoria]);
+
+
   if (!clubId) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', padding: '20px', justifyContent: 'center', alignItems: 'center', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -314,26 +328,52 @@ export default function LoginKiosco() {
       </div>
 
       {!jugadorSeleccionado ? (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(100px, 1fr))', 
-          gap: esMovil ? '10px' : '20px', 
-          width: '100%', 
-          maxWidth: '800px', 
-          margin: '0 auto', 
-          overflowY: 'auto', 
-          paddingBottom: '20px',
-          boxSizing: 'border-box' 
-        }}>
-          {jugadores.map(j => (
-            <div key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{...cardJugador, padding: esMovil ? '10px' : '15px'}}>
-              <div style={avatar}>
-                {j.foto ? <img src={j.foto} alt="foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span>{j.nombre.charAt(0)}</span>}
-              </div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fff', wordBreak: 'break-word', lineHeight: 1.1 }}>{j.apellido?.toUpperCase()}</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--accent)', marginTop: '3px' }}>{j.nombre.toUpperCase()}</div>
+        <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
+          
+          {/* 🔥 SECCIÓN DE FILTRO DE CATEGORÍAS */}
+          {categoriasUnicas.length > 0 && (
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '5px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', flexShrink: 0 }}>
+              <button 
+                onClick={() => setFiltroCategoria('Todas')} 
+                style={{ ...btnFiltroCat, background: filtroCategoria === 'Todas' ? 'var(--accent)' : '#111', color: filtroCategoria === 'Todas' ? '#000' : 'var(--text-dim)' }}
+              >
+                TODAS
+              </button>
+              {categoriasUnicas.map(cat => (
+                <button 
+                  key={cat} 
+                  onClick={() => setFiltroCategoria(cat)} 
+                  style={{ ...btnFiltroCat, background: filtroCategoria === cat ? 'var(--accent)' : '#111', color: filtroCategoria === cat ? '#000' : 'var(--text-dim)' }}
+                >
+                  {cat.toUpperCase()}
+                </button>
+              ))}
             </div>
-          ))}
+          )}
+
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(100px, 1fr))', 
+            gap: esMovil ? '10px' : '20px', 
+            overflowY: 'auto', 
+            paddingBottom: '20px',
+            boxSizing: 'border-box' 
+          }}>
+            {jugadoresFiltrados.map(j => (
+              <div key={j.id} onClick={() => setJugadorSeleccionado(j)} style={{...cardJugador, padding: esMovil ? '10px' : '15px'}}>
+                <div style={avatar}>
+                  {j.foto ? <img src={j.foto} alt="foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span>{j.nombre.charAt(0)}</span>}
+                </div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fff', wordBreak: 'break-word', lineHeight: 1.1 }}>{j.apellido?.toUpperCase()}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--accent)', marginTop: '3px' }}>{j.nombre.toUpperCase()}</div>
+              </div>
+            ))}
+            {jugadoresFiltrados.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-dim)', padding: '20px', fontSize: '0.9rem' }}>
+                No hay jugadores en esta categoría.
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%', boxSizing: 'border-box' }}>
@@ -365,6 +405,7 @@ const btnDesvincular = { background: 'none', border: 'none', color: 'var(--text-
 const cardJugador = { background: 'var(--panel)', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' };
 const avatar = { width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', margin: '0 auto 8px auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent)', flexShrink: 0 };
 const btnNumpad = { borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', color: '#fff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxSizing: 'border-box', outline: 'none', WebkitTapHighlightColor: 'transparent' };
+const btnFiltroCat = { padding: '6px 14px', borderRadius: '20px', border: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.2s', outline: 'none' };
 
 // Estilos para el nuevo HUB de Jugador
 const avatarGigante = { width: '85px', height: '85px', borderRadius: '50%', background: '#111', border: '3px solid var(--accent)', margin: '0 auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)', flexShrink: 0, boxShadow: '0 0 25px rgba(0,255,136,0.15)' };

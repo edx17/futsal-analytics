@@ -10,7 +10,6 @@ import Inicio from './pages/Inicio';
 import NuevoPartido from './pages/NuevoPartido';
 import ContinuarPartido from './pages/ContinuarPartido';
 import TomaDatos from './pages/TomaDatos';
-import TomaDatosAsincrono from './pages/TomaDatosAsincrono';
 import Resumen from './pages/Resumen';
 import JugadorPerfil from './pages/JugadorPerfil';
 import Temporada from './pages/Temporada';
@@ -35,7 +34,9 @@ import Usuarios from './pages/Usuarios';
 import AdmSuscripciones from './pages/AdmSuscripciones';
 import LibroTactico from './pages/LibroTactico';
 import LoginKiosco from './pages/LoginKiosco';
-import VideoTracingIA from './pages/VideoTracingIA';
+
+// 🔥 NUEVA PÁGINA PARA EL MANAGER:
+import MiStaff from './pages/MiStaff'; 
 
 import './App.css';
 
@@ -44,7 +45,6 @@ import './App.css';
 // ==========================================
 const navMobileStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyItems: 'center', flex: 1, height: '100%', cursor: 'pointer', color: 'var(--text-dim)', textDecoration: 'none', fontWeight: 800, padding: '8px 0', transition: 'color 0.2s' };
 
-// ACTUALIZADO: Estilo dinámico para los links de la sidebar
 const getSidebarLinkStyle = (isCollapsed) => ({
   padding: '12px 20px', 
   display: 'flex', 
@@ -85,10 +85,15 @@ function AppRoutes() {
       <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
       <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
       <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
+      
+      {/* RUTAS DE ADMINISTRACIÓN */}
       <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
       <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
       <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
       <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
+      <Route path="/mi-staff" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiStaff /></ProtectedRoute>} />
+
+      {/* RUTAS DE SUPERUSER */}
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
       <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
       
@@ -98,7 +103,7 @@ function AppRoutes() {
       <Route path="/torneos" element={<ProtectedRoute><Torneos /></ProtectedRoute>} />
       <Route path="/scouting-rivales" element={<ProtectedRoute><ScoutingRivales /></ProtectedRoute>} />
       
-      {/* RUTAS DE JUGADOR ARREGLADAS */}
+      {/* RUTAS DE JUGADOR */}
       <Route path="/jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
       <Route path="/jugador-perfil" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
       <Route path="/perfil-jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
@@ -108,9 +113,6 @@ function AppRoutes() {
       <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
       <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
       <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
-      
-      {/* NUEVA RUTA: TRACKING IA */}
-      <Route path="/tracking-ia" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><VideoTracingIA /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/inicio" replace />} />
     </Routes>
@@ -150,8 +152,6 @@ function AppLayout() {
     }
   }, [location.pathname, esMovil]);
 
-  // Si la sidebar se minimiza, opcionalmente cerramos los menús desplegables 
-  // para que la vista quede más limpia (comportamiento habitual de las mini-sidebars)
   useEffect(() => {
     if (!sidebarAbierta && !esMovil) {
       setMenusAbiertos({
@@ -188,7 +188,6 @@ function AppLayout() {
   const isLogin = location.pathname === '/login';
   const isRegistro = location.pathname === '/registro'; 
   const isTomaDatos = location.pathname === '/toma-datos'; 
-  const isTomaDatosAsincrono = location.pathname.includes('/analisis-video');
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
@@ -203,7 +202,7 @@ function AppLayout() {
   }
 
   // Rutas de pantalla completa (Login, Toma de Datos, etc.)
-  if (isLanding || isLogin || isRegistro || isTomaDatos || isTomaDatosAsincrono || isKioscoAuth) {
+  if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
         <Routes>
@@ -212,8 +211,6 @@ function AppLayout() {
           <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
           <Route path="/kiosco" element={<LoginKiosco />} />
           <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
-          <Route path="/analisis-video" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosAsincrono /></ProtectedRoute>} />
-          <Route path="/partido/:id/analisis-video" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosAsincrono /></ProtectedRoute>} />
         </Routes>
       </main>
     );
@@ -241,7 +238,6 @@ function AppLayout() {
   }
 
   const toggleMenu = (seccion) => {
-    // Si la sidebar está minimizada, la abrimos al intentar desplegar un menú
     if (!sidebarAbierta && !esMovil) {
       setSidebarAbierta(true);
     }
@@ -249,7 +245,7 @@ function AppLayout() {
   };
 
   // ==========================================
-  // RENDERIZADO DEL MENÚ LATERAL (AHORA RECIBE isCollapsed)
+  // RENDERIZADO DEL MENÚ LATERAL
   // ==========================================
   const renderNavLinks = (isCollapsed = false) => {
     const linkStyle = getSidebarLinkStyle(isCollapsed);
@@ -270,8 +266,6 @@ function AppLayout() {
               <>
                 <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚡ <span>NUEVO PARTIDO</span></NavLink>
                 <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⏯️ <span>CONTINUAR PARTIDO</span></NavLink>
-                <NavLink to="/analisis-video" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎥 <span>VIDEO ANÁLISIS</span></NavLink>
-                <NavLink to="/tracking-ia" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🤖 <span>TRACKING IA</span></NavLink>
               </>
             )}
           </>
@@ -351,8 +345,12 @@ function AppLayout() {
             </div>
             {menusAbiertos.administracion && !isCollapsed && (
               <>
+                {/* 🔥 ACÁ AGREGAMOS EL BOTÓN DE MI STAFF */}
+                <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👥 <span>MI STAFF</span></NavLink>
+                
                 <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💰 <span>TESORERÍA</span></NavLink>
                 <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🤝 <span>SPONSORS</span></NavLink>
+                
                 {permisos.puedeConfigurar && (
                   <>
                     <NavLink to="/mi-suscripcion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💳 <span>MI SUSCRIPCIÓN</span></NavLink>
@@ -423,7 +421,6 @@ function AppLayout() {
             </button>
           </div>
           <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 0 0', gap: '2px', overflowY: 'auto', overflowX: 'hidden', flex: 1 }}>
-             {/* Renderizamos enviando el flag isCollapsed = !sidebarAbierta */}
              {renderNavLinks(!sidebarAbierta)}
           </nav>
         </aside>
@@ -512,7 +509,6 @@ function AppLayout() {
               <button onClick={() => setDrawerAbierto(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', padding: 0 }}>×</button>
             </div>
             <nav style={{ flex: 1, paddingBottom: '20px', display: 'flex', flexDirection: 'column' }}>
-              {/* Para mobile enviamos false para que el drawer sí despliegue todo */}
               {renderNavLinks(false)}
             </nav>
           </div>
