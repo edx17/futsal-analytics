@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +17,8 @@ const CargaWellness = () => {
 
   // --- VARIABLES DEL GRAN FILTRO ---
   const esCT = perfil?.rol === 'ct';
-  const misCategorias = perfil?.categorias_asignadas || [];
+  // 🔥 SOLUCIÓN: Memorizamos el array para evitar que se recree en cada render y resetee el jugador seleccionado.
+  const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [JSON.stringify(perfil?.categorias_asignadas)]);
 
   const [jugadores, setJugadores] = useState([]);
   const [cargando, setCargando] = useState(false);
