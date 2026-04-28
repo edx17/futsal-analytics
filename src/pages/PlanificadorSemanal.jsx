@@ -223,7 +223,24 @@ const PlanificadorSemanal = () => {
 
   // --- GRAN FILTRO ---
   const misCategorias = perfil?.categorias_asignadas || [];
-  const categoriaInicial = misCategorias.length > 0 ? misCategorias[0] : 'Primera';
+
+  // EXTRAER CATEGORÍAS PARA EL SUPERUSER: Busca todas las categorías del club si el usuario tiene acceso total
+  const [categoriasExtraidas, setCategoriasExtraidas] = useState([]);
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      const club_id = localStorage.getItem('club_id') || 'club_default';
+      if (club_id === 'club_default') return;
+      const { data } = await supabase.from('jugadores').select('categoria').eq('club_id', club_id);
+      if (data) {
+        const unicas = [...new Set(data.map(j => j.categoria).filter(Boolean))].sort();
+        setCategoriasExtraidas(unicas);
+      }
+    };
+    fetchCategorias();
+  }, []);
+
+  const categoriasMostrar = misCategorias.length > 0 ? misCategorias : categoriasExtraidas;
+  const [filtroCategoria, setFiltroCategoria] = useState(misCategorias.length === 1 ? misCategorias[0] : 'Todas');
 
   const [fechaReferencia, setFechaReferencia] = useState(new Date());
   const [modoVista, setModoVista] = useState('semanal'); 
@@ -242,9 +259,6 @@ const PlanificadorSemanal = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Por defecto si tiene más de 1 categoría ve "Todas" (las suyas), sino la única que tiene
-  const [filtroCategoria, setFiltroCategoria] = useState(misCategorias.length > 1 ? 'Todas' : categoriaInicial); 
-
   // Modal State
   const [mostrarModal, setMostrarModal] = useState(false);
   const [modoModal, setModoModal] = useState('crear'); 
@@ -259,7 +273,7 @@ const PlanificadorSemanal = () => {
     tipo_sesion: 'Entrenamiento',
     objetivo: '',
     nivel_carga: 'Media', 
-    categoria_equipo: categoriaInicial,
+    categoria_equipo: misCategorias.length > 0 ? misCategorias[0] : 'Primera',
     tareas_ids: [],
     comentarios: '',
     bloque_fisico: false,
@@ -422,7 +436,7 @@ const PlanificadorSemanal = () => {
         tipo_sesion: sesionExistente.tipo_sesion,
         objetivo: sesionExistente.objetivo || '',
         nivel_carga: sesionExistente.nivel_carga || 'Media',
-        categoria_equipo: sesionExistente.categoria_equipo || categoriaInicial,
+        categoria_equipo: sesionExistente.categoria_equipo || (categoriasMostrar.length > 0 ? categoriasMostrar[0] : 'Primera'),
         tareas_ids: sesionExistente.tareas_ids || [],
         comentarios: sesionExistente.comentarios || '',
         bloque_fisico: sesionExistente.bloque_fisico || false,
@@ -436,7 +450,7 @@ const PlanificadorSemanal = () => {
         tipo_sesion: 'Entrenamiento', 
         objetivo: '', 
         nivel_carga: 'Media',
-        categoria_equipo: filtroCategoria === 'Todas' ? categoriaInicial : filtroCategoria,
+        categoria_equipo: filtroCategoria === 'Todas' ? (categoriasMostrar.length > 0 ? categoriasMostrar[0] : 'Primera') : filtroCategoria,
         tareas_ids: [],
         comentarios: '',
         bloque_fisico: false,
@@ -556,9 +570,8 @@ const PlanificadorSemanal = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', display: esMovil ? 'none' : 'block' }}>Categoría:</span>
             <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={{ padding: '10px', background: '#111', color: '#fff', border: '1px solid var(--accent)', borderRadius: '6px', outline: 'none', fontWeight: 'bold', flex: esMovil ? 1 : 'none', minHeight: '40px' }}>
-              {misCategorias.length > 1 && <option value="Todas">TODAS MIS CATEGORÍAS</option>}
-              {misCategorias.length === 0 && <option value="Todas">TODAS LAS CATEGORÍAS</option>}
-              {misCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+              {(misCategorias.length !== 1) && <option value="Todas">{misCategorias.length > 1 ? "TODAS MIS CATEGORÍAS" : "TODAS LAS CATEGORÍAS"}</option>}
+              {categoriasMostrar.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
@@ -921,7 +934,8 @@ const PlanificadorSemanal = () => {
                       <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Categoría</label>
                         <select value={nuevaSesion.categoria_equipo} onChange={e => setNuevaSesion({...nuevaSesion, categoria_equipo: e.target.value})} style={inputStyle}>
-                          {misCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+                          {categoriasMostrar.length === 0 && <option value="Primera">Primera</option>}
+                          {categoriasMostrar.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </div>
                       <div style={{ flex: 1 }}>
