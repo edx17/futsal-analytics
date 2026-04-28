@@ -279,9 +279,13 @@ function drawEl(ctx, el, selected, cW) {
       ctx.beginPath(); ctx.arc(x,y,r+3,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1
     }
     
+    // Resetear rotación para que el label siempre quede legible
+    ctx.restore(); ctx.save()
+    ctx.shadowBlur = 0
+    const labelText = t==='staff' ? (el.label&&el.label!==''?el.label:'E') : (el.label||'')
     ctx.fillStyle='#fff'; ctx.font=`700 ${r*.85}px Syne,sans-serif`
     ctx.textAlign='center'; ctx.textBaseline='middle'
-    ctx.fillText(el.label||'', x, y+.5)
+    ctx.fillText(labelText, x, y+.5)
     if (isSel) selRing(ctx,x,y,r+6)
   }
   else if (t==='ball') {
@@ -499,7 +503,7 @@ const CSS = `
   --text:#dde1f0;--muted:#5a6080;--muted2:#3a3f55;
   font-family:'Syne',sans-serif;color:var(--text);background:var(--bg);
   display:flex;flex-direction:column;overflow:hidden;user-select:none;
-  position:absolute;top:0;left:0;right:0;bottom:0;z-index:10;
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
 }
 .ct-header{height:50px;background:var(--s1);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 14px;flex-shrink:0;overflow-x:auto}
 .ct-header.edit-mode{border-bottom-color:var(--blue)}
@@ -517,6 +521,10 @@ const CSS = `
 .ct-tool.wide{grid-column:span 2;flex-direction:row;gap:8px;padding:6px 10px;font-size:10px;justify-content:flex-start}
 .ct-div{height:1px;background:var(--border);margin:4px 8px}
 .ct-canvas-area{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg);background-image:radial-gradient(ellipse at 30% 20%,rgba(0,229,255,.04) 0%,transparent 50%);overflow:hidden;position:relative}
+@media(max-width:768px){
+  .ct-canvas-area{padding-bottom:calc(62px + env(safe-area-inset-bottom,12px))}
+  .ct-root{padding-bottom:0}
+}
 .ct-canvas{border-radius:3px;cursor:crosshair;display:block;box-shadow:0 0 40px rgba(0,0,0,0.5)}
 .ct-propbar{width:220px;background:var(--s1);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;flex-shrink:0;box-shadow:-4px 0 16px rgba(0,0,0,.2)}
 .ct-propbar::-webkit-scrollbar{width:3px}.ct-propbar::-webkit-scrollbar-thumb{background:var(--border2)}
@@ -550,10 +558,47 @@ const CSS = `
 .ct-input{padding:7px 10px;background:#000;border:1px solid #333;border-radius:6px;color:#fff;font-family:'Syne',sans-serif;font-size:.85rem;outline:none}
 .ct-status{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-left:auto;white-space:nowrap}
 /* Mobile */
-.ct-mob-overlay-panel{position:absolute;bottom:60px;left:10px;right:10px;background:rgba(20,20,20,.95);border:1px solid #333;border-radius:16px;padding:14px;z-index:50;backdrop-filter:blur(10px);box-shadow:0 -10px 30px rgba(0,0,0,.5);max-height:60vh;overflow-y:auto}
-.ct-mob-float-bar{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:20;display:flex;background:rgba(20,20,20,.88);padding:5px;border-radius:30px;border:1px solid #333;backdrop-filter:blur(10px);gap:4px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-.ct-mob-float-btn{width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;color:#fff;background:transparent;font-size:1.25rem}
-.ct-mob-float-btn.on{background:var(--accent);color:#000}
+.ct-mob-bottom-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(14,15,20,.98);border-top:1px solid #2e3245;z-index:9000;display:flex;align-items:flex-start;justify-content:space-around;padding:6px 4px env(safe-area-inset-bottom,12px);min-height:62px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.ct-mob-tab{flex:1;height:52px;border:none;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border-radius:10px;transition:all .15s;padding:0 2px}
+.ct-mob-tab .tab-icon{font-size:1.35rem;line-height:1}
+.ct-mob-tab:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.ct-mob-tab.on{color:var(--accent);background:rgba(0,255,136,.07)}
+.ct-mob-tab.on .tab-icon{filter:drop-shadow(0 0 6px rgba(0,255,136,.5))}
+.ct-mob-tab.act{color:var(--accentb)}
+.ct-mob-sep{width:1px;height:32px;background:var(--border);flex-shrink:0;margin:0 2px}
+.ct-mob-sheet{position:fixed;bottom:calc(62px + env(safe-area-inset-bottom,12px));left:0;right:0;background:rgba(16,17,24,.99);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:8999;padding:0 14px 20px;max-height:55vh;overflow-y:auto;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 -12px 40px rgba(0,0,0,.7);animation:slideUp .2s ease-out}
+.ct-mob-sheet::-webkit-scrollbar{width:3px}.ct-mob-sheet::-webkit-scrollbar-thumb{background:var(--border2)}
+.ct-mob-sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 14px;flex-shrink:0}
+.ct-mob-sheet-title{font-size:9px;font-weight:700;letter-spacing:1.8px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.ct-mob-sheet-close{background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:0 2px}
+.ct-mob-tools-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px}
+.ct-mob-tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:12px 6px;background:var(--s2);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:10px;color:var(--muted);transition:all .12s;text-align:center;line-height:1.3;min-height:64px}
+.ct-mob-tool .ti{font-size:1.5rem;line-height:1}
+.ct-mob-tool:active{transform:scale(.95)}
+.ct-mob-tool.on{background:rgba(0,255,136,.08);border-color:var(--accent);color:var(--accent)}
+.ct-mob-prop-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;gap:8px;border-bottom:1px solid rgba(37,40,54,.5)}
+.ct-mob-prop-lbl{font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.ct-mob-pinput{background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Syne',sans-serif;font-size:11px;padding:6px 10px;text-align:right;min-width:80px}
+.ct-mob-pinput:focus{outline:none;border-color:var(--accentb)}
+.ct-mob-seg{display:flex;gap:3px}
+.ct-mob-sopt{padding:5px 10px;background:var(--s2);border:1px solid var(--border);border-radius:5px;font-size:10px;cursor:pointer;color:var(--muted);transition:all .1s}
+.ct-mob-sopt.on{background:rgba(0,229,255,.08);border-color:var(--accentb);color:var(--accentb)}
+.ct-mob-del-btn{margin-top:14px;padding:13px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:var(--red);font-size:12px;font-weight:600;cursor:pointer;width:100%;font-family:'Syne',sans-serif}
+.ct-mob-anim-grid{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:4px 0}
+.ct-mob-frame-chip{min-width:42px;height:42px;border-radius:8px;border:1px solid var(--border);background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:pointer;transition:all .12s;position:relative;flex-shrink:0}
+.ct-mob-frame-chip.on{background:var(--accent);border-color:var(--accent);color:#000}
+.ct-mob-frame-chip .del-x{position:absolute;top:-8px;right:-8px;background:var(--red);border:none;color:#fff;width:18px;height:18px;border-radius:50%;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ct-mob-anim-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.ct-mob-anim-btn{padding:12px 8px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .13s}
+.ct-mob-anim-btn:active{transform:scale(.97)}
+.ct-mob-play-btn{padding:14px;border-radius:10px;border:none;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;width:100%;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.ct-mob-config-row{padding:10px 0;border-bottom:1px solid rgba(37,40,54,.5)}
+.ct-mob-config-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--muted2);text-transform:uppercase;margin-bottom:6px}
+.ct-mob-config-select{width:100%;padding:9px 10px;background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;outline:none}
+.ct-mob-config-select:focus{border-color:var(--accentb)}
+.ct-mob-config-toggles{display:flex;gap:8px;margin-top:6px}
+.ct-mob-toggle{flex:1;padding:8px 4px;background:var(--s2);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--muted);cursor:pointer;text-align:center;font-family:'Syne',sans-serif;font-weight:600;transition:all .12s}
+.ct-mob-toggle.on{background:rgba(0,229,255,.08);border-color:var(--accentb);color:var(--accentb)}
 /* Modal */
 .ct-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
 .ct-modal{background:#111;width:100%;max-width:800px;border:2px solid var(--accent);border-radius:12px;padding:28px;max-height:95vh;overflow-y:auto}
@@ -639,8 +684,13 @@ const CreadorTareas = () => {
     video_url:           tareaAEditar?.video_url           || '',
   })
 
-  // ── CSS inject ──
+  // ── CSS + viewport inject ──
   useEffect(() => {
+    // viewport-fit=cover para safe areas en iOS
+    let vp = document.querySelector('meta[name=viewport]')
+    if (vp && !vp.content.includes('viewport-fit')) {
+      vp.content += ', viewport-fit=cover'
+    }
     if (document.getElementById('ct-styles')) return
     const s = document.createElement('style'); s.id='ct-styles'; s.textContent=CSS
     document.head.appendChild(s)
@@ -673,14 +723,18 @@ const CreadorTareas = () => {
   // ── Resize ──
   useEffect(() => {
     function measure() {
-      setEsMovil(window.innerWidth<=768)
+      const mob = window.innerWidth<=768
+      setEsMovil(mob)
       if (!areaRef.current) return
-      const mW=areaRef.current.clientWidth-40, mH=areaRef.current.clientHeight-40
+      const safeBottom = mob ? (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 74) : 0
+      const mW = areaRef.current.clientWidth - (mob ? 8 : 40)
+      const mH = areaRef.current.clientHeight - (mob ? 80 + safeBottom : 40)
       const vrt = PITCH_VARIANTS[pitchCfg.variant]||PITCH_VARIANTS['40x20']
-      const ratio = vrt.mW/vrt.mH
-      let w=Math.min(mW,mH*ratio), h=w/ratio
-      if(h>mH){h=mH;w=h*ratio}
-      setCvSize({w:Math.round(w),h:Math.round(h)})
+      // En móvil usamos ratio invertido (portrait: alto > ancho)
+      const ratio = mob ? (vrt.mH / vrt.mW) : (vrt.mW / vrt.mH)
+      let w = Math.min(mW, mH * ratio), h = w / ratio
+      if (h > mH) { h = mH; w = h * ratio }
+      setCvSize({w: Math.round(w), h: Math.round(h)})
     }
     measure()
     window.addEventListener('resize', measure)
@@ -700,13 +754,23 @@ const CreadorTareas = () => {
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, cvSize.w, cvSize.h)
 
-    ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH)
+    if (esMovil) {
+      // Portrait: rotamos 90° — canvas físico es w×h donde h>w
+      // Virtual space sigue siendo BASE_W × baseH pero lo dibujamos rotado
+      // Trasladamos al centro, rotamos, escalamos
+      ctx.translate(cvSize.w / 2, cvSize.h / 2)
+      ctx.rotate(Math.PI / 2)
+      ctx.translate(-cvSize.h / 2, -cvSize.w / 2)
+      ctx.scale(cvSize.h / BASE_W, cvSize.w / baseH)
+    } else {
+      ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH)
+    }
 
     renderPitch(ctx, BASE_W, baseH, pitchCfg)
     renderElements(ctx, displayEls, displayArrs, board.selected, BASE_W, tempRef.current.arrow, tempRef.current.zone)
     
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying])
+  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil])
 
   // ── FRAME MANAGEMENT ──
   function syncCurrentFrame(overrideIdx) {
@@ -822,12 +886,20 @@ const CreadorTareas = () => {
     const src = e.touches ? e.touches[0] || e.changedTouches[0] : e
     const rawX = src.clientX - r.left
     const rawY = src.clientY - r.top
-    
+
+    if (esMovil) {
+      // Canvas físico: w×h (portrait). Virtual space: BASE_W × baseH (landscape).
+      // La rotación es 90° CW: virtual_x = rawY * BASE_W/r.height, virtual_y = (r.width - rawX) * baseH/r.width
+      const baseH = getBaseH(pitchCfg.variant)
+      const vx = (rawY / r.height) * BASE_W
+      const vy = ((r.width - rawX) / r.width) * baseH
+      return { x: vx, y: vy }
+    }
+
     const scaleX = r.width ? BASE_W / r.width : 1
     const scaleY = r.height ? getBaseH(pitchCfg.variant) / r.height : 1
-    
     return { x: rawX * scaleX, y: rawY * scaleY }
-  }, [pitchCfg.variant])
+  }, [pitchCfg.variant, esMovil])
 
   const onPointerDown = useCallback((e) => {
     e.preventDefault()
@@ -839,7 +911,12 @@ const CreadorTareas = () => {
       const arr=hitArrow(board.arrows,p.x,p.y)
       if(arr){dispatchBoard({type:'SELECT',sel:{id:arr.id,isArrow:true}});return}
       const el=hitEl(board.elements, p.x, p.y, BASE_W)
-      if(el){dispatchBoard({type:'SELECT',sel:{id:el.id,isArrow:false}});ix.dragging=true;ix.dOffX=p.x-el.x;ix.dOffY=p.y-el.y}
+      if(el){
+        dispatchBoard({type:'SELECT',sel:{id:el.id,isArrow:false}})
+        ix.dragging=true; ix.dOffX=p.x-el.x; ix.dOffY=p.y-el.y
+        // Guardar posición inicial para detectar tap vs drag en móvil
+        ix.pointerDownX=p.x; ix.pointerDownY=p.y; ix.hasDragged=false
+      }
       else dispatchBoard({type:'SELECT',sel:null})
       return
     }
@@ -864,13 +941,29 @@ const CreadorTareas = () => {
   const onPointerMove = useCallback((e) => {
     if(isPlaying) return
     const p=getPos(e); const ix=ixRef.current
-    if(ix.dragging&&board.selected){dispatchBoard({type:'MOVE_EL',id:board.selected.id,x:p.x-ix.dOffX,y:p.y-ix.dOffY});return}
+    if(ix.dragging&&board.selected){
+      // Detectar si ya se movió suficiente para considerarlo drag
+      if(!ix.hasDragged){
+        const dist=Math.hypot(p.x-(ix.pointerDownX||p.x), p.y-(ix.pointerDownY||p.y))
+        if(dist>10){
+          ix.hasDragged=true
+          // Es drag: ocultar sheet de propiedades en móvil
+          if(esMovil) dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow,hideProps:true}})
+        }
+      }
+      dispatchBoard({type:'MOVE_EL',id:board.selected.id,x:p.x-ix.dOffX,y:p.y-ix.dOffY});return
+    }
     if(ix.drawingArrow){ix.drawingArrow.cx=p.x;ix.drawingArrow.cy=p.y;tempRef.current.arrow={...ix.drawingArrow};forceUpdate();return}
     if(ix.drawingZone){ix.drawingZone.w=p.x-ix.drawingZone.sx;ix.drawingZone.h=p.y-ix.drawingZone.sy;tempRef.current.zone={...ix.drawingZone};forceUpdate()}
-  },[board.selected, isPlaying, getPos])
+  },[board.selected, isPlaying, getPos, esMovil])
 
   const onPointerUp = useCallback((e) => {
-    const p=getPos(e); const ix=ixRef.current; ix.dragging=false
+    const p=getPos(e); const ix=ixRef.current
+    // Si soltó sin mover = tap = mostrar propiedades
+    if(ix.dragging && !ix.hasDragged && board.selected){
+      dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow}})
+    }
+    ix.dragging=false; ix.hasDragged=false
     if(ix.drawingArrow){
       if(Math.hypot(p.x-ix.drawingArrow.x1,p.y-ix.drawingArrow.y1)>18){
         const st=ARROW_STYLES[ix.drawingArrow.style]
@@ -1102,25 +1195,15 @@ const CreadorTareas = () => {
 
         {/* CANVAS AREA */}
         <div className="ct-canvas-area" ref={areaRef}>
-          {/* Mobile: back & save buttons */}
+          {/* Mobile: top bar */}
           {esMovil && (
             <>
-              <div style={{position:'absolute',top:0,left:0,right:0,height:70,background:'linear-gradient(to bottom,rgba(0,0,0,.7),transparent)',zIndex:10,pointerEvents:'none'}}/>
-              <div style={{position:'absolute',bottom:0,left:0,right:0,height:90,background:'linear-gradient(to top,rgba(0,0,0,.75),transparent)',zIndex:10,pointerEvents:'none'}}/>
-
-              <button onClick={()=>navigate(-1)} style={{position:'absolute',top:14,left:14,zIndex:20,background:'rgba(0,0,0,.6)',border:'1px solid #444',color:'#fff',width:40,height:40,borderRadius:'50%',fontSize:'1.2rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(5px)'}}>⬅</button>
-              <button onClick={()=>setShowModal(true)} style={{position:'absolute',top:14,right:14,zIndex:20,background:tareaIdEditando?'var(--blue)':'var(--accent)',color:tareaIdEditando?'#fff':'#000',border:'none',padding:'0 20px',height:40,borderRadius:20,fontSize:'.9rem',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {tareaIdEditando?'💾 ACTUALIZAR':'💾 GUARDAR'}
+              <div style={{position:'absolute',top:0,left:0,right:0,height:'calc(env(safe-area-inset-top, 0px) + 60px)',background:'linear-gradient(to bottom,rgba(0,0,0,.85),transparent)',zIndex:10,pointerEvents:'none'}}/>
+              <button onClick={()=>navigate(-1)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',left:12,zIndex:20,background:'rgba(0,0,0,.7)',border:'1px solid #3a3f55',color:'#fff',width:38,height:38,borderRadius:'50%',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>←</button>
+              {tareaIdEditando && <div style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 14px)',left:60,zIndex:20,background:'var(--blue)',color:'#fff',padding:'4px 8px',borderRadius:5,fontSize:'0.7rem',fontWeight:'bold'}}>EDICIÓN</div>}
+              <button onClick={()=>setShowModal(true)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',right:12,zIndex:20,background:tareaIdEditando?'var(--blue)':'var(--accent)',color:tareaIdEditando?'#fff':'#000',border:'none',padding:'0 16px',height:38,borderRadius:18,fontSize:'.82rem',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
+                {tareaIdEditando?'💾 ACT.':'💾 GUARDAR'}
               </button>
-
-              {/* Floating toolbar */}
-              <div className="ct-mob-float-bar">
-                <button className={`ct-mob-float-btn${tool==='select'&&!panelMovil?' on':''}`} onClick={()=>{setTool('select');setPanelMovil(null)}}>🖐️</button>
-                <div style={{width:1,background:'#333',margin:'5px 0'}}/>
-                <button className={`ct-mob-float-btn${panelMovil==='trazos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='trazos'?null:'trazos')}>📐</button>
-                <button className={`ct-mob-float-btn${panelMovil==='elementos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='elementos'?null:'elementos')}>🎒</button>
-                <button className={`ct-mob-float-btn${panelMovil==='anim'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='anim'?null:'anim')}>🎬</button>
-              </div>
             </>
           )}
 
@@ -1132,46 +1215,6 @@ const CreadorTareas = () => {
             onTouchStart={onPointerDown} onTouchMove={onPointerMove} onTouchEnd={onPointerUp}
           />
 
-          {/* Mobile panels */}
-          {esMovil && panelMovil==='elementos' && (
-            <div className="ct-mob-overlay-panel">
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                <span style={{fontSize:'9px',fontWeight:'700',letterSpacing:'1.5px',color:'var(--muted)',textTransform:'uppercase'}}>JUGADORES Y MATERIALES</span>
-                <button onClick={()=>setPanelMovil(null)} style={{background:'none',border:'none',color:'#fff',fontSize:'1.2rem',cursor:'pointer'}}>✖</button>
-              </div>
-              <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-                {[...TOOLS_PLAYERS,...TOOLS_MAT].map(t=>(
-                  <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} style={{width:50,padding:'8px 4px'}} onClick={()=>{setTool(t.id);setPanelMovil(null)}}>
-                    <span className="ti">{t.icon}</span><span style={{fontSize:8}}>{t.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {esMovil && panelMovil==='trazos' && (
-            <div className="ct-mob-overlay-panel">
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-                <span style={{fontSize:'9px',fontWeight:'700',letterSpacing:'1.5px',color:'var(--muted)',textTransform:'uppercase'}}>ANOTACIONES</span>
-                <button onClick={()=>setPanelMovil(null)} style={{background:'none',border:'none',color:'#fff',fontSize:'1.2rem',cursor:'pointer'}}>✖</button>
-              </div>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                {TOOLS_ANNOT.map(t=>(
-                  <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} style={{width:70,padding:'8px 4px'}} onClick={()=>{setTool(t.id);setPanelMovil(null)}}>
-                    <span className="ti">{t.icon}</span><span style={{fontSize:8}}>{t.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {esMovil && panelMovil==='anim' && (
-            <div className="ct-mob-overlay-panel">
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                <span style={{fontSize:'9px',fontWeight:'700',letterSpacing:'1.5px',color:'var(--muted)',textTransform:'uppercase'}}>LÍNEA DE TIEMPO</span>
-                <button onClick={()=>setPanelMovil(null)} style={{background:'none',border:'none',color:'#fff',fontSize:'1.2rem',cursor:'pointer'}}>✖</button>
-              </div>
-              <TimelineBar frames={frames} frameIdx={frameIdx} isPlaying={isPlaying} onPlay={togglePlay} onGo={cambiarFrame} onDup={duplicarFrameActual} onAdd={agregarFrameVacio} onDel={eliminarFrame} />
-            </div>
-          )}
         </div>
 
         {/* ══ RIGHT: SIDEBAR UNIFICADO PROPIEDADES/PISTA (PC only) ══ */}
@@ -1296,6 +1339,212 @@ const CreadorTareas = () => {
             onAdd={agregarFrameVacio} onDel={eliminarFrame}
           />
           <span className="ct-status">{vrtLabel} · Editor Pro</span>
+        </div>
+      )}
+
+      {/* ══ MOBILE SHEETS (fuera del canvas-area para no quedar recortados) ══ */}
+      {esMovil && panelMovil==='elementos' && (
+        <div className="ct-mob-sheet">
+          <div className="ct-mob-sheet-handle"/>
+          <div className="ct-mob-sheet-title">
+            <span>Jugadores &amp; Materiales</span>
+            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}>✕</button>
+          </div>
+          <div style={{fontSize:'9px',fontWeight:700,letterSpacing:'1.5px',color:'var(--muted2)',textTransform:'uppercase',marginBottom:8}}>Jugadores</div>
+          <div className="ct-mob-tools-grid" style={{marginBottom:12}}>
+            {TOOLS_PLAYERS.map(t=>(
+              <div key={t.id} className={`ct-mob-tool${tool===t.id?' on':''}`} onClick={()=>{setTool(t.id);setPanelMovil(null)}}>
+                <span className="ti">{t.icon}</span>{t.label}
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:'9px',fontWeight:700,letterSpacing:'1.5px',color:'var(--muted2)',textTransform:'uppercase',marginBottom:8}}>Materiales</div>
+          <div className="ct-mob-tools-grid">
+            {TOOLS_MAT.map(t=>(
+              <div key={t.id} className={`ct-mob-tool${tool===t.id?' on':''}`} onClick={()=>{setTool(t.id);setPanelMovil(null)}}>
+                <span className="ti">{t.icon}</span>{t.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {esMovil && panelMovil==='trazos' && (
+        <div className="ct-mob-sheet">
+          <div className="ct-mob-sheet-handle"/>
+          <div className="ct-mob-sheet-title">
+            <span>Anotaciones y Zonas</span>
+            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}>✕</button>
+          </div>
+          <div className="ct-mob-tools-grid">
+            {TOOLS_ANNOT.map(t=>(
+              <div key={t.id} className={`ct-mob-tool${tool===t.id?' on':''}`} onClick={()=>{setTool(t.id);setPanelMovil(null)}}>
+                <span className="ti">{t.icon}</span>{t.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {esMovil && panelMovil==='anim' && (
+        <div className="ct-mob-sheet">
+          <div className="ct-mob-sheet-handle"/>
+          <div className="ct-mob-sheet-title">
+            <span>Línea de Tiempo</span>
+            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}>✕</button>
+          </div>
+          <div className="ct-mob-anim-grid">
+            {frames.map((f,i)=>(
+              <div key={f.id} className={`ct-mob-frame-chip${i===frameIdx?' on':''}`} onClick={()=>{cambiarFrame(i);setPanelMovil(null)}}>
+                {i+1}
+                {i===frameIdx&&frames.length>1&&(
+                  <button className="del-x" onClick={e=>{e.stopPropagation();eliminarFrame(i)}}>✕</button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="ct-mob-anim-actions">
+            <button className="ct-mob-anim-btn" style={{background:'rgba(59,130,246,.08)',borderColor:'var(--blue)',color:'var(--blue)'}} onClick={()=>{duplicarFrameActual();setPanelMovil(null)}}>⏭ Continuar</button>
+            <button className="ct-mob-anim-btn" onClick={()=>{agregarFrameVacio();setPanelMovil(null)}}>➕ Vacío</button>
+          </div>
+          <button className="ct-mob-play-btn" style={{background:isPlaying?'#ef4444':'var(--accent)',color:isPlaying?'#fff':'#000'}} onClick={()=>{togglePlay();if(!isPlaying)setPanelMovil(null)}}>
+            {isPlaying?'🛑 Detener':'▶ Reproducir Jugada'}
+          </button>
+        </div>
+      )}
+      {esMovil && panelMovil==='config' && (
+        <div className="ct-mob-sheet">
+          <div className="ct-mob-sheet-handle"/>
+          <div className="ct-mob-sheet-title">
+            <span>Ajustes de Pista</span>
+            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}>✕</button>
+          </div>
+          <div className="ct-mob-config-row">
+            <div className="ct-mob-config-lbl">Dimensiones</div>
+            <select className="ct-mob-config-select" value={pitchCfg.variant} onChange={e=>upPitch({variant:e.target.value})}>
+              {Object.entries(PITCH_VARIANTS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+          <div className="ct-mob-config-row">
+            <div className="ct-mob-config-lbl">Superficie</div>
+            <select className="ct-mob-config-select" value={pitchCfg.material} onChange={e=>upPitch({material:e.target.value})}>
+              {Object.entries(MATERIAL_LABELS).map(([k,l])=><option key={k} value={k}>{l}</option>)}
+            </select>
+          </div>
+          <div className="ct-mob-config-row">
+            <div className="ct-mob-config-lbl">Porterías</div>
+            <select className="ct-mob-config-select" value={pitchCfg.goals} onChange={e=>upPitch({goals:e.target.value})}>
+              <option value="both">Ambas (Partido)</option>
+              <option value="left">Izquierda</option>
+              <option value="right">Derecha</option>
+              <option value="none">Ninguna</option>
+            </select>
+          </div>
+          <div className="ct-mob-config-row">
+            <div className="ct-mob-config-lbl">Áreas y Puntos</div>
+            <div className="ct-mob-config-toggles">
+              <button className={`ct-mob-toggle${pitchCfg.showZones?' on':''}`} onClick={()=>upPitch({showZones:true})}>Sí</button>
+              <button className={`ct-mob-toggle${!pitchCfg.showZones?' on':''}`} onClick={()=>upPitch({showZones:false})}>No</button>
+            </div>
+          </div>
+          <div className="ct-mob-config-row">
+            <div className="ct-mob-config-lbl">MicroZonas (Grilla)</div>
+            <div className="ct-mob-config-toggles">
+              <button className={`ct-mob-toggle${pitchCfg.showGrid?' on':''}`} onClick={()=>upPitch({showGrid:true})}>Sí</button>
+              <button className={`ct-mob-toggle${!pitchCfg.showGrid?' on':''}`} onClick={()=>upPitch({showGrid:false})}>No</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {esMovil && selData && panelMovil===null && !board.selected?.hideProps && (
+        <div className="ct-mob-sheet" style={{maxHeight:'50vh'}}>
+          <div className="ct-mob-sheet-handle"/>
+          <div className="ct-mob-sheet-title">
+            <span>{isArrow?(ARROW_STYLES[selData.style]?.label||'Flecha'):selData.type.toUpperCase()}</span>
+            <button className="ct-mob-sheet-close" onClick={()=>dispatchBoard({type:'SELECT',sel:null})}>✕</button>
+          </div>
+          {!isArrow && (
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Rotación</span>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <input type="range" min={0} max={359} step={5} value={selData.rotation||0} onChange={e=>upSel({rotation:+e.target.value})} style={{width:100}} />
+                <span style={{fontSize:11,color:'var(--text)',width:28,textAlign:'right'}}>{selData.rotation||0}°</span>
+              </div>
+            </div>
+          )}
+          {isPlayer && <>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Etiqueta</span>
+              <input className="ct-mob-pinput" value={selData.label||''} maxLength={3} onChange={e=>upSel({label:e.target.value})} style={{width:60,textAlign:'center'}} />
+            </div>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Color</span>
+              <input type="color" style={{width:46,height:30,borderRadius:6,border:'1px solid var(--border2)',cursor:'pointer'}} value={toHexSafe(selData.color||TEAM_COLORS[selData.type]?.fill)} onChange={e=>upSel({color:e.target.value})} />
+            </div>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Tamaño</span>
+              <div className="ct-mob-seg">{[['sm','S'],['md','M'],['lg','L']].map(([v,l])=><div key={v} className={`ct-mob-sopt${(selData.size||'md')===v?' on':''}`} onClick={()=>upSel({size:v})}>{l}</div>)}</div>
+            </div>
+          </>}
+          {selData.type==='text' && <>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Contenido</span>
+              <input className="ct-mob-pinput" value={selData.label||''} onChange={e=>upSel({label:e.target.value})} style={{width:150,textAlign:'left'}} />
+            </div>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Tamaño</span>
+              <input className="ct-mob-pinput" type="number" value={selData.fontSize||13} min={8} max={60} onChange={e=>upSel({fontSize:+e.target.value})} style={{width:60}} />
+            </div>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Color</span>
+              <input type="color" style={{width:46,height:30,borderRadius:6,border:'1px solid var(--border2)',cursor:'pointer'}} value={toHexSafe(selData.color||'#fff')} onChange={e=>upSel({color:e.target.value})} />
+            </div>
+          </>}
+          {isZone && <>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Color</span>
+              <input type="color" style={{width:46,height:30,borderRadius:6,border:'1px solid var(--border2)',cursor:'pointer'}} value={toHexSafe(selData.fill||'#00e5ff')} onChange={e=>upSel({fill:e.target.value,stroke:e.target.value})} />
+            </div>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Opacidad</span>
+              <input type="range" min={0.03} max={0.6} step={0.01} value={selData.opacity??0.18} onChange={e=>upSel({opacity:+e.target.value})} style={{width:100}} />
+            </div>
+          </>}
+          {isArrow && <>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Color</span>
+              <input type="color" style={{width:46,height:30,borderRadius:6,border:'1px solid var(--border2)',cursor:'pointer'}} value={toHexSafe(selData.color||'#fff')} onChange={e=>upSel({color:e.target.value})} />
+            </div>
+            <div className="ct-mob-prop-row">
+              <span className="ct-mob-prop-lbl">Curvatura</span>
+              <input type="range" min={-0.5} max={0.5} step={0.05} value={selData.curve||0} onChange={e=>upSel({curve:+e.target.value})} style={{width:100}} />
+            </div>
+          </>}
+          <button className="ct-mob-del-btn" onClick={()=>dispatchBoard({type:'DEL_SEL'})}>🗑 Eliminar Elemento</button>
+        </div>
+      )}
+
+      {/* ══ MOBILE TAB BAR FIJA ══ */}
+      {esMovil && (
+        <div className="ct-mob-bottom-bar">
+          <button className={`ct-mob-tab${tool==='select'&&!panelMovil?' on':''}`} onClick={()=>{setTool('select');setPanelMovil(null);dispatchBoard({type:'SELECT',sel:null})}}>
+            <span className="tab-icon">🖐️</span>MOVER
+          </button>
+          <button className="ct-mob-tab" onClick={()=>dispatchBoard({type:'UNDO'})}>
+            <span className="tab-icon">↩</span>DESHACER
+          </button>
+          <div className="ct-mob-sep"/>
+          <button className={`ct-mob-tab${panelMovil==='elementos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='elementos'?null:'elementos')}>
+            <span className="tab-icon">🎒</span>FICHA
+          </button>
+          <button className={`ct-mob-tab${panelMovil==='trazos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='trazos'?null:'trazos')}>
+            <span className="tab-icon">📐</span>TRAZOS
+          </button>
+          <button className={`ct-mob-tab${panelMovil==='anim'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='anim'?null:'anim')}>
+            <span className="tab-icon">{isPlaying?'🛑':'🎬'}</span>JUGADA
+          </button>
+          <div className="ct-mob-sep"/>
+          <button className={`ct-mob-tab${panelMovil==='config'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='config'?null:'config')}>
+            <span className="tab-icon">⚙️</span>PISTA
+          </button>
         </div>
       )}
 

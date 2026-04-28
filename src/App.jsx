@@ -37,6 +37,7 @@ import LoginKiosco from './pages/LoginKiosco';
 
 // 🔥 NUEVA PÁGINA PARA EL MANAGER:
 import MiStaff from './pages/MiStaff'; 
+import AceptarTerminos from './pages/AceptarTerminos'
 
 import './App.css';
 
@@ -113,6 +114,9 @@ function AppRoutes() {
       <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
       <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
       <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
+
+{/* 🔥 RUTA DEL MURO LEGAL */}
+      <Route path="/aceptar-terminos" element={<ProtectedRoute><AceptarTerminos /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/inicio" replace />} />
     </Routes>
@@ -191,6 +195,8 @@ function AppLayout() {
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
+// 🔥 NUEVA VARIABLE PARA EL MURO LEGAL
+  const isAceptarTerminosPath = location.pathname === '/aceptar-terminos';
 
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
   const club = perfil?.clubes;
@@ -199,6 +205,12 @@ function AppLayout() {
   // Validación de suscripción
   if (perfil && !permisos.esSuperUser && club && (club.suscripcion_activa === false || isVencido) && !isSuscripcionPath) {
     return <Navigate to="/mi-suscripcion" replace />;
+  }
+
+  // 🔥 NUEVO: VALIDACIÓN DE TÉRMINOS LEGALES
+  // Si el perfil está cargado, NO aceptó los términos, NO es una pantalla de registro/login, y NO está en el Kiosco... Lo mandamos al muro legal.
+  if (perfil && perfil.terminos_aceptados === false && !isAceptarTerminosPath && !isLanding && !isLogin && !isRegistro && !isKioscoMode && !isKioscoAuth) {
+    return <Navigate to="/aceptar-terminos" replace />;
   }
 
   // Rutas de pantalla completa (Login, Toma de Datos, etc.)
