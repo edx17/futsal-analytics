@@ -51,7 +51,6 @@ const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
                 stroke="rgba(255,255,255,0.1)" 
                 strokeWidth="0.1" 
               />
-              {/* NOMBRE DE LA ZONA - Chiquito y sutil */}
               <text 
                 x={(colIdx * 25) + 1} y={(rowIdx * 16.66) + 3} 
                 fill="rgba(255,255,255,0.25)" fontSize="2" fontWeight="bold"
@@ -144,7 +143,6 @@ const MallaABP = ({ microZonas }) => {
         zY.map((yVal, rowIdx) => {
           const key = `${xVal}-${yVal}`;
           const data = microZonas[key];
-          // Lógica de efectividad: Remates generados sobre el total de ABPs en esa zona
           const efectividad = data && data.favor > 0 ? data.rematesGenerados / data.favor : 0;
           return (
             <g key={key}>
@@ -173,7 +171,6 @@ function Resumen() {
   const navigate = useNavigate();
   const { perfil } = useAuth();
 
-  // --- Lógica de roles y categorías permitidas ---
   const rol = (perfil?.rol || '').toLowerCase();
   const esCT = rol === 'ct';
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
@@ -205,7 +202,6 @@ function Resumen() {
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
 
-  // Inicializamos el filtro priorizando la categoría asignada si es CT
   const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState(() => {
     if (esCT && misCategorias.length > 0) return misCategorias[0];
     return 'Todas';
@@ -223,8 +219,6 @@ function Resumen() {
   
   const [mostrarReporte, setMostrarReporte] = useState(false);
 
-  // --- EFECTO DE PROTECCIÓN CT ---
-  // Si por algún motivo cambia el estado y es CT, lo forzamos a sus categorías
   useEffect(() => {
     if (esCT && misCategorias.length > 0) {
       if (filtroCategoriaGrid === 'Todas' || !misCategorias.includes(filtroCategoriaGrid)) {
@@ -371,11 +365,9 @@ function Resumen() {
     );
   };
 
-  // Filtramos las opciones del select según el rol
   const categoriasUnicas = useMemo(() => {
     const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
     if (esCT && misCategorias.length > 0) {
-      // El CT solo ve las que tiene asignadas Y que además existan en la DB de partidos
       return catPartidos.filter(c => misCategorias.includes(c));
     }
     return catPartidos;
@@ -464,8 +456,8 @@ function Resumen() {
     const datosProcesados = analizarPartido(evFiltrados, 'Propio', false);
 
     const stats = { 
-      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, perdidasPeligrosas: 0, rec: 0, recAltas: 0, recMedias: 0, recBajas: 0, faltas: 0, amarillas: 0, rojas: 0, accionesCampoRival: 0, totalAcciones: 0, tirosLibres: 0 }, 
-      rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0, amarillas: 0, rojas: 0, totalAcciones: 0, perdidas: 0 } 
+      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, perdidasPeligrosas: 0, rec: 0, recAltas: 0, recMedias: 0, recBajas: 0, faltas: 0, amarillas: 0, rojas: 0, accionesCampoRival: 0, totalAcciones: 0, tirosLibres: 0, pasesIncompletos: 0, ocasionesFalladas: 0, zonasPasesInc: { z1: 0, z2: 0, z3: 0, z4: 0 } }, 
+      rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0, amarillas: 0, rojas: 0, totalAcciones: 0, perdidas: 0, pasesIncompletos: 0, ocasionesFalladas: 0 } 
     };
 
     const abp = { corners: { favor: 0, contra: 0, rematesGenerados: 0 }, laterales: { favor: 0, contra: 0, rematesGenerados: 0 }, zonasLatFavor: { z1: 0, z2: 0, z3: 0, z4: 0 } };
@@ -542,7 +534,18 @@ function Resumen() {
         if (dist < 8) perfilRemate.cerca++;
         else perfilRemate.lejos++;
       }
-
+      else if (p && (ev.accion === 'Pase Incompleto' || ev.accion?.toLowerCase().includes('pase incompleto'))) {
+        stats.propio.pasesIncompletos++;
+        if (xNorm != null) {
+          if (xNorm < 25) stats.propio.zonasPasesInc.z1++;
+          else if (xNorm < 50) stats.propio.zonasPasesInc.z2++;
+          else if (xNorm < 75) stats.propio.zonasPasesInc.z3++;
+          else stats.propio.zonasPasesInc.z4++;
+        }
+      }
+      else if (p && (ev.accion === 'Ocasión Fallada (Pase)' || ev.accion === 'Ocasión Fallada' || ev.accion === 'Pase Clave Fallado' || ev.accion?.toLowerCase().includes('ocasión fallada'))) {
+        stats.propio.ocasionesFalladas++;
+      }
       else if (p && ev.accion === 'Pérdida') { 
         stats.propio.perdidas++; 
         for(let j=1; j<=3 && i+j < evFiltrados.length; j++) {
@@ -558,7 +561,12 @@ function Resumen() {
         else if (xNorm > 33) stats.propio.recMedias++;
         else stats.propio.recBajas++;
       }
-      else if (ev.accion === 'Falta cometida' || ev.accion?.toLowerCase().includes('falta')) { p ? stats.propio.faltas++ : stats.rival.faltas++; }
+      else if (ev.accion === 'Falta cometida' || ev.accion === 'Falta cometida (Ventaja)' || ev.accion === 'Penal en contra') {
+        p ? stats.propio.faltas++ : stats.rival.faltas++;
+      }
+      else if (ev.accion === 'Falta recibida' || ev.accion === 'Penal a favor') {
+        p ? stats.rival.faltas++ : stats.propio.faltas++;
+      }
       else if (ev.accion === 'Tarjeta Amarilla' || ev.accion?.toLowerCase().includes('amarilla')) { p ? stats.propio.amarillas++ : stats.rival.amarillas++; }
       else if (ev.accion === 'Tarjeta Roja' || ev.accion?.toLowerCase().includes('roja')) { p ? stats.propio.rojas++ : stats.rival.rojas++; }
 
@@ -598,6 +606,7 @@ function Resumen() {
         id: j.id, nombre: j.apellido || j.nombre, dorsal: j.dorsal, posicion: j.posicion, eventos: [], 
         remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
         duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
+        pasesIncompletos: 0, ocasionesFalladas: 0,
         xgChain, xgBuildup,
         golesRecibidos: 0, atajadas: 0, amarillas: 0, rojas: 0
       };
@@ -612,7 +621,11 @@ function Resumen() {
         if (ev.accion?.includes('Remate')) statsJugadores[ev.id_jugador].remates++;
         if (ev.accion === 'Pérdida') statsJugadores[ev.id_jugador].perdidas++;
         if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
-        if (ev.accion === 'Falta cometida' || ev.accion?.toLowerCase().includes('falta')) statsJugadores[ev.id_jugador].faltas++;
+        if (ev.accion === 'Pase Incompleto' || ev.accion?.toLowerCase().includes('pase incompleto')) statsJugadores[ev.id_jugador].pasesIncompletos++;
+        if (ev.accion === 'Ocasión Fallada (Pase)' || ev.accion === 'Ocasión Fallada' || ev.accion === 'Pase Clave Fallado' || ev.accion?.toLowerCase().includes('ocasión fallada')) statsJugadores[ev.id_jugador].ocasionesFalladas++;
+        
+        if (ev.accion === 'Falta cometida' || ev.accion === 'Falta cometida (Ventaja)' || ev.accion === 'Penal en contra') statsJugadores[ev.id_jugador].faltas++;
+        
         if (ev.accion === 'Tarjeta Amarilla' || ev.accion?.toLowerCase().includes('amarilla')) statsJugadores[ev.id_jugador].amarillas++;
         if (ev.accion === 'Tarjeta Roja' || ev.accion?.toLowerCase().includes('roja')) statsJugadores[ev.id_jugador].rojas++;
         if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
@@ -694,7 +707,6 @@ function Resumen() {
 
     const xgDiff = (datosProcesados.xgPropio + datosProcesados.xgRival) > 0 ? (datosProcesados.xgPropio / (datosProcesados.xgPropio + datosProcesados.xgRival)) * 100 : 50;
     
-    // CORRECCIÓN DEL 100% EN DUELOS DEFENSIVOS
     const totalDuelosDef = datosProcesados.duelos.defensivos.total || 0;
     const duelosDefPct = totalDuelosDef > 0 ? (datosProcesados.duelos.defensivos.ganados / totalDuelosDef) * 100 : 0;
     
@@ -964,7 +976,6 @@ function Resumen() {
             <div style={{ flex: esMovil ? '1 1 45%' : 'auto' }}>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR CATEGORÍA</div>
               <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
-                {/* Solo mostramos "Todas" si NO es CT, o si es CT pero por alguna razón no tiene categorías */}
                 {!(esCT && misCategorias.length > 0) && (
                   <option value="Todas">TODAS</option>
                 )}
@@ -1296,7 +1307,6 @@ const COLORS_ORIGEN = {
                 <strong>
                   {analitica.duelos.defensivos.ganados} / {analitica.duelos.defensivos.total}
                   <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
-                    {/* CORRECCIÓN: Usando total defensivo para el porcentaje */}
                     ({analitica.duelos.defensivos.total > 0 ? ((analitica.duelos.defensivos.ganados / analitica.duelos.defensivos.total) * 100).toFixed(0) : 0}%)
                   </span>
                 </strong>
@@ -1347,6 +1357,18 @@ const COLORS_ORIGEN = {
                  <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.1)'}}>LEJANOS<br/><strong style={{color:'#ef4444', fontSize:'1rem'}}>{analitica.perfilRemate.lejos}</strong></div>
               </div>
             </div>
+
+            <div className="bento-card" style={{ borderTop: '3px solid #ef4444' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444' }}>PRECISIÓN DE DISTRIBUCIÓN</div>
+              <div style={kpiFila}><span>PASES INCOMPLETOS</span><strong>{analitica.stats.propio.pasesIncompletos}</strong></div>
+              <div style={kpiFila}><span>OCASIONES FALLADAS (PASE CLAVE)</span><strong>{analitica.stats.propio.ocasionesFalladas}</strong></div>
+              <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginTop: '15px' }}>
+                 <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.2)', color: '#fff'}}>Z1 (SALIDA)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z1}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(245, 158, 11, 0.15)', color: '#fff'}}>Z2 (ELAB.)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z2}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: '#fff'}}>Z3 (ATAQUE)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z3}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: '#fff'}}>Z4 (FINAL.)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z4}</strong></div>
+              </div>
+            </div>
           </div>
 
           <div className="bento-card">
@@ -1366,6 +1388,8 @@ const COLORS_ORIGEN = {
                   <option value="Remate" style={{ background: '#111', color: '#fff' }}>REMATES</option>
                   <option value="Recuperación" style={{ background: '#111', color: '#fff' }}>RECUPERACIONES</option>
                   <option value="Pérdida" style={{ background: '#111', color: '#fff' }}>PÉRDIDAS</option>
+                  <option value="Pase Incompleto" style={{ background: '#111', color: '#fff' }}>PASES INCOMPLETOS</option>
+                  <option value="Ocasión Fallada" style={{ background: '#111', color: '#fff' }}>OCASIONES FALLADAS</option>
                   <option value="Duelo" style={{ background: '#111', color: '#fff' }}>DUELOS</option>
                   <option value="Falta" style={{ background: '#111', color: '#fff' }}>FALTAS</option>
                 </select>
@@ -1373,7 +1397,6 @@ const COLORS_ORIGEN = {
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
-                  {/* NUEVO FILTRO ZONAS: DIVIDE LA CANCHA CON NÚMEROS */}
                   <button onClick={() => setTipoMapa('zonas')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'zonas' ? '#333' : 'transparent', color: tipoMapa === 'zonas' ? 'var(--accent)' : 'var(--text-dim)' }}>ZONAS</button>
                   <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
                   <button onClick={() => setTipoMapa('abp')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'abp' ? '#06b6d4' : 'transparent', color: tipoMapa === 'abp' ? '#000' : 'var(--text-dim)' }}>ABP (MALLA)</button>
@@ -1458,7 +1481,7 @@ const COLORS_ORIGEN = {
                  {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
               </div>
               <div className="table-wrapper custom-scroll">
-<table style={{ minWidth: '750px', width: '100%', textAlign: 'center' }}>
+<table style={{ minWidth: '850px', width: '100%', textAlign: 'center' }}>
   <thead>
     <tr>
       <th>#</th>
@@ -1479,6 +1502,8 @@ const COLORS_ORIGEN = {
       <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
       <th style={{ color: '#10b981' }}>REC</th>
       <th style={{ color: '#ef4444' }}>PERD</th>
+      <th style={{ color: '#ef4444' }}>PASES INC.</th>
+      <th style={{ color: '#f59e0b' }}>OC. FALLADAS</th>
       <th style={{ color: '#f97316' }}>FALTAS (C/R)</th>
       <th style={{ color: '#fbbf24' }}>🟨/🟥</th>
     </tr>
@@ -1515,9 +1540,11 @@ const COLORS_ORIGEN = {
         <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
         <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
         <td style={{ color: '#ef4444', fontWeight: 800 }}>{j.perdidas}</td>
+        <td style={{ color: '#ef4444', fontWeight: 800 }}>{j.pasesIncompletos}</td>
+        <td style={{ color: '#f59e0b', fontWeight: 800 }}>{j.ocasionesFalladas}</td>
         
         <td style={{ color: '#f97316', fontSize: '0.8rem', fontWeight: 600 }}>
-          {j.faltas || 0} / {j.eventos.filter(e => e.accion === 'Falta recibida').length || 0}
+          {j.faltas || 0} / {j.eventos.filter(e => e.accion === 'Falta recibida' || e.accion === 'Penal a favor').length || 0}
         </td>
         <td style={{ fontSize: '0.8rem' }}>
           <span style={{ color: '#fbbf24', fontWeight: 800 }}>{j.amarillas || 0}</span>
@@ -1539,7 +1566,7 @@ const COLORS_ORIGEN = {
                    {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
                 </div>
                 <div className="table-wrapper custom-scroll">
-                  <table style={{ minWidth: '650px', width: '100%', textAlign: 'center' }}>
+                  <table style={{ minWidth: '700px', width: '100%', textAlign: 'center' }}>
                     <thead>
                       <tr>
                         <th>#</th>
@@ -1551,6 +1578,7 @@ const COLORS_ORIGEN = {
                         <th style={{ color: '#00ff88' }}>ATAJADAS</th>
                         <th style={{ color: '#f59e0b' }}>TIROS REC.</th> 
                         <th style={{ color: '#c084fc' }}>INICIO xG</th>
+                        <th style={{ color: '#ef4444' }}>PASES INC.</th>
                         <th style={{ color: '#f97316' }}>FALTAS (C/R)</th> 
                         <th style={{ color: '#fbbf24' }}>🟨/🟥</th> 
                       </tr>
@@ -1592,8 +1620,9 @@ const COLORS_ORIGEN = {
                             {j.golesRecibidos + j.atajadas} 
                           </td>
                           <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
+                          <td style={{ color: '#ef4444', fontWeight: 800 }}>{j.pasesIncompletos}</td>
                           <td style={{ color: '#f97316', fontSize: '0.8rem', fontWeight: 600 }}>
-                            {j.faltas || 0} / {j.eventos.filter(e => e.accion === 'Falta recibida').length || 0}
+                            {j.faltas || 0} / {j.eventos.filter(e => e.accion === 'Falta recibida' || e.accion === 'Penal a favor').length || 0}
                           </td>
                           <td style={{ fontSize: '0.8rem' }}>
                             <span style={{ color: '#fbbf24', fontWeight: 800 }}>{j.amarillas || 0}</span>
