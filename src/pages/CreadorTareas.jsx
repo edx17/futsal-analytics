@@ -234,15 +234,15 @@ function lighten(hex, amt) {
   return '#'+c.match(/../g).map(h => Math.min(255,parseInt(h,16)+amt).toString(16).padStart(2,'0')).join('')
 }
 
-function renderElements(ctx, elements, arrows, selected, cW, tempArrow, tempZone) {
-  elements.filter(e => e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, selected, cW))
+function renderElements(ctx, elements, arrows, selected, cW, tempArrow, tempZone, isMobile) {
+  elements.filter(e => e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, selected, cW, isMobile))
   arrows.forEach(a => drawArrow(ctx, a, selected))
   if (tempArrow) drawTempArrow(ctx, tempArrow)
   if (tempZone)  drawTempZone(ctx, tempZone)
-  elements.filter(e => !e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, selected, cW))
+  elements.filter(e => !e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, selected, cW, isMobile))
 }
 
-function drawEl(ctx, el, selected, cW) {
+function drawEl(ctx, el, selected, cW, isMobile) {
   const isSel = selected?.id === el.id
   const { type: t, x, y, rotation = 0 } = el
 
@@ -283,6 +283,12 @@ function drawEl(ctx, el, selected, cW) {
     ctx.restore(); ctx.save()
     ctx.shadowBlur = 0
     const labelText = t==='staff' ? (el.label&&el.label!==''?el.label:'E') : (el.label||'')
+    // En móvil la cancha está rotada 90°, contra-rotamos el texto para que quede derecho
+    if (isMobile) {
+      ctx.translate(x, y)
+      ctx.rotate(-Math.PI / 2)
+      ctx.translate(-x, -y)
+    }
     ctx.fillStyle='#fff'; ctx.font=`700 ${r*.85}px Syne,sans-serif`
     ctx.textAlign='center'; ctx.textBaseline='middle'
     ctx.fillText(labelText, x, y+.5)
@@ -381,6 +387,7 @@ function drawEl(ctx, el, selected, cW) {
     if(isSel){ctx.strokeStyle='#00e5ff';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.beginPath();ctx.ellipse(ecx,ecy,Math.abs(el.w/2)+5,Math.abs(el.h/2)+5,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
   }
   else if (t==='text') {
+    if (isMobile) { ctx.translate(x, y); ctx.rotate(-Math.PI / 2); ctx.translate(-x, -y) }
     ctx.font=`${el.bold?'700':'500'} ${el.fontSize||13}px Syne,sans-serif`
     ctx.textAlign='left'; ctx.textBaseline='top'
     if(el.bg!==false){const m=ctx.measureText(el.label||'');ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(x-4,y-4,m.width+8,(el.fontSize||13)+8)}
@@ -767,7 +774,7 @@ const CreadorTareas = () => {
     }
 
     renderPitch(ctx, BASE_W, baseH, pitchCfg)
-    renderElements(ctx, displayEls, displayArrs, board.selected, BASE_W, tempRef.current.arrow, tempRef.current.zone)
+    renderElements(ctx, displayEls, displayArrs, board.selected, BASE_W, tempRef.current.arrow, tempRef.current.zone, esMovil)
     
     ctx.setTransform(1, 0, 0, 1, 0, 0)
   }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil])
@@ -945,10 +952,10 @@ const CreadorTareas = () => {
       // Detectar si ya se movió suficiente para considerarlo drag
       if(!ix.hasDragged){
         const dist=Math.hypot(p.x-(ix.pointerDownX||p.x), p.y-(ix.pointerDownY||p.y))
-        if(dist>10){
+        if(dist>5){
           ix.hasDragged=true
-          // Es drag: ocultar sheet de propiedades en móvil
-          if(esMovil) dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow,hideProps:true}})
+          // Es drag: ocultar sheet de propiedades en móvil inmediatamente
+          if(esMovil){ setPanelMovil(null); dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow,hideProps:true}}) }
         }
       }
       dispatchBoard({type:'MOVE_EL',id:board.selected.id,x:p.x-ix.dOffX,y:p.y-ix.dOffY});return
@@ -1211,7 +1218,10 @@ const CreadorTareas = () => {
             ref={canvasRef}
             className="ct-canvas"
             width={cvSize.w} height={cvSize.h}
-            onMouseDown={onPointerDown} onMouseMove={onPointerMove} onMouseUp={onPointerUp}
+            style={{touchAction:'none'}}
+            onMouseDown={e=>{ if(e.sourceCapabilities?.firesTouchEvents) return; onPointerDown(e) }}
+            onMouseMove={e=>{ if(e.sourceCapabilities?.firesTouchEvents) return; onPointerMove(e) }}
+            onMouseUp={e=>{ if(e.sourceCapabilities?.firesTouchEvents) return; onPointerUp(e) }}
             onTouchStart={onPointerDown} onTouchMove={onPointerMove} onTouchEnd={onPointerUp}
           />
 
