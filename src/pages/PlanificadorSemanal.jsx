@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
-import { Stage, Layer, Circle, Rect, Text, Group, Line, Path } from 'react-konva';
 
 // IMPORTAMOS AUTH PARA EL GRAN FILTRO
 import { useAuth } from '../context/AuthContext';
@@ -60,152 +59,382 @@ const RenderRutinaFisica = ({ data }) => {
 };
 
 // =======================================================
-// COMPONENTE INTERNO: Reproductor Automático ("Modo GIF")
+// COMPONENTE INTERNO: Reproductor Automático
 // =======================================================
 const ReproductorLoop = ({ editorData }) => {
+  const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const [stageSize, setStageSize] = useState({ w: 500, h: 281, scale: 1 });
-  
-  const frames = editorData?.frames || [];
-  const cancha = editorData?.cancha || { tamaño: '40x20', color: '#064e3b' };
-  
-  const [animElements, setAnimElements] = useState(frames[0]?.elementos || []);
-  const [currentLineas, setCurrentLineas] = useState(frames[0]?.lineas || []);
+  const [cvSize, setCvSize] = useState({ w: 800, h: 500 });
+  const isMountedRef = useRef(true);
 
-  const getDimensionesLógicas = () => {
-    switch (cancha.tamaño) {
+  // Configuraciones y Constantes del Motor Nativo
+  const frames = editorData?.frames || [];
+  const pitchCfg = editorData?.cancha || { variant: '40x20', material: 'azul' };
+
+  const PITCH_VARIANTS = {
+    '40x20': { mW: 40, mH: 20 },
+    '28x20': { mW: 28, mH: 20 },
+    '20x20_mitad': { mW: 20, mH: 20 },
+    '20x20_central': { mW: 20, mH: 20 },
+  };
+
+  // RESTAURADA: Esta lógica espeja EXACTAMENTE cómo CreadorTareas guarda las posiciones
+  const getDimensionesLogicas = (variant) => {
+    switch (variant) {
       case '20x20_mitad': case '20x20_central': return { w: 500, h: 500 };
       case '28x20': return { w: 700, h: 500 };
-      default: return { w: 900, h: 500 }; 
+      case '40x20': default: return { w: 900, h: 500 };
     }
   };
-  const logicalSize = getDimensionesLógicas();
 
+  const TEAM_COLORS = {
+    home: { fill: '#2979ff', stroke: '#82b0ff' },
+    away: { fill: '#ef4444', stroke: '#ff8a80' },
+    verde: { fill: '#22c55e', stroke: '#86efac' },
+    rosa: { fill: '#ec4899', stroke: '#f9a8d4' },
+    'gk-ama': { fill: '#eab308', stroke: '#fde047' },
+    'gk-vio': { fill: '#a855f7', stroke: '#d8b4fe' },
+    staff: { fill: '#111111', stroke: '#555555' },
+  };
+
+  const ARROW_STYLES = {
+    'arrow-pase': { color: '#ffffff', dash: [9,5], width: 2.2 },
+    'arrow-conduccion': { color: '#ffe600', dash: [], width: 2.5 },
+    'arrow-disparo': { color: '#ff3860', dash: [], width: 3 },
+    'arrow-presion': { color: '#00e5ff', dash: [4,3], width: 2 },
+  };
+
+  const MATERIALS = {
+    azul: (ctx,w,h) => { ctx.fillStyle='#1e3a8a'; ctx.fillRect(0,0,w,h) },
+    verde: (ctx,w,h) => { ctx.fillStyle='#064e3b'; ctx.fillRect(0,0,w,h) },
+    naranja: (ctx,w,h) => { ctx.fillStyle='#92400e'; ctx.fillRect(0,0,w,h) },
+    gris: (ctx,w,h) => { ctx.fillStyle='#334155'; ctx.fillRect(0,0,w,h) },
+    parquet: (ctx,w,h) => {
+      const g = ctx.createLinearGradient(0,0,w,0);
+      g.addColorStop(0,'#7c4f2a'); g.addColorStop(.5,'#9b6035'); g.addColorStop(1,'#7c4f2a');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = .8;
+      const pw = w/22;
+      for (let x=pw; x<w; x+=pw) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke() }
+    },
+    negro: (ctx,w,h) => {
+      const g = ctx.createLinearGradient(0,0,w,h);
+      g.addColorStop(0,'#1a1c26'); g.addColorStop(1,'#12141c');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+    },
+  };
+
+  // Lógica de Redimensionamiento (CORREGIDA Y ADAPTADA A DIMENSIONES LÓGICAS)
   useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        const cw = containerRef.current.clientWidth;
-        const ch = containerRef.current.clientHeight;
-        const scale = Math.min(cw / logicalSize.w, ch / logicalSize.h) * 0.95;
-        setStageSize({ w: cw, h: ch, scale });
-      }
-    };
+    function handleResize() {
+      if (!containerRef.current) return;
+      const cw = containerRef.current.clientWidth;
+      const ch = containerRef.current.clientHeight;
+      if (cw === 0 || ch === 0) return;
+
+      const variant = pitchCfg.variant || pitchCfg.tamaño || '40x20';
+      const logicalSize = getDimensionesLogicas(variant);
+      const ratio = logicalSize.w / logicalSize.h;
+      
+      let w = Math.min(cw, ch * ratio);
+      let h = w / ratio;
+      
+      if (h > ch) { h = ch; w = h * ratio; }
+      setCvSize({ w, h });
+    }
+    
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [cancha.tamaño, logicalSize.w, logicalSize.h]);
+    const observer = new ResizeObserver(() => handleResize());
+    if (containerRef.current) observer.observe(containerRef.current);
+    
+    return () => {
+      if (containerRef.current) observer.unobserve(containerRef.current);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [pitchCfg.variant, pitchCfg.tamaño]);
 
+  // Funciones de Renderizado Geométrico
+  function mX(m, mW, L) { return L.px + (m/mW)*L.ppw; }
+  function mY(m, mH, L) { return L.py + (m/mH)*L.pph; }
+  function playerRadius(cW) { return cW * 0.021; }
+  function lighten(hex, amt) {
+    if (!hex || !hex.startsWith('#')) return hex||'#fff';
+    let c = hex.slice(1); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+    return '#'+c.match(/../g).map(h => Math.min(255,parseInt(h,16)+amt).toString(16).padStart(2,'0')).join('');
+  }
+
+  function drawPitch(ctx, cW, cH, cfg) {
+    const variant = cfg.variant || cfg.tamaño || '40x20';
+    const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20'];
+    const MW = vrt.mW, MH = vrt.mH;
+    const p = Math.min(cW, cH) * 0.045;
+    const L = { px: p, py: p, ppw: cW-2*p, pph: cH-2*p };
+    const lc = cfg.lineColor || '#ffffff';
+    const alpha = cfg.material === 'negro' ? .9 : .8;
+
+    ctx.fillStyle = '#0a0b0f'; ctx.fillRect(0,0,cW,cH);
+
+    ctx.save(); ctx.beginPath(); ctx.rect(L.px, L.py, L.ppw, L.pph); ctx.clip();
+    ctx.save(); ctx.translate(L.px, L.py);
+    (MATERIALS[cfg.material] || MATERIALS.azul)(ctx, L.ppw, L.pph);
+    ctx.restore(); ctx.restore();
+
+    ctx.shadowBlur = 16; ctx.shadowColor = 'rgba(0,0,0,.8)';
+    ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 5;
+    ctx.strokeRect(L.px, L.py, L.ppw, L.pph); ctx.shadowBlur = 0;
+
+    function line(x1,y1,x2,y2,lw=1.5, dash=[]) {
+      ctx.strokeStyle=lc; ctx.lineWidth=lw; ctx.globalAlpha=alpha; ctx.setLineDash(dash);
+      ctx.beginPath(); ctx.moveTo(mX(x1,MW,L), mY(y1,MH,L)); ctx.lineTo(mX(x2,MW,L), mY(y2,MH,L)); ctx.stroke();
+      ctx.globalAlpha=1; ctx.setLineDash([]);
+    }
+    function dot(x,y,r=3) {
+      ctx.fillStyle=lc; ctx.globalAlpha=alpha;
+      ctx.beginPath(); ctx.arc(mX(x,MW,L), mY(y,MH,L), r, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+
+    ctx.save(); ctx.beginPath(); ctx.rect(L.px, L.py, L.ppw, L.pph); ctx.clip();
+    const midX = MW/2, midY = MH/2;
+
+    if (variant === '40x20' || variant === '28x20' || variant === '20x20_central') {
+      line(midX,0, midX,MH, 2);
+      const rPx = (3/MW)*L.ppw;
+      ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.globalAlpha=alpha;
+      ctx.beginPath(); ctx.arc(mX(midX,MW,L), mY(midY,MH,L), rPx, 0, Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1; dot(midX, midY);
+    }
+
+    if (cfg.showZones !== false) {
+      const gy1 = midY - 1.5, gy2 = midY + 1.5;
+      ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.globalAlpha=.8;
+      const drawArea = (isLeft) => {
+        const baseX = isLeft ? 0 : MW; const sign = isLeft ? 1 : -1; const rPx = (6/MW)*L.ppw;
+        ctx.beginPath();
+        if (isLeft) {
+          ctx.arc(mX(baseX,MW,L), mY(gy1,MH,L), rPx, -Math.PI/2, 0, false);
+          ctx.lineTo(mX(baseX+6,MW,L), mY(gy2,MH,L));
+          ctx.arc(mX(baseX,MW,L), mY(gy2,MH,L), rPx, 0, Math.PI/2, false);
+        } else {
+          ctx.arc(mX(baseX,MW,L), mY(gy1,MH,L), rPx, -Math.PI/2, Math.PI, true);
+          ctx.lineTo(mX(baseX-6,MW,L), mY(gy2,MH,L));
+          ctx.arc(mX(baseX,MW,L), mY(gy2,MH,L), rPx, Math.PI, Math.PI/2, true);
+        }
+        ctx.stroke();
+        dot(baseX + 6*sign, midY, 2.5); dot(baseX + 10*sign, midY, 2.5);
+        const cr = (0.25/MW)*L.ppw;
+        ctx.beginPath(); ctx.arc(mX(baseX,MW,L), mY(0,MH,L), cr, isLeft?0:Math.PI/2, isLeft?Math.PI/2:Math.PI, false); ctx.stroke();
+        ctx.beginPath(); ctx.arc(mX(baseX,MW,L), mY(MH,MH,L), cr, isLeft?-Math.PI/2:Math.PI, isLeft?0:-Math.PI/2, false); ctx.stroke();
+      };
+      if (variant !== '20x20_central') { drawArea(true); drawArea(false); }
+    }
+    ctx.restore();
+    ctx.strokeStyle=lc; ctx.lineWidth=2; ctx.globalAlpha=alpha;
+    ctx.strokeRect(L.px, L.py, L.ppw, L.pph); ctx.globalAlpha=1;
+  }
+
+  function drawElements(ctx, elements, arrows, cW) {
+    elements.filter(e => e.type?.startsWith('zone')).forEach(el => drawItem(ctx, el, cW));
+    arrows.forEach(a => drawArr(ctx, a));
+    elements.filter(e => !e.type?.startsWith('zone')).forEach(el => drawItem(ctx, el, cW));
+  }
+
+  function drawArr(ctx, a) {
+    const st = ARROW_STYLES[a.style]||ARROW_STYLES['arrow-pase'];
+    const color = a.color||st.color;
+    ctx.strokeStyle=color; ctx.lineWidth=a.lineW||st.width;
+    ctx.setLineDash(a.dashed!==undefined?(a.dashed?[9,5]:[]):st.dash);
+    ctx.globalAlpha=a.opacity??1;
+    const curve=a.curve||0, mx2=(a.x1+a.x2)/2, my2=(a.y1+a.y2)/2;
+    const dx=a.x2-a.x1, dy=a.y2-a.y1;
+    const cpx=mx2-dy*curve, cpy=my2+dx*curve;
+    ctx.beginPath(); ctx.moveTo(a.x1,a.y1); ctx.quadraticCurveTo(cpx,cpy,a.x2,a.y2); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    const ang=Math.atan2(a.y2-cpy,a.x2-cpx), hs=(a.lineW||st.width)*3.5;
+    ctx.fillStyle=color;
+    ctx.beginPath(); ctx.moveTo(a.x2,a.y2);
+    ctx.lineTo(a.x2-hs*Math.cos(ang-.42),a.y2-hs*Math.sin(ang-.42));
+    ctx.lineTo(a.x2-hs*Math.cos(ang+.42),a.y2-hs*Math.sin(ang+.42));
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawItem(ctx, el, cW) {
+    const { type: t, x, y, rotation = 0 } = el;
+    ctx.save();
+    let cx = x, cy = y;
+    if (t === 'zone-rect' || t === 'zone-ellipse') { cx = x + el.w/2; cy = y + el.h/2; }
+    if (rotation) { ctx.translate(cx, cy); ctx.rotate(rotation * Math.PI / 180); ctx.translate(-cx, -cy); }
+
+    const PLAYER_TYPES = ['home','away','verde','rosa','gk-ama','gk-vio','staff'];
+
+    if (PLAYER_TYPES.includes(t)) {
+      const r = (el.size==='sm'?.8:el.size==='lg'?1.2:1)*playerRadius(cW);
+      const tc = TEAM_COLORS[t] || TEAM_COLORS.home;
+      const fill = el.color || tc.fill;
+      ctx.shadowBlur=5; ctx.shadowColor='rgba(0,0,0,.5)';
+      const g = ctx.createRadialGradient(x-r*.3,y-r*.35,0,x,y,r);
+      g.addColorStop(0, lighten(fill,55)); g.addColorStop(1, fill);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = el.stroke || tc.stroke; ctx.lineWidth=1.8; ctx.stroke(); ctx.shadowBlur=0;
+      
+      if (t==='gk-ama'||t==='gk-vio'||t==='staff') {
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.globalAlpha=.45;
+        ctx.beginPath(); ctx.arc(x,y,r+3,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
+      }
+      ctx.fillStyle='#fff'; ctx.font=`700 ${r*.85}px Syne,sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(el.label||'', x, y+.5);
+    }
+    else if (t==='ball') {
+      const r = cW*0.013; ctx.globalAlpha = 1;
+      ctx.shadowBlur=4; ctx.shadowColor='rgba(0,0,0,.5)';
+      ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(x, y, r*0.9, 0, Math.PI*2); ctx.fill();
+      ctx.font = `${r*2.2}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('⚽', x, y + r*0.08); ctx.shadowBlur=0;
+    }
+    else if (t==='cono_alto'||t==='cono') {
+      const r = cW*0.012; ctx.shadowBlur=4; ctx.shadowColor='rgba(0,0,0,.4)';
+      ctx.fillStyle='#ea580c'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fb923c'; ctx.beginPath(); ctx.arc(x,y,r*0.6,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,r*0.2,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0;
+    }
+    else if (t==='cono_plato') {
+      const r = cW*0.013; ctx.shadowBlur=2; ctx.shadowColor='rgba(0,0,0,.4)';
+      ctx.fillStyle='#facc15'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ca8a04'; ctx.beginPath(); ctx.arc(x,y,r*0.3,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#a16207'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0;
+    }
+    else if (t==='valla') {
+      const w=cW*.055, h=cW*.012; ctx.shadowBlur=4; ctx.shadowColor='rgba(0,0,0,.5)';
+      const g = ctx.createLinearGradient(x, y-h/2, x, y+h/2);
+      g.addColorStop(0, '#fcd34d'); g.addColorStop(1, '#d97706');
+      ctx.fillStyle=g; ctx.fillRect(x-w/2, y-h/2, w, h);
+      ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.strokeRect(x-w/2,y-h/2,w,h);
+      ctx.fillStyle='#222'; ctx.fillRect(x-w/2+2,y-h,4,h*2); ctx.fillRect(x+w/2-6,y-h,4,h*2); ctx.shadowBlur=0;
+    }
+    else if (t==='mini_arco'||t==='arco') {
+      const w = t==='mini_arco' ? cW*.05 : cW*.09; const depth = t==='mini_arco' ? w*0.4 : w*0.35;
+      ctx.shadowBlur=5; ctx.shadowColor='rgba(0,0,0,0.5)';
+      ctx.beginPath(); ctx.moveTo(x - w/2, y); ctx.lineTo(x - w/2 * 0.8, y - depth); ctx.lineTo(x + w/2 * 0.8, y - depth); ctx.lineTo(x + w/2, y);
+      ctx.fillStyle='rgba(255, 255, 255, 0.15)'; ctx.fill();
+      ctx.save(); ctx.clip(); ctx.beginPath(); ctx.strokeStyle='rgba(255, 255, 255, 0.4)'; ctx.lineWidth=0.5;
+      for(let i=-w; i<w*2; i+=w/8){ ctx.moveTo(x+i,y); ctx.lineTo(x+i+depth,y-depth); ctx.moveTo(x+i,y); ctx.lineTo(x+i-depth,y-depth); }
+      ctx.stroke(); ctx.restore();
+      ctx.beginPath(); ctx.moveTo(x - w/2, y); ctx.lineTo(x - w/2 * 0.8, y - depth); ctx.lineTo(x + w/2 * 0.8, y - depth); ctx.lineTo(x + w/2, y);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - w/2, y); ctx.lineTo(x + w/2, y);
+      ctx.strokeStyle=t==='arco'?'#ff3860':'#ffffff'; ctx.lineWidth=3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x - w/2, y, 2.5, 0, Math.PI*2); ctx.arc(x + w/2, y, 2.5, 0, Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill(); ctx.shadowBlur=0;
+    }
+    else if (t==='zone-rect') {
+      ctx.globalAlpha=el.opacity??0.18; ctx.fillStyle=el.fill||'#00e5ff'; ctx.fillRect(el.x,el.y,el.w,el.h);
+      ctx.globalAlpha=1; ctx.strokeStyle=el.stroke||'#00e5ff'; ctx.lineWidth=el.lineW||1.8;
+      ctx.setLineDash(el.dashed?[7,4]:[]); ctx.strokeRect(el.x,el.y,el.w,el.h); ctx.setLineDash([]);
+    }
+    else if (t==='zone-ellipse') {
+      const ecx=el.x+el.w/2, ecy=el.y+el.h/2;
+      ctx.globalAlpha=el.opacity??0.18; ctx.fillStyle=el.fill||'#ff3860';
+      ctx.beginPath(); ctx.ellipse(ecx,ecy,Math.abs(el.w/2),Math.abs(el.h/2),0,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1; ctx.strokeStyle=el.stroke||'#ff3860'; ctx.lineWidth=el.lineW||1.8;
+      ctx.setLineDash(el.dashed?[7,4]:[]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    else if (t==='text') {
+      ctx.font=`${el.bold?'700':'500'} ${el.fontSize||13}px Syne,sans-serif`; ctx.textAlign='left'; ctx.textBaseline='top';
+      if(el.bg!==false){const m=ctx.measureText(el.label||'');ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(x-4,y-4,m.width+8,(el.fontSize||13)+8);}
+      ctx.fillStyle=el.color||'#fff'; ctx.fillText(el.label||'',x,y);
+    }
+    ctx.restore();
+  }
+
+  // Motor de Bucle y Render
   useEffect(() => {
-    let isMounted = true;
-    if (frames.length < 2) return;
+    isMountedRef.current = true;
+    const cv = canvasRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
 
     const DURATION = 800;
     const PAUSE = 500;
+    let animId;
+
+    // Calcular la dimensión lógica nativa de este tipo de cancha
+    const variant = pitchCfg.variant || pitchCfg.tamaño || '40x20';
+    const logicalSize = getDimensionesLogicas(variant);
+    const { w: L_W, h: L_H } = logicalSize;
 
     const playLoop = async () => {
-      while (isMounted) {
+      while (isMountedRef.current) {
+        if (frames.length < 2) {
+          const f0 = frames[0] || {};
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, cvSize.w, cvSize.h);
+          ctx.scale(cvSize.w / L_W, cvSize.h / L_H);
+          drawPitch(ctx, L_W, L_H, pitchCfg);
+          drawElements(ctx, f0.elements || f0.elementos || [], f0.arrows || f0.lineas || [], L_W);
+          break; 
+        }
+
         for (let i = 0; i < frames.length - 1; i++) {
-          if (!isMounted) break;
-          const frameA = frames[i];
-          const frameB = frames[i + 1];
-          setCurrentLineas(frameA.lineas || []);
+          if (!isMountedRef.current) break;
+          const fA = frames[i];
+          const fB = frames[i + 1];
+          const elsA = fA.elements || fA.elementos || [];
+          const elsB = fB.elements || fB.elementos || [];
+          const arrsA = fA.arrows || fA.lineas || [];
 
           await new Promise(resolve => {
             let startTime = null;
             const animate = (timestamp) => {
-              if (!isMounted) return resolve();
+              if (!isMountedRef.current) return resolve();
               if (!startTime) startTime = timestamp;
               const progress = Math.min((timestamp - startTime) / DURATION, 1);
               const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
 
-              const interpolated = (frameA.elementos || []).map(elA => {
-                const elB = (frameB.elementos || []).find(b => b.id === elA.id);
+              const interpolated = elsA.map(elA => {
+                const elB = elsB.find(b => b.id === elA.id);
                 if (!elB) return elA;
                 return {
                   ...elA,
                   x: elA.x + (elB.x - elA.x) * ease,
                   y: elA.y + (elB.y - elA.y) * ease,
-                  rotation: elA.rotation + (elB.rotation - elA.rotation) * ease,
+                  rotation: (elA.rotation||0) + ((elB.rotation||0) - (elA.rotation||0)) * ease,
                 };
               });
+              
+              // Limpiar y dibujar frame interpolado escalado perfectamente
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.clearRect(0, 0, cvSize.w, cvSize.h);
+              ctx.scale(cvSize.w / L_W, cvSize.h / L_H);
+              
+              drawPitch(ctx, L_W, L_H, pitchCfg);
+              drawElements(ctx, interpolated, arrsA, L_W);
 
-              setAnimElements(interpolated);
-              if (progress < 1) requestAnimationFrame(animate);
+              if (progress < 1) animId = requestAnimationFrame(animate);
               else resolve();
             };
-            requestAnimationFrame(animate);
+            animId = requestAnimationFrame(animate);
           });
 
-          if (!isMounted) break;
-          setCurrentLineas(frameB.lineas || []);
-          setAnimElements(frameB.elementos || []);
+          if (!isMountedRef.current) break;
           await new Promise(res => setTimeout(res, PAUSE));
         }
         await new Promise(res => setTimeout(res, 1000));
-        if (isMounted) {
-          setAnimElements(frames[0].elementos || []);
-          setCurrentLineas(frames[0].lineas || []);
-        }
       }
     };
 
     playLoop();
-    return () => { isMounted = false; };
-  }, [frames]);
-
-  const RenderElemento = ({ el }) => {
-    const scaleFactor = el.radio / 35; 
-    switch(el.tipo) {
-      case 'jugador': case 'arquero': case 'staff':
-        return (
-          <Group scaleX={scaleFactor} scaleY={scaleFactor}>
-            <Group x={-67} y={-40}>
-                <Path data="M 80 10 A 40 40 0 0 0 80 70 L 65 65 A 25 25 0 0 1 65 15 Z M 84 40 A 10 10 0 1 1 50 40 A 10 10 0 1 1 84 40" fill={el.color} stroke="black" strokeWidth={2} />
-            </Group>
-            <Text text={el.texto} fontSize={22} fontStyle="bold" fill={el.color === '#fff' || el.color === '#eab308' ? '#000' : '#fff'} x={-15} y={-11} width={30} align="center" />
-          </Group>
-        );
-      case 'pelota': return (<Group><Circle radius={el.radio} fill="#fff" stroke="#000" strokeWidth={1.5} /><Circle radius={el.radio * 0.4} fill="#000" /></Group>);
-      case 'cono_alto': return (<Group><Circle radius={el.radio} fill={el.color} stroke="#c2410c" strokeWidth={1} /><Circle radius={el.radio * 0.4} fill="#fff" opacity={0.8} /></Group>);
-      case 'cono_plato': return (<Group><Circle radius={el.radio} fill={el.color} stroke="#ca8a04" strokeWidth={1} /><Circle radius={el.radio * 0.3} fill={cancha.color} stroke="rgba(0,0,0,0.2)" strokeWidth={1} /></Group>);
-      case 'valla': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={el.h/2 - 2} width={el.w} height={4} fill={el.color} stroke="#000" strokeWidth={0.5} /></Group>);
-      case 'escalera': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={0} width={el.w} height={el.h} fill="rgba(250, 204, 21, 0.3)" stroke="#facc15" strokeWidth={1} /></Group>);
-      case 'arco': case 'mini_arco': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={0} width={el.w} height={el.h} fill="rgba(255,255,255,0.2)" stroke="#fff" strokeWidth={1.5} /></Group>);
-      default: return <Rect width={el.w} height={el.h} fill={el.color} stroke="#000" strokeWidth={1} x={-el.w/2} y={-el.h/2} />;
-    }
-  };
-
-  const DibujoCancha = () => {
-    const stroke = "rgba(255,255,255,0.7)"; const sw = 3; const midX = logicalSize.w / 2; const midY = logicalSize.h / 2; const padding = 20; const t = cancha.tamaño;
-    return (<Group><Rect width={logicalSize.w} height={logicalSize.h} fill={cancha.color} /><Rect x={padding} y={padding} width={logicalSize.w - padding * 2} height={logicalSize.h - padding * 2} stroke={stroke} strokeWidth={sw} cornerRadius={5} />{(t === '40x20' || t === '28x20' || t === '20x20_central') && (<Group><Line points={[midX, padding, midX, logicalSize.h - padding]} stroke={stroke} strokeWidth={sw} /><Circle x={midX} y={midY} radius={70} stroke={stroke} strokeWidth={sw} /><Circle x={midX} y={midY} radius={4} fill={stroke} /></Group>)}{t !== '20x20_central' && (<Group><Rect x={padding} y={midY - 100} width={100} height={200} stroke={stroke} strokeWidth={sw} cornerRadius={[0, 70, 70, 0]} />{(t === '40x20' || t === '28x20') && (<Rect x={logicalSize.w - padding - 100} y={midY - 100} width={100} height={200} stroke={stroke} strokeWidth={sw} cornerRadius={[70, 0, 0, 70]} />)}</Group>)}</Group>);
-  };
+    return () => { isMountedRef.current = false; cancelAnimationFrame(animId); };
+  }, [frames, cvSize, pitchCfg]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Stage width={stageSize.w} height={stageSize.h} scaleX={stageSize.scale} scaleY={stageSize.scale} x={(stageSize.w - logicalSize.w * stageSize.scale) / 2 || 0} y={(stageSize.h - logicalSize.h * stageSize.scale) / 2 || 0}>
-        <Layer>
-          <DibujoCancha />
-          {currentLineas.map(li => {
-            const isRecta = li.tipoTool === 'dibujar_pase';
-            const dashPattern = li.tipoTrazo === 'punteada' ? [12, 6] : [];
-            let endX = li.puntos[li.puntos.length-2], endY = li.puntos[li.puntos.length-1];
-            let angleRad = li.puntos.length >= 4 ? Math.atan2(endY - li.puntos[li.puntos.length-3], endX - li.puntos[li.puntos.length-4]) : 0;
-            return (
-              <Group key={li.id}>
-                <Line points={li.puntos} stroke={li.color} strokeWidth={li.grosor} opacity={li.transparencia} dash={dashPattern} lineCap="round" lineJoin="round" tension={isRecta ? 0 : 0.5} />
-                <Group x={endX} y={endY} rotation={angleRad * 180 / Math.PI} opacity={li.transparencia}>
-                  {li.topeFinal === 'triangulo' && (<Path data={`M 0 0 L -${li.grosor * 3} -${li.grosor * 1.5} L -${li.grosor * 3} ${li.grosor * 1.5} Z`} fill={li.color} stroke="#000" strokeWidth={0.5} />)}
-                </Group>
-              </Group>
-            );
-          })}
-          {animElements.map(el => (
-            <Group key={el.id} x={el.x} y={el.y} rotation={el.rotation} scaleX={el.scaleX} scaleY={el.scaleY}>
-              <RenderElemento el={el} />
-            </Group>
-          ))}
-        </Layer>
-      </Stage>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#0a0b0f', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+      <canvas 
+        ref={canvasRef} 
+        width={cvSize.w} 
+        height={cvSize.h} 
+      />
       {frames.length > 1 && (
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', animation: 'pulse 2s infinite' }}>
           ▶ ANIMACIÓN
@@ -216,7 +445,6 @@ const ReproductorLoop = ({ editorData }) => {
 };
 // =======================================================
 
-
 const PlanificadorSemanal = () => {
   const navigate = useNavigate(); 
   const { perfil } = useAuth(); // <-- GRAN FILTRO AUTH
@@ -224,7 +452,7 @@ const PlanificadorSemanal = () => {
   // --- GRAN FILTRO ---
   const misCategorias = perfil?.categorias_asignadas || [];
 
-  // EXTRAER CATEGORÍAS PARA EL SUPERUSER: Busca todas las categorías del club si el usuario tiene acceso total
+  // EXTRAER CATEGORÍAS PARA EL SUPERUSER
   const [categoriasExtraidas, setCategoriasExtraidas] = useState([]);
   useEffect(() => {
     const fetchCategorias = async () => {
@@ -339,7 +567,7 @@ const PlanificadorSemanal = () => {
     calcularCalendario();
   }, [fechaReferencia, modoVista]);
 
-  // 2. Traer Datos (Sesiones Y Partidos aplicando el Gran Filtro)
+  // 2. Traer Datos
   useEffect(() => {
     if (diasCalendario.length > 0) {
       cargarDatos();
@@ -370,19 +598,17 @@ const PlanificadorSemanal = () => {
       const inicio = diasCalendario[0].fechaStr;
       const fin = diasCalendario[diasCalendario.length - 1].fechaStr;
 
-      // --- FILTROS DE SESIONES ---
       let querySesiones = supabase.from('sesiones').select('*').eq('club_id', club_id).gte('fecha', inicio).lte('fecha', fin);
       
       if (filtroCategoria !== 'Todas') {
         querySesiones = querySesiones.eq('categoria_equipo', filtroCategoria);
       } else if (misCategorias.length > 0) {
-        querySesiones = querySesiones.in('categoria_equipo', misCategorias); // Ve "Todas SUS categorías"
+        querySesiones = querySesiones.in('categoria_equipo', misCategorias); 
       }
 
       const { data: dataSesiones, error: errSesiones } = await querySesiones;
       if (errSesiones) throw errSesiones;
 
-      // --- FILTROS DE PARTIDOS ---
       let queryPartidos = supabase.from('partidos').select('*').eq('club_id', club_id).gte('fecha', inicio).lte('fecha', fin);
       
       if (filtroCategoria !== 'Todas') {
@@ -394,7 +620,6 @@ const PlanificadorSemanal = () => {
       const { data: dataPartidos, error: errPartidos } = await queryPartidos;
       if (errPartidos) throw errPartidos;
       
-      // --- TAREAS (Todo el club) ---
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
         .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, fase_juego, objetivo_principal')
@@ -728,89 +953,12 @@ const PlanificadorSemanal = () => {
         </div>
       )}
 
-      {/* MODAL PRINCIPAL */}
+      {/* MODAL PRINCIPAL: DETALLES / EDICIÓN DE SESIÓN */}
       {mostrarModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: esMovil ? '10px' : '20px' }}>
           
           <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '950px', border: '2px solid var(--accent)', maxHeight: esMovil ? '90vh' : '95vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', position: 'relative', padding: esMovil ? '15px' : '30px' }}>
             
-            {/* --- VISOR DE DETALLES DE TAREA (OVERLAY) --- */}
-            {tareaSeleccionadaDetalle && (
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: '#111', zIndex: 10, display: 'flex', flexDirection: 'column', overflowY: 'auto', WebkitOverflowScrolling: 'touch', animation: 'fadeIn 0.2s' }}>
-                
-                {/* HEADER DE LA TAREA */}
-                <div style={{ padding: esMovil ? '15px' : '20px', background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #333', position: 'relative' }}>
-                  <div style={{ flex: 1, paddingRight: '40px' }}>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#fff', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
-                      {tareaSeleccionadaDetalle.categoria_ejercicio} • {tareaSeleccionadaDetalle.fase_juego}
-                    </span>
-                    <h2 style={{ margin: '0 0 5px 0', color: '#fff', fontSize: esMovil ? '1.2rem' : '1.8rem', textTransform: 'uppercase', fontWeight: '900', lineHeight: 1.2 }}>
-                      {tareaSeleccionadaDetalle.titulo}
-                    </h2>
-                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 'bold', display: 'block', marginTop: '5px' }}>{tareaSeleccionadaDetalle.objetivo_principal}</span>
-                  </div>
-                  {/* BOTÓN CERRAR FIJO ARRIBA A LA DERECHA */}
-                  <button onClick={() => setTareaSeleccionadaDetalle(null)} style={{ position: 'absolute', top: esMovil ? '10px' : '15px', right: esMovil ? '10px' : '15px', background: 'rgba(0,0,0,0.7)', border: '1px solid #444', color: '#fff', width: '38px', height: '38px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>✖</button>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', padding: esMovil ? '15px' : '20px' }}>
-                  {/* VISUAL Y MULTIMEDIA */}
-                  <div style={{ flex: '1 1 100%', padding: esMovil ? '0 0 15px 0' : '10px', borderRight: esMovil ? 'none' : '1px solid #222', borderBottom: esMovil ? '1px solid #222' : 'none', minWidth: '0' }}>
-                    <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                      
-                      {/* SI ES RUTINA FÍSICA RENDERIZAMOS LOS BLOQUES DEL PROFE */}
-                      {tareaSeleccionadaDetalle.categoria_ejercicio === 'Físico' && tareaSeleccionadaDetalle.editor_data?.tipo === 'rutina_fisica' ? (
-                        <RenderRutinaFisica data={tareaSeleccionadaDetalle.editor_data} />
-                      ) : tareaSeleccionadaDetalle.editor_data?.frames?.length > 1 ? (
-                        <ReproductorLoop editorData={tareaSeleccionadaDetalle.editor_data} />
-                      ) : tareaSeleccionadaDetalle.url_grafico ? (
-                        <img src={tareaSeleccionadaDetalle.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <span style={{ color: '#444', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionadaDetalle)}</span>
-                      )}
-
-                    </div>
-                    {tareaSeleccionadaDetalle.video_url && (
-                      <div style={{ marginTop: '15px' }}>
-                        <a href={tareaSeleccionadaDetalle.video_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563eb', color: '#fff', textAlign: 'center', padding: '15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.95rem' }}>
-                          ▶️ VER VIDEO DE REFERENCIA
-                        </a>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* BLOQUE DE DATOS Y REGLAS */}
-                  <div style={{ flex: '1 1 100%', padding: esMovil ? '15px 0 0 0' : '10px', display: 'flex', flexDirection: 'column', gap: '15px', minWidth: '0' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid #333' }}>
-                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>DURACIÓN</span>
-                        <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#fff' }}>{tareaSeleccionadaDetalle.duracion_estimada}'</span>
-                      </div>
-                      <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid #333' }}>
-                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>RPE (INTENSIDAD)</span>
-                        <span style={{ fontSize: '1.3rem', fontWeight: '900', color: tareaSeleccionadaDetalle.intensidad_rpe > 7 ? '#ef4444' : '#eab308' }}>{tareaSeleccionadaDetalle.intensidad_rpe}/10</span>
-                      </div>
-                      <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid #333' }}>
-                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>CARGA (UC)</span>
-                        <span style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--accent)' }}>{(tareaSeleccionadaDetalle.duracion_estimada || 0) * (tareaSeleccionadaDetalle.intensidad_rpe || 0)}</span>
-                      </div>
-                      <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid #333' }}>
-                        <span style={{ display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>JUGADORES</span>
-                        <span style={{ fontSize: '1.1rem', fontWeight: '900', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tareaSeleccionadaDetalle.jugadores_involucrados}</span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                      <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)', textTransform: 'uppercase', fontSize: '0.8rem' }}>Reglas y Desarrollo:</h4>
-                      <div style={{ background: '#000', padding: '15px', borderRadius: '8px', border: '1px solid #333', color: '#ccc', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                        {tareaSeleccionadaDetalle.descripcion || "Sin descripción detallada."}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* HEADER DEL MODAL PRINCIPAL */}
             <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', marginBottom: '15px', borderBottom: '1px solid #333', paddingBottom: '10px', alignItems: esMovil ? 'flex-start' : 'center', gap: esMovil ? '15px' : '0', position: 'relative' }}>
               <div style={{ paddingRight: esMovil ? '40px' : '0' }}>
@@ -1079,6 +1227,90 @@ const PlanificadorSemanal = () => {
               </>
             )}
 
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL SECUNDARIO INDEPENDIENTE: VISOR DE DETALLES DE TAREA */}
+      {/* ========================================================= */}
+      {tareaSeleccionadaDetalle && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: esMovil ? '0' : '20px' }}>
+          
+          <div className="bento-card" style={{ background: '#111', width: '100%', maxWidth: '950px', height: esMovil ? '100%' : 'auto', maxHeight: esMovil ? '100%' : '95vh', border: esMovil ? 'none' : '2px solid var(--accent)', display: 'flex', flexDirection: 'column', overflowY: 'auto', WebkitOverflowScrolling: 'touch', animation: 'fadeIn 0.2s', borderRadius: esMovil ? '0' : '12px', position: 'relative' }}>
+            
+            {/* HEADER DE LA TAREA */}
+            <div style={{ padding: esMovil ? '15px' : '20px', background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #333', position: 'relative', flexShrink: 0 }}>
+              <div style={{ flex: 1, paddingRight: '40px' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#fff', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
+                  {tareaSeleccionadaDetalle.categoria_ejercicio} • {tareaSeleccionadaDetalle.fase_juego}
+                </span>
+                <h2 style={{ margin: '0 0 5px 0', color: '#fff', fontSize: esMovil ? '1.2rem' : '1.8rem', textTransform: 'uppercase', fontWeight: '900', lineHeight: 1.2 }}>
+                  {tareaSeleccionadaDetalle.titulo}
+                </h2>
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 'bold', display: 'block', marginTop: '5px' }}>{tareaSeleccionadaDetalle.objetivo_principal}</span>
+              </div>
+              {/* BOTÓN CERRAR FIJO ARRIBA A LA DERECHA */}
+              <button onClick={() => setTareaSeleccionadaDetalle(null)} style={{ position: 'absolute', top: esMovil ? '10px' : '15px', right: esMovil ? '10px' : '15px', background: 'rgba(0,0,0,0.7)', border: '1px solid #444', color: '#fff', width: '38px', height: '38px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>✖</button>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', padding: esMovil ? '15px' : '20px' }}>
+              {/* VISUAL Y MULTIMEDIA */}
+              <div style={{ flex: '1 1 100%', padding: esMovil ? '0 0 15px 0' : '10px', borderRight: esMovil ? 'none' : '1px solid #222', borderBottom: esMovil ? '1px solid #222' : 'none', minWidth: '0' }}>
+                
+                {/* AQUÍ ESTÁ EL REPRODUCTOR NATIVO ESCALADO */}
+                <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', minHeight: esMovil ? '250px' : '350px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  
+                  {tareaSeleccionadaDetalle.categoria_ejercicio === 'Físico' && tareaSeleccionadaDetalle.editor_data?.tipo === 'rutina_fisica' ? (
+                    <RenderRutinaFisica data={tareaSeleccionadaDetalle.editor_data} />
+                  ) : tareaSeleccionadaDetalle.editor_data?.frames?.length > 0 ? (
+                    <ReproductorLoop editorData={tareaSeleccionadaDetalle.editor_data} />
+                  ) : tareaSeleccionadaDetalle.url_grafico ? (
+                    <img src={tareaSeleccionadaDetalle.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ color: '#444', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionadaDetalle)}</span>
+                  )}
+
+                </div>
+                
+                {tareaSeleccionadaDetalle.video_url && (
+                  <div style={{ marginTop: '15px' }}>
+                    <a href={tareaSeleccionadaDetalle.video_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563eb', color: '#fff', textAlign: 'center', padding: '15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                      ▶️ VER VIDEO DE REFERENCIA
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* BLOQUE DE DATOS Y REGLAS */}
+              <div style={{ flex: '1 1 100%', padding: esMovil ? '15px 0 0 0' : '10px', display: 'flex', flexDirection: 'column', gap: '15px', minWidth: '0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid #333' }}>
+                    <span style={{ display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>DURACIÓN</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#fff' }}>{tareaSeleccionadaDetalle.duracion_estimada}'</span>
+                  </div>
+                  <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid #333' }}>
+                    <span style={{ display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>RPE (INTENSIDAD)</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '900', color: tareaSeleccionadaDetalle.intensidad_rpe > 7 ? '#ef4444' : '#eab308' }}>{tareaSeleccionadaDetalle.intensidad_rpe}/10</span>
+                  </div>
+                  <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid #333' }}>
+                    <span style={{ display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>CARGA (UC)</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--accent)' }}>{(tareaSeleccionadaDetalle.duracion_estimada || 0) * (tareaSeleccionadaDetalle.intensidad_rpe || 0)}</span>
+                  </div>
+                  <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid #333' }}>
+                    <span style={{ display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold' }}>JUGADORES</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: '900', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tareaSeleccionadaDetalle.jugadores_involucrados}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)', textTransform: 'uppercase', fontSize: '0.8rem' }}>Reglas y Desarrollo:</h4>
+                  <div style={{ background: '#000', padding: '15px', borderRadius: '8px', border: '1px solid #333', color: '#ccc', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    {tareaSeleccionadaDetalle.descripcion || "Sin descripción detallada."}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

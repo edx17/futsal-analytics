@@ -61,7 +61,7 @@ const RenderRutinaFisica = ({ data }) => {
 const ReproductorLoop = ({ editorData }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const [cvSize, setCvSize] = useState({ w: 800, h: 500 });
+  const [cvSize, setCvSize] = useState({ w: 0, h: 0 });
   const isMountedRef = useRef(true);
 
   // Configuraciones y Constantes del Motor Nativo
@@ -74,6 +74,13 @@ const ReproductorLoop = ({ editorData }) => {
     '20x20_mitad': { mW: 20, mH: 20 },
     '20x20_central': { mW: 20, mH: 20 },
   };
+
+  // RESTAURADO: Lógica original de coordenadas y escalas para mantener fidelidad
+  const BASE_W = 800;
+  function getBaseH(variant) {
+    const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20'];
+    return BASE_W / (vrt.mW / vrt.mH);
+  }
 
   const TEAM_COLORS = {
     home: { fill: '#2979ff', stroke: '#82b0ff' },
@@ -112,37 +119,47 @@ const ReproductorLoop = ({ editorData }) => {
     },
   };
 
-  const BASE_W = 800;
-  function getBaseH(variant) {
-    const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20'];
-    return BASE_W / (vrt.mW / vrt.mH);
-  }
-
-  // Lógica de Redimensionamiento
+  // 🛡️ REDIMENSIONAMIENTO BLINDADO CONTRA EL "INFINITE ZOOM"
   useEffect(() => {
-    function handleResize() {
-      if (!containerRef.current) return;
-      const cw = containerRef.current.clientWidth;
-      const ch = containerRef.current.clientHeight;
-      const baseH = getBaseH(pitchCfg.variant);
-      const ratio = BASE_W / baseH;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const variant = pitchCfg.variant || pitchCfg.tamaño || '40x20';
+    const baseH = getBaseH(variant);
+    const ratio = BASE_W / baseH;
+    
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
       
+      const cw = entry.contentRect.width;
+      const ch = entry.contentRect.height;
+      if (cw === 0 || ch === 0) return;
+
       let w = Math.min(cw, ch * ratio);
       let h = w / ratio;
       
       if (h > ch) { h = ch; w = h * ratio; }
-      setCvSize({ w, h });
-    }
+      
+      w = Math.floor(w);
+      h = Math.floor(h);
+
+      setCvSize(prev => {
+        if (Math.abs(prev.w - w) > 2 || Math.abs(prev.h - h) > 2) {
+          return { w, h };
+        }
+        return prev;
+      });
+    });
     
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [pitchCfg.variant]);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [pitchCfg.variant, pitchCfg.tamaño]);
 
   // Funciones de Renderizado Geométrico
   function mX(m, mW, L) { return L.px + (m/mW)*L.ppw; }
   function mY(m, mH, L) { return L.py + (m/mH)*L.pph; }
-  function playerRadius(cW) { return cW * 0.021; }
+  function playerRadius(cW) { return cW * 0.021; } // Restablecido a usar BASE_W
   function lighten(hex, amt) {
     if (!hex || !hex.startsWith('#')) return hex||'#fff';
     let c = hex.slice(1); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
@@ -150,7 +167,8 @@ const ReproductorLoop = ({ editorData }) => {
   }
 
   function drawPitch(ctx, cW, cH, cfg) {
-    const vrt = PITCH_VARIANTS[cfg.variant] || PITCH_VARIANTS['40x20'];
+    const variant = cfg.variant || cfg.tamaño || '40x20';
+    const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20'];
     const MW = vrt.mW, MH = vrt.mH;
     const p = Math.min(cW, cH) * 0.045;
     const L = { px: p, py: p, ppw: cW-2*p, pph: cH-2*p };
@@ -182,7 +200,7 @@ const ReproductorLoop = ({ editorData }) => {
     ctx.save(); ctx.beginPath(); ctx.rect(L.px, L.py, L.ppw, L.pph); ctx.clip();
     const midX = MW/2, midY = MH/2;
 
-    if (cfg.variant === '40x20' || cfg.variant === '28x20' || cfg.variant === '20x20_central') {
+    if (variant === '40x20' || variant === '28x20' || variant === '20x20_central') {
       line(midX,0, midX,MH, 2);
       const rPx = (3/MW)*L.ppw;
       ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.globalAlpha=alpha;
@@ -211,7 +229,7 @@ const ReproductorLoop = ({ editorData }) => {
         ctx.beginPath(); ctx.arc(mX(baseX,MW,L), mY(0,MH,L), cr, isLeft?0:Math.PI/2, isLeft?Math.PI/2:Math.PI, false); ctx.stroke();
         ctx.beginPath(); ctx.arc(mX(baseX,MW,L), mY(MH,MH,L), cr, isLeft?-Math.PI/2:Math.PI, isLeft?0:-Math.PI/2, false); ctx.stroke();
       };
-      if (cfg.variant !== '20x20_central') { drawArea(true); drawArea(false); }
+      if (variant !== '20x20_central') { drawArea(true); drawArea(false); }
     }
     ctx.restore();
     ctx.strokeStyle=lc; ctx.lineWidth=2; ctx.globalAlpha=alpha;
@@ -337,22 +355,26 @@ const ReproductorLoop = ({ editorData }) => {
   useEffect(() => {
     isMountedRef.current = true;
     const cv = canvasRef.current;
-    if (!cv) return;
+    if (!cv || cvSize.w === 0) return;
     const ctx = cv.getContext('2d');
 
     const DURATION = 800;
     const PAUSE = 500;
     let animId;
 
+    const variant = pitchCfg.variant || pitchCfg.tamaño || '40x20';
+    const baseH = getBaseH(variant);
+
     const playLoop = async () => {
       while (isMountedRef.current) {
         if (frames.length < 2) {
-          // Si solo hay 1 frame, lo dibuja estático y corta el bucle
           const f0 = frames[0] || {};
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           ctx.clearRect(0, 0, cvSize.w, cvSize.h);
-          ctx.scale(cvSize.w / BASE_W, cvSize.h / getBaseH(pitchCfg.variant));
-          drawPitch(ctx, BASE_W, getBaseH(pitchCfg.variant), pitchCfg);
+          // Restablecido a BASE_W y baseH original
+          ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
+          
+          drawPitch(ctx, BASE_W, baseH, pitchCfg);
           drawElements(ctx, f0.elements || f0.elementos || [], f0.arrows || f0.lineas || [], BASE_W);
           break; 
         }
@@ -384,12 +406,12 @@ const ReproductorLoop = ({ editorData }) => {
                 };
               });
               
-              // Limpiar y dibujar frame interpolado
               ctx.setTransform(1, 0, 0, 1, 0, 0);
               ctx.clearRect(0, 0, cvSize.w, cvSize.h);
-              ctx.scale(cvSize.w / BASE_W, cvSize.h / getBaseH(pitchCfg.variant));
+              // Restablecido a BASE_W y baseH original
+              ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
               
-              drawPitch(ctx, BASE_W, getBaseH(pitchCfg.variant), pitchCfg);
+              drawPitch(ctx, BASE_W, baseH, pitchCfg);
               drawElements(ctx, interpolated, arrsA, BASE_W);
 
               if (progress < 1) animId = requestAnimationFrame(animate);
@@ -410,11 +432,12 @@ const ReproductorLoop = ({ editorData }) => {
   }, [frames, cvSize, pitchCfg]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#0a0b0f', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: '#0a0b0f', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       <canvas 
         ref={canvasRef} 
         width={cvSize.w} 
         height={cvSize.h} 
+        style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}
       />
       {frames.length > 1 && (
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', animation: 'pulse 2s infinite' }}>
@@ -642,12 +665,13 @@ const BancoTareas = () => {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: '20px' }}>
               <div style={{ flex: '1 1 500px', padding: '20px', borderRight: '1px solid #222' }}>
+                
+                {/* 🛡️ CONTENEDOR RELATIVO PARA ENCAPSULAR AL CANVAS ABSOLUTO */}
                 <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   
-                  {/* SI ES RUTINA FÍSICA RENDERIZAMOS LOS BLOQUES DEL PROFE */}
                   {tareaSeleccionada.categoria_ejercicio === 'Físico' && tareaSeleccionada.editor_data?.tipo === 'rutina_fisica' ? (
                     <RenderRutinaFisica data={tareaSeleccionada.editor_data} />
-                  ) : tareaSeleccionada.editor_data?.frames?.length > 1 ? (
+                  ) : tareaSeleccionada.editor_data?.frames?.length > 0 ? (
                     <ReproductorLoop editorData={tareaSeleccionada.editor_data} />
                   ) : tareaSeleccionada.url_grafico ? (
                     <img src={tareaSeleccionada.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
