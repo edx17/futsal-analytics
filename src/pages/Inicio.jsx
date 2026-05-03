@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
 
 const CATÁLOGO_WIDGETS = [
+  { id: 'w_novedades', tipo: 'data', spanDefecto: '3x1', titulo: 'Tablón de Anuncios', icon: '📢', roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'w_proximo', tipo: 'data', spanDefecto: '1x1', titulo: 'Próximo Partido', icon: '📅', roles: ['superuser', 'manager', 'ct'] },
   { id: 'w_ultimo', tipo: 'data', spanDefecto: '1x1', titulo: 'Último Registro', icon: '⏱️', roles: ['superuser', 'manager', 'ct'] },
   { id: 'w_stats_base', tipo: 'data', spanDefecto: '2x1', titulo: 'Estado de la Base', icon: '📊', roles: ['superuser', 'manager', 'admin'] },
@@ -108,7 +109,6 @@ export default function Inicio() {
   const esManager = rol === 'manager';
   const esCT = rol === 'ct';
 
-  // FIX: Se memoiza misCategorias para evitar loops de renderizado si el usuario no tiene categorías
   const misCategorias = useMemo(() => {
     return perfil?.categorias_asignadas || [];
   }, [perfil?.categorias_asignadas]);
@@ -144,7 +144,6 @@ export default function Inicio() {
   const [categoriaActiva, setCategoriaActiva] = useState(localStorage.getItem('dash_categoria') || 'Todas');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
 
-  // --- EFECTO DEL GRAN FILTRO: Auto-seleccionar categoría en el Dashboard ---
   useEffect(() => {
     if (esCT && misCategorias.length > 0) {
       if (categoriaActiva === 'Todas' || !misCategorias.includes(categoriaActiva)) {
@@ -157,6 +156,7 @@ export default function Inicio() {
   const [cargando, setCargando] = useState(true);
   const [listaClubes, setListaClubes] = useState([]);
 
+  const [novedadesCT, setNovedadesCT] = useState([]);
   const [ultimoPartido, setUltimoPartido] = useState(null);
   const [proximoPartido, setProximoPartido] = useState(null); 
   const [estadisticas, setEstadisticas] = useState({ jugados: 0, plantel: 0 });
@@ -169,13 +169,13 @@ export default function Inicio() {
   const widgetsPermitidos = CATÁLOGO_WIDGETS.filter(w => w.roles.includes(rol));
   
   const defaultLayout = esSuperUser 
-    ? ['usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido', 'analisis_video', 'tracking_ia'] 
+    ? ['w_novedades', 'usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido', 'analisis_video', 'tracking_ia'] 
     : esManager
-    ? ['w_vep_anual', 'w_stats_base', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'plantel', 'tesoreria']
+    ? ['w_novedades', 'w_vep_anual', 'w_stats_base', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'plantel', 'tesoreria']
     : rol === 'ct' 
-    ? ['w_vep_anual', 'w_proximo', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'rendimiento', 'wellness_ct'] 
+    ? ['w_novedades', 'w_vep_anual', 'w_proximo', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'rendimiento', 'wellness_ct'] 
     : esAdmin 
-    ? ['w_stats_base', 'tesoreria', 'torneos', 'sponsors', 'plantel'] 
+    ? ['w_novedades', 'w_stats_base', 'tesoreria', 'torneos', 'sponsors', 'plantel'] 
     : ['mi_wellness', 'mi_perfil', 'mi_rendimiento'];
 
   const [misWidgetsActivos, setMisWidgetsActivos] = useState(() => {
@@ -259,7 +259,6 @@ export default function Inicio() {
 
   useEffect(() => {
     async function cargarDashboard() {
-      // FIX: Todo envuelto en try/catch para que el finally rompa el loop si hay error
       try {
         setCargando(true);
         
@@ -267,7 +266,7 @@ export default function Inicio() {
         const targetJugadorId = isKioscoMode ? kioscoJugadorId : perfil?.jugador_id;
 
         if (!targetClubId && !esSuperUser) { 
-          return; // Saldrá y pasará por el finally
+          return; 
         }
 
         if (isKioscoMode) {
@@ -291,13 +290,24 @@ export default function Inicio() {
           setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub('');
         }
 
-        // --- FILTRO DE CATEGORÍAS DISPONIBLES EN EL SELECTOR ---
+        if (targetClubId && (esCT || esManager || esAdmin || esSuperUser)) {
+          const { data: nov } = await supabase.from('novedades')
+            .select('*, perfiles(nombre_completo, rol)')
+            .eq('club_id', targetClubId)
+            .in('publico_objetivo', ['CT', 'Ambos'])
+            .order('fecha_creacion', { ascending: false })
+            .limit(3);
+          
+          if (nov) {
+            const filtradas = categoriaActiva === 'Todas' ? nov : nov.filter(n => n.categorias.includes(categoriaActiva));
+            setNovedadesCT(filtradas);
+          }
+        }
+
         if (targetClubId) {
           if (esCT && misCategorias.length > 0) {
-            // Si es CT, forzamos que sus únicas opciones sean las que tiene asignadas
             setCategoriasDisponibles(misCategorias);
           } else {
-            // Manager/Admin: Consultamos qué categorías existen realmente en la DB del club
             const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', targetClubId);
             if (cats) {
               const unicas = [...new Set(cats.map(c => c.categoria).filter(Boolean))];
@@ -363,7 +373,6 @@ export default function Inicio() {
             Object.keys(ultimosCat).forEach(cat => { ultimosCat[cat] = ultimosCat[cat].slice(-2).reverse(); });
             setVepAnual({ v, e, d }); setGolesPorCat(golesCat); setResultadosRecientesCat(ultimosCat);
           } else {
-            // Si no hay datos, reseteamos a cero
             setVepAnual({ v: 0, e: 0, d: 0 }); setGolesPorCat({}); setResultadosRecientesCat({});
           }
         }
@@ -569,6 +578,29 @@ export default function Inicio() {
                 opacity: modoEdicion ? 0.9 : 1,
                 overflow: 'hidden'
               };
+
+              if (config.id === 'w_novedades') {
+                return (
+                  <div key={config.id} className="bento-card custom-scroll" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #facc15', padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
+                    <div className="stat-label" style={{ marginBottom: '10px', color: '#facc15', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
+                    {novedadesCT.length === 0 ? (
+                      <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px', fontSize: '0.8rem' }}>Sin novedades recientes.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {novedadesCT.map(n => (
+                          <div key={n.id} style={{ background: '#111', borderLeft: '3px solid #facc15', padding: '10px', borderRadius: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#888', marginBottom: '4px' }}>
+                              <strong>{n.perfiles?.nombre_completo || 'Administración'}</strong> <span>{new Date(n.fecha_creacion).toLocaleDateString()}</span>
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: '#fff', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{n.mensaje}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
 
               if (config.id === 'w_vep_anual') {
                 return (

@@ -34,6 +34,7 @@ import Usuarios from './pages/Usuarios';
 import AdmSuscripciones from './pages/AdmSuscripciones';
 import LibroTactico from './pages/LibroTactico';
 import LoginKiosco from './pages/LoginKiosco';
+import Novedades from './pages/Novedades';
 
 // 🔥 NUEVA PÁGINA PARA EL MANAGER:
 import MiStaff from './pages/MiStaff'; 
@@ -93,6 +94,7 @@ function AppRoutes() {
       <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
       <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
       <Route path="/mi-staff" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiStaff /></ProtectedRoute>} />
+      <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
 
       {/* RUTAS DE SUPERUSER */}
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
@@ -345,7 +347,7 @@ function AppLayout() {
                 {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
                 <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🌡️ <span>WELLNESS</span></NavLink>
                 <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
-              </>
+                              </>
             )}
           </>
         )}
@@ -358,6 +360,7 @@ function AppLayout() {
             {menusAbiertos.administracion && !isCollapsed && (
               <>
                 {/* 🔥 ACÁ AGREGAMOS EL BOTÓN DE MI STAFF */}
+                <NavLink to="/novedades" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📢 <span>NOVEDADES</span></NavLink>
                 <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👥 <span>MI STAFF</span></NavLink>
                 
                 <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💰 <span>TESORERÍA</span></NavLink>

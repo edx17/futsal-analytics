@@ -3,7 +3,6 @@ import { supabase } from '../supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 
-// 🔥 ÍCONOS SVG MINIMALISTAS Y PROFESIONALES (Estilo Lucide/Heroicons)
 const IconWellness = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
@@ -47,15 +46,13 @@ export default function LoginKiosco() {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [inputCodigo, setInputCodigo] = useState('');
-  
-  // 🔥 ESTADOS PARA EL FILTRO DE CATEGORÍAS
-  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
+  const [novedadesJugador, setNovedadesJugador] = useState([]);
 
-  // 🔥 NUEVO ESTADO: Controla si mostramos el teclado numérico o el menú de opciones
+  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [mostrarMenu, setMostrarMenu] = useState(false);
-  
-  // 🔥 DETECCIÓN DE PANTALLA MÓVIL
+
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
@@ -65,78 +62,122 @@ export default function LoginKiosco() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [searchParams] = useSearchParams();
-  
-  // Buscar UUID en la URL primero, luego en LocalStorage
-  const [clubId, setClubId] = useState(searchParams.get('club') || localStorage.getItem('kiosco_club_id'));
 
-  // Logueamos al dispositivo en Supabase con la cuenta genérica del Kiosco
+  const [clubId, setClubId] = useState(
+    searchParams.get('club') || localStorage.getItem('kiosco_club_id')
+  );
+
+  // 🔐 FORZAR SESIÓN KIOSCO REAL
   useEffect(() => {
-    const loginDispositivo = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        await supabase.auth.signInWithPassword({
-          email: 'kiosco@virtualstats.com',
-          password: 'KioscoTuClub2024!' // <--- Asegurate de que esto coincida con tu base
-        });
+    const iniciarKiosco = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const emailActual = session?.user?.email;
+
+        if (emailActual !== 'kiosco@virtualstats.com') {
+          await supabase.auth.signOut();
+          const { error } = await supabase.auth.signInWithPassword({
+            email: 'kiosco@virtualstats.com',
+            password: 'KioscoTuClub2024!'
+          });
+          if (error) throw error;
+        }
+
+        if (clubId) {
+          localStorage.setItem('kiosco_club_id', clubId);
+          localStorage.setItem('club_id', clubId);
+          fetchPlantel(clubId);
+        }
+      } catch (err) {
+        console.error('Error kiosco:', err);
+        showToast('Error iniciando kiosco', 'error');
       }
     };
-    loginDispositivo();
-  }, []);
 
-  // Guardado persistente del Club ID
-  useEffect(() => {
-    if (clubId) {
-      localStorage.setItem('kiosco_club_id', clubId);
-      localStorage.setItem('club_id', clubId); // <-- CLAVE PARA EL RESTO DE LA APP
-      fetchPlantel(clubId);
-    }
+    iniciarKiosco();
   }, [clubId]);
+
+  const normalizar = (v) => String(v ?? '').trim().toLowerCase();
+
+  // 📰 NOVEDADES KIOSCO
+  const fetchNovedadesKiosco = async (idClub, categoriaJugador) => {
+    if (!idClub) return;
+
+    let query = supabase
+      .from('novedades')
+      .select('id, mensaje, publico_objetivo, categorias, fecha_creacion, perfiles(nombre_completo)')
+      .eq('club_id', idClub)
+      .in('publico_objetivo', ['Jugadores', 'Ambos'])
+      .order('fecha_creacion', { ascending: false })
+      .limit(5);
+
+    if (categoriaJugador && categoriaJugador !== 'undefined') {
+      query = query.contains('categorias', [categoriaJugador]);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('fetchNovedadesKiosco:', error.message, error.code);
+      setNovedadesJugador([]);
+      return;
+    }
+
+    setNovedadesJugador(data || []);
+  };
 
   const fetchPlantel = async (id) => {
     setLoading(true);
-    const { data, error } = await supabase.rpc('obtener_plantel_kiosco', { codigo_club: id });
-    
+
+    const { data, error } = await supabase.rpc('obtener_plantel_kiosco', {
+      codigo_club: id
+    });
+
     if (error) {
       showToast(`Error: ${error.message}`, 'error');
-      localStorage.removeItem('kiosco_club_id');
-      setClubId(null);
-    } else if (!data || data.length === 0) {
-      showToast('No hay jugadores en este club.', 'warning');
       setClubId(null);
     } else {
-      const dataOrdenada = data.sort((a, b) => {
-        const textoA = `${a.apellido || ''} ${a.nombre || ''}`.trim().toLowerCase();
-        const textoB = `${b.apellido || ''} ${b.nombre || ''}`.trim().toLowerCase();
-        return textoA.localeCompare(textoB);
-      });
-      setJugadores(dataOrdenada);
+      const ordenados = data.sort((a, b) =>
+        `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`)
+      );
 
-      // 🔥 MEMORIA DE SESIÓN: Si ya estábamos logueados al volver atrás, restauramos el HUB.
+      setJugadores(ordenados);
+
       const savedJugadorId = localStorage.getItem('kiosco_jugador_id');
       const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
-      
+
       if (isKioscoMode && savedJugadorId) {
-        const jugadorGuardado = dataOrdenada.find(j => j.id == savedJugadorId);
-        if (jugadorGuardado) {
-          setJugadorSeleccionado(jugadorGuardado);
+        const jugador = ordenados.find(j => j.id == savedJugadorId);
+
+        if (jugador) {
+          setJugadorSeleccionado(jugador);
+
+          const categoria =
+            localStorage.getItem('kiosco_categoria') || jugador.categoria;
+
+          fetchNovedadesKiosco(id, categoria);
+
           setMostrarMenu(true);
         }
       }
     }
+
     setLoading(false);
   };
 
-  const handleNumpad = (numero) => {
-    if (pin.length < 4) setPin(prev => prev + numero);
+  const handleNumpad = (n) => {
+    if (pin.length < 4) setPin(prev => prev + n);
   };
 
   const volverAtras = () => {
     setJugadorSeleccionado(null);
     setPin('');
     setMostrarMenu(false);
-    // Borramos la sesión para que realmente se desloguee si presiona salir
+    setNovedadesJugador([]);
+
     localStorage.removeItem('kiosco_jugador_id');
     localStorage.removeItem('kiosco_mode');
+    localStorage.removeItem('kiosco_categoria');
   };
 
   useEffect(() => {
@@ -144,49 +185,36 @@ export default function LoginKiosco() {
   }, [pin]);
 
   const ejecutarLogin = async () => {
-    try {
-      if (!jugadorSeleccionado?.id || !clubId) {
-        showToast('No se pudo identificar al jugador.', 'error');
-        setPin('');
-        return;
-      }
+    setLoading(true);
 
-      setLoading(true);
+    const { data, error } = await supabase.rpc('verificar_pin_kiosco', {
+      p_jugador_id: jugadorSeleccionado.id,
+      p_club_id: clubId,
+      p_pin: pin
+    });
 
-      const { data, error } = await supabase.rpc('verificar_pin_kiosco', {
-        p_jugador_id: jugadorSeleccionado.id,
-        p_club_id: clubId,
-        p_pin: pin.trim()
-      });
-
-      if (error || !data) {
-        showToast('PIN incorrecto.', 'error');
-        setPin('');
-        setLoading(false);
-        return;
-      }
-
-      localStorage.setItem('kiosco_mode', 'true');
-      localStorage.setItem('kiosco_club_id', data.club_id);
-      localStorage.setItem('club_id', data.club_id); 
-      localStorage.setItem('kiosco_jugador_id', data.id);
-      localStorage.setItem('kiosco_nombre', data.nombre || '');
-      localStorage.setItem('kiosco_apellido', data.apellido || '');
-      
-      showToast(`¡Bienvenido ${data.nombre}!`, 'success');
-      
-      setLoading(false);
-      setMostrarMenu(true);
-
-    } catch (err) {
-      console.error("🚨 EXPLOTÓ ALGO EN EL FRONTEND:", err);
-      showToast('Error de sistema', 'error');
+    if (error || !data) {
+      showToast('PIN incorrecto', 'error');
       setPin('');
       setLoading(false);
+      return;
     }
+
+    localStorage.setItem('kiosco_mode', 'true');
+    localStorage.setItem('kiosco_jugador_id', data.id);
+
+    const categoriaFinal =
+      jugadorSeleccionado?.categoria ||
+      data.categoria ||
+      localStorage.getItem('kiosco_categoria');
+
+    if (categoriaFinal) localStorage.setItem('kiosco_categoria', categoriaFinal);
+    await fetchNovedadesKiosco(data.club_id || clubId, categoriaFinal);
+
+    setMostrarMenu(true);
+    setLoading(false);
   };
 
-  // 🔥 LÓGICA DE FILTRADO DE CATEGORÍAS
   const categoriasUnicas = useMemo(() => {
     return [...new Set(jugadores.map(j => j.categoria).filter(Boolean))].sort();
   }, [jugadores]);
@@ -195,7 +223,6 @@ export default function LoginKiosco() {
     if (filtroCategoria === 'Todas') return jugadores;
     return jugadores.filter(j => j.categoria === filtroCategoria);
   }, [jugadores, filtroCategoria]);
-
 
   if (!clubId) {
     return (
@@ -212,12 +239,10 @@ export default function LoginKiosco() {
     );
   }
 
-  // 🔥 NUEVA PANTALLA: HUB DE NAVEGACIÓN PRO (App Like)
   if (mostrarMenu) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', padding: esMovil ? '20px' : '30px', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.3s ease', boxSizing: 'border-box', overflowX: 'hidden' }}>
         
-        {/* Inyectamos los estilos Pro para las tarjetas del HUB */}
         <style>{`
           .hub-grid {
             display: grid;
@@ -277,7 +302,29 @@ export default function LoginKiosco() {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0 }}>¿Qué querés hacer hoy?</p>
         </div>
 
-        {/* 🚀 GRILLA PRO DE NAVEGACIÓN CON SVG INLINE */}
+        <div style={{ width: '100%', maxWidth: '380px', marginBottom: '20px', background: 'rgba(250, 204, 21, 0.07)', border: '1px solid rgba(250, 204, 21, 0.25)', borderRadius: '12px', padding: '15px', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '1.2rem' }}>📢</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#facc15', letterSpacing: '1px' }}>NOVEDADES DEL CLUB</span>
+          </div>
+          {novedadesJugador.length === 0 ? (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', margin: 0, textAlign: 'center', padding: '8px 0' }}>
+              Sin novedades por ahora 👌
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {novedadesJugador.map(n => (
+                <div key={n.id} style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '10px' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#fff', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{n.mensaje}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '5px', textAlign: 'right' }}>
+                    — {n.perfiles?.nombre_completo || 'Administración'} · {new Date(n.fecha_creacion).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="hub-grid">
           <div className="hub-card" onClick={() => navigate('/kiosco/wellness')}>
             <span className="hub-icon"><IconWellness /></span>
@@ -308,7 +355,6 @@ export default function LoginKiosco() {
     );
   }
 
-  // BOTONES DEL NUMPAD (Dinámicos según pantalla)
   const numpadSize = esMovil ? '70px' : '80px';
   const numpadFont = esMovil ? '1.4rem' : '1.8rem';
   const estiloNumpadDinamico = { ...btnNumpad, width: numpadSize, height: numpadSize, fontSize: numpadFont };
@@ -330,7 +376,6 @@ export default function LoginKiosco() {
       {!jugadorSeleccionado ? (
         <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
           
-          {/* 🔥 SECCIÓN DE FILTRO DE CATEGORÍAS */}
           {categoriasUnicas.length > 0 && (
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '5px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', flexShrink: 0 }}>
               <button 
@@ -401,11 +446,9 @@ const btnSecundario = { padding: '15px', background: 'transparent', color: 'var(
 const btnVolver = { background: 'rgba(255,255,255,0.05)', border: '1px solid #333', color: '#fff', padding: '8px 15px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' };
 const btnDesvincular = { background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: '0.7rem', textDecoration: 'underline', cursor: 'pointer' };
 
-// Estilos de las cards y numpad
 const cardJugador = { background: 'var(--panel)', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' };
 const avatar = { width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', margin: '0 auto 8px auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent)', flexShrink: 0 };
 const btnNumpad = { borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', color: '#fff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxSizing: 'border-box', outline: 'none', WebkitTapHighlightColor: 'transparent' };
 const btnFiltroCat = { padding: '6px 14px', borderRadius: '20px', border: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.2s', outline: 'none' };
 
-// Estilos para el nuevo HUB de Jugador
 const avatarGigante = { width: '85px', height: '85px', borderRadius: '50%', background: '#111', border: '3px solid var(--accent)', margin: '0 auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)', flexShrink: 0, boxShadow: '0 0 25px rgba(0,255,136,0.15)' };

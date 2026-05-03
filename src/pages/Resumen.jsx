@@ -234,10 +234,12 @@ function Resumen() {
 
         let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
         let queryJugadores = supabase.from('jugadores').select('*');
+        let queryWellness = supabase.from('wellness').select('*');
 
         if (club_id) {
           queryPartidos = queryPartidos.eq('club_id', club_id);
           queryJugadores = queryJugadores.eq('club_id', club_id);
+          queryWellness = queryWellness.eq('club_id', club_id);
         }
 
         const { data: p } = await queryPartidos;
@@ -246,7 +248,7 @@ function Resumen() {
         const { data: j } = await queryJugadores;
         setJugadores(j || []);
         
-        const { data: w, error: wError } = await supabase.from('wellness').select('*');
+        const { data: w, error: wError } = await queryWellness;
         if (wError) console.error("Error leyendo wellness:", wError);
         setWellness(w || []);
 
@@ -753,6 +755,15 @@ function Resumen() {
 
   const reporteWellness = useMemo(() => {
     if (!partidoSeleccionado) return null;
+
+    const idsJugadoresPartido = new Set(eventosPartido.map(ev => ev.id_jugador).filter(Boolean));
+    const jugadoresCategoria = new Set(
+      jugadores
+        .filter(j => j.categoria === partidoSeleccionado.categoria || idsJugadoresPartido.has(j.id))
+        .map(j => j.id)
+    );
+
+    const wellnessFiltradoCat = wellness.filter(w => jugadoresCategoria.has(w.jugador_id));
     
     const parseDateLocal = (str) => {
       if (!str) return null;
@@ -779,13 +790,13 @@ function Resumen() {
 
     const formatStr = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}`;
 
-    const prePartido = wellness.filter(w => {
+    const prePartido = wellnessFiltradoCat.filter(w => {
       const fw = parseDateLocal(w.fecha);
       if (!fw) return false;
       return fw.getTime() >= inicioSemana.getTime() && fw.getTime() <= fp.getTime();
     });
 
-    const postPartido = wellness.filter(w => {
+    const postPartido = wellnessFiltradoCat.filter(w => {
       const fw = parseDateLocal(w.fecha);
       if (!fw) return false;
       return fw.getTime() > fp.getTime() && fw.getTime() <= finPost.getTime();
@@ -804,7 +815,7 @@ function Resumen() {
       post: calcAvg(postPartido),
       debug: { inicio: formatStr(inicioSemana), partido: formatStr(fp), post: formatStr(finPost) }
     };
-  }, [partidoSeleccionado, wellness]);
+  }, [partidoSeleccionado, wellness, jugadores, eventosPartido]);
 
   const rematesDetalle = useMemo(() => {
     if (!analitica) return [];
@@ -1178,9 +1189,13 @@ const COLORS_ORIGEN = {
 
           {reporteWellness && wellness.length > 0 && (
             <div className="bento-card" style={{ borderTop: '3px solid #10b981' }}>
-              <div className="stat-label" style={{ marginBottom: '15px', color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div 
+                className="stat-label" 
+                style={{ marginBottom: '15px', color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => navigate('/CargaWellness')}
+              >
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  🩺 CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios." />
+                  🩺 CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios cruzados con la categoría o jugadores participantes." />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '20px' }}>
