@@ -802,13 +802,13 @@ export default function Inicio() {
       
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
         <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN 0.00202604262011
+          VERSIÓN 0.00202605022110
         </span>
         <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          Match Center Inteligente & ABP
+          Hub de Comunicación & Motor Analítico
         </h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          El motor de análisis evoluciona con filtros dinámicos, mallas de rendimiento y controles de video.
+          Implementación del sistema de novedades segmentadas y actualización del entorno táctico ABP.
         </p>
       </div>
 
@@ -816,23 +816,27 @@ export default function Inicio() {
         <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           <li>
-            <strong style={{color: '#10b981'}}>🎯 Filtros Dinámicos de Torneos:</strong> Navegación inteligente. Ahora al seleccionar una categoría, la grilla de torneos mostrará *exclusivamente* las competiciones en las que participó ese equipo. ¡Chau a las listas interminables!
+            <strong style={{color: 'var(--accent)'}}>Módulo de Novedades (Kiosco & Dashboard):</strong> Implementación de un sistema de distribución de comunicados con RLS y segmentación de audiencia. Los avisos se renderizan condicionalmente mediante widgets en la pantalla de inicio del CT y en la terminal de autogestión (Kiosco) para jugadores, unificando el flujo de información del club.
           </li>
 
           <li>
-            <strong style={{color: '#06b6d4'}}>🥅 Efectividad ABP (Malla Térmica):</strong> Nueva visualización en el mapa táctico. Ahora podés ver la eficacia real de las Acciones a Balón Parado (Laterales y Córners) por microzonas (Z1-Z4), cruzando ejecuciones totales vs. remates generados.
+            <strong style={{color: '#10b981'}}>Filtros Dinámicos de Torneos:</strong> Refactorización de la capa de datos en el renderizado de competiciones. La selección de categoría restringe la carga de datos exclusivamente a los torneos vinculados, optimizando las peticiones a la base de datos.
           </li>
 
           <li>
-            <strong style={{color: '#3b82f6'}}>🎬 Videotracking PRO:</strong> Mejoras en el sincronizador de video. Ahora podés establecer "offsets" independientes para el Primer y Segundo Tiempo (PT/ST), garantizando que los clics en la línea de tiempo del partido salten al segundo exacto en YouTube.
+            <strong style={{color: '#06b6d4'}}>Efectividad ABP (Malla Térmica):</strong> Integración de cruce de variables (ejecución vs. remate) en mapa táctico. Proyección de eficacia real sobre microzonas (Z1-Z4) para acciones a balón parado.
           </li>
 
           <li>
-            <strong style={{color: '#facc15'}}>🛡️ Privacidad Cuerpos Técnicos (CT):</strong> Refinamiento en los roles. Los usuarios CT ahora entran directamente a la vista filtrada de sus categorías asignadas por defecto, agilizando su flujo de trabajo diario.
+            <strong style={{color: '#3b82f6'}}>Videotracking Sincronizado:</strong> Calibración de deltas de tiempo. Inyección de variables de offset independientes (PT/ST) para forzar saltos precisos en el iframe de YouTube según la marca de tiempo del evento.
+          </li>
+
+          <li>
+            <strong style={{color: '#facc15'}}>Aislamiento de Roles CT:</strong> Reescritura del flujo de ruteo post-autenticación. El CT ingresa a una vista prefiltrada por sus claims de categoría, reduciendo la carga cognitiva y los clics de navegación.
           </li>
           
           <li>
-            <strong style={{color: '#c084fc'}}>📊 Matriz de Zonas Tácticas:</strong> Agregamos un nuevo modo "ZONAS" al mapa táctico para visualizar de forma matemática la densidad de eventos en 12 microzonas de la cancha.
+            <strong style={{color: '#c084fc'}}>Matriz de Zonas Tácticas:</strong> Nuevo esquema de visualización geométrica. División de la superficie de juego en 12 cuadrantes para análisis de densidad de eventos espaciales.
           </li>
 
         </ul>
