@@ -219,7 +219,7 @@ function Presentismo() {
   // Lista de categorías dinámica (Si es CT, solo las suyas. Si es Manager/Admin, todas)
   const categoriasMostrar = (esCT && misCategorias.length > 0)
     ? misCategorias
-    : ['Primera', 'Reserva', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', '2016', '2017', '2018', '2019'];
+    : ['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', '2016', '2017', '2018', '2019'];
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>

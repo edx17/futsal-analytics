@@ -48,6 +48,11 @@ export default function LoginKiosco() {
   const [inputCodigo, setInputCodigo] = useState('');
   const [novedadesJugador, setNovedadesJugador] = useState([]);
 
+  // Estados Financieros Kiosco
+  const [deudaTotal, setDeudaTotal] = useState(0);
+  const [detallesDeuda, setDetallesDeuda] = useState([]); // Guarda los conceptos de lo que debe
+  const [clubConfig, setClubConfig] = useState(null);
+
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [mostrarMenu, setMostrarMenu] = useState(false);
 
@@ -126,6 +131,37 @@ export default function LoginKiosco() {
     setNovedadesJugador(data || []);
   };
 
+  // 💰 DATOS FINANCIEROS KIOSCO
+  const cargarDatosFinancieros = async (idClub, idJugador) => {
+    if (!idClub || !idJugador) return;
+    
+    try {
+      const { data: cData } = await supabase.from('clubes').select('alias_cobro, cbu, cvu, whatsapp_tesoreria').eq('id', idClub).single();
+      if (cData) setClubConfig(cData);
+
+      // Sumamos 'concepto' al select para darle transparencia al usuario
+      const { data: dData } = await supabase.from('tesoreria_deudas')
+        .select('monto_original, monto_pagado, concepto')
+        .eq('club_id', idClub)
+        .eq('jugador_id', idJugador)
+        .in('estado', ['Pendiente', 'Parcial']);
+
+      if (dData && dData.length > 0) {
+        const total = dData.reduce((acc, curr) => acc + (Number(curr.monto_original) - Number(curr.monto_pagado)), 0);
+        setDeudaTotal(total);
+        
+        // Extraemos los conceptos únicos para mostrarlos en la UI
+        const conceptos = dData.map(d => d.concepto).filter(Boolean);
+        setDetallesDeuda([...new Set(conceptos)]);
+      } else {
+        setDeudaTotal(0);
+        setDetallesDeuda([]);
+      }
+    } catch(err) {
+      console.error("Error cargando deudas", err);
+    }
+  };
+
   const fetchPlantel = async (id) => {
     setLoading(true);
 
@@ -151,12 +187,9 @@ export default function LoginKiosco() {
 
         if (jugador) {
           setJugadorSeleccionado(jugador);
-
-          const categoria =
-            localStorage.getItem('kiosco_categoria') || jugador.categoria;
-
+          const categoria = localStorage.getItem('kiosco_categoria') || jugador.categoria;
           fetchNovedadesKiosco(id, categoria);
-
+          cargarDatosFinancieros(id, jugador.id);
           setMostrarMenu(true);
         }
       }
@@ -174,6 +207,8 @@ export default function LoginKiosco() {
     setPin('');
     setMostrarMenu(false);
     setNovedadesJugador([]);
+    setDeudaTotal(0);
+    setDetallesDeuda([]);
 
     localStorage.removeItem('kiosco_jugador_id');
     localStorage.removeItem('kiosco_mode');
@@ -203,16 +238,31 @@ export default function LoginKiosco() {
     localStorage.setItem('kiosco_mode', 'true');
     localStorage.setItem('kiosco_jugador_id', data.id);
 
-    const categoriaFinal =
-      jugadorSeleccionado?.categoria ||
-      data.categoria ||
-      localStorage.getItem('kiosco_categoria');
+    const categoriaFinal = jugadorSeleccionado?.categoria || data.categoria || localStorage.getItem('kiosco_categoria');
 
     if (categoriaFinal) localStorage.setItem('kiosco_categoria', categoriaFinal);
+    
     await fetchNovedadesKiosco(data.club_id || clubId, categoriaFinal);
+    await cargarDatosFinancieros(data.club_id || clubId, data.id);
 
     setMostrarMenu(true);
     setLoading(false);
+  };
+
+  const procesarPagoMP = () => {
+    if (!clubConfig?.alias_cobro) return showToast('El club no configuró su Alias.', 'info');
+    navigator.clipboard.writeText(clubConfig.alias_cobro);
+    showToast('Alias copiado. Abriendo MercadoPago...', 'success');
+    setTimeout(() => {
+      window.location.href = 'mercadopago://';
+    }, 1500);
+  };
+
+  const procesarEnvioComprobante = () => {
+    if (!clubConfig?.whatsapp_tesoreria) return showToast('El club no configuró su WhatsApp de tesorería.', 'info');
+    const msj = `Hola, te adjunto el comprobante de pago de mi cuota/deuda. Soy ${jugadorSeleccionado.nombre} ${jugadorSeleccionado.apellido}.`;
+    const url = `https://wa.me/${clubConfig.whatsapp_tesoreria}?text=${encodeURIComponent(msj)}`;
+    window.open(url, '_blank');
   };
 
   const categoriasUnicas = useMemo(() => {
@@ -241,7 +291,7 @@ export default function LoginKiosco() {
 
   if (mostrarMenu) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', padding: esMovil ? '20px' : '30px', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.3s ease', boxSizing: 'border-box', overflowX: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', padding: esMovil ? '20px' : '30px', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.3s ease', boxSizing: 'border-box', overflowX: 'hidden', overflowY: 'auto' }}>
         
         <style>{`
           .hub-grid {
@@ -292,7 +342,7 @@ export default function LoginKiosco() {
           }
         `}</style>
 
-        <div style={{ textAlign: 'center', marginBottom: '35px', width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: '25px', width: '100%', marginTop: '40px' }}>
           <div style={avatarGigante}>
             {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span>{jugadorSeleccionado.nombre.charAt(0)}</span>}
           </div>
@@ -301,6 +351,57 @@ export default function LoginKiosco() {
           </h1>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0 }}>¿Qué querés hacer hoy?</p>
         </div>
+
+        {/* 💳 MÓDULO FINANCIERO KIOSCO */}
+        {deudaTotal > 0 && (
+          <div style={{ width: '100%', maxWidth: '380px', marginBottom: '20px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '15px', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.2rem' }}>💳</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#ef4444', letterSpacing: '1px' }}>ESTADO DE CUENTA</span>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ef4444', lineHeight: 1 }}>
+                  ${deudaTotal.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Listado de conceptos adeudados para contexto */}
+            {detallesDeuda.length > 0 && (
+              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.6)', marginBottom: '15px', lineHeight: 1.3 }}>
+                <strong style={{ color: '#ef4444' }}>Conceptos pendientes:</strong> {detallesDeuda.join(' • ')}
+              </div>
+            )}
+            
+            {/* Lógica de renderizado condicional de botones */}
+            {(!clubConfig?.alias_cobro && !clubConfig?.whatsapp_tesoreria) ? (
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', textAlign: 'center', borderRadius: '6px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                ⚠️ Acercate a Tesorería o hablá con tu técnico para regularizar tu saldo.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '10px', flexDirection: esMovil ? 'column' : 'row' }}>
+                  {clubConfig?.alias_cobro && (
+                    <button onClick={procesarPagoMP} style={{ flex: 1, padding: '10px', background: '#00b1ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      🤝 PAGAR CON MP
+                    </button>
+                  )}
+                  {clubConfig?.whatsapp_tesoreria && (
+                    <button onClick={procesarEnvioComprobante} style={{ flex: 1, padding: '10px', background: '#25D366', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                      📤 COMPROBANTE
+                    </button>
+                  )}
+                </div>
+                {clubConfig?.alias_cobro && (
+                  <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>
+                    Al tocar el botón se copiará el Alias: <strong style={{color: '#fff'}}>{clubConfig.alias_cobro}</strong>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div style={{ width: '100%', maxWidth: '380px', marginBottom: '20px', background: 'rgba(250, 204, 21, 0.07)', border: '1px solid rgba(250, 204, 21, 0.25)', borderRadius: '12px', padding: '15px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
@@ -347,7 +448,7 @@ export default function LoginKiosco() {
           </div>
         </div>
 
-        <button onClick={volverAtras} style={{ ...btnSecundario, width: '100%', maxWidth: '380px', marginTop: '30px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', padding: '16px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+        <button onClick={volverAtras} style={{ ...btnSecundario, width: '100%', maxWidth: '380px', marginTop: '30px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', padding: '16px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '40px' }}>
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconSalir /></span>
           <span style={{ paddingTop: '2px' }}>CERRAR MI SESIÓN</span>
         </button>
