@@ -815,9 +815,9 @@ function TomaDatos() {
           </div>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 20px', overflow: 'hidden' }}>
           
-          <div style={{ display: 'flex', gap: '20px', background: 'rgba(0,0,0,0.5)', padding: '10px 20px', borderRadius: '6px', border: '1px solid var(--border)', marginBottom: '15px' }}>
+          <div style={{ display: 'flex', gap: '20px', background: 'rgba(0,0,0,0.5)', padding: '8px 20px', borderRadius: '6px', border: '1px solid var(--border)', marginBottom: '0px', flexShrink: 0 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800 }}>REMATES PROPIOS</div>
               <div style={{ fontSize: '0.85rem', color: '#3b82f6', fontWeight: 900 }}>PT: {statsEnVivo.rematesPT} <span style={{color:'#555'}}>|</span> ST: {statsEnVivo.rematesST}</div>
@@ -843,7 +843,7 @@ function TomaDatos() {
             </div>
           </div>
 
-          <div className="pitch-wrapper" style={{ width: '100%', maxWidth: esMovil ? '100%' : 'calc((100dvh - 220px) * 2)', aspectRatio: '2 / 1', position: 'relative' }}>
+          <div className="pitch-wrapper" style={{ width: '100%', maxWidth: esMovil ? '100%' : 'calc((100dvh - 260px) * 2)', aspectRatio: '2 / 1', position: 'relative', margin: '30px 30px' }}>
             
             <button onClick={() => triggerABP('Córner', 0, 0)} style={{...abpBtn, top: '-25px', left: '-25px', color: '#f97316', borderColor: '#f97316'}}>C</button>
             <button onClick={() => triggerABP('Córner', 100, 0)} style={{...abpBtn, top: '-25px', right: '-25px', color: '#f97316', borderColor: '#f97316'}}>C</button>
