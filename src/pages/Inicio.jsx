@@ -802,13 +802,13 @@ export default function Inicio() {
       
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
         <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN 0.00202605022110
+          VERSIÓN 0.00202605042050
         </span>
         <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          Hub de Comunicación & Motor Analítico
+          Motor Financiero & Integridad de Datos
         </h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          Implementación del sistema de novedades segmentadas y actualización del entorno táctico ABP.
+          Refactorización de la capa de tesorería, flujos de caja separados y Kiosco autogestionado.
         </p>
       </div>
 
@@ -816,27 +816,23 @@ export default function Inicio() {
         <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           <li>
-            <strong style={{color: 'var(--accent)'}}>Módulo de Novedades (Kiosco & Dashboard):</strong> Implementación de un sistema de distribución de comunicados con RLS y segmentación de audiencia. Los avisos se renderizan condicionalmente mediante widgets en la pantalla de inicio del CT y en la terminal de autogestión (Kiosco) para jugadores, unificando el flujo de información del club.
+            <strong style={{color: 'var(--accent)'}}>Arquitectura de Pagos Activos/Pasivos:</strong> Reestructuración del motor de pagos. Se separó la lógica entre ingresos (auditoría pasiva con selectores nativos) y liquidaciones (pasarelas dinámicas a billeteras virtuales), reduciendo la carga cognitiva y evitando errores de caja.
           </li>
 
           <li>
-            <strong style={{color: '#10b981'}}>Filtros Dinámicos de Torneos:</strong> Refactorización de la capa de datos en el renderizado de competiciones. La selección de categoría restringe la carga de datos exclusivamente a los torneos vinculados, optimizando las peticiones a la base de datos.
+            <strong style={{color: '#10b981'}}>Rollback e Integridad Referencial:</strong> Implementación de eliminación física (`DELETE`) controlada para revertir errores humanos en el Libro Mayor y Deudas. El sistema bloquea automáticamente la eliminación de obligaciones si estas ya poseen pagos parciales vinculados.
           </li>
 
           <li>
-            <strong style={{color: '#06b6d4'}}>Efectividad ABP (Malla Térmica):</strong> Integración de cruce de variables (ejecución vs. remate) en mapa táctico. Proyección de eficacia real sobre microzonas (Z1-Z4) para acciones a balón parado.
+            <strong style={{color: '#06b6d4'}}>Kiosco Financiero Autogestionado:</strong> El portal de jugadores en tablet/móvil ahora inyecta el estado de cuenta en tiempo real. Interfaz minimalista que expone saldos, mapea el alias del club e integra deep links (MP, Ualá, Banco Provincia) para agilizar transferencias.
           </li>
 
           <li>
-            <strong style={{color: '#3b82f6'}}>Videotracking Sincronizado:</strong> Calibración de deltas de tiempo. Inyección de variables de offset independientes (PT/ST) para forzar saltos precisos en el iframe de YouTube según la marca de tiempo del evento.
-          </li>
-
-          <li>
-            <strong style={{color: '#facc15'}}>Aislamiento de Roles CT:</strong> Reescritura del flujo de ruteo post-autenticación. El CT ingresa a una vista prefiltrada por sus claims de categoría, reduciendo la carga cognitiva y los clics de navegación.
+            <strong style={{color: '#facc15'}}>Dashboard Financiero Avanzado:</strong> Panel de Tesorería reescrito con KPIs de alto impacto. Cruce relacional de datos para calcular tasas de cobrabilidad, caja real (YTD) y exposición de los principales deudores históricos, visualizado mediante librerías de Recharts.
           </li>
           
           <li>
-            <strong style={{color: '#c084fc'}}>Matriz de Zonas Tácticas:</strong> Nuevo esquema de visualización geométrica. División de la superficie de juego en 12 cuadrantes para análisis de densidad de eventos espaciales.
+            <strong style={{color: '#c084fc'}}>Filtro Estadístico de Compromiso:</strong> Optimización en el cruce de datos de asistencia vs. cuotas. El sistema ahora exige una muestra mínima (3 sesiones/mes) para calcular porcentajes, evitando sesgos analíticos y falsos positivos en el rendimiento del jugador.
           </li>
 
         </ul>
