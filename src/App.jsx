@@ -87,6 +87,7 @@ function AppRoutes() {
       <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
       <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
       <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
+      <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
       
       {/* RUTAS DE ADMINISTRACIÓN */}
       <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
@@ -94,7 +95,7 @@ function AppRoutes() {
       <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
       <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
       <Route path="/mi-staff" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiStaff /></ProtectedRoute>} />
-      <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
+      
 
       {/* RUTAS DE SUPERUSER */}
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
@@ -347,6 +348,7 @@ function AppLayout() {
                 {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
                 <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🌡️ <span>WELLNESS</span></NavLink>
                 <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
+                <NavLink to="/novedades" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📢 <span>NOVEDADES</span></NavLink>
                               </>
             )}
           </>
@@ -359,8 +361,6 @@ function AppLayout() {
             </div>
             {menusAbiertos.administracion && !isCollapsed && (
               <>
-                {/* 🔥 ACÁ AGREGAMOS EL BOTÓN DE MI STAFF */}
-                <NavLink to="/novedades" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📢 <span>NOVEDADES</span></NavLink>
                 <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👥 <span>MI STAFF</span></NavLink>
                 
                 <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💰 <span>TESORERÍA</span></NavLink>
