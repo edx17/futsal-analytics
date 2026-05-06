@@ -59,12 +59,13 @@ const RenderRutinaFisica = ({ data }) => {
 };
 
 // =======================================================
-// COMPONENTE INTERNO: Reproductor Automático
+// COMPONENTE INTERNO: Reproductor Automático ("Modo GIF" Nativo)
+// MEJORADO Y SINCRONIZADO CON LA VERSIÓN DE BANCOTEREAS
 // =======================================================
 const ReproductorLoop = ({ editorData }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const [cvSize, setCvSize] = useState({ w: 800, h: 500 });
+  const [cvSize, setCvSize] = useState({ w: 0, h: 0 });
   const isMountedRef = useRef(true);
 
   // Configuraciones y Constantes del Motor Nativo
@@ -78,14 +79,11 @@ const ReproductorLoop = ({ editorData }) => {
     '20x20_central': { mW: 20, mH: 20 },
   };
 
-  // RESTAURADA: Esta lógica espeja EXACTAMENTE cómo CreadorTareas guarda las posiciones
-  const getDimensionesLogicas = (variant) => {
-    switch (variant) {
-      case '20x20_mitad': case '20x20_central': return { w: 500, h: 500 };
-      case '28x20': return { w: 700, h: 500 };
-      case '40x20': default: return { w: 900, h: 500 };
-    }
-  };
+  const BASE_W = 800;
+  function getBaseH(variant) {
+    const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20'];
+    return BASE_W / (vrt.mW / vrt.mH);
+  }
 
   const TEAM_COLORS = {
     home: { fill: '#2979ff', stroke: '#82b0ff' },
@@ -124,33 +122,41 @@ const ReproductorLoop = ({ editorData }) => {
     },
   };
 
-  // Lógica de Redimensionamiento (CORREGIDA Y ADAPTADA A DIMENSIONES LÓGICAS)
+  // 🛡️ REDIMENSIONAMIENTO BLINDADO CONTRA EL "INFINITE ZOOM"
   useEffect(() => {
-    function handleResize() {
-      if (!containerRef.current) return;
-      const cw = containerRef.current.clientWidth;
-      const ch = containerRef.current.clientHeight;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const variant = pitchCfg.variant || pitchCfg.tamaño || '40x20';
+    const baseH = getBaseH(variant);
+    const ratio = BASE_W / baseH;
+    
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      
+      const cw = entry.contentRect.width;
+      const ch = entry.contentRect.height;
       if (cw === 0 || ch === 0) return;
 
-      const variant = pitchCfg.variant || pitchCfg.tamaño || '40x20';
-      const logicalSize = getDimensionesLogicas(variant);
-      const ratio = logicalSize.w / logicalSize.h;
-      
       let w = Math.min(cw, ch * ratio);
       let h = w / ratio;
       
       if (h > ch) { h = ch; w = h * ratio; }
-      setCvSize({ w, h });
-    }
+      
+      w = Math.floor(w);
+      h = Math.floor(h);
+
+      setCvSize(prev => {
+        if (Math.abs(prev.w - w) > 2 || Math.abs(prev.h - h) > 2) {
+          return { w, h };
+        }
+        return prev;
+      });
+    });
     
-    handleResize();
-    const observer = new ResizeObserver(() => handleResize());
-    if (containerRef.current) observer.observe(containerRef.current);
-    
-    return () => {
-      if (containerRef.current) observer.unobserve(containerRef.current);
-      window.removeEventListener('resize', handleResize);
-    };
+    observer.observe(container);
+    return () => observer.disconnect();
   }, [pitchCfg.variant, pitchCfg.tamaño]);
 
   // Funciones de Renderizado Geométrico
@@ -352,17 +358,15 @@ const ReproductorLoop = ({ editorData }) => {
   useEffect(() => {
     isMountedRef.current = true;
     const cv = canvasRef.current;
-    if (!cv) return;
+    if (!cv || cvSize.w === 0) return;
     const ctx = cv.getContext('2d');
 
     const DURATION = 800;
     const PAUSE = 500;
     let animId;
 
-    // Calcular la dimensión lógica nativa de este tipo de cancha
     const variant = pitchCfg.variant || pitchCfg.tamaño || '40x20';
-    const logicalSize = getDimensionesLogicas(variant);
-    const { w: L_W, h: L_H } = logicalSize;
+    const baseH = getBaseH(variant);
 
     const playLoop = async () => {
       while (isMountedRef.current) {
@@ -370,9 +374,10 @@ const ReproductorLoop = ({ editorData }) => {
           const f0 = frames[0] || {};
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           ctx.clearRect(0, 0, cvSize.w, cvSize.h);
-          ctx.scale(cvSize.w / L_W, cvSize.h / L_H);
-          drawPitch(ctx, L_W, L_H, pitchCfg);
-          drawElements(ctx, f0.elements || f0.elementos || [], f0.arrows || f0.lineas || [], L_W);
+          ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
+          
+          drawPitch(ctx, BASE_W, baseH, pitchCfg);
+          drawElements(ctx, f0.elements || f0.elementos || [], f0.arrows || f0.lineas || [], BASE_W);
           break; 
         }
 
@@ -403,13 +408,12 @@ const ReproductorLoop = ({ editorData }) => {
                 };
               });
               
-              // Limpiar y dibujar frame interpolado escalado perfectamente
               ctx.setTransform(1, 0, 0, 1, 0, 0);
               ctx.clearRect(0, 0, cvSize.w, cvSize.h);
-              ctx.scale(cvSize.w / L_W, cvSize.h / L_H);
+              ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
               
-              drawPitch(ctx, L_W, L_H, pitchCfg);
-              drawElements(ctx, interpolated, arrsA, L_W);
+              drawPitch(ctx, BASE_W, baseH, pitchCfg);
+              drawElements(ctx, interpolated, arrsA, BASE_W);
 
               if (progress < 1) animId = requestAnimationFrame(animate);
               else resolve();
@@ -429,11 +433,12 @@ const ReproductorLoop = ({ editorData }) => {
   }, [frames, cvSize, pitchCfg]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#0a0b0f', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: '#0a0b0f', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       <canvas 
         ref={canvasRef} 
         width={cvSize.w} 
         height={cvSize.h} 
+        style={{ display: 'block', maxWidth: '100%', maxHeight: '100%' }}
       />
       {frames.length > 1 && (
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', animation: 'pulse 2s infinite' }}>
@@ -591,7 +596,7 @@ const PlanificadorSemanal = () => {
     }
   }, [diasCalendario]);
 
-  const cargarDatos = async () => {
+const cargarDatos = async () => {
     setCargando(true);
     try {
       const club_id = localStorage.getItem('club_id') || 'club_default';
@@ -620,6 +625,7 @@ const PlanificadorSemanal = () => {
       const { data: dataPartidos, error: errPartidos } = await queryPartidos;
       if (errPartidos) throw errPartidos;
       
+      // 🌟 CORREGIDO: Eliminado 'objective_principal' que causaba el crash de Supabase
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
         .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, fase_juego, objetivo_principal')
@@ -1258,8 +1264,8 @@ const PlanificadorSemanal = () => {
               {/* VISUAL Y MULTIMEDIA */}
               <div style={{ flex: '1 1 100%', padding: esMovil ? '0 0 15px 0' : '10px', borderRight: esMovil ? 'none' : '1px solid #222', borderBottom: esMovil ? '1px solid #222' : 'none', minWidth: '0' }}>
                 
-                {/* AQUÍ ESTÁ EL REPRODUCTOR NATIVO ESCALADO */}
-                <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', minHeight: esMovil ? '250px' : '350px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                {/* 🛡️ CONTENEDOR RELATIVO PARA ENCAPSULAR AL CANVAS ABSOLUTO (LÓGICA BANCOTAREAS) */}
+                <div style={{ background: '#000', borderRadius: '12px', border: '1px solid #333', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   
                   {tareaSeleccionadaDetalle.categoria_ejercicio === 'Físico' && tareaSeleccionadaDetalle.editor_data?.tipo === 'rutina_fisica' ? (
                     <RenderRutinaFisica data={tareaSeleccionadaDetalle.editor_data} />

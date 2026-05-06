@@ -423,12 +423,14 @@ function drawArrow(ctx, a, selected) {
   ctx.closePath(); ctx.fill()
 }
 
+// Dibujo temporal de flecha
 function drawTempArrow(ctx, ta) {
   const st=ARROW_STYLES[ta.style]||ARROW_STYLES['arrow-pase']
   ctx.strokeStyle=st.color+'88'; ctx.lineWidth=st.width; ctx.setLineDash([6,4])
   ctx.beginPath(); ctx.moveTo(ta.x1,ta.y1); ctx.lineTo(ta.cx,ta.cy); ctx.stroke(); ctx.setLineDash([])
 }
 
+// Dibujo temporal de zona
 function drawTempZone(ctx, tz) {
   ctx.globalAlpha=.12; ctx.fillStyle=tz.type==='zone-ellipse'?'#ff3860':'#00e5ff'
   ctx.strokeStyle=tz.type==='zone-ellipse'?'#ff3860':'#00e5ff'; ctx.lineWidth=1.5; ctx.setLineDash([5,3])
@@ -890,7 +892,8 @@ const CreadorTareas = () => {
   // ── POINTER EVENTS (Adaptado a Coordenadas Virtuales) ──
   const getPos = useCallback((e) => {
     const r = canvasRef.current.getBoundingClientRect()
-    const src = e.touches ? e.touches[0] || e.changedTouches[0] : e
+    // Si es un evento táctil tradicional o pointer event unificado
+    const src = (e.touches && e.touches.length > 0) ? e.touches[0] : (e.changedTouches && e.changedTouches.length > 0) ? e.changedTouches[0] : e
     const rawX = src.clientX - r.left
     const rawY = src.clientY - r.top
 
@@ -1219,10 +1222,9 @@ const CreadorTareas = () => {
             className="ct-canvas"
             width={cvSize.w} height={cvSize.h}
             style={{touchAction:'none'}}
-            onMouseDown={e=>{ if(e.sourceCapabilities?.firesTouchEvents) return; onPointerDown(e) }}
-            onMouseMove={e=>{ if(e.sourceCapabilities?.firesTouchEvents) return; onPointerMove(e) }}
-            onMouseUp={e=>{ if(e.sourceCapabilities?.firesTouchEvents) return; onPointerUp(e) }}
-            onTouchStart={onPointerDown} onTouchMove={onPointerMove} onTouchEnd={onPointerUp}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
           />
 
         </div>
