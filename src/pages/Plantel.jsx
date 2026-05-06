@@ -185,35 +185,104 @@ function Plantel() {
     else { setOrdenColumna(columna); setOrdenAscendente(true); }
   };
 
-  // --- COPIAR TODOS LOS PINS ---
+  // URL del Kiosco unificada
+  const URL_KIOSCO = "https://www.virtual-club.ar/kiosco";
+
+  // ==========================================
+  // 1. COPIAR TODOS (USO INTERNO DEL CUERPO TÉCNICO)
+  // ==========================================
   const copiarTodosLosPINs = () => {
-    let texto = "🔐 *ACCESOS AL SISTEMA VIRTUAL.STATS*\n\n";
-    texto += `📍 *CÓDIGO DE CLUB (UUID):* \n${clubId}\n\n`;
-    texto += `----------------------------\n\n`;
+    let texto = "🔐 *ACCESOS AL SISTEMA VIRTUAL.CLUB (INTERNO CT)*\n\n";
+    texto += `🌐 *ACCESO WEB:* ${URL_KIOSCO}\n`;
+    texto += `📍 *CÓDIGO DE CLUB (UUID):* \n\`${clubId}\`\n\n`;
+    texto += `--------------------------------------------\n\n`;
     
     jugadoresOrdenados.forEach(j => {
       const nombreCompleto = `${j.nombre} ${j.apellido || ''}`.trim().toUpperCase();
       texto += `👤 *${nombreCompleto}* (#${j.dorsal})\n`;
-      texto += `🔢 PIN: ${j.pin_kiosco || 'S/P'}\n\n`;
+      texto += `🔢 PIN: \`${j.pin_kiosco || 'S/P'}\`\n\n`;
     });
 
     navigator.clipboard.writeText(texto)
-      .then(() => showToast("¡Lista completa copiada!", "success"))
+      .then(() => showToast("¡Lista interna copiada!", "success"))
       .catch(err => showToast("Error al copiar", "error"));
   };
 
-  // --- COPIAR PIN INDIVIDUAL (PARA WHATSAPP) ---
+
+  // ==========================================
+  // 2. COPIAR TODOS SEPARADOS (PARA IR REPARTIENDO)
+  // ==========================================
+  const copiarTodosSeparados = () => {
+    let textoGrande = "📋 *MENSAJES DE ACCESO LISTOS PARA ENVIAR*\n";
+    textoGrande += "_Copiá cada bloque individualmente de tu block de notas y mandaselo a cada jugador._\n\n";
+    textoGrande += "============================================\n\n";
+
+    jugadoresOrdenados.forEach((j, index) => {
+      const nombreCompleto = `${j.nombre} ${j.apellido || ''}`.trim().toUpperCase();
+      
+      textoGrande += `👉 *ENVIAR A: ${nombreCompleto}* 👈\n\n`;
+      textoGrande += `🔐 *ACCESO AL KIOSCO - VIRTUAL.CLUB*\n\n`;
+      textoGrande += `Hola *${j.nombre.toUpperCase()}*, acá tenés tu acceso para ingresar al sistema desde tu celu o la tablet del club:\n\n`;
+      textoGrande += `🌐 *1. ENTRÁ ACÁ:* \n${URL_KIOSCO}\n\n`;
+      textoGrande += `📍 *2. CÓDIGO DE CLUB:* \n\`${clubId}\`\n\n`;
+      textoGrande += `🔢 *3. TU PIN PERSONAL:* \n\`${j.pin_kiosco || 'No generado'}\`\n\n`;
+      textoGrande += `_(Tip: Podés mantener apretado el código largo o el PIN para copiarlos rápido)_\n\n`;
+      
+      if (index < jugadoresOrdenados.length - 1) {
+        textoGrande += "============================================\n\n";
+      }
+    });
+
+    navigator.clipboard.writeText(textoGrande)
+      .then(() => showToast("¡Mensajes individuales concatenados y copiados!", "success"))
+      .catch(err => showToast("Error al copiar los mensajes", "error"));
+  };
+
+
+  // ==========================================
+  // 3. COPIAR PIN INDIVIDUAL (UN SOLO CLIC)
+  // ==========================================
   const copiarPinIndividual = (j) => {
-    const nombreCompleto = `${j.nombre} ${j.apellido || ''}`.trim().toUpperCase();
-    let texto = `🔐 *ACCESO KIOSCO - VIRTUAL.STATS*\n\n`;
-    texto += `Hola *${j.nombre.toUpperCase()}*, acá tenés tus datos para ingresar al sistema desde el celu o la tablet del club:\n\n`;
-    texto += `📍 *CÓDIGO DE CLUB (UUID):*\n\`${clubId}\`\n\n`;
-    texto += `🔢 *TU PIN PERSONAL:*\n\`${j.pin_kiosco || 'No generado'}\`\n\n`;
+    let texto = `🔐 *ACCESO AL KIOSCO - VIRTUAL.CLUB*\n\n`;
+    texto += `Hola *${j.nombre.toUpperCase()}*, acá tenés tus datos para ingresar al sistema desde tu celu o la tablet del club:\n\n`;
+    texto += `🌐 *1. ENTRÁ ACÁ:* \n${URL_KIOSCO}\n\n`;
+    texto += `📍 *2. CÓDIGO DE CLUB:* \n\`${clubId}\`\n\n`;
+    texto += `🔢 *3. TU PIN PERSONAL:* \n\`${j.pin_kiosco || 'No generado'}\`\n\n`;
     texto += `_Copiá el código largo, pegalo en el inicio y luego ingresá tu PIN._`;
 
     navigator.clipboard.writeText(texto)
       .then(() => showToast(`¡Acceso de ${j.nombre} copiado!`, "success"))
       .catch(err => showToast("Error al copiar", "error"));
+  };
+
+
+  // ==========================================
+  // 4. ENVIAR DIRECTO POR WHATSAPP (SÚPER COMODIDAD)
+  // ==========================================
+  const enviarPorWhatsApp = (j) => {
+    // 1. Mensaje personalizado para el jugador
+    let texto = `🔐 *ACCESO AL KIOSCO - VIRTUAL.CLUB*\n\n`;
+    texto += `Hola *${j.nombre.toUpperCase()}*, acá tenés tus datos para ingresar al sistema desde tu celu o la tablet del club:\n\n`;
+    texto += `🌐 *1. ENTRÁ ACÁ:* \n${URL_KIOSCO}\n\n`;
+    texto += `📍 *2. CÓDIGO DE CLUB:* \n\`${clubId}\`\n\n`;
+    texto += `🔢 *3. TU PIN PERSONAL:* \n\`${j.pin_kiosco || 'No generado'}\`\n\n`;
+    texto += `_Copiá el código largo, pegalo en el inicio y luego ingresá tu PIN._`;
+
+    const textoFormateado = encodeURIComponent(texto);
+    
+    // 2. Tomamos el teléfono directo del campo "contacto" del jugador y le barremos cualquier caracter que no sea número
+    const numeroParaWhatsApp = j.contacto ? j.contacto.replace(/[^0-9]/g, "") : "";
+    
+    let url = "";
+    if (numeroParaWhatsApp) {
+      // Abre el chat de WhatsApp directo con ese número y el mensaje ya escrito
+      url = `https://api.whatsapp.com/send?phone=${numeroParaWhatsApp}&text=${textoFormateado}`;
+    } else {
+      // Si no tiene teléfono cargado en su ficha, abre WA para que el DT elija el contacto manualmente
+      url = `https://api.whatsapp.com/send?text=${textoFormateado}`;
+    }
+    
+    window.open(url, "_blank");
   };
 
   // Extraemos categorías únicas para los botones de filtro
@@ -233,6 +302,7 @@ function Plantel() {
       }
       if (valorA < valorB) return ordenAscendente ? -1 : 1;
       if (valorA > valorB) return ordenAscendente ? 1 : -1;
+      if (valorA > b) return 1;
       return 0;
     });
 
@@ -249,11 +319,12 @@ function Plantel() {
     <div style={{ animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>
       <div className="bento-card">
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div className="stat-label" style={{ fontSize: '1.2rem', color: '#fff' }}>MI PLANTEL ({jugadoresOrdenados.length})</div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)' }}>📋 COPIAR TODOS</button>
-            <button onClick={abrirNuevo} className="btn-action" style={{ background: '#00ff88', color: '#000' }}>+ NUEVO JUGADOR</button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR CT</button>
+            <button onClick={copiarTodosSeparados} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR WHATSAPP</button>
+            <button onClick={abrirNuevo} className="btn-action" style={{ background: '#00ff88', color: '#000', padding: '8px 15px', fontSize: '0.8rem' }}>+ NUEVO JUGADOR</button>
           </div>
         </div>
 
@@ -310,7 +381,24 @@ function Plantel() {
                   <td style={{ color: 'var(--text-dim)' }}>{j.posicion?.toUpperCase()}</td>
                   <td style={{ color: 'var(--text-dim)' }}>{j.categoria?.toUpperCase()}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                      {/* Enviar PIN directo WhatsApp */}
+                      <button 
+                        onClick={() => enviarPorWhatsApp(j)} 
+                        title={j.contacto ? "Enviar directo por WhatsApp" : "Enviar (Elegir contacto en WhatsApp)"}
+                        style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: '#fff', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        💬
+                      </button>
+                      {/* Copiar PIN individual */}
+                      <button 
+                        onClick={() => copiarPinIndividual(j)} 
+                        title="Copiar mensaje de acceso"
+                        style={{ background: '#222', border: '1px solid #333', color: '#fff', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        📋
+                      </button>
+                      <span style={{ color: '#333', fontSize: '0.85rem' }}>|</span>
                       <button onClick={() => abrirEdicion(j)} style={btnGhost}>EDITAR</button>
                       <button onClick={() => eliminarJugador(j.id)} style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444' }}>✕</button>
                     </div>
@@ -361,18 +449,28 @@ function Plantel() {
               </div>
             </div>
 
-            {/* SECCIÓN DE ACCESO RÁPIDO (KIOSCO) */}
+            {/* SECCIÓN DE ACCESO RÁPIDO (KIOSCO) - REDISEÑADO CON BOTÓN WHATSAPP */}
             <div style={{ background: 'rgba(0, 255, 136, 0.05)', border: '1px solid var(--accent)', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
                  <div className="section-title" style={{ margin: 0, color: 'var(--accent)' }}>ACCESO RÁPIDO</div>
-                 <button 
-                  onClick={() => copiarPinIndividual(jugadorSeleccionado)} 
-                  style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', gap: '5px' }}
-                  onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
-                  onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)'; }}
-                 >
-                  📋 COPIAR PARA WHATSAPP
-                 </button>
+                 <div style={{ display: 'flex', gap: '8px' }}>
+                   {/* WhatsApp Directo */}
+                   <button 
+                    onClick={() => enviarPorWhatsApp(jugadorSeleccionado)} 
+                    style={{ background: jugadorSeleccionado.contacto ? '#25D366' : '#128C7E', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                   >
+                    💬 ENVIAR WHATSAPP
+                   </button>
+                   {/* Copiar Portapapeles */}
+                   <button 
+                    onClick={() => copiarPinIndividual(jugadorSeleccionado)} 
+                    style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', transition: '0.2s', display: 'flex', alignItems: 'center', gap: '5px' }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)'; }}
+                   >
+                    📋 COPIAR TEXTO
+                   </button>
+                 </div>
                </div>
                
                <div style={fichaRow}>
@@ -386,7 +484,7 @@ function Plantel() {
                </div>
 
                <p style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '10px', marginBottom: 0, fontStyle: 'italic', textAlign: 'center' }}>
-                * Presioná el botón de arriba para copiar estos datos y enviarlos por WhatsApp.
+                * Presioná los botones de arriba para enviar los datos por WhatsApp o copiarlos al portapapeles.
                </p>
             </div>
 
@@ -412,21 +510,21 @@ function Plantel() {
               <div style={{ background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>IDENTIFICACIÓN Y CANCHA</div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
-                   <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-                     {formData.foto ? <img src={formData.foto} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'#555', fontWeight:800}}>FOTO</span>}
-                   </div>
-                   <div style={{ flex: 1 }}>
-                     <div className="section-title" style={{ marginBottom: '5px' }}>FOTO DE PERFIL (Cargar Archivo)</div>
-                     <input 
-                       type="file" 
-                       accept="image/*"
-                       onChange={handleSubirFoto} 
-                       style={inputIndustrial} 
-                       disabled={subiendoFoto}
-                     />
-                     {subiendoFoto && <span style={{fontSize: '0.8rem', color: 'var(--accent)', marginTop: '5px', display: 'block'}}>Subiendo imagen, aguardá un segundo...</span>}
-                     {formData.foto && !subiendoFoto && <span style={{fontSize: '0.8rem', color: '#10b981', marginTop: '5px', display: 'block'}}>¡Foto cargada! (Podés elegir otra para reemplazarla)</span>}
-                   </div>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                      {formData.foto ? <img src={formData.foto} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'#555', fontWeight:800}}>FOTO</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="section-title" style={{ marginBottom: '5px' }}>FOTO DE PERFIL (Cargar Archivo)</div>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleSubirFoto} 
+                        style={inputIndustrial} 
+                        disabled={subiendoFoto}
+                      />
+                      {subiendoFoto && <span style={{fontSize: '0.8rem', color: 'var(--accent)', marginTop: '5px', display: 'block'}}>Subiendo imagen, aguardá un segundo...</span>}
+                      {formData.foto && !subiendoFoto && <span style={{fontSize: '0.8rem', color: '#10b981', marginTop: '5px', display: 'block'}}>¡Foto cargada! (Podés elegir otra para reemplazarla)</span>}
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
@@ -505,6 +603,7 @@ function Plantel() {
       )}
 
       <style>{`
+        .inputFiltro { padding: 12px 15px; background: #000; border: 1px solid #333; border-radius: 8px; color: #fff; fontSize: 0.9rem; min-width: 250px; outline: none; }
         .inputIndustrial { background: transparent; border: 1px solid var(--border); width: 100%; padding: 12px; color: #fff; border-radius: 4px; outline: none; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
         .modal-content { width: 100%; border: 1px solid var(--accent); animation: scaleIn 0.2s; max-height: 90vh; overflow-y: auto; }
