@@ -35,12 +35,25 @@ import AdmSuscripciones from './pages/AdmSuscripciones';
 import LibroTactico from './pages/LibroTactico';
 import LoginKiosco from './pages/LoginKiosco';
 import Novedades from './pages/Novedades';
-
-// 🔥 NUEVA PÁGINA PARA EL MANAGER:
 import MiStaff from './pages/MiStaff'; 
-import AceptarTerminos from './pages/AceptarTerminos'
+import AceptarTerminos from './pages/AceptarTerminos';
 
 import './App.css';
+
+// ==========================================
+// 🌍 CATÁLOGO OPERATIVO DE ACCIONES RÁPIDAS
+// Desde acá el sistema sabe qué opciones mutables existen en la app
+// ==========================================
+const CATALOGO_ACCIONES_FAB = [
+  { id: 'nuevo-partido', label: 'Nuevo Partido', path: '/nuevo-partido', icon: '⚡', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'presentismo', label: 'Tomar Presentismo', path: '/presentismo', icon: '📅', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'wellness', label: 'Estado Wellness', path: '/wellness', icon: '🔋', roles: ['superuser', 'manager', 'ct', 'jugador'] },
+  { id: 'microciclo', label: 'Planificador Semanal', path: '/microciclo', icon: '🗓️', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'torneos', label: 'Mis Torneos', path: '/torneos', icon: '🏆', roles: ['superuser', 'manager', 'admin'] },
+  { id: 'rivales', label: 'Scouting Rivales', path: '/scouting-rivales', icon: '🕵️‍♂️', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'plantel', label: 'Gestionar Plantel', path: '/plantel', icon: '👥', roles: ['superuser', 'manager', 'admin', 'ct'] },
+  { id: 'tesoreria', label: 'Caja de Tesorería', path: '/tesoreria', icon: '💰', roles: ['superuser', 'manager', 'admin'] }
+];
 
 // ==========================================
 // ESTILOS ESTÁTICOS
@@ -70,7 +83,7 @@ const getSidebarGroupTitle = (isCollapsed) => ({
   textAlign: 'center'
 });
 
-const fabStyle = { position: 'absolute', top: '0px', left: '50%', transform: 'translateX(-50%)', width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)', color: '#000', border: 'none', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,255,136,0.3)', zIndex: 1002, transition: 'transform 0.2s' };
+const fabStyle = { position: 'absolute', top: '0px', left: '50%', transform: 'translateX(-50%)', width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)', color: '#000', border: 'none', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContext: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,255,136,0.3)', zIndex: 1002, transition: 'transform 0.2s' };
 
 // ==========================================
 // COMPONENTES DE ENRUTAMIENTO Y LAYOUT
@@ -89,15 +102,12 @@ function AppRoutes() {
       <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
       <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
       
-      {/* RUTAS DE ADMINISTRACIÓN */}
       <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
       <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
       <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
       <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
       <Route path="/mi-staff" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiStaff /></ProtectedRoute>} />
       
-
-      {/* RUTAS DE SUPERUSER */}
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
       <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
       
@@ -107,7 +117,6 @@ function AppRoutes() {
       <Route path="/torneos" element={<ProtectedRoute><Torneos /></ProtectedRoute>} />
       <Route path="/scouting-rivales" element={<ProtectedRoute><ScoutingRivales /></ProtectedRoute>} />
       
-      {/* RUTAS DE JUGADOR */}
       <Route path="/jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
       <Route path="/jugador-perfil" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
       <Route path="/perfil-jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
@@ -117,8 +126,6 @@ function AppRoutes() {
       <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
       <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
       <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
-
-{/* 🔥 RUTA DEL MURO LEGAL */}
       <Route path="/aceptar-terminos" element={<ProtectedRoute><AceptarTerminos /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/inicio" replace />} />
@@ -135,6 +142,9 @@ function AppLayout() {
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
   const [drawerAbierto, setDrawerAbierto] = useState(false);
   const [fabAbierto, setFabAbierto] = useState(false);
+  
+  // Estado para controlar el modo edición de los atajos desde el celular
+  const [modoEdicionFab, setModoEdicionFab] = useState(false);
 
   const [menusAbiertos, setMenusAbiertos] = useState({
     operaciones: true,
@@ -156,30 +166,14 @@ function AppLayout() {
     if (esMovil) {
       setDrawerAbierto(false);
       setFabAbierto(false);
+      setModoEdicionFab(false);
     }
   }, [location.pathname, esMovil]);
 
-  useEffect(() => {
-    if (!sidebarAbierta && !esMovil) {
-      setMenusAbiertos({
-        operaciones: false,
-        competicion: false,
-        analisis: false,
-        planificacion: false,
-        plantel: false,
-        administracion: false,
-        sistema: false
-      });
-    }
-  }, [sidebarAbierta, esMovil]);
-
-
-  // ==========================================
-  // PERMISOS Y VARIABLES DE ESTADO
-  // ==========================================
   const permisos = useMemo(() => {
     const rol = (perfil?.rol || '').toLowerCase();
     return {
+      rolActual: rol,
       esSuperUser: rol === 'superuser',
       esJugador: rol === 'jugador',
       puedeEscribirDeportivo: ['superuser', 'manager', 'ct'].includes(rol),
@@ -188,6 +182,43 @@ function AppLayout() {
       puedeConfigurar: ['superuser', 'manager', 'admin'].includes(rol),
     };
   }, [perfil]);
+
+  // 1. Obtener todas las acciones que este rol tiene permitido usar del catálogo global
+  const accionesPermitidasDelCatalogo = useMemo(() => {
+    return CATALOGO_ACCIONES_FAB.filter(acc => acc.roles.includes(permisos.rolActual));
+  }, [permisos.rolActual]);
+
+  // 2. Cargar del localStorage las acciones específicas que el usuario eligió mostrar
+  const [misAccionesIds, setMisAccionesIds] = useState([]);
+
+  useEffect(() => {
+    if (perfil?.id) {
+      const guardado = localStorage.getItem(`acciones_fab_${perfil.id}`);
+      if (guardado) {
+        setMisAccionesIds(JSON.parse(guardado));
+      } else {
+        // Configuraciones iniciales por defecto si no guardó nada todavía
+        const iniciales = permisos.esJugador 
+          ? ['wellness'] 
+          : ['nuevo-partido', 'presentismo', 'wellness'];
+        setMisAccionesIds(iniciales);
+      }
+    }
+  }, [perfil, permisos.esJugador]);
+
+  // 3. Cruzar los datos para obtener los objetos completos de las acciones activas
+  const accionesActivasUsuario = useMemo(() => {
+    return accionesPermitidasDelCatalogo.filter(acc => misAccionesIds.includes(acc.id));
+  }, [accionesPermitidasDelCatalogo, misAccionesIds]);
+
+  // 4. Función operativa para guardar o sacar atajos con un toque
+  const toggleAccionFab = (id) => {
+    setMisAccionesIds(prev => {
+      const nuevo = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      localStorage.setItem(`acciones_fab_${perfil.id}`, JSON.stringify(nuevo));
+      return nuevo;
+    });
+  };
 
   if (loading) return null;
 
@@ -198,25 +229,20 @@ function AppLayout() {
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
-// 🔥 NUEVA VARIABLE PARA EL MURO LEGAL
   const isAceptarTerminosPath = location.pathname === '/aceptar-terminos';
 
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
   const club = perfil?.clubes;
   const isVencido = club?.fecha_vencimiento ? new Date(club.fecha_vencimiento) < new Date() : false;
 
-  // Validación de suscripción
   if (perfil && !permisos.esSuperUser && club && (club.suscripcion_activa === false || isVencido) && !isSuscripcionPath) {
     return <Navigate to="/mi-suscripcion" replace />;
   }
 
-  // 🔥 NUEVO: VALIDACIÓN DE TÉRMINOS LEGALES
-  // Si el perfil está cargado, NO aceptó los términos, NO es una pantalla de registro/login, y NO está en el Kiosco... Lo mandamos al muro legal.
   if (perfil && perfil.terminos_aceptados === false && !isAceptarTerminosPath && !isLanding && !isLogin && !isRegistro && !isKioscoMode && !isKioscoAuth) {
     return <Navigate to="/aceptar-terminos" replace />;
   }
 
-  // Rutas de pantalla completa (Login, Toma de Datos, etc.)
   if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
@@ -231,7 +257,6 @@ function AppLayout() {
     );
   }
 
-  // Modo Kiosco
   if (isKioscoMode && !isKioscoPath) return <Navigate to="/kiosco/home" replace />;
   if (isKioscoMode && isKioscoPath) {
     return (
@@ -259,9 +284,6 @@ function AppLayout() {
     setMenusAbiertos(prev => ({ ...prev, [seccion]: !prev[seccion] }));
   };
 
-  // ==========================================
-  // RENDERIZADO DEL MENÚ LATERAL
-  // ==========================================
   const renderNavLinks = (isCollapsed = false) => {
     const linkStyle = getSidebarLinkStyle(isCollapsed);
     const titleStyle = getSidebarGroupTitle(isCollapsed);
@@ -349,7 +371,7 @@ function AppLayout() {
                 <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🌡️ <span>WELLNESS</span></NavLink>
                 <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
                 <NavLink to="/novedades" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📢 <span>NOVEDADES</span></NavLink>
-                              </>
+              </>
             )}
           </>
         )}
@@ -362,10 +384,8 @@ function AppLayout() {
             {menusAbiertos.administracion && !isCollapsed && (
               <>
                 <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👥 <span>MI STAFF</span></NavLink>
-                
                 <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💰 <span>TESORERÍA</span></NavLink>
                 <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🤝 <span>SPONSORS</span></NavLink>
-                
                 {permisos.puedeConfigurar && (
                   <>
                     <NavLink to="/mi-suscripcion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💳 <span>MI SUSCRIPCIÓN</span></NavLink>
@@ -463,23 +483,14 @@ function AppLayout() {
             </NavLink>
           )}
 
-          {permisos.puedeEscribirDeportivo && (
-             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
-                <button 
-                  onClick={() => { setFabAbierto(!fabAbierto); setDrawerAbierto(false); }}
-                  style={fabStyle}
-                >
-                  {fabAbierto ? '×' : '+'}
-                </button>
-             </div>
-          )}
-
-          {permisos.esJugador && (
-            <NavLink to="/wellness" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
-              <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>🌡️</span>
-              <span style={{fontSize: '0.65rem'}}>Wellness</span>
-            </NavLink>
-          )}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+             <button 
+               onClick={() => { setFabAbierto(!fabAbierto); setDrawerAbierto(false); setModoEdicionFab(false); }}
+               style={fabStyle}
+             >
+               {fabAbierto ? '×' : '+'}
+             </button>
+          </div>
 
           <NavLink to="/resumen" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
             <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>📊</span>
@@ -493,15 +504,81 @@ function AppLayout() {
         </nav>
       )}
 
-      {/* MOBILE FAB ACCIONES RÁPIDAS */}
+      {/* MOBILE FAB ACCIONES RÁPIDAS WITH BACKDROP BLUR & DESIRED DESIGN */}
       {esMovil && fabAbierto && (
         <>
-          <div onClick={() => setFabAbierto(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000 }} />
-          <div style={{ position: 'fixed', bottom: '90px', left: '50%', transform: 'translateX(-50%)', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '16px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1001, width: '220px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', animation: 'fadeIn 0.2s' }}>
-            <div style={{fontSize: '0.7rem', color: 'var(--text-dim)', textAlign: 'center', fontWeight: 'bold', marginBottom: '5px'}}>ACCIONES RÁPIDAS</div>
-            <button onClick={() => navigate('/nuevo-partido')} style={{ background: '#111', color: '#fff', border: '1px solid #333', padding: '12px', borderRadius: '8px', textAlign: 'left', fontWeight: 'bold' }}>⚡ Nuevo Partido</button>
-            <button onClick={() => navigate('/presentismo')} style={{ background: '#111', color: '#fff', border: '1px solid #333', padding: '12px', borderRadius: '8px', textAlign: 'left', fontWeight: 'bold' }}>📅 Presentismo</button>
-            <button onClick={() => navigate('/carga-wellness')} style={{ background: '#111', color: '#fff', border: '1px solid #333', padding: '12px', borderRadius: '8px', textAlign: 'left', fontWeight: 'bold' }}>🔋 Estado Wellness</button>
+          <div 
+            onClick={() => { setFabAbierto(false); setModoEdicionFab(false); }} 
+            style={{ 
+              position: 'fixed', 
+              inset: 0, 
+              background: 'rgba(0,0,0,0.7)', 
+              backdropFilter: 'blur(6px)', 
+              WebkitBackdropFilter: 'blur(6px)', 
+              zIndex: 1000 
+            }} 
+          />
+          <div style={{ position: 'fixed', bottom: '90px', left: '50%', transform: 'translateX(-50%)', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '16px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1001, width: '240px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', animation: 'fadeIn 0.2s' }}>
+            
+            {/* INTERFAZ EN MODO VISTA NORMAL */}
+            {!modoEdicionFab ? (
+              <>
+                <div style={{fontSize: '0.7rem', color: 'var(--text-dim)', textAlign: 'center', fontWeight: 'bold', marginBottom: '5px'}}>ACCIONES RÁPIDAS</div>
+                
+                {accionesActivasUsuario.length === 0 ? (
+                  <div style={{ fontSize: '0.75rem', color: '#666', textAlign: 'center', padding: '10px' }}>No tenés atajos activos.</div>
+                ) : (
+                  accionesActivasUsuario.map((acc) => (
+                    <button 
+                      key={acc.id} 
+                      onClick={() => { navigate(acc.path); setFabAbierto(false); }} 
+                      style={{ background: '#111', color: '#fff', border: '1px solid #333', padding: '12px', borderRadius: '8px', textAlign: 'left', fontWeight: 'bold', display: 'flex', gap: '10px', alignItems: 'center' }}
+                    >
+                      <span>{acc.icon}</span> {acc.label}
+                    </button>
+                  ))
+                )}
+                
+                <button 
+                  onClick={() => setModoEdicionFab(true)}
+                  style={{ background: 'transparent', color: 'var(--accent)', border: '1px dashed var(--accent)', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem', marginTop: '5px', cursor: 'pointer' }}
+                >
+                  ⚙️ Personalizar Atajos
+                </button>
+              </>
+            ) : (
+              /* INTERFAZ DINÁMICA EN MODO EDICIÓN */
+              <>
+                <div style={{fontSize: '0.7rem', color: 'var(--accent)', textAlign: 'center', fontWeight: 'bold', marginBottom: '5px'}}>SELECCIONÁ TUS ATAJOS</div>
+                
+                <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', paddingRight: '4px' }} className="custom-scroll">
+                  {accionesPermitidasDelCatalogo.map((acc) => {
+                    const isActive = misAccionesIds.includes(acc.id);
+                    return (
+                      <div 
+                        key={acc.id}
+                        onClick={() => toggleAccionFab(acc.id)}
+                        style={{ background: isActive ? 'rgba(0, 255, 136, 0.05)' : '#111', color: isActive ? '#fff' : '#888', border: `1px solid ${isActive ? 'var(--accent)' : '#222'}`, padding: '10px', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontSize: '0.8rem' }}
+                      >
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span>{acc.icon}</span> <span>{acc.label}</span>
+                        </div>
+                        <span style={{ color: isActive ? 'var(--accent)' : '#444', fontSize: '0.9rem' }}>
+                          {isActive ? '●' : '○'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button 
+                  onClick={() => setModoEdicionFab(false)}
+                  style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '900', fontSize: '0.75rem', marginTop: '5px', cursor: 'pointer' }}
+                >
+                  ✅ Listo, Guardar
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
