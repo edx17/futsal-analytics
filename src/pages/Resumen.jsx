@@ -640,12 +640,40 @@ function Resumen() {
       }
       
       if (ev.equipo === 'Rival') {
-        arquerosPropios.forEach(arqId => {
-          if (statsJugadores[arqId]) {
-            if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqId].golesRecibidos++;
-            if (ev.accion === 'Remate - Atajado') statsJugadores[arqId].atajadas++;
+        // Determinar qué arquero estaba en cancha usando quinteto_activo
+        let arqEnCancha = null;
+        if (ev.quinteto_activo) {
+          try {
+            const qa = typeof ev.quinteto_activo === 'string'
+              ? JSON.parse(ev.quinteto_activo)
+              : ev.quinteto_activo;
+            if (Array.isArray(qa)) {
+              arqEnCancha = arquerosPropios.find(arqId => qa.some(id => String(id) === String(arqId)));
+            }
+          } catch {}
+        }
+        // Si no hay quinteto_activo, fallback: arquero con más minutos hasta ese momento
+        // (evita asignar a todos cuando el dato no está disponible)
+        if (!arqEnCancha && arquerosPropios.length === 1) {
+          arqEnCancha = arquerosPropios[0];
+        }
+
+        if (arqEnCancha && statsJugadores[arqEnCancha]) {
+          if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqEnCancha].golesRecibidos++;
+          if (ev.accion === 'Remate - Atajado') statsJugadores[arqEnCancha].atajadas++;
+        } else if (!arqEnCancha) {
+          // Último fallback: si no hay info de quinteto y hay varios arqueros,
+          // asignar solo al que tiene más minutos registrados hasta ahora
+          const arqConMasMin = arquerosPropios.reduce((mejor, arqId) => {
+            const minsActual = datosProcesados?.minutosJugados?.[arqId] || 0;
+            const minsMejor = datosProcesados?.minutosJugados?.[mejor] || 0;
+            return minsActual > minsMejor ? arqId : mejor;
+          }, arquerosPropios[0]);
+          if (arqConMasMin && statsJugadores[arqConMasMin]) {
+            if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqConMasMin].golesRecibidos++;
+            if (ev.accion === 'Remate - Atajado') statsJugadores[arqConMasMin].atajadas++;
           }
-        });
+        }
       }
 
       if (ev.equipo === 'Propio' && ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
@@ -653,14 +681,38 @@ function Resumen() {
       }
     });
 
-    const evRivales = evFiltrados.filter(ev => ev.equipo === 'Rival');
-
     const ranking = Object.values(statsJugadores)
       .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
       .map(j => {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
         const mins = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
-        const ratingFinal = calcularRatingJugador(j, j.eventos, evRivales, pm, mins);
+
+        // Construir eventosParaRating igual que JugadorPerfil:
+        // 1) eventos directos del jugador
+        // 2) eventos virtuales de asistencia (tipoVirtual: 'Asistencia')
+        const eventosParaRating = [...j.eventos];
+        evFiltrados.forEach(ev => {
+          if (ev.id_asistencia == j.id && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {
+            eventosParaRating.push({ ...ev, id_jugador: j.id, tipoVirtual: 'Asistencia' });
+          }
+        });
+
+        // Eventos rivales filtrados solo mientras el jugador estaba en cancha
+        // (igual que JugadorPerfil usa eventosRivalEnCancha con quinteto_activo)
+        const eventosRivalEnCancha = evFiltrados.filter(ev => {
+          if (ev.equipo !== 'Rival') return false;
+          if (!ev.quinteto_activo) return false;
+          try {
+            const qa = typeof ev.quinteto_activo === 'string'
+              ? JSON.parse(ev.quinteto_activo)
+              : ev.quinteto_activo;
+            return Array.isArray(qa) && qa.some(id => String(id) === String(j.id));
+          } catch {
+            return false;
+          }
+        });
+
+        const ratingFinal = calcularRatingJugador(j, eventosParaRating, eventosRivalEnCancha, pm, mins);
         
         let rol = 'MIXTO';
         const esArqueroFijo = j.posicion && j.posicion.toLowerCase().includes('arquero');

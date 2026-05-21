@@ -60,7 +60,7 @@ export function calcularRatingJugador(jugador, eventosJugador = [], arg3 = [], a
   let plusMinus = 0;
   let minutosJugados = 0;
 
-  // Escudo de parámetros (para que nunca de NaN)
+  // Escudo de parámetros (para que nunca de NaN y soporte parámetros invertidos)
   if (Array.isArray(arg3)) {
     eventosRivales = arg3;
     plusMinus = Number(arg4) || 0;
@@ -78,6 +78,13 @@ export function calcularRatingJugador(jugador, eventosJugador = [], arg3 = [], a
   let atajadas = 0;
   let golesRecibidos = 0;
 
+  // AJUSTE FUTSAL: Si desde JugadorPerfil.jsx no llegaron los minutos exactos,
+  // estimamos el tiempo jugado basados en su volumen de acciones (aprox 0.8 mins por acción).
+  // Esto evita que el rating colapse a la mitad por default.
+  if (minutosJugados <= 0 && eventosJugador.length > 0) {
+    minutosJugados = eventosJugador.length * 0.8;
+  }
+
   // Penalización por baja participación (menor a 15 mins)
   const factorTiempo = minutosJugados > 0 ? Math.min(1.0, minutosJugados / 15.0) : 0.5;
 
@@ -90,11 +97,20 @@ export function calcularRatingJugador(jugador, eventosJugador = [], arg3 = [], a
     if (ev.tipoVirtual === 'Pase Clave') scoreNeto += pesosPosicion['Pase Clave'] || 1.0;
   });
 
-  if (pos === 'arquero' && Array.isArray(eventosRivales)) {
-    eventosRivales.forEach(ev => {
-      if (ev.accion === 'Remate - Atajado') { atajadas++; scoreNeto += 1.2; } 
-      else if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') { golesRecibidos++; scoreNeto -= 2.5; }
-    });
+  // AJUSTE ARQUEROS: Si no mandaron eventos rivales, buscamos la acción directa en el array del jugador
+  if (pos === 'arquero') {
+    if (eventosRivales.length > 0) {
+      eventosRivales.forEach(ev => {
+        if (ev.accion === 'Remate - Atajado') { atajadas++; scoreNeto += 1.2; } 
+        else if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') { golesRecibidos++; scoreNeto -= 2.5; }
+      });
+    } else {
+      // Fallback por si JugadorPerfil no tiene el array rival a mano
+      eventosJugador.forEach(ev => {
+        if (ev.accion === 'Atajada') { atajadas++; scoreNeto += 1.2; }
+        if (ev.accion === 'Gol Recibido') { golesRecibidos++; scoreNeto -= 2.5; }
+      });
+    }
   }
 
   // Impacto global
