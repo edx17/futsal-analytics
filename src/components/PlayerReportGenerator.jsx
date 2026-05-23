@@ -3,111 +3,207 @@ import html2canvas from 'html2canvas';
 import { getColorAccion } from '../utils/helpers';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 
-// Lienzo A4 / Póster - Ajustado a 1850px para optimizar los espacios sin dejar tanto hueco.
 const CANVAS_W = 1300;
-const CANVAS_H = 2100;
+// CANVAS_H es dinámico — la altura real la mide el contenido
+const FONT = "'JetBrains Mono', monospace";
+const CL   = '#00e676';
+const CA   = '#ffd600';
 
-const asNumber = (value, fallback = 0) => { const n = Number(value); return Number.isFinite(n) ? n : fallback; };
-const getTarjetasAmarillas = (stats) => asNumber(stats?.amarillas ?? 0);
-const getTarjetasRojas = (stats) => asNumber(stats?.rojas ?? 0);
+const asNumber = (v, fb = 0) => { const n = Number(v); return Number.isFinite(n) ? n : fb; };
+const calcularEdad = (f) => { if (!f) return 'N/D'; const d = Date.now() - new Date(f).getTime(); return Math.abs(new Date(d).getUTCFullYear() - 1970); };
+const fmt2 = (v) => (typeof v === 'number' ? v.toFixed(2) : '0.00');
 
-const calcularEdad = (fechaNac) => {
-  if (!fechaNac) return 'N/D';
-  const diff = Date.now() - new Date(fechaNac).getTime();
-  return Math.abs(new Date(diff).getUTCFullYear() - 1970);
-};
-
-const KpiCard = ({ label, value, color = '#fff' }) => (
-  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center', minWidth: 0 }}>
-    <div style={{ fontSize: '0.85rem', color: '#888', fontWeight: 800, marginBottom: '5px', letterSpacing: '1px' }}>{label}</div>
-    <div style={{ fontSize: '2.4rem', fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
+const KpiCard = ({ label, value, color = CL, sub }) => (
+  <div style={{ background:'rgba(255,255,255,.03)', borderRadius:12, border:'1px solid rgba(255,255,255,.06)', borderTop:`2px solid ${color}`, padding:'18px 14px', textAlign:'center', minWidth:0 }}>
+    <div style={{ fontSize:'.56rem', color:'rgba(255,255,255,.75)', fontWeight:700, letterSpacing:2, textTransform:'uppercase', marginBottom:8, fontFamily:FONT }}>{label}</div>
+    <div style={{ fontSize:'2.6rem', fontWeight:900, color, lineHeight:1, fontFamily:FONT, letterSpacing:'-2px' }}>{value}</div>
+    {sub && <div style={{ fontSize:'.55rem', color:'rgba(255,255,255,.35)', marginTop:5, fontFamily:FONT }}>{sub}</div>}
   </div>
 );
 
-const Row = ({ label, value, color = '#fff', sub = '', noBorder = false }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: noBorder ? 'none' : '1px solid rgba(255,255,255,0.05)', fontSize: '1rem', gap: '10px' }}>
-    <span style={{ color: '#aaa', fontWeight: 600 }}>{label}</span>
-    <strong style={{ color, textAlign: 'right', flexShrink: 0 }}>{value} {sub && <span style={{ color: '#666', fontSize: '0.85rem', marginLeft: '5px' }}>{sub}</span>}</strong>
+const Row = ({ label, value, color='#fff', sub='', noBorder=false }) => (
+  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'11px 0', borderBottom:noBorder?'none':'1px solid rgba(255,255,255,.05)', fontSize:'.95rem', gap:10 }}>
+    <span style={{ color:'rgba(255,255,255,.55)', fontWeight:600 }}>{label}</span>
+    <strong style={{ color, textAlign:'right', flexShrink:0, fontFamily:FONT }}>
+      {value}{sub && <span style={{ color:'rgba(255,255,255,.3)', fontSize:'.8rem', marginLeft:6 }}>{sub}</span>}
+    </strong>
   </div>
 );
 
-// --- CANCHA DE FUTSAL (Medidas y marcas reales de 40x20m) ---
 const CanchaFutsal = ({ accionesMapa, dotSize = 14 }) => (
-  <div style={{ position: 'relative', width: '100%', aspectRatio: '2/1', background: '#0a1a0f', borderRadius: '8px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)' }}>
-
-    {/* Esquinas (Corner) */}
-    <div style={{ position: 'absolute', left: '-1%', top: '-2%', width: '3%', height: '6%', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-    <div style={{ position: 'absolute', left: '-1%', bottom: '-2%', width: '3%', height: '6%', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-    <div style={{ position: 'absolute', right: '-1%', top: '-2%', width: '3%', height: '6%', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-    <div style={{ position: 'absolute', right: '-1%', bottom: '-2%', width: '3%', height: '6%', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: '50%' }} />
-
-    {/* Linea central */}
-    <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '2px', background: 'rgba(255,255,255,0.2)', transform: 'translateX(-50%)' }} />
-    {/* Circulo central */}
-    <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '50%', transform: 'translate(-50%, -50%)' }} />
-    {/* Punto de saque central */}
-    <div style={{ position: 'absolute', left: '50%', top: '50%', width: '6px', height: '6px', background: 'rgba(255,255,255,0.4)', borderRadius: '50%', transform: 'translate(-50%, -50%)' }} />
-    
-    {/* Área de penal (6m) Izquierda - Borde elíptico */}
-    <div style={{ position: 'absolute', left: 0, top: '12.5%', bottom: '12.5%', width: '15%', border: '2px solid rgba(255,255,255,0.2)', borderLeft: 'none', borderRadius: '0 100% 100% 0 / 0 50% 50% 0' }} />
-    {/* Área de penal (6m) Derecha */}
-    <div style={{ position: 'absolute', right: 0, top: '12.5%', bottom: '12.5%', width: '15%', border: '2px solid rgba(255,255,255,0.2)', borderRight: 'none', borderRadius: '100% 0 0 100% / 50% 0 0 50%' }} />
-    
-    {/* Puntos de penal (6m) */}
-    <div style={{ position: 'absolute', left: '15%', top: '50%', width: '6px', height: '6px', background: 'rgba(255,255,255,0.4)', borderRadius: '50%', transform: 'translate(-50%, -50%)' }} />
-    <div style={{ position: 'absolute', right: '15%', top: '50%', width: '6px', height: '6px', background: 'rgba(255,255,255,0.4)', borderRadius: '50%', transform: 'translate(50%, -50%)' }} />
-    
-    {/* Segundo punto de penal (Doble penal - 10m) */}
-    <div style={{ position: 'absolute', left: '25%', top: '50%', width: '4px', height: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'translate(-50%, -50%)' }} />
-    <div style={{ position: 'absolute', right: '25%', top: '50%', width: '4px', height: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '50%', transform: 'translate(50%, -50%)' }} />
-
-    {/* Porterías */}
-    <div style={{ position: 'absolute', left: '-2px', top: '42.5%', bottom: '42.5%', width: '2%', border: '3px solid #c2c2c2', borderLeft: 'none' }} />
-    <div style={{ position: 'absolute', right: '-2px', top: '42.5%', bottom: '42.5%', width: '2%', border: '3px solid #c2c2c2', borderRight: 'none' }} />
-
+  <div style={{ position:'relative', width:'100%', aspectRatio:'2/1', background:'#080808', borderRadius:8, overflow:'hidden', border:'2px solid rgba(255,255,255,.1)' }}>
+    <div style={{ position:'absolute', left:'-1%', top:'-2%', width:'3%', height:'6%', border:'1.5px solid rgba(255,255,255,.2)', borderRadius:'50%' }} />
+    <div style={{ position:'absolute', left:'-1%', bottom:'-2%', width:'3%', height:'6%', border:'1.5px solid rgba(255,255,255,.2)', borderRadius:'50%' }} />
+    <div style={{ position:'absolute', right:'-1%', top:'-2%', width:'3%', height:'6%', border:'1.5px solid rgba(255,255,255,.2)', borderRadius:'50%' }} />
+    <div style={{ position:'absolute', right:'-1%', bottom:'-2%', width:'3%', height:'6%', border:'1.5px solid rgba(255,255,255,.2)', borderRadius:'50%' }} />
+    <div style={{ position:'absolute', left:'50%', top:0, bottom:0, width:2, background:'rgba(255,255,255,.2)', transform:'translateX(-50%)' }} />
+    <div style={{ position:'absolute', left:'50%', top:'50%', width:'15%', height:'30%', border:'2px solid rgba(255,255,255,.2)', borderRadius:'50%', transform:'translate(-50%,-50%)' }} />
+    <div style={{ position:'absolute', left:'50%', top:'50%', width:6, height:6, background:'rgba(255,255,255,.4)', borderRadius:'50%', transform:'translate(-50%,-50%)' }} />
+    <div style={{ position:'absolute', left:0, top:'12.5%', bottom:'12.5%', width:'15%', border:'2px solid rgba(255,255,255,.2)', borderLeft:'none', borderRadius:'0 100% 100% 0 / 0 50% 50% 0' }} />
+    <div style={{ position:'absolute', right:0, top:'12.5%', bottom:'12.5%', width:'15%', border:'2px solid rgba(255,255,255,.2)', borderRight:'none', borderRadius:'100% 0 0 100% / 50% 0 0 50%' }} />
+    <div style={{ position:'absolute', left:'15%', top:'50%', width:6, height:6, background:'rgba(255,255,255,.4)', borderRadius:'50%', transform:'translate(-50%,-50%)' }} />
+    <div style={{ position:'absolute', right:'15%', top:'50%', width:6, height:6, background:'rgba(255,255,255,.4)', borderRadius:'50%', transform:'translate(50%,-50%)' }} />
+    <div style={{ position:'absolute', left:'25%', top:'50%', width:4, height:4, background:'rgba(255,255,255,.3)', borderRadius:'50%', transform:'translate(-50%,-50%)' }} />
+    <div style={{ position:'absolute', right:'25%', top:'50%', width:4, height:4, background:'rgba(255,255,255,.3)', borderRadius:'50%', transform:'translate(50%,-50%)' }} />
+    <div style={{ position:'absolute', left:-2, top:'42.5%', bottom:'42.5%', width:'2%', border:'3px solid #c2c2c2', borderLeft:'none' }} />
+    <div style={{ position:'absolute', right:-2, top:'42.5%', bottom:'42.5%', width:'2%', border:'3px solid #c2c2c2', borderRight:'none' }} />
     {accionesMapa.map((ev, i) => {
-      // Forzar color rojo para goles recibidos y azul para atajadas si los helpers no los cubren
-      let col = getColorAccion(ev.accion);
+      let col = getColorFromMap(ev.accion);
       if (ev.accion === 'Gol Recibido') col = '#ef4444';
       if (ev.accion === 'Atajada') col = '#3b82f6';
-      
-      return (
-        <div key={i} style={{ position: 'absolute', left: `${ev.x}%`, top: `${ev.y}%`, width: `${dotSize}px`, height: `${dotSize}px`, backgroundColor: col, borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 0.9, boxShadow: `0 0 8px ${col}99`, zIndex: 2 }} />
-      );
+      return <div key={i} style={{ position:'absolute', left:`${ev.x}%`, top:`${ev.y}%`, width:dotSize, height:dotSize, backgroundColor:col, borderRadius:'50%', transform:'translate(-50%,-50%)', opacity:.9, boxShadow:`0 0 8px ${col}99`, zIndex:2 }} />;
     })}
   </div>
 );
 
-const LeyendaMapaDistribucion = () => {
-  const items = [{ label: 'Recuperación', accion: 'Recuperación' }, { label: 'Pérdida', accion: 'Pérdida' }, { label: 'Duelo OFE', accion: 'Duelo OFE Ganado' }, { label: 'Duelo DEF', accion: 'Duelo DEF Ganado' }];
+// Mapa completo — colores exactos de helpers.js
+const COLOR_MAP = {
+  'remate - gol':       { label:'Gol',                color:'#00ff88' },
+  'gol':                { label:'Gol',                color:'#00ff88' },
+  'remate - atajado':   { label:'Rem. atajado',       color:'#3b82f6' },
+  'remate - desviado':  { label:'Rem. desviado',      color:'#888888' },
+  'remate - rebatido':  { label:'Rem. rebatido',      color:'#a855f7' },
+  'recuperación':       { label:'Recuperación',       color:'#eab308' },
+  'pérdida':            { label:'Pérdida',            color:'#ef4444' },
+  'pase incompleto':    { label:'Pase incompleto',    color:'#f59e0b' },
+  'duelo def ganado':   { label:'Duelo DEF ganado',   color:'#10b981' },
+  'duelo def perdido':  { label:'Duelo DEF perdido',  color:'#dc2626' },
+  'duelo ofe ganado':   { label:'Duelo OFE ganado',   color:'#0ea5e9' },
+  'duelo ofe perdido':  { label:'Duelo OFE perdido',  color:'#f97316' },
+  'lateral':            { label:'Lateral',            color:'#06b6d4' },
+  'córner':             { label:'Córner',             color:'#f97316' },
+  'falta cometida':     { label:'Falta cometida',     color:'#ec4899' },
+  'falta recibida':     { label:'Falta recibida',     color:'#ec4899' },
+  'tarjeta amarilla':   { label:'Tarjeta amarilla',   color:'#facc15' },
+  'tarjeta roja':       { label:'Tarjeta roja',       color:'#991b1b' },
+  'asistencia':         { label:'Asistencia',         color:'#06b6d4' },
+  'penal a favor':      { label:'Penal a favor',      color:'#10b981' },
+  'penal en contra':    { label:'Penal en contra',    color:'#ef4444' },
+  'atajada':            { label:'Atajada',            color:'#3b82f6' },
+  'gol recibido':       { label:'Gol recibido',       color:'#ef4444' },
+};
+
+const getColorFromMap = (accion) => {
+  const key = (accion || '').toLowerCase().trim();
+  if (COLOR_MAP[key]) return COLOR_MAP[key].color;
+  return getColorAccion(accion); // fallback al helper original
+};
+
+const LeyendaMapaAdaptativa = ({ accionesMapa }) => {
+  // Construir leyenda solo con los colores que aparecen realmente en el mapa
+  const vistos = new Map();
+  accionesMapa.forEach(ev => {
+    const key = (ev.accion || '').toLowerCase().trim();
+    if (vistos.has(key)) return;
+    let color = COLOR_MAP[key]?.color || getColorAccion(ev.accion);
+    let label = COLOR_MAP[key]?.label || ev.accion || key;
+    // Sobreescrituras explícitas
+    if (ev.accion === 'Gol Recibido') { color='#ef4444'; label='Gol recibido'; }
+    if (ev.accion === 'Atajada')      { color='#3b82f6'; label='Atajada'; }
+    vistos.set(key, { label, color });
+  });
+  const items = [...vistos.values()];
+  if (!items.length) return null;
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginTop: '12px', justifyContent: 'center' }}>
-      {items.map(({ label, accion }) => (
-        <span key={accion} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#777', fontWeight: 700 }}><span style={{ width: '10px', height: '10px', borderRadius: '50%', background: getColorAccion(accion), flexShrink: 0 }} />{label}</span>
+    <div style={{ display:'flex', flexWrap:'wrap', gap:'6px 14px', marginTop:10, justifyContent:'center' }}>
+      {items.map(({ label, color }) => (
+        <span key={label} style={{ display:'flex', alignItems:'center', gap:6, fontSize:'.78rem', color:'rgba(255,255,255,.6)', fontWeight:700, fontFamily:FONT }}>
+          <span style={{ width:9, height:9, borderRadius:'50%', background:color, flexShrink:0, border: color.includes('255,255,255') ? '1px solid rgba(255,255,255,.3)' : 'none' }} />
+          {label}
+        </span>
       ))}
     </div>
   );
 };
 
-const COLORS_REMATES = { Gol: '#00ff88', Atajado: '#3b82f6', Desviado: '#888888', Rebatido: '#a855f7' };
+// ── Cancha con líneas SVG (igual que Resumen) ──
+const PitchLinesSVG = () => (
+  <svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"
+    style={{ position:'absolute', inset:0, width:'100%', height:'100%', zIndex:0, pointerEvents:'none' }}>
+    <rect x="0" y="0" width="100" height="50" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
+    <line x1="50" y1="0" x2="50" y2="50" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
+    <circle cx="50" cy="25" r="7.5" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
+    <circle cx="50" cy="25" r="0.6" fill="rgba(255,255,255,.18)" />
+    <path d="M 0 6.25 A 15 15 0 0 1 15 21.25 L 15 28.75 A 15 15 0 0 1 0 43.75" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
+    <rect x="-2.5" y="21.25" width="2.5" height="7.5" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="0.4" strokeDasharray="1.5 1.5" />
+    <path d="M 100 6.25 A 15 15 0 0 0 85 21.25 L 85 28.75 A 15 15 0 0 0 100 43.75" fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="0.5" />
+    <rect x="100" y="21.25" width="2.5" height="7.5" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="0.4" strokeDasharray="1.5 1.5" />
+    <path d="M 2.5 0 A 2.5 2.5 0 0 1 0 2.5" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="0.35" />
+    <path d="M 0 47.5 A 2.5 2.5 0 0 1 2.5 50" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="0.35" />
+    <path d="M 97.5 50 A 2.5 2.5 0 0 1 100 47.5" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="0.35" />
+    <path d="M 100 2.5 A 2.5 2.5 0 0 1 97.5 0" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="0.35" />
+  </svg>
+);
+
+// ── Grilla de zonas tácticas (Z1-Z4 × I-C-D) ──
+const CanchaZonas = ({ eventos, colorBase, titulo }) => {
+  const zX = ['Z1','Z2','Z3','Z4'];
+  const zY = ['I','C','D'];
+  const counts = {};
+  let maxCount = 0;
+  eventos.forEach(ev => {
+    const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+    const y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
+    if (x == null || y == null) return;
+    const col = x < 25 ? 'Z1' : x < 50 ? 'Z2' : x < 75 ? 'Z3' : 'Z4';
+    const row = y < 33.33 ? 'I' : y < 66.66 ? 'C' : 'D';
+    const key = `${col}-${row}`;
+    counts[key] = (counts[key] || 0) + 1;
+    if (counts[key] > maxCount) maxCount = counts[key];
+  });
+  const total = eventos.length;
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+      <div style={{ fontSize:'.62rem', fontWeight:700, letterSpacing:2, textTransform:'uppercase', color:'rgba(255,255,255,.6)', fontFamily:FONT }}>
+        {titulo} <span style={{ color:'rgba(255,255,255,.35)', fontWeight:400 }}>({total})</span>
+      </div>
+      <div style={{ position:'relative', width:'100%', aspectRatio:'2/1', borderRadius:6, overflow:'hidden', background:'#080808', border:'1px solid rgba(255,255,255,.08)' }}>
+        <PitchLinesSVG />
+        <svg viewBox="0 0 100 50" style={{ position:'absolute', inset:0, width:'100%', height:'100%', zIndex:1, pointerEvents:'none' }}>
+          {zX.map((xVal, colIdx) =>
+            zY.map((yVal, rowIdx) => {
+              const key = `${xVal}-${yVal}`;
+              const count = counts[key] || 0;
+              const opacity = count > 0 ? Math.min(0.75, (count / (maxCount || 1)) * 0.6 + 0.12) : 0;
+              return (
+                <g key={key}>
+                  {count > 0 && <rect x={colIdx*25} y={rowIdx*16.66} width="25" height="16.66" fill={colorBase} fillOpacity={opacity} />}
+                  <rect x={colIdx*25} y={rowIdx*16.66} width="25" height="16.66" fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="0.15" />
+                  <text x={colIdx*25+1} y={rowIdx*16.66+3} fill="rgba(255,255,255,.2)" fontSize="2" fontWeight="bold">{key}</text>
+                  {count > 0 && (
+                    <text x={colIdx*25+12.5} y={rowIdx*16.66+11} fill="#fff" fontSize="7" textAnchor="middle" fontWeight="900"
+                      style={{ filter:'drop-shadow(0px 0px 2px rgba(0,0,0,1))' }}>
+                      {count}
+                    </text>
+                  )}
+                </g>
+              );
+            })
+          )}
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+const COLORS_REMATES = { Gol:'#00e676', Atajado:'#3b82f6', Desviado:'#6b7280', Rebatido:'#a855f7' };
 
 const SeccionRemates = ({ dataRemates, totalRemates }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-    {dataRemates.length > 0 ? (
-      dataRemates.map((item, idx) => {
-        const pct = totalRemates > 0 ? Math.round((item.value / totalRemates) * 100) : 0;
-        return (
-          <div key={idx}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px' }}>
-              <span style={{ color: COLORS_REMATES[item.name] || '#fff' }}>{item.name}</span><span style={{ color: '#ccc' }}>{item.value} <span style={{ color: '#555', fontSize: '0.85em' }}>({pct}%)</span></span>
-            </div>
-            <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.08)', borderRadius: '5px', overflow: 'hidden' }}>
-              <div style={{ width: `${pct}%`, height: '100%', background: COLORS_REMATES[item.name] || '#fff', borderRadius: '5px' }} />
-            </div>
+  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+    {dataRemates.length > 0 ? dataRemates.map((item, i) => {
+      const pct = totalRemates > 0 ? Math.round((item.value / totalRemates) * 100) : 0;
+      return (
+        <div key={i}>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'.95rem', fontWeight:700, marginBottom:6 }}>
+            <span style={{ color:COLORS_REMATES[item.name]||'#fff' }}>{item.name}</span>
+            <span style={{ color:'#ccc', fontFamily:FONT }}>{item.value} <span style={{ color:'rgba(255,255,255,.3)', fontSize:'.82em' }}>({pct}%)</span></span>
           </div>
-        );
-      })
-    ) : <div style={{ color: '#444', fontSize: '1rem', textAlign: 'center', fontWeight: 700 }}>Sin remates</div>}
+          <div style={{ width:'100%', height:8, background:'rgba(255,255,255,.07)', borderRadius:4, overflow:'hidden' }}>
+            <div style={{ width:`${pct}%`, height:'100%', background:COLORS_REMATES[item.name]||'#fff', borderRadius:4 }} />
+          </div>
+        </div>
+      );
+    }) : <div style={{ color:'rgba(255,255,255,.25)', fontSize:'1rem', textAlign:'center', fontWeight:700 }}>Sin remates</div>}
   </div>
 );
 
@@ -116,454 +212,414 @@ const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores 
   const [exportando, setExportando] = useState(false);
   const wrapperRef = useRef(null);
 
-  const isArquero = perfil?.rol === 'ARQUERO' || (jugador?.posicion || '').toLowerCase().includes('arquero');
-
-  const stats = perfil?.stats ?? {};
+  const isArquero   = perfil?.rol === 'ARQUERO' || (jugador?.posicion || '').toLowerCase().includes('arquero');
+  const accentColor = isArquero ? CA : CL;
+  const stats            = perfil?.stats ?? {};
   const accionesDirectas = perfil?.accionesDirectas ?? [];
-  const dataRemates = Array.isArray(perfil?.dataTortaRemates) ? perfil.dataTortaRemates : [];
-  
-  const clubName = localStorage.getItem('mi_club') || 'VIRTUAL FUTSAL';
-  const escudoUrl = localStorage.getItem('escudo_url') || null;
+  const dataRemates      = Array.isArray(perfil?.dataTortaRemates) ? perfil.dataTortaRemates : [];
+  const clubName         = localStorage.getItem('mi_club') || 'VIRTUAL FUTSAL';
+  const escudoUrl        = localStorage.getItem('escudo_url') || null;
 
-  const accionesMapa = accionesDirectas.map((ev) => ({ ...ev, x: ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x, y: ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y })).filter((ev) => ev.x != null && ev.y != null);
-  
-  // Filtros diferenciados por rol
-  const accionesAtaque = accionesMapa.filter(ev => ['Gol', 'Remate - Gol', 'Remate - Atajado', 'Remate - Desviado', 'Remate - Rebatido', 'Asistencia'].includes(ev.accion) || ev.accion?.includes('Remate'));
-  const accionesResto = accionesMapa.filter(ev => !['Gol', 'Remate - Gol', 'Remate - Atajado', 'Remate - Desviado', 'Remate - Rebatido', 'Asistencia'].includes(ev.accion) && !ev.accion?.includes('Remate'));
-  
-  const accionesArco = accionesMapa.filter(ev => ['Atajada', 'Gol Recibido'].includes(ev.accion));
-  const accionesDistribucionGK = accionesMapa.filter(ev => !['Atajada', 'Gol Recibido'].includes(ev.accion));
+  const accionesMapa   = accionesDirectas.map(ev => ({ ...ev, x: ev.zona_x_norm ?? ev.zona_x, y: ev.zona_y_norm ?? ev.zona_y })).filter(ev => ev.x != null && ev.y != null);
+  const accionesAtaque = accionesMapa.filter(ev => ['Gol','Remate - Gol','Remate - Atajado','Remate - Desviado','Remate - Rebatido','Asistencia'].includes(ev.accion) || ev.accion?.includes('Remate'));
+  const accionesResto  = accionesMapa.filter(ev => !accionesAtaque.includes(ev));
+  const accionesArco   = accionesMapa.filter(ev => ['Atajada','Gol Recibido'].includes(ev.accion));
+  const accionesDistGK = accionesMapa.filter(ev => !['Atajada','Gol Recibido'].includes(ev.accion));
 
-  const amarillas = getTarjetasAmarillas(stats);
-  const rojas = getTarjetasRojas(stats);
-
-  const factor40 = perfil?.minutos > 0 ? (40 / perfil.minutos) : 0;
-
-  // Stats exclusivas de arquero
-  const atajadas = stats.atajadas || 0;
-  const golesRecibidos = stats.golesRecibidos || 0;
+  const amarillas      = asNumber(stats.amarillas);
+  const rojas          = asNumber(stats.rojas);
+  const factor40       = perfil?.minutos > 0 ? (40 / perfil.minutos) : 0;
+  const atajadas       = asNumber(perfil?.totalAtajadas ?? stats.atajadas);
+  const golesRecibidos = asNumber(perfil?.totalGolesRecibidos ?? stats.golesRecibidos);
   const tirosRecibidos = atajadas + golesRecibidos;
-  const pctAtajadas = tirosRecibidos > 0 ? Math.round((atajadas / tirosRecibidos) * 100) : 0;
+  const pctAtajadas    = tirosRecibidos > 0 ? Math.round((atajadas / tirosRecibidos) * 100) : 0;
 
-  // Extraemos los compañeros del Quinteto Ideal
   let companerosQuinteto = [];
   if (perfil?.mejorQuinteto && jugadores.length > 0) {
-    const otrosIds = perfil.mejorQuinteto.ids.filter(id => id != jugador.id);
-    companerosQuinteto = otrosIds.map(id => jugadores.find(j => j.id == id)).filter(Boolean);
+    companerosQuinteto = perfil.mejorQuinteto.ids.filter(id => id != jugador.id).map(id => jugadores.find(j => j.id == id)).filter(Boolean);
   } else if (perfil?.topSocios) {
     companerosQuinteto = perfil.topSocios;
   }
 
   useEffect(() => {
-    const calcular = () => {
+    const calc = () => {
       const parent = wrapperRef.current?.parentElement || document.body;
-      const anchoDisponible = parent.offsetWidth - 48;
-      const altoDisponible = window.innerHeight * 0.9;
-      setEscala(Math.min(anchoDisponible / CANVAS_W, altoDisponible / CANVAS_H, 1));
+      // Solo limitamos por ancho — la altura es libre y crece con el contenido
+      setEscala(Math.min((parent.offsetWidth - 48) / CANVAS_W, 1));
     };
-    const t = setTimeout(calcular, 80);
-    window.addEventListener('resize', calcular);
-    return () => { clearTimeout(t); window.removeEventListener('resize', calcular); };
+    const t = setTimeout(calc, 80);
+    window.addEventListener('resize', calc);
+    return () => { clearTimeout(t); window.removeEventListener('resize', calc); };
   }, []);
 
   const exportarPNG = async () => {
-    const scaleWrapper = document.getElementById('report-scale-wrapper');
-    const containerDiv = scaleWrapper.parentElement; 
+    const sw = document.getElementById('report-scale-wrapper');
+    const cd = sw.parentElement;
     const el = document.getElementById('player-report-exportable');
-    
-    if (!el || !scaleWrapper || !containerDiv || exportando) return;
-    
+    if (!el || !sw || !cd || exportando) return;
     setExportando(true);
-    
-    const originalTransform = scaleWrapper.style.transform;
-    const originalWidth = containerDiv.style.width;
-    const originalHeight = containerDiv.style.height;
-    const originalOverflow = containerDiv.style.overflow;
-    
-    scaleWrapper.style.transform = 'scale(1)';
-    containerDiv.style.width = `${CANVAS_W}px`;
-    containerDiv.style.height = `${CANVAS_H}px`;
-    containerDiv.style.overflow = 'visible';
-    
+    const [oT,oW,oH,oO] = [sw.style.transform, cd.style.width, cd.style.height, cd.style.overflow];
+    // Altura real del contenido — no fija
+    const realH = el.scrollHeight;
+    sw.style.transform = 'scale(1)'; cd.style.width = `${CANVAS_W}px`; cd.style.height = `${realH}px`; cd.style.overflow = 'visible';
     setTimeout(async () => {
       try {
-        const canvas = await html2canvas(el, { 
-          scale: 2, 
-          useCORS: true, 
-          backgroundColor: '#0a0a0a', 
-          logging: false
-        });
+        const canvas = await html2canvas(el, { scale:2, useCORS:true, backgroundColor:'#050505', logging:false, height:realH, windowHeight:realH });
         const link = document.createElement('a');
         link.download = `Scouting_${jugador?.apellido}_${contexto === 'TODA LA TEMPORADA' ? new Date().getFullYear() : 'Partido'}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } catch (err) {
-        alert('Hubo un error al generar la imagen.');
-      } finally {
-        scaleWrapper.style.transform = originalTransform;
-        containerDiv.style.width = originalWidth;
-        containerDiv.style.height = originalHeight;
-        containerDiv.style.overflow = originalOverflow;
-        setExportando(false);
-      }
+        link.href = canvas.toDataURL('image/png'); link.click();
+      } catch { alert('Error al generar la imagen.'); }
+      finally { sw.style.transform=oT; cd.style.width=oW; cd.style.height=oH; cd.style.overflow=oO; setExportando(false); }
     }, 300);
   };
 
   if (!jugador || !perfil) return null;
 
+  const inicial     = (jugador.apellido || '?').charAt(0).toUpperCase();
+  const ratingColor = asNumber(perfil.impacto) >= 7 ? CL : asNumber(perfil.impacto) >= 6 ? CA : '#ff1744';
+  const pmVal       = asNumber(perfil.plusMinus);
+  const pmDisplay   = pmVal > 0 ? `+${pmVal}` : String(pmVal);
+
+  const pills = [
+    { val: `#${jugador.dorsal}`, bg:'rgba(255,255,255,.08)', color:'#fff' },
+    jugador.posicion && { val: jugador.posicion, bg:`rgba(0,230,118,.1)`, color: accentColor },
+    jugador.pierna   && { val: jugador.pierna,   bg:'rgba(255,255,255,.05)', color:'rgba(255,255,255,.6)' },
+    jugador.fechanac && { val: `${calcularEdad(jugador.fechanac)} años`, bg:'rgba(255,255,255,.05)', color:'rgba(255,255,255,.6)' },
+    jugador.altura   && { val: `${jugador.altura} cm`, bg:'rgba(255,255,255,.05)', color:'rgba(255,255,255,.6)' },
+    jugador.peso     && { val: `${jugador.peso} kg`, bg:'rgba(255,255,255,.05)', color:'rgba(255,255,255,.6)' },
+    jugador.categoria && { val: jugador.categoria, bg:'rgba(255,214,0,.07)', color:'#ffd600' },
+    { val: perfil.rol, bg: accentColor, color:'#000' },
+  ].filter(Boolean);
+
   return (
-    <div ref={wrapperRef} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      
-      <div style={{ width: `${CANVAS_W * escala}px`, display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
-        <button onClick={exportarPNG} disabled={exportando} style={{ background: exportando ? '#1a1a1a' : '#00e676', color: exportando ? '#555' : '#000', fontWeight: 900, fontSize: '0.9rem', padding: '12px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-          {exportando ? '⏳ Generando Alta Calidad...' : '📸 DESCARGAR REPORTE'}
+    <div ref={wrapperRef} style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:16, fontFamily:"'Inter',system-ui,sans-serif" }}>
+
+      <div style={{ width:`${CANVAS_W*escala}px`, display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
+        <button onClick={exportarPNG} disabled={exportando}
+          style={{ background:exportando?'#1a1a1a':CL, color:exportando?'#555':'#000', fontWeight:900, fontSize:'.9rem', padding:'12px 24px', border:'none', borderRadius:6, cursor:'pointer', fontFamily:FONT }}>
+          {exportando ? '⏳ Generando...' : '📸 DESCARGAR REPORTE'}
         </button>
       </div>
 
-      <div style={{ width: `${CANVAS_W * escala}px`, height: `${CANVAS_H * escala}px`, overflow: 'hidden', borderRadius: `${Math.round(16 * escala)}px`, boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }}>
-        <div id="report-scale-wrapper" style={{ transform: `scale(${escala})`, transformOrigin: 'top left', width: `${CANVAS_W}px`, height: `${CANVAS_H}px` }}>
-          
-          <div id="player-report-exportable" style={{ width: `${CANVAS_W}px`, height: `${CANVAS_H}px`, background: '#0a0a0a', backgroundImage: 'radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0a0a0a 60%)', color: '#fff', padding: '40px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
-            {/* HEADER ROW */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid rgba(255,255,255,0.05)', paddingBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-                <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: '#111', border: '4px solid #00e676', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                  {jugador.foto ? (
-                    <div style={{ width: '100%', height: '100%', backgroundImage: `url(${jugador.foto})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                  ) : (
-                    <span style={{ fontSize: '3rem', color: '#00e676', fontWeight: 900 }}>{jugador.apellido?.charAt(0)}</span>
-                  )}
+      <div style={{ width:`${CANVAS_W*escala}px`, overflow:'hidden', borderRadius:Math.round(16*escala), boxShadow:'0 20px 50px rgba(0,0,0,.8)' }}>
+        <div id="report-scale-wrapper" style={{ transform:`scale(${escala})`, transformOrigin:'top left', width:CANVAS_W }}>
+
+          <div id="player-report-exportable" style={{
+            width:CANVAS_W, minHeight:2100, background:'#050505',
+            backgroundImage:'radial-gradient(circle at 50% 0%, rgba(0,30,20,.9) 0%, #050505 55%)',
+            color:'#fff', padding:40, boxSizing:'border-box', display:'flex', flexDirection:'column', gap:14
+          }}>
+
+            {/* ══ HEADER ══ */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderLeft:`4px solid ${accentColor}`, paddingLeft:24, paddingBottom:20, borderBottom:'1px solid rgba(255,255,255,.06)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:24 }}>
+                <div style={{ width:130, height:130, borderRadius:'50%', background:`rgba(0,230,118,.06)`, border:`3px solid ${accentColor}`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0 }}>
+                  {jugador.foto ? <div style={{ width:'100%', height:'100%', backgroundImage:`url(${jugador.foto})`, backgroundSize:'cover', backgroundPosition:'center' }}/> : <span style={{ fontSize:'2.8rem', color:accentColor, fontWeight:900, fontFamily:FONT }}>{inicial}</span>}
                 </div>
                 <div>
-                  <div style={{ fontSize: '1.2rem', color: '#aaa', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '4px', marginBottom: '5px' }}>{clubName} • SCOUTING</div>
-                  <div style={{ fontSize: '4.5rem', fontWeight: 900, textTransform: 'uppercase', lineHeight: 1, textShadow: '3px 3px 0 rgba(0,0,0,0.5)' }}>{jugador.apellido}</div>
-                  <div style={{ fontSize: '2rem', color: '#888', fontWeight: 700, margin: '5px 0 10px' }}>{jugador.nombre}</div>
-                  
-                  <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center', marginTop: '5px' }}>
-                    <span style={{ fontSize: '1.2rem', color: '#fff', fontWeight: 900 }}>#{jugador.dorsal}</span>
-                    <span style={{ width: '6px', height: '6px', background: '#444', borderRadius: '50%' }}></span>
-                    <span style={{ fontSize: '1.1rem', color: '#aaa' }}>{jugador.posicion || 'Posición N/A'}</span>
-                    <span style={{ width: '6px', height: '6px', background: '#444', borderRadius: '50%' }}></span>
-                    <span style={{ fontSize: '1.1rem', color: '#aaa' }}>{jugador.pierna || 'Pierna N/A'}</span>
-                    <span style={{ width: '6px', height: '6px', background: '#444', borderRadius: '50%' }}></span>
-                    <span style={{ fontSize: '1.1rem', color: '#aaa' }}>{calcularEdad(jugador.fechanac)} Años</span>
-                    {jugador.altura && (
-                      <>
-                        <span style={{ width: '6px', height: '6px', background: '#444', borderRadius: '50%' }}></span>
-                        <span style={{ fontSize: '1.1rem', color: '#aaa' }}>{jugador.altura} cm</span>
-                      </>
-                    )}
-                    {jugador.peso && (
-                      <>
-                        <span style={{ width: '6px', height: '6px', background: '#444', borderRadius: '50%' }}></span>
-                        <span style={{ fontSize: '1.1rem', color: '#aaa' }}>{jugador.peso} kg</span>
-                      </>
-                    )}
-                    <span style={{ width: '6px', height: '6px', background: '#444', borderRadius: '50%' }}></span>
-                    <span style={{ fontSize: '1.1rem', color: '#aaa' }}>{jugador.categoria || 'Cat. N/A'}</span>
-                    <span style={{ width: '6px', height: '6px', background: '#444', borderRadius: '50%' }}></span>
-                    <span style={{ background: '#00e676', color: '#000', padding: '4px 12px', borderRadius: '4px', fontSize: '0.9rem', fontWeight: 900 }}>{perfil.rol}</span>
+                  <div style={{ fontSize:'.65rem', fontWeight:700, letterSpacing:4, textTransform:'uppercase', color:'rgba(255,255,255,.4)', marginBottom:4, fontFamily:FONT }}>{clubName} · SCOUTING</div>
+                  <div style={{ fontSize:'3.8rem', fontWeight:900, textTransform:'uppercase', lineHeight:.92, letterSpacing:'-2px', marginBottom:4, fontFamily:FONT }}>{jugador.apellido}</div>
+                  <div style={{ fontSize:'1.3rem', color:'rgba(255,255,255,.5)', fontWeight:400, marginBottom:10 }}>{jugador.nombre}</div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                    {pills.map((p, i) => (
+                      <span key={i} style={{ background:p.bg, color:p.color, padding:'4px 12px', borderRadius:4, fontSize:'.75rem', fontWeight:900, fontFamily:FONT }}>{p.val}</span>
+                    ))}
                   </div>
                 </div>
               </div>
-              
-              <div style={{ width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.9 }}>
-                {escudoUrl ? (
-                  <div style={{ width: '100%', height: '100%', backgroundImage: `url(${escudoUrl})`, backgroundSize: 'contain', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
-                ) : (
-                  <div style={{ width: '100px', height: '100px', border: '2px solid #333', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>ESCUDO</div>
-                )}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flexShrink:0 }}>
+                {escudoUrl
+                  ? <div style={{ width:90, height:90, backgroundImage:`url(${escudoUrl})`, backgroundSize:'contain', backgroundPosition:'center', backgroundRepeat:'no-repeat' }}/>
+                  : <div style={{ width:90, height:90, border:'1px solid #333', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', color:'#333', fontSize:'.7rem', fontFamily:FONT }}>ESCUDO</div>
+                }
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:'2.8rem', fontWeight:900, fontFamily:FONT, color:ratingColor, lineHeight:1, letterSpacing:'-2px' }}>
+                    {asNumber(perfil.impacto) > 0 ? asNumber(perfil.impacto).toFixed(1) : '—'}
+                  </div>
+                  <div style={{ fontSize:'.5rem', fontWeight:700, letterSpacing:2, textTransform:'uppercase', color:'rgba(255,255,255,.35)', fontFamily:FONT }}>RATING</div>
+                </div>
               </div>
             </div>
 
-            {/* KPI TIER */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px' }}>
-              <KpiCard label="MINUTOS" value={`${perfil.minutos ?? 0}'`} />
-              <KpiCard label="PARTIDOS" value={perfil.partidosJugados ?? 0} />
-              
-              {isArquero ? (
-                <>
-                  <KpiCard label="ATAJADAS" value={atajadas} color="#3b82f6" />
-                  <KpiCard label="% EFECTIVIDAD" value={`${pctAtajadas}%`} color="#c084fc" />
-                </>
-              ) : (
-                <>
-                  <KpiCard label="xG BUILDUP" value={Number(perfil.xgBuildup || 0).toFixed(2)} color="#c084fc" />
-                  <KpiCard label="PLUS / MINUS" value={`${(perfil.plusMinus || 0) > 0 ? '+' : ''}${perfil.plusMinus || 0}`} />
-                </>
-              )}
-              
-              <KpiCard label="RATING / IMPACTO" value={`${(perfil.impacto || 0) > 0 ? '+' : ''}${Number(perfil.impacto || 0).toFixed(1)}`} color={(perfil.impacto || 0) > 0 ? '#00e676' : '#ef4444'} />
-            </div>
+            {/* ══ KPI TIER ══ */}
+            {(() => {
+              const xgPorRemate = asNumber(stats.remates) > 0 ? (asNumber(stats.xG) / asNumber(stats.remates)).toFixed(3) : '—';
+              const contrib = asNumber(stats.goles) + asNumber(stats.asistencias);
+              const minsPorContrib = contrib > 0 && asNumber(perfil.minutos) > 0 ? Math.round(asNumber(perfil.minutos) / contrib) : '—';
+              const pasesClave = asNumber(stats.pasesClave);
+              return (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:12 }}>
+                  <KpiCard label="MINUTOS"  value={`${perfil.minutos ?? 0}'`} color='rgba(255,255,255,.6)' sub={`${perfil.partidosJugados ?? 0} partidos`} />
+                  {isArquero ? (<>
+                    <KpiCard label="ATAJADAS"     value={atajadas}                              color='#3b82f6' sub={`${tirosRecibidos} tiros`} />
+                    <KpiCard label="EFECTIVIDAD"  value={`${pctAtajadas}%`}                    color='#c084fc' />
+                    <KpiCard label="GOLES PREVN." value={asNumber(perfil.golesPrevenidos) > 0 ? `+${Number(perfil.golesPrevenidos).toFixed(2)}` : Number(perfil.golesPrevenidos).toFixed(2)} color={asNumber(perfil.golesPrevenidos) >= 0 ? CL : '#ff1744'} sub="vs xG recibido" />
+                    <KpiCard label="xG BUILDUP"   value={fmt2(asNumber(perfil.xgBuildup))}     color={CA} />
+                    <KpiCard label="PLUS / MINUS" value={pmDisplay}                            color={pmVal >= 0 ? CL : '#ff1744'} />
+                  </>) : (<>
+                    <KpiCard label="GOLES"        value={stats.goles ?? 0}                     color={CL}      sub={`${stats.remates ?? 0} remates`} />
+                    <KpiCard label="ASISTENCIAS"  value={stats.asistencias ?? 0}               color={CA}      sub={pasesClave > 0 ? `${pasesClave} p. clave` : undefined} />
+                    <KpiCard label="xG / REMATE"  value={xgPorRemate}                         color='#c084fc' sub={`xG total: ${fmt2(asNumber(stats.xG))}`} />
+                    <KpiCard label="MIN / CONTRIB" value={minsPorContrib === '—' ? '—' : `${minsPorContrib}'`} color='#0ea5e9' sub={contrib > 0 ? `${contrib} contribuc.` : 'sin G+A'} />
+                    <KpiCard label="PLUS / MINUS" value={pmDisplay}                           color={pmVal >= 0 ? CL : '#ff1744'} sub={`${fmt2(asNumber(perfil.xgBuildup))} xG buildup`} />
+                  </>)}
+                </div>
+              );
+            })()}
 
-            {/* MAIN STATS ROW */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1fr', gap: '20px' }}>
-              {/* Radiografía Izquierda (Ataque o Arco) */}
-              {isArquero ? (
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ color: '#3b82f6', fontSize: '1.2rem', fontWeight: 900, marginBottom: '20px' }}>🧤 RADIOGRAFÍA DEL ARCO</div>
-                  <Row label="Tiros Recibidos" value={tirosRecibidos} />
-                  <Row label="Atajadas" value={atajadas} color="#00e676" />
-                  <Row label="Goles Recibidos" value={golesRecibidos} color="#ef4444" />
-                  <Row label="% Efectividad" value={`${pctAtajadas}%`} color="#c084fc" />
-                  <Row label="xG Buildup (Pies)" value={Number(perfil.xgBuildup || 0).toFixed(2)} noBorder />
+            {/* ══ FILA ANÁLISIS: 3 COLS ══ */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1.3fr 1fr', gap:16 }}>
+
+              {/* Izq: Radiografía */}
+              <div style={{ background:'rgba(255,255,255,.025)', padding:22, borderRadius:14, border:'1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ fontSize:'1rem', fontWeight:900, color: isArquero ? '#3b82f6' : CL, marginBottom:16, fontFamily:FONT }}>
+                  {isArquero ? '🧤 ARCO' : '⚔️ OFENSIVA'}
                 </div>
-              ) : (
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ color: '#00e676', fontSize: '1.2rem', fontWeight: 900, marginBottom: '20px' }}>⚔️ RADIOGRAFÍA OFENSIVA</div>
-                  <Row label="Goles / xG" value={`${stats.goles ?? 0} / ${Number(stats.xG || 0).toFixed(2)}`} />
-                  <Row label="Asistencias" value={stats.asistencias ?? 0} />
-                  <Row label="Remates (p40)" value={stats.remates ?? 0} sub={`(${(stats.remates * factor40).toFixed(1)})`} />
-                  <Row label="Duelos OFE" value={`${stats.duelosOfeGanados ?? 0}/${stats.duelosOfeTotales ?? 0}`} sub={`(${stats.duelosOfeTotales > 0 ? Math.round(((stats.duelosOfeGanados || 0) / stats.duelosOfeTotales) * 100) : 0}%)`} />
-                  <Row label="Duelos Perdidos" value={stats.duelosOfePerdidos ?? 0} color="#ef4444" noBorder />
-                </div>
-              )}
+                {isArquero ? (<>
+                  <Row label="Tiros recibidos"   value={tirosRecibidos} />
+                  <Row label="Atajadas"          value={atajadas}       color='#00e676' />
+                  <Row label="Goles recibidos"   value={golesRecibidos} color='#ef4444' />
+                  <Row label="% Efectividad"     value={`${pctAtajadas}%`} color='#c084fc' />
+                  <Row label="xG Buildup (pies)" value={fmt2(asNumber(perfil.xgBuildup))} noBorder />
+                </>) : (<>
+                  <Row label="Goles / xG"     value={`${stats.goles ?? 0} / ${fmt2(asNumber(stats.xG))}`} />
+                  <Row label="Asistencias"    value={stats.asistencias ?? 0} />
+                  <Row label="Pases clave"    value={stats.pasesClave ?? 0} color='#a78bfa' />
+                  <Row label="Remates (p40)"  value={stats.remates ?? 0} sub={`(${(asNumber(stats.remates)*factor40).toFixed(1)})`} />
+                  <Row label="Duelos OFE"     value={`${stats.duelosOfeGanados??0}/${stats.duelosOfeTotales??0}`} sub={`(${stats.duelosOfeTotales>0?Math.round((stats.duelosOfeGanados/stats.duelosOfeTotales)*100):0}%)`} />
+                  <Row label="Ocasiones fall." value={stats.ocasionesFalladas ?? 0} color='#ef4444' noBorder />
+                </>)}
+              </div>
 
               {/* Centro: Radar */}
-              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
-                <div style={{ fontSize: '1.2rem', color: '#fff', fontWeight: 900, marginBottom: '10px' }}>PERFIL GLOBAL DE RENDIMIENTO</div>
-                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px', textAlign: 'center' }}>Percentiles estimados en base a producción p40 vs media general de Futsal.</div>
-                
-                <div style={{ flex: 1, width: '100%', minHeight: '220px', display: 'flex', justifyContent: 'center' }}>
-                  <RadarChart width={450} height={280} cx="50%" cy="50%" outerRadius="75%" data={perfil.dataRadar}>
-                    <PolarGrid stroke="#333" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#aaa', fontSize: 11, fontWeight: 'bold' }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Radar name="Jugador" dataKey="A" stroke={isArquero ? "#3b82f6" : "#00e676"} fill={isArquero ? "#3b82f6" : "#00e676"} fillOpacity={0.4} isAnimationActive={false} />
+              <div style={{ background:'rgba(255,255,255,.02)', borderRadius:14, border:'1px solid rgba(255,255,255,.05)', display:'flex', flexDirection:'column', alignItems:'center', padding:18 }}>
+                <div style={{ fontSize:'1rem', fontWeight:900, color:'#fff', marginBottom:4, fontFamily:FONT }}>PERFIL DE RENDIMIENTO</div>
+                <div style={{ fontSize:'.72rem', color:'rgba(255,255,255,.3)', marginBottom:8, textAlign:'center', fontFamily:FONT }}>Producción p40 normalizada</div>
+                <div style={{ flex:1, width:'100%', minHeight:220, display:'flex', justifyContent:'center' }}>
+                  <RadarChart width={420} height={270} cx="50%" cy="50%" outerRadius="72%" data={perfil.dataRadar}>
+                    <PolarGrid stroke="rgba(255,255,255,.1)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill:'rgba(255,255,255,.6)', fontSize:11, fontWeight:'bold' }} />
+                    <PolarRadiusAxis angle={30} domain={[0,100]} tick={false} axisLine={false} />
+                    <Radar name="Jugador" dataKey="A" stroke={accentColor} fill={accentColor} fillOpacity={0.3} isAnimationActive={false} dot={{ fill:accentColor, r:3 }} />
                   </RadarChart>
                 </div>
               </div>
 
-              {/* Radiografía Derecha (Defensa/Distribución) */}
-              {isArquero ? (
-                 <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ color: '#00e676', fontSize: '1.2rem', fontWeight: 900, marginBottom: '20px' }}>⚡ DISTRIBUCIÓN Y DEFENSA</div>
-                  <Row label="Recuperaciones" value={stats.recuperaciones ?? 0} color="#00e676" />
-                  <Row label="Pérdidas Totales" value={stats.perdidas ?? 0} color="#ef4444" />
-                  <Row label="Pases Clave / Asist" value={stats.asistencias ?? 0} color="#eab308" />
-                  <Row label="Duelos (Gan/Tot)" value={`${stats.duelosDefGanados ?? 0}/${stats.duelosDefTotales ?? 0}`} sub={`(${stats.duelosDefTotales > 0 ? Math.round(((stats.duelosDefGanados || 0) / stats.duelosDefTotales) * 100) : 0}%)`} />
-                  <Row label="Faltas Recibidas" value={stats.faltasRecibidas ?? 0} noBorder />
+              {/* Der: Defensiva */}
+              <div style={{ background:'rgba(255,255,255,.025)', padding:22, borderRadius:14, border:'1px solid rgba(255,255,255,.05)' }}>
+                <div style={{ fontSize:'1rem', fontWeight:900, color: isArquero ? CL : '#ef4444', marginBottom:16, fontFamily:FONT }}>
+                  {isArquero ? '⚡ DISTRIBUCIÓN' : '🛡️ DEFENSIVA'}
                 </div>
-              ) : (
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ color: '#ef4444', fontSize: '1.2rem', fontWeight: 900, marginBottom: '20px' }}>🛡️ RADIOGRAFÍA DEFENSIVA</div>
-                  <Row label="Recuperaciones (p40)" value={stats.recuperaciones ?? 0} sub={`(${(stats.recuperaciones * factor40).toFixed(1)})`} color="#00e676" />
-                  <Row label="Recuperaciones Altas" value={stats.recAltas ?? 0} color="#eab308" />
-                  <Row label="Pérdidas (Peligrosas)" value={`${stats.perdidas ?? 0}`} sub={`(${stats.perdidasPeligrosas})`} color="#ef4444" />
-                  <Row label="Duelos DEF" value={`${stats.duelosDefGanados ?? 0}/${stats.duelosDefTotales ?? 0}`} sub={`(${stats.duelosDefTotales > 0 ? Math.round(((stats.duelosDefGanados || 0) / stats.duelosDefTotales) * 100) : 0}%)`} />
-                  <Row label="Duelos Perdidos" value={stats.duelosDefPerdidos ?? 0} color="#ef4444" noBorder />
-                </div>
-              )}
+                {isArquero ? (<>
+                  <Row label="Recuperaciones" value={stats.recuperaciones ?? 0} color={CL} />
+                  <Row label="Pérdidas"       value={stats.perdidas ?? 0}       color='#ef4444' />
+                  <Row label="Asistencias"    value={stats.asistencias ?? 0}    color={CA} />
+                  <Row label="Duelos (Gan/Tot)" value={`${stats.duelosDefGanados??0}/${stats.duelosDefTotales??0}`} sub={`(${stats.duelosDefTotales>0?Math.round((stats.duelosDefGanados/stats.duelosDefTotales)*100):0}%)`} />
+                  <Row label="Faltas recibidas" value={stats.faltasRecibidas ?? 0} noBorder />
+                </>) : (<>
+                  <Row label="Recuperaciones (p40)" value={stats.recuperaciones ?? 0} sub={`(${(asNumber(stats.recuperaciones)*factor40).toFixed(1)})`} color={CL} />
+                  <Row label="Rec. en campo alto"   value={stats.recAltas ?? 0}       color={CA} />
+                  <Row label="Pérdidas (peligrosas)" value={`${stats.perdidas??0}`}   sub={`(${stats.perdidasPeligrosas??0})`} color='#ef4444' />
+                  <Row label="Duelos DEF"  value={`${stats.duelosDefGanados??0}/${stats.duelosDefTotales??0}`} sub={`(${stats.duelosDefTotales>0?Math.round((stats.duelosDefGanados/stats.duelosDefTotales)*100):0}%)`} />
+                  <Row label="Duelos perdidos" value={stats.duelosDefPerdidos ?? 0} color='#ef4444' noBorder />
+                </>)}
+              </div>
             </div>
 
-            {/* GRILLA 2x2: MAPAS A LA IZQUIERDA Y ESTADÍSTICAS A LA DERECHA */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px' }}>
-              
-              {/* FILA 1: MAPA 1 */}
-              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: isArquero ? '#3b82f6' : '#00e676', marginBottom: '5px' }}>
-                  {isArquero ? 'MAPA DEL ARCO (TIROS RECIBIDOS)' : 'MAPA OFENSIVO (REMATES Y ASISTENCIAS)'}
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '15px' }}>
-                  {isArquero ? `${accionesArco.length} acciones de protección del arco (Atajadas vs Goles).` : `${accionesAtaque.length} acciones de creación y finalización. (Ref de colores en Destino de Remates)`}
-                </div>
-                <CanchaFutsal accionesMapa={isArquero ? accionesArco : accionesAtaque} dotSize={16} />
-                {isArquero && (
-                  <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginTop: '10px' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#aaa', fontWeight: 700 }}><span style={{ color: '#3b82f6', fontSize: '1.2em' }}>●</span> Atajadas</span>
-                    <span style={{ fontSize: '0.85rem', color: '#aaa', fontWeight: 700 }}><span style={{ color: '#ef4444', fontSize: '1.2em' }}>●</span> Goles Recibidos</span>
+            {/* ══ GRILLA MAPAS — 2 columnas independientes con align-items:start ══ */}
+            <div style={{ display:'grid', gridTemplateColumns:'1.4fr 1fr', gap:16, alignItems:'start' }}>
+
+              {/* ── COL IZQUIERDA: Mapa ofensivo + Mapa distribución (fluyen solos) ── */}
+              <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+                {/* Mapa 1 */}
+                <div style={{ background:'rgba(255,255,255,.02)', borderRadius:14, padding:18, border:'1px solid rgba(255,255,255,.05)' }}>
+                  <div style={{ fontSize:'1rem', fontWeight:900, color: isArquero ? '#3b82f6' : CL, marginBottom:4, fontFamily:FONT }}>
+                    {isArquero ? 'MAPA DEL ARCO — TIROS RECIBIDOS' : 'MAPA OFENSIVO — REMATES Y ASISTENCIAS'}
                   </div>
-                )}
+                  <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.35)', marginBottom:12, fontFamily:FONT }}>
+                    {isArquero ? `${accionesArco.length} acciones de arco` : `${accionesAtaque.length} acciones de finalización`}
+                  </div>
+                  <CanchaFutsal accionesMapa={isArquero ? accionesArco : accionesAtaque} dotSize={16} />
+                  {isArquero && (
+                    <div style={{ display:'flex', gap:16, justifyContent:'center', marginTop:8 }}>
+                      <span style={{ fontSize:'.82rem', color:'rgba(255,255,255,.6)', fontWeight:700, fontFamily:FONT }}><span style={{ color:'#3b82f6' }}>●</span> Atajadas</span>
+                      <span style={{ fontSize:'.82rem', color:'rgba(255,255,255,.6)', fontWeight:700, fontFamily:FONT }}><span style={{ color:'#ef4444' }}>●</span> Goles recibidos</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mapa 2 */}
+                <div style={{ background:'rgba(255,255,255,.02)', borderRadius:14, padding:18, border:'1px solid rgba(255,255,255,.05)' }}>
+                  <div style={{ fontSize:'1rem', fontWeight:900, color: isArquero ? CL : '#3b82f6', marginBottom:4, fontFamily:FONT }}>
+                    {isArquero ? 'JUEGO CON LOS PIES Y DISTRIBUCIÓN' : 'DISTRIBUCIÓN Y LUCHA'}
+                  </div>
+                  <div style={{ fontSize:'.75rem', color:'rgba(255,255,255,.35)', marginBottom:12, fontFamily:FONT }}>
+                    {isArquero ? `${accionesDistGK.length} acciones de juego con los pies` : `${accionesResto.length} acciones de recuperaciones, pérdidas y duelos`}
+                  </div>
+                  <CanchaFutsal accionesMapa={isArquero ? accionesDistGK : accionesResto} dotSize={16} />
+                  <LeyendaMapaAdaptativa accionesMapa={isArquero ? accionesDistGK : accionesResto} />
+                </div>
               </div>
 
-              {/* FILA 1 DERECHA: REMATES */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', padding: '24px 20px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff', marginBottom: '20px' }}>
-                  {isArquero ? 'COMPOSICIÓN DE TIROS AL ARCO' : 'DESTINO DE REMATES'}
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  
+              {/* ── COL DERECHA: cada bloque mide solo lo que necesita ── */}
+              <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+                {/* Destino de remates */}
+                <div style={{ background:'rgba(255,255,255,.025)', borderRadius:14, padding:20, border:'1px solid rgba(255,255,255,.05)' }}>
+                  <div style={{ fontSize:'1rem', fontWeight:900, color:'#fff', marginBottom:16, fontFamily:FONT }}>
+                    {isArquero ? 'COMPOSICIÓN TIROS AL ARCO' : 'DESTINO DE REMATES'}
+                  </div>
                   {isArquero ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                       <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px' }}>
-                          <span style={{ color: '#00e676' }}>Atajadas</span><span style={{ color: '#ccc' }}>{atajadas} <span style={{ color: '#555', fontSize: '0.85em' }}>({pctAtajadas}%)</span></span>
+                    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                      {[
+                        { label:'Atajadas',        val:atajadas,       pct:pctAtajadas,     color:'#00e676' },
+                        { label:'Goles recibidos', val:golesRecibidos, pct:100-pctAtajadas, color:'#ef4444' },
+                      ].map((r, i) => (
+                        <div key={i}>
+                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'.95rem', fontWeight:700, marginBottom:6 }}>
+                            <span style={{ color:r.color }}>{r.label}</span>
+                            <span style={{ color:'#ccc', fontFamily:FONT }}>{r.val} <span style={{ color:'rgba(255,255,255,.3)', fontSize:'.82em' }}>({r.pct}%)</span></span>
+                          </div>
+                          <div style={{ width:'100%', height:8, background:'rgba(255,255,255,.07)', borderRadius:4, overflow:'hidden' }}>
+                            <div style={{ width:`${r.pct}%`, height:'100%', background:r.color, borderRadius:4 }} />
+                          </div>
                         </div>
-                        <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.08)', borderRadius: '5px', overflow: 'hidden' }}>
-                          <div style={{ width: `${pctAtajadas}%`, height: '100%', background: '#00e676', borderRadius: '5px' }} />
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px' }}>
-                          <span style={{ color: '#ef4444' }}>Goles Recibidos</span><span style={{ color: '#ccc' }}>{golesRecibidos} <span style={{ color: '#555', fontSize: '0.85em' }}>({100 - pctAtajadas}%)</span></span>
-                        </div>
-                        <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.08)', borderRadius: '5px', overflow: 'hidden' }}>
-                          <div style={{ width: `${100 - pctAtajadas}%`, height: '100%', background: '#ef4444', borderRadius: '5px' }} />
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   ) : (
                     <SeccionRemates dataRemates={dataRemates} totalRemates={stats.remates ?? 0} />
                   )}
-                  
                   {!isArquero && perfil.perfilRemate && (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px', paddingTop: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 800, marginBottom: '8px' }}>ZONA (CARRIL)</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                          <span style={{ color: '#aaa' }}>Centro: <strong style={{color:'#fff'}}>{perfil.perfilRemate.centro}</strong></span>
-                          <span style={{ color: '#aaa' }}>Banda: <strong style={{color:'#fff'}}>{perfil.perfilRemate.banda}</strong></span>
+                    <div style={{ display:'flex', gap:10, marginTop:16, paddingTop:14, borderTop:'1px solid rgba(255,255,255,.05)' }}>
+                      <div style={{ flex:1, background:'rgba(255,255,255,.02)', padding:10, borderRadius:8, textAlign:'center' }}>
+                        <div style={{ fontSize:'.6rem', color:'rgba(255,255,255,.4)', fontWeight:800, marginBottom:6, fontFamily:FONT }}>ZONA (CARRIL)</div>
+                        <div style={{ display:'flex', justifyContent:'space-around', fontSize:'.9rem' }}>
+                          <span style={{ color:'rgba(255,255,255,.6)' }}>Centro: <strong style={{color:'#fff',fontFamily:FONT}}>{perfil.perfilRemate.centro}</strong></span>
+                          <span style={{ color:'rgba(255,255,255,.6)' }}>Banda: <strong style={{color:'#fff',fontFamily:FONT}}>{perfil.perfilRemate.banda}</strong></span>
                         </div>
                       </div>
-                      <div style={{ flex: 1, background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 800, marginBottom: '8px' }}>DISTANCIA</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                          <span style={{ color: '#aaa' }}>Cerca: <strong style={{color:'#fff'}}>{perfil.perfilRemate.cerca}</strong></span>
-                          <span style={{ color: '#aaa' }}>Lejos: <strong style={{color:'#fff'}}>{perfil.perfilRemate.lejos}</strong></span>
+                      <div style={{ flex:1, background:'rgba(255,255,255,.02)', padding:10, borderRadius:8, textAlign:'center' }}>
+                        <div style={{ fontSize:'.6rem', color:'rgba(255,255,255,.4)', fontWeight:800, marginBottom:6, fontFamily:FONT }}>DISTANCIA</div>
+                        <div style={{ display:'flex', justifyContent:'space-around', fontSize:'.9rem' }}>
+                          <span style={{ color:'rgba(255,255,255,.6)' }}>Cerca: <strong style={{color:'#fff',fontFamily:FONT}}>{perfil.perfilRemate.cerca}</strong></span>
+                          <span style={{ color:'rgba(255,255,255,.6)' }}>Lejos: <strong style={{color:'#fff',fontFamily:FONT}}>{perfil.perfilRemate.lejos}</strong></span>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* FILA 2: DISTRIBUCIÓN / DISCIPLINA Y DUELOS */}
-              <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: isArquero ? '#00e676' : '#3b82f6', marginBottom: '5px' }}>
-                  {isArquero ? 'JUEGO CON LOS PIES Y DISTRIBUCIÓN' : 'DISTRIBUCIÓN Y LUCHA'}
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '15px' }}>
-                  {isArquero ? `${accionesDistribucionGK.length} acciones de juego con los pies, saques y recuperaciones.` : `${accionesResto.length} acciones de recuperaciones, pérdidas y duelos en campo.`}
-                </div>
-                <CanchaFutsal accionesMapa={isArquero ? accionesDistribucionGK : accionesResto} dotSize={16} />
-                <LeyendaMapaDistribucion />
-              </div>
-
-              {/* COLUMNA DERECHA FILA 2 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#facc15', marginBottom: '15px' }}>DISCIPLINA</div>
-                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', background: '#0a0a0a', padding: '8px 15px', borderRadius: '8px', gap: '10px' }}>
-                        <div style={{ width: '15px', height: '22px', background: '#facc15', borderRadius: '2px' }} />
-                        <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{amarillas}</div>
+                {/* Disciplina */}
+                <div style={{ background:'rgba(255,255,255,.025)', borderRadius:14, padding:14, border:'1px solid rgba(255,255,255,.05)' }}>
+                  <div style={{ fontSize:'.9rem', fontWeight:900, color:CA, marginBottom:10, fontFamily:FONT }}>DISCIPLINA</div>
+                  <div style={{ display:'flex', gap:12, alignItems:'center', marginBottom:6 }}>
+                    <div style={{ display:'flex', gap:8 }}>
+                      <div style={{ display:'flex', alignItems:'center', background:'#0a0a0a', padding:'6px 12px', borderRadius:6, gap:8 }}>
+                        <div style={{ width:13, height:20, background:'#facc15', borderRadius:2 }} />
+                        <div style={{ fontSize:'1.2rem', fontWeight:900, fontFamily:FONT }}>{amarillas}</div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', background: '#0a0a0a', padding: '8px 15px', borderRadius: '8px', gap: '10px' }}>
-                        <div style={{ width: '15px', height: '22px', background: '#ef4444', borderRadius: '2px' }} />
-                        <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{rojas}</div>
+                      <div style={{ display:'flex', alignItems:'center', background:'#0a0a0a', padding:'6px 12px', borderRadius:6, gap:8 }}>
+                        <div style={{ width:13, height:20, background:'#ef4444', borderRadius:2 }} />
+                        <div style={{ fontSize:'1.2rem', fontWeight:900, fontFamily:FONT }}>{rojas}</div>
                       </div>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <Row label="Faltas Hechas" value={stats.faltasCometidas} noBorder />
-                      <Row label="Recibidas" value={stats.faltasRecibidas} noBorder />
+                    <div style={{ flex:1 }}>
+                      <Row label="Faltas cometidas" value={stats.faltasCometidas ?? 0} noBorder />
+                      <Row label="Faltas recibidas" value={stats.faltasRecibidas ?? 0} noBorder />
                     </div>
                   </div>
                 </div>
 
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.05)', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0ea5e9', marginBottom: '15px' }}>BALANCE DE DUELOS</div>
-                  <Row 
-                    label="Duelos Ofensivos" 
-                    value={`${stats.duelosOfeGanados}/${stats.duelosOfeTotales}`} 
-                    sub={`(${stats.duelosOfeTotales > 0 ? Math.round((stats.duelosOfeGanados / stats.duelosOfeTotales)*100) : 0}%)`} 
-                  />
-                  <Row 
-                    label="Duelos Defensivos" 
-                    value={`${stats.duelosDefGanados}/${stats.duelosDefTotales}`} 
-                    sub={`(${stats.duelosDefTotales > 0 ? Math.round((stats.duelosDefGanados / stats.duelosDefTotales)*100) : 0}%)`} 
-                    noBorder 
-                  />
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* FUTSAL IQ / QUIMICA Y SITUACIONES ESPECIALES */}
-            <div style={{ background: 'linear-gradient(90deg, #1a1a2e 0%, #0a0a0a 100%)', borderRadius: '16px', padding: '20px', border: '1px solid #3b82f6', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginTop: 'auto' }}>
-              <div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#3b82f6', marginBottom: '10px' }}>🧠 INTELIGENCIA TÁCTICA Y SITUACIONES</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{ color: '#aaa', fontSize: '0.95rem' }}>Transiciones Rápidas Involucradas</span>
-                    <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{perfil.transicionesInvolucrado}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
-                    <span style={{ color: '#aaa', fontSize: '0.95rem' }}>Eficacia como Arquero Jugador (5v4)</span>
-                    <strong style={{ fontSize: '1rem', color: '#666' }}>S/D <span style={{fontSize:'0.7rem'}}>(Próximamente)</span></strong>
-                  </div>
-              </div>
-
-              <div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#c084fc', marginBottom: '10px' }}>🤝 QUÍMICA: EL QUINTETO IDEAL</div>
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    
-                    <div style={{ fontSize: '0.75rem', color: '#aaa', textTransform: 'uppercase', textAlign: 'center', marginBottom: '5px' }}>
-                      El quinteto de mejor rendimiento estructural en cancha
+                {/* Recuperaciones y pérdidas por zona */}
+                {!isArquero && (() => {
+                  const evRec  = accionesResto.filter(ev => (ev.accion||'').toLowerCase().includes('recuper'));
+                  const evPerd = accionesResto.filter(ev => (ev.accion||'').toLowerCase().includes('pérdida') || (ev.accion||'').toLowerCase().includes('perdida'));
+                  return (
+                    <div style={{ background:'rgba(255,255,255,.025)', borderRadius:14, padding:14, border:'1px solid rgba(255,255,255,.05)', display:'flex', flexDirection:'column', gap:14 }}>
+                      <CanchaZonas eventos={evRec}  colorBase="rgba(16,185,129,.9)" titulo="Recuperaciones por zona" />
+                      <CanchaZonas eventos={evPerd} colorBase="rgba(239,68,68,.9)"  titulo="Pérdidas por zona" />
                     </div>
+                  );
+                })()}
 
-                    <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
-                      
-                      {/* El Jugador Principal */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#111', border: '2px solid #00e676', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                          {jugador.foto ? (
-                            <div style={{ width: '100%', height: '100%', backgroundImage: `url(${jugador.foto})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                          ) : (
-                            <span style={{color:'#00e676', fontWeight:'bold', fontSize:'0.9rem'}}>{jugador.apellido?.substring(0,2).toUpperCase()}</span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#00e676', marginTop: '5px' }}>{jugador.apellido}</div>
-                      </div>
-
-                      {/* Signo más para separar visualmente */}
-                      <div style={{ color: '#555', fontWeight: 900 }}>+</div>
-
-                      {/* Mapeo de los 4 socios para completar el quinteto */}
-                      {companerosQuinteto.length > 0 ? (
-                        companerosQuinteto.map((socio, idx) => (
-                          <div key={socio.id || idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#222', border: '2px solid #c084fc', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                              {socio.foto ? (
-                                <div style={{ width: '100%', height: '100%', backgroundImage: `url(${socio.foto})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                              ) : (
-                                <span style={{color:'#c084fc', fontWeight:'bold', fontSize:'0.8rem'}}>{socio.apellido?.substring(0,2).toUpperCase()}</span>
-                              )}
-                            </div>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#fff', marginTop: '5px', textAlign: 'center' }}>{socio.apellido}</div>
-                          </div>
-                        ))
-                      ) : (
-                        <div style={{ color: '#666', fontStyle: 'italic', fontSize: '0.8rem', flex: 1, textAlign: 'center' }}>
-                          Insuficientes datos para armar el quinteto ideal.
-                        </div>
-                      )}
-
-                    </div>
-
-                    {/* Stats del quinteto en la parte de abajo */}
-                    {perfil?.mejorQuinteto && (
-                      <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#aaa' }}>Rating: <strong style={{ color: '#00e676' }}>{perfil.mejorQuinteto.rating.toFixed(1)}</strong></span>
-                        <span style={{ fontSize: '0.75rem', color: '#aaa' }}>+/-: <strong style={{ color: '#fff' }}>{perfil.mejorQuinteto.diffGoles > 0 ? '+' : ''}{perfil.mejorQuinteto.diffGoles}</strong></span>
-                        <span style={{ fontSize: '0.75rem', color: '#aaa' }}>Mins: <strong style={{ color: '#fff' }}>{perfil.mejorQuinteto.minutos.toFixed(0)}'</strong></span>
-                      </div>
-                    )}
+                {/* Arquero: distribución */}
+                {isArquero && (
+                  <div style={{ background:'rgba(255,255,255,.025)', borderRadius:14, padding:14, border:'1px solid rgba(255,255,255,.05)' }}>
+                    <div style={{ fontSize:'.9rem', fontWeight:900, color:'#0ea5e9', marginBottom:12, fontFamily:FONT }}>DISTRIBUCIÓN</div>
+                    <Row label="Recuperaciones"     value={stats.recuperaciones ?? 0}    color={CL} />
+                    <Row label="Pérdidas en salida" value={stats.perdidasPeligrosas ?? 0} color='#ef4444' />
+                    <Row label="Asistencias"        value={stats.asistencias ?? 0}        color={CA} noBorder />
                   </div>
+                )}
+
               </div>
             </div>
 
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#555', letterSpacing: '1px', fontWeight: 700 }}>
-              <span>
-                <strong>
-                  VIRTUAL.CLUB © {new Date().getFullYear()} - Propiedad de{" "} 
-                  <span style={{ color: "#fd7d05" }}>VirtualFutsal</span> {" "} 
-                  - Todos los derechos reservados.
-                </strong>
+            {/* ══ FOOTER IQ + QUINTETO ══ */}
+            <div style={{ background:'linear-gradient(90deg,#0d1528 0%,#050505 100%)', borderRadius:14, padding:20, border:'1px solid rgba(59,130,246,.25)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:28 }}>
+              <div>
+                <div style={{ fontSize:'.9rem', fontWeight:900, color:'#3b82f6', marginBottom:12, fontFamily:FONT }}>🧠 INTELIGENCIA TÁCTICA</div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,.08)' }}>
+                  <span style={{ color:'rgba(255,255,255,.55)', fontSize:'.9rem' }}>Transiciones rápidas involucradas</span>
+                  <strong style={{ fontSize:'1.3rem', color:'#fff', fontFamily:FONT }}>{perfil.transicionesInvolucrado ?? 0}</strong>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,.08)' }}>
+                  <span style={{ color:'rgba(255,255,255,.55)', fontSize:'.9rem' }}>xG Buildup (creación de juego)</span>
+                  <strong style={{ fontSize:'1.3rem', color:CA, fontFamily:FONT }}>{fmt2(asNumber(perfil.xgBuildup))}</strong>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0' }}>
+                  <span style={{ color:'rgba(255,255,255,.55)', fontSize:'.9rem' }}>Ratio seguridad (Rec/Perd)</span>
+                  <strong style={{ fontSize:'1.3rem', color: asNumber(perfil.ratioSeguridad) >= 60 ? CL : '#ef4444', fontFamily:FONT }}>{perfil.ratioSeguridad ?? 0}%</strong>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize:'.9rem', fontWeight:900, color:'#c084fc', marginBottom:12, fontFamily:FONT }}>🤝 MEJOR QUINTETO ESTRUCTURAL</div>
+                <div style={{ background:'rgba(255,255,255,.03)', padding:12, borderRadius:10, display:'flex', flexDirection:'column', gap:10 }}>
+                  <div style={{ display:'flex', justifyContent:'space-around', alignItems:'center' }}>
+                    {/* Jugador principal */}
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                      <div style={{ width:52, height:52, borderRadius:'50%', background:'#111', border:`2px solid ${CL}`, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                        {jugador.foto ? <div style={{ width:'100%', height:'100%', backgroundImage:`url(${jugador.foto})`, backgroundSize:'cover', backgroundPosition:'center' }}/> : <span style={{color:CL,fontWeight:'bold',fontSize:'.9rem',fontFamily:FONT}}>{inicial}</span>}
+                      </div>
+                      <div style={{ fontSize:'.65rem', fontWeight:900, color:CL, fontFamily:FONT }}>{jugador.apellido}</div>
+                    </div>
+                    <div style={{ color:'rgba(255,255,255,.3)', fontWeight:900, fontSize:'1.2rem' }}>+</div>
+                    {companerosQuinteto.length > 0 ? companerosQuinteto.map((s, i) => (
+                      <div key={s.id||i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                        <div style={{ width:44, height:44, borderRadius:'50%', background:'#222', border:'2px solid #c084fc', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                          {s.foto ? <div style={{ width:'100%', height:'100%', backgroundImage:`url(${s.foto})`, backgroundSize:'cover', backgroundPosition:'center' }}/> : <span style={{color:'#c084fc',fontWeight:'bold',fontSize:'.8rem',fontFamily:FONT}}>{s.apellido?.substring(0,2).toUpperCase()}</span>}
+                        </div>
+                        <div style={{ fontSize:'.62rem', fontWeight:800, color:'rgba(255,255,255,.8)', textAlign:'center', fontFamily:FONT }}>{s.apellido}</div>
+                      </div>
+                    )) : <div style={{ color:'rgba(255,255,255,.25)', fontStyle:'italic', fontSize:'.8rem', flex:1, textAlign:'center' }}>Sin datos suficientes</div>}
+                  </div>
+                  {perfil?.mejorQuinteto && (
+                    <div style={{ display:'flex', justifyContent:'space-around', borderTop:'1px solid rgba(255,255,255,.06)', paddingTop:8 }}>
+                      {[
+                        { label:'Rating', val: perfil.mejorQuinteto.rating.toFixed(1), color: CL },
+                        { label:'+/-',    val: `${perfil.mejorQuinteto.diffGoles>0?'+':''}${perfil.mejorQuinteto.diffGoles}`, color:'#fff' },
+                        { label:'Mins',   val: `${perfil.mejorQuinteto.minutos.toFixed(0)}'`, color:'rgba(255,255,255,.6)' },
+                      ].map((k,i) => (
+                        <span key={i} style={{ fontSize:'.75rem', color:'rgba(255,255,255,.45)', fontFamily:FONT }}>
+                          {k.label}: <strong style={{ color:k.color }}>{k.val}</strong>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ══ PIE DE PÁGINA ══ */}
+            <div style={{ borderTop:'1px solid rgba(255,255,255,.06)', paddingTop:12, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span style={{ fontSize:'.65rem', color:'rgba(255,255,255,.35)', letterSpacing:2, fontWeight:700, fontFamily:FONT }}>
+                VIRTUAL.CLUB © {new Date().getFullYear()} · <span style={{ color:'rgba(253,125,5,.6)' }}>VirtualFutsal</span>
               </span>
-              <span>CONTEXTO: {contexto === 'TODA LA TEMPORADA' ? `TEMPORADA ${new Date().getFullYear()}` : contexto}</span>
+              <span style={{ fontSize:'.65rem', color:'rgba(255,255,255,.35)', letterSpacing:1, fontWeight:700, fontFamily:FONT }}>
+                {contexto === 'TODA LA TEMPORADA' ? `TEMPORADA ${new Date().getFullYear()}` : contexto}
+              </span>
             </div>
 
           </div>

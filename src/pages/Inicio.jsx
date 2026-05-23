@@ -799,49 +799,49 @@ export default function Inicio() {
 {mostrarNovedades && (
   <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
     <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
-      
+ 
       <div style={{ textAlign: 'center', marginBottom: '25px' }}>
         <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN 0.00202605042050
+          VERSIÓN 0.00202605221352
         </span>
         <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          Motor Financiero & Integridad de Datos
+          Reportes Rediseñados
         </h2>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          Refactorización de la capa de tesorería, flujos de caja separados y Kiosco autogestionado.
+          Rediseño visual y de información de los tres reportes exportables: Partido, Jugador y Story.
         </p>
       </div>
-
+ 
       <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
         <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          
+ 
           <li>
-            <strong style={{color: 'var(--accent)'}}>Arquitectura de Pagos Activos/Pasivos:</strong> Reestructuración del motor de pagos. Se separó la lógica entre ingresos (auditoría pasiva con selectores nativos) y liquidaciones (pasarelas dinámicas a billeteras virtuales), reduciendo la carga cognitiva y evitando errores de caja.
+            <strong style={{color: 'var(--accent)'}}>Reporte de Partido (MatchReport):</strong> Rediseño completo del lienzo 1080×1080. Nuevo sistema de barras simétricas por equipo, card de MVP agrandada con rating prominente, top 3 finalizadores, origen de goles con barras proporcionales y pie de imagen unificado con VIRTUAL.CLUB / VirtualFutsal.
           </li>
-
+ 
           <li>
-            <strong style={{color: '#10b981'}}>Rollback e Integridad Referencial:</strong> Implementación de eliminación física (`DELETE`) controlada para revertir errores humanos en el Libro Mayor y Deudas. El sistema bloquea automáticamente la eliminación de obligaciones si estas ya poseen pagos parciales vinculados.
+            <strong style={{color: '#3b82f6'}}>Story de Jugador (IGStory):</strong> Zone 2 rediseñada — las barras con MAX fueron reemplazadas por una grilla 2×3 de tarjetas centradas, diferenciadas por rol (campo vs. arquero). Cada tarjeta muestra el número grande, label y sub-detalle contextual. Fix del bug de atajadas que mostraba 0 en arqueros.
           </li>
-
+ 
           <li>
-            <strong style={{color: '#06b6d4'}}>Kiosco Financiero Autogestionado:</strong> El portal de jugadores en tablet/móvil ahora inyecta el estado de cuenta en tiempo real. Interfaz minimalista que expone saldos, mapea el alias del club e integra deep links (MP, Ualá, Banco Provincia) para agilizar transferencias.
+            <strong style={{color: '#c084fc'}}>Reporte de Jugador (Scouting):</strong> Nuevo sistema de KPIs con xG por remate, minutos por contribución y pases clave. Leyenda del mapa ahora es adaptativa — muestra solo los colores que realmente aparecen en cancha, con los valores exactos del engine. Cancha de fondo negro. Altura del reporte dinámica: se ajusta al contenido (partido corto vs. temporada completa).
           </li>
-
+ 
           <li>
-            <strong style={{color: '#facc15'}}>Dashboard Financiero Avanzado:</strong> Panel de Tesorería reescrito con KPIs de alto impacto. Cruce relacional de datos para calcular tasas de cobrabilidad, caja real (YTD) y exposición de los principales deudores históricos, visualizado mediante librerías de Recharts.
+            <strong style={{color: '#10b981'}}>Zonas de recuperación y pérdida:</strong> La sección de distribución del Reporte de Jugador incorpora dos canchitas de zonas tácticas (Z1–Z4 × I/C/D), diferenciando recuperaciones (verde) de pérdidas (rojo) con heatmap de intensidad proporcional por celda.
           </li>
-          
+ 
           <li>
-            <strong style={{color: '#c084fc'}}>Filtro Estadístico de Compromiso:</strong> Optimización en el cruce de datos de asistencia vs. cuotas. El sistema ahora exige una muestra mínima (3 sesiones/mes) para calcular porcentajes, evitando sesgos analíticos y falsos positivos en el rendimiento del jugador.
+            <strong style={{color: '#facc15'}}>Fix quintetos en JugadorPerfil:</strong> Límite de fetch de eventos subido a 50.000, orden cambiado a descendente para priorizar partidos recientes. Se agregó fetch dedicado por partido para garantizar datos completos al analizar un partido individual.
           </li>
-
+ 
         </ul>
       </div>
-
+ 
       <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase' }}>
         CONFIRMAR ACTUALIZACIÓN
       </button>
-
+ 
     </div>
   </div>
 )}

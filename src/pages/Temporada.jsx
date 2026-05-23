@@ -184,6 +184,8 @@ function Temporada() {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, 'No Especificado': 0
     };
+    // Mapa 4×3 de zonas donde se marcaron los goles propios
+    const golesZonas = {};
     
     const origenGolesRival = {
       'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
@@ -210,12 +212,15 @@ function Temporada() {
           rematesPropiosTotales++;
           if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') {
               golesPropiosTotales++;
-              
               const origen = ev.origen_gol || 'No Especificado';
-              if (origenGoles[origen] !== undefined) {
-                origenGoles[origen]++;
-              } else {
-                origenGoles['No Especificado']++;
+              if (origenGoles[origen] !== undefined) { origenGoles[origen]++; }
+              else { origenGoles['No Especificado']++; }
+              // Acumular zona del gol
+              if (xNorm != null && yNorm != null) {
+                const col = xNorm < 25 ? 'Z1' : xNorm < 50 ? 'Z2' : xNorm < 75 ? 'Z3' : 'Z4';
+                const row = yNorm < 33.33 ? 'I' : yNorm < 66.66 ? 'C' : 'D';
+                const zk = `${col}-${row}`;
+                golesZonas[zk] = (golesZonas[zk] || 0) + 1;
               }
           }
 
@@ -325,7 +330,8 @@ function Temporada() {
       golesPropiosTotales,
       golesRivalesTotales,
       dataOrigenGol,
-      dataOrigenGolRival
+      dataOrigenGolRival,
+      golesZonas
     };
   }, [partidos, eventos, jugadores, filtroCategoria, filtroCompeticion]);
 
@@ -479,12 +485,14 @@ function Temporada() {
           faltas: 0 
         },
         topJugadores: analiticaGlobal.topGoleadores.slice(0, 5).map(j => ({
-          nombre: `${j.dorsal || '-'} ${(j.nombre || 'S/N').toUpperCase()}`,
-          rating: j.goles
+          nombre: `${j.dorsal || '-'} ${(j.apellido || j.nombre || 'S/N').toUpperCase()}`,
+          rating: j.goles,
+          goles: j.goles
         })),
         topJugadoresExt: analiticaGlobal.topAsistidores.slice(0, 5).map(j => ({
-          nombre: `${j.dorsal || '-'} ${(j.nombre || 'S/N').toUpperCase()}`,
+          nombre: `${j.dorsal || '-'} ${(j.apellido || j.nombre || 'S/N').toUpperCase()}`,
           goles: j.asistencias,
+          asistencias: j.asistencias,
           rec: 0,
           remates: 0
         }))
@@ -493,6 +501,9 @@ function Temporada() {
       statsAdicionales: analiticaGlobal.statsAdicionales,
       abp: analiticaGlobal.abp,
       desgloseRemates: analiticaGlobal.desgloseRemates,
+      perfilRemate: analiticaGlobal.perfilRemate,
+      territoryPct: analiticaGlobal.territoryPct,
+      golesZonas: analiticaGlobal.golesZonas || {},
       desgasteData: [
         { name: '1er TIEMPO', Anotados: stats.golesFavorPT, Recibidos: stats.golesContraPT },
         { name: '2do TIEMPO', Anotados: stats.golesFavorST, Recibidos: stats.golesContraST },

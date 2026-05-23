@@ -31,7 +31,7 @@ const calcularRatingQuintetoAvanzado = (q) => {
   const volumenAcciones = gf + gc + rf + rc + rec + per;
   const mins = (q.minutos !== undefined && q.minutos > 0) ? q.minutos : (volumenAcciones * 0.8); 
 
-  if (mins < 2) return '-'; 
+  if (mins <= 0 && volumenAcciones === 0) return '-'; 
 
   const min_factor = Math.min(1, mins / 10);
   const diferencial = (gf - gc) * 1.5 + (rf - rc) * 0.1 + (rec - per) * 0.2;
@@ -149,6 +149,7 @@ function JugadorPerfil() {
   
   const [eventos, setEventos] = useState([]);
   const [eventosCompletos, setEventosCompletos] = useState([]);
+  const [eventosPartidoExtra, setEventosPartidoExtra] = useState({ id: null, data: [] });
   const [wellnessJugador, setWellnessJugador] = useState([]);
   
 
@@ -293,9 +294,9 @@ function JugadorPerfil() {
       if (partidosIds.length > 0) {
         const { data: evsFull } = await supabase.from('eventos').select('*')
           .in('id_partido', partidosIds)
-          .order('id_partido', { ascending: true })
-          .order('created_at', { ascending: true }) 
-          .limit(15000);
+          .order('id_partido', { ascending: false })
+          .order('created_at', { ascending: true })
+          .limit(50000);
         setEventosCompletos(evsFull || []);
       } else {
         setEventosCompletos([]);
@@ -306,6 +307,27 @@ function JugadorPerfil() {
     }
     fetchDataJugador();
   }, [jugadorId]);
+
+  // Fetch dedicado: cuando se selecciona un partido que no está en caché
+  useEffect(() => {
+    async function fetchPartidoExtra() {
+      if (!partidoFiltro || partidoFiltro === 'Todos') {
+        setEventosPartidoExtra({ id: null, data: [] });
+        return;
+      }
+      const yaEnCache = eventosCompletos.some(e => e.id_partido === partidoFiltro);
+      if (yaEnCache) {
+        setEventosPartidoExtra({ id: partidoFiltro, data: [] });
+        return;
+      }
+      const { data: evsPartido } = await supabase
+        .from('eventos').select('*')
+        .eq('id_partido', partidoFiltro)
+        .order('created_at', { ascending: true });
+      setEventosPartidoExtra({ id: partidoFiltro, data: evsPartido || [] });
+    }
+    fetchPartidoExtra();
+  }, [partidoFiltro, eventosCompletos]);
 
   // 🔥 NUEVA LÓGICA: Filtrar partidos donde el jugador realmente participó
   const partidosDondeJugo = useMemo(() => {
@@ -329,7 +351,11 @@ function JugadorPerfil() {
     if (!jugadorId || !eventos.length || !jugadorSeleccionado) return null;
 
     const evFiltrados = partidoFiltro === 'Todos' ? eventos : eventos.filter(ev => ev.id_partido == partidoFiltro);
-    const evCompletosFiltrados = partidoFiltro === 'Todos' ? eventosCompletos : eventosCompletos.filter(ev => ev.id_partido == partidoFiltro);
+    // Usar fetch extra cuando el partido no está en el caché principal
+    const evCompletosBase = partidoFiltro !== 'Todos' && eventosPartidoExtra.id === partidoFiltro && eventosPartidoExtra.data.length > 0
+      ? eventosPartidoExtra.data
+      : eventosCompletos;
+    const evCompletosFiltrados = partidoFiltro === 'Todos' ? evCompletosBase : evCompletosBase.filter(ev => ev.id_partido == partidoFiltro);
     
     if (!evFiltrados.length) return { vacio: true };
 
@@ -581,7 +607,7 @@ function JugadorPerfil() {
       const rating = calcularRatingQuintetoAvanzado(q);
       const diffGoles = q.golesFavor - q.golesContra;
       return { ...q, rating, diffGoles };
-    }).filter(q => q.rating !== '-');
+    }).filter(q => q.rating !== '-' && q.ids && q.ids.length > 0);
     quintetosFinales.sort((a, b) => b.rating - a.rating);
     const mejorQuinteto = quintetosFinales.length > 0 ? quintetosFinales[0] : null;
 
@@ -647,7 +673,7 @@ function JugadorPerfil() {
       contextoGoles, contextoRecuperaciones, impactoTimeline,
       vacio: false 
     };
-  }, [eventos, eventosCompletos, partidoFiltro, jugadorId, jugadorSeleccionado, partidos, jugadores]);
+  }, [eventos, eventosCompletos, eventosPartidoExtra, partidoFiltro, jugadorId, jugadorSeleccionado, partidos, jugadores]);
 
   const evMapa = useMemo(() => {
     if (!perfil || perfil.vacio) return [];
@@ -1475,7 +1501,15 @@ function JugadorPerfil() {
           <div style={{ textAlign: 'right', maxWidth: '1200px', margin: '0 auto' }}>
             <button onClick={() => setMostrarStory(false)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px', marginBottom: '10px' }}>✖ CERRAR STORY</button>
           </div>
-          <PlayerReportIGStory jugador={jugadorSeleccionado} perfil={perfil} jugadores={jugadores}
+          <PlayerReportIGStory 
+            jugador={jugadorSeleccionado} 
+            perfil={perfil} 
+            jugadores={jugadores}
+            quintetoResuelto={
+              perfil?.mejorQuinteto?.ids
+                ? perfil.mejorQuinteto.ids.map(id => jugadores.find(j => j.id == id) || null)
+                : null
+            }
             contexto={partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : (() => { const p = partidos.find(p => p.id == partidoFiltro); return p ? `VS ${p.rival?.toUpperCase()} (${p.fecha})` : ''; })()}
           />
         </div>

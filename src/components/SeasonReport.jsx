@@ -1,89 +1,120 @@
 import React from 'react';
 import {
-  PieChart, Pie, Cell,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts';
 
-/* ── Paleta ─────────────────────────────────────────────────── */
-const CG = '#00e676';   // verde propio
-const CR = '#ff1744';   // rojo rival
-const CA = '#ffd600';   // amarillo accent
-const CB = '#3b82f6';   // azul stats
+const FONT = "'JetBrains Mono', monospace";
+const CG = '#00e676';
+const CR = '#ff1744';
+const CA = '#ffd600';
+const CB = '#3b82f6';
+const ORIGEN_COLORS = ['#3b82f6','#f59e0b','#10b981','#ef4444','#a855f7','#06b6d4','#f472b6','#ffffff','#4b5563'];
 
-const ORIGEN_COLORS = [
-  '#3b82f6','#f59e0b','#10b981',
-  '#ef4444','#a855f7','#06b6d4','#f472b6','#ffffff','#4b5563'
-];
+const fmt1 = (v) => typeof v === 'number' ? v.toFixed(1) : '—';
+const fmt2 = (v) => typeof v === 'number' ? v.toFixed(2) : '—';
+const n = (v, fb = 0) => { const x = Number(v); return Number.isFinite(x) ? x : fb; };
 
-/* ── Helpers ─────────────────────────────────────────────────── */
-const fmt1 = (v) => (typeof v === 'number' ? v.toFixed(1) : '—');
-const fmt2 = (v) => (typeof v === 'number' ? v.toFixed(2) : '—');
-const pct  = (a, b) => { const t = (a||0)+(b||0); return t > 0 ? [(a/t)*100,(b/t)*100]:[50,50]; };
+/* ── Líneas de cancha SVG ── */
+const PitchLinesSVG = () => (
+  <svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"
+    style={{ position:'absolute', inset:0, width:'100%', height:'100%', zIndex:0, pointerEvents:'none' }}>
+    <rect x="0" y="0" width="100" height="50" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="0.5" />
+    <line x1="50" y1="0" x2="50" y2="50" stroke="rgba(255,255,255,.15)" strokeWidth="0.5" />
+    <circle cx="50" cy="25" r="7.5" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="0.5" />
+    <circle cx="50" cy="25" r="0.6" fill="rgba(255,255,255,.15)" />
+    <path d="M 0 6.25 A 15 15 0 0 1 15 21.25 L 15 28.75 A 15 15 0 0 1 0 43.75" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="0.5" />
+    <rect x="-2.5" y="21.25" width="2.5" height="7.5" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="0.35" strokeDasharray="1.5 1.5" />
+    <path d="M 100 6.25 A 15 15 0 0 0 85 21.25 L 85 28.75 A 15 15 0 0 0 100 43.75" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="0.5" />
+    <rect x="100" y="21.25" width="2.5" height="7.5" fill="none" stroke="rgba(255,255,255,.12)" strokeWidth="0.35" strokeDasharray="1.5 1.5" />
+    <path d="M 2.5 0 A 2.5 2.5 0 0 1 0 2.5" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="0.35" />
+    <path d="M 0 47.5 A 2.5 2.5 0 0 1 2.5 50" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="0.35" />
+    <path d="M 97.5 50 A 2.5 2.5 0 0 1 100 47.5" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="0.35" />
+    <path d="M 100 2.5 A 2.5 2.5 0 0 1 97.5 0" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="0.35" />
+  </svg>
+);
 
-/* ── StatBar dual ────────────────────────────────────────────── */
-const StatBar = ({ label, vL = 0, vV = 0, isFloat }) => {
-  const [pL, pV] = pct(vL, vV);
+/* ── Cancha de zonas de goles ── */
+const CanchaGolesZonas = ({ golesZonas = {} }) => {
+  const zX = ['Z1','Z2','Z3','Z4'];
+  const zY = ['I','C','D'];
+  const maxVal = Math.max(...Object.values(golesZonas), 1);
+  const total  = Object.values(golesZonas).reduce((s, v) => s + v, 0);
   return (
-    <div style={{ marginBottom: 9 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4 }}>
-        <span style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.92rem', fontWeight:800, color: CG, minWidth:38 }}>
-          {isFloat ? fmt2(vL) : vL}
-        </span>
-        <span style={{ fontSize:'0.6rem', fontWeight:800, color:'#666', textTransform:'uppercase', textAlign:'center', flex:1, padding:'0 4px' }}>
-          {label}
-        </span>
-        <span style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.92rem', fontWeight:800, color: CR, minWidth:38, textAlign:'right' }}>
-          {isFloat ? fmt2(vV) : vV}
-        </span>
+    <div style={{ position:'relative', width:'100%', aspectRatio:'2/1', borderRadius:6, overflow:'hidden', background:'#080808', border:'1px solid rgba(255,255,255,.08)' }}>
+      <PitchLinesSVG />
+      <svg viewBox="0 0 100 50" style={{ position:'absolute', inset:0, width:'100%', height:'100%', zIndex:1, pointerEvents:'none' }}>
+        {zX.map((xVal, colIdx) =>
+          zY.map((yVal, rowIdx) => {
+            const key   = `${xVal}-${yVal}`;
+            const count = golesZonas[key] || 0;
+            const opacity = count > 0 ? Math.min(0.8, (count / maxVal) * 0.65 + 0.12) : 0;
+            return (
+              <g key={key}>
+                {count > 0 && (
+                  <rect x={colIdx*25} y={rowIdx*16.66} width="25" height="16.66"
+                    fill={CG} fillOpacity={opacity} />
+                )}
+                <rect x={colIdx*25} y={rowIdx*16.66} width="25" height="16.66"
+                  fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="0.15" />
+                <text x={colIdx*25+1.2} y={rowIdx*16.66+3.2} fill="rgba(255,255,255,.18)"
+                  fontSize="2" fontWeight="bold">{key}</text>
+                {count > 0 && (
+                  <text x={colIdx*25+12.5} y={rowIdx*16.66+11} fill="#fff"
+                    fontSize="7" textAnchor="middle" fontWeight="900"
+                    style={{ filter:'drop-shadow(0px 0px 2px rgba(0,0,0,1))' }}>
+                    {count}
+                  </text>
+                )}
+              </g>
+            );
+          })
+        )}
+      </svg>
+      {total === 0 && (
+        <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,.2)', fontSize:'.7rem', fontFamily:FONT, zIndex:2 }}>
+          Sin goles registrados
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── Barra dual horizontal ── */
+const DualBar = ({ label, vL = 0, vV = 0, isFloat }) => {
+  const total = (vL || 0) + (vV || 0);
+  const pL = total > 0 ? (vL / total) * 100 : 50;
+  const pV = total > 0 ? (vV / total) * 100 : 50;
+  return (
+    <div style={{ marginBottom:8 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+        <span style={{ fontFamily:FONT, fontSize:'.9rem', fontWeight:800, color:CG }}>{isFloat ? fmt2(vL) : vL}</span>
+        <span style={{ fontSize:'.55rem', fontWeight:800, color:'rgba(255,255,255,.5)', textTransform:'uppercase', letterSpacing:1 }}>{label}</span>
+        <span style={{ fontFamily:FONT, fontSize:'.9rem', fontWeight:800, color:CR }}>{isFloat ? fmt2(vV) : vV}</span>
       </div>
-      <div style={{ display:'flex', height:5, borderRadius:2, overflow:'hidden', background:'#1a1a1a', gap:1 }}>
-        <div style={{ width:`${pL}%`, background: CG, borderRadius:'2px 0 0 2px' }} />
-        <div style={{ width:`${pV}%`, background: CR, borderRadius:'0 2px 2px 0' }} />
+      <div style={{ display:'flex', height:4, borderRadius:2, overflow:'hidden', background:'#1a1a1a', gap:1 }}>
+        <div style={{ width:`${pL}%`, background:CG }} />
+        <div style={{ width:`${pV}%`, background:CR }} />
       </div>
     </div>
   );
 };
 
-/* ── RankRow ─────────────────────────────────────────────────── */
-const RankRow = ({ pos, nombre, val, sub, color = CG }) => (
-  <div style={{ display:'flex', alignItems:'center', padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,0.05)', gap:8 }}>
-    <span style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.75rem', fontWeight:800, color:'#333', width:16, textAlign:'center', flexShrink:0 }}>
-      {pos}
-    </span>
-    <span style={{ flex:1, fontSize:'0.82rem', fontWeight:800, textTransform:'uppercase', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'#eee' }}>
-      {nombre}
-    </span>
-    {sub !== undefined && (
-      <span style={{ fontSize:'0.65rem', fontWeight:700, color:'#555', marginRight:4 }}>{sub}</span>
-    )}
-    <span style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.8rem', fontWeight:800, padding:'2px 8px', borderRadius:4, background:'#1e1e1e', color, flexShrink:0, minWidth:36, textAlign:'center' }}>
-      {val}
-    </span>
+/* ── Fila de ranking ── */
+const RankRow = ({ pos, nombre, val, sub, color = CG, last }) => (
+  <div style={{ display:'flex', alignItems:'center', padding:'7px 0', borderBottom: last ? 'none' : '1px solid rgba(255,255,255,.04)', gap:8 }}>
+    <span style={{ fontFamily:FONT, fontSize:'.7rem', fontWeight:800, color:'#333', width:16, textAlign:'center', flexShrink:0 }}>{pos}</span>
+    <span style={{ flex:1, fontSize:'.8rem', fontWeight:800, textTransform:'uppercase', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'#eee' }}>{nombre}</span>
+    {sub !== undefined && <span style={{ fontSize:'.6rem', fontWeight:700, color:'#555', marginRight:4, fontFamily:FONT }}>{sub}</span>}
+    <span style={{ fontFamily:FONT, fontSize:'.78rem', fontWeight:800, padding:'2px 8px', borderRadius:4, background:'rgba(255,255,255,.04)', color, flexShrink:0, minWidth:32, textAlign:'center' }}>{val}</span>
   </div>
 );
 
-/* ── KpiCell ─────────────────────────────────────────────────── */
-const KpiCell = ({ val, label, color = '#fff', sub }) => (
-  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'10px 4px' }}>
-    <span style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'1.4rem', fontWeight:800, color, lineHeight:1 }}>{val}</span>
-    {sub && <span style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.7rem', fontWeight:700, color:'#888', marginTop:2 }}>{sub}</span>}
-    <span style={{ fontSize:'0.58rem', fontWeight:800, color:'#555', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:3 }}>{label}</span>
-  </div>
-);
-
-/* ── Card wrapper ────────────────────────────────────────────── */
+/* ── Card ── */
 const Card = ({ title, titleColor = '#fff', children, style = {} }) => (
-  <div style={{
-    background:'#161616', borderRadius:6, border:'1px solid rgba(255,255,255,0.07)',
-    padding:'12px', display:'flex', flexDirection:'column', overflow:'hidden', ...style
-  }}>
+  <div style={{ background:'#111', borderRadius:8, border:'1px solid rgba(255,255,255,.07)', padding:'12px 14px', display:'flex', flexDirection:'column', overflow:'hidden', ...style }}>
     {title && (
-      <div style={{
-        fontFamily:'JetBrains Mono,monospace', fontSize:'0.72rem', fontWeight:700,
-        color: titleColor, textTransform:'uppercase', letterSpacing:'1px',
-        marginBottom:10, paddingBottom:6, borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0
-      }}>
+      <div style={{ fontFamily:FONT, fontSize:'.6rem', fontWeight:700, color:titleColor, textTransform:'uppercase', letterSpacing:1.5, marginBottom:10, paddingBottom:6, borderBottom:'1px solid rgba(255,255,255,.06)', flexShrink:0 }}>
         {title}
       </div>
     )}
@@ -91,157 +122,143 @@ const Card = ({ title, titleColor = '#fff', children, style = {} }) => (
   </div>
 );
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  SEASON REPORT — 1080 × 1080                                   */
+/* ── Origen de goles compacto ── */
+const OrigenCompacto = ({ items, color }) => {
+  if (!items?.length) return <span style={{ color:'#333', fontSize:'.7rem' }}>Sin datos</span>;
+  const total = items.reduce((s, x) => s + (x.value || 0), 0);
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+      {items.map((g, i) => {
+        const pct = total > 0 ? Math.round((g.value / total) * 100) : 0;
+        const col = ORIGEN_COLORS[i % ORIGEN_COLORS.length];
+        return (
+          <div key={i}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:5, overflow:'hidden' }}>
+                <div style={{ width:6, height:6, borderRadius:'50%', background:col, flexShrink:0 }} />
+                <span style={{ fontSize:'.58rem', fontWeight:700, color:'#888', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.name}</span>
+              </div>
+              <span style={{ fontFamily:FONT, fontSize:'.65rem', fontWeight:800, color:col, marginLeft:4, flexShrink:0 }}>{g.value}</span>
+            </div>
+            <div style={{ height:3, background:'rgba(255,255,255,.06)', borderRadius:2, overflow:'hidden' }}>
+              <div style={{ width:`${pct}%`, height:'100%', background:col, borderRadius:2 }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 /* ═══════════════════════════════════════════════════════════════ */
 const SeasonReport = ({ data }) => {
   if (!data) return null;
 
-  const { equipos, resultado, info, stats, golesOrigen } = data;
+  const { equipos, resultado, info, stats, golesOrigen, radarData = [],
+          statsAdicionales = {}, abp = {}, desgloseRemates = {}, desgasteData = [],
+          perfilRemate = {}, golesZonas = {} } = data;
 
-  /* ── Radar data (reconstruimos desde lo que viene) ── */
-  const radarData = data.radarData || [];
+  const loc = stats?.local     || {};
+  const vis = stats?.visitante || {};
 
-  /* ── Balance record ── */
+  /* Balance */
   const balance = info?.balanceTemporada || '0V - 0E - 0D';
   const [vic, emp, der] = balance.split(' - ').map(s => parseInt(s) || 0);
   const totalPJ = vic + emp + der;
-  const pctVic = totalPJ > 0 ? Math.round((vic / totalPJ) * 100) : 0;
-  const balancePie = [
-    { name: 'V', value: vic || 0.01 },
-    { name: 'E', value: emp || 0.01 },
-    { name: 'D', value: der || 0.01 },
+  const pctVic  = totalPJ > 0 ? Math.round((vic / totalPJ) * 100) : 0;
+
+  /* Goles */
+  const parts  = (resultado?.final || '0 - 0').split(' - ').map(s => parseInt(s) || 0);
+  const [golesF, golesC] = [parts[0] || 0, parts[1] || 0];
+  const xgDiff = n(loc.xg) - n(vis.xg);
+
+  /* Top listas — CORREGIDO: usar los campos correctos */
+  const topGoleadores   = (stats?.topJugadores    || []).slice(0, 5);
+  const topAsistidores  = (stats?.topJugadoresExt || []).slice(0, 5);
+
+  /* Duelos */
+  const sa = statsAdicionales;
+  const pctDueloDef = n(sa.duelosDefTotales) > 0 ? Math.round((n(sa.duelosDefGanados) / n(sa.duelosDefTotales)) * 100) : 0;
+  const pctDueloOfe = n(sa.duelosOfeTotales) > 0 ? Math.round((n(sa.duelosOfeGanados) / n(sa.duelosOfeTotales)) * 100) : 0;
+
+  /* Eficacia de tiro */
+  const totalRemates = n(loc.remates) || (n(desgloseRemates.propio?.goles) + n(desgloseRemates.propio?.atajados) + n(desgloseRemates.propio?.desviados) + n(desgloseRemates.propio?.rebatidos));
+  const eficaciaTiro = totalRemates > 0 ? Math.round((golesF / totalRemates) * 100) : 0;
+
+  /* Desglose remates — barras horizontales */
+  const dp = desgloseRemates.propio || {};
+  const dr = desgloseRemates.rival  || {};
+  const desgloseBars = [
+    { label:'Goles',    vL: n(dp.goles),    vV: n(dr.goles),    color: CG },
+    { label:'Atajados', vL: n(dp.atajados), vV: n(dr.atajados), color: CB },
+    { label:'Desviados',vL: n(dp.desviados),vV: n(dr.desviados),color:'#6b7280' },
+    { label:'Rebatidos',vL: n(dp.rebatidos),vV: n(dr.rebatidos),color:'#a855f7' },
   ];
-  const PIE_COLORS_VED = [CG, CA, CR];
 
-  /* ── Goles a favor / en contra ── */
-  const golesParts = (resultado?.final || '0 - 0').split(' - ').map(s => parseInt(s)||0);
-  const [golesF, golesC] = [golesParts[0] || 0, golesParts[1] || 0];
-  const difGol = golesF - golesC;
-
-  /* ── Origen goles local ── */
-  const origenLocal = golesOrigen?.local || [];
-  const origenRival = golesOrigen?.rival || [];
-
-  /* ── Top listas ── */
-  const topGoleadores = (stats?.topJugadores || []).slice(0, 5);
-  const topAsistidores = (stats?.topJugadoresExt || []).slice(0, 5);
-
-  /* ── Stats duales ── */
-  const loc = stats?.local || {};
-  const vis = stats?.visitante || {};
-
-  /* ── xG diff color ── */
-  const xgDiff = (loc.xg || 0) - (vis.xg || 0);
-  const xgDiffColor = xgDiff > 0 ? CG : xgDiff < 0 ? CR : '#aaa';
-
-  /* ── Desglose remates ── */
-  const desgloseData = data.desgloseRemates ? [
-    { name: 'Goles',    Propio: data.desgloseRemates.propio?.goles || 0,    Rival: data.desgloseRemates.rival?.goles || 0 },
-    { name: 'Atajados', Propio: data.desgloseRemates.propio?.atajados || 0, Rival: data.desgloseRemates.rival?.atajados || 0 },
-    { name: 'Desviados',Propio: data.desgloseRemates.propio?.desviados || 0,Rival: data.desgloseRemates.rival?.desviados || 0 },
-    { name: 'Rebatidos',Propio: data.desgloseRemates.propio?.rebatidos || 0,Rival: data.desgloseRemates.rival?.rebatidos || 0 },
-  ] : [];
+  /* Escudo */
+  const escudoLocal = equipos?.local?.escudo;
+  const nombreLocal = equipos?.local?.nombre || 'MI EQUIPO';
 
   return (
     <div id="season-report-exportable" style={{
-      width: 1080, height: 1080,
-      background: '#0d0d0d',
-      color: '#ffffff',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      display: 'grid',
-      gridTemplateRows: '110px 52px 1fr 36px',
-      boxSizing: 'border-box',
-      position: 'relative',
-      overflow: 'hidden',
+      width:1080, height:1080, background:'#050505', color:'#fff',
+      fontFamily:"'Inter',system-ui,sans-serif",
+      display:'grid', gridTemplateRows:'100px 46px 1fr 32px',
+      boxSizing:'border-box', position:'relative', overflow:'hidden'
     }}>
 
-      {/* grain overlay */}
-      <div style={{
-        position:'absolute', inset:0, zIndex:100, pointerEvents:'none', opacity:0.35,
-        backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
+      {/* grain */}
+      <div style={{ position:'absolute', inset:0, zIndex:100, pointerEvents:'none', opacity:.25,
+        backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`
       }} />
 
-      {/* ══ HEADER ══════════════════════════════════════════════ */}
-      <div style={{
-        display:'grid', gridTemplateColumns:'1fr auto 1fr',
-        alignItems:'center', padding:'0 32px',
-        background:'linear-gradient(180deg, #1c1c1c 0%, #111 100%)',
-        borderBottom:'1px solid rgba(255,255,255,0.07)',
-        position:'relative'
-      }}>
-        {/* color line */}
-        <div style={{
-          position:'absolute', bottom:-1, left:0, right:0, height:2,
-          background:`linear-gradient(90deg, transparent 0%, ${CG} 30%, #1a1a1a 50%, ${CA} 70%, transparent 100%)`
-        }} />
+      {/* ══ HEADER ══ */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', padding:'0 28px', background:'linear-gradient(180deg,#161616 0%,#0c0c0c 100%)', borderBottom:'1px solid rgba(255,255,255,.07)', position:'relative' }}>
+        <div style={{ position:'absolute', bottom:-1, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${CG} 30%,#1a1a1a 50%,${CA} 70%,transparent)` }} />
 
-        {/* equipo */}
+        {/* Equipo */}
         <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-          {equipos?.local?.escudo
-            ? <img src={equipos.local.escudo} style={{ width:70, height:70, objectFit:'contain', filter:'drop-shadow(0 0 10px rgba(255,255,255,0.1))' }} alt="" />
-            : <div style={{
-                width:70, height:70, borderRadius:'50%', background:'#1a1a1a',
-                border:`2px solid ${CG}`, display:'flex', alignItems:'center', justifyContent:'center',
-                fontFamily:'JetBrains Mono,monospace', fontWeight:800, fontSize:'1.4rem', color: CG, flexShrink:0
-              }}>
-                {(equipos?.local?.nombre || 'E').substring(0,2).toUpperCase()}
-              </div>
+          {escudoLocal
+            ? <img src={escudoLocal} style={{ width:64, height:64, objectFit:'contain', filter:'drop-shadow(0 0 8px rgba(255,255,255,.1))' }} alt="" />
+            : <div style={{ width:64, height:64, borderRadius:'50%', background:'#1a1a1a', border:`2px solid ${CG}`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:FONT, fontWeight:800, fontSize:'1.2rem', color:CG }}>{nombreLocal.substring(0,2).toUpperCase()}</div>
           }
           <div>
-            <div style={{ fontSize:'1.5rem', fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.5px', lineHeight:1, color: CG }}>
-              {equipos?.local?.nombre || 'MI EQUIPO'}
-            </div>
-            <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.7rem', fontWeight:600, color:'#555', marginTop:3 }}>
-              RESUMEN DE TEMPORADA
+            <div style={{ fontSize:'1.4rem', fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.5px', lineHeight:1, color:CG }}>{nombreLocal}</div>
+            <div style={{ fontFamily:FONT, fontSize:'.62rem', fontWeight:600, color:'#444', marginTop:3 }}>REPORTE DE TEMPORADA</div>
+            <div style={{ fontFamily:FONT, fontSize:'.6rem', color:'#333', marginTop:2 }}>
+              {info?.torneo && info.torneo !== 'Todas las Competencias' ? info.torneo : ''}{info?.categoria && info.categoria !== 'Todas las Categorías' ? ` · ${info.categoria}` : ''}
             </div>
           </div>
         </div>
 
-        {/* marcador central */}
-        <div style={{ textAlign:'center', padding:'0 20px', flexShrink:0 }}>
-          <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.65rem', fontWeight:800, color:'#444', textTransform:'uppercase', letterSpacing:'1px', marginBottom:4 }}>
-            GOLES TOTALES
-          </div>
-          <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'3.2rem', fontWeight:800, lineHeight:1, display:'flex', alignItems:'center', gap:8, justifyContent:'center' }}>
-            <span style={{ color: CG }}>{golesF}</span>
+        {/* Marcador */}
+        <div style={{ textAlign:'center', padding:'0 16px', flexShrink:0 }}>
+          <div style={{ fontFamily:FONT, fontSize:'.58rem', fontWeight:800, color:'#444', textTransform:'uppercase', letterSpacing:1, marginBottom:3 }}>GOLES TEMPORADA</div>
+          <div style={{ fontFamily:FONT, fontSize:'3rem', fontWeight:900, lineHeight:1, display:'flex', alignItems:'center', gap:10, justifyContent:'center' }}>
+            <span style={{ color:CG }}>{golesF}</span>
             <span style={{ color:'#222' }}>–</span>
-            <span style={{ color: CR }}>{golesC}</span>
+            <span style={{ color:CR }}>{golesC}</span>
           </div>
-          <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.75rem', fontWeight:700, color: xgDiffColor, marginTop:4 }}>
+          <div style={{ fontFamily:FONT, fontSize:'.68rem', fontWeight:700, color: xgDiff >= 0 ? CG : CR, marginTop:3 }}>
             Dif. xG: {xgDiff >= 0 ? '+' : ''}{fmt2(xgDiff)}
           </div>
         </div>
 
-        {/* balance */}
+        {/* Balance */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', gap:20 }}>
-          <div style={{ textAlign:'center' }}>
-            <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.6rem', fontWeight:800, color:'#444', textTransform:'uppercase', letterSpacing:'1px', marginBottom:4 }}>
-              BALANCE
-            </div>
-            <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-              <div style={{ textAlign:'center' }}>
-                <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'1.6rem', fontWeight:800, color: CG, lineHeight:1 }}>{vic}</div>
-                <div style={{ fontSize:'0.6rem', fontWeight:800, color:'#444' }}>V</div>
+          <div style={{ display:'flex', gap:14, alignItems:'center' }}>
+            {[{val:vic,label:'V',color:CG},{val:emp,label:'E',color:CA},{val:der,label:'D',color:CR}].map((b,i) => (
+              <div key={i} style={{ textAlign:'center' }}>
+                <div style={{ fontFamily:FONT, fontSize:'1.8rem', fontWeight:900, color:b.color, lineHeight:1 }}>{b.val}</div>
+                <div style={{ fontSize:'.58rem', fontWeight:800, color:'#444', marginTop:2 }}>{b.label}</div>
               </div>
-              <div style={{ color:'#222', fontSize:'1.2rem' }}>·</div>
-              <div style={{ textAlign:'center' }}>
-                <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'1.6rem', fontWeight:800, color: CA, lineHeight:1 }}>{emp}</div>
-                <div style={{ fontSize:'0.6rem', fontWeight:800, color:'#444' }}>E</div>
-              </div>
-              <div style={{ color:'#222', fontSize:'1.2rem' }}>·</div>
-              <div style={{ textAlign:'center' }}>
-                <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'1.6rem', fontWeight:800, color: CR, lineHeight:1 }}>{der}</div>
-                <div style={{ fontSize:'0.6rem', fontWeight:800, color:'#444' }}>D</div>
-              </div>
-            </div>
+            ))}
           </div>
-          {/* mini donut V/E/D */}
-          <div style={{ width:60, height:60, flexShrink:0 }}>
+          <div style={{ width:58, height:58, flexShrink:0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={balancePie} cx="50%" cy="50%" innerRadius={18} outerRadius={28} paddingAngle={2} dataKey="value" stroke="none">
-                  {balancePie.map((_, i) => <Cell key={i} fill={PIE_COLORS_VED[i]} />)}
+                <Pie data={[{v:vic||.01},{v:emp||.01},{v:der||.01}]} dataKey="v" cx="50%" cy="50%" innerRadius={16} outerRadius={27} paddingAngle={2} stroke="none">
+                  {[CG,CA,CR].map((c,i) => <Cell key={i} fill={c} />)}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
@@ -249,216 +266,172 @@ const SeasonReport = ({ data }) => {
         </div>
       </div>
 
-      {/* ══ KPI STRIP ════════════════════════════════════════════ */}
-      <div style={{
-        display:'grid', gridTemplateColumns:'repeat(6, 1fr)',
-        borderBottom:'1px solid rgba(255,255,255,0.07)',
-        background:'#101010',
-      }}>
+      {/* ══ KPI STRIP ══ */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(8,1fr)', background:'#080808', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
         {[
-          { val: totalPJ,            label: 'Partidos', color:'#fff' },
-          { val: `${pctVic}%`,       label: '% Victorias', color: CG },
-          { val: fmt2(loc.xg),       label: 'xG Propio', color: CG },
-          { val: fmt2(vis.xg),       label: 'xG Recibido', color: CR },
-          { val: loc.remates || 0,   label: 'Remates Total', color:'#fff' },
-          { val: loc.recuperaciones || 0, label: 'Recuperaciones', color: CB },
-        ].map((k, i) => (
-          <div key={i} style={{
-            display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-            padding:'8px 4px',
-            borderRight: i < 5 ? '1px solid rgba(255,255,255,0.05)' : 'none'
-          }}>
-            <span style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'1.2rem', fontWeight:800, color:k.color, lineHeight:1 }}>{k.val}</span>
-            <span style={{ fontSize:'0.57rem', fontWeight:800, color:'#444', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:3 }}>{k.label}</span>
+          { val:totalPJ,            label:'Partidos',      color:'#fff' },
+          { val:`${pctVic}%`,       label:'% Victorias',   color:CG },
+          { val:fmt2(n(loc.xg)),    label:'xG Propio',     color:CG },
+          { val:fmt2(n(vis.xg)),    label:'xG Recibido',   color:CR },
+          { val:`${eficaciaTiro}%`, label:'Efic. Tiro',    color:CA },
+          { val:`${pctDueloDef}%`,  label:'Duelos Def.',   color:CB },
+          { val:n(sa.recuperaciones)||n(loc.recuperaciones)||0, label:'Recuperaciones', color:CB },
+          { val:`${n(sa.recuperacionesAltas)||0}`, label:'Rec. Altas', color:CA },
+        ].map((k,i,arr) => (
+          <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'6px 4px', borderRight: i<arr.length-1 ? '1px solid rgba(255,255,255,.04)' : 'none' }}>
+            <span style={{ fontFamily:FONT, fontSize:'1.15rem', fontWeight:800, color:k.color, lineHeight:1 }}>{k.val}</span>
+            <span style={{ fontSize:'.5rem', fontWeight:800, color:'#444', textTransform:'uppercase', letterSpacing:.5, marginTop:2, textAlign:'center', lineHeight:1.2 }}>{k.label}</span>
           </div>
         ))}
       </div>
 
-      {/* ══ BODY 3 COLS ══════════════════════════════════════════ */}
-      <div style={{
-        display:'grid', gridTemplateColumns:'270px 1px 1fr 1px 270px',
-        overflow:'hidden', padding:'10px', gap:'10px'
-      }}>
+      {/* ══ BODY ══ */}
+      <div style={{ display:'grid', gridTemplateColumns:'300px 1px 1fr 1px 270px', padding:'10px', gap:'10px', overflow:'hidden' }}>
 
         {/* ── COL IZQUIERDA ── */}
         <div style={{ display:'flex', flexDirection:'column', gap:8, overflow:'hidden' }}>
 
-          {/* Métricas base */}
-          <Card title="Métricas Acumuladas" titleColor={CG}>
-            <StatBar label="xG Generado" vL={loc.xg || 0} vV={vis.xg || 0} isFloat />
-            <StatBar label="Remates Totales" vL={loc.remates || 0} vV={vis.remates || 0} />
-            <StatBar label="Tiros al Arco" vL={loc.rematesAlArco || 0} vV={vis.rematesAlArco || 0} />
-            <StatBar label="Recuperaciones" vL={loc.recuperaciones || 0} vV={vis.recuperaciones || 0} />
-            <StatBar label="Pérdidas Peligrosas" vL={loc.perdidas || 0} vV={vis.perdidas || 0} />
+          {/* Radar — protagonista */}
+          <Card title="Perfil de Juego" style={{ flex:'0 0 auto' }}>
+            <div style={{ height:200 }}>
+              {radarData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={radarData} margin={{ top:10, right:36, left:36, bottom:10 }}>
+                    <PolarGrid stroke="#1e1e1e" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill:'#666', fontSize:9, fontWeight:700, fontFamily:FONT }} />
+                    <PolarRadiusAxis domain={[0,100]} tick={false} axisLine={false} />
+                    <Radar dataKey="A" stroke={CG} fill={CG} fillOpacity={0.18} strokeWidth={2} dot={{ fill:CG, r:2 }} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#333', fontSize:'.8rem' }}>Sin datos de radar</div>
+              )}
+            </div>
           </Card>
 
-          {/* Desglose remates */}
-          {desgloseData.length > 0 ? (
-            <Card title="Desglose de Remates" style={{ flex: '0 0 auto' }}>
-              <div style={{ height: 100 }}>
+          {/* Comparativa propio vs rival */}
+          <Card title="Propio vs Rival">
+            <div style={{ marginBottom:4, display:'flex', justifyContent:'space-between', fontSize:'.55rem', fontWeight:800, color:'#333', textTransform:'uppercase', fontFamily:FONT }}>
+              <span style={{ color:CG }}>PROPIO</span>
+              <span style={{ color:CR }}>RIVAL</span>
+            </div>
+            <DualBar label="xG Generado"    vL={n(loc.xg)}           vV={n(vis.xg)}           isFloat />
+            <DualBar label="Remates"         vL={totalRemates}         vV={n(loc.rematesAlArco) + n(dr.atajados) + n(dr.desviados) + n(dr.rebatidos)} />
+            <DualBar label="Tiros al Arco"  vL={n(loc.rematesAlArco)} vV={n(vis.rematesAlArco)} />
+            <DualBar label="Recuperaciones" vL={n(sa.recuperaciones)||n(loc.recuperaciones)||0} vV={0} />
+            <DualBar label="Pérd. Peligrosas" vL={n(sa.perdidasPeligrosas)||n(loc.perdidas)||0} vV={0} />
+          </Card>
+
+          {/* Goles por período */}
+          {desgasteData.length > 0 && (
+            <Card title="Goles por Período" style={{ flex:'0 0 auto' }}>
+              <div style={{ height:80 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={desgloseData} margin={{ top:0, right:0, left:-25, bottom:0 }} barSize={9}>
-                    <XAxis dataKey="name" tick={{ fontSize:9, fill:'#555', fontFamily:'JetBrains Mono,monospace' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize:9, fill:'#555' }} axisLine={false} tickLine={false} />
-                    <Bar dataKey="Propio" fill={CG} radius={[2,2,0,0]} />
-                    <Bar dataKey="Rival"  fill={CR} radius={[2,2,0,0]} />
+                  <BarChart data={desgasteData} margin={{ top:0, right:0, left:-25, bottom:0 }} barSize={22}>
+                    <XAxis dataKey="name" tick={{ fontSize:8, fill:'#555', fontFamily:FONT }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize:8, fill:'#555' }} axisLine={false} tickLine={false} />
+                    <Bar dataKey="Anotados"  fill={CG} radius={[2,2,0,0]} />
+                    <Bar dataKey="Recibidos" fill={CR} radius={[2,2,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <div style={{ display:'flex', gap:12, justifyContent:'center', marginTop:4 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:'0.58rem', fontWeight:800, color:'#555' }}>
-                  <div style={{ width:8, height:8, borderRadius:2, background: CG }} /> PROPIO
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:'0.58rem', fontWeight:800, color:'#555' }}>
-                  <div style={{ width:8, height:8, borderRadius:2, background: CR }} /> RIVAL
-                </div>
-              </div>
-            </Card>
-          ) : null}
-
-          {/* Origen de Goles A Favor */}
-          <Card title="Origen — Goles A Favor" titleColor={CG} style={{ flex: 1, minHeight:0 }}>
-            {origenLocal.length > 0 ? (
-              <div style={{ display:'flex', alignItems:'center', flex:1, minHeight:0 }}>
-                <div style={{ flex:'0 0 80px', height:80 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={origenLocal} cx="50%" cy="50%" innerRadius={20} outerRadius={36} paddingAngle={3} dataKey="value" stroke="none">
-                        {origenLocal.map((_, i) => <Cell key={i} fill={ORIGEN_COLORS[i % ORIGEN_COLORS.length]} />)}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div style={{ flex:1, display:'flex', flexDirection:'column', gap:4 }}>
-                  {origenLocal.map((g, i) => (
-                    <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.6rem' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:5, overflow:'hidden' }}>
-                        <div style={{ background: ORIGEN_COLORS[i % ORIGEN_COLORS.length], width:6, height:6, borderRadius:'50%', flexShrink:0 }} />
-                        <span style={{ color:'#777', fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.name}</span>
-                      </div>
-                      <span style={{ fontFamily:'JetBrains Mono,monospace', fontWeight:800, color: ORIGEN_COLORS[i % ORIGEN_COLORS.length], marginLeft:4 }}>{g.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <span style={{ color:'#333', fontSize:'0.75rem' }}>Sin datos de goles</span>
-            )}
-          </Card>
-
-        </div>
-
-        {/* separador */}
-        <div style={{ background:'rgba(255,255,255,0.05)', margin:'6px 0' }} />
-
-        {/* ── COL CENTRAL ── */}
-        <div style={{ display:'flex', flexDirection:'column', gap:8, overflow:'hidden' }}>
-
-          {/* Radar perfil de juego */}
-          {radarData.length > 0 ? (
-            <Card title="Perfil de Juego — Radar" style={{ flex:'0 0 auto' }}>
-              <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData} margin={{ top:10, right:30, left:30, bottom:10 }}>
-                    <PolarGrid stroke="#1e1e1e" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill:'#666', fontSize:10, fontWeight:700, fontFamily:'JetBrains Mono,monospace' }} />
-                    <PolarRadiusAxis domain={[0,100]} tick={false} axisLine={false} />
-                    <Radar dataKey="A" stroke={CG} fill={CG} fillOpacity={0.18} strokeWidth={2} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          ) : (
-            /* fallback: KPI grid visual si no hay radar */
-            <Card title="Eficiencia del Equipo">
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-                {[
-                  { val: `${pctVic}%`, label:'% Victorias', color: CG },
-                  { val: fmt2(xgDiff >= 0 ? xgDiff : Math.abs(xgDiff)), label: xgDiff >= 0 ? 'Ventaja xG' : 'Déficit xG', color: xgDiffColor },
-                  { val: loc.remates > 0 ? (golesF / loc.remates * 100).toFixed(1) + '%' : '—', label:'Eficacia Tiro', color: CA },
-                  { val: loc.recuperaciones || 0, label:'Recuperaciones', color: CB },
-                ].map((k, i) => (
-                  <div key={i} style={{
-                    background:'#0f0f0f', borderRadius:4, border:'1px solid rgba(255,255,255,0.06)',
-                    padding:'12px 8px', textAlign:'center'
-                  }}>
-                    <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'1.6rem', fontWeight:800, color:k.color, lineHeight:1 }}>{k.val}</div>
-                    <div style={{ fontSize:'0.58rem', fontWeight:800, color:'#444', textTransform:'uppercase', marginTop:4 }}>{k.label}</div>
+              <div style={{ display:'flex', gap:14, justifyContent:'center', marginTop:4 }}>
+                {[{c:CG,l:'Anotados'},{c:CR,l:'Recibidos'}].map((x,i) => (
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:4, fontSize:'.52rem', fontWeight:800, color:'#555' }}>
+                    <div style={{ width:7, height:7, borderRadius:2, background:x.c }} />{x.l}
                   </div>
                 ))}
               </div>
             </Card>
           )}
 
-          {/* Origen goles en contra */}
-          <Card title="Origen — Goles En Contra" titleColor={CR} style={{ flex:'0 0 auto' }}>
-            {origenRival.length > 0 ? (
-              <div style={{ display:'flex', alignItems:'center' }}>
-                <div style={{ flex:'0 0 80px', height:80 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={origenRival} cx="50%" cy="50%" innerRadius={20} outerRadius={36} paddingAngle={3} dataKey="value" stroke="none">
-                        {origenRival.map((_, i) => <Cell key={i} fill={ORIGEN_COLORS[i % ORIGEN_COLORS.length]} />)}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
+          {/* Cancha de goles por zona */}
+          <Card title="Goles por Zona" style={{ flex:'0 0 auto' }}>
+            <CanchaGolesZonas golesZonas={golesZonas} />
+            <div style={{ display:'flex', justifyContent:'space-between', marginTop:6, fontSize:'.52rem', fontWeight:700, color:'rgba(255,255,255,.3)', fontFamily:FONT, textTransform:'uppercase', letterSpacing:1 }}>
+              
+            </div>
+          </Card>
+
+        </div>
+
+        {/* separador */}
+        <div style={{ background:'rgba(255,255,255,.05)', margin:'4px 0' }} />
+
+        {/* ── COL CENTRAL ── */}
+        <div style={{ display:'flex', flexDirection:'column', gap:8, overflow:'hidden' }}>
+
+          {/* Origen goles — a favor y en contra en una sola card */}
+          <Card title="Origen de Goles" style={{ flex:'0 0 auto' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1px 1fr', gap:12 }}>
+              <div>
+                <div style={{ fontFamily:FONT, fontSize:'.55rem', fontWeight:800, color:CG, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>
+                  A Favor · {golesF}
                 </div>
-                <div style={{ flex:1, display:'flex', flexDirection:'column', gap:4 }}>
-                  {origenRival.map((g, i) => (
-                    <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'0.6rem' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:5, overflow:'hidden' }}>
-                        <div style={{ background: ORIGEN_COLORS[i % ORIGEN_COLORS.length], width:6, height:6, borderRadius:'50%', flexShrink:0 }} />
-                        <span style={{ color:'#777', fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.name}</span>
-                      </div>
-                      <span style={{ fontFamily:'JetBrains Mono,monospace', fontWeight:800, color: ORIGEN_COLORS[i % ORIGEN_COLORS.length], marginLeft:4 }}>{g.value}</span>
-                    </div>
-                  ))}
+                <OrigenCompacto items={golesOrigen?.local} color={CG} />
+              </div>
+              <div style={{ background:'rgba(255,255,255,.05)' }} />
+              <div>
+                <div style={{ fontFamily:FONT, fontSize:'.55rem', fontWeight:800, color:CR, textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>
+                  En Contra · {golesC}
+                </div>
+                <OrigenCompacto items={golesOrigen?.rival} color={CR} />
+              </div>
+            </div>
+          </Card>
+
+          {/* Desglose de remates — barras horizontales limpias */}
+          <Card title="Desglose de Remates — Propio vs Rival" style={{ flex:'0 0 auto' }}>
+            <div style={{ marginBottom:4, display:'flex', justifyContent:'space-between', fontSize:'.55rem', fontWeight:800, color:'#333', textTransform:'uppercase', fontFamily:FONT }}>
+              <span style={{ color:CG }}>PROPIO</span>
+              <span style={{ color:CR }}>RIVAL</span>
+            </div>
+            {desgloseBars.map((b,i) => (
+              <div key={i} style={{ marginBottom:7 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:3 }}>
+                  <span style={{ fontFamily:FONT, fontSize:'.88rem', fontWeight:800, color:b.color, minWidth:28 }}>{b.vL}</span>
+                  <span style={{ fontSize:'.52rem', fontWeight:800, color:'rgba(255,255,255,.5)', textTransform:'uppercase', letterSpacing:1 }}>{b.label}</span>
+                  <span style={{ fontFamily:FONT, fontSize:'.88rem', fontWeight:800, color:'rgba(255,68,68,.7)', minWidth:28, textAlign:'right' }}>{b.vV}</span>
+                </div>
+                <div style={{ display:'flex', height:4, borderRadius:2, overflow:'hidden', background:'#1a1a1a', gap:1 }}>
+                  <div style={{ width:`${(b.vL/(b.vL+b.vV+.001))*100}%`, background:b.color }} />
+                  <div style={{ width:`${(b.vV/(b.vL+b.vV+.001))*100}%`, background:'rgba(255,68,68,.5)' }} />
                 </div>
               </div>
-            ) : (
-              <span style={{ color:'#333', fontSize:'0.75rem' }}>Sin goles en contra</span>
+            ))}
+            {/* Perfil de remate */}
+            {(perfilRemate.centro !== undefined) && (
+              <div style={{ marginTop:8, paddingTop:8, borderTop:'1px solid rgba(255,255,255,.05)', display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                {[
+                  { label:'Centro',  val:n(perfilRemate.centro),  color:CG },
+                  { label:'Banda',   val:n(perfilRemate.banda),   color:'#6b7280' },
+                  { label:'Cercano', val:n(perfilRemate.cerca),   color:CA },
+                  { label:'Lejano',  val:n(perfilRemate.lejos),   color:CR },
+                ].map((r,i) => (
+                  <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(255,255,255,.02)', borderRadius:4, padding:'4px 8px' }}>
+                    <span style={{ fontSize:'.52rem', fontWeight:800, color:'#555', textTransform:'uppercase' }}>{r.label}</span>
+                    <span style={{ fontFamily:FONT, fontSize:'.8rem', fontWeight:800, color:r.color }}>{r.val}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </Card>
 
-          {/* Stats adicionales grid */}
-          <Card title="Duelos & Transiciones" style={{ flex:1 }}>
+          {/* Duelos, ABP y situaciones */}
+          <Card title="Duelos, ABP & Situaciones" style={{ flex:1 }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6, flex:1 }}>
               {[
-                {
-                  val: data.statsAdicionales?.duelosOfeTotales > 0
-                    ? `${((data.statsAdicionales.duelosOfeGanados / data.statsAdicionales.duelosOfeTotales)*100).toFixed(0)}%`
-                    : '—',
-                  label:'Duelos Ofe.', color: CG
-                },
-                {
-                  val: data.statsAdicionales?.duelosDefTotales > 0
-                    ? `${((data.statsAdicionales?.duelosDefGanados / data.statsAdicionales?.duelosDefTotales)*100).toFixed(0)}%`
-                    : '—',
-                  label:'Duelos Def.', color: CB
-                },
-                {
-                  val: data.statsAdicionales?.recuperacionesAltas || 0,
-                  label:'Rec. Altas', color: CA
-                },
-                {
-                  val: data.statsAdicionales?.perdidasPeligrosas || 0,
-                  label:'Pérd. Peligrosas', color: CR
-                },
-                {
-                  val: data.abp?.corners?.favor || 0,
-                  label:'Córners A Favor', color:'#a855f7'
-                },
-                {
-                  val: data.abp?.corners?.contra || 0,
-                  label:'Córners En Contra', color:'#555'
-                },
-              ].map((k, i) => (
-                <div key={i} style={{
-                  background:'#0f0f0f', borderRadius:4, border:'1px solid rgba(255,255,255,0.05)',
-                  padding:'10px 6px', textAlign:'center'
-                }}>
-                  <div style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'1.3rem', fontWeight:800, color:k.color, lineHeight:1 }}>{k.val}</div>
-                  <div style={{ fontSize:'0.55rem', fontWeight:800, color:'#444', textTransform:'uppercase', marginTop:3, lineHeight:1.3 }}>{k.label}</div>
+                { val:`${pctDueloOfe}%`,              label:'Duelos Ofe.',     color:CG,      sub:`${n(sa.duelosOfeGanados)}/${n(sa.duelosOfeTotales)}` },
+                { val:`${pctDueloDef}%`,              label:'Duelos Def.',     color:CB,      sub:`${n(sa.duelosDefGanados)}/${n(sa.duelosDefTotales)}` },
+                { val:n(sa.recuperacionesAltas)||0,   label:'Rec. Altas',      color:CA,      sub:'presión alta' },
+                { val:n(sa.perdidasPeligrosas)||0,    label:'Pérd. Peligrosas',color:CR,      sub:'generaron remate' },
+                { val:n(abp?.corners?.favor)||0,      label:'Córners A Favor', color:'#a855f7',sub:`${n(abp?.corners?.rematesGenerados)||0} rem. gen.` },
+                { val:n(abp?.corners?.contra)||0,     label:'Córners En Contra',color:'#555', sub:null },
+              ].map((k,i) => (
+                <div key={i} style={{ background:'rgba(255,255,255,.025)', borderRadius:6, border:'1px solid rgba(255,255,255,.05)', padding:'10px 8px', textAlign:'center', display:'flex', flexDirection:'column', gap:3, justifyContent:'center' }}>
+                  <div style={{ fontFamily:FONT, fontSize:'1.3rem', fontWeight:800, color:k.color, lineHeight:1 }}>{k.val}</div>
+                  <div style={{ fontSize:'.5rem', fontWeight:800, color:'#444', textTransform:'uppercase', lineHeight:1.3 }}>{k.label}</div>
+                  {k.sub && <div style={{ fontSize:'.5rem', color:'#333', fontFamily:FONT }}>{k.sub}</div>}
                 </div>
               ))}
             </div>
@@ -467,98 +440,59 @@ const SeasonReport = ({ data }) => {
         </div>
 
         {/* separador */}
-        <div style={{ background:'rgba(255,255,255,0.05)', margin:'6px 0' }} />
+        <div style={{ background:'rgba(255,255,255,.05)', margin:'4px 0' }} />
 
         {/* ── COL DERECHA ── */}
         <div style={{ display:'flex', flexDirection:'column', gap:8, overflow:'hidden' }}>
 
-          {/* Top goleadores */}
+          {/* Top goleadores — CORREGIDO: j.rating = j.goles en Temporada.jsx */}
           <Card title="Top Goleadores" titleColor={CG} style={{ flex:1 }}>
             {topGoleadores.length === 0
-              ? <span style={{ color:'#333', fontSize:'0.75rem' }}>Sin datos</span>
-              : topGoleadores.map((j, i) => (
-                  <RankRow
-                    key={i} pos={i+1}
-                    nombre={j.nombre}
-                    val={`${j.rating || 0}G`}
-                    color={CG}
-                  />
-                ))
+              ? <span style={{ color:'#333', fontSize:'.75rem' }}>Sin datos</span>
+              : topGoleadores.map((j,i) => (
+                <RankRow key={i} pos={i+1} nombre={j.nombre}
+                  val={`${j.rating ?? j.goles ?? 0}G`}
+                  color={CG} last={i === topGoleadores.length-1} />
+              ))
             }
           </Card>
 
-          {/* Top asistidores */}
+          {/* Top asistidores — CORREGIDO: j.goles = j.asistencias en Temporada.jsx */}
           <Card title="Top Asistidores" titleColor={CA} style={{ flex:1 }}>
             {topAsistidores.length === 0
-              ? <span style={{ color:'#333', fontSize:'0.75rem' }}>Sin datos</span>
-              : topAsistidores.map((j, i) => (
-                  <RankRow
-                    key={i} pos={i+1}
-                    nombre={j.nombre}
-                    val={`${j.goles || 0}A`}
-                    color={CA}
-                  />
-                ))
+              ? <span style={{ color:'#333', fontSize:'.75rem' }}>Sin datos</span>
+              : topAsistidores.map((j,i) => (
+                <RankRow key={i} pos={i+1} nombre={j.nombre}
+                  val={`${j.goles ?? j.asistencias ?? 0}A`}
+                  color={CA} last={i === topAsistidores.length-1} />
+              ))
             }
           </Card>
 
-          {/* Info categoría / torneo */}
-          <Card title="Info. General" style={{ flex:'0 0 auto' }}>
-            <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          {/* KPIs ofensivos únicos */}
+          <Card title="Eficiencia Ofensiva" style={{ flex:'0 0 auto' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
               {[
-                { label:'COMPETICIÓN', val: info?.torneo || '—' },
-                { label:'CATEGORÍA', val: info?.categoria || '—' },
-                { label:'BALANCE', val: info?.balanceTemporada || '—' },
-              ].map((row, i) => (
-                <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                  <span style={{ fontSize:'0.6rem', fontWeight:800, color:'#444', textTransform:'uppercase', letterSpacing:'0.5px' }}>{row.label}</span>
-                  <span style={{ fontFamily:'JetBrains Mono,monospace', fontSize:'0.78rem', fontWeight:700, color:'#ccc', textAlign:'right', maxWidth:'60%', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.val}</span>
+                { label:'Eficacia de tiro',       val:`${eficaciaTiro}%`,                                        color:CG },
+                { label:'xG por remate',           val: totalRemates > 0 ? fmt2(n(loc.xg)/totalRemates) : '—',   color:CA },
+                { label:'Goles vs xG esperado',    val: `${(golesF - n(loc.xg)) >= 0 ? '+' : ''}${(golesF - n(loc.xg)).toFixed(2)}`, color: (golesF - n(loc.xg)) >= 0 ? CG : CR },
+                { label:'% Campo rival',           val: data.territoryPct ? `${data.territoryPct}%` : '—',        color:CB },
+              ].map((r,i,arr) => (
+                <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 0', borderBottom: i<arr.length-1 ? '1px solid rgba(255,255,255,.04)' : 'none' }}>
+                  <span style={{ fontSize:'.65rem', color:'#555', fontWeight:700 }}>{r.label}</span>
+                  <span style={{ fontFamily:FONT, fontSize:'.8rem', fontWeight:800, color:r.color }}>{r.val}</span>
                 </div>
               ))}
             </div>
           </Card>
 
-          {/* Partidos 1T vs 2T */}
-          {data.desgasteData ? (
-            <Card title="Goles por Período" style={{ flex:'0 0 auto' }}>
-              <div style={{ height: 80 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.desgasteData} margin={{ top:0, right:0, left:-25, bottom:0 }} barSize={20}>
-                    <XAxis dataKey="name" tick={{ fontSize:9, fill:'#555', fontFamily:'JetBrains Mono,monospace' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize:9, fill:'#555' }} axisLine={false} tickLine={false} />
-                    <Bar dataKey="Anotados" fill={CG} radius={[2,2,0,0]} />
-                    <Bar dataKey="Recibidos" fill={CR}  radius={[2,2,0,0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ display:'flex', gap:12, justifyContent:'center', marginTop:4 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:'0.58rem', fontWeight:800, color:'#555' }}>
-                  <div style={{ width:8, height:8, borderRadius:2, background: CG }} /> ANOTADOS
-                </div>
-                <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:'0.58rem', fontWeight:800, color:'#555' }}>
-                  <div style={{ width:8, height:8, borderRadius:2, background: CR }} /> RECIBIDOS
-                </div>
-              </div>
-            </Card>
-          ) : null}
-
         </div>
-
       </div>
 
-      {/* ══ FOOTER ══════════════════════════════════════════════ */}
-      <div style={{
-        display:'flex', justifyContent:'space-between', alignItems:'center',
-        padding:'0 24px', background:'#080808',
-        borderTop:'1px solid rgba(255,255,255,0.07)',
-        fontFamily:'JetBrains Mono,monospace', fontSize:'0.62rem', fontWeight:600,
-        color:'#333', textTransform:'uppercase'
-      }}>
+      {/* ══ FOOTER ══ */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 24px', background:'#080808', borderTop:'1px solid rgba(255,255,255,.06)', fontFamily:FONT, fontSize:'.58rem', fontWeight:600, color:'#333', textTransform:'uppercase', letterSpacing:1 }}>
         <span>Reporte de Temporada · {info?.fecha || 'Temporada Actual'}</span>
-        <span>
-          <strong style={{ color:'#555' }}>VIRTUAL.CLUB © 2026</strong>
-          {' '}— Propiedad de <span style={{ color:'#fd7d05' }}>VirtualFutsal</span>
-        </span>
+        <span>VIRTUAL.CLUB © 2026 — Propiedad de <span style={{ color:'#fd7d05' }}>VirtualFutsal</span></span>
       </div>
 
     </div>

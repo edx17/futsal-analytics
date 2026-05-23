@@ -999,8 +999,20 @@ function Resumen() {
           xg: analitica.xgRival, remates: analitica.stats.rival.remates, rematesAlArco: analitica.stats.rival.goles + analitica.stats.rival.atajados, 
           recuperaciones: 0, perdidas: 0, faltas: analitica.stats.rival.faltas 
         },
-        topJugadores: analitica.ranking.filter(j => j.impacto !== '-').slice(0, 5).map(j => ({ nombre: `${j.dorsal || '-'} - ${(j.nombre || 'S/N').toUpperCase()}`, rating: Number(j.impacto).toFixed(1) })),
-        topJugadoresExt: analitica.ranking.map(j => ({ nombre: `${j.dorsal || '-'} - ${(j.nombre || 'S/N').toUpperCase()}`, rec: j.rec || 0, remates: j.remates || 0, goles: j.goles || 0 }))
+        topJugadores: analitica.ranking.filter(j => j.impacto !== '-').slice(0, 5).map(j => ({
+          nombre: (j.apellido || j.nombre || 'S/N').toUpperCase(),
+          rating: Number(j.impacto)
+        })),
+        topJugadoresExt: analitica.ranking.map(j => ({
+          nombre:    (j.apellido || j.nombre || 'S/N').toUpperCase(),
+          dorsal:    j.dorsal    || '',
+          rol:       j.rol       || '',
+          goles:     j.goles     || 0,
+          remates:   j.remates   || 0,
+          rec:       j.rec       || 0,
+          plusMinus: j.plusMinus ?? 0,
+          impacto:   Number(j.impacto) || 0
+        }))
       },
       tiros: rematesDetalle.map(r => ({
         x: r.zona_x_norm !== undefined ? r.zona_x_norm : r.zona_x, y: r.zona_y_norm !== undefined ? r.zona_y_norm : r.zona_y,
