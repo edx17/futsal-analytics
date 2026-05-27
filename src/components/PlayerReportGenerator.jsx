@@ -259,16 +259,43 @@ const PlayerReportGenerator = ({ jugador, perfil, wellness, contexto, jugadores 
     if (!el || !sw || !cd || exportando) return;
     setExportando(true);
     const [oT,oW,oH,oO] = [sw.style.transform, cd.style.width, cd.style.height, cd.style.overflow];
-    // Altura real del contenido — no fija
     const realH = el.scrollHeight;
     sw.style.transform = 'scale(1)'; cd.style.width = `${CANVAS_W}px`; cd.style.height = `${realH}px`; cd.style.overflow = 'visible';
     setTimeout(async () => {
       try {
         const canvas = await html2canvas(el, { scale:2, useCORS:true, backgroundColor:'#050505', logging:false, height:realH, windowHeight:realH });
-        const link = document.createElement('a');
-        link.download = `Scouting_${jugador?.apellido}_${contexto === 'TODA LA TEMPORADA' ? new Date().getFullYear() : 'Partido'}.png`;
-        link.href = canvas.toDataURL('image/png'); link.click();
-      } catch { alert('Error al generar la imagen.'); }
+        const fileName = `Scouting_${jugador?.apellido}_${contexto === 'TODA LA TEMPORADA' ? new Date().getFullYear() : 'Partido'}.png`;
+        const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isIOS) {
+          const dataUrl = canvas.toDataURL('image/png');
+          const w = window.open('', '_blank');
+          if (w) {
+            w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center">
+              <p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">
+                📸 Mantené pulsada la imagen → <strong>"Añadir a fotos"</strong> para guardarla
+              </p>
+              <img src="${dataUrl}" style="max-width:100%;display:block" />
+            </body></html>`);
+            w.document.close();
+          } else {
+            alert('Permitir ventanas emergentes para descargar la imagen.');
+          }
+        } else if (isMobile) {
+          canvas.toBlob((blob) => {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url; link.download = fileName;
+            document.body.appendChild(link); link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }, 'image/png');
+        } else {
+          const link = document.createElement('a');
+          link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
+        }
+      } catch (err) { console.error(err); alert('Error al generar la imagen.'); }
       finally { sw.style.transform=oT; cd.style.width=oW; cd.style.height=oH; cd.style.overflow=oO; setExportando(false); }
     }, 300);
   };
