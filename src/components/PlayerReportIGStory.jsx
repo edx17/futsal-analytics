@@ -18,11 +18,16 @@ const FONT_MONO = "'JetBrains Mono', monospace";
 
 const BgDeco = () => (
   <>
-    <div style={{
-      position:'absolute', inset:0,
-      backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 79px,rgba(255,255,255,.015) 79px,rgba(255,255,255,.015) 80px),repeating-linear-gradient(90deg,transparent,transparent 79px,rgba(255,255,255,.015) 79px,rgba(255,255,255,.015) 80px)',
-      pointerEvents:'none', zIndex:0
-    }}/>
+    {/* Grid SVG — compatible con html2canvas en Android (evita createPattern) */}
+    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}
+      xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+          <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(255,255,255,.015)" strokeWidth="1"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid)" />
+    </svg>
     <div style={{ position:'absolute', top:-200, left:-200, width:800, height:800, borderRadius:'50%', background:'radial-gradient(circle,rgba(0,230,118,.08) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
     <div style={{ position:'absolute', bottom:-200, right:-200, width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle,rgba(100,100,255,.06) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
     {/* Corner marks */}
