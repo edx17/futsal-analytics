@@ -221,12 +221,23 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
 
     setTimeout(async () => {
       try {
-        const canvas = await html2canvas(el, {
-          scale: 2, useCORS: true, backgroundColor: '#050505', logging: false,
-          onclone: (doc) => {
-            doc.documentElement.style.setProperty('--c-accent', '#00e676');
-          }
-        });
+        let canvas;
+        try {
+          canvas = await html2canvas(el, {
+            scale: 2, useCORS: true, backgroundColor: '#050505', logging: false,
+            onclone: (doc) => {
+              doc.documentElement.style.setProperty('--c-accent', '#00e676');
+            }
+          });
+        } catch {
+          // Fallback: ignorar errores CORS de imágenes externas
+          canvas = await html2canvas(el, {
+            scale: 2, useCORS: false, allowTaint: true, backgroundColor: '#050505', logging: false,
+            onclone: (doc) => {
+              doc.documentElement.style.setProperty('--c-accent', '#00e676');
+            }
+          });
+        }
 
         const fileName = `Story_${jugador?.apellido || 'Jugador'}_${contexto || 'Temporada'}.png`;
         const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -269,8 +280,8 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
           link.click();
         }
       } catch (err) {
-        console.error('Error al generar la imagen:', err);
-        alert('No se pudo generar la imagen. Intentá desde un navegador de escritorio.');
+        console.error('IGStory export error:', err);
+        alert('Error: ' + (err?.message || err?.toString() || 'desconocido') + '\n\nCompartí este mensaje.');
       } finally {
         scaleWrapper.style.transform = origTransform;
         containerDiv.style.width     = origW;
