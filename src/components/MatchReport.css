@@ -31,13 +31,8 @@
 
 /* ── BG DECORATIVO ──────────────────────── */
 .mr-bg-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(255,255,255,.018) 59px, rgba(255,255,255,.018) 60px),
-    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(255,255,255,.018) 59px, rgba(255,255,255,.018) 60px);
-  z-index: 0;
-  pointer-events: none;
+  /* Reemplazado por SVG inline en MatchReport.jsx para compatibilidad Android */
+  display: none;
 }
 .mr-wm {
   position: absolute;
@@ -76,7 +71,7 @@
 .mr-hero {
   position: relative;
   z-index: 2;
-  height: 340px;
+  height: 380px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -199,20 +194,20 @@
 .mr-river {
   position: relative;
   z-index: 2;
-  padding: 16px 60px;
+  padding: 24px 60px;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 13px;
   flex-shrink: 0;
 }
 .mr-river-row {
   display: flex;
   align-items: center;
-  height: 28px;
+  height: 34px;
 }
 .mr-rr-val {
   width: 72px;
-  font-size: 1.2rem;
+  font-size: 1.45rem;
   font-weight: 900;
   font-family: var(--font-display);
   flex-shrink: 0;
@@ -270,8 +265,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: 14px 20px;
+  justify-content: center;
+  padding: 20px 24px;
   gap: 8px;
   overflow: hidden;
 }
@@ -335,18 +330,18 @@
 .mr-top-val  { font-size: .65rem; font-weight: 800; font-family: var(--font-display); }
 
 /* Origen goles */
-.mr-origin-section { width: 100%; display: flex; flex-direction: column; gap: 9px; }
+.mr-origin-section { width: 100%; display: flex; flex-direction: column; gap: 6px; }
 .mr-origin-header {
-  font-size: .62rem; font-weight: 700; letter-spacing: 2px;
-  text-transform: uppercase; opacity: .75; margin-bottom: 4px;
+  font-size: .46rem; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; opacity: .6; margin-bottom: 2px;
   font-family: var(--font-display);
 }
 .mr-origin-row { display: flex; align-items: center; gap: 8px; }
-.mr-origin-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.mr-origin-track { flex: 1; height: 6px; background: rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; }
+.mr-origin-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mr-origin-track { flex: 1; height: 3px; background: rgba(255,255,255,.06); border-radius: 2px; overflow: hidden; }
 .mr-origin-fill  { height: 100%; border-radius: 2px; }
-.mr-origin-count { font-size: .85rem; font-weight: 900; font-family: var(--font-display); width: 18px; text-align: right; }
-.mr-origin-label { font-size: .58rem; color: rgba(255,255,255,.35); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; flex: 0 0 90px; font-family: var(--font-display); }
+.mr-origin-count { font-size: .62rem; font-weight: 800; font-family: var(--font-display); width: 12px; text-align: right; }
+.mr-origin-label { font-size: .46rem; color: rgba(255,255,255,.2); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; flex: 0 0 76px; font-family: var(--font-display); }
 
 /* Divider horizontal */
 .mr-h-sep { height: 1px; background: rgba(255,255,255,.04); width: 100%; }
@@ -357,6 +352,6 @@
   margin-top: 4px;
 }
 .mr-brand-txt {
-  font-size: .72rem; font-weight: 700; letter-spacing: 3px;
+  font-size: .44rem; font-weight: 700; letter-spacing: 2px;
   text-transform: uppercase; font-family: var(--font-display);
 }

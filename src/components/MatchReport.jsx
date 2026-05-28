@@ -92,7 +92,19 @@ const MatchReport = ({ data }) => {
   return (
     <div className="report-container" id="match-report-exportable">
 
-      <div className="mr-bg-grid" />
+      {/* SVG grid — reemplaza .mr-bg-grid CSS que rompe html2canvas en Android */}
+      <svg
+        style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <pattern id="mrGrid" width="60" height="60" patternUnits="userSpaceOnUse">
+            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(255,255,255,.018)" strokeWidth="1"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#mrGrid)" />
+      </svg>
+
       <div className="mr-wm">{gL}–{gV}</div>
       <div className="mr-blob-l" />
       <div className="mr-blob-r" />
@@ -211,8 +223,14 @@ const MatchReport = ({ data }) => {
         <div className="mr-b-sep" />
 
         {/* COL 2 — xG + Top 3 finalizadores */}
-        <div className="mr-b-col" style={{ justifyContent:'flex-start', paddingTop:'20px', gap:'10px' }}>
-          <div style={{ fontSize:'.58rem', fontWeight:700, letterSpacing:3, textTransform:'uppercase', color:'rgba(255,255,255,.9)', fontFamily:'var(--font-display)', alignSelf:'flex-start' }}>CALIDAD DE OCASIONES</div>
+        <div
+          className="mr-b-col"
+          style={{ justifyContent:'flex-start', paddingTop:'10px', gap:'6px' }}
+        >
+          <div style={{ fontSize:'.58rem', fontWeight:700, letterSpacing:3, textTransform:'uppercase', color:'rgba(255,255,255,.9)', fontFamily:'var(--font-display)', alignSelf:'flex-start' }}>
+            CALIDAD DE OCASIONES
+          </div>
+
           <div className="mr-xgc">
             <div className="mr-xgc-row">
               <div className="mr-xgc-head">
@@ -224,7 +242,9 @@ const MatchReport = ({ data }) => {
               </div>
               <div className="mr-xgc-sub">{gL} GOLES · {convL}% CONVERSIÓN</div>
             </div>
-            <div className="mr-h-sep" style={{ margin:'8px 0' }} />
+
+            <div className="mr-h-sep" style={{ margin:'6px 0' }} />
+
             <div className="mr-xgc-row">
               <div className="mr-xgc-head">
                 <span className="mr-xgc-name" style={{ color: CV }}>{nombreVisita}</span>
@@ -236,9 +256,14 @@ const MatchReport = ({ data }) => {
               <div className="mr-xgc-sub">{gV} GOLES · {convV}% CONVERSIÓN</div>
             </div>
           </div>
-          <div className="mr-h-sep" style={{ margin:'6px 0' }} />
-          <div style={{ fontSize:'.58rem', fontWeight:700, letterSpacing:3, textTransform:'uppercase', color:'rgba(255,255,255,.9)', fontFamily:'var(--font-display)', alignSelf:'flex-start' }}>TOP FINALIZADORES</div>
-          <div className="mr-top-list">
+
+          <div className="mr-h-sep" style={{ margin:'4px 0' }} />
+
+          <div style={{ fontSize:'.58rem', fontWeight:700, letterSpacing:3, textTransform:'uppercase', color:'rgba(255,255,255,.9)', fontFamily:'var(--font-display)', alignSelf:'flex-start' }}>
+            TOP FINALIZADORES
+          </div>
+
+          <div className="mr-top-list" style={{ marginTop: '-2px' }}>
             {topRemates.length === 0
               ? <div style={{ color:'rgba(255,255,255,.15)', fontSize:'.75rem' }}>Sin datos</div>
               : topRemates.map((j, i) => (
@@ -257,28 +282,34 @@ const MatchReport = ({ data }) => {
 
         {/* COL 3 — Origen goles + brand */}
         <div className="mr-b-col" style={{ justifyContent:'flex-start', paddingTop:'20px', gap:'10px' }}>
-          <div style={{ fontSize:'.58rem', fontWeight:700, letterSpacing:3, textTransform:'uppercase', color:'rgba(255,255,255,.9)', fontFamily:'var(--font-display)', alignSelf:'flex-start' }}>ORIGEN DE GOLES</div>
+          <div style={{ fontSize:'.58rem', fontWeight:700, letterSpacing:3, textTransform:'uppercase', color:'rgba(255,255,255,.9)', fontFamily:'var(--font-display)', alignSelf:'flex-start' }}>
+            ORIGEN DE GOLES
+          </div>
+
           {(golesOrigen?.local?.length ?? 0) > 0 && (
             <OrigenSection label="A favor" goles={golesOrigen.local} totalColor={CL} />
           )}
+
           <div className="mr-h-sep" />
+
           {(golesOrigen?.rival?.length ?? 0) > 0 && (
             <OrigenSection label="En contra" goles={golesOrigen.rival} totalColor={CV} />
           )}
-
-
         </div>
 
       </div>
+
       {/* ── FOOTER PIE DE IMAGEN ── */}
-      <div style={{
-        position:'relative', zIndex:5,
-        height:36, flexShrink:0,
-        borderTop:'1px solid rgba(255,255,255,.05)',
-        display:'flex', alignItems:'center', justifyContent:'space-between',
-        padding:'0 32px',
-        background:'rgba(0,0,0,.25)'
-      }}>
+      <div
+        style={{
+          position:'relative', zIndex:5,
+          height:36, flexShrink:0,
+          borderTop:'1px solid rgba(255,255,255,.05)',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'0 32px',
+          background:'rgba(0,0,0,.25)'
+        }}
+      >
         <span style={{ fontFamily:'var(--font-display)', fontSize:'.7rem', fontWeight:700, letterSpacing:3, textTransform:'uppercase', color:'rgba(255,255,255,.45)' }}>
           VIRTUAL.CLUB
         </span>

@@ -18,24 +18,31 @@ const FONT_MONO = "'JetBrains Mono', monospace";
 
 const BgDeco = () => (
   <>
-    {/* Grid SVG — compatible con html2canvas en Android (evita createPattern) */}
+    {/* SVG — reemplaza repeating-linear-gradient que rompe html2canvas en Android */}
     <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}
       xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+        <pattern id="igGrid" width="80" height="80" patternUnits="userSpaceOnUse">
           <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(255,255,255,.015)" strokeWidth="1"/>
         </pattern>
+        <radialGradient id="blobL" cx="0%" cy="0%" r="60%">
+          <stop offset="0%" stopColor="#00e676" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="#00e676" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="blobR" cx="100%" cy="100%" r="60%">
+          <stop offset="0%" stopColor="#6464ff" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#6464ff" stopOpacity="0" />
+        </radialGradient>
       </defs>
-      <rect width="100%" height="100%" fill="url(#grid)" />
+      <rect width="100%" height="100%" fill="url(#igGrid)" />
+      <rect width="100%" height="100%" fill="url(#blobL)" />
+      <rect width="100%" height="100%" fill="url(#blobR)" />
     </svg>
-    <div style={{ position:'absolute', top:-200, left:-200, width:800, height:800, borderRadius:'50%', background:'radial-gradient(circle,rgba(0,230,118,.08) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
-    <div style={{ position:'absolute', bottom:-200, right:-200, width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle,rgba(100,100,255,.06) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
-    {/* Corner marks */}
     {[
-      { top:28, left:28,  borderTop:`1px solid rgba(0,230,118,.35)`, borderLeft:`1px solid rgba(0,230,118,.35)` },
-      { top:28, right:28, borderTop:`1px solid rgba(0,230,118,.35)`, borderRight:`1px solid rgba(0,230,118,.35)` },
-      { bottom:28, left:28,  borderBottom:`1px solid rgba(255,255,255,.1)`, borderLeft:`1px solid rgba(255,255,255,.1)` },
-      { bottom:28, right:28, borderBottom:`1px solid rgba(255,255,255,.1)`, borderRight:`1px solid rgba(255,255,255,.1)` },
+      { top:28, left:28,  borderTop:'1px solid rgba(0,230,118,.35)', borderLeft:'1px solid rgba(0,230,118,.35)' },
+      { top:28, right:28, borderTop:'1px solid rgba(0,230,118,.35)', borderRight:'1px solid rgba(0,230,118,.35)' },
+      { bottom:28, left:28,  borderBottom:'1px solid rgba(255,255,255,.1)', borderLeft:'1px solid rgba(255,255,255,.1)' },
+      { bottom:28, right:28, borderBottom:'1px solid rgba(255,255,255,.1)', borderRight:'1px solid rgba(255,255,255,.1)' },
     ].map((s, i) => (
       <div key={i} style={{ position:'absolute', width:48, height:48, zIndex:4, ...s }}/>
     ))}
@@ -209,84 +216,54 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
     return () => { clearTimeout(t); window.removeEventListener('resize', calcular); };
   }, []);
 
-  /* ── Export PNG — compatible móvil (iOS Safari + Android Chrome) ── */
+  /* ── Export PNG — compatible iOS + Android ── */
   const exportarPNG = async () => {
     const scaleWrapper = document.getElementById('ig-scale-wrapper');
     const containerDiv = scaleWrapper?.parentElement;
     const el           = document.getElementById('ig-story-exportable');
     if (!el || !scaleWrapper || !containerDiv || exportando) return;
     setExportando(true);
-
     const origTransform = scaleWrapper.style.transform;
     const origW         = containerDiv.style.width;
     const origH         = containerDiv.style.height;
     scaleWrapper.style.transform = 'scale(1)';
     containerDiv.style.width     = `${CANVAS_W}px`;
     containerDiv.style.height    = `${CANVAS_H}px`;
-
     setTimeout(async () => {
       try {
-        let canvas;
-        try {
-          canvas = await html2canvas(el, {
-            scale: 2, useCORS: true, backgroundColor: '#050505', logging: false,
-            onclone: (doc) => {
-              doc.documentElement.style.setProperty('--c-accent', '#00e676');
-            }
-          });
-        } catch {
-          // Fallback: ignorar errores CORS de imágenes externas
-          canvas = await html2canvas(el, {
-            scale: 2, useCORS: false, allowTaint: true, backgroundColor: '#050505', logging: false,
-            onclone: (doc) => {
-              doc.documentElement.style.setProperty('--c-accent', '#00e676');
-            }
-          });
-        }
-
+        const canvas = await html2canvas(el, {
+          scale: 2, useCORS: true, backgroundColor: '#050505', logging: false,
+          onclone: (doc) => { doc.documentElement.style.setProperty('--c-accent', '#00e676'); }
+        });
         const fileName = `Story_${jugador?.apellido || 'Jugador'}_${contexto || 'Temporada'}.png`;
         const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
         if (isIOS) {
-          // iOS Safari no soporta link.download ni Blob URLs para descarga directa
-          // Abrimos la imagen en nueva pestaña — usuario guarda con pulsación larga
           const dataUrl = canvas.toDataURL('image/png');
           const w = window.open('', '_blank');
           if (w) {
-            w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center">
-              <p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">
-                📸 Mantené pulsada la imagen → <strong>"Añadir a fotos"</strong> para guardarla
-              </p>
-              <img src="${dataUrl}" style="max-width:100%;display:block" />
-            </body></html>`);
+            w.document.write('<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center"><p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">📸 Mantené pulsada la imagen → <strong>Añadir a fotos</strong></p><img src="' + dataUrl + '" style="max-width:100%;display:block" /></body></html>');
             w.document.close();
           } else {
-            alert('Permitir ventanas emergentes en el navegador para descargar la imagen.');
+            alert('Permitir ventanas emergentes para descargar.');
           }
         } else if (isMobile) {
-          // Android Chrome — Blob URL funciona correctamente
           canvas.toBlob((blob) => {
             if (!blob) return;
-            const url  = URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href     = url;
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
+            link.href = url; link.download = fileName;
+            document.body.appendChild(link); link.click();
             document.body.removeChild(link);
             setTimeout(() => URL.revokeObjectURL(url), 1000);
           }, 'image/png');
         } else {
-          // Desktop — método estándar
           const link = document.createElement('a');
-          link.download = fileName;
-          link.href     = canvas.toDataURL('image/png');
-          link.click();
+          link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
         }
       } catch (err) {
         console.error('IGStory export error:', err);
-        alert('Error: ' + (err?.message || err?.toString() || 'desconocido') + '\n\nCompartí este mensaje.');
+        alert('Error: ' + (err?.message || String(err)));
       } finally {
         scaleWrapper.style.transform = origTransform;
         containerDiv.style.width     = origW;
