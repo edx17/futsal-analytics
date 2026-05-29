@@ -844,7 +844,7 @@ export default function Inicio() {
  
     </div>
   </div>
-)}
+)}  
       {mostrarQR && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
           <div style={{ background: '#111', border: '1px solid #10b981', borderRadius: '8px', padding: '30px', maxWidth: '400px', width: '100%', textAlign: 'center', position: 'relative', animation: 'fadeIn 0.3s' }}>
