@@ -41,7 +41,7 @@ const ReportGenerator = ({ data }) => {
       await new Promise(r => setTimeout(r, 300));
 
       const canvas = await html2canvas(el, {
-        scale:           2,
+        scale: window.innerWidth < 768 ? 1.5 : 2,
         useCORS:         true,
         allowTaint:      true,
         backgroundColor: '#0d0d0d',
@@ -193,22 +193,30 @@ const ReportGenerator = ({ data }) => {
         pero sigue montado en el DOM con dimensiones reales, así que
         Recharts / SVGs renderizan correctamente sin transform de por medio.
       */}
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: '-9999px',       // fuera de pantalla, invisible al usuario
-          width:  `${CANVAS_SIZE}px`,
-          height: `${CANVAS_SIZE}px`,
-          pointerEvents: 'none',
-          zIndex: -1,
-        }}
-        aria-hidden="true"
-      >
-        <div ref={exportRef} style={{ width: `${CANVAS_SIZE}px`, height: `${CANVAS_SIZE}px` }}>
-          <MatchReport data={data} />
-        </div>
-      </div>
+     <div
+  style={{
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: `${CANVAS_SIZE}px`,
+    height: `${CANVAS_SIZE}px`,
+    opacity: 0,
+    pointerEvents: 'none',
+    overflow: 'hidden',
+    zIndex: -1,
+  }}
+  aria-hidden="true"
+>
+  <div
+    ref={exportRef}
+    style={{
+      width: `${CANVAS_SIZE}px`,
+      height: `${CANVAS_SIZE}px`
+    }}
+  >
+    <MatchReport data={data} />
+  </div>
+</div>
 
     </div>
   );
