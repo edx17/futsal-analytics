@@ -30,20 +30,28 @@ const ReportGenerator = ({ data }) => {
     return () => { clearTimeout(t); window.removeEventListener('resize', calcular); };
   }, []);
 
-  /* ── Exportar PNG — compatible iOS + Android ── */
+  /* ── Exportar PNG 2× ────────────────────────────────── */
   const exportarPNG = async () => {
     const el = exportRef.current;
     if (!el || exportando) return;
     setExportando(true);
 
     try {
+      // Breve espera para que los gráficos Recharts terminen de pintarse
       await new Promise(r => setTimeout(r, 300));
 
       const canvas = await html2canvas(el, {
-        scale: 2, useCORS: true, allowTaint: true,
-        backgroundColor: '#0d0d0d', logging: false,
-        width: CANVAS_SIZE, height: CANVAS_SIZE,
-        windowWidth: CANVAS_SIZE, windowHeight: CANVAS_SIZE,
+        scale:           2,
+        useCORS:         true,
+        allowTaint:      true,
+        backgroundColor: '#0d0d0d',
+        logging:         false,
+        width:           CANVAS_SIZE,
+        height:          CANVAS_SIZE,
+        windowWidth:     CANVAS_SIZE,
+        windowHeight:    CANVAS_SIZE,
+        // Ignorar canvas de 0x0 que rompen Android
+        ignoreElements:  (el) => el.tagName === 'CANVAS' && (el.width === 0 || el.height === 0),
         onclone: (clonedDoc) => {
           const root = clonedDoc.documentElement;
           root.style.setProperty('--c-local',    '#00e676');
@@ -57,45 +65,32 @@ const ReportGenerator = ({ data }) => {
           root.style.setProperty('--c-text',     '#ffffff');
           root.style.setProperty('--font-display','JetBrains Mono, monospace');
           root.style.setProperty('--font-body',  'system-ui, -apple-system, sans-serif');
+          // Neutralizar repeating-linear-gradient que rompe Android
+          clonedDoc.querySelectorAll('*').forEach(node => {
+            const bg = node.style?.backgroundImage || '';
+            if (bg.includes('repeating-linear-gradient')) {
+              node.style.backgroundImage = 'none';
+            }
+          });
         },
       });
 
-      const slugify = (s) => (s || '').replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 20);
+      /* Descargar */
+      const slugify = (s) =>
+        (s || '').replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 20);
+
       const nombreL = slugify(data?.equipos?.local?.nombre);
       const nombreV = slugify(data?.equipos?.visitante?.nombre);
       const fecha   = (data?.info?.fecha || '').replace(/\//g, '-');
-      const fileName = `Reporte_${nombreL}_vs_${nombreV}_${fecha}.png`;
 
-      const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      if (isIOS) {
-        const dataUrl = canvas.toDataURL('image/png');
-        const w = window.open('', '_blank');
-        if (w) {
-          w.document.write('<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center"><p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">📸 Mantené pulsada la imagen → <strong>Añadir a fotos</strong></p><img src="' + dataUrl + '" style="max-width:100%;display:block" /></body></html>');
-          w.document.close();
-        } else {
-          alert('Permitir ventanas emergentes para descargar.');
-        }
-      } else if (isMobile) {
-        canvas.toBlob((blob) => {
-          if (!blob) return;
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url; link.download = fileName;
-          document.body.appendChild(link); link.click();
-          document.body.removeChild(link);
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }, 'image/png');
-      } else {
-        const link = document.createElement('a');
-        link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
-      }
+      const link    = document.createElement('a');
+      link.download = `Reporte_${nombreL}_vs_${nombreV}_${fecha}.png`;
+      link.href     = canvas.toDataURL('image/png');
+      link.click();
 
     } catch (err) {
-      console.error('MatchReport export error:', err);
-      alert('Error: ' + (err?.message || String(err)));
+      console.error('❌ Error exportando reporte:', err);
+      alert('Hubo un error al generar la imagen. Revisá la consola.');
     } finally {
       setExportando(false);
     }

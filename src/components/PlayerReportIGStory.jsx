@@ -18,14 +18,11 @@ const FONT_MONO = "'JetBrains Mono', monospace";
 
 const BgDeco = () => (
   <>
-    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <pattern id="igGrid" width="80" height="80" patternUnits="userSpaceOnUse">
-          <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(255,255,255,.015)" strokeWidth="1"/>
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#igGrid)" />
-    </svg>
+    <div style={{
+      position:'absolute', inset:0,
+      backgroundImage: 'none',
+      pointerEvents:'none', zIndex:0
+    }}/>
     <div style={{ position:'absolute', top:-200, left:-200, width:800, height:800, borderRadius:'50%', background:'radial-gradient(circle,rgba(0,230,118,.08) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
     <div style={{ position:'absolute', bottom:-200, right:-200, width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle,rgba(100,100,255,.06) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
     {/* Corner marks */}
@@ -226,6 +223,7 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
       try {
         const canvas = await html2canvas(el, {
           scale: 2, useCORS: true, backgroundColor: '#050505', logging: false,
+        ignoreElements: (el) => el.tagName === 'CANVAS' && (el.width === 0 || el.height === 0),
           onclone: (doc) => {
             const root = doc.documentElement;
             root.style.setProperty('--c-accent', '#00e676');
