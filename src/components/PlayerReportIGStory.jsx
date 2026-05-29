@@ -229,12 +229,32 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
             root.style.setProperty('--c-accent', '#00e676');
           }
         });
-        const link = document.createElement('a');
-        link.download = `Story_${jugador?.apellido || 'Jugador'}_${contexto || 'Temporada'}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      } catch {
-        alert('Error al generar la imagen.');
+        const fileName = `Story_${jugador?.apellido || 'Jugador'}_${contexto || 'Temporada'}.png`;
+        const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isIOS) {
+          const dataUrl = canvas.toDataURL('image/png');
+          const w = window.open('', '_blank');
+          if (w) {
+            w.document.write('<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center"><p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">Mantene pulsada la imagen para guardarla</p><img src="' + dataUrl + '" style="max-width:100%;display:block"/></body></html>');
+            w.document.close();
+          } else { alert('Activa ventanas emergentes para descargar.'); }
+        } else if (isMobile) {
+          canvas.toBlob((blob) => {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url; link.download = fileName;
+            document.body.appendChild(link); link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }, 'image/png');
+        } else {
+          const link = document.createElement('a');
+          link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
+        }
+      } catch (err) {
+        alert('Error: ' + (err?.message || String(err)));
       } finally {
         scaleWrapper.style.transform = origTransform;
         containerDiv.style.width     = origW;

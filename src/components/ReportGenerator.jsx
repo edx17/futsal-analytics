@@ -75,22 +75,49 @@ const ReportGenerator = ({ data }) => {
         },
       });
 
-      /* Descargar */
+      /* Descargar — compatible Android + iOS */
       const slugify = (s) =>
         (s || '').replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 20);
 
-      const nombreL = slugify(data?.equipos?.local?.nombre);
-      const nombreV = slugify(data?.equipos?.visitante?.nombre);
-      const fecha   = (data?.info?.fecha || '').replace(/\//g, '-');
+      const nombreL  = slugify(data?.equipos?.local?.nombre);
+      const nombreV  = slugify(data?.equipos?.visitante?.nombre);
+      const fecha    = (data?.info?.fecha || '').replace(/\//g, '-');
+      const fileName = `Reporte_${nombreL}_vs_${nombreV}_${fecha}.png`;
 
-      const link    = document.createElement('a');
-      link.download = `Reporte_${nombreL}_vs_${nombreV}_${fecha}.png`;
-      link.href     = canvas.toDataURL('image/png');
-      link.click();
+      const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (isIOS) {
+        const dataUrl = canvas.toDataURL('image/png');
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.write('<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center"><p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">Mantené pulsada la imagen para guardarla</p><img src="' + dataUrl + '" style="max-width:100%;display:block"/></body></html>');
+          w.document.close();
+        } else {
+          alert('Activá ventanas emergentes para descargar.');
+        }
+      } else if (isMobile) {
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const url  = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href     = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }, 'image/png');
+      } else {
+        const link    = document.createElement('a');
+        link.download = fileName;
+        link.href     = canvas.toDataURL('image/png');
+        link.click();
+      }
 
     } catch (err) {
-      console.error('❌ Error exportando reporte:', err);
-      alert('Hubo un error al generar la imagen. Revisá la consola.');
+      console.error('MatchReport export error:', err);
+      alert('Error: ' + (err?.message || String(err)));
     } finally {
       setExportando(false);
     }
