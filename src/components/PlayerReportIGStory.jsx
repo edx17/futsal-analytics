@@ -18,19 +18,32 @@ const FONT_MONO = "'JetBrains Mono', monospace";
 
 const BgDeco = () => (
   <>
-    <div style={{
-      position:'absolute', inset:0,
-      backgroundImage: 'none',
-      pointerEvents:'none', zIndex:0
-    }}/>
-    <div style={{ position:'absolute', top:-200, left:-200, width:800, height:800, borderRadius:'50%', background:'radial-gradient(circle,rgba(0,230,118,.08) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
-    <div style={{ position:'absolute', bottom:-200, right:-200, width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle,rgba(100,100,255,.06) 0%,transparent 65%)', pointerEvents:'none', zIndex:0 }}/>
+    {/* SVG unificado: grid + blobs — sin ningún CSS gradient que rompa Android */}
+    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}
+      xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="igGrid" width="80" height="80" patternUnits="userSpaceOnUse">
+          <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(255,255,255,.015)" strokeWidth="1"/>
+        </pattern>
+        <radialGradient id="igBlobL" cx="0%" cy="0%" r="55%">
+          <stop offset="0%" stopColor="#00e676" stopOpacity="0.08"/>
+          <stop offset="100%" stopColor="#00e676" stopOpacity="0"/>
+        </radialGradient>
+        <radialGradient id="igBlobR" cx="100%" cy="100%" r="50%">
+          <stop offset="0%" stopColor="#6464ff" stopOpacity="0.06"/>
+          <stop offset="100%" stopColor="#6464ff" stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#igGrid)" />
+      <rect width="100%" height="100%" fill="url(#igBlobL)" />
+      <rect width="100%" height="100%" fill="url(#igBlobR)" />
+    </svg>
     {/* Corner marks */}
     {[
-      { top:28, left:28,  borderTop:`1px solid rgba(0,230,118,.35)`, borderLeft:`1px solid rgba(0,230,118,.35)` },
-      { top:28, right:28, borderTop:`1px solid rgba(0,230,118,.35)`, borderRight:`1px solid rgba(0,230,118,.35)` },
-      { bottom:28, left:28,  borderBottom:`1px solid rgba(255,255,255,.1)`, borderLeft:`1px solid rgba(255,255,255,.1)` },
-      { bottom:28, right:28, borderBottom:`1px solid rgba(255,255,255,.1)`, borderRight:`1px solid rgba(255,255,255,.1)` },
+      { top:28, left:28,  borderTop:'1px solid rgba(0,230,118,.35)', borderLeft:'1px solid rgba(0,230,118,.35)' },
+      { top:28, right:28, borderTop:'1px solid rgba(0,230,118,.35)', borderRight:'1px solid rgba(0,230,118,.35)' },
+      { bottom:28, left:28,  borderBottom:'1px solid rgba(255,255,255,.1)', borderLeft:'1px solid rgba(255,255,255,.1)' },
+      { bottom:28, right:28, borderBottom:'1px solid rgba(255,255,255,.1)', borderRight:'1px solid rgba(255,255,255,.1)' },
     ].map((s, i) => (
       <div key={i} style={{ position:'absolute', width:48, height:48, zIndex:4, ...s }}/>
     ))}
@@ -46,7 +59,7 @@ const RiverRow = ({ label, value, maxValue, color = C }) => {
         {display}
       </div>
       <div style={{ flex:1, position:'relative', height:10, background:'rgba(255,255,255,.05)', borderRadius:5, overflow:'hidden' }}>
-        <div style={{ width:`${pct}%`, height:'100%', borderRadius:5, background:`linear-gradient(90deg,rgba(0,230,118,.45),${color})` }}/>
+        <div style={{ width:`${pct}%`, height:'100%', borderRadius:5, background:color }}/>
         <div style={{
           position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)',
           fontSize:'.8rem', fontWeight:700, letterSpacing:2, textTransform:'uppercase',
@@ -222,38 +235,62 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
     setTimeout(async () => {
       try {
         const canvas = await html2canvas(el, {
-          scale: 2, useCORS: true, backgroundColor: '#050505', logging: false,
-        ignoreElements: (el) => el.tagName === 'CANVAS' && (el.width === 0 || el.height === 0),
+          scale:        2,
+          useCORS:      true,
+          allowTaint:   true,
+          backgroundColor: '#050505',
+          logging:      false,
+          width:        CANVAS_W,
+          height:       CANVAS_H,
+          windowWidth:  CANVAS_W,
+          windowHeight: CANVAS_H,
+          // Evita el crash "createPattern on canvas 0x0" en Android Chrome
+          ignoreElements: (node) => node.tagName === 'CANVAS' && (node.width === 0 || node.height === 0),
           onclone: (doc) => {
             const root = doc.documentElement;
             root.style.setProperty('--c-accent', '#00e676');
-          }
+            // Neutralizar repeating-linear-gradient que rompe Android
+            doc.querySelectorAll('*').forEach(node => {
+              const bg = node.style?.backgroundImage || '';
+              if (bg.includes('repeating-linear-gradient')) node.style.backgroundImage = 'none';
+            });
+          },
         });
+
         const fileName = `Story_${jugador?.apellido || 'Jugador'}_${contexto || 'Temporada'}.png`;
         const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
         if (isIOS) {
           const dataUrl = canvas.toDataURL('image/png');
           const w = window.open('', '_blank');
           if (w) {
-            w.document.write('<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center"><p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">Mantene pulsada la imagen para guardarla</p><img src="' + dataUrl + '" style="max-width:100%;display:block"/></body></html>');
+            w.document.write('<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center"><p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">📸 Mantené pulsada la imagen → "Añadir a fotos"</p><img src="' + dataUrl + '" style="max-width:100%;display:block"/></body></html>');
             w.document.close();
-          } else { alert('Activa ventanas emergentes para descargar.'); }
+          } else {
+            alert('Activá ventanas emergentes para descargar.');
+          }
         } else if (isMobile) {
           canvas.toBlob((blob) => {
             if (!blob) return;
-            const url = URL.createObjectURL(blob);
+            const url  = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = url; link.download = fileName;
-            document.body.appendChild(link); link.click();
+            link.href     = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
             document.body.removeChild(link);
             setTimeout(() => URL.revokeObjectURL(url), 1000);
           }, 'image/png');
         } else {
           const link = document.createElement('a');
-          link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
+          link.download = fileName;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
         }
+
       } catch (err) {
+        console.error('IGStory export error:', err);
         alert('Error: ' + (err?.message || String(err)));
       } finally {
         scaleWrapper.style.transform = origTransform;
@@ -261,7 +298,7 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
         containerDiv.style.height    = origH;
         setExportando(false);
       }
-    }, 300);
+    }, 700);
   };
 
   if (!jugador || !perfil) return null;
@@ -401,7 +438,7 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
             {/* ── ZONE 3: QUINTETO + BRAND ── */}
             <div style={{ position:'relative', zIndex:2, flex:1, padding:'8px 56px 56px', display:'flex', flexDirection:'column', gap:18 }}>
 
-              {/* Quinteto */}              {/* Quinteto */}
+              {/* Quinteto */}
               <div style={{
                 background:'rgba(255,255,255,.025)', border:'1px solid rgba(255,255,255,.06)',
                 borderRadius:12, padding:'20px 24px', display:'flex', flexDirection:'column', gap:14

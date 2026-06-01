@@ -15,38 +15,23 @@ const pct = (a, b) => {
   return t > 0 ? [(a / t) * 100, (b / t) * 100] : [50, 50];
 };
 
-const fmt2 = (v) =>
-  typeof v === 'number' ? v.toFixed(2) : '0.00';
+const fmt2 = (v) => typeof v === 'number' ? v.toFixed(2) : '0.00';
+const fmt1 = (v) => typeof v === 'number' ? v.toFixed(1) : '—';
+const fmtN = (v) => typeof v === 'number' ? v : (v ?? 0);
 
-const fmt1 = (v) =>
-  typeof v === 'number' ? v.toFixed(1) : '—';
-
-const fmtN = (v) =>
-  typeof v === 'number' ? v : (v ?? 0);
-
+/* ── River row (barras de stats) ── */
 const RiverRow = ({ label, vL = 0, vV = 0, isFloat }) => {
   const [pL, pV] = pct(vL, vV);
-
   return (
     <div className="mr-river-row">
       <div className="mr-rr-val left">
         {isFloat ? fmt2(vL) : fmtN(vL)}
       </div>
-
       <div className="mr-rr-bar-wrap">
-        <div
-          className="mr-rr-bar-l"
-          style={{ width: `${pL}%` }}
-        />
-
-        <div
-          className="mr-rr-bar-r"
-          style={{ width: `${pV}%` }}
-        />
-
+        <div className="mr-rr-bar-l" style={{ width: `${pL}%` }} />
+        <div className="mr-rr-bar-r" style={{ width: `${pV}%` }} />
         <div className="mr-rr-label">{label}</div>
       </div>
-
       <div className="mr-rr-val right">
         {isFloat ? fmt2(vV) : fmtN(vV)}
       </div>
@@ -54,52 +39,25 @@ const RiverRow = ({ label, vL = 0, vV = 0, isFloat }) => {
   );
 };
 
+/* ── Origen de goles ── */
 const OrigenSection = ({ label, goles, totalColor }) => {
   const total = goles.reduce((s, g) => s + (g.value || 0), 0);
-
   return (
     <div className="mr-origin-section">
-      <div
-        className="mr-origin-header"
-        style={{ color: totalColor }}
-      >
+      <div className="mr-origin-header" style={{ color: totalColor }}>
         {label} · {total}
       </div>
-
       {goles.slice(0, 3).map((g, i) => {
-        const color =
-          ORIGEN_COLORS[i % ORIGEN_COLORS.length];
-
-        const pctFill =
-          total > 0 ? (g.value / total) * 100 : 0;
-
+        const color = ORIGEN_COLORS[i % ORIGEN_COLORS.length];
+        const pctFill = total > 0 ? (g.value / total) * 100 : 0;
         return (
           <div key={i} className="mr-origin-row">
-            <div
-              className="mr-origin-dot"
-              style={{ background: color }}
-            />
-
+            <div className="mr-origin-dot" style={{ background: color }} />
             <div className="mr-origin-track">
-              <div
-                className="mr-origin-fill"
-                style={{
-                  width: `${pctFill}%`,
-                  background: color
-                }}
-              />
+              <div className="mr-origin-fill" style={{ width: `${pctFill}%`, background: color }} />
             </div>
-
-            <span
-              className="mr-origin-count"
-              style={{ color }}
-            >
-              {g.value}
-            </span>
-
-            <span className="mr-origin-label">
-              {g.name}
-            </span>
+            <span className="mr-origin-count" style={{ color }}>{g.value}</span>
+            <span className="mr-origin-label">{g.name}</span>
           </div>
         );
       })}
@@ -107,207 +65,248 @@ const OrigenSection = ({ label, goles, totalColor }) => {
   );
 };
 
+/* ══════════════════════════════════════════════ */
 const MatchReport = ({ data }) => {
   if (!data) return null;
 
-  const { equipos, resultado, info, stats, golesOrigen } =
-    data;
+  const { equipos, resultado, info, stats, golesOrigen } = data;
 
-  const loc = stats?.local || {};
+  const loc = stats?.local    || {};
   const vis = stats?.visitante || {};
 
   const parts = (resultado?.final || '0 - 0')
-    .split('-')
-    .map((s) => parseInt(s.trim(), 10));
-
+    .split('-').map((s) => parseInt(s.trim(), 10));
   const gL = isNaN(parts[0]) ? 0 : parts[0];
   const gV = isNaN(parts[1]) ? 0 : parts[1];
 
-  const topJugadores =
-    stats?.topJugadores || [];
-
-  const topJugadoresExt =
-    stats?.topJugadoresExt || [];
-
-  const mvp = topJugadores[0] || null;
-
-  const mvpExt = mvp
-    ? topJugadoresExt.find(
-        (j) => j.nombre === mvp.nombre
-      )
-    : null;
+  const topJugadores    = stats?.topJugadores    || [];
+  const topJugadoresExt = stats?.topJugadoresExt || [];
+  const mvp    = topJugadores[0] || null;
+  const mvpExt = mvp ? topJugadoresExt.find((j) => j.nombre === mvp.nombre) : null;
 
   const topRemates = [...topJugadoresExt]
     .sort((a, b) => (b.remates || 0) - (a.remates || 0))
     .slice(0, 3);
 
-  const xgMax = Math.max(
-    loc.xg || 0,
-    vis.xg || 0,
-    0.01
-  );
+  const xgMax  = Math.max(loc.xg || 0, vis.xg || 0, 0.01);
+  const xgPctL = ((loc.xg || 0) / xgMax) * 100;
+  const xgPctV = ((vis.xg || 0) / xgMax) * 100;
 
-  const xgPctL =
-    ((loc.xg || 0) / xgMax) * 100;
+  const convL = (loc.remates || 0) > 0 ? Math.round((gL / loc.remates) * 100) : 0;
+  const convV = (vis.remates || 0) > 0 ? Math.round((gV / vis.remates) * 100) : 0;
 
-  const xgPctV =
-    ((vis.xg || 0) / xgMax) * 100;
+  const escudoLocal   = equipos?.local?.escudo;
+  const escudoVisita  = equipos?.visitante?.escudo;
+  const nombreLocal   = equipos?.local?.nombre   || 'Local';
+  const nombreVisita  = equipos?.visitante?.nombre || 'Visita';
+  const inicialesL    = nombreLocal.substring(0, 2).toUpperCase();
+  const inicialesV    = nombreVisita.substring(0, 2).toUpperCase();
 
-  const convL =
-    (loc.remates || 0) > 0
-      ? Math.round((gL / loc.remates) * 100)
-      : 0;
+  const duelosGanadosL = loc.duelosGanados || 0;
+  const duelosTotalesL = loc.duelosTotales || 0;
+  const duelosGanadosV = vis.duelosGanados || 0;
+  const duelosTotalesV = vis.duelosTotales || 0;
+  const pctDuelosL = duelosTotalesL > 0 ? Math.round((duelosGanadosL / duelosTotalesL) * 100) : 0;
+  const pctDuelosV = duelosTotalesV > 0 ? Math.round((duelosGanadosV / duelosTotalesV) * 100) : 0;
 
-  const convV =
-    (vis.remates || 0) > 0
-      ? Math.round((gV / vis.remates) * 100)
-      : 0;
-
-  const escudoLocal =
-    equipos?.local?.escudo;
-
-  const escudoVisita =
-    equipos?.visitante?.escudo;
-
-  const nombreLocal =
-    equipos?.local?.nombre || 'Local';
-
-  const nombreVisita =
-    equipos?.visitante?.nombre || 'Visita';
-
-  const inicialesL =
-    nombreLocal.substring(0, 2).toUpperCase();
-
-  const inicialesV =
-    nombreVisita.substring(0, 2).toUpperCase();
+  const golesOrigenLocal  = golesOrigen?.local  || [];
+  const golesOrigenRival  = golesOrigen?.rival  || [];
 
   return (
-    <div
-      className="report-container"
-      id="match-report-exportable"
-    >
-      {/* GRILLA SIMPLE COMPATIBLE ANDROID */}
+    <div className="report-container" id="match-report-exportable">
+
+      {/* BG decorativo */}
       <div className="mr-grid" />
-
-      <div className="mr-wm">
-        {gL}–{gV}
-      </div>
-
+      <div className="mr-wm">{gL}–{gV}</div>
       <div className="mr-blob-l" />
       <div className="mr-blob-r" />
-
       <div className="mr-corner tl" />
       <div className="mr-corner tr" />
       <div className="mr-corner bl" />
       <div className="mr-corner br" />
 
-      {/* HERO */}
+      {/* ══ HERO ══ */}
       <div className="mr-hero">
         <div className="mr-match-date">
-          {info?.fecha}
-          {info?.torneo
-            ? ` · ${info.torneo}`
-            : ''}
+          {info?.fecha}{info?.torneo ? ` · ${info.torneo}` : ''}
         </div>
 
         <div className="mr-versus">
+          {/* Local */}
           <div className="mr-team-side">
-            <div
-              className="mr-badge"
-              style={{
-                background:
-                  'rgba(0,230,118,.08)',
-                border:
-                  '2px solid rgba(0,230,118,.25)',
-                color: CL
-              }}
-            >
-              {escudoLocal ? (
-                <img
-                  src={escudoLocal}
-                  alt={nombreLocal}
-                />
-              ) : (
-                inicialesL
-              )}
+            <div className="mr-badge" style={{ background:'rgba(0,230,118,.08)', border:'2px solid rgba(0,230,118,.25)', color: CL }}>
+              {escudoLocal ? <img src={escudoLocal} alt={nombreLocal} /> : inicialesL}
             </div>
-
-            <div
-              className="mr-team-name"
-              style={{ color: CL }}
-            >
-              {nombreLocal}
-            </div>
+            <div className="mr-team-name" style={{ color: CL }}>{nombreLocal}</div>
           </div>
 
+          {/* Score */}
           <div className="mr-score-block">
             <div className="mr-score-huge">
-              <span
-                style={{
-                  color:
-                    gL >= gV
-                      ? CL
-                      : 'rgba(255,255,255,.35)'
-                }}
-              >
-                {gL}
-              </span>
-
-              <span className="mr-score-sep">
-                –
-              </span>
-
-              <span
-                style={{
-                  color:
-                    gV >= gL
-                      ? CV
-                      : 'rgba(255,255,255,.35)'
-                }}
-              >
-                {gV}
-              </span>
+              <span style={{ color: gL >= gV ? CL : 'rgba(255,255,255,.35)' }}>{gL}</span>
+              <span className="mr-score-sep">–</span>
+              <span style={{ color: gV >= gL ? CV : 'rgba(255,255,255,.35)' }}>{gV}</span>
             </div>
-
             {resultado?.primerTiempo && (
-              <div className="mr-halftime">
-                ET: {resultado.primerTiempo}
+              <div className="mr-halftime">ET: {resultado.primerTiempo}</div>
+            )}
+            {info?.torneo && (
+              <div className="mr-torneo-tag">
+                <span className="mr-torneo-dot" />
+                {info.torneo}
               </div>
             )}
           </div>
 
+          {/* Visita */}
           <div className="mr-team-side">
-            <div
-              className="mr-badge"
-              style={{
-                background:
-                  'rgba(255,23,68,.08)',
-                border:
-                  '2px solid rgba(255,23,68,.25)',
-                color: CV
-              }}
-            >
-              {escudoVisita ? (
-                <img
-                  src={escudoVisita}
-                  alt={nombreVisita}
-                />
-              ) : (
-                inicialesV
-              )}
+            <div className="mr-badge" style={{ background:'rgba(255,23,68,.08)', border:'2px solid rgba(255,23,68,.25)', color: CV }}>
+              {escudoVisita ? <img src={escudoVisita} alt={nombreVisita} /> : inicialesV}
             </div>
-
-            <div
-              className="mr-team-name"
-              style={{ color: CV }}
-            >
-              {nombreVisita}
-            </div>
+            <div className="mr-team-name" style={{ color: CV }}>{nombreVisita}</div>
           </div>
         </div>
       </div>
 
-      {/* resto igual */}
+      {/* ══ DIVIDER ══ */}
+      <div className="mr-divider" />
+
+      {/* ══ RIVER DE STATS ══ */}
+      <div className="mr-river">
+        <RiverRow label="xG GENERADO"    vL={loc.xg}           vV={vis.xg}           isFloat />
+        <RiverRow label="REMATES"        vL={loc.remates}       vV={vis.remates} />
+        <RiverRow label="TIROS AL ARCO"  vL={loc.rematesAlArco} vV={vis.rematesAlArco} />
+        <RiverRow label="RECUPERACIONES" vL={loc.recuperaciones} vV={vis.recuperaciones} />
+        <RiverRow label="PÉRDIDAS"       vL={loc.perdidas}      vV={vis.perdidas} />
+        <RiverRow label="FALTAS"         vL={loc.faltas}        vV={vis.faltas} />
+        <RiverRow label="DUELOS GANADOS" vL={pctDuelosL}        vV={pctDuelosV} />
+      </div>
+
+      {/* ══ BOTTOM: 3 columnas ══ */}
+      <div className="mr-bottom">
+
+        {/* ── COL 1: MVP ── */}
+        <div className="mr-b-col">
+          <div className="mr-b-label">MVP DEL PARTIDO</div>
+          {mvp ? (
+            <div className="mr-player-card">
+              <div className="mr-pc-num">
+                #{mvpExt?.dorsal || '—'} · {mvpExt?.rol || ''}
+              </div>
+              <div className="mr-pc-name" style={{ color: CL }}>{mvp.nombre}</div>
+              <div className="mr-pc-rating" style={{ color: CL }}>
+                {fmt1(mvp.rating)}
+              </div>
+              <div className="mr-pc-sub">RATING</div>
+              <div className="mr-pc-divider" />
+              <div className="mr-pc-stats">
+                <div className="mr-pc-stat">
+                  <span className="mr-pc-sv" style={{ color: CL }}>{mvpExt?.goles ?? 0}</span>
+                  <span className="mr-pc-sl">GOL</span>
+                </div>
+                <div className="mr-pc-stat">
+                  <span className="mr-pc-sv">{mvpExt?.remates ?? 0}</span>
+                  <span className="mr-pc-sl">REM.</span>
+                </div>
+                <div className="mr-pc-stat">
+                  <span className="mr-pc-sv" style={{ color: '#3b82f6' }}>{mvpExt?.rec ?? 0}</span>
+                  <span className="mr-pc-sl">REC.</span>
+                </div>
+                <div className="mr-pc-stat">
+                  <span className="mr-pc-sv" style={{ color: mvpExt?.plusMinus >= 0 ? CL : CV }}>
+                    {mvpExt?.plusMinus != null ? (mvpExt.plusMinus > 0 ? `+${mvpExt.plusMinus}` : mvpExt.plusMinus) : '—'}
+                  </span>
+                  <span className="mr-pc-sl">+/-</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ color:'rgba(255,255,255,.2)', fontSize:'.7rem' }}>Sin datos</div>
+          )}
+        </div>
+
+        <div className="mr-b-sep" />
+
+        {/* ── COL 2: xG + Top finalizadores ── */}
+        <div className="mr-b-col">
+          <div className="mr-b-label">CALIDAD DE OCASIONES</div>
+          <div className="mr-xgc">
+            {/* Local */}
+            <div className="mr-xgc-row">
+              <div className="mr-xgc-head">
+                <span className="mr-xgc-name" style={{ color: CL }}>{nombreLocal}</span>
+                <span className="mr-xgc-val" style={{ color: CL }}>{fmt2(loc.xg || 0)} xG</span>
+              </div>
+              <div className="mr-xgc-track">
+                <div className="mr-xgc-fill" style={{ width:`${xgPctL}%`, background: CL }} />
+              </div>
+              <div className="mr-xgc-sub">{gL} goles · {convL}% conversión</div>
+            </div>
+            {/* Visita */}
+            <div className="mr-xgc-row">
+              <div className="mr-xgc-head">
+                <span className="mr-xgc-name" style={{ color: CV }}>{nombreVisita}</span>
+                <span className="mr-xgc-val" style={{ color: CV }}>{fmt2(vis.xg || 0)} xG</span>
+              </div>
+              <div className="mr-xgc-track">
+                <div className="mr-xgc-fill" style={{ width:`${xgPctV}%`, background: CV }} />
+              </div>
+              <div className="mr-xgc-sub">{gV} goles · {convV}% conversión</div>
+            </div>
+          </div>
+
+          <div className="mr-h-sep" style={{ margin:'10px 0' }} />
+
+          <div className="mr-b-label">TOP FINALIZADORES</div>
+          <div className="mr-top-list">
+            {topRemates.map((j, i) => (
+              <div key={i} className="mr-top-item">
+                <span className="mr-top-name">{j.nombre}</span>
+                <span className="mr-top-val" style={{ color: CA }}>
+                  {j.goles ?? 0}G · {j.remates ?? 0}R
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mr-b-sep" />
+
+        {/* ── COL 3: Origen de goles ── */}
+        <div className="mr-b-col">
+          <div className="mr-b-label">ORIGEN DE GOLES</div>
+          {golesOrigenLocal.length > 0 && (
+            <OrigenSection
+              label="A FAVOR"
+              goles={golesOrigenLocal}
+              totalColor={CL}
+            />
+          )}
+          <div className="mr-h-sep" style={{ margin:'8px 0' }} />
+          {golesOrigenRival.length > 0 && (
+            <OrigenSection
+              label="EN CONTRA"
+              goles={golesOrigenRival}
+              totalColor={CV}
+            />
+          )}
+
+          {/* Brand */}
+          <div style={{ marginTop:'auto', paddingTop:12 }}>
+            <div className="mr-h-sep" style={{ marginBottom:8 }} />
+            <div className="mr-brand-row">
+              <span className="mr-brand-txt" style={{ color:'rgba(255,255,255,.35)' }}>
+                VIRTUAL.CLUB
+              </span>
+              <span className="mr-brand-txt" style={{ color:'rgba(253,125,5,.4)' }}>
+                Virtual.Futsal
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>{/* fin mr-bottom */}
+
     </div>
   );
 };
