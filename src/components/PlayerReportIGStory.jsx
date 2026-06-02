@@ -14,30 +14,34 @@ const C = '#00e676';
 const CDim = 'rgba(255,255,255,.65)';
 const FONT_MONO = "'JetBrains Mono', monospace";
 
-/* ── Sub-componentes de render (no interactivos, para html2canvas) ── */
-
+/* ── Fondo decorativo ──
+   IMPORTANTE: NO usamos SVG <pattern> ni <radialGradient> porque html2canvas
+   en Android crea un canvas interno 0×0 al rasterizarlos → crash createPattern.
+   Usamos divs con radial-gradient (que html2canvas SÍ rasteriza bien) y un
+   grid hecho con background-image de gradientes lineales simples.
+*/
 const BgDeco = () => (
   <>
-    {/* SVG unificado: grid + blobs — sin ningún CSS gradient que rompa Android */}
-    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }}
-      xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <pattern id="igGrid" width="80" height="80" patternUnits="userSpaceOnUse">
-          <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(255,255,255,.015)" strokeWidth="1"/>
-        </pattern>
-        <radialGradient id="igBlobL" cx="0%" cy="0%" r="55%">
-          <stop offset="0%" stopColor="#00e676" stopOpacity="0.08"/>
-          <stop offset="100%" stopColor="#00e676" stopOpacity="0"/>
-        </radialGradient>
-        <radialGradient id="igBlobR" cx="100%" cy="100%" r="50%">
-          <stop offset="0%" stopColor="#6464ff" stopOpacity="0.06"/>
-          <stop offset="100%" stopColor="#6464ff" stopOpacity="0"/>
-        </radialGradient>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#igGrid)" />
-      <rect width="100%" height="100%" fill="url(#igBlobL)" />
-      <rect width="100%" height="100%" fill="url(#igBlobR)" />
-    </svg>
+    {/* Grid sutil — linear-gradient simple (NO repeating), seguro para html2canvas */}
+    <div style={{
+      position:'absolute', inset:0, zIndex:0, pointerEvents:'none',
+      backgroundImage:
+        'linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),' +
+        'linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px)',
+      backgroundSize:'80px 80px',
+    }}/>
+    {/* Blob verde arriba-izquierda */}
+    <div style={{
+      position:'absolute', top:-200, left:-200, width:700, height:700, zIndex:0,
+      pointerEvents:'none', borderRadius:'50%',
+      background:'radial-gradient(circle, rgba(0,230,118,.08) 0%, rgba(0,230,118,0) 70%)',
+    }}/>
+    {/* Blob azul abajo-derecha */}
+    <div style={{
+      position:'absolute', bottom:-200, right:-200, width:700, height:700, zIndex:0,
+      pointerEvents:'none', borderRadius:'50%',
+      background:'radial-gradient(circle, rgba(100,100,255,.06) 0%, rgba(100,100,255,0) 70%)',
+    }}/>
     {/* Corner marks */}
     {[
       { top:28, left:28,  borderTop:'1px solid rgba(0,230,118,.35)', borderLeft:'1px solid rgba(0,230,118,.35)' },
@@ -244,8 +248,17 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
           height:       CANVAS_H,
           windowWidth:  CANVAS_W,
           windowHeight: CANVAS_H,
-          // Evita el crash "createPattern on canvas 0x0" en Android Chrome
-          ignoreElements: (node) => node.tagName === 'CANVAS' && (node.width === 0 || node.height === 0),
+          // Doble defensa: ignorar cualquier canvas/svg 0×0 que rompa Android
+          ignoreElements: (node) => {
+            const tag = (node.tagName || '').toUpperCase();
+            if (tag === 'CANVAS' && (node.width === 0 || node.height === 0)) return true;
+            // Saltar SVGs sin dimensiones computables (causa createPattern 0×0)
+            if (tag === 'SVG') {
+              const r = node.getBoundingClientRect?.();
+              if (r && (r.width === 0 || r.height === 0)) return true;
+            }
+            return false;
+          },
           onclone: (doc) => {
             const root = doc.documentElement;
             root.style.setProperty('--c-accent', '#00e676');
