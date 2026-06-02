@@ -223,95 +223,73 @@ const PlayerReportIGStory = ({ jugador, perfil, contexto, jugadores = [], quinte
 
   /* ── Export PNG ── */
   const exportarPNG = async () => {
-    const scaleWrapper = document.getElementById('ig-scale-wrapper');
-    const containerDiv = scaleWrapper?.parentElement;
-    const el           = document.getElementById('ig-story-exportable');
-    if (!el || !scaleWrapper || !containerDiv || exportando) return;
+    const sw = document.getElementById('ig-scale-wrapper');
+    const cd = sw?.parentElement;
+    const el = document.getElementById('ig-story-exportable');
+    if (!el || !sw || !cd || exportando) return;
     setExportando(true);
 
-    const origTransform = scaleWrapper.style.transform;
-    const origW         = containerDiv.style.width;
-    const origH         = containerDiv.style.height;
-    scaleWrapper.style.transform = 'scale(1)';
-    containerDiv.style.width     = `${CANVAS_W}px`;
-    containerDiv.style.height    = `${CANVAS_H}px`;
+    // Guardar estilos originales (incluido overflow del contenedor)
+    const [oT, oW, oH, oO] = [sw.style.transform, cd.style.width, cd.style.height, cd.style.overflow];
+
+    // Llevar el lienzo a tamaño nativo y, CLAVE para Android, overflow:visible
+    sw.style.transform = 'scale(1)';
+    cd.style.width      = `${CANVAS_W}px`;
+    cd.style.height     = `${CANVAS_H}px`;
+    cd.style.overflow   = 'visible';
 
     setTimeout(async () => {
       try {
+        // Misma config minimalista que PlayerReportGenerator (que SÍ funciona en Android):
+        // sin width/windowWidth, sin ignoreElements, sin onclone. Solo height.
         const canvas = await html2canvas(el, {
-          scale:        2,
-          useCORS:      true,
-          allowTaint:   true,
+          scale:           2,
+          useCORS:         true,
           backgroundColor: '#050505',
-          logging:      false,
-          width:        CANVAS_W,
-          height:       CANVAS_H,
-          windowWidth:  CANVAS_W,
-          windowHeight: CANVAS_H,
-          // Doble defensa: ignorar cualquier canvas/svg 0×0 que rompa Android
-          ignoreElements: (node) => {
-            const tag = (node.tagName || '').toUpperCase();
-            if (tag === 'CANVAS' && (node.width === 0 || node.height === 0)) return true;
-            // Saltar SVGs sin dimensiones computables (causa createPattern 0×0)
-            if (tag === 'SVG') {
-              const r = node.getBoundingClientRect?.();
-              if (r && (r.width === 0 || r.height === 0)) return true;
-            }
-            return false;
-          },
-          onclone: (doc) => {
-            const root = doc.documentElement;
-            root.style.setProperty('--c-accent', '#00e676');
-            // Neutralizar repeating-linear-gradient que rompe Android
-            doc.querySelectorAll('*').forEach(node => {
-              const bg = node.style?.backgroundImage || '';
-              if (bg.includes('repeating-linear-gradient')) node.style.backgroundImage = 'none';
-            });
-          },
+          logging:         false,
+          height:          CANVAS_H,
+          windowHeight:    CANVAS_H,
         });
 
         const fileName = `Story_${jugador?.apellido || 'Jugador'}_${contexto || 'Temporada'}.png`;
         const isIOS    = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
         if (isIOS) {
           const dataUrl = canvas.toDataURL('image/png');
           const w = window.open('', '_blank');
           if (w) {
-            w.document.write('<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center"><p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">📸 Mantené pulsada la imagen → "Añadir a fotos"</p><img src="' + dataUrl + '" style="max-width:100%;display:block"/></body></html>');
+            w.document.write('<!DOCTYPE html><html><body style="margin:0;background:#000;display:flex;flex-direction:column;align-items:center"><p style="color:#fff;font-family:monospace;font-size:14px;padding:16px;text-align:center">Mantene pulsada la imagen para guardarla</p><img src="' + dataUrl + '" style="max-width:100%;display:block"/></body></html>');
             w.document.close();
           } else {
-            alert('Activá ventanas emergentes para descargar.');
+            alert('Permitir ventanas emergentes para descargar la imagen.');
           }
         } else if (isMobile) {
           canvas.toBlob((blob) => {
             if (!blob) return;
-            const url  = URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href     = url;
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
+            link.href = url; link.download = fileName;
+            document.body.appendChild(link); link.click();
             document.body.removeChild(link);
             setTimeout(() => URL.revokeObjectURL(url), 1000);
           }, 'image/png');
         } else {
           const link = document.createElement('a');
-          link.download = fileName;
-          link.href = canvas.toDataURL('image/png');
-          link.click();
+          link.download = fileName; link.href = canvas.toDataURL('image/png'); link.click();
         }
-
       } catch (err) {
         console.error('IGStory export error:', err);
         alert('Error: ' + (err?.message || String(err)));
       } finally {
-        scaleWrapper.style.transform = origTransform;
-        containerDiv.style.width     = origW;
-        containerDiv.style.height    = origH;
+        // Restaurar TODOS los estilos, incluido overflow
+        sw.style.transform = oT;
+        cd.style.width      = oW;
+        cd.style.height     = oH;
+        cd.style.overflow   = oO;
         setExportando(false);
       }
-    }, 700);
+    }, 300);
   };
 
   if (!jugador || !perfil) return null;
