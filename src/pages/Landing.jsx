@@ -209,8 +209,9 @@ function Landing() {
       <Section id="que-es" darkBg={true}>
         <div style={splitLayoutStyle}>
           <div style={mockupContainerStyle}>
-            {/* Como no tenés "app-mockup-base.png", usamos un placeholder temporal */}
-            <PlaceholderBlock text="IMAGEN MOCKUP APP CELULAR" height="500px" />
+            <div style={phoneMockupWrapperStyle}>
+              <img src="/assets/Screenshot_movil.png" alt="App Virtual Club en el celular" style={phoneMockupImgStyle} />
+            </div>
           </div>
           
           <div style={textBlockStyle}>
@@ -264,21 +265,27 @@ function Landing() {
             <div style={iconStyle}>🎬</div>
             <h3 style={featureTitleStyle}>Videotracking Interactivo</h3>
             <p style={featureDescStyle}>Vinculá eventos con YouTube. Repasá clips al instante.</p>
-            <PlaceholderBlock text="IMAGEN PREVIEW VIDEO" height="150px" style={{marginTop: 'auto'}} />
+            <div style={featureImgWrapperStyle}>
+              <img src="/assets/Videoresumen.png" alt="Videotracking interactivo con eventos sincronizados" style={featureImgStyle} />
+            </div>
           </div>
 
           <div className="feature-card" style={featureCardStyle}>
             <div style={iconStyle}>🔄</div>
             <h3 style={featureTitleStyle}>Rating de Quintetos PRO</h3>
             <p style={featureDescStyle}>Algoritmo exclusivo de eficiencia ajustada por volumen.</p>
-            <PlaceholderBlock text="IMAGEN TABLA QUINTETOS" height="150px" style={{marginTop: 'auto'}} />
+            <div style={featureImgWrapperStyle}>
+              <img src="/assets/quinteto.png" alt="Tabla de rendimiento por quintetos" style={featureImgStyle} />
+            </div>
           </div>
 
           <div className="feature-card" style={featureCardStyle}>
             <div style={iconStyle}>📋</div>
             <h3 style={featureTitleStyle}>Libro Táctico Digital</h3>
             <p style={featureDescStyle}>Diseñá y centralizá ABP, rotaciones y presiones.</p>
-            <PlaceholderBlock text="IMAGEN LIBRO TÁCTICO" height="150px" style={{marginTop: 'auto'}} />
+            <div style={featureImgWrapperStyle}>
+              <img src="/assets/libro.png" alt="Libro táctico digital con jugadas" style={featureImgStyle} />
+            </div>
           </div>
         </div>
       </Section>
@@ -286,22 +293,42 @@ function Landing() {
       {/* DATA VISUAL */}
       <Section id="data">
         <Title>Tu fuerte son los datos.<br />Mostralos.</Title>
-        <Subtitle>Gráficos reales, heatmaps dinámicos y redes de pases. Nada de fakes.</Subtitle>
+        <Subtitle>Gráficos reales, heatmaps dinámicos y mapas de transiciones. Nada de fakes.</Subtitle>
         
         <div style={dataGridStyle}>
           <div style={dataVisualizationWrapperStyle}>
-            <PlaceholderBlock text="GRÁFICO HEATMAP REAL" height="250px" />
+            <div style={dataImgWrapperStyle}>
+              <img src="/assets/mapa.png" alt="Mapa de calor del equipo" style={dataImgStyle} />
+            </div>
             <span style={dataLabelStyle}>Mapas de Calor y Espacialidad</span>
           </div>
           <div style={dataVisualizationWrapperStyle}>
-            <PlaceholderBlock text="GRÁFICO RED DE PASES" height="250px" />
-            <span style={dataLabelStyle}>Redes de Pases y Flujo Táctico</span>
+            <div style={dataImgWrapperStyle}>
+              <img src="/assets/trans.png" alt="Mapa de transiciones del equipo" style={dataImgStyle} />
+            </div>
+            <span style={dataLabelStyle}>Transiciones y Flujo Táctico</span>
           </div>
         </div>
         
         <div style={{...dataVisualizationWrapperStyle, marginTop: '40px'}}>
-          <PlaceholderBlock text="GRÁFICO BARRAS xG / ESTADÍSTICAS" height="300px" />
-          <span style={dataLabelStyle}>Evolución de Rendimiento Clave (xG, Eficiencia, Pérdidas)</span>
+          <div style={dataImgWrapperStyle}>
+            <img src="/assets/graf.png" alt="Estadísticas de eficiencia, xG y ABP" style={dataImgStyle} />
+          </div>
+          <span style={dataLabelStyle}>Evolución de Rendimiento Clave (xG, Eficiencia, ABP)</span>
+        </div>
+
+        {/* SHOWCASE: REPORTE EXPORTABLE PARA REDES */}
+        <div style={reportShowcaseStyle}>
+          <div style={reportTextBlockStyle}>
+            <span style={{color: COLORS.accent, fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '12px'}}>Listo para compartir</span>
+            <h3 style={{fontSize: '2.2rem', fontWeight: 900, lineHeight: 1.1, marginBottom: '20px', letterSpacing: '-1px'}}>Reportes que parecen de un equipo de Champions.</h3>
+            <p style={{color: COLORS.textDim, lineHeight: 1.8, fontSize: '1.05rem'}}>
+              Cada partido genera una placa lista para redes: resultado, xG, MVP, finalizadores y origen de goles. Cero diseño manual, cero excusas para no mostrar el laburo.
+            </p>
+          </div>
+          <div style={reportImgWrapperStyle}>
+            <img src="/assets/Resumen.png" alt="Reporte exportable del partido para redes sociales" style={reportImgStyle} />
+          </div>
         </div>
       </Section>
 
@@ -419,6 +446,21 @@ const featureDescStyle = { color: COLORS.textDim, fontSize: '0.9rem', lineHeight
 const dataGridStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', flexWrap: 'wrap' };
 const dataVisualizationWrapperStyle = { background: '#080808', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '15px', position: 'relative', overflow: 'hidden' };
 const dataLabelStyle = { display: 'block', marginTop: '15px', fontSize: '0.9rem', color: COLORS.textDim, fontWeight: 600, textAlign: 'center' };
+
+// ESTILOS DE IMÁGENES (capturas reales)
+const phoneMockupWrapperStyle = { width: '100%', height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #151515 0%, #080808 100%)', border: `1px solid ${COLORS.border}`, borderRadius: '24px', overflow: 'hidden', padding: '20px' };
+const phoneMockupImgStyle = { height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 15px 50px rgba(0,0,0,0.6)' };
+
+const featureImgWrapperStyle = { marginTop: 'auto', height: '150px', width: '100%', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: '#000' };
+const featureImgStyle = { width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' };
+
+const dataImgWrapperStyle = { width: '100%', borderRadius: '8px', overflow: 'hidden', background: '#000' };
+const dataImgStyle = { width: '100%', height: 'auto', display: 'block' };
+
+const reportShowcaseStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center', marginTop: '80px', paddingTop: '60px', borderTop: `1px solid ${COLORS.border}` };
+const reportTextBlockStyle = { textAlign: 'left' };
+const reportImgWrapperStyle = { width: '100%', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${COLORS.accent}33`, boxShadow: `0 20px 60px rgba(0,0,0,0.5)` };
+const reportImgStyle = { width: '100%', height: 'auto', display: 'block' };
 
 const testimoniosGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' };
 const testimonioCardStyle = { width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative' };
