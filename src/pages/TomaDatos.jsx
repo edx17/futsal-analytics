@@ -327,7 +327,52 @@ function TomaDatos() {
     }
     
     const finalEquipo = jugadorId === null && pasoRegistro === 2 ? 'Rival' : equipo;
-    
+
+    // --- DOBLE AMARILLA → ROJA por doble amonestación ---
+    // Si el jugador propio ya tiene una amarilla en este partido, la 2da se convierte
+    // en roja: se borra la amarilla previa y queda únicamente la expulsión.
+    if (accion === 'Tarjeta Amarilla' && finalEquipo === 'Propio' && jugadorId) {
+      const jid = parseInt(jugadorId, 10);
+      const amarillaPrevia = eventos.find(
+        e => e.accion === 'Tarjeta Amarilla' && e.equipo === 'Propio' && e.id_jugador === jid
+      );
+      if (amarillaPrevia) {
+        await eliminarEvento(amarillaPrevia.id); // dejar solo la roja
+        setCupoCancha(4);
+        setContextoJuego('4v5');
+        setJugadoresEnCancha(prev => prev.filter(j => j.id !== jid));
+        setJugadoresEnBanco(prev => prev.filter(j => j.id !== jid));
+
+        const rojaDobleAmarilla = {
+          club_id: clubId,
+          id_partido: partido.id,
+          id_jugador: jid,
+          accion: 'Tarjeta Roja',
+          zona_x: dbX,
+          zona_y: dbY,
+          equipo: 'Propio',
+          periodo: periodo,
+          minuto: minuto,
+          segundos: segundos,
+          quinteto_activo: quintetoActual,
+          contexto_juego: '4v5',
+          etiqueta_tactica: 'doble_amarilla',
+        };
+
+        setPanelLateral({ activo: false, x: 0, y: 0 });
+        setPasoRegistro(1);
+
+        const { data: guardados, error: errRoja } = await supabase.from('eventos').insert([rojaDobleAmarilla]).select();
+        if (!errRoja && guardados) {
+          setEventos(prev => [...prev, ...guardados]);
+          showToast("🟥 Doble amarilla → ROJA. Jugador expulsado, jugás con 4.", "warning");
+        } else {
+          showToast("Error al registrar la doble amarilla.", "error");
+        }
+        return; // corta el flujo normal: no se inserta una 2da amarilla
+      }
+    }
+
     if (accion === 'Tarjeta Roja') {
       if (finalEquipo === 'Propio' && jugadorId) {
         setCupoCancha(4); 
@@ -657,12 +702,23 @@ function TomaDatos() {
     </button>
   );
 
-  const containerStyle = esMovil ? { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)' } : { display: 'flex', height: '100dvh', background: 'var(--bg)' };
-  const sidePanelStyle = esMovil ? { width: '100%', height: '50vh', borderTop: '1px solid var(--border)', background: 'var(--panel)', padding: '15px', overflowY: 'auto' } : { width: '320px', borderLeft: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', flexDirection: 'column', padding: '15px', overflowY: 'auto' };
+  const containerStyle = esMovil
+    ? { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)' }
+    : { display: 'flex', height: '100dvh', background: 'var(--bg)' };
+
+  // Columna principal (cancha). En stacked toma ~46% y permite encogerse (minHeight:0).
+  const mainColStyle = esMovil
+    ? { display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', flex: '1 1 46%', minHeight: 0 }
+    : { display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', flex: 1 };
+
+  // Panel de registro. En stacked toma ~54% y SIEMPRE scrollea (sin vh fijo → se ve completo en tablet).
+  const sidePanelStyle = esMovil
+    ? { width: '100%', flex: '1 1 54%', minHeight: 0, borderTop: '1px solid var(--border)', background: 'var(--panel)', padding: '15px', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }
+    : { width: '340px', borderLeft: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', flexDirection: 'column', padding: '15px', overflowY: 'auto' };
 
   return (
     <div style={containerStyle}>
-      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', flex: 1 }}>
+      <div style={mainColStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap', gap: '10px' }}>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
@@ -843,7 +899,7 @@ function TomaDatos() {
             </div>
           </div>
 
-          <div className="pitch-wrapper" style={{ width: '100%', maxWidth: esMovil ? '100%' : 'calc((100dvh - 260px) * 2)', aspectRatio: '2 / 1', position: 'relative', margin: '30px 30px' }}>
+          <div className="pitch-wrapper" style={{ width: esMovil ? 'min(100%, calc(40dvh * 2))' : '100%', maxWidth: esMovil ? '100%' : 'calc((100dvh - 260px) * 2)', aspectRatio: '2 / 1', position: 'relative', margin: esMovil ? '12px auto' : '30px 30px', flexShrink: 0 }}>
             
             <button onClick={() => triggerABP('Córner', 0, 0)} style={{...abpBtn, top: '-25px', left: '-25px', color: '#f97316', borderColor: '#f97316'}}>C</button>
             <button onClick={() => triggerABP('Córner', 100, 0)} style={{...abpBtn, top: '-25px', right: '-25px', color: '#f97316', borderColor: '#f97316'}}>C</button>

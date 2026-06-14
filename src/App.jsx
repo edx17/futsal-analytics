@@ -37,6 +37,7 @@ import LoginKiosco from './pages/LoginKiosco';
 import Novedades from './pages/Novedades';
 import MiStaff from './pages/MiStaff'; 
 import AceptarTerminos from './pages/AceptarTerminos';
+import Disciplina from './pages/Disciplina';
 
 import './App.css';
 
@@ -123,6 +124,7 @@ function AppRoutes() {
       
       <Route path="/rendimiento" element={<ProtectedRoute><Rendimiento /></ProtectedRoute>} />
       <Route path="/origen-goles" element={<ProtectedRoute><OrigenGoles /></ProtectedRoute>} />
+      <Route path="/disciplina" element={<ProtectedRoute><Disciplina /></ProtectedRoute>} />
       <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
       <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
       <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
@@ -333,6 +335,7 @@ function AppLayout() {
                 <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📊 <span>RESUMEN POR PARTIDO</span></NavLink>
                 <NavLink to="/jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👁️ <span>{permisos.esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
                 {!permisos.esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚽ <span>ORIGEN DE GOLES</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/disciplina" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🟨 <span>DISCIPLINA</span></NavLink>}
               </>
             )}
           </>
