@@ -498,6 +498,12 @@ const PlanificadorSemanal = () => {
   const [tareaSeleccionadaDetalle, setTareaSeleccionadaDetalle] = useState(null); 
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [busquedaTarea, setBusquedaTarea] = useState('');
+  // Chip de fase activo en el buscador de tareas (dinámico según el listado)
+  const [filtroFaseTarea, setFiltroFaseTarea] = useState('Todas');
+  // Chip de formato activo (El Cómo)
+  const [filtroFormatoTarea, setFiltroFormatoTarea] = useState('Todas');
+  // Mostrar solo tareas recomendadas para la categoría de la sesión (o "Todas")
+  const [soloRecomendadas, setSoloRecomendadas] = useState(false);
   
   const { showToast } = useToast(); 
 
@@ -511,7 +517,8 @@ const PlanificadorSemanal = () => {
     comentarios: '',
     bloque_fisico: false,
     enfoque_fisico: 'Activación / Core / Prevención',
-    duracion_fisico: ''
+    duracion_fisico: '',
+    detalle_fisico: []
   });
 
   const nivelesCarga = {
@@ -628,7 +635,7 @@ const cargarDatos = async () => {
       // 🌟 CORREGIDO: Eliminado 'objective_principal' que causaba el crash de Supabase
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
-        .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, fase_juego, objetivo_principal')
+        .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, fase_juego, objetivo_principal, categoria_recomendada, formato_tarea')
         .eq('club_id', club_id)
         .order('created_at', { ascending: false });
         
@@ -658,6 +665,9 @@ const cargarDatos = async () => {
   const abrirModal = (dia, sesionExistente = null, forzarEdicion = false) => {
     setDiaSeleccionado(dia);
     setBusquedaTarea(''); 
+    setFiltroFaseTarea('Todas');
+    setFiltroFormatoTarea('Todas');
+    setSoloRecomendadas(false);
     setTareaSeleccionadaDetalle(null);
     
     if (sesionExistente) {
@@ -672,7 +682,8 @@ const cargarDatos = async () => {
         comentarios: sesionExistente.comentarios || '',
         bloque_fisico: sesionExistente.bloque_fisico || false,
         enfoque_fisico: sesionExistente.enfoque_fisico || 'Activación / Core / Prevención',
-        duracion_fisico: sesionExistente.duracion_fisico || ''
+        duracion_fisico: sesionExistente.duracion_fisico || '',
+        detalle_fisico: Array.isArray(sesionExistente.detalle_fisico) ? sesionExistente.detalle_fisico : []
       });
     } else {
       setModoModal('crear');
@@ -686,7 +697,8 @@ const cargarDatos = async () => {
         comentarios: '',
         bloque_fisico: false,
         enfoque_fisico: 'Activación / Core / Prevención',
-        duracion_fisico: ''
+        duracion_fisico: '',
+        detalle_fisico: []
       });
     }
     setMostrarModal(true);
@@ -700,8 +712,45 @@ const cargarDatos = async () => {
     });
   };
 
+  // ── HELPERS DEL BLOQUE FÍSICO ESTRUCTURADO ──
+  const ENFOQUES_FISICOS = [
+    'Activación / Core / Prevención',
+    'Fuerza Máxima / Estructural',
+    'Potencia / Pliometría',
+    'RSA (Repeated Sprint Ability)',
+    'Velocidad y Agilidad (COD)',
+    'Resistencia Intermitente',
+    'Recuperación Activa',
+  ];
+
+  const nuevoItemFisico = () => ({
+    id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `pf-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    ejercicio: '',
+    tipo: nuevaSesion.enfoque_fisico || 'Fuerza Máxima / Estructural',
+    series: '',
+    reps: '',
+    peso: '',
+    pausa: '',
+    notas: '',
+  });
+
+  const agregarItemFisico = () => {
+    setNuevaSesion(prev => ({ ...prev, detalle_fisico: [...(prev.detalle_fisico || []), nuevoItemFisico()] }));
+  };
+
+  const actualizarItemFisico = (id, campo, valor) => {
+    setNuevaSesion(prev => ({
+      ...prev,
+      detalle_fisico: (prev.detalle_fisico || []).map(it => it.id === id ? { ...it, [campo]: valor } : it)
+    }));
+  };
+
+  const eliminarItemFisico = (id) => {
+    setNuevaSesion(prev => ({ ...prev, detalle_fisico: (prev.detalle_fisico || []).filter(it => it.id !== id) }));
+  };
+
   const irACreadorYGuardarBorrador = () => {
-    const borrador = { ...nuevaSesion, fechaStr: diaSeleccionado.fechaStr };
+    const borrador = { ...nuevaSesion, fechaStr: diaSeleccionado.fechaStr, returnTo: window.location.pathname };
     sessionStorage.setItem('borradorSesion', JSON.stringify(borrador));
     navigate('/creador-tareas'); 
   };
@@ -726,6 +775,7 @@ const cargarDatos = async () => {
         bloque_fisico: nuevaSesion.bloque_fisico,
         enfoque_fisico: nuevaSesion.bloque_fisico ? nuevaSesion.enfoque_fisico : null,
         duracion_fisico: nuevaSesion.bloque_fisico ? Number(nuevaSesion.duracion_fisico) : null,
+        detalle_fisico: nuevaSesion.bloque_fisico ? (nuevaSesion.detalle_fisico || []) : null,
       };
 
       if (nuevaSesion.id) {
@@ -762,14 +812,56 @@ const cargarDatos = async () => {
     }
   };
 
+  // Normalizador para búsquedas sin tildes ni mayúsculas (tolera null/undefined)
+  const normalizar = (str) =>
+    (str ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  // Fases (El Qué) y Formatos (El Cómo) presentes en el banco — dinámico, para los chips
+  const fasesEnBanco = React.useMemo(() => {
+    const set = new Set();
+    tareasBanco.forEach(t => { if (t.fase_juego) set.add(t.fase_juego); });
+    return [...set].sort();
+  }, [tareasBanco]);
+
+  const formatosEnBanco = React.useMemo(() => {
+    const set = new Set();
+    tareasBanco.forEach(t => { if (t.formato_tarea) set.add(t.formato_tarea); });
+    return [...set].sort();
+  }, [tareasBanco]);
+
+  // ¿Esta tarea está recomendada para la categoría de la sesión?
+  const esRecomendadaParaSesion = (t) =>
+    !t.categoria_recomendada ||
+    t.categoria_recomendada === 'Todas' ||
+    t.categoria_recomendada === nuevaSesion.categoria_equipo;
+
   const tareasFiltradas = tareasBanco.filter(t => {
-    const termino = busquedaTarea.toLowerCase();
-    return t.titulo.toLowerCase().includes(termino) || t.categoria_ejercicio.toLowerCase().includes(termino);
+    const termino = normalizar(busquedaTarea);
+    // Búsqueda por nombre + naturaleza + fase (Qué) + formato (Cómo) + objetivo
+    const coincideBusqueda = !termino ||
+      normalizar(t.titulo).includes(termino) ||
+      normalizar(t.categoria_ejercicio).includes(termino) ||
+      normalizar(t.fase_juego).includes(termino) ||
+      normalizar(t.formato_tarea).includes(termino) ||
+      normalizar(t.objetivo_principal).includes(termino);
+
+    // Chips por eje (se combinan entre sí)
+    const coincideFase = filtroFaseTarea === 'Todas' || t.fase_juego === filtroFaseTarea;
+    const coincideFormato = filtroFormatoTarea === 'Todas' || t.formato_tarea === filtroFormatoTarea;
+
+    // Filtro por categoría recomendada (edad)
+    const coincideEdad = !soloRecomendadas || esRecomendadaParaSesion(t);
+
+    return coincideBusqueda && coincideFase && coincideFormato && coincideEdad;
   }).sort((a, b) => {
+    // 1º: seleccionadas arriba
     const aSel = nuevaSesion.tareas_ids?.includes(a.id);
     const bSel = nuevaSesion.tareas_ids?.includes(b.id);
-    if (aSel && !bSel) return -1;
-    if (!aSel && bSel) return 1;
+    if (aSel !== bSel) return aSel ? -1 : 1;
+    // 2º: recomendadas para la categoría de la sesión
+    const aRec = esRecomendadaParaSesion(a) && a.categoria_recomendada === nuevaSesion.categoria_equipo;
+    const bRec = esRecomendadaParaSesion(b) && b.categoria_recomendada === nuevaSesion.categoria_equipo;
+    if (aRec !== bRec) return aRec ? -1 : 1;
     return 0;
   });
 
@@ -1019,6 +1111,27 @@ const cargarDatos = async () => {
                         <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#fcd34d'}}>Enfoque:</span> <strong style={{color: '#fff', textAlign: 'right'}}>{nuevaSesion.enfoque_fisico}</strong></div>
                         <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#fcd34d'}}>Duración:</span> <strong style={{color: '#fff'}}>{nuevaSesion.duracion_fisico} min</strong></div>
                       </div>
+
+                      {(nuevaSesion.detalle_fisico || []).length > 0 && (
+                        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f59e0b40', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {nuevaSesion.detalle_fisico.map((item, idx) => (
+                            <div key={item.id || idx} style={{ background: 'rgba(0,0,0,0.35)', borderRadius: '6px', padding: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <span style={{ background: '#f59e0b', color: '#000', fontWeight: '900', fontSize: '0.7rem', minWidth: '20px', height: '20px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{idx + 1}</span>
+                                <strong style={{ color: '#fff', fontSize: '0.9rem' }}>{item.ejercicio || 'Ejercicio'}</strong>
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {item.tipo && <span style={{ ...pillStyle, color: '#fcd34d', borderColor: '#f59e0b40' }}>{item.tipo}</span>}
+                                {item.series && <span style={pillStyle}>🔁 {item.series} series</span>}
+                                {item.reps && <span style={pillStyle}>🔢 {item.reps}</span>}
+                                {item.peso && <span style={pillStyle}>🏋️ {item.peso}</span>}
+                                {item.pausa && <span style={pillStyle}>⏸️ {item.pausa}</span>}
+                              </div>
+                              {item.notas && <div style={{ fontSize: '0.78rem', color: '#bbb', marginTop: '6px', fontStyle: 'italic' }}>📌 {item.notas}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1144,22 +1257,90 @@ const cargarDatos = async () => {
                       </div>
 
                       {nuevaSesion.bloque_fisico && (
-                        <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '12px', animation: 'fadeIn 0.3s' }}>
-                          <div style={{ flex: 2 }}>
-                            <label style={{...labelStyle, color: '#fcd34d'}}>Enfoque Fisiológico / Motor</label>
-                            <select value={nuevaSesion.enfoque_fisico} onChange={e => setNuevaSesion({...nuevaSesion, enfoque_fisico: e.target.value})} style={{...inputStyle, borderColor: '#f59e0b80', fontSize: '0.85rem'}}>
-                              <option value="Activación / Core / Prevención">🛡️ Activación / Prevención</option>
-                              <option value="Fuerza Máxima / Estructural">🏋️‍♂️ Fuerza Máxima / Estructural</option>
-                              <option value="Potencia / Pliometría">🚀 Potencia / Pliometría</option>
-                              <option value="RSA (Repeated Sprint Ability)">🔥 RSA (Sprints Repetidos)</option>
-                              <option value="Velocidad y Agilidad (COD)">⚡ Velocidad / Agilidad / COD</option>
-                              <option value="Resistencia Intermitente">🏃‍♂️ Resistencia Intermitente</option>
-                              <option value="Recuperación Activa">🧘‍♂️ Recuperación Activa</option>
-                            </select>
+                        <div style={{ animation: 'fadeIn 0.3s' }}>
+                          {/* Cabecera: enfoque general + duración total */}
+                          <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '12px' }}>
+                            <div style={{ flex: 2 }}>
+                              <label style={{...labelStyle, color: '#fcd34d'}}>Enfoque General del Bloque</label>
+                              <select value={nuevaSesion.enfoque_fisico} onChange={e => setNuevaSesion({...nuevaSesion, enfoque_fisico: e.target.value})} style={{...inputStyle, borderColor: '#f59e0b80', fontSize: '0.85rem'}}>
+                                <option value="Activación / Core / Prevención">🛡️ Activación / Prevención</option>
+                                <option value="Fuerza Máxima / Estructural">🏋️‍♂️ Fuerza Máxima / Estructural</option>
+                                <option value="Potencia / Pliometría">🚀 Potencia / Pliometría</option>
+                                <option value="RSA (Repeated Sprint Ability)">🔥 RSA (Sprints Repetidos)</option>
+                                <option value="Velocidad y Agilidad (COD)">⚡ Velocidad / Agilidad / COD</option>
+                                <option value="Resistencia Intermitente">🏃‍♂️ Resistencia Intermitente</option>
+                                <option value="Recuperación Activa">🧘‍♂️ Recuperación Activa</option>
+                              </select>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <label style={{...labelStyle, color: '#fcd34d'}}>Duración Total (min)</label>
+                              <input type="number" placeholder="Ej: 20" value={nuevaSesion.duracion_fisico} onChange={e => setNuevaSesion({...nuevaSesion, duracion_fisico: e.target.value})} style={{...inputStyle, borderColor: '#f59e0b80', textAlign: 'center'}} />
+                            </div>
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <label style={{...labelStyle, color: '#fcd34d'}}>Duración (min)</label>
-                            <input type="number" placeholder="Ej: 20" value={nuevaSesion.duracion_fisico} onChange={e => setNuevaSesion({...nuevaSesion, duracion_fisico: e.target.value})} style={{...inputStyle, borderColor: '#f59e0b80', textAlign: 'center'}} />
+
+                          {/* Detalle de ejercicios */}
+                          <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {(nuevaSesion.detalle_fisico || []).length === 0 && (
+                              <span style={{ color: '#8a6d3b', fontSize: '0.78rem', fontStyle: 'italic' }}>
+                                Agregá los ejercicios del bloque (tipo, series, reps, peso, pausa...).
+                              </span>
+                            )}
+
+                            {(nuevaSesion.detalle_fisico || []).map((item, idx) => (
+                              <div key={item.id} style={{ background: '#0a0a0a', border: '1px solid #f59e0b40', borderRadius: '8px', padding: '12px', borderLeft: '3px solid #f59e0b' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                  <span style={{ background: '#f59e0b', color: '#000', fontWeight: '900', fontSize: '0.75rem', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{idx + 1}</span>
+                                  <input
+                                    type="text"
+                                    placeholder="Ejercicio (ej: Sentadilla, Sprint 20m, Plancha...)"
+                                    value={item.ejercicio}
+                                    onChange={e => actualizarItemFisico(item.id, 'ejercicio', e.target.value)}
+                                    style={{ ...inputStyle, flex: 1, minHeight: '38px', padding: '8px 10px', fontSize: '0.85rem', fontWeight: 'bold' }}
+                                  />
+                                  <button onClick={() => eliminarItemFisico(item.id)} style={{ background: '#3a1212', border: '1px solid #7f1d1d', color: '#ef4444', width: '34px', height: '34px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0, fontSize: '0.9rem' }}>🗑️</button>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '8px' }}>
+                                  <div>
+                                    <label style={{ ...labelStyle, fontSize: '0.6rem', marginBottom: '4px' }}>Tipo</label>
+                                    <select value={item.tipo} onChange={e => actualizarItemFisico(item.id, 'tipo', e.target.value)} style={{ ...inputStyle, minHeight: '36px', padding: '6px', fontSize: '0.72rem' }}>
+                                      {ENFOQUES_FISICOS.map(op => <option key={op} value={op}>{op}</option>)}
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label style={{ ...labelStyle, fontSize: '0.6rem', marginBottom: '4px' }}>Series</label>
+                                    <input type="text" placeholder="4" value={item.series} onChange={e => actualizarItemFisico(item.id, 'series', e.target.value)} style={{ ...inputStyle, minHeight: '36px', padding: '6px', fontSize: '0.8rem', textAlign: 'center' }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ ...labelStyle, fontSize: '0.6rem', marginBottom: '4px' }}>Reps / Tiempo</label>
+                                    <input type="text" placeholder="8 / 20s" value={item.reps} onChange={e => actualizarItemFisico(item.id, 'reps', e.target.value)} style={{ ...inputStyle, minHeight: '36px', padding: '6px', fontSize: '0.8rem', textAlign: 'center' }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ ...labelStyle, fontSize: '0.6rem', marginBottom: '4px' }}>Peso / Carga</label>
+                                    <input type="text" placeholder="60kg / 80%" value={item.peso} onChange={e => actualizarItemFisico(item.id, 'peso', e.target.value)} style={{ ...inputStyle, minHeight: '36px', padding: '6px', fontSize: '0.8rem', textAlign: 'center' }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ ...labelStyle, fontSize: '0.6rem', marginBottom: '4px' }}>Pausa</label>
+                                    <input type="text" placeholder="90s" value={item.pausa} onChange={e => actualizarItemFisico(item.id, 'pausa', e.target.value)} style={{ ...inputStyle, minHeight: '36px', padding: '6px', fontSize: '0.8rem', textAlign: 'center' }} />
+                                  </div>
+                                </div>
+
+                                <input
+                                  type="text"
+                                  placeholder="Notas / técnica (opcional)"
+                                  value={item.notas}
+                                  onChange={e => actualizarItemFisico(item.id, 'notas', e.target.value)}
+                                  style={{ ...inputStyle, minHeight: '34px', padding: '7px 10px', fontSize: '0.78rem', marginTop: '8px', fontStyle: 'italic' }}
+                                />
+                              </div>
+                            ))}
+
+                            <button
+                              onClick={agregarItemFisico}
+                              style={{ background: 'transparent', border: '1px dashed #f59e0b', color: '#f59e0b', padding: '12px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 'bold', cursor: 'pointer', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+                            >
+                              <span style={{ fontSize: '1.1rem' }}>➕</span> Agregar Ejercicio Físico
+                            </button>
                           </div>
                         </div>
                       )}
@@ -1196,13 +1377,73 @@ const cargarDatos = async () => {
                       <span style={{fontSize: '1.2rem'}}>➕</span> Crear Nueva Tarea y Volver
                     </button>
 
-                    <input type="text" placeholder="🔍 Buscar tareas en el banco..." value={busquedaTarea} onChange={(e) => setBusquedaTarea(e.target.value)} style={{...inputStyle, padding: '12px', background: '#222', fontSize: '0.9rem'}} />
+                    <input type="text" placeholder="🔍 Buscar por nombre, fase o formato (ej: transiciones, reducido)..." value={busquedaTarea} onChange={(e) => setBusquedaTarea(e.target.value)} style={{...inputStyle, padding: '12px', background: '#222', fontSize: '0.9rem'}} />
+
+                    {/* CHIPS DINÁMICOS — FASE (El Qué) */}
+                    {fasesEnBanco.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>Fase · El Qué</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          <button
+                            onClick={() => setFiltroFaseTarea('Todas')}
+                            style={{ ...chipStyle, background: filtroFaseTarea === 'Todas' ? 'var(--accent)' : '#1a1a1a', color: filtroFaseTarea === 'Todas' ? '#000' : '#aaa', borderColor: filtroFaseTarea === 'Todas' ? 'var(--accent)' : '#333' }}
+                          >
+                            Todas
+                          </button>
+                          {fasesEnBanco.map(cat => (
+                            <button
+                              key={cat}
+                              onClick={() => setFiltroFaseTarea(filtroFaseTarea === cat ? 'Todas' : cat)}
+                              style={{ ...chipStyle, background: filtroFaseTarea === cat ? 'var(--accent)' : '#1a1a1a', color: filtroFaseTarea === cat ? '#000' : '#aaa', borderColor: filtroFaseTarea === cat ? 'var(--accent)' : '#333' }}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CHIPS DINÁMICOS — FORMATO (El Cómo) */}
+                    {formatosEnBanco.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: '0.6rem', color: '#22d3ee', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>Formato · El Cómo</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          <button
+                            onClick={() => setFiltroFormatoTarea('Todas')}
+                            style={{ ...chipStyle, background: filtroFormatoTarea === 'Todas' ? '#22d3ee' : '#1a1a1a', color: filtroFormatoTarea === 'Todas' ? '#000' : '#aaa', borderColor: filtroFormatoTarea === 'Todas' ? '#22d3ee' : '#333' }}
+                          >
+                            Todos
+                          </button>
+                          {formatosEnBanco.map(fmt => (
+                            <button
+                              key={fmt}
+                              onClick={() => setFiltroFormatoTarea(filtroFormatoTarea === fmt ? 'Todas' : fmt)}
+                              style={{ ...chipStyle, background: filtroFormatoTarea === fmt ? '#22d3ee' : '#1a1a1a', color: filtroFormatoTarea === fmt ? '#000' : '#aaa', borderColor: filtroFormatoTarea === fmt ? '#22d3ee' : '#333' }}
+                            >
+                              {fmt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TOGGLE: solo tareas recomendadas para la categoría de la sesión */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.78rem', color: '#aaa', padding: '2px 0' }}>
+                      <input
+                        type="checkbox"
+                        checked={soloRecomendadas}
+                        onChange={(e) => setSoloRecomendadas(e.target.checked)}
+                        style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }}
+                      />
+                      Mostrar solo las recomendadas para <strong style={{ color: '#fff' }}>{nuevaSesion.categoria_equipo}</strong>
+                    </label>
 
                     <div style={{ background: '#000', border: '1px solid #333', borderRadius: '8px', flex: 1, minHeight: esMovil ? '300px' : '400px', maxHeight: '500px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {tareasFiltradas.length === 0 && <span style={{ color: '#555', fontSize: '0.85rem', textAlign: 'center', marginTop: '30px' }}>No se encontraron tareas.</span>}
                       
                       {tareasFiltradas.map(t => {
                         const isSelected = nuevaSesion.tareas_ids?.includes(t.id);
+                        const recomendadaExacta = t.categoria_recomendada && t.categoria_recomendada !== 'Todas' && t.categoria_recomendada === nuevaSesion.categoria_equipo;
                         return (
                           <div key={t.id} onClick={() => toggleTarea(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: isSelected ? 'rgba(0, 255, 136, 0.1)' : '#111', border: isSelected ? '1px solid var(--accent)' : '1px solid #222' }}>
                             <div style={{ width: '50px', height: '38px', borderRadius: '4px', background: '#000', border: '1px solid #333', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1211,8 +1452,11 @@ const cargarDatos = async () => {
                             <div style={{ flex: 1, overflow: 'hidden' }}>
                               <span style={{ display: 'block', fontSize: '0.85rem', color: isSelected ? '#fff' : '#ccc', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                                {t.fase_juego && <span style={{ ...pillStyle, color: 'var(--accent)', borderColor: '#2a4a3a' }}>{t.fase_juego}</span>}
+                                {t.formato_tarea && <span style={{ ...pillStyle, color: '#22d3ee', borderColor: '#0e7490' }}>{t.formato_tarea}</span>}
                                 <span style={pillStyle}>⏱️ {t.duracion_estimada}'</span>
                                 <span style={pillStyle}>⚡ {t.intensidad_rpe}/10</span>
+                                {recomendadaExacta && <span style={{ ...pillStyle, color: '#facc15', borderColor: '#ca8a0455', background: '#facc1515' }}>🎯 {t.categoria_recomendada}</span>}
                               </div>
                             </div>
                             <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid', borderColor: isSelected ? 'var(--accent)' : '#555', background: isSelected ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1249,7 +1493,7 @@ const cargarDatos = async () => {
             <div style={{ padding: esMovil ? '15px' : '20px', background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #333', position: 'relative', flexShrink: 0 }}>
               <div style={{ flex: 1, paddingRight: '40px' }}>
                 <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#fff', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
-                  {tareaSeleccionadaDetalle.categoria_ejercicio} • {tareaSeleccionadaDetalle.fase_juego}
+                  {tareaSeleccionadaDetalle.categoria_ejercicio} • {tareaSeleccionadaDetalle.fase_juego}{tareaSeleccionadaDetalle.formato_tarea ? ` • ${tareaSeleccionadaDetalle.formato_tarea}` : ''}
                 </span>
                 <h2 style={{ margin: '0 0 5px 0', color: '#fff', fontSize: esMovil ? '1.2rem' : '1.8rem', textTransform: 'uppercase', fontWeight: '900', lineHeight: 1.2 }}>
                   {tareaSeleccionadaDetalle.titulo}
@@ -1330,5 +1574,6 @@ const navBtn = { background: '#222', border: 'none', color: '#fff', width: '40px
 const labelStyle = { display: 'block', fontSize: '0.75rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' };
 const inputStyle = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '0.95rem', outline: 'none', minHeight: '44px' };
 const pillStyle = { fontSize: '0.65rem', background: '#222', color: '#aaa', padding: '3px 6px', borderRadius: '4px', border: '1px solid #333' };
+const chipStyle = { fontSize: '0.7rem', fontWeight: 'bold', padding: '6px 10px', borderRadius: '20px', border: '1px solid #333', cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.15s' };
 
 export default PlanificadorSemanal;

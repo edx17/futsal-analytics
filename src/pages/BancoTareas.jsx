@@ -456,6 +456,7 @@ const BancoTareas = () => {
   const [busqueda, setBusqueda] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [filtroFase, setFiltroFase] = useState('Todas');
+  const [filtroFormato, setFiltroFormato] = useState('Todas');
   
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   const navigate = useNavigate();
@@ -511,11 +512,23 @@ const BancoTareas = () => {
     }
   };
 
+  // Normalizador para búsquedas sin tildes ni mayúsculas (tolera null/undefined)
+  const normalizar = (str) =>
+    (str ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
   const tareasFiltradas = tareas.filter(t => {
-    const coincideBusqueda = t.titulo.toLowerCase().includes(busqueda.toLowerCase()) || (t.objetivo_principal || '').toLowerCase().includes(busqueda.toLowerCase());
+    const termino = normalizar(busqueda);
+    // Busca por nombre + objetivo + naturaleza + fase (Qué) + formato (Cómo)
+    const coincideBusqueda = !termino ||
+      normalizar(t.titulo).includes(termino) ||
+      normalizar(t.objetivo_principal).includes(termino) ||
+      normalizar(t.categoria_ejercicio).includes(termino) ||
+      normalizar(t.fase_juego).includes(termino) ||
+      normalizar(t.formato_tarea).includes(termino);
     const coincideCategoria = filtroCategoria === 'Todas' || t.categoria_ejercicio === filtroCategoria;
     const coincideFase = filtroFase === 'Todas' || t.fase_juego === filtroFase;
-    return coincideBusqueda && coincideCategoria && coincideFase;
+    const coincideFormato = filtroFormato === 'Todas' || t.formato_tarea === filtroFormato;
+    return coincideBusqueda && coincideCategoria && coincideFase && coincideFormato;
   });
 
   const CartaFUT = ({ tarea }) => {
@@ -559,6 +572,11 @@ const BancoTareas = () => {
             <img src={tarea.url_grafico} alt="Gráfico Tarea" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
             <span style={{ color: '#555', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
+          )}
+          {tarea.formato_tarea && (
+            <div style={{ position: 'absolute', top: '5px', left: '5px', background: 'rgba(8,145,178,0.85)', border: '1px solid #22d3ee', color: '#fff', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
+              {tarea.formato_tarea}
+            </div>
           )}
           <div style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.8)', border: `1px solid ${colores.border}`, color: '#fff', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px' }}>
             {tarea.jugadores_involucrados || 'Grupal'}
@@ -609,21 +627,29 @@ const BancoTareas = () => {
               style={inputFiltro}
             />
             <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={selectFiltro}>
-              <option value="Todas">Enfoque Principal</option>
+              <option value="Todas">Naturaleza · Contenido</option>
               <option value="Táctico">Táctico</option>
               <option value="Técnico">Técnico</option>
               <option value="Físico">Físico / Gimnasio</option>
-              <option value="ABP">ABP (Acción a Balón Parado)</option>
               <option value="Cognitivo">Cognitivo</option>
+              <option value="ABP">ABP (tareas viejas)</option>
             </select>
             <select value={filtroFase} onChange={e => setFiltroFase(e.target.value)} style={selectFiltro}>
-              <option value="Todas">Fase de Juego</option>
-              <option value="Ataque Posicional">Ataque</option>
-              <option value="Defensa Posicional">Defensa</option>
-              <option value="Transición Ofensiva">Transiciones</option>
-              <option value="Transición Defensiva">Situación Especial</option>
-              <option value="Fuerza / Prevención">Fuerza / Prevención</option>
-              <option value="Acondicionamiento Metabólico">Acondicionamiento</option>
+              <option value="Todas">Fase · El Qué</option>
+              <option value="Ataque Posicional">Ataque Posicional</option>
+              <option value="Defensa Posicional">Defensa Posicional</option>
+              <option value="Transición Ofensiva">Transición Ofensiva</option>
+              <option value="Transición Defensiva">Transición Defensiva</option>
+              <option value="Situaciones Especiales">Situaciones Especiales</option>
+              <option value="ABP / Pelota Parada">ABP / Pelota Parada</option>
+            </select>
+            <select value={filtroFormato} onChange={e => setFiltroFormato(e.target.value)} style={{...selectFiltro, color: '#22d3ee'}}>
+              <option value="Todas">Formato · El Cómo</option>
+              <option value="Analítico">Analítico</option>
+              <option value="Drill">Drill</option>
+              <option value="Reducido">Reducido / SSG</option>
+              <option value="Juego Condicionado">Juego Condicionado</option>
+              <option value="Juego Real">Juego Real</option>
             </select>
           </div>
         </div>
@@ -653,7 +679,7 @@ const BancoTareas = () => {
             <div style={{ padding: '20px', background: getColoresCategoria(tareaSeleccionada.categoria_ejercicio).bg, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333' }}>
               <div>
                 <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#fff', background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                  {tareaSeleccionada.categoria_ejercicio} • {tareaSeleccionada.fase_juego}
+                  {tareaSeleccionada.categoria_ejercicio} • {tareaSeleccionada.fase_juego}{tareaSeleccionada.formato_tarea ? ` • ${tareaSeleccionada.formato_tarea}` : ''}
                 </span>
                 <h2 style={{ margin: '10px 0 0 0', color: '#fff', fontSize: '1.8rem', textTransform: 'uppercase', fontWeight: '900' }}>
                   {tareaSeleccionada.titulo}

@@ -640,6 +640,34 @@ const CreadorTareas = () => {
   const tareaAEditar = location.state?.editando
   const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null)
 
+  // ── CATEGORÍAS DEL CLUB (para "Categoría de la Tarea") ──
+  // Antes el dropdown solo leía las categorías del perfil (misCategorias),
+  // por lo que para superuser/CT sin asignaciones quedaba vacío.
+  // Ahora extraemos las categorías reales desde la tabla jugadores y las
+  // combinamos con las del perfil.
+  const [categoriasClub, setCategoriasClub] = useState([])
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      const club_id = localStorage.getItem('club_id') || 'club_default'
+      if (club_id === 'club_default') return
+      const { data } = await supabase.from('jugadores').select('categoria').eq('club_id', club_id)
+      if (data) {
+        const unicas = [...new Set(data.map(j => j.categoria).filter(Boolean))].sort()
+        setCategoriasClub(unicas)
+      }
+    }
+    fetchCategorias()
+  }, [])
+
+  // Unión sin duplicados: lo que tiene asignado el perfil + lo que existe en el club
+  const categoriasDisponibles = [...new Set([...misCategorias, ...categoriasClub])].sort()
+
+  // ¿Llegamos acá desde el Planificador armando una sesión?
+  const [veniaDePlanificar, setVeniaDePlanificar] = useState(false)
+  useEffect(() => {
+    setVeniaDePlanificar(!!sessionStorage.getItem('borradorSesion'))
+  }, [])
+
   // ── Board state ──
   const [board, dispatchBoard] = useReducer(boardReducer, INIT_BOARD)
   const [tool, setTool] = useState('select')
@@ -685,6 +713,7 @@ const CreadorTareas = () => {
     categoria_recomendada: tareaAEditar?.categoria_recomendada || 'Todas',
     categoria_ejercicio: tareaAEditar?.categoria_ejercicio || 'Táctico',
     fase_juego:          tareaAEditar?.fase_juego          || 'Ataque Posicional',
+    formato_tarea:       tareaAEditar?.formato_tarea       || 'Reducido',
     duracion_estimada:   tareaAEditar?.duracion_estimada   || 15,
     intensidad_rpe:      tareaAEditar?.intensidad_rpe      || 6,
     jugadores_involucrados: tareaAEditar?.jugadores_involucrados || '',
@@ -692,6 +721,15 @@ const CreadorTareas = () => {
     descripcion:         tareaAEditar?.descripcion         || '',
     video_url:           tareaAEditar?.video_url           || '',
   })
+
+  // ── NATURALEZA / CONTENIDO (antes "Enfoque Teórico") ──
+  // ABP salió de acá: ahora es una FASE, no una naturaleza (se evita la duplicación).
+  // Si una tarea vieja tiene un valor legacy (ej: 'ABP'), lo preservamos como opción
+  // para no mutarlo silenciosamente al editar.
+  const NATURALEZAS = ['Táctico', 'Técnico', 'Físico', 'Cognitivo', 'Libro Táctico']
+  const naturalezasOpts = NATURALEZAS.includes(fichaTecnica.categoria_ejercicio)
+    ? NATURALEZAS
+    : [fichaTecnica.categoria_ejercicio, ...NATURALEZAS]
 
   // ── CSS + viewport inject ──
   useEffect(() => {
@@ -1040,6 +1078,7 @@ const CreadorTareas = () => {
       categoria_recomendada: fichaTecnica.categoria_recomendada, // <--- NUEVO DATO
       categoria_ejercicio:   fichaTecnica.categoria_ejercicio,
       fase_juego:            fichaTecnica.fase_juego,
+      formato_tarea:         fichaTecnica.formato_tarea,
       duracion_estimada:     parseInt(fichaTecnica.duracion_estimada)||0,
       intensidad_rpe:        parseInt(fichaTecnica.intensidad_rpe)||0,
       jugadores_involucrados:fichaTecnica.jugadores_involucrados,
@@ -1055,8 +1094,29 @@ const CreadorTareas = () => {
         showToast("¡Tarea ACTUALIZADA con éxito!","success")
         navigate('/banco-tareas')
       } else {
-        const {error}=await supabase.from('tareas').insert([payload])
+        // Insertamos y recuperamos el ID nuevo (.select().single())
+        const {data:tareaNueva,error}=await supabase.from('tareas').insert([payload]).select('id').single()
         if(error)throw error
+
+        // ¿Veníamos del Planificador armando una sesión?
+        const borradorStr = sessionStorage.getItem('borradorSesion')
+        if (borradorStr && tareaNueva?.id) {
+          try {
+            const borrador = JSON.parse(borradorStr)
+            const idsPrev = Array.isArray(borrador.tareas_ids) ? borrador.tareas_ids : []
+            // Enganchamos la tarea recién creada a la sesión en borrador
+            borrador.tareas_ids = [...new Set([...idsPrev, tareaNueva.id])]
+            sessionStorage.setItem('borradorSesion', JSON.stringify(borrador))
+            showToast("¡Tarea creada y agregada a la sesión!","success")
+            // Volvemos exactamente a donde estábamos planificando
+            navigate(borrador.returnTo || '/planificador-semanal')
+            return
+          } catch(e) {
+            console.error("No se pudo enganchar la tarea al borrador:", e)
+          }
+        }
+
+        // Flujo normal (no veníamos del planificador): limpiamos para crear otra
         showToast("¡Nueva Ficha Táctica guardada!","success")
         setShowModal(false)
         setFrames([{id:'frame-0',elements:[],arrows:[]}])
@@ -1594,6 +1654,13 @@ const CreadorTareas = () => {
               <input type="text" className="ct-modal-input" style={{borderColor:'var(--accent)'}} placeholder="Ej: Rondo 4v2 con finalización..." value={nombreTarea} onChange={e=>setNombreTarea(e.target.value)} />
             </div>
 
+            {veniaDePlanificar && !tareaIdEditando && (
+              <div style={{marginBottom:18,padding:'12px 14px',borderRadius:8,background:'rgba(0,230,118,0.08)',border:'1px solid rgba(0,230,118,0.4)',display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:'1.2rem'}}>↩️</span>
+                <span style={{color:'var(--accent)',fontSize:'0.82rem',fontWeight:'bold'}}>Al guardar, esta tarea se agrega a la sesión y volvés al Planificador.</span>
+              </div>
+            )}
+
             <div style={{display:'grid',gridTemplateColumns:esMovil?'1fr':'1fr 1fr',gap:15,marginBottom:15}}>
               
               {/* NUEVO CAMPO: CATEGORÍA RECOMENDADA */}
@@ -1601,27 +1668,42 @@ const CreadorTareas = () => {
                 <label className="ct-modal-lbl" style={{color: '#facc15'}}>Categoría de la Tarea</label>
                 <select className="ct-modal-input" style={{borderColor: '#ca8a04'}} value={fichaTecnica.categoria_recomendada} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_recomendada:e.target.value})}>
                   <option value="Todas">Todas las Categorías</option>
-                  {misCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+                  {categoriasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
 
               <div>
-                <label className="ct-modal-lbl">Enfoque Teórico</label>
+                <label className="ct-modal-lbl">Naturaleza · Contenido</label>
                 <select className="ct-modal-input" value={fichaTecnica.categoria_ejercicio} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_ejercicio:e.target.value})}>
-                  {['Táctico','Técnico','Físico','Cognitivo','ABP','Libro Táctico'].map(v=><option key={v}>{v}</option>)}
+                  {naturalezasOpts.map(v=><option key={v}>{v}</option>)}
                 </select>
+                <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Qué capacidad entrena</span>
               </div>
               <div>
-                <label className="ct-modal-lbl">Fase del Juego</label>
+                <label className="ct-modal-lbl">Fase del Juego · El Qué</label>
                 {fichaTecnica.categoria_ejercicio==='Libro Táctico' ? (
                   <select className="ct-modal-input" value={fichaTecnica.fase_juego} onChange={e=>setFichaTecnica({...fichaTecnica,fase_juego:e.target.value})}>
                     {['Salida de Presión','Saque Inicial','Laterales Bajos','Laterales Medios','Laterales Altos','Corners','Tiros Libres','5v4'].map(v=><option key={v}>{v}</option>)}
                   </select>
                 ) : (
                   <select className="ct-modal-input" value={fichaTecnica.fase_juego} onChange={e=>setFichaTecnica({...fichaTecnica,fase_juego:e.target.value})}>
-                    {['Ataque Posicional','Defensa Posicional','Transición Ofensiva','Transición Defensiva'].map(v=><option key={v}>{v}</option>)}
+                    {['Ataque Posicional','Defensa Posicional','Transición Ofensiva','Transición Defensiva','Situaciones Especiales','ABP / Pelota Parada'].map(v=><option key={v}>{v}</option>)}
                   </select>
                 )}
+                <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Qué momento del juego</span>
+              </div>
+
+              {/* NUEVO EJE: FORMATO DE LA TAREA (El Cómo) */}
+              <div>
+                <label className="ct-modal-lbl" style={{color:'#22d3ee'}}>Formato · El Cómo</label>
+                <select className="ct-modal-input" style={{borderColor:'#0e7490'}} value={fichaTecnica.formato_tarea} onChange={e=>setFichaTecnica({...fichaTecnica,formato_tarea:e.target.value})}>
+                  <option value="Analítico">Analítico (sin oposición)</option>
+                  <option value="Drill">Drill (mecanización)</option>
+                  <option value="Reducido">Reducido / SSG (2v2, 3v3)</option>
+                  <option value="Juego Condicionado">Juego Condicionado</option>
+                  <option value="Juego Real">Juego Real (5v5)</option>
+                </select>
+                <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Cómo se estructura la práctica</span>
               </div>
               <div>
                 <label className="ct-modal-lbl">Duración (min)</label>
@@ -1651,7 +1733,7 @@ const CreadorTareas = () => {
             </div>
 
             <button onClick={confirmarGuardado} className="ct-btn-primary" style={{width:'100%',padding:15,fontSize:'1.1rem',borderRadius:8}}>
-              {tareaIdEditando?'💾 ACTUALIZAR TAREA':'💾 GUARDAR EN EL BANCO'}
+              {tareaIdEditando ? '💾 ACTUALIZAR TAREA' : (veniaDePlanificar ? '💾 GUARDAR Y VOLVER A LA SESIÓN' : '💾 GUARDAR EN EL BANCO')}
             </button>
           </div>
         </div>
