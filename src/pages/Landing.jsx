@@ -20,9 +20,16 @@ const COLORS = {
 const GlobalStyles = () => (
   <style>{`
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* FIX FONDO: el negro va en la raíz del documento (html/body/#root),
+       no en los contenedores con video. Así nunca se cuela el blanco
+       del navegador ni el gris del gradiente viejo. */
+    html, body, #root {
+      background-color: ${COLORS.bgDeep};
+      min-height: 100%;
+    }
     body { 
-      background-color: ${COLORS.bg};
-      background-image: radial-gradient(circle at center, #111 0%, #000 100%);
+      min-height: 100vh;
+      background-color: ${COLORS.bgDeep};
       color: ${COLORS.text};
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       overflow-x: hidden;
@@ -73,7 +80,7 @@ const Section = ({ children, style, id, darkBg = false }) => (
     padding: '100px 20px',
     borderBottom: `1px solid ${COLORS.border}`,
     position: 'relative',
-    background: darkBg ? COLORS.bgDeep : 'transparent',
+    background: COLORS.bgDeep,
     ...style
   }}>
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -129,6 +136,15 @@ const MainButton = ({ children, onClick, style, primary = true }) => (
     {children}
   </button>
 );
+
+// ==========================================
+// DATOS: TESTIMONIOS (editá nombre, rol y archivo de cada uno)
+// ==========================================
+const TESTIMONIOS = [
+  { video: '/assets/testimonio-clip-1.mp4', nombre: 'Revisión en Campo', rol: 'DT Primera División' },
+  { video: '/assets/testimonio-clip-2.mp4', nombre: 'Home Office',  rol: 'Videoanalista' },
+  { video: '/assets/testimonio-clip-3.mp4', nombre: 'Lucas Gómez',   rol: 'Capitán · Pivot' },
+];
 
 // ==========================================
 // COMPONENTE PRINCIPAL
@@ -241,14 +257,14 @@ function Landing() {
             <video autoPlay loop muted playsInline style={verticalVideoStyle}>
               <source src="/assets/demo-carga-en-cancha.mp4" type="video/mp4" />
             </video>
-            <div style={videoLabelStyle}>PASO 1: Carga en vivo (Cancha)</div>
+            <div style={videoLabelStyle}>Análisis en campo (Cancha)</div>
           </div>
 
           <div style={flowArrowStyle}>➡</div>
 
           <div style={dashboardResultWrapperStyle}>
             <img src="/assets/dashboard-generated.jpg" alt="Dashboard Generado" style={dashboardImgStyle} />
-            <div style={videoLabelStyle}>PASO 2: Análisis Instantáneo</div>
+            <div style={videoLabelStyle}>Análisis Instantáneo</div>
           </div>
         </div>
       </Section>
@@ -338,16 +354,14 @@ function Landing() {
         <Subtitle>Entrenadores y jugadores que ya elevaron su juego con Virtual Club.</Subtitle>
         
         <div style={testimoniosGridStyle}>
-          {/* El array map genera 3 videos. Como en tu carpeta solo tenés "testimonio-clip-1.mp4",
-              pongo los 3 apuntando al mismo archivo temporalmente para que veas el diseño armado */}
-          {[1, 2, 3].map((i) => (
+          {TESTIMONIOS.map((t, i) => (
             <div key={i} style={testimonioCardStyle}>
               <video autoPlay loop muted playsInline style={testimonioVideoStyle}>
-                <source src="/assets/testimonio-clip-1.mp4" type="video/mp4" />
+                <source src={t.video} type="video/mp4" />
               </video>
               <div style={testimonioOverlayStyle}>
-                <div style={{fontWeight: 800}}>Profe Carlos</div>
-                <div style={{fontSize: '0.8rem', color: COLORS.accent}}>DT Primera División</div>
+                <div style={{fontWeight: 800}}>{t.nombre}</div>
+                <div style={{fontSize: '0.8rem', color: COLORS.accent}}>{t.rol}</div>
               </div>
             </div>
           ))}
@@ -404,10 +418,11 @@ const titleStyle = {
 
 const secondaryNavLinkStyle = { padding: '8px 20px', background: 'transparent', color: COLORS.textDim, border: 'none', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' };
 
-// FIX DE Z-INDEX: Contenedor en position relative con z-index base
+// FIX DE Z-INDEX: Contenedor SIN fondo sólido para que el video (zIndex:-1)
+// quede visible contra el negro del body. NO ponerle background acá.
 const heroContainerStyle = { height: '90vh', width: '100%', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: COLORS.text, zIndex: 1 };
-// Video en la capa inferior del contenedor (-1)
-const heroVideoStyle = { position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', zIndex: -1, transform: 'translateX(-50%) translateY(-50%)', objectFit: 'cover' };
+// Video en la capa inferior del contenedor (-1). background:#000 => si no carga, negro (no blanco).
+const heroVideoStyle = { position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', zIndex: -1, transform: 'translateX(-50%) translateY(-50%)', objectFit: 'cover', background: '#000' };
 // Oscurecimiento arriba del video (0)
 const heroOverlayStyle = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: `linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, ${COLORS.overlay} 50%, rgba(0,0,0,0.9) 100%)`, zIndex: 0 };
 // Textos y botones arriba de todo (10)
@@ -424,14 +439,14 @@ const mockupContainerStyle = { position: 'relative', width: '100%' };
 const textBlockStyle = { textAlign: 'left' };
 const descriptionStyle = { color: COLORS.textDim, lineHeight: 1.8, fontSize: '1.1rem', marginBottom: '30px' };
 const microVideoContainerStyle = { background: '#080808', border: '1px solid #222', borderRadius: '8px', padding: '15px', display: 'flex', alignItems: 'center', gap: '15px' };
-const microVideoStyle = { width: '80px', height: '50px', objectFit: 'cover', borderRadius: '4px' };
+const microVideoStyle = { width: '80px', height: '50px', objectFit: 'cover', borderRadius: '4px', background: '#000' };
 
 const demoFlowContainerStyle = { display: 'flex', alignItems: 'center', gap: '30px', justifyContent: 'center', marginTop: '60px', flexWrap: 'wrap' };
-const verticalVideoWrapperStyle = { width: '220px', aspectRatio: '9/16', background: '#111', borderRadius: '12px', border: `2px solid #333`, overflow: 'hidden', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' };
-const verticalVideoStyle = { width: '100%', height: '100%', objectFit: 'cover' };
+const verticalVideoWrapperStyle = { width: '220px', aspectRatio: '9/16', background: '#000', borderRadius: '12px', border: `2px solid #333`, overflow: 'hidden', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' };
+const verticalVideoStyle = { width: '100%', height: '100%', objectFit: 'cover', background: '#000' };
 const videoLabelStyle = { position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', padding: '20px 10px 10px 10px', fontSize: '0.8rem', fontWeight: 700, color: COLORS.accent, textAlign: 'center' };
 const flowArrowStyle = { fontSize: '3rem', color: '#333', fontWeight: 900 };
-const dashboardResultWrapperStyle = { flex: 1, maxWidth: '600px', aspectRatio: '16/10', background: '#111', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' };
+const dashboardResultWrapperStyle = { flex: 1, maxWidth: '600px', aspectRatio: '16/10', background: '#000', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' };
 const dashboardImgStyle = { width: '100%', height: '100%', objectFit: 'cover' };
 
 const centralBadgeStyle = { display: 'block', textAlign: 'center', color: COLORS.accent, fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', marginBottom: '10px' };
@@ -444,11 +459,11 @@ const featureTitleStyle = { fontSize: '1.4rem', fontWeight: 800, marginBottom: '
 const featureDescStyle = { color: COLORS.textDim, fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '15px' };
 
 const dataGridStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', flexWrap: 'wrap' };
-const dataVisualizationWrapperStyle = { background: '#080808', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '15px', position: 'relative', overflow: 'hidden' };
+const dataVisualizationWrapperStyle = { background: '#000', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '15px', position: 'relative', overflow: 'hidden' };
 const dataLabelStyle = { display: 'block', marginTop: '15px', fontSize: '0.9rem', color: COLORS.textDim, fontWeight: 600, textAlign: 'center' };
 
 // ESTILOS DE IMÁGENES (capturas reales)
-const phoneMockupWrapperStyle = { width: '100%', height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #151515 0%, #080808 100%)', border: `1px solid ${COLORS.border}`, borderRadius: '24px', overflow: 'hidden', padding: '20px' };
+const phoneMockupWrapperStyle = { width: '100%', height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', border: `1px solid ${COLORS.border}`, borderRadius: '24px', overflow: 'hidden', padding: '20px' };
 const phoneMockupImgStyle = { height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 15px 50px rgba(0,0,0,0.6)' };
 
 const featureImgWrapperStyle = { marginTop: 'auto', height: '150px', width: '100%', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: '#000' };
@@ -459,20 +474,20 @@ const dataImgStyle = { width: '100%', height: 'auto', display: 'block' };
 
 const reportShowcaseStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center', marginTop: '80px', paddingTop: '60px', borderTop: `1px solid ${COLORS.border}` };
 const reportTextBlockStyle = { textAlign: 'left' };
-const reportImgWrapperStyle = { width: '100%', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${COLORS.accent}33`, boxShadow: `0 20px 60px rgba(0,0,0,0.5)` };
+const reportImgWrapperStyle = { width: '100%', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${COLORS.accent}33`, boxShadow: `0 20px 60px rgba(0,0,0,0.5)`, background: '#000' };
 const reportImgStyle = { width: '100%', height: 'auto', display: 'block' };
 
 const testimoniosGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' };
-const testimonioCardStyle = { width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative' };
-const testimonioVideoStyle = { width: '100%', height: '100%', objectFit: 'cover' };
+const testimonioCardStyle = { width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative', background: '#000' };
+const testimonioVideoStyle = { width: '100%', height: '100%', objectFit: 'cover', background: '#000' };
 const testimonioOverlayStyle = { position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', padding: '30px 15px 15px 15px' };
 
-const ctaCardStyle = { background: '#111', borderRadius: '12px', border: `1px solid ${COLORS.accent}66`, padding: '80px 40px', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: `0 10px 40px ${COLORS.accent}11` };
+const ctaCardStyle = { background: '#0c0c0c', borderRadius: '12px', border: `1px solid ${COLORS.accent}66`, padding: '80px 40px', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: `0 10px 40px ${COLORS.accent}11` };
 const ctaContentStyle = { position: 'relative', zIndex: 2 };
 
+// FOOTER SIN fondo sólido: así el video del final (zIndex:-1) vuelve a verse.
 const footerStyle = { padding: '100px 20px', textAlign: 'center', position: 'relative', overflow: 'hidden', borderTop: `1px solid ${COLORS.border}` };
-// Z-index de footer igual que el hero
-const footerVideoStyle = { position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', zIndex: -1, transform: 'translateX(-50%) translateY(-50%)', objectFit: 'cover', opacity: 0.3 };
+const footerVideoStyle = { position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', zIndex: -1, transform: 'translateX(-50%) translateY(-50%)', objectFit: 'cover', opacity: 0.3, background: '#000' };
 const footerOverlayStyle = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: `linear-gradient(to bottom, #000 0%, ${COLORS.overlay} 50%, #000 100%)`, zIndex: 0 };
 const footerContentStyle = { position: 'relative', zIndex: 10 };
 
