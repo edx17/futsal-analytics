@@ -60,7 +60,6 @@ const RenderRutinaFisica = ({ data }) => {
 
 // =======================================================
 // COMPONENTE INTERNO: Reproductor Automático ("Modo GIF" Nativo)
-// MEJORADO Y SINCRONIZADO CON LA VERSIÓN DE BANCOTEREAS
 // =======================================================
 const ReproductorLoop = ({ editorData }) => {
   const canvasRef = useRef(null);
@@ -68,7 +67,6 @@ const ReproductorLoop = ({ editorData }) => {
   const [cvSize, setCvSize] = useState({ w: 0, h: 0 });
   const isMountedRef = useRef(true);
 
-  // Configuraciones y Constantes del Motor Nativo
   const frames = editorData?.frames || [];
   const pitchCfg = editorData?.cancha || { variant: '40x20', material: 'azul' };
 
@@ -122,7 +120,6 @@ const ReproductorLoop = ({ editorData }) => {
     },
   };
 
-  // 🛡️ REDIMENSIONAMIENTO BLINDADO CONTRA EL "INFINITE ZOOM"
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -159,7 +156,6 @@ const ReproductorLoop = ({ editorData }) => {
     return () => observer.disconnect();
   }, [pitchCfg.variant, pitchCfg.tamaño]);
 
-  // Funciones de Renderizado Geométrico
   function mX(m, mW, L) { return L.px + (m/mW)*L.ppw; }
   function mY(m, mH, L) { return L.py + (m/mH)*L.pph; }
   function playerRadius(cW) { return cW * 0.021; }
@@ -354,7 +350,6 @@ const ReproductorLoop = ({ editorData }) => {
     ctx.restore();
   }
 
-  // Motor de Bucle y Render
   useEffect(() => {
     isMountedRef.current = true;
     const cv = canvasRef.current;
@@ -498,17 +493,15 @@ const PlanificadorSemanal = () => {
   const [tareaSeleccionadaDetalle, setTareaSeleccionadaDetalle] = useState(null); 
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [busquedaTarea, setBusquedaTarea] = useState('');
-  // Chip de fase activo en el buscador de tareas (dinámico según el listado)
   const [filtroFaseTarea, setFiltroFaseTarea] = useState('Todas');
-  // Chip de formato activo (El Cómo)
   const [filtroFormatoTarea, setFiltroFormatoTarea] = useState('Todas');
-  // Mostrar solo tareas recomendadas para la categoría de la sesión (o "Todas")
   const [soloRecomendadas, setSoloRecomendadas] = useState(false);
   
   const { showToast } = useToast(); 
 
   const [nuevaSesion, setNuevaSesion] = useState({
     id: null,
+    fecha: '', // NUEVO CAMPO AÑADIDO
     tipo_sesion: 'Entrenamiento',
     objetivo: '',
     nivel_carga: 'Media', 
@@ -530,7 +523,7 @@ const PlanificadorSemanal = () => {
   };
 
   const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  const diasNombres = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'];
+  const diasNombres = ['LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB', 'DOM'];
 
   // 1. Motor del Calendario
   useEffect(() => {
@@ -550,7 +543,7 @@ const PlanificadorSemanal = () => {
           const dia = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + i);
           grid.push({
             fechaStr: `${dia.getFullYear()}-${String(dia.getMonth() + 1).padStart(2, '0')}-${String(dia.getDate()).padStart(2, '0')}`,
-            diaNombre: diasNombres[dia.getDay()],
+            diaNombre: diasNombres[dia.getDay() === 0 ? 6 : dia.getDay() - 1],
             numero: dia.getDate(),
             isHoy: dia.toDateString() === new Date().toDateString(),
             isMesActual: true
@@ -566,7 +559,7 @@ const PlanificadorSemanal = () => {
           const dia = new Date(startGridDate.getFullYear(), startGridDate.getMonth(), startGridDate.getDate() + i);
           grid.push({
             fechaStr: `${dia.getFullYear()}-${String(dia.getMonth() + 1).padStart(2, '0')}-${String(dia.getDate()).padStart(2, '0')}`,
-            diaNombre: diasNombres[dia.getDay()],
+            diaNombre: diasNombres[dia.getDay() === 0 ? 6 : dia.getDay() - 1],
             numero: dia.getDate(),
             isHoy: dia.toDateString() === new Date().toDateString(),
             isMesActual: dia.getMonth() === month
@@ -603,7 +596,7 @@ const PlanificadorSemanal = () => {
     }
   }, [diasCalendario]);
 
-const cargarDatos = async () => {
+  const cargarDatos = async () => {
     setCargando(true);
     try {
       const club_id = localStorage.getItem('club_id') || 'club_default';
@@ -632,7 +625,6 @@ const cargarDatos = async () => {
       const { data: dataPartidos, error: errPartidos } = await queryPartidos;
       if (errPartidos) throw errPartidos;
       
-      // 🌟 CORREGIDO: Eliminado 'objective_principal' que causaba el crash de Supabase
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
         .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, fase_juego, objetivo_principal, categoria_recomendada, formato_tarea')
@@ -674,6 +666,7 @@ const cargarDatos = async () => {
       setModoModal(forzarEdicion ? 'editar' : 'ver');
       setNuevaSesion({
         id: sesionExistente.id || null,
+        fecha: sesionExistente.fecha, // INICIALIZAMOS LA FECHA
         tipo_sesion: sesionExistente.tipo_sesion,
         objetivo: sesionExistente.objetivo || '',
         nivel_carga: sesionExistente.nivel_carga || 'Media',
@@ -689,6 +682,7 @@ const cargarDatos = async () => {
       setModoModal('crear');
       setNuevaSesion({ 
         id: null,
+        fecha: dia.fechaStr, // INICIALIZAMOS LA FECHA
         tipo_sesion: 'Entrenamiento', 
         objetivo: '', 
         nivel_carga: 'Media',
@@ -712,7 +706,6 @@ const cargarDatos = async () => {
     });
   };
 
-  // ── HELPERS DEL BLOQUE FÍSICO ESTRUCTURADO ──
   const ENFOQUES_FISICOS = [
     'Activación / Core / Prevención',
     'Fuerza Máxima / Estructural',
@@ -755,6 +748,26 @@ const cargarDatos = async () => {
     navigate('/creador-tareas'); 
   };
 
+  // NUEVA FUNCIÓN PARA EL DRAG & DROP
+  const handleDrop = async (e, nuevaFechaStr) => {
+    e.preventDefault();
+    const sesionId = e.dataTransfer.getData('sesionId');
+    if (!sesionId) return;
+
+    try {
+      const { error } = await supabase
+        .from('sesiones')
+        .update({ fecha: nuevaFechaStr })
+        .eq('id', sesionId);
+      
+      if (error) throw error;
+      showToast('¡Sesión reprogramada al nuevo día!', 'success');
+      cargarDatos();
+    } catch (error) {
+      showToast("Error al mover la sesión: " + error.message, "error");
+    }
+  };
+
   const guardarSesion = async () => {
     if (!nuevaSesion.categoria_equipo) {
         showToast("Por favor, ingresá una categoría.", "warning");
@@ -765,7 +778,7 @@ const cargarDatos = async () => {
       const club_id = localStorage.getItem('club_id') || 'club_default';
       const payload = {
         club_id,
-        fecha: diaSeleccionado.fechaStr,
+        fecha: nuevaSesion.fecha, // UTILIZAMOS LA FECHA DEL ESTADO EN VEZ DEL DIA SELECCIONADO
         tipo_sesion: nuevaSesion.tipo_sesion,
         objetivo: nuevaSesion.objetivo,
         categoria_equipo: nuevaSesion.categoria_equipo,
@@ -812,11 +825,9 @@ const cargarDatos = async () => {
     }
   };
 
-  // Normalizador para búsquedas sin tildes ni mayúsculas (tolera null/undefined)
   const normalizar = (str) =>
     (str ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  // Fases (El Qué) y Formatos (El Cómo) presentes en el banco — dinámico, para los chips
   const fasesEnBanco = React.useMemo(() => {
     const set = new Set();
     tareasBanco.forEach(t => { if (t.fase_juego) set.add(t.fase_juego); });
@@ -829,7 +840,6 @@ const cargarDatos = async () => {
     return [...set].sort();
   }, [tareasBanco]);
 
-  // ¿Esta tarea está recomendada para la categoría de la sesión?
   const esRecomendadaParaSesion = (t) =>
     !t.categoria_recomendada ||
     t.categoria_recomendada === 'Todas' ||
@@ -837,7 +847,6 @@ const cargarDatos = async () => {
 
   const tareasFiltradas = tareasBanco.filter(t => {
     const termino = normalizar(busquedaTarea);
-    // Búsqueda por nombre + naturaleza + fase (Qué) + formato (Cómo) + objetivo
     const coincideBusqueda = !termino ||
       normalizar(t.titulo).includes(termino) ||
       normalizar(t.categoria_ejercicio).includes(termino) ||
@@ -845,20 +854,15 @@ const cargarDatos = async () => {
       normalizar(t.formato_tarea).includes(termino) ||
       normalizar(t.objetivo_principal).includes(termino);
 
-    // Chips por eje (se combinan entre sí)
     const coincideFase = filtroFaseTarea === 'Todas' || t.fase_juego === filtroFaseTarea;
     const coincideFormato = filtroFormatoTarea === 'Todas' || t.formato_tarea === filtroFormatoTarea;
-
-    // Filtro por categoría recomendada (edad)
     const coincideEdad = !soloRecomendadas || esRecomendadaParaSesion(t);
 
     return coincideBusqueda && coincideFase && coincideFormato && coincideEdad;
   }).sort((a, b) => {
-    // 1º: seleccionadas arriba
     const aSel = nuevaSesion.tareas_ids?.includes(a.id);
     const bSel = nuevaSesion.tareas_ids?.includes(b.id);
     if (aSel !== bSel) return aSel ? -1 : 1;
-    // 2º: recomendadas para la categoría de la sesión
     const aRec = esRecomendadaParaSesion(a) && a.categoria_recomendada === nuevaSesion.categoria_equipo;
     const bRec = esRecomendadaParaSesion(b) && b.categoria_recomendada === nuevaSesion.categoria_equipo;
     if (aRec !== bRec) return aRec ? -1 : 1;
@@ -946,8 +950,12 @@ const cargarDatos = async () => {
                       <span style={{ fontSize: '1.8rem', fontWeight: '900', color: dia.isHoy ? '#000' : '#fff' }}>{dia.numero}</span>
                     </div>
 
-                    {/* CONTENIDO DEL DÍA */}
-                    <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
+                    {/* CONTENIDO DEL DÍA (AÑADIDOS EVENTOS ONDRAG Y ONDROP) */}
+                    <div 
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => handleDrop(e, dia.fechaStr)}
+                      style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}
+                    >
                       {partidosDia.map(partido => (
                         <div key={`partido-${partido.id}`} style={{ background: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6', padding: '10px', borderRadius: '6px', position: 'relative' }}>
                           <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#3b82f6', marginBottom: '2px' }}>PARTIDO OFICIAL</div>
@@ -966,7 +974,9 @@ const cargarDatos = async () => {
                           <div 
                             key={sesion.id} 
                             onClick={() => abrirModal(dia, sesion)} 
-                            style={{ background: '#000', borderLeft: `4px solid ${colorNivel}`, padding: '10px', borderRadius: '6px', position: 'relative', cursor: 'pointer', transition: '0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}
+                            draggable
+                            onDragStart={(e) => { e.dataTransfer.setData('sesionId', sesion.id); }}
+                            style={{ background: '#000', borderLeft: `4px solid ${colorNivel}`, padding: '10px', borderRadius: '6px', position: 'relative', cursor: 'grab', transition: '0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}
                           >
                             <button onClick={(e) => eliminarSesion(sesion.id, e)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: '5px', zIndex: 2 }}>✖</button>
                             <div style={{ fontSize: '0.75rem', fontWeight: '900', color: '#fff', marginBottom: '2px', paddingRight: '25px' }}>{sesion.tipo_sesion.toUpperCase()}</div>
@@ -1005,9 +1015,16 @@ const cargarDatos = async () => {
                   </div>
                 );
               } else {
-                // VISTA MENSUAL
+                // VISTA MENSUAL (AÑADIDOS EVENTOS ONDRAG Y ONDROP)
                 return (
-                  <div key={idx} onClick={() => abrirModal(dia)} style={{ background: dia.isHoy ? '#111827' : '#0a0a0a', border: dia.isHoy ? '1px solid var(--accent)' : '1px solid #222', borderRadius: esMovil ? '4px' : '8px', display: 'flex', flexDirection: 'column', minHeight: esMovil ? '60px' : '100px', padding: esMovil ? '2px' : '5px', opacity: opacidadMes, cursor: 'pointer', overflow: 'hidden' }} className="mes-card">
+                  <div 
+                    key={idx} 
+                    onClick={() => abrirModal(dia)} 
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDrop(e, dia.fechaStr)}
+                    style={{ background: dia.isHoy ? '#111827' : '#0a0a0a', border: dia.isHoy ? '1px solid var(--accent)' : '1px solid #222', borderRadius: esMovil ? '4px' : '8px', display: 'flex', flexDirection: 'column', minHeight: esMovil ? '60px' : '100px', padding: esMovil ? '2px' : '5px', opacity: opacidadMes, cursor: 'pointer', overflow: 'hidden' }} 
+                    className="mes-card"
+                  >
                     <div style={{ textAlign: 'right', fontSize: esMovil ? '0.7rem' : '0.8rem', fontWeight: '900', color: dia.isHoy ? 'var(--accent)' : (dia.isMesActual ? '#fff' : '#666'), marginBottom: '2px' }}>
                       {dia.numero}
                     </div>
@@ -1026,12 +1043,20 @@ const cargarDatos = async () => {
                       {sesionesDia.map(sesion => {
                         const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || '#888';
                         return esMovil ? (
-                          <div key={sesion.id} style={{ width: '100%', height: '6px', background: colorNivel, borderRadius: '2px' }} title={sesion.tipo_sesion} />
+                          <div 
+                            key={sesion.id} 
+                            draggable
+                            onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('sesionId', sesion.id); }}
+                            style={{ width: '100%', height: '6px', background: colorNivel, borderRadius: '2px' }} 
+                            title={sesion.tipo_sesion} 
+                          />
                         ) : (
                           <div 
                             key={sesion.id} 
                             onClick={(e) => { e.stopPropagation(); abrirModal(dia, sesion); }}
-                            style={{ background: `${colorNivel}20`, borderLeft: `2px solid ${colorNivel}`, padding: '4px', borderRadius: '3px', fontSize: '0.6rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                            draggable
+                            onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('sesionId', sesion.id); }}
+                            style={{ background: `${colorNivel}20`, borderLeft: `2px solid ${colorNivel}`, padding: '4px', borderRadius: '3px', fontSize: '0.6rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'grab' }}
                             title={sesion.objetivo || 'Ver Sesión'}
                           >
                             <span style={{ fontWeight: 'bold' }}>
@@ -1198,6 +1223,15 @@ const cargarDatos = async () => {
                   {/* COLUMNA IZQUIERDA: DATOS GENERALES Y PF */}
                   <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '15px', minWidth: 0 }}>
                     <div style={{ display: 'flex', gap: '12px', flexDirection: esMovil ? 'column' : 'row' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={labelStyle}>Fecha</label>
+                        <input 
+                          type="date" 
+                          value={nuevaSesion.fecha || ''} 
+                          onChange={e => setNuevaSesion({...nuevaSesion, fecha: e.target.value})} 
+                          style={inputStyle} 
+                        />
+                      </div>
                       <div style={{ flex: 1 }}>
                         <label style={labelStyle}>Categoría</label>
                         <select value={nuevaSesion.categoria_equipo} onChange={e => setNuevaSesion({...nuevaSesion, categoria_equipo: e.target.value})} style={inputStyle}>
