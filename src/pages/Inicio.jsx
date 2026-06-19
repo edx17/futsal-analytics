@@ -1,876 +1,820 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; 
+import { useAuth } from '../context/AuthContext';
 
-const CATÁLOGO_WIDGETS = [
-  { id: 'w_novedades', tipo: 'data', spanDefecto: '3x1', titulo: 'Tablón de Anuncios', icon: '📢', roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'w_proximo', tipo: 'data', spanDefecto: '1x1', titulo: 'Próximo Partido', icon: '📅', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'w_ultimo', tipo: 'data', spanDefecto: '1x1', titulo: 'Último Registro', icon: '⏱️', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'w_stats_base', tipo: 'data', spanDefecto: '2x1', titulo: 'Estado de la Base', icon: '📊', roles: ['superuser', 'manager', 'admin'] },
-  { id: 'w_vep_anual', tipo: 'data', spanDefecto: '2x1', titulo: 'Balance Anual (V-E-D)', icon: '⚖️', roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'w_goles_cat', tipo: 'data', spanDefecto: '1x1', titulo: 'Goles Acumulados', icon: '⚽', roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'w_resultados_cat', tipo: 'data', spanDefecto: '2x2', titulo: 'Últimos Resultados', icon: '📈', roles: ['superuser', 'manager', 'ct', 'admin'] },
-  
-  { id: 'nuevo_partido', tipo: 'link', spanDefecto: '1x1', titulo: 'Nuevo Partido', icon: '⚡', ruta: '/nuevo-partido', color: '#10b981', desc: 'Stats en vivo', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'analisis_video', tipo: 'link', spanDefecto: '1x1', titulo: 'Video Análisis', icon: '🎥', ruta: '/analisis-video', color: '#f97316', desc: 'Tracking manual', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'tracking_ia', tipo: 'link', spanDefecto: '1x1', titulo: 'Tracking IA', icon: '🤖', ruta: '/tracking-ia', color: '#00ff88', desc: 'Procesamiento automático', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'planificador', tipo: 'link', spanDefecto: '1x1', titulo: 'Microciclo', icon: '🗓️', ruta: '/microciclo', color: '#8b5cf6', desc: 'Cargas y sesiones', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'creador_tareas', tipo: 'link', spanDefecto: '1x1', titulo: 'Creador Tareas', icon: '🎨', ruta: '/creador-tareas', color: '#ec4899', desc: 'Pizarra gráfica', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'banco_tareas', tipo: 'link', spanDefecto: '1x1', titulo: 'Banco Tareas', icon: '📁', ruta: '/banco-tareas', color: '#f59e0b', desc: 'Archivo de ejercicios', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'libro_tactico', tipo: 'link', spanDefecto: '1x1', titulo: 'Libro Táctico', icon: '📋', ruta: '/libro-tactico', color: '#3b82f6', desc: 'Sistemas', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'scouting', tipo: 'link', spanDefecto: '1x1', titulo: 'Scouting', icon: '🕵️‍♂️', ruta: '/scouting-rivales', color: '#64748b', desc: 'Análisis rival', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'rendimiento', tipo: 'link', spanDefecto: '1x1', titulo: 'Sports Science', icon: '🧬', ruta: '/rendimiento', color: '#f43f5e', desc: 'Físico y Nutri', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'presentismo', tipo: 'link', spanDefecto: '1x1', titulo: 'Presentismo', icon: '✅', ruta: '/presentismo', color: '#14b8a6', desc: 'Asistencia', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'plantel', tipo: 'link', spanDefecto: '1x1', titulo: 'Mi Plantel', icon: '👥', ruta: '/plantel', color: '#0ea5e9', desc: 'Gestión', roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'wellness_ct', tipo: 'link', spanDefecto: '1x1', titulo: 'Monitor Wellness', icon: '🔋', ruta: '/wellness', color: '#10b981', desc: 'Estado hoy', roles: ['superuser', 'manager', 'ct'] },
+import { analizarPartido } from '../analytics/engine';
+import { calcularRatingJugador } from '../analytics/rating';
+import { calcularCadenasValor } from '../analytics/posesiones';
 
-  { id: 'tesoreria', tipo: 'link', spanDefecto: '1x1', titulo: 'Tesorería', icon: '💰', ruta: '/tesoreria', color: '#eab308', desc: 'Caja y Cuotas', roles: ['superuser', 'manager', 'admin'] },
-  { id: 'torneos', tipo: 'link', spanDefecto: '1x1', titulo: 'Torneos', icon: '🏆', ruta: '/torneos', color: '#fbbf24', desc: 'Gestión ligas', roles: ['superuser', 'manager', 'admin'] },
-  { id: 'sponsors', tipo: 'link', spanDefecto: '1x1', titulo: 'Sponsors', icon: '🤝', ruta: '/sponsors', color: '#0284c7', desc: 'Patrocinadores', roles: ['superuser', 'manager', 'admin'] },
-  { id: 'usuarios', tipo: 'link', spanDefecto: '1x1', titulo: 'Usuarios', icon: '👑', ruta: '/usuarios', color: '#c084fc', desc: 'Accesos', roles: ['superuser'] },
-  
-  { id: 'mi_wellness', tipo: 'link', spanDefecto: '1x1', titulo: 'Cargar Wellness', icon: '🌡️', ruta: '/wellness', color: '#f59e0b', desc: 'Fatiga y sueño', roles: ['jugador'] },
-  { id: 'mi_perfil', tipo: 'link', spanDefecto: '1x1', titulo: 'Mi Perfil', icon: '🏃‍♂️', ruta: '/jugador-perfil', color: '#3b82f6', desc: 'Tus métricas', roles: ['jugador'] },
-  { id: 'mi_rendimiento', tipo: 'link', spanDefecto: '1x1', titulo: 'Mi Biomecánica', icon: '🧬', ruta: '/rendimiento', color: '#f43f5e', desc: 'Tu evolución', roles: ['jugador'] },
+/* ============================================================================
+   CONFIG — Ajustá a tu realidad de datos.
+   Escala wellness 1-5 (real, sale de CargaWellness): sueño alto = bueno;
+   estrés/fatiga/dolor altos = malo. Tarjetas viven en `eventos`.
+============================================================================ */
+const UMBRAL_AMARILLAS = 5;                                   // 5,10,15... => 1 fecha
+const WELL = { suenoRojo: 2, fatigaRoja: 4, estresRojo: 4, dolorRojo: 4 };
+
+/* Índice de readiness 1-5 (alto = mejor). Defaults 3 si falta el dato. */
+const readinessDe = (w) => {
+  const s = Number(w.sueno ?? 3), e = Number(w.estres ?? 3), f = Number(w.fatiga ?? 3), d = Number(w.dolor_muscular ?? 3);
+  return (s + (6 - e) + (6 - f) + (6 - d)) / 4;
+};
+const enRojoWell = (w) =>
+  Number(w.fatiga ?? 3) >= WELL.fatigaRoja ||
+  Number(w.dolor_muscular ?? 3) >= WELL.dolorRojo ||
+  Number(w.estres ?? 3) >= WELL.estresRojo ||
+  Number(w.sueno ?? 3) <= WELL.suenoRojo;
+
+/* ============================================================================
+   MÓDULOS (rol-gateado) + DEFAULTS curados + ACCESOS
+============================================================================ */
+const MODULOS = [
+  { id: 'm_estado',        titulo: 'Estado del equipo',    roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_triage',        titulo: 'Requiere tu atención', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_proximo',       titulo: 'Próximo partido',      roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_forma',         titulo: 'Forma y xG',           roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_protagonistas', titulo: 'Figuras',              roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_pulso',         titulo: 'Pulso del plantel',    roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_ultimo',        titulo: 'Último resultado',     roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_novedades',     titulo: 'Tablón',               roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_accesos',       titulo: 'Accesos rápidos',      roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_jug_wellness',  titulo: 'Mi wellness',          roles: ['jugador'] },
+  { id: 'm_jug_perfil',    titulo: 'Mi perfil',            roles: ['jugador'] },
 ];
 
+const DEFAULTS = {
+  ct:        ['m_estado', 'm_triage', 'm_proximo', 'm_forma', 'm_protagonistas', 'm_pulso', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  manager:   ['m_estado', 'm_triage', 'm_proximo', 'm_forma', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  superuser: ['m_estado', 'm_triage', 'm_forma', 'm_protagonistas', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  admin:     ['m_estado', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  jugador:   ['m_jug_wellness', 'm_jug_perfil'],
+};
+
+const LINKS = [
+  { titulo: 'Nuevo Partido', icon: '⚡',  ruta: '/nuevo-partido',    color: '#10b981', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Microciclo',    icon: '🗓️', ruta: '/microciclo',       color: '#8b5cf6', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Sports Science',icon: '🧬', ruta: '/rendimiento',      color: '#f43f5e', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Scouting',      icon: '🕵️‍♂️', ruta: '/scouting-rivales', color: '#64748b', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Disciplina',    icon: '🟨', ruta: '/disciplina',       color: '#facc15', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Plantel',       icon: '👥', ruta: '/plantel',          color: '#0ea5e9', roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { titulo: 'Tesorería',     icon: '💰', ruta: '/tesoreria',        color: '#eab308', roles: ['superuser', 'manager', 'admin'] },
+  { titulo: 'Torneos',       icon: '🏆', ruta: '/torneos',          color: '#fbbf24', roles: ['superuser', 'manager', 'admin'] },
+  { titulo: 'Sponsors',      icon: '🤝', ruta: '/sponsors',         color: '#0284c7', roles: ['superuser', 'manager', 'admin'] },
+  { titulo: 'Usuarios',      icon: '👑', ruta: '/usuarios',         color: '#c084fc', roles: ['superuser'] },
+];
+
+/* ============================================================================
+   HELPERS
+============================================================================ */
+function hexToRgb(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '');
+  return r ? `${parseInt(r[1], 16)}, ${parseInt(r[2], 16)}, ${parseInt(r[3], 16)}` : '255,255,255';
+}
+function parseFecha(str) {
+  if (!str) return null;
+  try {
+    const c = String(str).trim().split('T')[0];
+    let p = c.split('-'); if (p.length < 3) p = c.split('/');
+    if (p.length < 3) return null;
+    if (p[0].length === 4) return new Date(+p[0], +p[1] - 1, +p[2]);
+    if (p[2].length === 4) return new Date(+p[2], +p[1] - 1, +p[0]);
+    return null;
+  } catch { return null; }
+}
+const resultadoDe = (p) => {
+  const gf = parseInt(p.goles_propios) || 0, gc = parseInt(p.goles_rival) || 0;
+  return gf > gc ? 'V' : gf === gc ? 'E' : 'D';
+};
+const plantillaIds = (p) => {
+  try {
+    const pl = typeof p?.plantilla === 'string' ? JSON.parse(p.plantilla) : p?.plantilla;
+    return Array.isArray(pl) ? pl.map((x) => x.id_jugador).filter((v) => v != null) : [];
+  } catch { return []; }
+};
+
+/* Corre el engine UNA vez sobre el último partido => xG + ranking (port de Resumen). */
+function analizarUltimo(eventos, jugadores) {
+  const vacio = { xgPropio: 0, xgRival: 0, ranking: [] };
+  if (!eventos || eventos.length === 0) return vacio;
+  let datos;
+  try { datos = analizarPartido(eventos, 'Propio', false); } catch { return vacio; }
+
+  const S = {};
+  jugadores.forEach((j) => {
+    let xgChain = 0, xgBuildup = 0;
+    try { ({ xgChain, xgBuildup } = calcularCadenasValor(datos.posesiones, j.id)); } catch {}
+    S[j.id] = {
+      id: j.id, nombre: j.apellido || j.nombre, apellido: j.apellido, dorsal: j.dorsal, posicion: j.posicion,
+      eventos: [], remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
+      duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0, pasesIncompletos: 0,
+      ocasionesFalladas: 0, xgChain, xgBuildup, golesRecibidos: 0, atajadas: 0, amarillas: 0, rojas: 0,
+    };
+  });
+  const arqs = jugadores.filter((j) => j.posicion?.toLowerCase().includes('arquero')).map((j) => j.id);
+
+  eventos.forEach((ev) => {
+    if (ev.equipo === 'Propio' && ev.id_jugador && S[ev.id_jugador]) {
+      const s = S[ev.id_jugador];
+      s.eventos.push(ev);
+      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') s.goles++;
+      if (ev.accion?.includes('Remate')) s.remates++;
+      if (ev.accion === 'Pérdida') s.perdidas++;
+      if (ev.accion === 'Recuperación') s.rec++;
+      if (ev.accion?.toLowerCase().includes('pase incompleto')) s.pasesIncompletos++;
+      if (ev.accion?.toLowerCase().includes('ocasión fallada')) s.ocasionesFalladas++;
+      if (ev.accion === 'Falta cometida' || ev.accion === 'Falta cometida (Ventaja)' || ev.accion === 'Penal en contra') s.faltas++;
+      if (ev.accion?.toLowerCase().includes('amarilla')) s.amarillas++;
+      if (ev.accion?.toLowerCase().includes('roja')) s.rojas++;
+      if (ev.accion === 'Duelo DEF Ganado') { s.duelosDefGan++; s.duelosDefTot++; }
+      if (ev.accion === 'Duelo DEF Perdido') s.duelosDefTot++;
+      if (ev.accion === 'Duelo OFE Ganado') { s.duelosOfeGan++; s.duelosOfeTot++; }
+      if (ev.accion === 'Duelo OFE Perdido') s.duelosOfeTot++;
+      if (ev.accion?.toLowerCase().includes('atajada')) s.atajadas++;
+    }
+    if (ev.equipo === 'Propio' && ev.id_asistencia && S[ev.id_asistencia]) {
+      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') S[ev.id_asistencia].asistencias++;
+    }
+    if (ev.equipo === 'Rival' && arqs.length === 1 && S[arqs[0]]) {
+      if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') S[arqs[0]].golesRecibidos++;
+      if (ev.accion === 'Remate - Atajado') S[arqs[0]].atajadas++;
+    }
+  });
+
+  const ranking = Object.values(S)
+    .filter((j) => j.eventos.length > 0)
+    .map((j) => {
+      const pm = datos.plusMinusJugador ? (datos.plusMinusJugador[j.id] || 0) : 0;
+      const mins = datos.minutosJugados ? (datos.minutosJugados[j.id] || 0) : 0;
+      const paraRating = [...j.eventos];
+      eventos.forEach((ev) => {
+        if (ev.id_asistencia == j.id && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) paraRating.push({ ...ev, id_jugador: j.id, tipoVirtual: 'Asistencia' });
+      });
+      const rivalEnCancha = eventos.filter((ev) => {
+        if (ev.equipo !== 'Rival' || !ev.quinteto_activo) return false;
+        try {
+          const qa = typeof ev.quinteto_activo === 'string' ? JSON.parse(ev.quinteto_activo) : ev.quinteto_activo;
+          return Array.isArray(qa) && qa.some((id) => String(id) === String(j.id));
+        } catch { return false; }
+      });
+      let impacto = '-';
+      try { impacto = calcularRatingJugador(j, paraRating, rivalEnCancha, pm, mins); } catch {}
+      return { ...j, impacto, minutos: mins };
+    })
+    .filter((j) => j.impacto !== '-' && !Number.isNaN(Number(j.impacto)))
+    .sort((a, b) => Number(b.impacto) - Number(a.impacto));
+
+  return { xgPropio: datos.xgPropio || 0, xgRival: datos.xgRival || 0, ranking };
+}
+
+/* ============================================================================
+   COMPONENTE
+============================================================================ */
 export default function Inicio() {
   const navigate = useNavigate();
-  const { perfil } = useAuth(); 
-  
+  const { perfil } = useAuth();
+
   const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
   const kioscoNombre = localStorage.getItem('kiosco_nombre');
 
   const salirKiosco = async () => {
-    localStorage.removeItem('kiosco_mode');
-    localStorage.removeItem('kiosco_jugador_id');
-    localStorage.removeItem('kiosco_nombre');
-    localStorage.removeItem('kiosco_apellido');
+    ['kiosco_mode', 'kiosco_jugador_id', 'kiosco_nombre', 'kiosco_apellido'].forEach((k) => localStorage.removeItem(k));
     await supabase.auth.signOut();
     navigate('/login');
   };
 
+  /* ---- KIOSCO: menú simple ---- */
   if (isKiosco) {
+    const accesos = [
+      { ruta: '/wellness', icon: '⚖️', t: 'Cargar Wellness', s: 'Sueño, estrés, fatiga y dolor' },
+      { ruta: '/rendimiento', icon: '🏋️‍♂️', t: 'Rendimiento / Prevención', s: 'Cargar RPE y kinesiología' },
+      { ruta: '/perfil', icon: '📊', t: 'Mi Perfil de Juego', s: 'Estadísticas, videos y quintetos' },
+    ];
     return (
-      <div style={{ padding: '30px 20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center', animation: 'fadeIn 0.3s' }}>
-        <h1 style={{ color: 'var(--accent)', fontSize: '2.2rem', marginBottom: '5px', textTransform: 'uppercase' }}>¡Hola, {kioscoNombre}!</h1>
-        <p style={{ color: 'var(--text-dim)', marginBottom: '40px' }}>¿Qué necesitás hacer hoy?</p>
-        
-        <div style={{ display: 'grid', gap: '20px' }}>
-          <button onClick={() => navigate('/wellness')} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '20px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px', borderRadius: '12px', color: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
-            <span style={{ fontSize: '2.5rem' }}>⚖️</span>
-            <div>
-              <strong style={{ display: 'block', fontSize: '1.2rem' }}>Cargar Wellness</strong>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Sueño, estrés, fatiga y dolor</span>
-            </div>
-          </button>
-
-          <button onClick={() => navigate('/rendimiento')} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '20px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px', borderRadius: '12px', color: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
-            <span style={{ fontSize: '2.5rem' }}>🏋️‍♂️</span>
-            <div>
-              <strong style={{ display: 'block', fontSize: '1.2rem' }}>Rendimiento / Prevención</strong>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Cargar RPE y Kinesiología</span>
-            </div>
-          </button>
-
-          <button onClick={() => navigate('/perfil')} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: '20px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px', borderRadius: '12px', color: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
-            <span style={{ fontSize: '2.5rem' }}>📊</span>
-            <div>
-              <strong style={{ display: 'block', fontSize: '1.2rem' }}>Mi Perfil de Juego</strong>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Estadísticas, videos y quintetos</span>
-            </div>
-          </button>
+      <div style={{ padding: '30px 20px', maxWidth: 600, margin: '0 auto', textAlign: 'center', animation: 'fadeIn 0.3s' }}>
+        <h1 style={{ color: 'var(--accent)', fontSize: '2.2rem', marginBottom: 5, textTransform: 'uppercase' }}>¡Hola, {kioscoNombre}!</h1>
+        <p style={{ color: 'var(--text-dim)', marginBottom: 40 }}>¿Qué necesitás hacer hoy?</p>
+        <div style={{ display: 'grid', gap: 20 }}>
+          {accesos.map((a) => (
+            <button key={a.ruta} onClick={() => navigate(a.ruta)} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'var(--panel)', border: '1px solid var(--border)', padding: 20, borderRadius: 12, color: '#fff', cursor: 'pointer', textAlign: 'left' }}>
+              <span style={{ fontSize: '2.5rem' }}>{a.icon}</span>
+              <div><strong style={{ display: 'block', fontSize: '1.2rem' }}>{a.t}</strong><span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{a.s}</span></div>
+            </button>
+          ))}
         </div>
-
-        <button onClick={salirKiosco} style={{ marginTop: '50px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '12px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-          SALIR DEL KIOSCO
-        </button>
+        <button onClick={salirKiosco} style={{ marginTop: 50, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '12px 25px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>SALIR DEL KIOSCO</button>
       </div>
     );
   }
 
+  /* ---- ESTADO BASE ---- */
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-
   useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const h = () => setEsMovil(window.innerWidth <= 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
   }, []);
 
-  
-  const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
-  const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id') || '';
-  const kioscoClubId = localStorage.getItem('kiosco_club_id') || '';
+  /* ---- Pedimos al layout colapsar la barra lateral mientras se ve el dashboard ---- */
+  useEffect(() => {
+    localStorage.setItem('sidebar_collapsed', 'true');
+    window.dispatchEvent(new CustomEvent('vc:sidebar', { detail: { collapsed: true } }));
+  }, []);
 
-  const rol = (isKioscoMode ? 'jugador' : (perfil?.rol || 'jugador')).toLowerCase();
+  const rol = (perfil?.rol || 'jugador').toLowerCase();
   const esSuperUser = rol === 'superuser';
   const esAdmin = rol === 'admin';
   const esManager = rol === 'manager';
   const esCT = rol === 'ct';
 
-  const misCategorias = useMemo(() => {
-    return perfil?.categorias_asignadas || [];
-  }, [perfil?.categorias_asignadas]);
-
-  const VERSION_ACTUAL = 'v0.002604031832';
-  const [mostrarNovedades, setMostrarNovedades] = useState(false);
-
-  useEffect(() => {
-    if (rol !== 'jugador' && !isKioscoMode) {
-      const versionVista = localStorage.getItem(`novedades_vista_${VERSION_ACTUAL}`);
-      if (!versionVista) {
-        setMostrarNovedades(true);
-      }
-    }
-  }, [rol, isKioscoMode]);
-
-  const cerrarModalNovedades = () => {
-    localStorage.setItem(`novedades_vista_${VERSION_ACTUAL}`, 'true');
-    setMostrarNovedades(false);
-  };
-
-  const [perfilVisual, setPerfilVisual] = useState(null);
+  const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
   const [clubMaster, setClubMaster] = useState(localStorage.getItem('club_id') || '');
-  const clubActivo = isKioscoMode ? kioscoClubId : (esSuperUser ? clubMaster : (perfil?.club_id || ''));
-
-  const [mostrarQR, setMostrarQR] = useState(false);
-  const linkKiosco = `${window.location.origin}/kiosco?club=${clubActivo}`;
+  const clubActivo = esSuperUser ? clubMaster : (perfil?.club_id || '');
 
   const [nombreClub, setNombreClub] = useState('CARGANDO...');
   const [escudoClub, setEscudoClub] = useState(localStorage.getItem('escudo_url') || '');
+  const [listaClubes, setListaClubes] = useState([]);
 
   const [categoriaActiva, setCategoriaActiva] = useState(localStorage.getItem('dash_categoria') || 'Todas');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
 
+  const [cargando, setCargando] = useState(true);
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [mostrarQR, setMostrarQR] = useState(false);
+
+  // CT forzado a su primera categoría asignada
   useEffect(() => {
-    if (esCT && misCategorias.length > 0) {
-      if (categoriaActiva === 'Todas' || !misCategorias.includes(categoriaActiva)) {
-        setCategoriaActiva(misCategorias[0]);
-        localStorage.setItem('dash_categoria', misCategorias[0]);
-      }
+    if (esCT && misCategorias.length > 0 && (categoriaActiva === 'Todas' || !misCategorias.includes(categoriaActiva))) {
+      setCategoriaActiva(misCategorias[0]);
+      localStorage.setItem('dash_categoria', misCategorias[0]);
     }
   }, [esCT, misCategorias, categoriaActiva]);
 
-  const [cargando, setCargando] = useState(true);
-  const [listaClubes, setListaClubes] = useState([]);
+  // Si solo hay una categoría para mostrar, la fijamos (y el selector se oculta solo)
+  useEffect(() => {
+    if (categoriasDisponibles.length === 1 && categoriaActiva !== categoriasDisponibles[0]) {
+      setCategoriaActiva(categoriasDisponibles[0]);
+      localStorage.setItem('dash_categoria', categoriasDisponibles[0]);
+    }
+  }, [categoriasDisponibles, categoriaActiva]);
 
-  const [novedadesCT, setNovedadesCT] = useState([]);
-  const [ultimoPartido, setUltimoPartido] = useState(null);
-  const [proximoPartido, setProximoPartido] = useState(null); 
-  const [estadisticas, setEstadisticas] = useState({ jugados: 0, plantel: 0 });
-  const [vepAnual, setVepAnual] = useState({ v: 0, e: 0, d: 0 });
-  const [golesPorCat, setGolesPorCat] = useState({});
-  const [resultadosRecientesCat, setResultadosRecientesCat] = useState({});
+  /* ---- DATOS ---- */
+  const [novedades, setNovedades] = useState([]);
+  const [proximo, setProximo] = useState(null);
+  const [ultimo, setUltimo] = useState(null);
+  const [anual, setAnual] = useState({ v: 0, e: 0, d: 0, gf: 0, gc: 0 });
+  const [forma, setForma] = useState([]);
+  const [ultAnalisis, setUltAnalisis] = useState({ xgPropio: 0, xgRival: 0, ranking: [] });
+  const [triage, setTriage] = useState([]);
+  const [pulso, setPulso] = useState({ score: null, registros: 0, enRojo: 0 });
+  const [prep, setPrep] = useState(null);
   const [datosWellness, setDatosWellness] = useState([]);
 
-  const [modoEdicion, setModoEdicion] = useState(false);
-  const widgetsPermitidos = CATÁLOGO_WIDGETS.filter(w => w.roles.includes(rol));
-  
-  const defaultLayout = esSuperUser 
-    ? ['w_novedades', 'usuarios', 'w_vep_anual', 'w_resultados_cat', 'tesoreria', 'nuevo_partido', 'analisis_video', 'tracking_ia'] 
-    : esManager
-    ? ['w_novedades', 'w_vep_anual', 'w_stats_base', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'plantel', 'tesoreria']
-    : rol === 'ct' 
-    ? ['w_novedades', 'w_vep_anual', 'w_proximo', 'nuevo_partido', 'analisis_video', 'tracking_ia', 'planificador', 'rendimiento', 'wellness_ct'] 
-    : esAdmin 
-    ? ['w_novedades', 'w_stats_base', 'tesoreria', 'torneos', 'sponsors', 'plantel'] 
-    : ['mi_wellness', 'mi_perfil', 'mi_rendimiento'];
+  /* ---- WIDGETS (editable, default fuerte) ---- */
+  const widgetsPermitidos = useMemo(() => MODULOS.filter((m) => m.roles.includes(rol)), [rol]);
+  const defaultLayout = DEFAULTS[rol] || DEFAULTS.jugador;
+  const idRef = perfil?.id || 'anon';
 
-  const [misWidgetsActivos, setMisWidgetsActivos] = useState(() => {
-    const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
-    const guardado = localStorage.getItem(`dashboard_${idRef}`);
-    if (guardado) {
-      const idsValidos = JSON.parse(guardado).filter(id => widgetsPermitidos.some(w => w.id === id));
-      return idsValidos.length > 0 ? idsValidos : defaultLayout;
+  const [layout, setLayout] = useState(() => {
+    const g = localStorage.getItem(`dash_v3_${idRef}`);
+    if (g) {
+      const ids = JSON.parse(g).filter((id) => widgetsPermitidos.some((m) => m.id === id));
+      return ids.length ? ids : defaultLayout;
     }
     return defaultLayout;
   });
+  const guardarLayout = (arr) => localStorage.setItem(`dash_v3_${idRef}`, JSON.stringify(arr));
+  const toggleWidget = (id) => setLayout((prev) => { const n = prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]; guardarLayout(n); return n; });
+  const mover = (i, dir) => setLayout((prev) => { const n = [...prev]; const j = dir === 'up' ? i - 1 : i + 1; if (j < 0 || j >= n.length) return prev; [n[i], n[j]] = [n[j], n[i]]; guardarLayout(n); return n; });
 
-  const [tamanosWidgets, setTamanosWidgets] = useState(() => {
-    const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
-    const defaultSizes = CATÁLOGO_WIDGETS.reduce((acc, w) => ({ ...acc, [w.id]: w.spanDefecto }), {});
-    const guardadoSizes = localStorage.getItem(`dashboard_sizes_${idRef}`);
-    return guardadoSizes ? { ...defaultSizes, ...JSON.parse(guardadoSizes) } : defaultSizes;
-  });
-
-  const dragItem = useRef(null);
-  const dragOverItem = useRef(null);
-
-  const toggleWidget = (id) => {
-    setMisWidgetsActivos(prev => {
-      const nuevo = prev.includes(id) ? prev.filter(w => w !== id) : [...prev, id];
-      const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
-      localStorage.setItem(`dashboard_${idRef}`, JSON.stringify(nuevo));
-      return nuevo;
-    });
-  };
-
-  const cambiarTamano = (id, nuevoSpan) => {
-    setTamanosWidgets(prev => {
-      const nuevo = { ...prev, [id]: nuevoSpan };
-      const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
-      localStorage.setItem(`dashboard_sizes_${idRef}`, JSON.stringify(nuevo));
-      return nuevo;
-    });
-  };
-
-  const handleSort = () => {
-    if (dragItem.current === null || dragOverItem.current === null) return;
-    let _misWidgetsActivos = [...misWidgetsActivos];
-    const draggedItemContent = _misWidgetsActivos.splice(dragItem.current, 1)[0];
-    _misWidgetsActivos.splice(dragOverItem.current, 0, draggedItemContent);
-    dragItem.current = null;
-    dragOverItem.current = null;
-    setMisWidgetsActivos(_misWidgetsActivos);
-    const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
-    localStorage.setItem(`dashboard_${idRef}`, JSON.stringify(_misWidgetsActivos));
-  };
-
-  const moverWidget = (index, direccion) => {
-    const nuevos = [...misWidgetsActivos];
-    if (direccion === 'prev' && index > 0) {
-      [nuevos[index - 1], nuevos[index]] = [nuevos[index], nuevos[index - 1]];
-    } else if (direccion === 'next' && index < nuevos.length - 1) {
-      [nuevos[index + 1], nuevos[index]] = [nuevos[index], nuevos[index + 1]];
-    }
-    setMisWidgetsActivos(nuevos);
-    const idRef = isKioscoMode ? 'kiosco' : perfil?.id;
-    localStorage.setItem(`dashboard_${idRef}`, JSON.stringify(nuevos));
-  };
-
-  const handleCambioCategoria = (e) => {
-    const cat = e.target.value;
-    setCategoriaActiva(cat);
-    localStorage.setItem('dash_categoria', cat);
-  };
-
+  /* ---- Lista de clubes (superuser) ---- */
   useEffect(() => {
-    if (esSuperUser) {
-      async function fetchClubes() {
-        let { data, error } = await supabase.from('clubes').select('id, nombre, escudo_url').order('nombre');
-        if (error) data = (await supabase.from('clubes').select('id, nombre').order('nombre')).data;
-        if (data) setListaClubes(data);
-      }
-      fetchClubes();
-    }
+    if (!esSuperUser) return;
+    (async () => {
+      let { data, error } = await supabase.from('clubes').select('id, nombre, escudo_url').order('nombre');
+      if (error) data = (await supabase.from('clubes').select('id, nombre').order('nombre')).data;
+      if (data) setListaClubes(data);
+    })();
   }, [esSuperUser]);
 
+  /* ---- Carga principal ---- */
   useEffect(() => {
-    async function cargarDashboard() {
+    async function cargar() {
       try {
         setCargando(true);
-        
-        const targetClubId = isKioscoMode ? kioscoClubId : clubActivo;
-        const targetJugadorId = isKioscoMode ? kioscoJugadorId : perfil?.jugador_id;
+        const club = clubActivo;
+        const miJug = perfil?.jugador_id;
+        if (!club && !esSuperUser) return;
 
-        if (!targetClubId && !esSuperUser) { 
-          return; 
-        }
+        // Club / escudo
+        if (club) {
+          const { data: c } = await supabase.from('clubes').select('nombre, escudo_url').eq('id', club).maybeSingle();
+          if (c) { setNombreClub(c.nombre); setEscudoClub(c.escudo_url); }
+        } else if (esSuperUser) { setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub(''); }
 
-        if (isKioscoMode) {
-          setPerfilVisual({
-            nombre: localStorage.getItem('kiosco_nombre') || 'Jugador',
-            apellido: localStorage.getItem('kiosco_apellido') || '',
-            foto: localStorage.getItem('kiosco_foto') || ''
-          });
-        } else if (targetJugadorId) {
-          const { data: pData } = await supabase.from('perfiles').select('*').eq('jugador_id', targetJugadorId).maybeSingle();
-          if (pData) setPerfilVisual(pData);
-        }
-
-        if (targetClubId) {
-          const { data: clubData } = await supabase.from('clubes').select('nombre, escudo_url').eq('id', targetClubId).maybeSingle();
-          if (clubData) {
-            setNombreClub(clubData.nombre);
-            setEscudoClub(clubData.escudo_url);
-          }
-        } else if (esSuperUser) {
-          setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub('');
-        }
-
-        if (targetClubId && (esCT || esManager || esAdmin || esSuperUser)) {
-          const { data: nov } = await supabase.from('novedades')
-            .select('*, perfiles(nombre_completo, rol)')
-            .eq('club_id', targetClubId)
-            .in('publico_objetivo', ['CT', 'Ambos'])
-            .order('fecha_creacion', { ascending: false })
-            .limit(3);
-          
-          if (nov) {
-            const filtradas = categoriaActiva === 'Todas' ? nov : nov.filter(n => n.categorias.includes(categoriaActiva));
-            setNovedadesCT(filtradas);
+        // Categorías disponibles
+        if (club) {
+          if (esCT && misCategorias.length > 0) setCategoriasDisponibles(misCategorias);
+          else {
+            const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', club);
+            if (cats) setCategoriasDisponibles([...new Set(cats.map((x) => x.categoria).filter(Boolean))]);
           }
         }
 
-        if (targetClubId) {
-          if (esCT && misCategorias.length > 0) {
-            setCategoriasDisponibles(misCategorias);
-          } else {
-            const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', targetClubId);
-            if (cats) {
-              const unicas = [...new Set(cats.map(c => c.categoria).filter(Boolean))];
-              setCategoriasDisponibles(unicas);
-            }
-          }
+        // Novedades
+        if (club && rol !== 'jugador') {
+          const { data: nov } = await supabase.from('novedades').select('*, perfiles(nombre_completo, rol)')
+            .eq('club_id', club).in('publico_objetivo', ['CT', 'Ambos']).order('fecha_creacion', { ascending: false }).limit(4);
+          if (nov) setNovedades(categoriaActiva === 'Todas' ? nov : nov.filter((n) => (n.categorias || []).includes(categoriaActiva)));
         }
 
+        /* ===== JUGADOR ===== */
         if (rol === 'jugador') {
-          if (targetJugadorId) {
-            let wellness = [];
-            if (isKioscoMode) {
-              const { data } = await supabase.rpc('kiosco_obtener_wellness', { 
-                p_jugador_id: targetJugadorId, 
-                p_club_id: targetClubId 
-              });
-              wellness = data;
-            } else {
-              const { data } = await supabase.from('wellness').select('*').eq('jugador_id', targetJugadorId).order('fecha', { ascending: false }).limit(7);
-              wellness = data;
-            }
-            if (wellness) setDatosWellness(wellness);
+          if (miJug) {
+            const { data: w } = await supabase.from('wellness').select('*').eq('jugador_id', miJug).order('fecha', { ascending: false }).limit(7);
+            if (w) setDatosWellness(w);
           }
-        } else {
-          const hoyStr = new Date().toISOString().split('T')[0];
-          const anioActual = new Date().getFullYear().toString();
-
-          let qUltimo = supabase.from('partidos').select('*').in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(1);
-          let qProximo = supabase.from('partidos').select('*').eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(1);
-          let qAnual = supabase.from('partidos').select('*').gte('fecha', `${anioActual}-01-01`).in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: true });
-          let qJugadores = supabase.from('jugadores').select('*', { count: 'exact', head: true });
-          let qPartidosTot = supabase.from('partidos').select('*', { count: 'exact', head: true });
-
-          if (targetClubId) {
-            qUltimo = qUltimo.eq('club_id', targetClubId); qProximo = qProximo.eq('club_id', targetClubId);
-            qAnual = qAnual.eq('club_id', targetClubId); qJugadores = qJugadores.eq('club_id', targetClubId);
-            qPartidosTot = qPartidosTot.eq('club_id', targetClubId);
-          }
-
-          if (categoriaActiva !== 'Todas') {
-            qUltimo = qUltimo.eq('categoria', categoriaActiva); qProximo = qProximo.eq('categoria', categoriaActiva);
-            qAnual = qAnual.eq('categoria', categoriaActiva); qJugadores = qJugadores.eq('categoria', categoriaActiva);
-            qPartidosTot = qPartidosTot.eq('categoria', categoriaActiva);
-          }
-
-          const [resUltimo, resProximo, resAnual, resJugadores, resPartTot] = await Promise.all([qUltimo, qProximo, qAnual, qJugadores, qPartidosTot]);
-
-          setUltimoPartido(resUltimo.data?.[0] || null);
-          setProximoPartido(resProximo.data?.[0] || null);
-          setEstadisticas({ jugados: resPartTot.count || 0, plantel: resJugadores.count || 0 });
-
-          if (resAnual.data && resAnual.data.length > 0) {
-            let v = 0, e = 0, d = 0; let golesCat = {}; let ultimosCat = {};
-            resAnual.data.forEach(p => {
-              const cat = p.categoria || 'Sin Categoría';
-              let gf = parseInt(p.goles_propios) || 0; let gc = parseInt(p.goles_rival) || 0;
-              if (gf > gc) v++; else if (gf === gc) e++; else d++;
-              if (!golesCat[cat]) golesCat[cat] = { favor: 0, contra: 0 };
-              golesCat[cat].favor += gf; golesCat[cat].contra += gc;
-              if (!ultimosCat[cat]) ultimosCat[cat] = [];
-              ultimosCat[cat].push({ id: p.id, rival: p.rival, gf, gc, res: gf > gc ? 'V' : (gf === gc ? 'E' : 'D'), fecha: p.fecha?.split('-').reverse().join('/') });
-            });
-            Object.keys(ultimosCat).forEach(cat => { ultimosCat[cat] = ultimosCat[cat].slice(-2).reverse(); });
-            setVepAnual({ v, e, d }); setGolesPorCat(golesCat); setResultadosRecientesCat(ultimosCat);
-          } else {
-            setVepAnual({ v: 0, e: 0, d: 0 }); setGolesPorCat({}); setResultadosRecientesCat({});
-          }
+          setCargando(false);
+          return;
         }
-      } catch (error) {
-        console.error("Error al cargar dashboard:", error);
-      } finally {
+
+        /* ===== STAFF ===== */
+        const hoyStr = new Date().toISOString().split('T')[0];
+        const anio = new Date().getFullYear().toString();
+        const catEq = categoriaActiva !== 'Todas';
+
+        let qUlt = supabase.from('partidos').select('*').eq('club_id', club).in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(6);
+        let qPro = supabase.from('partidos').select('*').eq('club_id', club).eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(1);
+        let qAnual = supabase.from('partidos').select('id, categoria, goles_propios, goles_rival, fecha').eq('club_id', club).gte('fecha', `${anio}-01-01`).in('estado', ['Finalizado', 'Jugado']);
+        let qJug = supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion, categoria').eq('club_id', club);
+        let qMapPar = supabase.from('partidos').select('id, categoria').eq('club_id', club);
+        if (catEq) { qUlt = qUlt.eq('categoria', categoriaActiva); qPro = qPro.eq('categoria', categoriaActiva); qAnual = qAnual.eq('categoria', categoriaActiva); qJug = qJug.eq('categoria', categoriaActiva); }
+
+        const [rUlt, rPro, rAnual, rJug, rMapPar] = await Promise.all([qUlt, qPro, qAnual, qJug, qMapPar]);
+        const partidosJug = (rUlt.data || []).slice().sort((a, b) => (parseFecha(b.fecha) || 0) - (parseFecha(a.fecha) || 0));
+        const jugadores = rJug.data || [];
+        const proximoP = rPro.data?.[0] || null;
+        setUltimo(partidosJug[0] || null);
+        setProximo(proximoP);
+
+        // Balance anual + forma
+        let v = 0, e = 0, d = 0, gf = 0, gc = 0;
+        (rAnual.data || []).forEach((p) => { const a = parseInt(p.goles_propios) || 0, b = parseInt(p.goles_rival) || 0; if (a > b) v++; else if (a === b) e++; else d++; gf += a; gc += b; });
+        setAnual({ v, e, d, gf, gc });
+        setForma(partidosJug.slice(0, 5).reverse().map((p) => ({ id: p.id, res: resultadoDe(p), rival: p.rival, gf: parseInt(p.goles_propios) || 0, gc: parseInt(p.goles_rival) || 0 })));
+
+        // Engine sobre el último partido (xG + figuras)
+        if (partidosJug[0]) {
+          const { data: evs } = await supabase.from('eventos').select('*').eq('id_partido', partidosJug[0].id).order('minuto', { ascending: true });
+          setUltAnalisis(analizarUltimo(evs || [], jugadores));
+        } else setUltAnalisis({ xgPropio: 0, xgRival: 0, ranking: [] });
+
+        /* ===== DISCIPLINA (misma lógica que pantalla Disciplina) ===== */
+        const catDePartido = {}; (rMapPar.data || []).forEach((p) => { catDePartido[p.id] = p.categoria; });
+        const nombreJug = (id) => { const j = jugadores.find((x) => String(x.id) === String(id)); return j ? (j.apellido || j.nombre) : 'Jugador'; };
+        const jugIdsCat = new Set(jugadores.map((j) => j.id));
+
+        const { data: tarjetas } = await supabase.from('eventos')
+          .select('id_jugador, accion, id_partido').eq('club_id', club).eq('equipo', 'Propio')
+          .in('accion', ['Tarjeta Amarilla', 'Tarjeta Roja']);
+
+        const amarillas = {};
+        (tarjetas || []).forEach((t) => {
+          if (!t.id_jugador) return;
+          if (catEq && catDePartido[t.id_partido] !== categoriaActiva) return;
+          if (t.accion === 'Tarjeta Amarilla') amarillas[t.id_jugador] = (amarillas[t.id_jugador] || 0) + 1;
+        });
+
+        const { data: sanc } = await supabase.from('disciplina_sanciones').select('*').eq('club_id', club);
+        const fechasRoja = {};
+        (sanc || []).forEach((s) => {
+          if (catEq && !jugIdsCat.has(s.jugador_id)) return;
+          const tot = (s.fechas_tribunal || 0) + (s.fechas_internas || 0);
+          fechasRoja[s.jugador_id] = (fechasRoja[s.jugador_id] || 0) + Math.max(0, tot - (s.fechas_cumplidas || 0));
+        });
+
+        const alertas = [];
+        const suspendidosIds = new Set();
+        Object.entries(amarillas).forEach(([jid, n]) => {
+          if (n > 0 && n % UMBRAL_AMARILLAS === 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: '🟥', titulo: `${nombreJug(jid)}: suspendido por amarillas`, sub: `${n}ª amarilla (cada ${UMBRAL_AMARILLAS} = 1 fecha)`, ruta: '/disciplina' }); }
+          else if (n % UMBRAL_AMARILLAS === UMBRAL_AMARILLAS - 1) alertas.push({ nivel: 'warning', ico: '🟨', titulo: `${nombreJug(jid)}, a una del corte`, sub: `${n} amarillas acumuladas`, ruta: '/disciplina' });
+        });
+        Object.entries(fechasRoja).forEach(([jid, f]) => { if (f > 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: '⛔', titulo: `${nombreJug(jid)}: ${f} fecha${f > 1 ? 's' : ''} de sanción`, sub: 'Tribunal de disciplina', ruta: '/disciplina' }); } });
+
+        /* ===== WELLNESS HOY ===== */
+        let wHoy = [];
+        if (club) {
+          const { data: w } = await supabase.from('wellness').select('*').eq('club_id', club).eq('fecha', hoyStr);
+          wHoy = (w || []).filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
+        }
+        const enRojo = wHoy.filter(enRojoWell);
+        if (enRojo.length > 0) alertas.unshift({ nivel: 'warning', ico: '🔋', titulo: `${enRojo.length} ${enRojo.length === 1 ? 'jugador' : 'jugadores'} en rojo hoy`, sub: 'Fatiga, dolor o sueño en zona de alerta', ruta: '/wellness' });
+        setTriage(alertas.slice(0, 6));
+        setPulso(wHoy.length ? { score: (wHoy.reduce((a, r) => a + readinessDe(r), 0) / wHoy.length).toFixed(1), registros: wHoy.length, enRojo: enRojo.length } : { score: null, registros: 0, enRojo: 0 });
+
+        /* ===== PREPARACIÓN PRÓXIMO ===== */
+        if (proximoP) {
+          const fp = parseFecha(proximoP.fecha);
+          const hoy0 = new Date(); hoy0.setHours(0, 0, 0, 0);
+          const dias = fp ? Math.ceil((fp.getTime() - hoy0.getTime()) / 86400000) : null;
+          const conv = plantillaIds(proximoP);
+          const plantel = conv.length || jugadores.length;
+          const susp = conv.length ? conv.filter((id) => suspendidosIds.has(String(id))).length : suspendidosIds.size;
+          const enDuda = enRojo.length;
+          setPrep({ dias, plantel, susp, enDuda, disponibles: Math.max(0, plantel - susp - enDuda) });
+        } else setPrep(null);
+
         setCargando(false);
-      }
+      } catch (err) { console.error('Error cargando dashboard:', err); setCargando(false); }
     }
-    cargarDashboard();
-  }, [clubActivo, esSuperUser, rol, categoriaActiva, isKioscoMode, kioscoJugadorId, esCT, misCategorias]); 
+    cargar();
+  }, [clubActivo, esSuperUser, rol, categoriaActiva, esCT, misCategorias, perfil?.id, perfil?.jugador_id]);
 
+  /* ---- Selectores ---- */
+  const handleCambioCategoria = (e) => { setCategoriaActiva(e.target.value); localStorage.setItem('dash_categoria', e.target.value); };
   const handleCambioClub = (e) => {
-    const nuevoId = e.target.value;
-    if (nuevoId === '') {
-      localStorage.removeItem('club_id'); localStorage.removeItem('mi_club'); localStorage.removeItem('escudo_url');
-      setClubMaster(''); setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub('');
-    } else {
-      const club = listaClubes.find(c => c.id === nuevoId);
-      if (!club) return;
-      localStorage.setItem('club_id', nuevoId); localStorage.setItem('mi_club', club.nombre);
-      if (club.escudo_url) { localStorage.setItem('escudo_url', club.escudo_url); setEscudoClub(club.escudo_url); } 
-      else { localStorage.removeItem('escudo_url'); setEscudoClub(''); }
-      setClubMaster(nuevoId); setNombreClub(club.nombre);
+    const id = e.target.value;
+    if (!id) { ['club_id', 'mi_club', 'escudo_url'].forEach((k) => localStorage.removeItem(k)); setClubMaster(''); setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub(''); }
+    else {
+      const club = listaClubes.find((c) => c.id === id); if (!club) return;
+      localStorage.setItem('club_id', id); localStorage.setItem('mi_club', club.nombre);
+      if (club.escudo_url) { localStorage.setItem('escudo_url', club.escudo_url); setEscudoClub(club.escudo_url); } else { localStorage.removeItem('escudo_url'); setEscudoClub(''); }
+      setClubMaster(id); setNombreClub(club.nombre);
     }
   };
+  const linkKiosco = `${window.location.origin}/kiosco?club=${clubActivo}`;
+  const mostrarSelectorCat = rol !== 'jugador' && categoriasDisponibles.length > 1;
 
-  if (!cargando && !clubActivo && !esSuperUser && !isKioscoMode) {
-    if (esAdmin || esManager) {
-      return (
-        <div style={{ animation: 'fadeIn 0.3s', padding: '50px 20px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🏟️</div>
-          <h2 style={{ color: 'var(--accent)', fontWeight: 900 }}>¡BIENVENIDO A VIRTUAL.STATS!</h2>
-          <p style={{ color: 'var(--text-dim)', marginBottom: '30px', lineHeight: '1.6' }}>Para empezar a registrar estadísticas, primero necesitamos crear el perfil de tu equipo.</p>
-          <button onClick={() => navigate('/configuracion')} className="btn-action" style={{ width: '100%', padding: '20px', fontSize: '1.1rem' }}>CONFIGURAR MI CLUB AHORA</button>
-        </div>
-      );
-    } else {
-      return <div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-dim)' }}><h2>El club aún no está configurado.</h2><p>Contactá a la administración del club.</p></div>;
-    }
-  }   
-
-  const getGridStyle = (spanStr) => {
-    const [cols, rows] = spanStr.split('x').map(Number);
-    return { 
-      gridColumn: `span ${Math.min(cols, 3)}`, 
-      gridRow: `span ${rows}` 
-    };
-  };
-
-  const ControlesEdicion = ({ id, spanActual, index }) => {
-    if (!modoEdicion) return null; 
-    const opcionesSpan = ['1x1', '2x1', '3x1', '2x2'];
-    
-    return (
-      <div style={{ 
-        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-        background: 'rgba(0,0,0,0.3)', zIndex: 10, borderRadius: 'inherit',
-        display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '5px', 
-        animation: 'fadeIn 0.2s'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); moverWidget(index, 'prev'); }} style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #555', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}>◀</button>
-            <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); moverWidget(index, 'next'); }} style={{ background: 'rgba(0,0,0,0.8)', color: '#fff', border: '1px solid #555', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}>▶</button>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '3px' }}>
-          {opcionesSpan.map(op => (
-            <button 
-              key={op} type="button"
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); cambiarTamano(id, op); }}
-              style={{ 
-                background: spanActual === op ? 'var(--accent)' : 'rgba(0,0,0,0.8)', 
-                color: spanActual === op ? '#000' : '#fff', 
-                border: '1px solid #444', fontSize: '0.65rem', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
-              }}
-            >
-              {op}
-            </button>
-          ))}
-        </div>
+  /* ---- Guard: club sin configurar ---- */
+  if (!cargando && !clubActivo && !esSuperUser) {
+    if (esAdmin || esManager) return (
+      <div style={{ animation: 'fadeIn 0.3s', padding: '50px 20px', textAlign: 'center', maxWidth: 600, margin: '0 auto' }}>
+        <div style={{ fontSize: '4rem', marginBottom: 20 }}>🏟️</div>
+        <h2 style={{ color: 'var(--accent)', fontWeight: 900 }}>¡BIENVENIDO A VIRTUAL.STATS!</h2>
+        <p style={{ color: 'var(--text-dim)', marginBottom: 30, lineHeight: 1.6 }}>Para empezar, creá el perfil de tu equipo.</p>
+        <button onClick={() => navigate('/configuracion')} className="btn-action" style={{ width: '100%', padding: 20, fontSize: '1.1rem' }}>CONFIGURAR MI CLUB AHORA</button>
       </div>
     );
+    return <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)' }}><h2>El club aún no está configurado.</h2><p>Contactá a la administración.</p></div>;
+  }
+
+  /* ========================================================================
+     SUB-COMPONENTES DE RENDER
+  ======================================================================== */
+  const Card = ({ children, full, accent, index, scroll }) => (
+    <div className="bento-card" style={{
+      gridColumn: esMovil ? '1 / -1' : (full ? '1 / -1' : 'auto'), position: 'relative',
+      background: 'var(--panel)', border: '1px solid var(--border)', borderTop: accent ? `2px solid ${accent}` : '1px solid var(--border)',
+      borderRadius: 12, padding: 16, overflow: scroll ? 'auto' : 'hidden', maxHeight: scroll ? 300 : 'none', display: 'flex', flexDirection: 'column',
+    }}>
+      {modoEdicion && (
+        <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4, zIndex: 5 }}>
+          <button onClick={() => mover(index, 'up')} style={editBtn}>▲</button>
+          <button onClick={() => mover(index, 'down')} style={editBtn}>▼</button>
+        </div>
+      )}
+      {children}
+    </div>
+  );
+  const Label = ({ children, color }) => <div className="stat-label" style={{ color: color || 'var(--text-dim)', fontSize: '0.7rem', letterSpacing: '0.5px', marginBottom: 12 }}>{children}</div>;
+  const mono = { fontFamily: "'JetBrains Mono', monospace" };
+
+  const renderModulo = (id, index) => {
+    /* ESTADO */
+    if (id === 'm_estado') {
+      const { v, e, d, gf, gc } = anual; const dg = gf - gc; const pts = v * 3 + e;
+      const invIdx = forma.slice().reverse().findIndex((f) => f.res === 'D');
+      const nInv = invIdx === -1 ? forma.length : invIdx; const enRacha = nInv >= 3;
+      const cum = []; let acc = 0; forma.forEach((f) => { acc += f.res === 'V' ? 3 : f.res === 'E' ? 1 : 0; cum.push(acc); });
+      const maxC = Math.max(1, ...cum);
+      const poly = cum.map((y, i) => `${forma.length > 1 ? (i / (forma.length - 1)) * 76 + 2 : 40},${26 - (y / maxC) * 22}`).join(' ');
+      return (
+        <Card key={id} full accent="var(--accent)" index={index}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: enRacha ? '#10b981' : 'var(--text-dim)', background: enRacha ? 'rgba(16,185,129,0.1)' : '#111', border: `1px solid ${enRacha ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, padding: '5px 12px', borderRadius: 20 }}>
+              {enRacha ? `🔥 En racha · ${nInv} invicto` : forma.length ? 'Forma estable' : 'Sin partidos aún'}
+            </span>
+            {forma.length > 1 && <svg width="80" height="30" viewBox="0 0 80 30"><polyline points={poly} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 14 }}>
+            {[{ n: pts, l: 'PTS', c: '#fff' }, { n: (dg > 0 ? '+' : '') + dg, l: 'DG', c: dg >= 0 ? '#10b981' : '#ef4444' }, { n: `${v}-${e}-${d}`, l: 'V-E-D', c: '#fff', sm: true }, { n: gf, l: 'GF', c: 'var(--accent)' }].map((b, i) => (
+              <div key={i} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
+                <div style={{ ...mono, fontSize: b.sm ? '0.95rem' : '1.4rem', fontWeight: 900, color: b.c }}>{b.n}</div>
+                <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700, marginTop: 2 }}>{b.l}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      );
+    }
+    /* TRIAGE */
+    if (id === 'm_triage') {
+      const col = { danger: '#ef4444', warning: '#f59e0b' };
+      const bg = { danger: 'rgba(239,68,68,0.12)', warning: 'rgba(245,158,11,0.12)' };
+      return (
+        <Card key={id} full accent="#ef4444" index={index}>
+          <Label color="#ef4444">REQUIERE TU ATENCIÓN</Label>
+          {triage.length === 0 ? <div style={{ textAlign: 'center', color: '#10b981', padding: 14, fontSize: '0.85rem' }}>✅ Todo en orden. Sin alertas.</div> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {triage.map((a, i) => (
+                <div key={i} onClick={() => !modoEdicion && a.ruta && navigate(a.ruta)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', cursor: modoEdicion ? 'default' : 'pointer' }}>
+                  <span style={{ width: 30, height: 30, borderRadius: 8, background: bg[a.nivel], color: col[a.nivel], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{a.ico}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.titulo}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{a.sub}</div>
+                  </div>
+                  <span style={{ color: 'var(--text-dim)' }}>›</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      );
+    }
+    /* PROXIMO */
+    if (id === 'm_proximo') {
+      return (
+        <Card key={id} full accent="#10b981" index={index}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Label color="#10b981">PRÓXIMO PARTIDO</Label>
+            {prep?.dias != null && <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '3px 10px', borderRadius: 12 }}>{prep.dias <= 0 ? 'Hoy' : `en ${prep.dias} día${prep.dias > 1 ? 's' : ''}`}</span>}
+          </div>
+          {proximo ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '2px 0 12px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff' }}>vs {proximo.rival?.toUpperCase()}</span>
+                <span style={{ ...mono, fontSize: '0.7rem', color: 'var(--text-dim)' }}>{proximo.fecha?.split('-').reverse().join('/')} · {proximo.competicion || proximo.torneo_id || ''}</span>
+              </div>
+              {prep && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+                  {[{ n: prep.disponibles, l: 'disponibles', c: '#10b981' }, { n: prep.susp, l: 'suspendidos', c: '#ef4444' }, { n: prep.enDuda, l: 'en duda', c: '#f59e0b' }].map((b, i) => (
+                    <div key={i} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 4px', textAlign: 'center' }}>
+                      <div style={{ ...mono, fontSize: '1.2rem', fontWeight: 900, color: b.c }}>{b.n}</div>
+                      <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>{b.l}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button onClick={() => !modoEdicion && navigate('/scouting-rivales')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: 10 }}>🕵️‍♂️ Scouting rival</button>
+                <button onClick={() => !modoEdicion && navigate('/microciclo')} style={{ fontSize: '0.75rem', padding: 10, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>🗓️ Planificar sesión</button>
+              </div>
+            </>
+          ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, background: '#111', borderRadius: 8, border: '1px dashed var(--border)', fontSize: '0.8rem' }}>Sin partidos pendientes</div>}
+        </Card>
+      );
+    }
+    /* FORMA + xG */
+    if (id === 'm_forma') {
+      const cR = { V: '#10b981', E: '#f59e0b', D: '#ef4444' };
+      const cBg = { V: 'rgba(16,185,129,0.15)', E: 'rgba(245,158,11,0.15)', D: 'rgba(239,68,68,0.15)' };
+      const { xgPropio, xgRival } = ultAnalisis; const hayXg = xgPropio > 0 || xgRival > 0;
+      const golF = ultimo ? (parseInt(ultimo.goles_propios) || 0) : 0; const delta = golF - xgPropio;
+      const ver = !hayXg ? null : delta > 0.6 ? { t: 'Con eficacia', c: '#10b981' } : delta < -0.6 ? { t: 'Faltó pegada', c: '#ef4444' } : { t: 'Lo esperado', c: '#3b82f6' };
+      return (
+        <Card key={id} accent="#3b82f6" index={index}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Label color="#3b82f6">FORMA · ÚLTIMOS 5</Label>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {forma.length ? forma.map((f, i) => <span key={i} title={`vs ${f.rival} ${f.gf}-${f.gc}`} style={{ width: 22, height: 22, borderRadius: '50%', background: cBg[f.res], color: cR[f.res], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800 }}>{f.res}</span>) : <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Sin datos</span>}
+            </div>
+          </div>
+          {hayXg && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>xG últ. <span style={{ ...mono, color: '#fff' }}>{xgPropio.toFixed(1)}</span> / <span style={{ ...mono, color: '#ef4444' }}>{xgRival.toFixed(1)}</span></span>
+              {ver && <span style={{ fontSize: '0.65rem', color: ver.c, background: `rgba(${hexToRgb(ver.c)},0.12)`, padding: '3px 8px', borderRadius: 8, fontWeight: 700 }}>{ver.t}</span>}
+            </div>
+          )}
+        </Card>
+      );
+    }
+    /* FIGURAS */
+    if (id === 'm_protagonistas') {
+      const top = ultAnalisis.ranking.slice(0, 3);
+      return (
+        <Card key={id} accent="var(--accent)" index={index}>
+          <Label color="var(--accent)">FIGURAS · ÚLTIMO PARTIDO</Label>
+          {top.length === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', padding: 10 }}>Sin análisis del último partido</div> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {top.map((j, i) => (
+                <div key={j.id} onClick={() => !modoEdicion && navigate('/jugador', { state: { jugadorId: j.id } })} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: modoEdicion ? 'default' : 'pointer' }}>
+                  <span style={{ width: 24, height: 24, borderRadius: '50%', background: i === 0 ? 'rgba(0,230,118,0.15)' : '#111', color: i === 0 ? 'var(--accent)' : 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(j.nombre || '').toUpperCase()}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{j.posicion || '—'}</div>
+                  </div>
+                  <span style={{ ...mono, fontWeight: 800, fontSize: '0.95rem', color: Number(j.impacto) >= 6 ? 'var(--accent)' : '#ef4444' }}>{Number(j.impacto).toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      );
+    }
+    /* PULSO */
+    if (id === 'm_pulso') {
+      return (
+        <Card key={id} accent="#10b981" index={index}>
+          <Label color="#10b981">PULSO DEL PLANTEL · HOY</Label>
+          {pulso.registros === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', padding: 10 }}>Sin cargas de wellness hoy</div> : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
+                  <div style={{ ...mono, fontSize: '1.4rem', fontWeight: 900, color: pulso.score >= 3.5 ? '#10b981' : pulso.score >= 2.5 ? '#f59e0b' : '#ef4444' }}>{pulso.score}<span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>/5</span></div>
+                  <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700 }}>READINESS</div>
+                </div>
+                <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
+                  <div style={{ ...mono, fontSize: '1.4rem', fontWeight: 900, color: pulso.enRojo > 0 ? '#ef4444' : '#10b981' }}>{pulso.enRojo}</div>
+                  <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700 }}>EN ROJO</div>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', textAlign: 'right', marginTop: 8 }}>{pulso.registros} carga{pulso.registros !== 1 ? 's' : ''} hoy</div>
+            </>
+          )}
+        </Card>
+      );
+    }
+    /* ULTIMO */
+    if (id === 'm_ultimo') {
+      const res = ultimo ? resultadoDe(ultimo) : null;
+      return (
+        <Card key={id} accent="var(--text-dim)" index={index}>
+          <Label>ÚLTIMO RESULTADO</Label>
+          {ultimo ? (
+            <div style={{ background: '#111', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: 6 }}>
+                <span>{ultimo.fecha?.split('-').reverse().join('/')}</span><span>{ultimo.competicion || ''}</span>
+              </div>
+              <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {ultimo.rival?.toUpperCase()}</div>
+                <div style={{ ...mono, fontSize: '1.6rem', fontWeight: 900, color: res === 'V' ? '#10b981' : res === 'E' ? '#f59e0b' : '#ef4444' }}>{ultimo.goles_propios ?? 0} - {ultimo.goles_rival ?? 0}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimo.id}`)} className="btn-secondary" style={{ flex: 1, fontSize: '0.65rem', padding: 7 }}>RESUMEN</button>
+                <button onClick={() => !modoEdicion && navigate(`/partido/${ultimo.id}/analisis-video`)} style={{ flex: 1, fontSize: '0.65rem', padding: 7, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer' }}>VIDEO</button>
+              </div>
+            </div>
+          ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, background: '#111', borderRadius: 8, border: '1px dashed var(--border)', fontSize: '0.8rem' }}>Sin registros</div>}
+        </Card>
+      );
+    }
+    /* NOVEDADES */
+    if (id === 'm_novedades') {
+      return (
+        <Card key={id} full accent="#facc15" index={index} scroll>
+          <Label color="#facc15">TABLÓN DE ANUNCIOS</Label>
+          {novedades.length === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, fontSize: '0.8rem' }}>Sin novedades recientes.</div> : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {novedades.map((n) => (
+                <div key={n.id} style={{ background: '#111', borderLeft: '3px solid #facc15', padding: 10, borderRadius: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: 4 }}>
+                    <strong>{n.perfiles?.nombre_completo || 'Administración'}</strong><span>{new Date(n.fecha_creacion).toLocaleDateString()}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#fff', whiteSpace: 'pre-wrap', lineHeight: 1.3 }}>{n.mensaje}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      );
+    }
+    /* ACCESOS */
+    if (id === 'm_accesos') {
+      const links = LINKS.filter((l) => l.roles.includes(rol));
+      return (
+        <Card key={id} full index={index}>
+          <Label>ACCESOS RÁPIDOS</Label>
+          <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
+            {links.map((l) => (
+              <div key={l.ruta} onClick={() => !modoEdicion && navigate(l.ruta)} style={{ cursor: modoEdicion ? 'default' : 'pointer', border: `1px solid ${l.color}`, borderRadius: 10, padding: '12px 6px', textAlign: 'center', background: `linear-gradient(180deg, rgba(${hexToRgb(l.color)},0.06) 0%, rgba(0,0,0,0) 100%)` }}>
+                <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>{l.icon}</div>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: l.color, lineHeight: 1.1 }}>{l.titulo}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      );
+    }
+    /* JUGADOR: WELLNESS */
+    if (id === 'm_jug_wellness') {
+      const u = datosWellness[0];
+      return (
+        <Card key={id} full accent="#f59e0b" index={index}>
+          <Label color="#f59e0b">MI WELLNESS</Label>
+          {u ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {[{ l: 'SUEÑO', v: u.sueno }, { l: 'FATIGA', v: u.fatiga }, { l: 'DOLOR', v: u.dolor_muscular }, { l: 'RPE', v: u.rpe }].map((m, i) => (
+                <div key={i} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 2px', textAlign: 'center' }}>
+                  <div style={{ ...mono, fontSize: '1.3rem', fontWeight: 900, color: '#fff' }}>{m.v ?? '—'}</div>
+                  <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700 }}>{m.l}</div>
+                </div>
+              ))}
+            </div>
+          ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.8rem', padding: 10 }}>Todavía no cargaste wellness.</div>}
+          <button onClick={() => navigate('/wellness')} style={{ marginTop: 12, fontSize: '0.8rem', padding: 11, background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 6, fontWeight: 900, cursor: 'pointer' }}>🌡️ CARGAR WELLNESS DE HOY</button>
+        </Card>
+      );
+    }
+    /* JUGADOR: PERFIL */
+    if (id === 'm_jug_perfil') {
+      return (
+        <Card key={id} full accent="#3b82f6" index={index}>
+          <Label color="#3b82f6">MI PERFIL</Label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#111', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🏃‍♂️</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{perfil?.nombre || 'Jugador'}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Tus métricas, videos y evolución.</div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+            <button onClick={() => navigate('/jugador-perfil')} className="btn-secondary" style={{ fontSize: '0.8rem', padding: 10 }}>📊 Mi juego</button>
+            <button onClick={() => navigate('/rendimiento')} style={{ fontSize: '0.8rem', padding: 10, background: '#f43f5e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>🧬 Biomecánica</button>
+          </div>
+        </Card>
+      );
+    }
+    return null;
   };
 
+  /* ========================================================================
+     LAYOUT
+  ======================================================================== */
   return (
-    <div style={{ animation: 'fadeIn 0.3s', maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
-      
-      <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border)', gap: '15px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div style={{ width: esMovil ? '50px' : '60px', height: esMovil ? '50px' : '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: esMovil ? '1rem' : '1.5rem', overflow: 'hidden', flexShrink: 0 }}>
-            {isKioscoMode && perfilVisual?.foto ? (
-              <img src={perfilVisual.foto} alt="Perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : esSuperUser && !clubActivo ? (
-              '👑'
-            ) : escudoClub ? (
-              <img src={escudoClub} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-            ) : (
-              nombreClub.substring(0, 2).toUpperCase()
-            )}
+    <div style={{ animation: 'fadeIn 0.3s', maxWidth: 1100, margin: '0 auto', position: 'relative' }}>
+      {/* HEADER + SELECTORES (arriba de todo) */}
+      <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', marginBottom: 25, paddingBottom: 20, borderBottom: '1px solid var(--border)', gap: 15 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+          <div style={{ width: esMovil ? 50 : 60, height: esMovil ? 50 : 60, borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: esMovil ? '1rem' : '1.5rem', overflow: 'hidden', flexShrink: 0 }}>
+            {esSuperUser && !clubActivo ? '👑' : escudoClub ? <img src={escudoClub} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : nombreClub.substring(0, 2).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="stat-label" style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>
-                {isKioscoMode ? `HOLA, ${perfilVisual?.nombre?.toUpperCase() || 'JUGADOR'}` : `CENTRO DE MANDO • ${rol?.toUpperCase()}`}
-            </div>
+            <div className="stat-label" style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>CENTRO DE MANDO • {rol?.toUpperCase()}</div>
             <h1 style={{ margin: 0, fontSize: esMovil ? '1.5rem' : '1.8rem', fontWeight: 900, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nombreClub}</h1>
           </div>
         </div>
-        
-        <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '10px', width: esMovil ? '100%' : 'auto' }}>
-            {rol !== 'jugador' && categoriasDisponibles.length > 0 && (
-              <select value={categoriaActiva} onChange={handleCambioCategoria} style={{ padding: esMovil ? '12px' : '8px 10px', background: '#111', border: '1px solid var(--border)', color: '#fff', borderRadius: '8px', outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' }}>
-                {!(esCT && misCategorias.length > 0) && (
-                  <option value="Todas">👉 TODAS LAS CATEGORÍAS</option>
-                )}
-                {categoriasDisponibles.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
-              </select>
-            )}
-            {esSuperUser && (
-              <select value={clubActivo} onChange={handleCambioClub} style={{ padding: esMovil ? '12px' : '8px 10px', background: '#111', border: '1px solid #c084fc', color: '#c084fc', borderRadius: '8px', outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' }}>
-                <option value="">🌍 VISIÓN GLOBAL (TODOS)</option>
-                {listaClubes.map(c => <option key={c.id} value={c.id}>🏢 GESTIONAR: {c.nombre}</option>)}
-              </select>
-            )}
-            <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : '#222', color: modoEdicion ? '#000' : '#fff', border: 'none', padding: esMovil ? '12px' : '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold', width: '100%' }}>
-              {modoEdicion ? '✅ Guardar Diseño' : '⚙️ Editar Pantalla'}
-            </button>
-            
-            {(esManager || esAdmin || esSuperUser) && clubActivo && (
-              <button 
-                onClick={() => setMostrarQR(true)} 
-                style={{ background: '#10b981', color: '#000', border: 'none', padding: esMovil ? '12px' : '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold', width: '100%' }}
-              >
-                📷 QR VESTUARIO
-              </button>
-            )}
-
-            {isKioscoMode && (
-              <button 
-                onClick={() => { 
-                  localStorage.removeItem('kiosco_mode'); 
-                  localStorage.removeItem('kiosco_jugador_id'); 
-                  localStorage.removeItem('kiosco_nombre'); 
-                  localStorage.removeItem('kiosco_apellido'); 
-                  window.location.href = '/kiosco'; 
-                }}
-                style={{ background: '#ef4444', color: '#fff', border: 'none', padding: esMovil ? '12px' : '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold', width: '100%' }}
-              >
-                🚪 SALIR
-              </button>
-            )}
+        <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: 10, width: esMovil ? '100%' : 'auto' }}>
+          {mostrarSelectorCat && (
+            <select value={categoriaActiva} onChange={handleCambioCategoria} style={selStyle(esMovil)}>
+              {!(esCT && misCategorias.length > 0) && <option value="Todas">👉 TODAS LAS CATEGORÍAS</option>}
+              {categoriasDisponibles.map((c) => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+            </select>
+          )}
+          {esSuperUser && (
+            <select value={clubActivo} onChange={handleCambioClub} style={{ ...selStyle(esMovil), borderColor: '#c084fc', color: '#c084fc' }}>
+              <option value="">🌍 VISIÓN GLOBAL (TODOS)</option>
+              {listaClubes.map((c) => <option key={c.id} value={c.id}>🏢 {c.nombre}</option>)}
+            </select>
+          )}
+          <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : '#222', color: modoEdicion ? '#000' : '#fff', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>{modoEdicion ? '✅ Guardar' : '⚙️ Editar'}</button>
+          {(esManager || esAdmin || esSuperUser) && clubActivo && (
+            <button onClick={() => setMostrarQR(true)} style={{ background: '#10b981', color: '#000', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>📷 QR</button>
+          )}
         </div>
       </div>
 
-      {cargando ? (
-        <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '50px' }}>CARGANDO DASHBOARD...</div>
-      ) : (
-        <>
-          {modoEdicion && (
-            <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px dashed #444', marginBottom: '20px', animation: 'fadeIn 0.2s' }}>
-              <h3 style={{ margin: '0 0 15px 0', fontSize: '0.9rem', color: '#fff' }}>Agregá/Quitá accesos de tu pantalla principal:</h3>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {widgetsPermitidos.map(w => {
-                  const activo = misWidgetsActivos.includes(w.id);
-                  return (
-                    <button key={w.id} onClick={() => toggleWidget(w.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: activo ? 'rgba(255,255,255,0.1)' : 'transparent', border: `1px solid ${activo ? w.color || 'var(--accent)' : '#333'}`, color: activo ? '#fff' : '#666', padding: '8px 12px', borderRadius: '20px', cursor: 'pointer', transition: '0.2s', fontSize: '0.85rem', fontWeight: activo ? 'bold' : 'normal' }}>
-                      <span>{w.icon}</span> <span>{w.titulo}</span> {activo && <span style={{color: w.color || 'var(--accent)'}}>✓</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(3, 1fr)', 
-            gridAutoRows: esMovil ? '110px' : '160px', 
-            gap: esMovil ? '10px' : '15px', 
-            gridAutoFlow: 'dense' 
-          }}>
-            
-            {misWidgetsActivos.map((widgetId, index) => {
-              const config = widgetsPermitidos.find(w => w.id === widgetId);
-              if (!config) return null;
-              
-              const spanActual = tamanosWidgets[config.id] || config.spanDefecto;
-              const gridConfig = getGridStyle(spanActual);
-              const is1x1 = spanActual === '1x1';
-              
-              const dragEvents = !esMovil && modoEdicion ? {
-                draggable: true,
-                onDragStart: () => dragItem.current = index,
-                onDragEnter: () => dragOverItem.current = index,
-                onDragEnd: handleSort,
-                onDragOver: (e) => e.preventDefault(),
-              } : {};
-
-              const cardBaseStyle = { 
-                ...gridConfig, 
-                position: 'relative', 
-                border: modoEdicion ? '2px dashed #666' : 'none',
-                cursor: modoEdicion && !esMovil ? 'grab' : 'default',
-                opacity: modoEdicion ? 0.9 : 1,
-                overflow: 'hidden'
-              };
-
-              if (config.id === 'w_novedades') {
-                return (
-                  <div key={config.id} className="bento-card custom-scroll" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #facc15', padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: '10px', color: '#facc15', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
-                    {novedadesCT.length === 0 ? (
-                      <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px', fontSize: '0.8rem' }}>Sin novedades recientes.</div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {novedadesCT.map(n => (
-                          <div key={n.id} style={{ background: '#111', borderLeft: '3px solid #facc15', padding: '10px', borderRadius: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#888', marginBottom: '4px' }}>
-                              <strong>{n.perfiles?.nombre_completo || 'Administración'}</strong> <span>{new Date(n.fecha_creacion).toLocaleDateString()}</span>
-                            </div>
-                            <div style={{ fontSize: '0.85rem', color: '#fff', whiteSpace: 'pre-wrap', lineHeight: '1.3' }}>{n.mensaje}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              if (config.id === 'w_vep_anual') {
-                return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #3b82f6', padding: is1x1 ? '8px' : '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#3b82f6', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: is1x1 ? '2px' : '5px', textAlign: 'center' }}>
-                      <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
-                        <div style={{ color: '#10b981', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{vepAnual.v}</div>
-                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>V</div>}
-                      </div>
-                      <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
-                        <div style={{ color: '#f59e0b', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{vepAnual.e}</div>
-                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>E</div>}
-                      </div>
-                      <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
-                        <div style={{ color: '#ef4444', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{vepAnual.d}</div>
-                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.55rem', fontWeight: 'bold' }}>D</div>}
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              if (config.id === 'w_resultados_cat') {
-                const cats = Object.keys(resultadosRecientesCat);
-                return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #8b5cf6', padding: is1x1 ? '8px' : '15px', overflowY: 'auto' }}>
-                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#8b5cf6', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: is1x1 ? '4px' : '10px' }}>
-                      {cats.length > 0 ? cats.map(cat => (
-                        <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {!is1x1 && <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase' }}>{cat}</div>}
-                          {resultadosRecientesCat[cat].slice(0, is1x1 ? 1 : 2).map((d, idx) => {
-                            const colorRes = d.res === 'V' ? '#10b981' : d.res === 'E' ? '#f59e0b' : '#ef4444';
-                            return (
-                              <div key={`${cat}-${idx}`} onClick={() => !modoEdicion && navigate(`/resumen/${d.id}`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: is1x1 ? '4px 6px' : '8px 10px', borderRadius: '6px', border: '1px solid #333', cursor: modoEdicion ? 'grab' : 'pointer' }}>
-                                <div style={{ minWidth: 0 }}>
-                                  {!is1x1 && <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>{d.fecha}</div>}
-                                  <div style={{ fontSize: is1x1 ? '0.65rem' : '0.75rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{is1x1 ? d.rival.substring(0,6) : `vs ${d.rival}`?.toUpperCase()}</div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
-                                  <strong style={{ fontSize: is1x1 ? '0.7rem' : '0.9rem', color: '#fff' }}>{d.gf}-{d.gc}</strong>
-                                  <span style={{ background: colorRes, color: '#000', width: is1x1 ? '16px' : '20px', height: is1x1 ? '16px' : '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontWeight: 900, fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{d.res}</span>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )) : <div style={{ textAlign: 'center', color: '#666', padding: '10px', fontSize:'0.7rem' }}>N/A</div>}
-                    </div>
-                  </div>
-                );
-              }
-
-              if (config.id === 'w_goles_cat') {
-                const totalGF = Object.values(golesPorCat).reduce((acc, cat) => acc + cat.favor, 0);
-                const totalGC = Object.values(golesPorCat).reduce((acc, cat) => acc + cat.contra, 0);
-                const dif = totalGF - totalGC;
-                const difColor = dif > 0 ? '#10b981' : dif < 0 ? '#ef4444' : '#f59e0b';
-                const difSigno = dif > 0 ? '+' : '';
-                
-                const difBg = dif > 0 ? 'rgba(16, 185, 129, 0.1)' : dif < 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)';
-                const difBorder = dif > 0 ? '1px solid rgba(16, 185, 129, 0.3)' : dif < 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)';
-
-                return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #0ea5e9', padding: is1x1 ? '8px' : '15px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#0ea5e9', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>
-                      {config.titulo} {categoriaActiva !== 'Todas' ? `(${categoriaActiva.substring(0,3)})` : ''}
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: is1x1 ? '2px' : '5px', textAlign: 'center' }}>
-                      <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
-                        <div style={{ color: '#10b981', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{totalGF}</div>
-                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.50rem', fontWeight: 'bold' }}>A FAVOR</div>}
-                      </div>
-                      <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
-                        <div style={{ color: '#ef4444', fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{totalGC}</div>
-                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.50rem', fontWeight: 'bold' }}>EN CONTRA</div>}
-                      </div>
-                      <div style={{ background: difBg, border: difBorder, padding: is1x1 ? '2px' : '10px', borderRadius: '6px' }}>
-                        <div style={{ color: difColor, fontSize: is1x1 ? '1rem' : '1.2rem', fontWeight: 900 }}>{difSigno}{dif}</div>
-                        {!is1x1 && <div style={{ color: '#aaa', fontSize: '0.50rem', fontWeight: 'bold' }}>DIFERENCIA</div>}
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              if (config.id === 'w_proximo') {
-                return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid #10b981', padding: is1x1 ? '8px' : '15px' }}>
-                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#10b981', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
-                    {proximoPartido ? (
-                      <div style={{ background: '#111', padding: is1x1 ? '6px' : '10px', borderRadius: '6px', border: '1px solid #333' }}>
-                        <div style={{ display: 'flex', flexDirection: is1x1 ? 'column' : 'row', justifyContent: 'space-between', gap: is1x1 ? '4px' : '0', marginBottom: '4px' }}>
-                          <span style={{ fontSize: is1x1 ? '0.55rem' : '0.65rem', color: '#10b981', fontWeight: 'bold' }}>📅 {proximoPartido.fecha?.split('-').reverse().join('/')}</span>
-                          <span style={{ background: '#222', color: '#fff', padding: '2px 4px', borderRadius: '4px', fontSize: is1x1 ? '0.55rem' : '0.6rem', fontWeight: 800, alignSelf: 'flex-start' }}>{is1x1 ? proximoPartido.competicion.substring(0,8) : proximoPartido.competicion}</span>
-                        </div>
-                        <div style={{ fontSize: is1x1 ? '0.75rem' : '0.85rem', fontWeight: 900, textAlign: 'center', margin: '5px 0', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {proximoPartido.rival?.toUpperCase()}</div>
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '10px', background: '#111', borderRadius: '6px', border: '1px dashed #333', fontSize: '0.7rem' }}>Sin partidos</div>
-                    )}
-                  </div>
-                );
-              }
-
-              if (config.id === 'w_ultimo') {
-                return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: modoEdicion ? cardBaseStyle.borderTop : '2px solid var(--text-dim)', padding: is1x1 ? '8px' : '15px' }}>
-                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: 'var(--text-dim)', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
-                    {ultimoPartido ? (
-                      <div style={{ background: '#111', padding: is1x1 ? '6px' : '10px', borderRadius: '6px', border: '1px solid #333' }}>
-                        <div style={{ display: 'flex', flexDirection: is1x1 ? 'column' : 'row', justifyContent: 'space-between', gap: is1x1 ? '4px' : '0', marginBottom: '4px' }}>
-                          <span style={{ fontSize: is1x1 ? '0.55rem' : '0.65rem', color: 'var(--text-dim)' }}>{ultimoPartido.fecha?.split('-').reverse().join('/')}</span>
-                          <span style={{ background: '#222', color: '#fff', padding: '2px 4px', borderRadius: '4px', fontSize: is1x1 ? '0.55rem' : '0.6rem', fontWeight: 800, alignSelf: 'flex-start' }}>{is1x1 ? ultimoPartido.competicion.substring(0,8) : ultimoPartido.competicion}</span>
-                        </div>
-                        <div style={{ fontSize: is1x1 ? '0.75rem' : '0.85rem', fontWeight: 900, textAlign: 'center', margin: '5px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>vs {ultimoPartido.rival?.toUpperCase()}</div>
-                        {!is1x1 && (
-                          <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
-                            <button 
-                              onClick={() => !modoEdicion && navigate(`/resumen/${ultimoPartido.id}`)} 
-                              className="btn-secondary" 
-                              style={{ flex: 1, fontSize: '0.65rem', padding: '6px', cursor: modoEdicion ? 'grab' : 'pointer' }}
-                            >
-                              RESUMEN
-                            </button>
-                            <button 
-                              onClick={() => !modoEdicion && navigate(`/partido/${ultimoPartido.id}/analisis-video`)} 
-                              style={{ flex: 1, fontSize: '0.65rem', padding: '6px', cursor: modoEdicion ? 'grab' : 'pointer', background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}
-                            >
-                              VIDEO
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '10px', background: '#111', borderRadius: '6px', border: '1px dashed #333', fontSize: '0.7rem' }}>Sin registros</div>
-                    )}
-                  </div>
-                );
-              }
-
-              if (config.id === 'w_stats_base') {
-                return (
-                  <div key={config.id} className="bento-card" {...dragEvents} style={{ ...cardBaseStyle, display: 'flex', flexDirection: 'column', padding: is1x1 ? '8px' : '15px' }}>
-                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div className="stat-label" style={{ marginBottom: is1x1 ? '5px' : '10px', color: '#fff', fontSize: is1x1 ? '0.6rem' : '0.7rem' }}>{config.titulo}</div>
-                    
-                    <div style={{ display: 'flex', flexDirection: is1x1 ? 'column' : 'row', gap: is1x1 ? '4px' : '10px', flex: 1, justifyContent: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: is1x1 ? 'row' : 'column', alignItems: 'center', justifyContent: is1x1 ? 'space-between' : 'center', padding: is1x1 ? '4px 8px' : '10px', background: is1x1 ? 'transparent' : '#111', border: is1x1 ? 'none' : '1px solid #333', borderBottom: is1x1 ? '1px dashed #333' : '1px solid #333', borderRadius: is1x1 ? '0' : '6px', flex: 1 }}>
-                        <div style={{ fontSize: is1x1 ? '1.2rem' : '1.5rem', fontWeight: 900, color: '#fff' }}>{estadisticas.plantel}</div>
-                        <div className="stat-label" style={{ fontSize: '0.55rem', marginTop: is1x1 ? '0' : '5px' }}>JUGADORES</div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: is1x1 ? 'row' : 'column', alignItems: 'center', justifyContent: is1x1 ? 'space-between' : 'center', padding: is1x1 ? '4px 8px' : '10px', background: is1x1 ? 'transparent' : '#111', border: is1x1 ? 'none' : '1px solid #333', borderRadius: is1x1 ? '0' : '6px', flex: 1 }}>
-                        <div style={{ fontSize: is1x1 ? '1.2rem' : '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{estadisticas.jugados}</div>
-                        <div className="stat-label" style={{ fontSize: '0.55rem', marginTop: is1x1 ? '0' : '5px' }}>PARTIDOS</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              if (config.tipo === 'link') {
-                const bgSoft = config.color ? `rgba(${hexToRgb(config.color)}, 0.05)` : 'rgba(255,255,255,0.05)';
-                const isHorizontal = spanActual === '2x1' || spanActual === '3x1';
-
-                return (
-                  <div key={config.id} className="bento-card" {...dragEvents}
-                    style={{ ...cardBaseStyle, textAlign: isHorizontal ? 'left' : 'center', padding: isHorizontal ? '10px 20px' : '10px', border: modoEdicion ? cardBaseStyle.border : `1px solid ${config.color || '#333'}`, background: `linear-gradient(${isHorizontal ? '90deg' : '180deg'}, ${bgSoft} 0%, rgba(0,0,0,0) 100%)`, transition: 'transform 0.2s', display: 'flex', flexDirection: isHorizontal ? 'row' : 'column', justifyContent: 'center', alignItems: 'center', gap: isHorizontal ? '15px' : '0' }} 
-                    onClick={() => !modoEdicion && navigate(config.ruta)}
-                    onMouseOver={(e) => !esMovil && !modoEdicion && (e.currentTarget.style.transform = 'translateY(-5px)')}
-                    onMouseOut={(e) => !esMovil && !modoEdicion && (e.currentTarget.style.transform = 'translateY(0)')}
-                  >
-                    <ControlesEdicion id={config.id} spanActual={spanActual} index={index} />
-                    <div style={{ fontSize: is1x1 ? '2rem' : '2.5rem', marginBottom: isHorizontal ? '0' : '8px' }}>{config.icon}</div>
-                    <div>
-                      <div className="stat-label" style={{ color: config.color || '#fff', fontSize: is1x1 ? '0.7rem' : '0.85rem', lineHeight: '1.1' }}>{config.titulo}</div>
-                      {(!is1x1 || config.desc.length < 15) && <p style={{ color: 'var(--text-dim)', margin: '4px 0 0 0', fontSize: '0.65rem' }}>{config.desc}</p>}
-                    </div>
-                  </div>
-                );
-              }
-              return null;
+      {/* PALETA EDICIÓN */}
+      {modoEdicion && (
+        <div style={{ background: '#111', padding: 15, borderRadius: 8, border: '1px dashed var(--border)', marginBottom: 20, animation: 'fadeIn 0.2s' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem', color: '#fff' }}>Mostrá/ocultá módulos · usá ▲▼ para reordenar</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {widgetsPermitidos.map((m) => {
+              const on = layout.includes(m.id);
+              return <button key={m.id} onClick={() => toggleWidget(m.id)} style={{ background: on ? 'rgba(255,255,255,0.1)' : 'transparent', border: `1px solid ${on ? 'var(--accent)' : '#333'}`, color: on ? '#fff' : '#666', padding: '7px 12px', borderRadius: 20, cursor: 'pointer', fontSize: '0.8rem', fontWeight: on ? 'bold' : 'normal' }}>{m.titulo}{on && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>✓</span>}</button>;
             })}
-
           </div>
+        </div>
+      )}
+
+      {/* GRID */}
+      {cargando ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 50 }}>CARGANDO DASHBOARD...</div> : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(2, 1fr)', gap: esMovil ? 12 : 16, alignItems: 'start' }}>
+            {layout.map((id, index) => { const m = widgetsPermitidos.find((w) => w.id === id); return m ? renderModulo(id, index) : null; })}
+          </div>
+          {layout.length === 0 && <div style={{ textAlign: 'center', padding: 40 }}><p style={{ color: 'var(--text-dim)' }}>No hay módulos activos. Tocá <strong>⚙️ Editar</strong> y prendé los que quieras.</p></div>}
         </>
       )}
 
-{mostrarNovedades && (
-  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
-    <div style={{ background: '#111', border: '1px solid var(--accent)', borderRadius: '8px', padding: '30px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto', position: 'relative', animation: 'fadeIn 0.3s', boxShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
-
-      <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-        <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)' }}>
-          VERSIÓN v0.00202606141931
-        </span>
-        <h2 style={{ color: '#fff', marginTop: '20px', marginBottom: '5px', fontSize: '1.6rem', textTransform: 'uppercase' }}>
-          Control de Disciplina
-        </h2>
-        <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', margin: 0 }}>
-          Nueva pantalla de disciplina del plantel y mejoras en la captura en vivo.
-        </p>
-      </div>
-
-      <div style={{ color: '#ddd', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '30px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '6px', border: '1px solid #222' }}>
-        <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
-          <li>
-            <strong style={{color: 'var(--accent)'}}>Nueva pantalla Disciplina:</strong> Amarillas, rojas y faltas por jugador, filtrables por categoría y torneo. Ranking con columnas ordenables, orden por apellido y PJ calculado desde la plantilla real de cada partido (no desde los eventos).
-          </li>
-
-          <li>
-            <strong style={{color: '#facc15'}}>Alertas de suspensión por amarillas:</strong> Semáforo automático al alcanzar la 5ta, 10ma y 15va amarilla (umbral configurable). Marca a los suspendidos y avisa a quienes están a una tarjeta del corte.
-          </li>
-
-          <li>
-            <strong style={{color: '#ef4444'}}>Tribunal y sanciones de roja:</strong> Carga de las fechas dictadas por el tribunal más las fechas internas del club. Permite saldar la sanción ya cumplida para descontarla del total a cumplir.
-          </li>
-
-          <li>
-            <strong style={{color: '#c084fc'}}>Carga y corrección manual de tarjetas:</strong> Incorporá amarillas o rojas que no quedaron registradas en vivo indicando el partido y torneo. También se puede borrar una tarjeta para corregir conteos.
-          </li>
-
-          <li>
-            <strong style={{color: '#f59e0b'}}>Doble amarilla → roja en el Tracker:</strong> Al cargar la segunda amarilla a un jugador, se convierte automáticamente en roja por doble amonestación, lo expulsa y queda únicamente la roja (ya no acumula tres tarjetas).
-          </li>
-
-          <li>
-            <strong style={{color: '#3b82f6'}}>Tracker adaptativo (PC / tablet / celular):</strong> TomaDatos ahora se ajusta a cada pantalla. El panel de registro queda siempre visible y scrolleable, resolviendo el corte de la parte inferior en tablets.
-          </li>
-
-        </ul>
-      </div>
-
-      <button onClick={cerrarModalNovedades} className="btn-action" style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', fontSize: '1rem', border: 'none', borderRadius: '4px', cursor: 'pointer', textTransform: 'uppercase' }}>
-        CONFIRMAR ACTUALIZACIÓN
-      </button>
-
-    </div>
-  </div>
-)} 
+      {/* MODAL QR */}
       {mostrarQR && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px' }}>
-          <div style={{ background: '#111', border: '1px solid #10b981', borderRadius: '8px', padding: '30px', maxWidth: '400px', width: '100%', textAlign: 'center', position: 'relative', animation: 'fadeIn 0.3s' }}>
-            <h2 style={{ color: '#fff', marginTop: 0, marginBottom: '5px', fontSize: '1.4rem' }}>INGRESO <span style={{ color: '#10b981' }}>RÁPIDO</span></h2>
-            <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: '20px' }}>Imprimí este QR y pegalo en el vestuario para que los jugadores escaneen y entren directo al Kiosco de tu club.</p>
-            
-            <div style={{ background: '#fff', padding: '15px', borderRadius: '8px', display: 'inline-block', marginBottom: '20px' }}>
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(linkKiosco)}`} alt="QR Kiosco" style={{ width: '250px', height: '250px' }} />
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: 20 }}>
+          <div style={{ background: '#111', border: '1px solid #10b981', borderRadius: 8, padding: 30, maxWidth: 400, width: '100%', textAlign: 'center', position: 'relative', animation: 'fadeIn 0.3s' }}>
+            <h2 style={{ color: '#fff', marginTop: 0, marginBottom: 5, fontSize: '1.4rem' }}>INGRESO <span style={{ color: '#10b981' }}>RÁPIDO</span></h2>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 20 }}>Pegá este QR en el vestuario para que entren directo al Kiosco.</p>
+            <div style={{ background: '#fff', padding: 15, borderRadius: 8, display: 'inline-block', marginBottom: 20 }}>
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(linkKiosco)}`} alt="QR" style={{ width: 250, height: 250 }} />
             </div>
-
-            <input type="text" readOnly value={linkKiosco} style={{ width: '100%', padding: '10px', background: '#000', color: '#888', border: '1px solid #333', borderRadius: '4px', fontSize: '0.7rem', textAlign: 'center', marginBottom: '15px' }} />
-            
-            <button onClick={() => setMostrarQR(false)} className="btn-action" style={{ width: '100%', background: '#333', color: '#fff', fontWeight: 900, padding: '12px', fontSize: '0.9rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>CERRAR</button>
+            <input type="text" readOnly value={linkKiosco} style={{ width: '100%', padding: 10, background: '#000', color: '#888', border: '1px solid #333', borderRadius: 4, fontSize: '0.7rem', textAlign: 'center', marginBottom: 15 }} />
+            <button onClick={() => setMostrarQR(false)} className="btn-action" style={{ width: '100%', background: '#333', color: '#fff', fontWeight: 900, padding: 12, border: 'none', borderRadius: 4, cursor: 'pointer' }}>CERRAR</button>
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
-function hexToRgb(hex) {
-  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255,255,255';
-}
+/* ---- estilos sueltos ---- */
+const editBtn = { background: 'rgba(0,0,0,0.85)', color: '#fff', border: '1px solid #555', borderRadius: 4, width: 26, height: 26, cursor: 'pointer', fontSize: '0.7rem' };
+const selStyle = (m) => ({ padding: m ? 12 : '8px 10px', background: '#111', border: '1px solid var(--border)', color: '#fff', borderRadius: 8, outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: m ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' });

@@ -158,11 +158,15 @@ export default function Disciplina() {
     });
   }, [partidos, fCategoria, fTorneo]);
 
-  // PJ real por jugador: en cuántos partidos del filtro figura en la plantilla
-  const pjPorJugador = useMemo(() => {
+  // PJ real por jugador+categoría: en cuántos partidos de cada categoría figura en la plantilla
+  const pjPorJugadorCat = useMemo(() => {
     const m = new Map();
     partidosDelFiltro.forEach(p => {
-      plantillaIds(p).forEach(id => m.set(id, (m.get(id) || 0) + 1));
+      const cat = p.categoria || 'Sin categoría';
+      plantillaIds(p).forEach(id => {
+        const key = `${id}|${cat}`;
+        m.set(key, (m.get(key) || 0) + 1);
+      });
     });
     return m;
   }, [partidosDelFiltro]);
@@ -193,47 +197,58 @@ export default function Disciplina() {
   }, [eventos, mapPar, fCategoria, fTorneo]);
 
   // ----------------------------------------------------------
-  // AGREGADO POR JUGADOR
+  // AGREGADO POR JUGADOR + CATEGORÍA
+  // (las amarillas se acumulan por categoría; la roja es transversal)
   // ----------------------------------------------------------
   const filas = useMemo(() => {
     const acc = new Map();
 
-    const getRow = (id) => {
-      if (!acc.has(id)) {
-        acc.set(id, {
+    const getRow = (id, cat) => {
+      const key = `${id}|${cat}`;
+      if (!acc.has(key)) {
+        acc.set(key, {
+          rowKey: key,
           jugadorId: id,
+          categoria: cat,
           amarillas: 0, rojas: 0, faltas: 0,
           partidosSet: new Set(),
           eventosAmarilla: [], eventosRoja: [],
         });
       }
-      return acc.get(id);
+      return acc.get(key);
     };
 
     eventosFiltrados.forEach(ev => {
       if (!ev.id_jugador) return; // faltas de ventaja / equipo no cuentan a individual
-      const r = getRow(ev.id_jugador);
+      const par = mapPar.get(ev.id_partido);
+      const cat = (par?.categoria) || 'Sin categoría';
+      const r = getRow(ev.id_jugador, cat);
       r.partidosSet.add(ev.id_partido);
       if (ev.accion === ACC.AMARILLA) { r.amarillas++; r.eventosAmarilla.push(ev); }
       else if (ev.accion === ACC.ROJA) { r.rojas++; r.eventosRoja.push(ev); }
       else if (ev.accion === ACC.FALTA || ev.accion === ACC.PENAL_CONTRA) { r.faltas++; }
     });
 
+    // Fechas de roja por jugador, TRANSVERSAL a todas las categorías (descontando cumplidas)
+    const fechasRojaPorJugador = new Map();
+    sanciones.forEach(s => {
+      const total = (s.fechas_tribunal || 0) + (s.fechas_internas || 0);
+      const rest = Math.max(0, total - (s.fechas_cumplidas || 0));
+      fechasRojaPorJugador.set(s.jugador_id, (fechasRojaPorJugador.get(s.jugador_id) || 0) + rest);
+    });
+
     return [...acc.values()].map(r => {
       const j = mapJug.get(r.jugadorId);
-      const pj = pjPorJugador.get(r.jugadorId) || 0; // partidos jugados reales (plantilla)
+      const pj = pjPorJugadorCat.get(`${r.jugadorId}|${r.categoria}`) || 0; // PJ en esa categoría
       const partidosConEvento = r.partidosSet.size;
-      // Suspensiones automáticas por acumulación de amarillas
+      // Acumulación de amarillas POR CATEGORÍA
       const fechasPorAmarillas = Math.floor(r.amarillas / umbral);
       const restanProxima = r.amarillas === 0 ? umbral : umbral - (r.amarillas % umbral || umbral);
       const enUmbralExacto = r.amarillas > 0 && r.amarillas % umbral === 0;
       const alBorde = r.amarillas > 0 && (r.amarillas % umbral) === umbral - 1;
-      // Fechas de roja cargadas desde el tribunal (tabla sanciones), descontando lo ya cumplido
-      const sancRoja = sanciones.filter(s => s.jugador_id === r.jugadorId);
-      const fechasRoja = sancRoja.reduce((a, s) => {
-        const total = (s.fechas_tribunal || 0) + (s.fechas_internas || 0);
-        return a + Math.max(0, total - (s.fechas_cumplidas || 0));
-      }, 0);
+      // Roja: suspensión transversal del jugador (inhabilita en TODAS las categorías)
+      const fechasRojaJugador = fechasRojaPorJugador.get(r.jugadorId) || 0;
+      const tieneRojaActiva = fechasRojaJugador > 0;
       return {
         ...r,
         jugador: j,
@@ -244,8 +259,8 @@ export default function Disciplina() {
         partidosConEvento,
         faltasPorPartido: pj ? (r.faltas / pj) : 0,
         fechasPorAmarillas,
-        fechasRoja,
-        fechasTotales: fechasPorAmarillas + fechasRoja,
+        fechasRojaJugador,
+        tieneRojaActiva,
         restanProxima,
         enUmbralExacto,
         alBorde,
@@ -253,20 +268,21 @@ export default function Disciplina() {
     }).sort((a, b) => {
       const { key, dir } = orden;
       const mult = dir === 'asc' ? 1 : -1;
-      if (key === 'apellido') return a.apellidoKey.localeCompare(b.apellidoKey) * mult;
+      if (key === 'apellido') return (a.apellidoKey.localeCompare(b.apellidoKey) || a.categoria.localeCompare(b.categoria)) * mult;
+      if (key === 'categoria') return (a.categoria.localeCompare(b.categoria) || a.apellidoKey.localeCompare(b.apellidoKey)) * mult;
       if (key === 'dorsal') return ((Number(a.dorsal) || 999) - (Number(b.dorsal) || 999)) * mult;
       if (key === 'amarillas') return (a.amarillas - b.amarillas) * mult;
       if (key === 'rojas') return (a.rojas - b.rojas) * mult;
       if (key === 'faltas') return (a.faltas - b.faltas) * mult;
       if (key === 'pj') return (a.pj - b.pj) * mult;
       if (key === 'fpj') return (a.faltasPorPartido - b.faltasPorPartido) * mult;
-      if (key === 'fechas') return (a.fechasTotales - b.fechasTotales) * mult;
+      if (key === 'fechas') return (a.fechasPorAmarillas - b.fechasPorAmarillas) * mult;
       // 'sancion' (default): más sancionados primero, desempates encadenados
       if (b.rojas !== a.rojas) return b.rojas - a.rojas;
       if (b.amarillas !== a.amarillas) return b.amarillas - a.amarillas;
       return b.faltas - a.faltas;
     });
-  }, [eventosFiltrados, mapJug, umbral, sanciones, orden, pjPorJugador]);
+  }, [eventosFiltrados, mapJug, mapPar, umbral, sanciones, orden, pjPorJugadorCat]);
 
   // ----------------------------------------------------------
   // ALERTAS DE SUSPENSIÓN
@@ -431,18 +447,18 @@ export default function Disciplina() {
       {(alertas.suspendidos.length > 0 || alertas.alBorde.length > 0) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
           {alertas.suspendidos.map(f => (
-            <div key={`s-${f.jugadorId}`} style={alertaStyle('#991b1b', '#ef4444')}>
+            <div key={`s-${f.rowKey}`} style={alertaStyle('#991b1b', '#ef4444')}>
               <span style={{ fontSize: '1.3rem' }}>🚫</span>
               <div>
-                <strong style={{ color: '#fff' }}>{f.nombre}</strong> alcanzó <b style={{ color: '#fca5a5' }}>{f.amarillas} amarillas</b> → SUSPENDIDO 1 fecha por acumulación.
+                <strong style={{ color: '#fff' }}>{f.nombre}</strong> ({f.categoria}) alcanzó <b style={{ color: '#fca5a5' }}>{f.amarillas} amarillas</b> → SUSPENDIDO 1 fecha en {f.categoria}.
               </div>
             </div>
           ))}
           {alertas.alBorde.map(f => (
-            <div key={`b-${f.jugadorId}`} style={alertaStyle('#78350f', '#f59e0b')}>
+            <div key={`b-${f.rowKey}`} style={alertaStyle('#78350f', '#f59e0b')}>
               <span style={{ fontSize: '1.3rem' }}>⚠️</span>
               <div>
-                <strong style={{ color: '#fff' }}>{f.nombre}</strong> tiene <b style={{ color: '#fcd34d' }}>{f.amarillas} amarillas</b> — a <b>1 de la suspensión</b> (próximo corte en {Math.ceil((f.amarillas + 1) / umbral) * umbral}).
+                <strong style={{ color: '#fff' }}>{f.nombre}</strong> ({f.categoria}) tiene <b style={{ color: '#fcd34d' }}>{f.amarillas} amarillas</b> en {f.categoria} — a <b>1 de la suspensión</b> (próximo corte en {Math.ceil((f.amarillas + 1) / umbral) * umbral}).
               </div>
             </div>
           ))}
@@ -473,34 +489,39 @@ export default function Disciplina() {
                 <tr style={{ color: 'var(--text-dim)', textAlign: 'left', fontSize: '0.7rem', textTransform: 'uppercase' }}>
                   <Th label="#" k="dorsal" orden={orden} onSort={cambiarOrden} />
                   <Th label="Jugador" k="apellido" orden={orden} onSort={cambiarOrden} />
+                  <Th label="Cat." k="categoria" orden={orden} onSort={cambiarOrden} />
                   <Th label="🟨" k="amarillas" orden={orden} onSort={cambiarOrden} center />
                   <Th label="🟥" k="rojas" orden={orden} onSort={cambiarOrden} center />
                   <Th label="Faltas" k="faltas" orden={orden} onSort={cambiarOrden} center />
                   <Th label="PJ" k="pj" orden={orden} onSort={cambiarOrden} center />
                   <Th label="F/PJ" k="fpj" orden={orden} onSort={cambiarOrden} center />
-                  <Th label="Fechas susp." k="fechas" orden={orden} onSort={cambiarOrden} center />
+                  <Th label="Susp. 🟨" k="fechas" orden={orden} onSort={cambiarOrden} center />
                   <th style={thCenter}>Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {filas.map(f => (
-                  <tr key={f.jugadorId}
+                  <tr key={f.rowKey}
                     onClick={() => setJugadorDetalle(f)}
                     style={{ borderTop: '1px solid var(--border)', cursor: 'pointer', background: f.enUmbralExacto ? 'rgba(239,68,68,0.06)' : f.alBorde ? 'rgba(245,158,11,0.05)' : 'transparent' }}>
                     <td style={{ ...tdStyle, color: '#555', fontFamily: 'JetBrains Mono, monospace' }}>{f.dorsal}</td>
                     <td style={{ ...tdStyle, color: '#fff', fontWeight: 700 }}>{f.nombre}</td>
+                    <td style={{ ...tdStyle, color: 'var(--text-dim)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{f.categoria}</td>
                     <td style={{ ...tdNum, color: f.amarillas ? '#facc15' : '#444' }}>{f.amarillas}</td>
                     <td style={{ ...tdNum, color: f.rojas ? '#ef4444' : '#444' }}>{f.rojas}</td>
                     <td style={{ ...tdNum, color: '#ec4899' }}>{f.faltas}</td>
                     <td style={{ ...tdNum, color: 'var(--text-dim)' }}>{f.pj}</td>
                     <td style={{ ...tdNum, color: 'var(--text-dim)' }}>{f.faltasPorPartido.toFixed(1)}</td>
-                    <td style={{ ...tdNum, color: f.fechasTotales ? '#fff' : '#444', fontWeight: 900 }}>{f.fechasTotales}</td>
+                    <td style={{ ...tdNum, color: f.fechasPorAmarillas ? '#fff' : '#444', fontWeight: 900 }}>{f.fechasPorAmarillas}</td>
                     <td style={tdCenter}>
-                      {f.enUmbralExacto
-                        ? <Badge color="#ef4444" texto="SUSPENDIDO" />
-                        : f.alBorde
-                          ? <Badge color="#f59e0b" texto="AL BORDE" />
-                          : <span style={{ color: '#444', fontSize: '0.7rem' }}>—</span>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                        {f.enUmbralExacto
+                          ? <Badge color="#ef4444" texto="SUSPENDIDO" />
+                          : f.alBorde
+                            ? <Badge color="#f59e0b" texto="AL BORDE" />
+                            : (!f.tieneRojaActiva && <span style={{ color: '#444', fontSize: '0.7rem' }}>—</span>)}
+                        {f.tieneRojaActiva && <Badge color="#ef4444" texto="🟥 INHAB. TODAS" />}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -512,8 +533,11 @@ export default function Disciplina() {
 
       {/* ROJAS / TRIBUNAL */}
       <div style={{ ...cardStyle, marginTop: 18 }}>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 900, letterSpacing: 1, marginBottom: 12 }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 900, letterSpacing: 1, marginBottom: 4 }}>
           ROJAS Y TRIBUNAL DE DISCIPLINA
+        </div>
+        <div style={{ fontSize: '0.72rem', color: '#777', marginBottom: 12 }}>
+          La suspensión por roja inhabilita al jugador en <b>todas las categorías</b>, sin importar dónde recibió la tarjeta.
         </div>
         {rojasDetectadas.length === 0 ? (
           <div style={{ color: '#666', textAlign: 'center', padding: 24, fontSize: '0.85rem' }}>
@@ -573,18 +597,21 @@ export default function Disciplina() {
       {/* DETALLE JUGADOR */}
       {jugadorDetalle && (
         <Overlay onClose={() => setJugadorDetalle(null)}>
-          <h2 style={{ color: '#fff', margin: '0 0 4px' }}>{jugadorDetalle.nombre}</h2>
+          <h2 style={{ color: '#fff', margin: '0 0 4px' }}>{jugadorDetalle.nombre} <span style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontWeight: 400 }}>· {jugadorDetalle.categoria}</span></h2>
           <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 16 }}>
             {jugadorDetalle.amarillas} 🟨 · {jugadorDetalle.rojas} 🟥 · {jugadorDetalle.faltas} faltas en {jugadorDetalle.pj} PJ
           </div>
-          {jugadorDetalle.fechasTotales > 0 && (
-            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid #991b1b', borderRadius: 8, padding: 12, marginBottom: 16, color: '#fca5a5', fontSize: '0.85rem' }}>
-              Suspensión acumulada: <b>{jugadorDetalle.fechasTotales} fecha(s)</b>
-              {jugadorDetalle.fechasPorAmarillas > 0 && ` · ${jugadorDetalle.fechasPorAmarillas} por amarillas`}
-              {jugadorDetalle.fechasRoja > 0 && ` · ${jugadorDetalle.fechasRoja} por roja`}
+          {(jugadorDetalle.fechasPorAmarillas > 0 || jugadorDetalle.tieneRojaActiva) && (
+            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid #991b1b', borderRadius: 8, padding: 12, marginBottom: 16, color: '#fca5a5', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {jugadorDetalle.fechasPorAmarillas > 0 && (
+                <div>Por amarillas: <b>{jugadorDetalle.fechasPorAmarillas} fecha(s)</b> — solo afecta a <b>{jugadorDetalle.categoria}</b>.</div>
+              )}
+              {jugadorDetalle.tieneRojaActiva && (
+                <div>Por roja: <b>{jugadorDetalle.fechasRojaJugador} fecha(s)</b> — inhabilita en <b>todas las categorías</b>.</div>
+              )}
             </div>
           )}
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 900, marginBottom: 8 }}>HISTORIAL DE TARJETAS</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 900, marginBottom: 8 }}>HISTORIAL DE TARJETAS · {jugadorDetalle.categoria}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[...jugadorDetalle.eventosAmarilla, ...jugadorDetalle.eventosRoja]
               .sort((a, b) => (a.minuto || 0) - (b.minuto || 0))
