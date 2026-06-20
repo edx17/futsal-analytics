@@ -164,6 +164,11 @@ function AppLayout() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+// Minimiza la barra lateral al entrar al dashboard, para que el resumen luzca mejor.
+useEffect(() => {
+  if (!esMovil && location.pathname === '/inicio') setSidebarAbierta(false);
+}, [location.pathname, esMovil]);
+
   useEffect(() => {
     if (esMovil) {
       setDrawerAbierto(false);

@@ -230,8 +230,16 @@ export default function Disciplina() {
     });
 
     // Fechas de roja por jugador, TRANSVERSAL a todas las categorías (descontando cumplidas)
+    // Fechas de roja por jugador, TRANSVERSAL (solo sanciones de roja, NO las de acumulación)
     const fechasRojaPorJugador = new Map();
+    // Suspensiones de acumulación ya dadas de baja, por jugador+categoría
+    const bajasAcumPorJugCat = new Map();
     sanciones.forEach(s => {
+      if (s.tipo === 'acumulacion') {
+        const key = `${s.jugador_id}|${s.categoria || 'Sin categoría'}`;
+        bajasAcumPorJugCat.set(key, (bajasAcumPorJugCat.get(key) || 0) + 1);
+        return;
+      }
       const total = (s.fechas_tribunal || 0) + (s.fechas_internas || 0);
       const rest = Math.max(0, total - (s.fechas_cumplidas || 0));
       fechasRojaPorJugador.set(s.jugador_id, (fechasRojaPorJugador.get(s.jugador_id) || 0) + rest);
@@ -242,9 +250,11 @@ export default function Disciplina() {
       const pj = pjPorJugadorCat.get(`${r.jugadorId}|${r.categoria}`) || 0; // PJ en esa categoría
       const partidosConEvento = r.partidosSet.size;
       // Acumulación de amarillas POR CATEGORÍA
-      const fechasPorAmarillas = Math.floor(r.amarillas / umbral);
+      const suspGanadas = Math.floor(r.amarillas / umbral);       // fechas que otorgó la acumulación
+      const suspCumplidas = bajasAcumPorJugCat.get(`${r.jugadorId}|${r.categoria}`) || 0; // dadas de baja
+      const suspPendientes = Math.max(0, suspGanadas - suspCumplidas);
       const restanProxima = r.amarillas === 0 ? umbral : umbral - (r.amarillas % umbral || umbral);
-      const enUmbralExacto = r.amarillas > 0 && r.amarillas % umbral === 0;
+      const suspendidoActivo = suspPendientes > 0;
       const alBorde = r.amarillas > 0 && (r.amarillas % umbral) === umbral - 1;
       // Roja: suspensión transversal del jugador (inhabilita en TODAS las categorías)
       const fechasRojaJugador = fechasRojaPorJugador.get(r.jugadorId) || 0;
@@ -258,11 +268,13 @@ export default function Disciplina() {
         pj,
         partidosConEvento,
         faltasPorPartido: pj ? (r.faltas / pj) : 0,
-        fechasPorAmarillas,
+        suspGanadas,
+        suspCumplidas,
+        suspPendientes,
+        suspendidoActivo,
         fechasRojaJugador,
         tieneRojaActiva,
         restanProxima,
-        enUmbralExacto,
         alBorde,
       };
     }).sort((a, b) => {
@@ -276,7 +288,7 @@ export default function Disciplina() {
       if (key === 'faltas') return (a.faltas - b.faltas) * mult;
       if (key === 'pj') return (a.pj - b.pj) * mult;
       if (key === 'fpj') return (a.faltasPorPartido - b.faltasPorPartido) * mult;
-      if (key === 'fechas') return (a.fechasPorAmarillas - b.fechasPorAmarillas) * mult;
+      if (key === 'fechas') return (a.suspPendientes - b.suspPendientes) * mult;
       // 'sancion' (default): más sancionados primero, desempates encadenados
       if (b.rojas !== a.rojas) return b.rojas - a.rojas;
       if (b.amarillas !== a.amarillas) return b.amarillas - a.amarillas;
@@ -288,8 +300,8 @@ export default function Disciplina() {
   // ALERTAS DE SUSPENSIÓN
   // ----------------------------------------------------------
   const alertas = useMemo(() => {
-    const suspendidos = filas.filter(f => f.enUmbralExacto);
-    const alBorde = filas.filter(f => f.alBorde && !f.enUmbralExacto);
+    const suspendidos = filas.filter(f => f.suspendidoActivo);
+    const alBorde = filas.filter(f => f.alBorde && !f.suspendidoActivo);
     return { suspendidos, alBorde };
   }, [filas]);
 
@@ -355,7 +367,7 @@ export default function Disciplina() {
     }
   };
 
-  // Marca la sanción como cumplida: pone las fechas cumplidas al total → restantes 0
+  // Marca la sanción de roja como cumplida por completo (restantes 0)
   const saldarSancion = async (sancion) => {
     const total = (sancion.fechas_tribunal || 0) + (sancion.fechas_internas || 0);
     const { error } = await supabase.from('disciplina_sanciones')
@@ -364,9 +376,50 @@ export default function Disciplina() {
     if (!error) cargarTodo();
   };
 
+  // Suma o resta una fecha cumplida a una sanción de roja (clamp 0..total)
+  const ajustarCumplidasRoja = async (sancion, delta) => {
+    const total = (sancion.fechas_tribunal || 0) + (sancion.fechas_internas || 0);
+    const nuevas = Math.max(0, Math.min(total, (sancion.fechas_cumplidas || 0) + delta));
+    const estado = nuevas === 0 ? 'pendiente' : (nuevas >= total ? 'cumplida' : 'cumpliendo');
+    const { error } = await supabase.from('disciplina_sanciones')
+      .update({ fechas_cumplidas: nuevas, estado })
+      .eq('id', sancion.id);
+    if (!error) cargarTodo();
+  };
+
   // Borra el registro de sanción por completo
   const eliminarSancion = async (sancion) => {
     const { error } = await supabase.from('disciplina_sanciones').delete().eq('id', sancion.id);
+    if (!error) cargarTodo();
+  };
+
+  // Da de baja UNA fecha de suspensión por acumulación de amarillas (la materializa como cumplida)
+  const darDeBajaAmarillas = async (fila) => {
+    const nivel = (fila.suspCumplidas + 1) * umbral; // corte: 5, 10, 15...
+    const payload = {
+      club_id: clubId,
+      jugador_id: fila.jugadorId,
+      tipo: 'acumulacion',
+      categoria: fila.categoria,
+      nivel,
+      torneo_id: fTorneo || null,
+      fechas_tribunal: 1,
+      fechas_internas: 0,
+      fechas_cumplidas: 1,
+      estado: 'cumplida',
+      motivo: `Acumulación ${nivel} amarillas · ${fila.categoria}`,
+    };
+    const { error } = await supabase.from('disciplina_sanciones').insert([payload]);
+    if (!error) cargarTodo();
+  };
+
+  // Revierte la última baja de acumulación de amarillas de ese jugador+categoría
+  const revertirBajaAmarillas = async (fila) => {
+    const candidatas = sanciones
+      .filter(s => s.tipo === 'acumulacion' && s.jugador_id === fila.jugadorId && (s.categoria || 'Sin categoría') === fila.categoria)
+      .sort((a, b) => (b.nivel || 0) - (a.nivel || 0));
+    if (candidatas.length === 0) return;
+    const { error } = await supabase.from('disciplina_sanciones').delete().eq('id', candidatas[0].id);
     if (!error) cargarTodo();
   };
 
@@ -503,7 +556,7 @@ export default function Disciplina() {
                 {filas.map(f => (
                   <tr key={f.rowKey}
                     onClick={() => setJugadorDetalle(f)}
-                    style={{ borderTop: '1px solid var(--border)', cursor: 'pointer', background: f.enUmbralExacto ? 'rgba(239,68,68,0.06)' : f.alBorde ? 'rgba(245,158,11,0.05)' : 'transparent' }}>
+                    style={{ borderTop: '1px solid var(--border)', cursor: 'pointer', background: f.suspendidoActivo ? 'rgba(239,68,68,0.06)' : f.alBorde ? 'rgba(245,158,11,0.05)' : 'transparent' }}>
                     <td style={{ ...tdStyle, color: '#555', fontFamily: 'JetBrains Mono, monospace' }}>{f.dorsal}</td>
                     <td style={{ ...tdStyle, color: '#fff', fontWeight: 700 }}>{f.nombre}</td>
                     <td style={{ ...tdStyle, color: 'var(--text-dim)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{f.categoria}</td>
@@ -512,15 +565,17 @@ export default function Disciplina() {
                     <td style={{ ...tdNum, color: '#ec4899' }}>{f.faltas}</td>
                     <td style={{ ...tdNum, color: 'var(--text-dim)' }}>{f.pj}</td>
                     <td style={{ ...tdNum, color: 'var(--text-dim)' }}>{f.faltasPorPartido.toFixed(1)}</td>
-                    <td style={{ ...tdNum, color: f.fechasPorAmarillas ? '#fff' : '#444', fontWeight: 900 }}>{f.fechasPorAmarillas}</td>
+                    <td style={{ ...tdNum, color: f.suspPendientes ? '#fff' : '#444', fontWeight: 900 }}>
+                      {f.suspPendientes}{f.suspCumplidas > 0 ? <span style={{ color: '#555', fontWeight: 400, fontSize: '0.7rem' }}> /{f.suspGanadas}</span> : ''}
+                    </td>
                     <td style={tdCenter}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-                        {f.enUmbralExacto
+                        {f.suspendidoActivo
                           ? <Badge color="#ef4444" texto="SUSPENDIDO" />
                           : f.alBorde
                             ? <Badge color="#f59e0b" texto="AL BORDE" />
                             : (!f.tieneRojaActiva && <span style={{ color: '#444', fontSize: '0.7rem' }}>—</span>)}
-                        {f.tieneRojaActiva && <Badge color="#ef4444" texto="🟥 INHAB. TODAS" />}
+                        {f.tieneRojaActiva && <Badge color="#ef4444" texto={`🟥 INHAB. ${f.fechasRojaJugador}f`} />}
                       </div>
                     </td>
                   </tr>
@@ -558,13 +613,15 @@ export default function Disciplina() {
                       vs {r.partido?.rival || '—'} · {r.partido?.fecha || ''} {r.evento?.minuto != null ? `· min ${r.evento.minuto}` : ''}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {r.sancion ? (
                       <div style={{ textAlign: 'right' }}>
                         {saldada ? (
                           <div style={{ color: 'var(--accent)', fontWeight: 900, fontSize: '0.8rem' }}>✓ CUMPLIDA</div>
                         ) : (
-                          <div style={{ color: '#fff', fontWeight: 900, fontFamily: 'JetBrains Mono, monospace' }}>{restantes} fecha{restantes !== 1 ? 's' : ''}</div>
+                          <div style={{ color: '#fff', fontWeight: 900, fontSize: '0.8rem' }}>
+                            Sanción: {total} · Cumplido: {cumplidas} · <span style={{ color: '#fca5a5' }}>restan {restantes}</span>
+                          </div>
                         )}
                         <div style={{ color: '#666', fontSize: '0.65rem' }}>
                           Trib. {r.sancion.fechas_tribunal} + Int. {r.sancion.fechas_internas}
@@ -573,12 +630,23 @@ export default function Disciplina() {
                     ) : (
                       <span style={{ color: '#f59e0b', fontSize: '0.7rem', fontWeight: 700 }}>SIN CARGAR</span>
                     )}
+
+                    {/* Descuento fecha a fecha */}
+                    {r.sancion && total > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <button onClick={() => ajustarCumplidasRoja(r.sancion, -1)} disabled={cumplidas <= 0}
+                          style={{ ...btnMini, padding: '6px 10px', opacity: cumplidas <= 0 ? 0.4 : 1 }} title="Quitar una fecha cumplida">−</button>
+                        <button onClick={() => ajustarCumplidasRoja(r.sancion, +1)} disabled={restantes <= 0}
+                          style={{ ...btnMini, padding: '6px 10px', borderColor: 'var(--accent)', color: 'var(--accent)', opacity: restantes <= 0 ? 0.4 : 1 }} title="Marcar una fecha como cumplida">+ fecha</button>
+                      </div>
+                    )}
+
                     <button onClick={() => setModalRoja(r)} style={btnMini}>
                       {r.sancion ? 'Editar' : 'Cargar fechas'}
                     </button>
-                    {r.sancion && !saldada && (
-                      <button onClick={() => saldarSancion(r.sancion)} style={{ ...btnMini, borderColor: 'var(--accent)', color: 'var(--accent)' }} title="Ya cumplió la sanción">
-                        ✓ Saldar
+                    {r.sancion && !saldada && total > 0 && (
+                      <button onClick={() => saldarSancion(r.sancion)} style={{ ...btnMini, borderColor: 'var(--accent)', color: 'var(--accent)' }} title="Marcar toda la sanción como cumplida">
+                        ✓ Saldar todo
                       </button>
                     )}
                     {r.sancion && (
@@ -601,13 +669,28 @@ export default function Disciplina() {
           <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 16 }}>
             {jugadorDetalle.amarillas} 🟨 · {jugadorDetalle.rojas} 🟥 · {jugadorDetalle.faltas} faltas en {jugadorDetalle.pj} PJ
           </div>
-          {(jugadorDetalle.fechasPorAmarillas > 0 || jugadorDetalle.tieneRojaActiva) && (
-            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid #991b1b', borderRadius: 8, padding: 12, marginBottom: 16, color: '#fca5a5', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {jugadorDetalle.fechasPorAmarillas > 0 && (
-                <div>Por amarillas: <b>{jugadorDetalle.fechasPorAmarillas} fecha(s)</b> — solo afecta a <b>{jugadorDetalle.categoria}</b>.</div>
+          {(jugadorDetalle.suspGanadas > 0 || jugadorDetalle.tieneRojaActiva) && (
+            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid #991b1b', borderRadius: 8, padding: 12, marginBottom: 16, color: '#fca5a5', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {jugadorDetalle.suspGanadas > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div>
+                    Por amarillas en <b>{jugadorDetalle.categoria}</b>: Sanción {jugadorDetalle.suspGanadas} · Cumplido {jugadorDetalle.suspCumplidas} · <b style={{ color: jugadorDetalle.suspPendientes ? '#fca5a5' : 'var(--accent)' }}>restan {jugadorDetalle.suspPendientes}</b>
+                    <div style={{ color: '#977', fontSize: '0.7rem' }}>Solo afecta a esta categoría.</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {jugadorDetalle.suspCumplidas > 0 && (
+                      <button onClick={() => revertirBajaAmarillas(jugadorDetalle)} style={{ ...btnMini, padding: '6px 10px' }} title="Revertir la última baja">↶</button>
+                    )}
+                    {jugadorDetalle.suspPendientes > 0 && (
+                      <button onClick={() => darDeBajaAmarillas(jugadorDetalle)} style={{ ...btnMini, borderColor: 'var(--accent)', color: 'var(--accent)' }} title="Cumplió una fecha de la acumulación">✓ Dar de baja 1 fecha</button>
+                    )}
+                  </div>
+                </div>
               )}
               {jugadorDetalle.tieneRojaActiva && (
-                <div>Por roja: <b>{jugadorDetalle.fechasRojaJugador} fecha(s)</b> — inhabilita en <b>todas las categorías</b>.</div>
+                <div style={{ borderTop: jugadorDetalle.suspGanadas > 0 ? '1px solid #5a1a1a' : 'none', paddingTop: jugadorDetalle.suspGanadas > 0 ? 8 : 0 }}>
+                  Por roja: <b>{jugadorDetalle.fechasRojaJugador} fecha(s)</b> pendientes — inhabilita en <b>todas las categorías</b>. <span style={{ color: '#977' }}>(Se descuenta desde el panel de Rojas.)</span>
+                </div>
               )}
             </div>
           )}

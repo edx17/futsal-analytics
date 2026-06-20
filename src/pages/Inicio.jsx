@@ -30,18 +30,20 @@ const enRojoWell = (w) =>
    MÓDULOS (rol-gateado) + DEFAULTS curados + ACCESOS
 ============================================================================ */
 const MODULOS = [
-  { id: 'm_estado',        titulo: 'Estado del equipo',    roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'm_triage',        titulo: 'Requiere tu atención', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'm_proximo',       titulo: 'Próximo partido',      roles: ['superuser', 'manager', 'ct'] },
-  { id: 'm_forma',         titulo: 'Forma y xG',           roles: ['superuser', 'manager', 'ct'] },
-  { id: 'm_protagonistas', titulo: 'Figuras',              roles: ['superuser', 'manager', 'ct'] },
-  { id: 'm_pulso',         titulo: 'Pulso del plantel',    roles: ['superuser', 'manager', 'ct'] },
-  { id: 'm_ultimo',        titulo: 'Último resultado',     roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'm_novedades',     titulo: 'Tablón',               roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'm_accesos',       titulo: 'Accesos rápidos',      roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'm_jug_wellness',  titulo: 'Mi wellness',          roles: ['jugador'] },
-  { id: 'm_jug_perfil',    titulo: 'Mi perfil',            roles: ['jugador'] },
+  { id: 'm_estado',        titulo: 'Estado del equipo',    span: 3, roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_triage',        titulo: 'Requiere tu atención', span: 2, roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_proximo',       titulo: 'Próximo partido',      span: 2, roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_forma',         titulo: 'Forma y xG',           span: 1, roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_protagonistas', titulo: 'Figuras',              span: 1, roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_pulso',         titulo: 'Pulso del plantel',    span: 1, roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_ultimo',        titulo: 'Último resultado',     span: 1, roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_novedades',     titulo: 'Tablón',               span: 2, roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_accesos',       titulo: 'Accesos rápidos',      span: 3, roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_jug_wellness',  titulo: 'Mi wellness',          span: 2, roles: ['jugador'] },
+  { id: 'm_jug_perfil',    titulo: 'Mi perfil',            span: 1, roles: ['jugador'] },
 ];
+
+const SPAN_DEF = Object.fromEntries(MODULOS.map((m) => [m.id, m.span || 1]));
 
 const DEFAULTS = {
   ct:        ['m_estado', 'm_triage', 'm_proximo', 'm_forma', 'm_protagonistas', 'm_pulso', 'm_ultimo', 'm_novedades', 'm_accesos'],
@@ -215,12 +217,6 @@ export default function Inicio() {
     return () => window.removeEventListener('resize', h);
   }, []);
 
-  /* ---- Pedimos al layout colapsar la barra lateral mientras se ve el dashboard ---- */
-  useEffect(() => {
-    localStorage.setItem('sidebar_collapsed', 'true');
-    window.dispatchEvent(new CustomEvent('vc:sidebar', { detail: { collapsed: true } }));
-  }, []);
-
   const rol = (perfil?.rol || 'jugador').toLowerCase();
   const esSuperUser = rol === 'superuser';
   const esAdmin = rol === 'admin';
@@ -287,6 +283,9 @@ export default function Inicio() {
   const guardarLayout = (arr) => localStorage.setItem(`dash_v3_${idRef}`, JSON.stringify(arr));
   const toggleWidget = (id) => setLayout((prev) => { const n = prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]; guardarLayout(n); return n; });
   const mover = (i, dir) => setLayout((prev) => { const n = [...prev]; const j = dir === 'up' ? i - 1 : i + 1; if (j < 0 || j >= n.length) return prev; [n[i], n[j]] = [n[j], n[i]]; guardarLayout(n); return n; });
+
+  const [tamanos, setTamanos] = useState(() => { const g = localStorage.getItem(`dash_sizes_v3_${idRef}`); return g ? JSON.parse(g) : {}; });
+  const cambiarTamano = (id, n) => setTamanos((prev) => { const x = { ...prev, [id]: n }; localStorage.setItem(`dash_sizes_v3_${idRef}`, JSON.stringify(x)); return x; });
 
   /* ---- Lista de clubes (superuser) ---- */
   useEffect(() => {
@@ -370,8 +369,8 @@ export default function Inicio() {
           setUltAnalisis(analizarUltimo(evs || [], jugadores));
         } else setUltAnalisis({ xgPropio: 0, xgRival: 0, ranking: [] });
 
-        /* ===== DISCIPLINA (misma lógica que pantalla Disciplina) ===== */
-        const catDePartido = {}; (rMapPar.data || []).forEach((p) => { catDePartido[p.id] = p.categoria; });
+      /* ===== DISCIPLINA (misma lógica que pantalla Disciplina) ===== */
+        const catDePartido = {}; (rMapPar.data || []).forEach((p) => { catDePartido[p.id] = p.categoria || 'Sin categoría'; });
         const nombreJug = (id) => { const j = jugadores.find((x) => String(x.id) === String(id)); return j ? (j.apellido || j.nombre) : 'Jugador'; };
         const jugIdsCat = new Set(jugadores.map((j) => j.id));
 
@@ -379,16 +378,27 @@ export default function Inicio() {
           .select('id_jugador, accion, id_partido').eq('club_id', club).eq('equipo', 'Propio')
           .in('accion', ['Tarjeta Amarilla', 'Tarjeta Roja']);
 
-        const amarillas = {};
+        // Amarillas por jugador + categoría (la acumulación corre por categoría)
+        const amarillasCat = {}; // key `${jid}|${cat}` => n
         (tarjetas || []).forEach((t) => {
-          if (!t.id_jugador) return;
-          if (catEq && catDePartido[t.id_partido] !== categoriaActiva) return;
-          if (t.accion === 'Tarjeta Amarilla') amarillas[t.id_jugador] = (amarillas[t.id_jugador] || 0) + 1;
+          if (!t.id_jugador || t.accion !== 'Tarjeta Amarilla') return;
+          const cat = catDePartido[t.id_partido] || 'Sin categoría';
+          if (catEq && cat !== categoriaActiva) return;
+          const key = `${t.id_jugador}|${cat}`;
+          amarillasCat[key] = (amarillasCat[key] || 0) + 1;
         });
 
         const { data: sanc } = await supabase.from('disciplina_sanciones').select('*').eq('club_id', club);
+        // Bajas de acumulación ya cumplidas (tipo='acumulacion'), por jugador + categoría
+        const bajasAcum = {}; // key `${jid}|${cat}` => n
+        // Fechas de roja pendientes, TRANSVERSALES (NO incluye las de acumulación)
         const fechasRoja = {};
         (sanc || []).forEach((s) => {
+          if (s.tipo === 'acumulacion') {
+            const key = `${s.jugador_id}|${s.categoria || 'Sin categoría'}`;
+            bajasAcum[key] = (bajasAcum[key] || 0) + 1;
+            return;
+          }
           if (catEq && !jugIdsCat.has(s.jugador_id)) return;
           const tot = (s.fechas_tribunal || 0) + (s.fechas_internas || 0);
           fechasRoja[s.jugador_id] = (fechasRoja[s.jugador_id] || 0) + Math.max(0, tot - (s.fechas_cumplidas || 0));
@@ -396,9 +406,18 @@ export default function Inicio() {
 
         const alertas = [];
         const suspendidosIds = new Set();
-        Object.entries(amarillas).forEach(([jid, n]) => {
-          if (n > 0 && n % UMBRAL_AMARILLAS === 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: '🟥', titulo: `${nombreJug(jid)}: suspendido por amarillas`, sub: `${n}ª amarilla (cada ${UMBRAL_AMARILLAS} = 1 fecha)`, ruta: '/disciplina' }); }
-          else if (n % UMBRAL_AMARILLAS === UMBRAL_AMARILLAS - 1) alertas.push({ nivel: 'warning', ico: '🟨', titulo: `${nombreJug(jid)}, a una del corte`, sub: `${n} amarillas acumuladas`, ruta: '/disciplina' });
+        // Suspensión por acumulación de amarillas: ganadas − dadas de baja, POR CATEGORÍA
+        Object.entries(amarillasCat).forEach(([key, n]) => {
+          const [jid, cat] = key.split('|');
+          const ganadas = Math.floor(n / UMBRAL_AMARILLAS);
+          const cumplidas = bajasAcum[key] || 0;
+          const pendientes = Math.max(0, ganadas - cumplidas);
+          if (pendientes > 0) {
+            suspendidosIds.add(jid);
+            alertas.push({ nivel: 'danger', ico: '🟥', titulo: `${nombreJug(jid)}: suspendido por amarillas`, sub: `${n} amarillas en ${cat} · ${pendientes} fecha${pendientes > 1 ? 's' : ''} pendiente${pendientes > 1 ? 's' : ''}`, ruta: '/disciplina' });
+          } else if (n % UMBRAL_AMARILLAS === UMBRAL_AMARILLAS - 1) {
+            alertas.push({ nivel: 'warning', ico: '🟨', titulo: `${nombreJug(jid)}, a una del corte`, sub: `${n} amarillas en ${cat}`, ruta: '/disciplina' });
+          }
         });
         Object.entries(fechasRoja).forEach(([jid, f]) => { if (f > 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: '⛔', titulo: `${nombreJug(jid)}: ${f} fecha${f > 1 ? 's' : ''} de sanción`, sub: 'Tribunal de disciplina', ruta: '/disciplina' }); } });
 
@@ -462,21 +481,27 @@ export default function Inicio() {
   /* ========================================================================
      SUB-COMPONENTES DE RENDER
   ======================================================================== */
-  const Card = ({ children, full, accent, index, scroll }) => (
-    <div className="bento-card" style={{
-      gridColumn: esMovil ? '1 / -1' : (full ? '1 / -1' : 'auto'), position: 'relative',
-      background: 'var(--panel)', border: '1px solid var(--border)', borderTop: accent ? `2px solid ${accent}` : '1px solid var(--border)',
-      borderRadius: 12, padding: 16, overflow: scroll ? 'auto' : 'hidden', maxHeight: scroll ? 300 : 'none', display: 'flex', flexDirection: 'column',
-    }}>
-      {modoEdicion && (
-        <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4, zIndex: 5 }}>
-          <button onClick={() => mover(index, 'up')} style={editBtn}>▲</button>
-          <button onClick={() => mover(index, 'down')} style={editBtn}>▼</button>
-        </div>
-      )}
-      {children}
-    </div>
-  );
+  const Card = ({ children, id, accent, index, scroll }) => {
+    const span = esMovil ? 3 : Math.min(3, tamanos[id] || SPAN_DEF[id] || 1);
+    return (
+      <div className="bento-card" style={{
+        gridColumn: esMovil ? '1 / -1' : `span ${span}`, position: 'relative',
+        background: 'var(--panel)', border: '1px solid var(--border)', borderTop: accent ? `2px solid ${accent}` : '1px solid var(--border)',
+        borderRadius: 12, padding: 16, overflow: scroll ? 'auto' : 'hidden', maxHeight: scroll ? 320 : 'none', display: 'flex', flexDirection: 'column',
+      }}>
+        {modoEdicion && (
+          <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 4, zIndex: 5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {[1, 2, 3].map((n) => (
+              <button key={n} onClick={() => cambiarTamano(id, n)} style={sizeBtn(span === n)} title={`${n} columna${n > 1 ? 's' : ''}`}>{n}</button>
+            ))}
+            <button onClick={() => mover(index, 'up')} style={editBtn}>▲</button>
+            <button onClick={() => mover(index, 'down')} style={editBtn}>▼</button>
+          </div>
+        )}
+        {children}
+      </div>
+    );
+  };
   const Label = ({ children, color }) => <div className="stat-label" style={{ color: color || 'var(--text-dim)', fontSize: '0.7rem', letterSpacing: '0.5px', marginBottom: 12 }}>{children}</div>;
   const mono = { fontFamily: "'JetBrains Mono', monospace" };
 
@@ -490,7 +515,7 @@ export default function Inicio() {
       const maxC = Math.max(1, ...cum);
       const poly = cum.map((y, i) => `${forma.length > 1 ? (i / (forma.length - 1)) * 76 + 2 : 40},${26 - (y / maxC) * 22}`).join(' ');
       return (
-        <Card key={id} full accent="var(--accent)" index={index}>
+        <Card key={id} id={id} accent="var(--accent)" index={index}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 800, color: enRacha ? '#10b981' : 'var(--text-dim)', background: enRacha ? 'rgba(16,185,129,0.1)' : '#111', border: `1px solid ${enRacha ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, padding: '5px 12px', borderRadius: 20 }}>
               {enRacha ? `🔥 En racha · ${nInv} invicto` : forma.length ? 'Forma estable' : 'Sin partidos aún'}
@@ -513,7 +538,7 @@ export default function Inicio() {
       const col = { danger: '#ef4444', warning: '#f59e0b' };
       const bg = { danger: 'rgba(239,68,68,0.12)', warning: 'rgba(245,158,11,0.12)' };
       return (
-        <Card key={id} full accent="#ef4444" index={index}>
+        <Card key={id} id={id} accent="#ef4444" index={index}>
           <Label color="#ef4444">REQUIERE TU ATENCIÓN</Label>
           {triage.length === 0 ? <div style={{ textAlign: 'center', color: '#10b981', padding: 14, fontSize: '0.85rem' }}>✅ Todo en orden. Sin alertas.</div> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -535,7 +560,7 @@ export default function Inicio() {
     /* PROXIMO */
     if (id === 'm_proximo') {
       return (
-        <Card key={id} full accent="#10b981" index={index}>
+        <Card key={id} id={id} accent="#10b981" index={index}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Label color="#10b981">PRÓXIMO PARTIDO</Label>
             {prep?.dias != null && <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '3px 10px', borderRadius: 12 }}>{prep.dias <= 0 ? 'Hoy' : `en ${prep.dias} día${prep.dias > 1 ? 's' : ''}`}</span>}
@@ -573,7 +598,7 @@ export default function Inicio() {
       const golF = ultimo ? (parseInt(ultimo.goles_propios) || 0) : 0; const delta = golF - xgPropio;
       const ver = !hayXg ? null : delta > 0.6 ? { t: 'Con eficacia', c: '#10b981' } : delta < -0.6 ? { t: 'Faltó pegada', c: '#ef4444' } : { t: 'Lo esperado', c: '#3b82f6' };
       return (
-        <Card key={id} accent="#3b82f6" index={index}>
+        <Card key={id} id={id} accent="#3b82f6" index={index}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Label color="#3b82f6">FORMA · ÚLTIMOS 5</Label>
             <div style={{ display: 'flex', gap: 4 }}>
@@ -593,7 +618,7 @@ export default function Inicio() {
     if (id === 'm_protagonistas') {
       const top = ultAnalisis.ranking.slice(0, 3);
       return (
-        <Card key={id} accent="var(--accent)" index={index}>
+        <Card key={id} id={id} accent="var(--accent)" index={index}>
           <Label color="var(--accent)">FIGURAS · ÚLTIMO PARTIDO</Label>
           {top.length === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', padding: 10 }}>Sin análisis del último partido</div> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -615,7 +640,7 @@ export default function Inicio() {
     /* PULSO */
     if (id === 'm_pulso') {
       return (
-        <Card key={id} accent="#10b981" index={index}>
+        <Card key={id} id={id} accent="#10b981" index={index}>
           <Label color="#10b981">PULSO DEL PLANTEL · HOY</Label>
           {pulso.registros === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', padding: 10 }}>Sin cargas de wellness hoy</div> : (
             <>
@@ -639,7 +664,7 @@ export default function Inicio() {
     if (id === 'm_ultimo') {
       const res = ultimo ? resultadoDe(ultimo) : null;
       return (
-        <Card key={id} accent="var(--text-dim)" index={index}>
+        <Card key={id} id={id} accent="var(--text-dim)" index={index}>
           <Label>ÚLTIMO RESULTADO</Label>
           {ultimo ? (
             <div style={{ background: '#111', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
@@ -662,7 +687,7 @@ export default function Inicio() {
     /* NOVEDADES */
     if (id === 'm_novedades') {
       return (
-        <Card key={id} full accent="#facc15" index={index} scroll>
+        <Card key={id} id={id} accent="#facc15" index={index} scroll>
           <Label color="#facc15">TABLÓN DE ANUNCIOS</Label>
           {novedades.length === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, fontSize: '0.8rem' }}>Sin novedades recientes.</div> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -683,7 +708,7 @@ export default function Inicio() {
     if (id === 'm_accesos') {
       const links = LINKS.filter((l) => l.roles.includes(rol));
       return (
-        <Card key={id} full index={index}>
+        <Card key={id} id={id} index={index}>
           <Label>ACCESOS RÁPIDOS</Label>
           <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
             {links.map((l) => (
@@ -700,7 +725,7 @@ export default function Inicio() {
     if (id === 'm_jug_wellness') {
       const u = datosWellness[0];
       return (
-        <Card key={id} full accent="#f59e0b" index={index}>
+        <Card key={id} id={id} accent="#f59e0b" index={index}>
           <Label color="#f59e0b">MI WELLNESS</Label>
           {u ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
@@ -719,7 +744,7 @@ export default function Inicio() {
     /* JUGADOR: PERFIL */
     if (id === 'm_jug_perfil') {
       return (
-        <Card key={id} full accent="#3b82f6" index={index}>
+        <Card key={id} id={id} accent="#3b82f6" index={index}>
           <Label color="#3b82f6">MI PERFIL</Label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#111', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🏃‍♂️</div>
@@ -777,7 +802,7 @@ export default function Inicio() {
       {/* PALETA EDICIÓN */}
       {modoEdicion && (
         <div style={{ background: '#111', padding: 15, borderRadius: 8, border: '1px dashed var(--border)', marginBottom: 20, animation: 'fadeIn 0.2s' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem', color: '#fff' }}>Mostrá/ocultá módulos · usá ▲▼ para reordenar</h3>
+          <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem', color: '#fff' }}>Mostrá/ocultá módulos · usá ▲▼ para reordenar · 1·2·3 para el ancho</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {widgetsPermitidos.map((m) => {
               const on = layout.includes(m.id);
@@ -790,7 +815,7 @@ export default function Inicio() {
       {/* GRID */}
       {cargando ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 50 }}>CARGANDO DASHBOARD...</div> : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(2, 1fr)', gap: esMovil ? 12 : 16, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(3, 1fr)', gap: esMovil ? 12 : 16, alignItems: 'stretch', gridAutoFlow: 'dense' }}>
             {layout.map((id, index) => { const m = widgetsPermitidos.find((w) => w.id === id); return m ? renderModulo(id, index) : null; })}
           </div>
           {layout.length === 0 && <div style={{ textAlign: 'center', padding: 40 }}><p style={{ color: 'var(--text-dim)' }}>No hay módulos activos. Tocá <strong>⚙️ Editar</strong> y prendé los que quieras.</p></div>}
@@ -817,4 +842,5 @@ export default function Inicio() {
 
 /* ---- estilos sueltos ---- */
 const editBtn = { background: 'rgba(0,0,0,0.85)', color: '#fff', border: '1px solid #555', borderRadius: 4, width: 26, height: 26, cursor: 'pointer', fontSize: '0.7rem' };
+const sizeBtn = (active) => ({ background: active ? 'var(--accent)' : 'rgba(0,0,0,0.85)', color: active ? '#000' : '#fff', border: '1px solid #555', borderRadius: 4, width: 24, height: 26, cursor: 'pointer', fontSize: '0.7rem', fontWeight: 800 });
 const selStyle = (m) => ({ padding: m ? 12 : '8px 10px', background: '#111', border: '1px solid var(--border)', color: '#fff', borderRadius: 8, outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: m ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' });
