@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext'; // NUEVO: Importamos el contexto para saber quién es
 import { 
@@ -37,11 +37,20 @@ function OrigenGoles() {
   // Lógica de roles y categorías permitidas
   const rol = (perfil?.rol || '').toLowerCase();
   const esCT = rol === 'ct';
+  const esSuperUser = rol === 'superuser';
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
+
+  // Resolución de club igual que Inicio.jsx / Disciplina.jsx: el superuser lee el club elegido
+  // del localStorage; el kiosco usa el suyo; el resto, su propio club_id.
+  const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
+  const clubId = isKioscoMode
+    ? localStorage.getItem('kiosco_club_id')
+    : (esSuperUser ? localStorage.getItem('club_id') : perfil?.club_id) || '';
 
   const [eventos, setEventos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [partidos, setPartidos] = useState([]);
+  const [torneos, setTorneos] = useState([]);
   const [cargando, setCargando] = useState(true); 
   
   // Inicializamos el filtro priorizando la categoría asignada si es CT
@@ -50,6 +59,7 @@ function OrigenGoles() {
     return 'Todas';
   });
   
+  const [filtroTorneo, setFiltroTorneo] = useState('');
   const [filtroEquipo, setFiltroEquipo] = useState('Propio');
 
   // --- EFECTO DE PROTECCIÓN CT ---
@@ -66,10 +76,12 @@ function OrigenGoles() {
     async function obtenerDatos() {
       try {
         setCargando(true);
-        // Podríamos filtrar directamente en Supabase, pero como la data 
-        // global se procesa rápido, mantenemos la consistencia actual
-        const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria');
-        const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal');
+        if (!clubId) { setPartidos([]); setJugadores([]); setEventos([]); setTorneos([]); setCargando(false); return; }
+        // Scopeamos SIEMPRE por club_id: el superuser cambia de club desde el switcher y RLS
+        // por sí sola le devolvería goles de todos los clubes mezclados.
+        const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria, torneo_id').eq('club_id', clubId);
+        const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal').eq('club_id', clubId);
+        const { data: t } = await supabase.from('torneos').select('id, nombre, categoria').eq('club_id', clubId);
         
         let todosLosGoles = [];
         let start = 0;
@@ -79,6 +91,7 @@ function OrigenGoles() {
           const { data: chunk, error } = await supabase
             .from('eventos')
             .select('*')
+            .eq('club_id', clubId)
             .in('accion', ['Gol', 'Remate - Gol'])
             .range(start, start + step - 1);
           
@@ -95,6 +108,7 @@ function OrigenGoles() {
         
         setPartidos(p || []);
         setJugadores(j || []);
+        setTorneos(t || []);
         setEventos(todosLosGoles);
       } catch (error) {
         console.error("Error cargando goles:", error);
@@ -103,7 +117,7 @@ function OrigenGoles() {
       }
     }
     obtenerDatos();
-  }, []);
+  }, [clubId]);
 
   // Filtramos las opciones del select según el rol
   const categoriasUnicas = useMemo(() => {
@@ -115,17 +129,28 @@ function OrigenGoles() {
     return catPartidos;
   }, [partidos, esCT, misCategorias]);
 
-  // --- MOTOR DE PROCESAMIENTO (DATA SCIENCE) ---
-  const dataAnalizada = useMemo(() => {
-    if (!eventos || eventos.length === 0) {
-      return { total: 0, dataPieOrigen: [], dataBarTiempo: [], topConexiones: [], pctAsistidos: 0, distPromedio: 0, tablaGoles: [], mapaGoles: [] };
-    }
+  // Torneos disponibles para la categoría elegida
+  const torneosFiltrados = useMemo(() => {
+    if (filtroCategoria === 'Todas') return torneos;
+    return torneos.filter(t => !t.categoria || t.categoria === filtroCategoria);
+  }, [torneos, filtroCategoria]);
 
-    let golesFiltrados = eventos.filter(ev => {
-      const partido = partidos.find(p => p.id === ev.id_partido);
+  // --- MOTOR DE PROCESAMIENTO (DATA SCIENCE) ---
+  // Parametrizado por equipo para poder calcular "a favor" y "en contra" en paralelo.
+  const mapaPartidos = useMemo(() => {
+    const m = new Map(); partidos.forEach(p => m.set(p.id, p)); return m;
+  }, [partidos]);
+
+  const analizarEquipo = useCallback((equipo) => {
+    const vacio = { total: 0, conteoOrigen: {}, dataPieOrigen: [], dataBarTiempo: [], topConexiones: [], pctAsistidos: 0, distPromedio: 0, xgTotal: 0, xgPromedio: 0, difDefinicion: 0, tablaGoles: [], mapaGoles: [] };
+    if (!eventos || eventos.length === 0) return vacio;
+
+    const golesFiltrados = eventos.filter(ev => {
+      const partido = mapaPartidos.get(ev.id_partido);
       const pasaCat = filtroCategoria === 'Todas' || partido?.categoria === filtroCategoria;
-      const pasaEq = ev.equipo === filtroEquipo;
-      return pasaCat && pasaEq;
+      const pasaTor = !filtroTorneo || partido?.torneo_id === filtroTorneo;
+      const pasaEq = ev.equipo === equipo;
+      return pasaCat && pasaTor && pasaEq;
     });
 
     const conteoOrigen = {
@@ -143,12 +168,20 @@ function OrigenGoles() {
     let golesAsistidos = 0;
     let sumaDistancia = 0;
     let golesConDistancia = 0;
+    let xgTotal = 0;
+    let golesConXg = 0;
     const mapaGoles = [];
 
     golesFiltrados.forEach(gol => {
-      const origen = gol.origen_gol || 'No Especificado';
+      // origen_gol viene compuesto desde TomaDatos: "Base | Modificador | Modificador".
+      // Tomamos el primer segmento como origen real; sin esto, todo gol con modificador
+      // caía mal en "No Especificado".
+      const origen = (gol.origen_gol || 'No Especificado').split('|')[0].trim() || 'No Especificado';
       if (conteoOrigen[origen] !== undefined) conteoOrigen[origen]++;
       else conteoOrigen['No Especificado']++;
+
+      // xG del remate que terminó en gol (mide la dificultad/peligrosidad de la chance)
+      if (gol.xg != null && !Number.isNaN(Number(gol.xg))) { xgTotal += Number(gol.xg); golesConXg++; }
 
       if (gol.minuto !== null && gol.minuto !== undefined) {
         if (gol.periodo === 'PT') {
@@ -194,13 +227,17 @@ function OrigenGoles() {
     const dataBarTiempo = Object.entries(binsTiempo).map(([name, value]) => ({ name, Goles: value }));
     const topConexiones = Object.values(conexiones).sort((a,b) => b.cantidad - a.cantidad).slice(0, 5);
 
-    const pctAsistidos = golesFiltrados.length > 0 ? ((golesAsistidos / golesFiltrados.length) * 100).toFixed(0) : 0;
+    const total = golesFiltrados.length;
+    const pctAsistidos = total > 0 ? ((golesAsistidos / total) * 100).toFixed(0) : 0;
     const distPromedio = golesConDistancia > 0 ? (sumaDistancia / golesConDistancia).toFixed(1) : 0;
+    const xgPromedio = golesConXg > 0 ? (xgTotal / golesConXg) : 0;
+    const difDefinicion = total - xgTotal; // goles reales vs lo esperado por la chance
 
     const tablaGoles = mapaGoles.map(g => {
-      const p = partidos.find(px => px.id === g.id_partido);
+      const p = mapaPartidos.get(g.id_partido);
       const jAutor = jugadores.find(jx => jx.id === g.id_jugador);
       const jAsist = jugadores.find(jx => jx.id === g.id_asistencia);
+      const partesOrigen = (g.origen_gol || 'No Esp.').split('|').map(s => s.trim());
 
       return {
         id: g.id,
@@ -210,13 +247,36 @@ function OrigenGoles() {
         periodo: g.periodo,
         autor: jAutor ? (jAutor.apellido || jAutor.nombre).toUpperCase() : (g.equipo === 'Rival' ? 'RIVAL' : 'S/D'),
         asistidor: jAsist ? (jAsist.apellido || jAsist.nombre).toUpperCase() : '-',
-        origen: g.origen_gol || 'No Esp.',
+        origen: partesOrigen[0] || 'No Esp.',
+        modificadores: partesOrigen.slice(1).join(' · '),
+        contexto: g.contexto_juego || '',
+        xg: (g.xg != null && !Number.isNaN(Number(g.xg))) ? Number(g.xg).toFixed(2) : '-',
         distancia: g.distancia ? g.distancia.toFixed(1) + 'm' : '-'
       }
     }).sort((a,b) => b.id - a.id);
 
-    return { total: golesFiltrados.length, dataPieOrigen, dataBarTiempo, topConexiones, pctAsistidos, distPromedio, tablaGoles, mapaGoles };
-  }, [eventos, partidos, jugadores, filtroCategoria, filtroEquipo]);
+    return { total, conteoOrigen, dataPieOrigen, dataBarTiempo, topConexiones, pctAsistidos, distPromedio, xgTotal, xgPromedio, difDefinicion, tablaGoles, mapaGoles };
+  }, [eventos, mapaPartidos, jugadores, filtroCategoria, filtroTorneo]);
+
+  // Vista principal (sigue el toggle a favor / en contra)
+  const dataAnalizada = useMemo(() => analizarEquipo(filtroEquipo), [analizarEquipo, filtroEquipo]);
+
+  // Comparativa SIEMPRE a favor vs en contra, sin importar el toggle: el contraste es el insight.
+  const comparativa = useMemo(() => {
+    const af = analizarEquipo('Propio');
+    const ec = analizarEquipo('Rival');
+    const origenes = [...new Set([...Object.keys(af.conteoOrigen), ...Object.keys(ec.conteoOrigen)])];
+    const data = origenes
+      .map(o => ({ name: o, 'A favor': af.conteoOrigen[o] || 0, 'En contra': ec.conteoOrigen[o] || 0 }))
+      .filter(d => d['A favor'] > 0 || d['En contra'] > 0)
+      .sort((a, b) => (b['A favor'] + b['En contra']) - (a['A favor'] + a['En contra']));
+    return {
+      data,
+      totalAF: af.total, totalEC: ec.total,
+      xgAF: af.xgTotal, xgEC: ec.xgTotal,
+      difAF: af.difDefinicion, difEC: ec.difDefinicion,
+    };
+  }, [analizarEquipo]);
 
   const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 'Contraataque': '#f59e0b', 'Recuperación Alta': '#10b981', 'Error No Forzado': '#ef4444', 
@@ -235,12 +295,19 @@ function OrigenGoles() {
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div>
             <div className="stat-label">ORIGEN DE LOS GOLES</div>
-            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={selectStyle}>
+            <select value={filtroCategoria} onChange={(e) => { setFiltroCategoria(e.target.value); setFiltroTorneo(''); }} style={selectStyle}>
               {/* Solo mostramos "Todas" si NO es CT, o si es CT pero por alguna razón no tiene categorías */}
               {!(esCT && misCategorias.length > 0) && (
                 <option value="Todas">TODAS LAS CATEGORÍAS</option>
               )}
               {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+            </select>
+          </div>
+          <div>
+            <div className="stat-label">TORNEO</div>
+            <select value={filtroTorneo} onChange={(e) => setFiltroTorneo(e.target.value)} style={selectStyle}>
+              <option value="">TODOS LOS TORNEOS</option>
+              {torneosFiltrados.map(t => <option key={t.id} value={t.id}>{(t.nombre || '').toUpperCase()}</option>)}
             </select>
           </div>
           <div>
@@ -278,7 +345,42 @@ function OrigenGoles() {
                 <div className="stat-label">DISTANCIA PROMEDIO <InfoBox texto="Distancia media estimada desde donde se efectuó el remate goleador." /></div>
                 <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0ea5e9' }}>{dataAnalizada.distPromedio}m</div>
              </div>
+             <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
+                <div className="stat-label">xG ACUMULADO <InfoBox texto="Suma del xG (peligro) de los remates que terminaron en gol. Cuánto valía la chance que se convirtió." /></div>
+                <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#a855f7' }}>{dataAnalizada.xgTotal.toFixed(1)}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '4px' }}>{dataAnalizada.xgPromedio.toFixed(2)} xG/gol</div>
+             </div>
+             <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
+                <div className="stat-label">DEFINICIÓN vs xG <InfoBox texto="Goles reales menos xG. Positivo = se definió mejor de lo esperado por la dificultad de las chances; negativo = se convirtieron chances difíciles (o el rival nos pegó por encima de lo esperado)." /></div>
+                <div style={{ fontSize: '2.5rem', fontWeight: 900, color: dataAnalizada.difDefinicion >= 0 ? '#00ff88' : '#ef4444' }}>
+                  {dataAnalizada.difDefinicion > 0 ? '+' : ''}{dataAnalizada.difDefinicion.toFixed(1)}
+                </div>
+             </div>
           </div>
+
+          {/* COMPARATIVA A FAVOR vs EN CONTRA POR ORIGEN */}
+          {comparativa.data.length > 0 && (
+            <div className="bento-card">
+              <div className="stat-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
+                ADN COMPARADO: CÓMO MARCAMOS vs CÓMO NOS HACEN <InfoBox texto="Goles a favor (verde) y en contra (rojo) según cómo se gestaron. El contraste muestra de qué nos hacen daño y de qué lastimamos nosotros." />
+              </div>
+              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px', fontSize: '0.8rem' }}>
+                <span style={{ color: '#00ff88', fontWeight: 800 }}>● A favor: {comparativa.totalAF} goles <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({comparativa.xgAF.toFixed(1)} xG)</span></span>
+                <span style={{ color: '#ef4444', fontWeight: 800 }}>● En contra: {comparativa.totalEC} goles <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({comparativa.xgEC.toFixed(1)} xG)</span></span>
+              </div>
+              <ResponsiveContainer width="100%" height={Math.max(220, comparativa.data.length * 42)}>
+                <BarChart data={comparativa.data} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={false} />
+                  <XAxis type="number" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 10, fontWeight: 700 }} width={120} />
+                  <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} iconType="circle" />
+                  <Bar dataKey="A favor" fill="#00ff88" radius={[0, 3, 3, 0]} barSize={13} />
+                  <Bar dataKey="En contra" fill="#ef4444" radius={[0, 3, 3, 0]} barSize={13} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
             
@@ -387,6 +489,7 @@ function OrigenGoles() {
                     <th>AUTOR</th>
                     <th>ASISTENCIA</th>
                     <th>ORIGEN TÁCTICO</th>
+                    <th>xG</th>
                     <th>DISTANCIA</th>
                   </tr>
                 </thead>
@@ -401,7 +504,9 @@ function OrigenGoles() {
                         <span style={{ background: COLORS_ORIGEN[g.origen] || '#4b5563', color: g.origen === 'Penal / Sexta Falta' ? '#000' : '#fff', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
                           {g.origen.toUpperCase()}
                         </span>
+                        {g.modificadores && <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '3px' }}>{g.modificadores}</div>}
                       </td>
+                      <td style={{ color: '#a855f7', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>{g.xg}</td>
                       <td style={{ color: 'var(--text-dim)' }}>{g.distancia}</td>
                     </tr>
                   ))}

@@ -95,6 +95,13 @@ const plantillaIds = (p) => {
   } catch { return []; }
 };
 
+/* Jerarquía de categorías para elegir la categoría inicial (Primera arriba, promocionales al final). */
+const normCat = (s) => (s || '').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const ORDEN_CATEGORIAS = ['primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta', 'septima', 'octava', 'novena', 'decima'];
+const rankCategoria = (cat) => { const n = normCat(cat); const i = ORDEN_CATEGORIAS.findIndex((tok) => n.includes(tok)); return i === -1 ? 999 : i; };
+/* La de mayor jerarquía disponible; las desconocidas (promocionales, etc.) van al final, alfabéticas. */
+const categoriaInicial = (cats) => [...(cats || [])].sort((a, b) => (rankCategoria(a) - rankCategoria(b)) || String(a).localeCompare(String(b)))[0];
+
 /* Corre el engine UNA vez sobre el último partido => xG + ranking (port de Resumen). */
 function analizarUltimo(eventos, jugadores) {
   const vacio = { xgPropio: 0, xgRival: 0, ranking: [] };
@@ -232,28 +239,33 @@ export default function Inicio() {
   const [escudoClub, setEscudoClub] = useState(localStorage.getItem('escudo_url') || '');
   const [listaClubes, setListaClubes] = useState([]);
 
-  const [categoriaActiva, setCategoriaActiva] = useState(localStorage.getItem('dash_categoria') || 'Todas');
+  const [categoriaActiva, setCategoriaActiva] = useState(localStorage.getItem('dash_categoria') || '');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
 
   const [cargando, setCargando] = useState(true);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [mostrarQR, setMostrarQR] = useState(false);
 
-  // CT forzado a su primera categoría asignada
+  // CT: forzado a la categoría de mayor jerarquía entre sus asignadas (Primera antes que Tercera, etc.)
+  // El CT no tiene opción "Todas" en el selector, así que siempre cae en una categoría concreta.
   useEffect(() => {
-    if (esCT && misCategorias.length > 0 && (categoriaActiva === 'Todas' || !misCategorias.includes(categoriaActiva))) {
-      setCategoriaActiva(misCategorias[0]);
-      localStorage.setItem('dash_categoria', misCategorias[0]);
+    if (esCT && misCategorias.length > 0 && (!categoriaActiva || categoriaActiva === 'Todas' || !misCategorias.includes(categoriaActiva))) {
+      const top = categoriaInicial(misCategorias);
+      if (top && top !== categoriaActiva) { setCategoriaActiva(top); localStorage.setItem('dash_categoria', top); }
     }
   }, [esCT, misCategorias, categoriaActiva]);
 
-  // Si solo hay una categoría para mostrar, la fijamos (y el selector se oculta solo)
+  // Resto de roles: NO arrancar en "Todas", pero respetarla si el usuario la elige a propósito.
+  // Solo resolvemos a la categoría de mayor jerarquía cuando no hay una selección válida todavía
+  // ('' = sin resolver, o una categoría que ya no existe). "Todas" cuenta como válida y se respeta.
   useEffect(() => {
-    if (categoriasDisponibles.length === 1 && categoriaActiva !== categoriasDisponibles[0]) {
-      setCategoriaActiva(categoriasDisponibles[0]);
-      localStorage.setItem('dash_categoria', categoriasDisponibles[0]);
+    if (esCT || categoriasDisponibles.length === 0) return;
+    const valida = categoriaActiva === 'Todas' || categoriasDisponibles.includes(categoriaActiva);
+    if (!valida) {
+      const top = categoriaInicial(categoriasDisponibles);
+      if (top) { setCategoriaActiva(top); localStorage.setItem('dash_categoria', top); }
     }
-  }, [categoriasDisponibles, categoriaActiva]);
+  }, [categoriasDisponibles, categoriaActiva, esCT]);
 
   /* ---- DATOS ---- */
   const [novedades, setNovedades] = useState([]);
@@ -341,13 +353,13 @@ export default function Inicio() {
         /* ===== STAFF ===== */
         const hoyStr = new Date().toISOString().split('T')[0];
         const anio = new Date().getFullYear().toString();
-        const catEq = categoriaActiva !== 'Todas';
+        const catEq = !!categoriaActiva && categoriaActiva !== 'Todas';
 
         let qUlt = supabase.from('partidos').select('*').eq('club_id', club).in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(6);
         let qPro = supabase.from('partidos').select('*').eq('club_id', club).eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(1);
         let qAnual = supabase.from('partidos').select('id, categoria, goles_propios, goles_rival, fecha').eq('club_id', club).gte('fecha', `${anio}-01-01`).in('estado', ['Finalizado', 'Jugado']);
         let qJug = supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion, categoria').eq('club_id', club);
-        let qMapPar = supabase.from('partidos').select('id, categoria').eq('club_id', club);
+        let qMapPar = supabase.from('partidos').select('id, categoria, fecha').eq('club_id', club);
         if (catEq) { qUlt = qUlt.eq('categoria', categoriaActiva); qPro = qPro.eq('categoria', categoriaActiva); qAnual = qAnual.eq('categoria', categoriaActiva); qJug = qJug.eq('categoria', categoriaActiva); }
 
         const [rUlt, rPro, rAnual, rJug, rMapPar] = await Promise.all([qUlt, qPro, qAnual, qJug, qMapPar]);
@@ -371,6 +383,8 @@ export default function Inicio() {
 
       /* ===== DISCIPLINA (misma lógica que pantalla Disciplina) ===== */
         const catDePartido = {}; (rMapPar.data || []).forEach((p) => { catDePartido[p.id] = p.categoria || 'Sin categoría'; });
+        // Las amarillas resetean por temporada (año calendario en curso), igual que el balance anual.
+        const partidosTemporada = new Set((rMapPar.data || []).filter((p) => { const f = parseFecha(p.fecha); return f && f.getFullYear() === Number(anio); }).map((p) => p.id));
         const nombreJug = (id) => { const j = jugadores.find((x) => String(x.id) === String(id)); return j ? (j.apellido || j.nombre) : 'Jugador'; };
         const jugIdsCat = new Set(jugadores.map((j) => j.id));
 
@@ -382,6 +396,7 @@ export default function Inicio() {
         const amarillasCat = {}; // key `${jid}|${cat}` => n
         (tarjetas || []).forEach((t) => {
           if (!t.id_jugador || t.accion !== 'Tarjeta Amarilla') return;
+          if (!partidosTemporada.has(t.id_partido)) return; // solo amarillas de la temporada en curso
           const cat = catDePartido[t.id_partido] || 'Sin categoría';
           if (catEq && cat !== categoriaActiva) return;
           const key = `${t.id_jugador}|${cat}`;
@@ -470,7 +485,7 @@ export default function Inicio() {
     if (esAdmin || esManager) return (
       <div style={{ animation: 'fadeIn 0.3s', padding: '50px 20px', textAlign: 'center', maxWidth: 600, margin: '0 auto' }}>
         <div style={{ fontSize: '4rem', marginBottom: 20 }}>🏟️</div>
-        <h2 style={{ color: 'var(--accent)', fontWeight: 900 }}>¡BIENVENIDO A VIRTUAL.STATS!</h2>
+        <h2 style={{ color: 'var(--accent)', fontWeight: 900 }}>¡BIENVENIDO A VIRTUAL.CLUB!</h2>
         <p style={{ color: 'var(--text-dim)', marginBottom: 30, lineHeight: 1.6 }}>Para empezar, creá el perfil de tu equipo.</p>
         <button onClick={() => navigate('/configuracion')} className="btn-action" style={{ width: '100%', padding: 20, fontSize: '1.1rem' }}>CONFIGURAR MI CLUB AHORA</button>
       </div>
@@ -523,7 +538,7 @@ export default function Inicio() {
             {forma.length > 1 && <svg width="80" height="30" viewBox="0 0 80 30"><polyline points={poly} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 14 }}>
-            {[{ n: pts, l: 'PTS', c: '#fff' }, { n: (dg > 0 ? '+' : '') + dg, l: 'DG', c: dg >= 0 ? '#10b981' : '#ef4444' }, { n: `${v}-${e}-${d}`, l: 'V-E-D', c: '#fff', sm: true }, { n: gf, l: 'GF', c: 'var(--accent)' }].map((b, i) => (
+            {[{ n: pts, l: 'PTS', c: '#fff' }, { n: (dg > 0 ? '+' : '') + dg, l: 'DG', c: dg >= 0 ? '#10b981' : '#ef4444' }, { n: `${v}-${e}-${d}`, l: 'V-E-D', c: '#fff', sm: true }, { n: `${gf}/${gc}`, l: 'GF/GC', c: 'var(--accent)', sm: true }].map((b, i) => (
               <div key={i} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
                 <div style={{ ...mono, fontSize: b.sm ? '0.95rem' : '1.4rem', fontWeight: 900, color: b.c }}>{b.n}</div>
                 <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700, marginTop: 2 }}>{b.l}</div>
@@ -605,9 +620,10 @@ export default function Inicio() {
               {forma.length ? forma.map((f, i) => <span key={i} title={`vs ${f.rival} ${f.gf}-${f.gc}`} style={{ width: 22, height: 22, borderRadius: '50%', background: cBg[f.res], color: cR[f.res], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800 }}>{f.res}</span>) : <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Sin datos</span>}
             </div>
           </div>
+          {forma.length > 1 && <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', textAlign: 'right', marginTop: 4 }}>más reciente →</div>}
           {hayXg && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>xG últ. <span style={{ ...mono, color: '#fff' }}>{xgPropio.toFixed(1)}</span> / <span style={{ ...mono, color: '#ef4444' }}>{xgRival.toFixed(1)}</span></span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>xG últ. <span style={{ ...mono, color: '#fff' }}>{xgPropio.toFixed(1)}</span> a favor · <span style={{ ...mono, color: '#ef4444' }}>{xgRival.toFixed(1)}</span> en contra</span>
               {ver && <span style={{ fontSize: '0.65rem', color: ver.c, background: `rgba(${hexToRgb(ver.c)},0.12)`, padding: '3px 8px', borderRadius: 8, fontWeight: 700 }}>{ver.t}</span>}
             </div>
           )}

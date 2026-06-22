@@ -3,18 +3,17 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
-// IMPORTAMOS EL HOOK DE NOTIFICACIONES, CONTEXTO DE AUTH Y COMPONENTES REUTILIZABLES
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import InfoBox from '../components/InfoBox';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
+  const miClubGlobal = localStorage.getItem('mi_club') || 'TU CLUB'; // <-- Unificación global del nombre del club
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { perfil } = useAuth(); // <-- AGREGAMOS AUTH PARA EL GRAN FILTRO
+  const { perfil } = useAuth();
 
-  // --- GRAN FILTRO ---
   const misCategorias = perfil?.categorias_asignadas || [];
   const categoriaInicial = misCategorias.length > 0 ? misCategorias[0] : 'Primera';
 
@@ -25,12 +24,27 @@ function Torneos() {
   const [torneoActivo, setTorneoActivo] = useState(null);
   const [fixture, setFixture] = useState([]);
   
+  // SOLAPAS AMPLIADAS
+  const [tabMisTorneos, setTabMisTorneos] = useState('posiciones'); // 'posiciones' | 'fixture' | 'reporte'
+  
+  // SELECTOR DE MODO DE TABLA
+  const [modoTabla, setModoTabla] = useState('general'); // 'general' | 'local' | 'visitante'
+
+  // FILTROS DE FIXTURE
+  const [filtroJornada, setFiltroJornada] = useState('');
+  const [filtroEquipo, setFiltroEquipo] = useState('');
+
   const [mostrarModalTorneo, setMostrarModalTorneo] = useState(false);
   const [mostrarModalFixture, setMostrarModalFixture] = useState(false);
   
   const [formTorneo, setFormTorneo] = useState({ nombre: '', categoria: categoriaInicial, tipo: 'Oficial' });
+  
   const [formFixture, setFormFixture] = useState({
-    rival_id: '', jornada: '', fecha_partido: '', condicion: 'Local', estado: 'Pendiente', goles_propios: 0, goles_rival: 0
+    tipo_partido: 'propio',
+    jornada: '', 
+    fecha_partido: '', 
+    rival_id: '', condicion: 'Local', estado: 'Pendiente', goles_propios: 0, goles_rival: 0,
+    partidos_multiples: [{ local_id: '', visitante_id: '', estado: 'Pendiente', goles_local: '', goles_visitante: '' }]
   });
 
   useEffect(() => {
@@ -38,10 +52,9 @@ function Torneos() {
       fetchTorneos();
       fetchRivales();
     }
-  }, [clubId]); // Aquí podríamos agregar dependencias si perfil tardara en cargar, pero clubId y useEffect suelen bastar.
+  }, [clubId]);
 
   const fetchTorneos = async () => {
-    // Aplicamos el Gran Filtro a la consulta de Torneos
     let query = supabase.from('torneos').select('*').eq('club_id', clubId).order('id', { ascending: false });
     
     if (misCategorias.length > 0) {
@@ -66,7 +79,6 @@ function Torneos() {
     const categoriasPorDefecto = ['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava'];
     let base = Array.from(new Set([...categoriasPorDefecto, ...torneos.map(t => t.categoria)]));
     
-    // Si tiene categorías asignadas, filtramos la lista para que solo vea las suyas
     if (misCategorias.length > 0) {
       base = base.filter(c => misCategorias.includes(c));
     }
@@ -88,22 +100,26 @@ function Torneos() {
     }
   }, [torneosFiltrados]);
 
-  // --- MAGIA: LECTURA OPTIMIZADA SIN LÍMITE DE 1000 FILAS ---
   const fetchFixture = async (idTorneo, categoriaTorneo) => {
-    // 1. Buscamos los partidos con los resultados que ya están guardados en la BD
     const { data: partidosData } = await supabase
       .from('partidos')
       .select('*, rivales(nombre, escudo)')
       .eq('torneo_id', idTorneo)
-      .eq('categoria', categoriaTorneo)
-      .order('jornada', { ascending: true });
+      .eq('categoria', categoriaTorneo);
+      // Quitamos el order de SQL para usar Natural Sort en JavaScript
       
     if (!partidosData || partidosData.length === 0) {
       setFixture([]);
       return;
     }
 
-    // 2. Verificamos si tienen eventos usando "count" para evitar saturar el servidor
+    // ORDENAMIENTO NATURAL DE JORNADAS (1, 2, 3... 10, 11)
+    partidosData.sort((a, b) => {
+      const jA = a.jornada || '';
+      const jB = b.jornada || '';
+      return jA.localeCompare(jB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
     const partidosConStatus = await Promise.all(partidosData.map(async (p) => {
       const { count } = await supabase
         .from('eventos')
@@ -112,7 +128,7 @@ function Torneos() {
 
       return {
         ...p,
-        esTrackeado: count > 0 // Si tiene al menos 1 evento, le clavamos la etiqueta de Trackeado
+        esTrackeado: count > 0 
       };
     }));
 
@@ -135,43 +151,107 @@ function Torneos() {
     } else showToast("Error al guardar: " + error.message, "error");
   };
 
+  const agregarPartidoMultiple = () => {
+    setFormFixture({
+      ...formFixture,
+      partidos_multiples: [...formFixture.partidos_multiples, { local_id: '', visitante_id: '', estado: 'Pendiente', goles_local: '', goles_visitante: '' }]
+    });
+  };
+
+  const removerPartidoMultiple = (index) => {
+    const nuevos = formFixture.partidos_multiples.filter((_, i) => i !== index);
+    setFormFixture({ ...formFixture, partidos_multiples: nuevos });
+  };
+
+  const actualizarPartidoMultiple = (index, campo, valor) => {
+    const nuevos = [...formFixture.partidos_multiples];
+    nuevos[index][campo] = valor;
+    if (campo === 'estado' && valor === 'Pendiente') {
+      nuevos[index].goles_local = '';
+      nuevos[index].goles_visitante = '';
+    }
+    setFormFixture({ ...formFixture, partidos_multiples: nuevos });
+  };
+
   const handleGuardarFixture = async () => {
-    if (!formFixture.rival_id || !formFixture.jornada) return showToast("Rival y Jornada son obligatorios", "warning");
-    
-    const rivalSeleccionado = rivales.find(r => r.id === formFixture.rival_id);
-    
-    // 1. Obtenemos los datos de tu club desde el localStorage para guardarlos en el partido
-    const miClubGlobal = localStorage.getItem('mi_club') || '';
     const miEscudoGlobal = localStorage.getItem('escudo_url') || null;
 
-    const nuevoPartido = {
-      club_id: clubId,
-      torneo_id: torneoActivo.id,
-      rival_id: formFixture.rival_id,
-      rival: rivalSeleccionado ? rivalSeleccionado.nombre : '',
+    if (formFixture.tipo_partido === 'propio') {
+      if (!formFixture.jornada) return showToast("La Jornada es obligatoria", "warning");
+      if (!formFixture.rival_id) return showToast("Rival obligatorio", "warning");
+      const rivalSeleccionado = rivales.find(r => r.id === formFixture.rival_id);
       
-      // 2. Agregamos los campos que faltaban:
-      escudo_rival: rivalSeleccionado ? rivalSeleccionado.escudo : null, // Guardamos el escudo del rival
-      nombre_propio: miClubGlobal,                                       // Guardamos tu nombre
-      escudo_propio: miEscudoGlobal,                                     // Guardamos tu escudo
-      
-      jornada: formFixture.jornada,
-      fecha: formFixture.fecha_partido, 
-      condicion: formFixture.condicion,
-      estado: formFixture.estado,
-      goles_propios: formFixture.goles_propios,
-      goles_rival: formFixture.goles_rival,
-      categoria: torneoActivo.categoria, 
-      competicion: torneoActivo.nombre 
-    };
+      const nuevoPartido = {
+        club_id: clubId,
+        torneo_id: torneoActivo.id,
+        rival_id: formFixture.rival_id,
+        rival: rivalSeleccionado ? rivalSeleccionado.nombre : '',
+        escudo_rival: rivalSeleccionado ? rivalSeleccionado.escudo : null,
+        nombre_propio: miClubGlobal,
+        escudo_propio: miEscudoGlobal,
+        jornada: formFixture.jornada,
+        fecha: formFixture.fecha_partido, 
+        condicion: formFixture.condicion,
+        estado: formFixture.estado,
+        goles_propios: formFixture.goles_propios,
+        goles_rival: formFixture.goles_rival,
+        categoria: torneoActivo.categoria, 
+        competicion: torneoActivo.nombre 
+      };
 
-    const { error } = await supabase.from('partidos').insert([nuevoPartido]);
-    
-    if (!error) {
-      setMostrarModalFixture(false);
-      fetchFixture(torneoActivo.id, torneoActivo.categoria);
-      showToast("¡Fecha agregada al fixture!", "success");
-    } else showToast("Error al agregar: " + error.message, "error");
+      const { error } = await supabase.from('partidos').insert([nuevoPartido]);
+      if (!error) {
+        cerrarModalYRefrescar();
+        showToast("¡Fecha agregada al fixture!", "success");
+      } else showToast("Error al agregar: " + error.message, "error");
+
+    } else {
+      if (!formFixture.jornada) return showToast("La Jornada es obligatoria para el bloque", "warning");
+      
+      const crucesValidos = formFixture.partidos_multiples.filter(p => p.local_id && p.visitante_id);
+      
+      if (crucesValidos.length === 0) return showToast("Debes configurar al menos un cruce válido", "warning");
+      if (crucesValidos.some(p => p.local_id === p.visitante_id)) return showToast("Un equipo no puede jugar contra sí mismo", "warning");
+
+      const arrayPartidosAInsertar = crucesValidos.map(p => {
+        const eqLocal = rivales.find(r => r.id === p.local_id);
+        const eqVisita = rivales.find(r => r.id === p.visitante_id);
+
+        return {
+          club_id: clubId,
+          torneo_id: torneoActivo.id,
+          rival_id: eqVisita.id, 
+          rival: eqVisita.nombre,
+          escudo_rival: eqVisita.escudo,
+          nombre_propio: eqLocal.nombre, 
+          escudo_propio: eqLocal.escudo,
+          jornada: formFixture.jornada,
+          fecha: formFixture.fecha_partido, 
+          condicion: 'Neutral', // Por defecto los múltiples son neutrales o asumen que el 1ro es local
+          estado: p.estado,
+          goles_propios: p.estado === 'Finalizado' ? (Number(p.goles_local) || 0) : 0,
+          goles_rival: p.estado === 'Finalizado' ? (Number(p.goles_visitante) || 0) : 0,
+          categoria: torneoActivo.categoria, 
+          competicion: torneoActivo.nombre 
+        };
+      });
+
+      const { error } = await supabase.from('partidos').insert(arrayPartidosAInsertar); 
+      
+      if (!error) {
+        cerrarModalYRefrescar();
+        showToast(`¡Se agregaron ${arrayPartidosAInsertar.length} partidos al fixture!`, "success");
+      } else showToast("Error al agregar cruces: " + error.message, "error");
+    }
+  };
+
+  const cerrarModalYRefrescar = () => {
+    setMostrarModalFixture(false);
+    fetchFixture(torneoActivo.id, torneoActivo.categoria);
+    setFormFixture({
+      tipo_partido: 'propio', jornada: '', fecha_partido: '', rival_id: '', condicion: 'Local', estado: 'Pendiente', goles_propios: 0, goles_rival: 0,
+      partidos_multiples: [{ local_id: '', visitante_id: '', estado: 'Pendiente', goles_local: '', goles_visitante: '' }]
+    });
   };
 
   const actualizarResultado = async (id, goles_propios, goles_rival, estado) => {
@@ -192,7 +272,7 @@ function Torneos() {
       return showToast(`BLOQUEO: Este partido tiene ${count} acciones. No podés borrarlo desde acá.`, "error");
     }
 
-    if (window.confirm("✅ Este partido está completamente vacío (0 datos trackeados). ¿Estás seguro de que querés eliminar este duplicado del fixture?")) {
+    if (window.confirm("✅ Este partido está completamente vacío. ¿Estás seguro de que querés eliminarlo?")) {
       const { error } = await supabase.from('partidos').delete().eq('id', idPartido);
       if (!error) {
         fetchFixture(torneoActivo.id, torneoActivo.categoria);
@@ -205,11 +285,9 @@ function Torneos() {
 
   const irATrackear = (partido) => navigate('/toma-datos', { state: { partido } });
 
-  // --- MOTOR ANALÍTICO DEL TORNEO CORREGIDO ---
+  // 1. MOTOR ANALÍTICO DE TU EQUIPO
   const { stats, local, visitante, racha, vallasInvictas, chartDataEvolucion, chartDataLocalia, ptsTotales, eficacia } = useMemo(() => {
-    
-    // AHORA SOLO LEE PARTIDOS QUE YA FUERON CERRADOS (FINALIZADO / JUGADO) PARA LA TABLA
-    const partidosJugados = fixture.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado').sort((a,b) => {
+    const partidosMios = fixture.filter(f => (f.nombre_propio === miClubGlobal || !f.nombre_propio) && (f.estado === 'Finalizado' || f.estado === 'Jugado')).sort((a,b) => {
       if(a.fecha && b.fecha) return new Date(a.fecha) - new Date(b.fecha);
       return a.id - b.id;
     });
@@ -221,7 +299,7 @@ function Torneos() {
     let vIn = 0;
     let chartEvol = [];
 
-    partidosJugados.forEach((f, index) => {
+    partidosMios.forEach((f, index) => {
         s.pj++;
         const gp = Number(f.goles_propios) || 0;
         const gr = Number(f.goles_rival) || 0;
@@ -265,7 +343,201 @@ function Torneos() {
     ];
 
     return { stats: s, local: l, visitante: v, racha: rList, vallasInvictas: vIn, chartDataEvolucion: chartEvol, chartDataLocalia: cLocalia, ptsTotales: ptsTot, eficacia: efi };
-  }, [fixture]);
+  }, [fixture, miClubGlobal]);
+
+  // 2. MOTOR TABLA DE POSICIONES DINÁMICA PREMIUM (General, Local, Visitante)
+  const tablaPosiciones = useMemo(() => {
+    const tabla = {};
+
+    fixture.forEach(f => {
+      const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
+      
+      let equipoLocal = '';
+      let equipoVisita = '';
+      let escudoLocal = null;
+      let escudoVisita = null;
+
+      // Determinación estricta de local y visitante para separar las tablas
+      if (esMiPartido) {
+        if (f.condicion === 'Visitante') {
+           equipoLocal = f.rival || 'Rival Desconocido';
+           equipoVisita = miClubGlobal;
+           escudoLocal = f.escudo_rival;
+           escudoVisita = f.escudo_propio;
+        } else {
+           equipoLocal = miClubGlobal;
+           equipoVisita = f.rival || 'Rival Desconocido';
+           escudoLocal = f.escudo_propio;
+           escudoVisita = f.escudo_rival;
+        }
+      } else {
+        equipoLocal = f.nombre_propio || miClubGlobal;
+        equipoVisita = f.rival || 'Rival Desconocido';
+        escudoLocal = f.escudo_propio;
+        escudoVisita = f.escudo_rival;
+      }
+
+      // Estructura base ampliada
+      [equipoLocal, equipoVisita].forEach((eq, index) => {
+        if (!tabla[eq]) {
+          tabla[eq] = { 
+            nombre: eq, escudo: index === 0 ? escudoLocal : escudoVisita, 
+            pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0, rachaGeneral: [],
+            pjL: 0, pgL: 0, peL: 0, ppL: 0, gfL: 0, gcL: 0, ptsL: 0, rachaLocal: [],
+            pjV: 0, pgV: 0, peV: 0, ppV: 0, gfV: 0, gcV: 0, ptsV: 0, rachaVisita: []
+          };
+        }
+      });
+
+      if (f.estado === 'Finalizado' || f.estado === 'Jugado') {
+        let golesLocal = 0; let golesVisita = 0;
+        if (esMiPartido && f.condicion === 'Visitante') {
+           golesLocal = Number(f.goles_rival) || 0;
+           golesVisita = Number(f.goles_propios) || 0;
+        } else {
+           golesLocal = Number(f.goles_propios) || 0;
+           golesVisita = Number(f.goles_rival) || 0;
+        }
+
+        const tLocal = tabla[equipoLocal];
+        const tVisita = tabla[equipoVisita];
+
+        // Sumar General
+        tLocal.pj++; tVisita.pj++;
+        tLocal.gf += golesLocal; tVisita.gf += golesVisita;
+        tLocal.gc += golesVisita; tVisita.gc += golesLocal;
+
+        // Sumar Local/Visitante
+        tLocal.pjL++; tLocal.gfL += golesLocal; tLocal.gcL += golesVisita;
+        tVisita.pjV++; tVisita.gfV += golesVisita; tVisita.gcV += golesLocal;
+
+        if (golesLocal > golesVisita) {
+          tLocal.pg++; tLocal.pts += 3; tLocal.pgL++; tLocal.ptsL += 3; tLocal.rachaGeneral.push('V'); tLocal.rachaLocal.push('V');
+          tVisita.pp++; tVisita.ppV++; tVisita.rachaGeneral.push('D'); tVisita.rachaVisita.push('D');
+        } else if (golesLocal < golesVisita) {
+          tVisita.pg++; tVisita.pts += 3; tVisita.pgV++; tVisita.ptsV += 3; tVisita.rachaGeneral.push('V'); tVisita.rachaVisita.push('V');
+          tLocal.pp++; tLocal.ppL++; tLocal.rachaGeneral.push('D'); tLocal.rachaLocal.push('D');
+        } else {
+          tLocal.pe++; tLocal.pts += 1; tLocal.peL++; tLocal.ptsL += 1; tLocal.rachaGeneral.push('E'); tLocal.rachaLocal.push('E');
+          tVisita.pe++; tVisita.pts += 1; tVisita.peV++; tVisita.ptsV += 1; tVisita.rachaGeneral.push('E'); tVisita.rachaVisita.push('E');
+        }
+      }
+    });
+
+    return Object.values(tabla).map(t => {
+      // Calculamos las diferencias según el modo
+      t.difGeneral = t.gf - t.gc;
+      t.difLocal = t.gfL - t.gcL;
+      t.difVisita = t.gfV - t.gcV;
+      return t;
+    }).sort((a, b) => {
+      // Ordenamiento Dinámico
+      if (modoTabla === 'local') {
+        if (b.ptsL !== a.ptsL) return b.ptsL - a.ptsL;
+        if (b.difLocal !== a.difLocal) return b.difLocal - a.difLocal;
+        return b.gfL - a.gfL;
+      } else if (modoTabla === 'visitante') {
+        if (b.ptsV !== a.ptsV) return b.ptsV - a.ptsV;
+        if (b.difVisita !== a.difVisita) return b.difVisita - a.difVisita;
+        return b.gfV - a.gfV;
+      } else {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        if (b.difGeneral !== a.difGeneral) return b.difGeneral - a.difGeneral;
+        return b.gf - a.gf;
+      }
+    });
+  }, [fixture, miClubGlobal, modoTabla]);
+
+  // 3. MOTOR NUEVO: REPORTE DE LA LIGA COMPLETA PREMIUM
+  const reporteLiga = useMemo(() => {
+    if (!fixture || fixture.length === 0) return null;
+    
+    let mayorGoleada = { dif: -1, text: '', equipoLocal: '', equipoVisita: '' };
+    let partidosJugadosTotales = 0;
+    let golesTotalesLiga = 0;
+    let partidosOver3 = 0;
+    let partidosOver5 = 0;
+
+    fixture.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado').forEach(f => {
+      const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
+      
+      let equipoLocal = ''; let equipoVisita = '';
+      let golesLocal = 0; let golesVisita = 0;
+
+      if (esMiPartido) {
+        if (f.condicion === 'Visitante') {
+           equipoLocal = f.rival || 'Rival Desconocido'; equipoVisita = miClubGlobal;
+           golesLocal = Number(f.goles_rival) || 0; golesVisita = Number(f.goles_propios) || 0;
+        } else {
+           equipoLocal = miClubGlobal; equipoVisita = f.rival || 'Rival Desconocido';
+           golesLocal = Number(f.goles_propios) || 0; golesVisita = Number(f.goles_rival) || 0;
+        }
+      } else {
+        equipoLocal = f.nombre_propio || miClubGlobal; equipoVisita = f.rival || 'Rival Desconocido';
+        golesLocal = Number(f.goles_propios) || 0; golesVisita = Number(f.goles_rival) || 0;
+      }
+
+      // Analítica de Goles (Over/Under)
+      partidosJugadosTotales++;
+      const golesPartido = golesLocal + golesVisita;
+      golesTotalesLiga += golesPartido;
+      if (golesPartido > 3) partidosOver3++;
+      if (golesPartido > 5) partidosOver5++;
+
+      // Cálculo de Mayor Goleada conservando el formato estricto (Local X - Y Visita)
+      const difGoles = Math.abs(golesLocal - golesVisita);
+      if (difGoles > mayorGoleada.dif) {
+        mayorGoleada = { dif: difGoles, text: `${equipoLocal} ${golesLocal} - ${golesVisita} ${equipoVisita}` };
+      }
+    });
+
+    if (partidosJugadosTotales === 0) return null;
+
+    // Tomamos la data ya procesada de tablaPosiciones (en modo general) para sacar rankings
+    const rankings = [...tablaPosiciones].sort((a, b) => b.pts - a.pts);
+    const masGoleador = [...rankings].sort((a,b) => b.gf - a.gf)[0];
+    const mejorDefensa = [...rankings].filter(t => t.pj > 0).sort((a,b) => a.gc - b.gc)[0]; // Menos goles recibidos
+    const mejorLocal = [...rankings].sort((a,b) => b.ptsL - a.ptsL)[0];
+    const mejorVisita = [...rankings].sort((a,b) => b.ptsV - a.ptsV)[0];
+
+    // Power Ranking (Indice de Dominio)
+    // Formula Inventada: (Pts% * 50) + (DifGoles * 2) + (GF/PJ * 10) - (GC/PJ * 10)
+    const powerRankingData = rankings.filter(t => t.pj > 0).map(t => {
+      const pctPuntos = (t.pts / (t.pj * 3)) * 100;
+      const gfProm = t.gf / t.pj;
+      const gcProm = t.gc / t.pj;
+      const dominioRaw = (pctPuntos * 0.5) + (t.difGeneral * 1.5) + (gfProm * 5) - (gcProm * 5);
+      
+      // Forma reciente (Ultimos 5)
+      const ults5 = t.rachaGeneral.slice(-5);
+      let ptsForma = 0;
+      ults5.forEach(r => { if(r==='V') ptsForma+=3; if(r==='E') ptsForma+=1; });
+
+      return {
+         ...t,
+         pctPuntos: pctPuntos.toFixed(1),
+         gfPromedio: gfProm.toFixed(2),
+         gcPromedio: gcProm.toFixed(2),
+         ptsForma,
+         dominioRaw
+      };
+    }).sort((a,b) => b.dominioRaw - a.dominioRaw);
+
+    const equipoEnForma = [...powerRankingData].sort((a,b) => b.ptsForma - a.ptsForma)[0];
+
+    return { 
+      mayorGoleada, 
+      masGoleador, 
+      mejorDefensa, 
+      mejorLocal, 
+      mejorVisita, 
+      equipoEnForma,
+      powerRanking: powerRankingData,
+      promedioGolLiga: (golesTotalesLiga / partidosJugadosTotales).toFixed(2),
+      pctOver3: ((partidosOver3 / partidosJugadosTotales) * 100).toFixed(1),
+      pctOver5: ((partidosOver5 / partidosJugadosTotales) * 100).toFixed(1)
+    };
+  }, [fixture, miClubGlobal, tablaPosiciones]);
 
   const calcularMejorRacha = (racha) => {
       let max = 0; let actual = 0;
@@ -275,6 +547,31 @@ function Torneos() {
       }
       return max;
   };
+
+  // DATOS PARA FILTROS DEL FIXTURE ORDENADOS
+  const jornadasUnicas = useMemo(() => {
+    const arr = [...new Set(fixture.map(f => f.jornada))].filter(Boolean);
+    return arr.sort((a,b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [fixture]);
+
+  const equiposUnicos = useMemo(() => {
+    return [...new Set([
+      ...fixture.map(f => f.nombre_propio || miClubGlobal),
+      ...fixture.map(f => f.rival || 'Rival Desconocido')
+    ])].filter(Boolean).sort();
+  }, [fixture, miClubGlobal]);
+
+  const fixtureFiltrado = useMemo(() => {
+    return fixture.filter(f => {
+      const jMatch = filtroJornada === '' || f.jornada === filtroJornada;
+      const eMatch = filtroEquipo === '' || (
+        (f.nombre_propio || miClubGlobal) === filtroEquipo || 
+        (f.rival || 'Rival Desconocido') === filtroEquipo
+      );
+      return jMatch && eMatch;
+    });
+  }, [fixture, filtroJornada, filtroEquipo, miClubGlobal]);
+
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club.</div>;
 
@@ -372,96 +669,343 @@ function Torneos() {
           </div>
 
           <div className="bento-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div className="stat-label">FIXTURE Y RESULTADOS</div>
-              <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.75rem', padding: '8px 15px' }}>+ AGREGAR FECHA</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+              <div style={{ display: 'flex', gap: '5px', background: '#0a0a0a', padding: '5px', borderRadius: '8px', border: '1px solid #333' }}>
+                  <button 
+                    onClick={() => setTabMisTorneos('posiciones')} 
+                    className="tab-btn" 
+                    style={{ background: tabMisTorneos === 'posiciones' ? '#222' : 'transparent', color: tabMisTorneos === 'posiciones' ? 'var(--accent)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
+                  >
+                    POSICIONES
+                  </button>
+                  <button 
+                    onClick={() => setTabMisTorneos('fixture')} 
+                    className="tab-btn" 
+                    style={{ background: tabMisTorneos === 'fixture' ? '#222' : 'transparent', color: tabMisTorneos === 'fixture' ? 'var(--accent)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
+                  >
+                    FIXTURE
+                  </button>
+                  <button 
+                    onClick={() => setTabMisTorneos('reporte')} 
+                    className="tab-btn" 
+                    style={{ background: tabMisTorneos === 'reporte' ? '#222' : 'transparent', color: tabMisTorneos === 'reporte' ? '#a855f7' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
+                  >
+                    REPORTE
+                  </button>
+              </div>
+              <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem', padding: '10px 20px', fontWeight: 800 }}>
+                + AGREGAR FECHA
+              </button>
             </div>
 
-            {fixture.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay partidos programados en este torneo para la categoría {torneoActivo.categoria}.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {fixture.map(f => {
-                  const estaCompletado = f.estado === 'Finalizado' || f.estado === 'Jugado';
-                  
-                  return (
-                    <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: estaCompletado ? 'rgba(0, 255, 136, 0.05)' : '#111', padding: '15px', borderRadius: '6px', border: estaCompletado ? '1px solid var(--accent)' : '1px solid #333', flexWrap: 'wrap', gap: '10px' }}>
+            {/* 🏆 TAB: POSICIONES */}
+            {tabMisTorneos === 'posiciones' && (
+              <div style={{ overflowX: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <select value={modoTabla} onChange={(e) => setModoTabla(e.target.value)} style={{ padding: '8px', background: '#000', color: '#fff', border: '1px solid #333', borderRadius: '4px', fontWeight: 800, outline: 'none', cursor: 'pointer' }}>
+                      <option value="general">📊 TABLA GENERAL</option>
+                      <option value="local">🏠 SOLO LOCAL</option>
+                      <option value="visitante">✈️ SOLO VISITANTE</option>
+                    </select>
+                  </div>
+                </div>
+
+                <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '800px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #333', color: 'var(--text-dim)', fontSize: '0.75rem', backgroundColor: '#0a0a0a' }}>
+                      <th style={{ padding: '12px', width: '40px' }}>#</th>
+                      <th style={{ textAlign: 'left', padding: '12px' }}>EQUIPO</th>
+                      <th style={{ padding: '12px' }}>PTS</th>
+                      <th style={{ padding: '12px' }}>PJ</th>
+                      <th style={{ padding: '12px' }}>G</th>
+                      <th style={{ padding: '12px' }}>E</th>
+                      <th style={{ padding: '12px' }}>P</th>
+                      <th style={{ padding: '12px' }}>GF</th>
+                      <th style={{ padding: '12px' }}>GC</th>
+                      <th style={{ padding: '12px' }}>DIF</th>
+                      {modoTabla === 'general' && <th style={{ padding: '12px', textAlign: 'center' }}>FORMA (ÚLT 5)</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tablaPosiciones.length === 0 ? (
+                      <tr>
+                        <td colSpan="11" style={{ padding: '30px', color: 'var(--text-dim)' }}>No hay datos suficientes para armar la tabla. Añadí resultados al fixture.</td>
+                      </tr>
+                    ) : (
+                      tablaPosiciones.map((equipo, index) => {
+                        const esMiEquipo = equipo.nombre === miClubGlobal;
+                        
+                        // Variables dinámicas según el modo de tabla seleccionado
+                        let pts = equipo.pts; let pj = equipo.pj; let pg = equipo.pg; let pe = equipo.pe; let pp = equipo.pp; let gf = equipo.gf; let gc = equipo.gc; let dif = equipo.difGeneral; let racha = equipo.rachaGeneral;
+                        
+                        if (modoTabla === 'local') {
+                          pts = equipo.ptsL; pj = equipo.pjL; pg = equipo.pgL; pe = equipo.peL; pp = equipo.ppL; gf = equipo.gfL; gc = equipo.gcL; dif = equipo.difLocal; racha = equipo.rachaLocal;
+                        } else if (modoTabla === 'visitante') {
+                          pts = equipo.ptsV; pj = equipo.pjV; pg = equipo.pgV; pe = equipo.peV; pp = equipo.ppV; gf = equipo.gfV; gc = equipo.gcV; dif = equipo.difVisita; racha = equipo.rachaVisita;
+                        }
+
+                        return (
+                          <tr key={index} style={{ borderBottom: '1px solid #222', backgroundColor: esMiEquipo ? 'rgba(0, 255, 136, 0.05)' : 'transparent', transition: '0.2s' }}>
+                            <td style={{ padding: '12px', fontWeight: 900, color: index < 4 ? 'var(--accent)' : '#fff' }}>{index + 1}</td>
+                            <td style={{ textAlign: 'left', padding: '12px', fontWeight: 800, color: esMiEquipo ? 'var(--accent)' : '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {equipo.escudo ? (
+                                <img src={equipo.escudo} alt={equipo.nombre} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                              ) : (
+                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#333', border: `1px solid ${esMiEquipo ? 'var(--accent)' : '#555'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900 }}>
+                                  {equipo.nombre.substring(0,2).toUpperCase()}
+                                </div>
+                              )}
+                              {equipo.nombre.toUpperCase()} {esMiEquipo && <span style={{fontSize: '0.6rem', background: 'var(--accent)', color: '#000', padding: '2px 6px', borderRadius: '4px'}}>TU CLUB</span>}
+                            </td>
+                            <td style={{ padding: '12px', fontWeight: 900, fontSize: '1.1rem', color: '#fff' }}>{pts}</td>
+                            <td style={{ padding: '12px', color: 'var(--text-dim)' }}>{pj}</td>
+                            <td style={{ padding: '12px', color: '#00ff88' }}>{pg}</td>
+                            <td style={{ padding: '12px', color: '#fbbf24' }}>{pe}</td>
+                            <td style={{ padding: '12px', color: '#ef4444' }}>{pp}</td>
+                            <td style={{ padding: '12px', color: '#fff' }}>{gf}</td>
+                            <td style={{ padding: '12px', color: '#fff' }}>{gc}</td>
+                            <td style={{ padding: '12px', fontWeight: 800, color: dif > 0 ? '#00ff88' : (dif < 0 ? '#ef4444' : '#fff') }}>
+                              {dif > 0 ? `+${dif}` : dif}
+                            </td>
+                            {modoTabla === 'general' && (
+                              <td style={{ padding: '12px', display: 'flex', justifyContent: 'center', gap: '4px' }}>
+                                {racha.slice(-5).map((r, i) => {
+                                   let color = '#555';
+                                   if(r === 'V') color = '#00ff88';
+                                   if(r === 'D') color = '#ef4444';
+                                   return <div key={i} style={{ width: '12px', height: '12px', borderRadius: '50%', background: color }} title={r}></div>
+                                })}
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* 📅 TAB: FIXTURE */}
+            {tabMisTorneos === 'fixture' && (
+              <>
+                {/* FILTROS DE FIXTURE */}
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '8px', border: '1px solid #222' }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="stat-label" style={{ marginBottom: '5px' }}>FILTRAR POR FECHA</div>
+                    <select value={filtroJornada} onChange={e => setFiltroJornada(e.target.value)} style={{ ...inputIndustrial, padding: '8px' }}>
+                      <option value="">TODAS LAS FECHAS...</option>
+                      {jornadasUnicas.map(j => <option key={j} value={j}>{j.toUpperCase()}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div className="stat-label" style={{ marginBottom: '5px' }}>FILTRAR POR EQUIPO</div>
+                    <select value={filtroEquipo} onChange={e => setFiltroEquipo(e.target.value)} style={{ ...inputIndustrial, padding: '8px' }}>
+                      <option value="">TODOS LOS EQUIPOS...</option>
+                      {equiposUnicos.map(eq => <option key={eq} value={eq}>{eq.toUpperCase()}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {fixtureFiltrado.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay partidos con esos filtros.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {fixtureFiltrado.map(f => {
+                      const estaCompletado = f.estado === 'Finalizado' || f.estado === 'Jugado';
+                      const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
                       
-                      <div style={{ minWidth: '150px' }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>{f.jornada?.toUpperCase()} // {f.condicion}</div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {f.rivales?.nombre?.toUpperCase() || f.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}
+                      return (
+                        <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: estaCompletado ? 'rgba(0, 255, 136, 0.05)' : '#111', padding: '15px', borderRadius: '6px', border: estaCompletado ? '1px solid var(--accent)' : '1px solid #333', flexWrap: 'wrap', gap: '10px' }}>
+                          
+                          <div style={{ minWidth: '150px' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>{f.jornada?.toUpperCase()} {esMiPartido ? `// ${f.condicion}` : '// EXTERNO'}</div>
+                            
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {esMiPartido ? (
+                                f.rivales?.nombre?.toUpperCase() || f.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'
+                              ) : (
+                                <span style={{ color: '#a855f7' }}>{(f.nombre_propio || miClubGlobal).toUpperCase()} vs {f.rival?.toUpperCase()}</span>
+                              )}
+                            </div>
+
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>📅 {f.fecha || 'A definir'}</span>
+                              <span style={{
+                                padding: '3px 6px', borderRadius: '4px',
+                                background: f.esTrackeado ? 'rgba(0, 255, 136, 0.1)' : (f.estado === 'Pendiente' ? 'rgba(255,255,255,0.1)' : 'rgba(59, 130, 246, 0.1)'),
+                                color: f.esTrackeado ? 'var(--accent)' : (f.estado === 'Pendiente' ? '#aaa' : '#3b82f6'),
+                                fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.5px'
+                              }}>
+                                {f.esTrackeado ? 'TRACKEADO' : f.estado.toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+
+                          {!estaCompletado ? (
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                              {esMiPartido && (
+                                <>
+                                  <button onClick={() => irATrackear(f)} className="btn-action" style={{ fontSize: '0.75rem', padding: '8px 15px', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                    {f.esTrackeado ? '▶ CONTINUAR' : '⚡ TRACKEAR'}
+                                  </button>
+                                  <div style={{ height: '20px', width: '1px', background: '#333' }}></div>
+                                </>
+                              )}
+                              <button onClick={() => actualizarResultado(f.id, 0, 0, 'Finalizado')} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px' }}>
+                                CARGA MANUAL
+                              </button>
+                              <button onClick={() => eliminarPartido(f.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1rem', cursor: 'pointer', marginLeft: '5px' }} title="Eliminar partido duplicado">
+                                🗑️
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {f.esTrackeado ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0, 255, 136, 0.1)', padding: '5px 15px', borderRadius: '4px', border: '1px solid var(--accent)' }}>
+                                    <span style={{ color: 'var(--accent)', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_propios}</span>
+                                    <span style={{ color: '#fff', fontWeight: 900 }}>-</span>
+                                    <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_rival}</span>
+                                    <span style={{ fontSize: '0.6rem', color: 'var(--accent)', marginLeft: '10px', fontWeight: 800 }}>✓ FINALIZADO</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{esMiPartido ? 'MI EQUIPO' : 'LOCAL'}</span>
+                                      <input type="number" value={f.goles_propios} onChange={(e) => actualizarResultado(f.id, e.target.value, f.goles_rival, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: esMiPartido ? 'var(--accent)' : '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                    </div>
+                                    <span style={{ fontWeight: 900 }}>-</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{esMiPartido ? 'RIVAL' : 'VISIT.'}</span>
+                                      <input type="number" value={f.goles_rival} onChange={(e) => actualizarResultado(f.id, f.goles_propios, e.target.value, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                    </div>
+                                    <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}>↺</button>
+                                  </>
+                                )}
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '5px' }}>
+                                {esMiPartido && (
+                                  <>
+                                    <button onClick={() => irATrackear(f)} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
+                                      ✏️ EDITAR
+                                    </button>
+                                    <button onClick={() => navigate(`/resumen/${f.id}`)} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
+                                      📊 REPORTE
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        {/* PASTILLA DE ESTADO */}
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>📅 {f.fecha || 'A definir'}</span>
-                          <span style={{
-                            padding: '3px 6px',
-                            borderRadius: '4px',
-                            background: f.esTrackeado ? 'rgba(0, 255, 136, 0.1)' : (f.estado === 'Pendiente' ? 'rgba(255,255,255,0.1)' : 'rgba(59, 130, 246, 0.1)'),
-                            color: f.esTrackeado ? 'var(--accent)' : (f.estado === 'Pendiente' ? '#aaa' : '#3b82f6'),
-                            fontWeight: 800,
-                            fontSize: '0.6rem',
-                            letterSpacing: '0.5px'
-                          }}>
-                            {f.esTrackeado ? 'TRACKEADO' : f.estado.toUpperCase()}
-                          </span>
-                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 📈 TAB: REPORTE DE LA LIGA (POWER RANKING & ANALYTICS) */}
+            {tabMisTorneos === 'reporte' && (
+              !reporteLiga ? (
+                 <p style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '30px' }}>No hay suficientes datos procesados para generar el reporte premium. Asegurate de tener partidos finalizados.</p>
+              ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    
+                    {/* DASHBOARD EJECUTIVO */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #00ff88' }}>
+                         <div className="stat-label">MÁS GOLEADOR</div>
+                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: '#fff' }}>{reporteLiga.masGoleador?.nombre.toUpperCase()}</div>
+                         <div style={{ color: '#00ff88', fontWeight: 800, fontSize: '0.8rem' }}>{reporteLiga.masGoleador?.gf} Goles a favor</div>
                       </div>
 
-                      {!estaCompletado ? (
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          <button onClick={() => irATrackear(f)} className="btn-action" style={{ fontSize: '0.75rem', padding: '8px 15px', display: 'flex', gap: '5px', alignItems: 'center' }}>
-                            {f.esTrackeado ? '▶ CONTINUAR' : '⚡ TRACKEAR'}
-                          </button>
-                          <div style={{ height: '20px', width: '1px', background: '#333' }}></div>
-                          <button onClick={() => actualizarResultado(f.id, 0, 0, 'Finalizado')} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px' }}>
-                            CARGA MANUAL
-                          </button>
-                          <button onClick={() => eliminarPartido(f.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1rem', cursor: 'pointer', marginLeft: '5px' }} title="Eliminar partido duplicado">
-                            🗑️
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            {f.esTrackeado ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0, 255, 136, 0.1)', padding: '5px 15px', borderRadius: '4px', border: '1px solid var(--accent)' }}>
-                                <span style={{ color: 'var(--accent)', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_propios}</span>
-                                <span style={{ color: '#fff', fontWeight: 900 }}>-</span>
-                                <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_rival}</span>
-                                <span style={{ fontSize: '0.6rem', color: 'var(--accent)', marginLeft: '10px', fontWeight: 800 }}>✓ FINALIZADO</span>
-                              </div>
-                            ) : (
-                              <>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                  <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>MI EQUIPO</span>
-                                  <input type="number" value={f.goles_propios} onChange={(e) => actualizarResultado(f.id, e.target.value, f.goles_rival, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: 'var(--accent)', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
-                                </div>
-                                <span style={{ fontWeight: 900 }}>-</span>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                  <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>RIVAL</span>
-                                  <input type="number" value={f.goles_rival} onChange={(e) => actualizarResultado(f.id, f.goles_propios, e.target.value, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
-                                </div>
-                                <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}>↺</button>
-                              </>
-                            )}
-                          </div>
+                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #ef4444' }}>
+                         <div className="stat-label">MEJOR DEFENSA</div>
+                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: '#fff' }}>{reporteLiga.mejorDefensa?.nombre.toUpperCase()}</div>
+                         <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.8rem' }}>Solo {reporteLiga.mejorDefensa?.gc} goles en contra</div>
+                      </div>
 
-                          <div style={{ display: 'flex', gap: '5px' }}>
-                            <button onClick={() => irATrackear(f)} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
-                              ✏️ EDITAR
-                            </button>
-                            <button onClick={() => navigate(`/resumen/${f.id}`)} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
-                              📊 REPORTE
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #3b82f6' }}>
+                         <div className="stat-label">MEJOR LOCAL</div>
+                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: '#fff' }}>{reporteLiga.mejorLocal?.nombre.toUpperCase()}</div>
+                         <div style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.8rem' }}>{reporteLiga.mejorLocal?.ptsL} Puntos en casa</div>
+                      </div>
+
+                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #f97316' }}>
+                         <div className="stat-label">MEJOR VISITANTE</div>
+                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: '#fff' }}>{reporteLiga.mejorVisita?.nombre.toUpperCase()}</div>
+                         <div style={{ color: '#f97316', fontWeight: 800, fontSize: '0.8rem' }}>{reporteLiga.mejorVisita?.ptsV} Puntos fuera</div>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* TENDENCIAS DE GOLES (OVER/UNDER) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                      {reporteLiga.mayorGoleada.dif > 0 && (
+                         <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid var(--accent)' }}>
+                            <div className="stat-label">MAYOR GOLEADA</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 900, marginTop: '10px', color: 'var(--accent)' }}>{reporteLiga.mayorGoleada.text.toUpperCase()}</div>
+                            <div style={{ color: 'var(--text-dim)', fontWeight: 800, fontSize: '0.8rem', marginTop: '5px' }}>Diferencia de {reporteLiga.mayorGoleada.dif} goles</div>
+                         </div>
+                      )}
+                      
+                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                         <div className="stat-label">TENDENCIA DE GOLES</div>
+                         <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
+                            <div>
+                               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff' }}>{reporteLiga.promedioGolLiga}</div>
+                               <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Goles/Partido</div>
+                            </div>
+                            <div>
+                               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0ea5e9' }}>{reporteLiga.pctOver3}%</div>
+                               <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Partidos +3 Goles</div>
+                            </div>
+                            <div>
+                               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#a855f7' }}>{reporteLiga.pctOver5}%</div>
+                               <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Partidos +5 Goles</div>
+                            </div>
+                         </div>
+                      </div>
+                    </div>
+
+                    {/* KPI AVANZADOS - ESTILO SOFASCORE */}
+                    <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', overflowX: 'auto' }}>
+                       <div className="stat-label" style={{ marginBottom: '15px' }}>ESTADÍSTICAS AVANZADAS Y PODER OFENSIVO</div>
+                       <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
+                         <thead>
+                           <tr style={{ color: 'var(--text-dim)', fontSize: '0.7rem', borderBottom: '1px solid #333' }}>
+                             <th style={{ padding: '8px', textAlign: 'left' }}>EQUIPO</th>
+                             <th style={{ padding: '8px' }} title="Puntos obtenidos sobre puntos posibles">% EFECTIVIDAD</th>
+                             <th style={{ padding: '8px' }}>GF/PJ (Ataque)</th>
+                             <th style={{ padding: '8px' }}>GC/PJ (Defensa)</th>
+                             <th style={{ padding: '8px' }}>ÍNDICE DOMINIO</th>
+                           </tr>
+                         </thead>
+                         <tbody>
+                           {reporteLiga.powerRanking.map((eq, index) => (
+                             <tr key={index} style={{ borderBottom: '1px solid #222' }}>
+                               <td style={{ padding: '10px', textAlign: 'left', fontWeight: 800, color: eq.nombre === miClubGlobal ? 'var(--accent)' : '#fff' }}>{eq.nombre.toUpperCase()}</td>
+                               <td style={{ padding: '10px', color: eq.pctPuntos > 60 ? '#00ff88' : '#fff', fontWeight: 900 }}>{eq.pctPuntos}%</td>
+                               <td style={{ padding: '10px', color: '#0ea5e9', fontWeight: 800 }}>{eq.gfPromedio}</td>
+                               <td style={{ padding: '10px', color: '#ef4444', fontWeight: 800 }}>{eq.gcPromedio}</td>
+                               <td style={{ padding: '10px' }}>
+                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+                                   <div style={{ width: '100px', height: '6px', background: '#333', borderRadius: '3px', overflow: 'hidden' }}>
+                                     <div style={{ height: '100%', width: `${Math.min(Math.max(eq.dominioRaw, 0), 100)}%`, background: 'linear-gradient(90deg, #3b82f6, #a855f7)' }}></div>
+                                   </div>
+                                   <span style={{ fontSize: '0.8rem', fontWeight: 900 }}>{Math.max(eq.dominioRaw, 0).toFixed(0)}</span>
+                                 </div>
+                               </td>
+                             </tr>
+                           ))}
+                         </tbody>
+                       </table>
+                    </div>
+                 </div>
+              )
             )}
           </div>
         </>
@@ -508,28 +1052,109 @@ function Torneos() {
 
       {mostrarModalFixture && (
         <div className="modal-overlay">
-          <div className="bento-card modal-content" style={{ maxWidth: '400px' }}>
+          <div className="bento-card modal-content" style={{ maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="stat-label" style={{ marginBottom: '20px' }}>AGREGAR FECHA AL FIXTURE</div>
             
-            <div style={{ marginBottom: '15px' }}><div className="section-title">RIVAL</div>
-              <select value={formFixture.rival_id} onChange={e => setFormFixture({...formFixture, rival_id: e.target.value})} style={inputIndustrial}>
-                <option value="">SELECCIONAR RIVAL...</option>
-                {rivales.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
-              </select>
+            <div style={{ marginBottom: '15px' }}>
+              <div className="section-title">¿QUIÉNES JUEGAN?</div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  onClick={() => setFormFixture({...formFixture, tipo_partido: 'propio'})} 
+                  style={{ flex: 1, padding: '10px', background: formFixture.tipo_partido === 'propio' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', border: `1px solid ${formFixture.tipo_partido === 'propio' ? 'var(--accent)' : '#333'}`, color: formFixture.tipo_partido === 'propio' ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  TU CLUB (1 CRUCE)
+                </button>
+                <button 
+                  onClick={() => setFormFixture({...formFixture, tipo_partido: 'multiple'})} 
+                  style={{ flex: 1, padding: '10px', background: formFixture.tipo_partido === 'multiple' ? '#222' : 'transparent', border: `1px solid ${formFixture.tipo_partido === 'multiple' ? '#fff' : '#333'}`, color: formFixture.tipo_partido === 'multiple' ? '#fff' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  CARGA MÚLTIPLE (FECHA)
+                </button>
+              </div>
             </div>
 
-            <div style={{ marginBottom: '15px' }}><div className="section-title">JORNADA / FASE</div><input type="text" value={formFixture.jornada} onChange={e => setFormFixture({...formFixture, jornada: e.target.value})} style={inputIndustrial} placeholder="Ej: Fecha 1 o Semifinal" /></div>
-            <div style={{ marginBottom: '15px' }}><div className="section-title">FECHA DEL PARTIDO</div><input type="date" value={formFixture.fecha_partido} onChange={e => setFormFixture({...formFixture, fecha_partido: e.target.value})} style={inputIndustrial} /></div>
-            
-            <div style={{ marginBottom: '20px' }}><div className="section-title">CONDICIÓN</div>
-              <select value={formFixture.condicion} onChange={e => setFormFixture({...formFixture, condicion: e.target.value})} style={inputIndustrial}>
-                <option value="Local">Local</option><option value="Visitante">Visitante</option><option value="Neutral">Neutral</option>
-              </select>
-            </div>
+            {formFixture.tipo_partido === 'propio' ? (
+              <>
+                <div style={{ marginBottom: '15px' }}>
+                  <div className="section-title">RIVAL</div>
+                  <select value={formFixture.rival_id} onChange={e => setFormFixture({...formFixture, rival_id: e.target.value})} style={inputIndustrial}>
+                    <option value="">SELECCIONAR RIVAL...</option>
+                    {rivales.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
+                  </select>
+                </div>
+                <div style={{ marginBottom: '15px' }}><div className="section-title">JORNADA / FASE</div><input type="text" value={formFixture.jornada} onChange={e => setFormFixture({...formFixture, jornada: e.target.value})} style={inputIndustrial} placeholder="Ej: Fecha 1 o Semifinal" /></div>
+                <div style={{ marginBottom: '15px' }}><div className="section-title">FECHA DEL PARTIDO</div><input type="date" value={formFixture.fecha_partido} onChange={e => setFormFixture({...formFixture, fecha_partido: e.target.value})} style={inputIndustrial} /></div>
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="section-title">CONDICIÓN</div>
+                  <select value={formFixture.condicion} onChange={e => setFormFixture({...formFixture, condicion: e.target.value})} style={inputIndustrial}>
+                    <option value="Local">Local</option><option value="Visitante">Visitante</option><option value="Neutral">Neutral</option>
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="section-title">JORNADA (Para todos)</div>
+                    <input type="text" value={formFixture.jornada} onChange={e => setFormFixture({...formFixture, jornada: e.target.value})} style={{...inputIndustrial, padding: '10px'}} placeholder="Ej: Fecha 1" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div className="section-title">DÍA (Opcional)</div>
+                    <input type="date" value={formFixture.fecha_partido} onChange={e => setFormFixture({...formFixture, fecha_partido: e.target.value})} style={{...inputIndustrial, padding: '10px'}} />
+                  </div>
+                </div>
 
-            <div style={{ display: 'flex', gap: '10px' }}>
+                <div className="section-title" style={{ marginBottom: '10px' }}>CRUCES DE LA FECHA</div>
+                <div style={{ maxHeight: '35vh', overflowY: 'auto', paddingRight: '5px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {formFixture.partidos_multiples.map((p, index) => (
+                    <div key={index} style={{ background: '#111', padding: '12px', borderRadius: '6px', border: '1px solid #333' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                         <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800 }}>PARTIDO #{index + 1}</span>
+                         {formFixture.partidos_multiples.length > 1 && (
+                           <button onClick={() => removerPartidoMultiple(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900 }}>ELIMINAR 🗑️</button>
+                         )}
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                        <select value={p.local_id} onChange={e => actualizarPartidoMultiple(index, 'local_id', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1}}>
+                          <option value="">LOCAL...</option>
+                          {rivales.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
+                        </select>
+                        <select value={p.visitante_id} onChange={e => actualizarPartidoMultiple(index, 'visitante_id', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1}}>
+                          <option value="">VISITANTE...</option>
+                          {rivales.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <select value={p.estado} onChange={e => actualizarPartidoMultiple(index, 'estado', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', width: '110px'}}>
+                          <option value="Pendiente">Pendiente</option>
+                          <option value="Finalizado">Finalizado</option>
+                        </select>
+                        
+                        {p.estado === 'Finalizado' ? (
+                          <div style={{ display: 'flex', gap: '5px', flex: 1, alignItems: 'center', background: '#000', borderRadius: '4px', border: '1px solid #333', padding: '2px' }}>
+                            <input type="number" value={p.goles_local} onChange={e => actualizarPartidoMultiple(index, 'goles_local', e.target.value)} placeholder="Goles L" style={{...inputIndustrial, padding: '6px', textAlign: 'center', border: 'none'}} />
+                            <span style={{color: '#fff', fontWeight: 900}}>-</span>
+                            <input type="number" value={p.goles_visitante} onChange={e => actualizarPartidoMultiple(index, 'goles_visitante', e.target.value)} placeholder="Goles V" style={{...inputIndustrial, padding: '6px', textAlign: 'center', border: 'none'}} />
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', flex: 1, textAlign: 'center' }}>Sin resultado (0-0)</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <button onClick={agregarPartidoMultiple} className="btn-secondary" style={{ width: '100%', padding: '10px', fontSize: '0.8rem', borderStyle: 'dashed' }}>
+                  + SUMAR OTRO CRUCE
+                </button>
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button onClick={() => setMostrarModalFixture(false)} className="btn-secondary" style={{ flex: 1 }}>CANCELAR</button>
-              <button onClick={handleGuardarFixture} className="btn-action" style={{ flex: 1 }}>AGREGAR FECHA</button>
+              <button onClick={handleGuardarFixture} className="btn-action" style={{ flex: 1 }}>{formFixture.tipo_partido === 'multiple' ? 'GUARDAR FECHA COMPLETA' : 'AGREGAR FECHA'}</button>
             </div>
           </div>
         </div>
@@ -539,6 +1164,8 @@ function Torneos() {
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 99999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
         .modal-content { width: 100%; border: 1px solid var(--accent); }
         .section-title { color: var(--text-dim); font-size: 0.8rem; font-weight: 800; margin-bottom: 5px; }
+        .tab-btn { border: none; background: transparent; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+        .tab-btn:hover { opacity: 0.85; }
       `}</style>
     </div>
   );

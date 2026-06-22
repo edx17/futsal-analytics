@@ -35,6 +35,16 @@ const nombreJug = (j) => {
 // Clave para ordenar alfabéticamente por apellido
 const claveApellido = (j) => ((j?.apellido || j?.nombre || 'zzz')).toLowerCase();
 
+// Temporada = año de la fecha. partido.fecha es texto ('2026-06-21' o '21/06/2026'),
+// así que tomamos el primer grupo de 4 dígitos como año.
+const temporadaDe = (fecha) => {
+  if (!fecha) return null;
+  const m = String(fecha).match(/(\d{4})/);
+  return m ? parseInt(m[1], 10) : null;
+};
+// Año de una sanción: por fecha_sancion, con created_at como respaldo (registros viejos sin fecha).
+const sancAnio = (s) => temporadaDe(s?.fecha_sancion) || (s?.created_at ? new Date(s.created_at).getFullYear() : null);
+
 // ============================================================
 // COMPONENTE
 // ============================================================
@@ -58,7 +68,10 @@ export default function Disciplina() {
   // Filtros
   const [fCategoria, setFCategoria] = useState('');
   const [fTorneo, setFTorneo] = useState('');
+  const [fTemporada, setFTemporada] = useState(String(new Date().getFullYear())); // '' = Histórico (todas)
   const [umbral, setUmbral] = useState(UMBRAL_AMARILLAS_DEFAULT);
+
+  const fTemporadaNum = fTemporada === '' ? null : Number(fTemporada);
 
   // Ordenamiento de la tabla (por defecto: más sancionados primero)
   const [orden, setOrden] = useState({ key: 'sancion', dir: 'desc' });
@@ -149,14 +162,32 @@ export default function Disciplina() {
     } catch { return []; }
   };
 
-  // Partidos que entran en el filtro actual (categoría / torneo)
+  // Temporadas disponibles (años presentes en los partidos), de la más reciente a la más vieja
+  const temporadasDisponibles = useMemo(() => {
+    const set = new Set(partidos.map(p => temporadaDe(p.fecha)).filter(Boolean));
+    return [...set].sort((a, b) => b - a);
+  }, [partidos]);
+
+  // Si la temporada por defecto (año actual) no tiene datos, caemos a la más reciente disponible.
+  // No tocamos la elección del usuario (incluido "Histórico" = '').
+  useEffect(() => {
+    if (temporadasDisponibles.length === 0) return;
+    if (fTemporada !== '' && !temporadasDisponibles.includes(Number(fTemporada))) {
+      setFTemporada(String(temporadasDisponibles[0]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [temporadasDisponibles]);
+
+  // Partidos que entran en el filtro actual (categoría / torneo / temporada)
   const partidosDelFiltro = useMemo(() => {
     return partidos.filter(p => {
       if (fCategoria && p.categoria !== fCategoria) return false;
       if (fTorneo && p.torneo_id !== fTorneo) return false;
+      if (fTemporadaNum && temporadaDe(p.fecha) !== fTemporadaNum) return false;
       return true;
     });
-  }, [partidos, fCategoria, fTorneo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partidos, fCategoria, fTorneo, fTemporada]);
 
   // PJ real por jugador+categoría: en cuántos partidos de cada categoría figura en la plantilla
   const pjPorJugadorCat = useMemo(() => {
@@ -184,7 +215,7 @@ export default function Disciplina() {
   }, [torneos, fCategoria]);
 
   // ----------------------------------------------------------
-  // EVENTOS FILTRADOS (por categoría / torneo, vía partido)
+  // EVENTOS FILTRADOS (por categoría / torneo / temporada, vía partido)
   // ----------------------------------------------------------
   const eventosFiltrados = useMemo(() => {
     return eventos.filter(ev => {
@@ -192,13 +223,15 @@ export default function Disciplina() {
       if (!par) return false;
       if (fCategoria && par.categoria !== fCategoria) return false;
       if (fTorneo && par.torneo_id !== fTorneo) return false;
+      if (fTemporadaNum && temporadaDe(par.fecha) !== fTemporadaNum) return false;
       return true;
     });
-  }, [eventos, mapPar, fCategoria, fTorneo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventos, mapPar, fCategoria, fTorneo, fTemporada]);
 
   // ----------------------------------------------------------
   // AGREGADO POR JUGADOR + CATEGORÍA
-  // (las amarillas se acumulan por categoría; la roja es transversal)
+  // (las amarillas se acumulan por categoría DENTRO de la temporada; la roja es transversal)
   // ----------------------------------------------------------
   const filas = useMemo(() => {
     const acc = new Map();
@@ -229,13 +262,15 @@ export default function Disciplina() {
       else if (ev.accion === ACC.FALTA || ev.accion === ACC.PENAL_CONTRA) { r.faltas++; }
     });
 
-    // Fechas de roja por jugador, TRANSVERSAL a todas las categorías (descontando cumplidas)
-    // Fechas de roja por jugador, TRANSVERSAL (solo sanciones de roja, NO las de acumulación)
+    // Fechas de roja por jugador, TRANSVERSAL (solo sanciones de roja, NO las de acumulación).
+    // La roja NO resetea por temporada: arrastra hasta cumplirse.
     const fechasRojaPorJugador = new Map();
-    // Suspensiones de acumulación ya dadas de baja, por jugador+categoría
+    // Suspensiones de acumulación ya dadas de baja, por jugador+categoría, DENTRO de la temporada.
     const bajasAcumPorJugCat = new Map();
     sanciones.forEach(s => {
       if (s.tipo === 'acumulacion') {
+        // Las bajas de acumulación se cuentan dentro de su temporada (deriva de fecha_sancion / created_at)
+        if (fTemporadaNum && sancAnio(s) !== fTemporadaNum) return;
         const key = `${s.jugador_id}|${s.categoria || 'Sin categoría'}`;
         bajasAcumPorJugCat.set(key, (bajasAcumPorJugCat.get(key) || 0) + 1);
         return;
@@ -249,7 +284,7 @@ export default function Disciplina() {
       const j = mapJug.get(r.jugadorId);
       const pj = pjPorJugadorCat.get(`${r.jugadorId}|${r.categoria}`) || 0; // PJ en esa categoría
       const partidosConEvento = r.partidosSet.size;
-      // Acumulación de amarillas POR CATEGORÍA
+      // Acumulación de amarillas POR CATEGORÍA (dentro de la temporada filtrada)
       const suspGanadas = Math.floor(r.amarillas / umbral);       // fechas que otorgó la acumulación
       const suspCumplidas = bajasAcumPorJugCat.get(`${r.jugadorId}|${r.categoria}`) || 0; // dadas de baja
       const suspPendientes = Math.max(0, suspGanadas - suspCumplidas);
@@ -294,7 +329,8 @@ export default function Disciplina() {
       if (b.amarillas !== a.amarillas) return b.amarillas - a.amarillas;
       return b.faltas - a.faltas;
     });
-  }, [eventosFiltrados, mapJug, mapPar, umbral, sanciones, orden, pjPorJugadorCat]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventosFiltrados, mapJug, mapPar, umbral, sanciones, orden, pjPorJugadorCat, fTemporada]);
 
   // ----------------------------------------------------------
   // ALERTAS DE SUSPENSIÓN
@@ -336,6 +372,33 @@ export default function Disciplina() {
     });
     return lista;
   }, [eventosFiltrados, sanciones, mapJug, mapPar]);
+
+  // ----------------------------------------------------------
+  // HISTORIAL INTERANUAL (todas las temporadas, todas las categorías)
+  // Se calcula sobre el universo completo de eventos del club, sin importar el filtro.
+  // ----------------------------------------------------------
+  const historialInteranual = (jugadorId) => {
+    const porAnio = {}; // anio => { anio, amarillas, rojas, faltas, catAmar:{cat:n} }
+    eventos.forEach(ev => {
+      if (String(ev.id_jugador) !== String(jugadorId)) return;
+      const par = mapPar.get(ev.id_partido);
+      const anio = temporadaDe(par?.fecha);
+      if (!anio) return;
+      if (!porAnio[anio]) porAnio[anio] = { anio, amarillas: 0, rojas: 0, faltas: 0, catAmar: {} };
+      const r = porAnio[anio];
+      const cat = par?.categoria || 'Sin categoría';
+      if (ev.accion === ACC.AMARILLA) { r.amarillas++; r.catAmar[cat] = (r.catAmar[cat] || 0) + 1; }
+      else if (ev.accion === ACC.ROJA) r.rojas++;
+      else if (ev.accion === ACC.FALTA || ev.accion === ACC.PENAL_CONTRA) r.faltas++;
+    });
+    return Object.values(porAnio)
+      .map(r => ({
+        ...r,
+        // Suspensiones por acumulación que generó ese año (por categoría, con el umbral actual)
+        suspAcum: Object.values(r.catAmar).reduce((a, n) => a + Math.floor(n / umbral), 0),
+      }))
+      .sort((a, b) => b.anio - a.anio);
+  };
 
   // ----------------------------------------------------------
   // GUARDAR SANCIÓN DE ROJA
@@ -396,6 +459,8 @@ export default function Disciplina() {
   // Da de baja UNA fecha de suspensión por acumulación de amarillas (la materializa como cumplida)
   const darDeBajaAmarillas = async (fila) => {
     const nivel = (fila.suspCumplidas + 1) * umbral; // corte: 5, 10, 15...
+    // La baja se atribuye a la temporada que estás viendo (para que el reset anual sea correcto).
+    const anioBaja = fTemporadaNum || new Date().getFullYear();
     const payload = {
       club_id: clubId,
       jugador_id: fila.jugadorId,
@@ -403,20 +468,24 @@ export default function Disciplina() {
       categoria: fila.categoria,
       nivel,
       torneo_id: fTorneo || null,
+      fecha_sancion: `${anioBaja}-12-31`,
       fechas_tribunal: 1,
       fechas_internas: 0,
       fechas_cumplidas: 1,
       estado: 'cumplida',
-      motivo: `Acumulación ${nivel} amarillas · ${fila.categoria}`,
+      motivo: `Acumulación ${nivel} amarillas · ${fila.categoria} · ${anioBaja}`,
     };
     const { error } = await supabase.from('disciplina_sanciones').insert([payload]);
     if (!error) cargarTodo();
   };
 
-  // Revierte la última baja de acumulación de amarillas de ese jugador+categoría
+  // Revierte la última baja de acumulación de amarillas de ese jugador+categoría (en la temporada vista)
   const revertirBajaAmarillas = async (fila) => {
     const candidatas = sanciones
-      .filter(s => s.tipo === 'acumulacion' && s.jugador_id === fila.jugadorId && (s.categoria || 'Sin categoría') === fila.categoria)
+      .filter(s => s.tipo === 'acumulacion'
+        && s.jugador_id === fila.jugadorId
+        && (s.categoria || 'Sin categoría') === fila.categoria
+        && (!fTemporadaNum || sancAnio(s) === fTemporadaNum))
       .sort((a, b) => (b.nivel || 0) - (a.nivel || 0));
     if (candidatas.length === 0) return;
     const { error } = await supabase.from('disciplina_sanciones').delete().eq('id', candidatas[0].id);
@@ -481,6 +550,10 @@ export default function Disciplina() {
 
       {/* FILTROS */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        <select value={fTemporada} onChange={e => setFTemporada(e.target.value)} style={{ ...selectStyle, borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+          <option value="">📅 Histórico (todas)</option>
+          {temporadasDisponibles.map(a => <option key={a} value={String(a)}>Temporada {a}</option>)}
+        </select>
         <select value={fCategoria} onChange={e => { setFCategoria(e.target.value); setFTorneo(''); }} style={selectStyle}>
           <option value="">Todas las categorías</option>
           {categorias.map(c => <option key={c} value={c}>{c}</option>)}
@@ -494,6 +567,13 @@ export default function Disciplina() {
           <input type="number" min={1} value={umbral} onChange={e => setUmbral(Math.max(1, parseInt(e.target.value, 10) || 1))}
             style={{ width: 44, background: 'transparent', border: 'none', color: 'var(--accent)', fontWeight: 900, fontFamily: 'JetBrains Mono, monospace', fontSize: '0.95rem' }} />
         </div>
+      </div>
+
+      {/* AVISO TEMPORADA */}
+      <div style={{ marginBottom: 16, fontSize: '0.72rem', color: '#777' }}>
+        {fTemporadaNum
+          ? <>Mostrando la <b style={{ color: 'var(--accent)' }}>temporada {fTemporadaNum}</b>. Las amarillas se acumulan dentro del año; las rojas del tribunal arrastran hasta cumplirse. Abrí un jugador para ver su evolución interanual.</>
+          : <>Mostrando el <b style={{ color: 'var(--accent)' }}>histórico completo</b> (todas las temporadas sumadas). Elegí una temporada para ver la acumulación que corre de verdad.</>}
       </div>
 
       {/* ALERTAS DE SUSPENSIÓN */}
@@ -667,6 +747,7 @@ export default function Disciplina() {
         <Overlay onClose={() => setJugadorDetalle(null)}>
           <h2 style={{ color: '#fff', margin: '0 0 4px' }}>{jugadorDetalle.nombre} <span style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontWeight: 400 }}>· {jugadorDetalle.categoria}</span></h2>
           <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 16 }}>
+            {fTemporadaNum ? `Temporada ${fTemporadaNum}: ` : 'Histórico: '}
             {jugadorDetalle.amarillas} 🟨 · {jugadorDetalle.rojas} 🟥 · {jugadorDetalle.faltas} faltas en {jugadorDetalle.pj} PJ
           </div>
           {(jugadorDetalle.suspGanadas > 0 || jugadorDetalle.tieneRojaActiva) && (
@@ -675,7 +756,7 @@ export default function Disciplina() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <div>
                     Por amarillas en <b>{jugadorDetalle.categoria}</b>: Sanción {jugadorDetalle.suspGanadas} · Cumplido {jugadorDetalle.suspCumplidas} · <b style={{ color: jugadorDetalle.suspPendientes ? '#fca5a5' : 'var(--accent)' }}>restan {jugadorDetalle.suspPendientes}</b>
-                    <div style={{ color: '#977', fontSize: '0.7rem' }}>Solo afecta a esta categoría.</div>
+                    <div style={{ color: '#977', fontSize: '0.7rem' }}>Solo afecta a esta categoría{fTemporadaNum ? ` · temporada ${fTemporadaNum}` : ''}.</div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {jugadorDetalle.suspCumplidas > 0 && (
@@ -694,7 +775,36 @@ export default function Disciplina() {
               )}
             </div>
           )}
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 900, marginBottom: 8 }}>HISTORIAL DE TARJETAS · {jugadorDetalle.categoria}</div>
+
+          {/* EVOLUCIÓN INTERANUAL */}
+          {(() => {
+            const hist = historialInteranual(jugadorDetalle.jugadorId);
+            if (hist.length === 0) return null;
+            return (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 900, marginBottom: 8 }}>EVOLUCIÓN INTERANUAL</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {hist.map(h => {
+                    const esActual = fTemporadaNum && h.anio === fTemporadaNum;
+                    return (
+                      <div key={h.anio} style={{ display: 'flex', alignItems: 'center', gap: 12, background: esActual ? 'rgba(0,230,118,0.06)' : '#0d0d0d', border: `1px solid ${esActual ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '8px 12px' }}>
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 900, color: esActual ? 'var(--accent)' : '#fff', width: 46, flexShrink: 0 }}>{h.anio}</span>
+                        <span style={{ color: h.amarillas ? '#facc15' : '#444', fontWeight: 700, fontSize: '0.85rem' }}>{h.amarillas} 🟨</span>
+                        <span style={{ color: h.rojas ? '#ef4444' : '#444', fontWeight: 700, fontSize: '0.85rem' }}>{h.rojas} 🟥</span>
+                        <span style={{ color: '#ec4899', fontWeight: 700, fontSize: '0.85rem' }}>{h.faltas} faltas</span>
+                        {h.suspAcum > 0 && <span style={{ marginLeft: 'auto', fontSize: '0.62rem', color: '#fca5a5', background: 'rgba(239,68,68,0.1)', border: '1px solid #5a1a1a', borderRadius: 4, padding: '2px 6px', fontWeight: 800, whiteSpace: 'nowrap' }}>{h.suspAcum} susp. 🟨</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: '0.6rem', color: '#666', marginTop: 6 }}>Acumulado por temporada, todas las categorías. La fila resaltada es la temporada que estás viendo.</div>
+              </div>
+            );
+          })()}
+
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 900, marginBottom: 8 }}>
+            HISTORIAL DE TARJETAS · {jugadorDetalle.categoria}{fTemporadaNum ? ` · ${fTemporadaNum}` : ''}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[...jugadorDetalle.eventosAmarilla, ...jugadorDetalle.eventosRoja]
               .sort((a, b) => (a.minuto || 0) - (b.minuto || 0))
@@ -711,7 +821,7 @@ export default function Disciplina() {
                 );
               })}
             {jugadorDetalle.eventosAmarilla.length === 0 && jugadorDetalle.eventosRoja.length === 0 && (
-              <span style={{ color: '#555', fontSize: '0.8rem' }}>Sin tarjetas.</span>
+              <span style={{ color: '#555', fontSize: '0.8rem' }}>Sin tarjetas en este filtro.</span>
             )}
           </div>
         </Overlay>
