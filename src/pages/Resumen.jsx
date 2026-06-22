@@ -75,6 +75,55 @@ const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
   );
 };
 
+// Componente para barras estilo FIFA Match Centre
+const StatBar = ({ label, valPropio, valRival, colorPropio = 'var(--accent)', colorRival = '#ef4444' }) => {
+  const vP = Number(valPropio) || 0;
+  const vR = Number(valRival) || 0;
+  const total = vP + vR;
+  const pctPropio = total === 0 ? 50 : (vP / total) * 100;
+  const pctRival = total === 0 ? 50 : (vR / total) * 100;
+
+  const mostrarValorPropio = label === 'POSESIÓN' ? `${pctPropio.toFixed(0)}%` : vP;
+  const mostrarValorRival = label === 'POSESIÓN' ? `${pctRival.toFixed(0)}%` : vR;
+
+  return (
+    <div style={{ marginBottom: '15px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 800, marginBottom: '5px' }}>
+        <span style={{ width: '40px', textAlign: 'left', color: vP >= vR && total > 0 ? '#fff' : 'var(--text-dim)' }}>{mostrarValorPropio}</span>
+        <span style={{ flex: 1, textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{label}</span>
+        <span style={{ width: '40px', textAlign: 'right', color: vR >= vP && total > 0 ? '#fff' : 'var(--text-dim)' }}>{mostrarValorRival}</span>
+      </div>
+      <div style={{ display: 'flex', height: '6px', background: '#1a1a1a', borderRadius: '3px', overflow: 'hidden' }}>
+        <div style={{ width: `${pctPropio}%`, background: total === 0 ? '#333' : colorPropio, transition: 'width 1s ease' }}></div>
+        <div style={{ width: `${pctRival}%`, background: total === 0 ? '#333' : colorRival, transition: 'width 1s ease' }}></div>
+      </div>
+    </div>
+  );
+};
+
+// Componente de Tarjetas Superiores (MVP, Goleador, Asistidor)
+const TopCard = ({ titulo, nombre, valor, subtexto, foto_url }) => (
+  <div style={{ flex: '1 1 200px', maxWidth: '300px', background: '#fff', borderRadius: '12px', padding: '20px', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
+     <div style={{ zIndex: 2, position: 'relative' }}>
+       <div style={{ fontSize: '0.8rem', color: '#1e3a8a', fontWeight: 800, letterSpacing: '1px' }}>{titulo}</div>
+       <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: 900, marginTop: '2px', lineHeight: '1.1' }}>{nombre?.toUpperCase()}</div>
+     </div>
+     <div style={{ zIndex: 2, position: 'relative', marginTop: '60px' }}>
+       <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', lineHeight: '1' }}>{valor}</div>
+       <div style={{ fontSize: '0.9rem', color: '#475569', fontWeight: 700 }}>{subtexto}</div>
+     </div>
+     <div style={{ position: 'absolute', right: '-10px', bottom: '0', height: '110%', zIndex: 1, display: 'flex', alignItems: 'flex-end', opacity: foto_url ? 1 : 0.3 }}>
+       {foto_url ? (
+         <img src={foto_url} alt={nombre} style={{ height: '90%', objectFit: 'contain', objectPosition: 'bottom' }} />
+       ) : (
+         <svg viewBox="0 0 24 24" fill="#cbd5e1" style={{ height: '80%', marginBottom: '-10px', marginRight: '20px' }}>
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+         </svg>
+       )}
+     </div>
+  </div>
+);
+
 const calcularRatingQuintetoAvanzado = (q) => {
   const gf = Number(q.golesFavor) || 0;
   const gc = Number(q.golesContra) || 0;
@@ -96,35 +145,21 @@ const calcularRatingQuintetoAvanzado = (q) => {
 };
 
 export const PitchLinesOptimized = ({ stroke = "rgba(255,255,255,0.2)", strokeWidth = 0.5 }) => (
-  <svg
-    viewBox="0 0 100 50"
-    xmlns="http://www.w3.org/2000/svg"
-    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}
-  >
+  <svg viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}>
     <rect x="0" y="0" width="100" height="50" fill="none" stroke={stroke} strokeWidth={strokeWidth} />
     <line x1="50" y1="0" x2="50" y2="50" stroke={stroke} strokeWidth={strokeWidth} />
     <circle cx="50" cy="25" r="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth} />
     <circle cx="50" cy="25" r="0.6" fill={stroke} />
-
-    <path 
-      d="M 0 6.25 A 15 15 0 0 1 15 21.25 L 15 28.75 A 15 15 0 0 1 0 43.75" 
-      fill="none" stroke={stroke} strokeWidth={strokeWidth} 
-    />
+    <path d="M 0 6.25 A 15 15 0 0 1 15 21.25 L 15 28.75 A 15 15 0 0 1 0 43.75" fill="none" stroke={stroke} strokeWidth={strokeWidth} />
     <circle cx="25" cy="25" r="0.6" fill={stroke} opacity={0.5} />
     <rect x="-2.5" y="21.25" width="2.5" height="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.8} strokeDasharray="1.5 1.5" />
-
-    <path 
-      d="M 100 6.25 A 15 15 0 0 0 85 21.25 L 85 28.75 A 15 15 0 0 0 100 43.75" 
-      fill="none" stroke={stroke} strokeWidth={strokeWidth} 
-    />
+    <path d="M 100 6.25 A 15 15 0 0 0 85 21.25 L 85 28.75 A 15 15 0 0 0 100 43.75" fill="none" stroke={stroke} strokeWidth={strokeWidth} />
     <circle cx="75" cy="25" r="0.6" fill={stroke} opacity={0.5} />
     <rect x="100" y="21.25" width="2.5" height="7.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.8} strokeDasharray="1.5 1.5" />
-
     <path d="M 2.5 0 A 2.5 2.5 0 0 1 0 2.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <path d="M 0 47.5 A 2.5 2.5 0 0 1 2.5 50" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <path d="M 97.5 50 A 2.5 2.5 0 0 1 100 47.5" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <path d="M 100 2.5 A 2.5 2.5 0 0 1 97.5 0" fill="none" stroke={stroke} strokeWidth={strokeWidth*0.7} />
-
     <line x1="37.5" y1="0" x2="37.5" y2="1.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <line x1="37.5" y1="50" x2="37.5" y2="48.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
     <line x1="62.5" y1="0" x2="62.5" y2="1.5" stroke={stroke} strokeWidth={strokeWidth*0.7} />
@@ -136,7 +171,6 @@ const MallaABP = ({ microZonas }) => {
   if (!microZonas) return null;
   const zX = ['Z1', 'Z2', 'Z3', 'Z4'];
   const zY = ['I', 'C', 'D'];
-  
   return (
     <svg viewBox="0 0 100 50" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}>
       {zX.map((xVal, colIdx) => (
@@ -146,18 +180,8 @@ const MallaABP = ({ microZonas }) => {
           const efectividad = data && data.favor > 0 ? data.rematesGenerados / data.favor : 0;
           return (
             <g key={key}>
-              <rect 
-                x={colIdx * 25} y={rowIdx * 16.66} 
-                width="25" height="16.66" 
-                fill={`rgba(0, 230, 118, ${efectividad * 0.7})`} 
-                stroke="rgba(255,255,255,0.05)" 
-                strokeWidth="0.2" 
-              />
-              {data && data.favor > 0 && (
-                <text x={(colIdx * 25) + 12.5} y={(rowIdx * 16.66) + 9} fill="#fff" fontSize="3" textAnchor="middle" fontWeight="bold">
-                  {data.rematesGenerados}/{data.favor}
-                </text>
-              )}
+              <rect x={colIdx * 25} y={rowIdx * 16.66} width="25" height="16.66" fill={`rgba(0, 230, 118, ${efectividad * 0.7})`} stroke="rgba(255,255,255,0.05)" strokeWidth="0.2" />
+              {data && data.favor > 0 && <text x={(colIdx * 25) + 12.5} y={(rowIdx * 16.66) + 9} fill="#fff" fontSize="3" textAnchor="middle" fontWeight="bold">{data.rematesGenerados}/{data.favor}</text>}
             </g>
           );
         })
@@ -176,6 +200,9 @@ function Resumen() {
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
   const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+
+  // NUEVO ESTADO: VISTA EXPRESS O AVANZADA
+  const [vistaActiva, setVistaActiva] = useState('express');
 
   useEffect(() => {
     const handleResize = () => setEsMovil(window.innerWidth <= 768);
@@ -231,7 +258,6 @@ function Resumen() {
     async function obtenerDatos() {
       try {
         const club_id = localStorage.getItem('club_id') || perfil?.club_id;
-
         let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
         let queryJugadores = supabase.from('jugadores').select('*');
         let queryWellness = supabase.from('wellness').select('*');
@@ -257,20 +283,13 @@ function Resumen() {
         let limiteAlcanzado = false;
 
         while (!limiteAlcanzado) {
-          const { data: evs, error } = await supabase
-            .from('eventos')
-            .select('id_partido')
-            .range(rangoInicio, rangoInicio + 999);
-            
+          const { data: evs, error } = await supabase.from('eventos').select('id_partido').range(rangoInicio, rangoInicio + 999);
           if (error) break;
-
           if (evs && evs.length > 0) {
             todosLosEventos = [...todosLosEventos, ...evs];
             rangoInicio += 1000;
             if (evs.length < 1000) limiteAlcanzado = true;
-          } else {
-            limiteAlcanzado = true;
-          }
+          } else { limiteAlcanzado = true; }
         }
 
         const idsConDatos = [...new Set(todosLosEventos.map(e => e.id_partido))];
@@ -278,13 +297,9 @@ function Resumen() {
 
         if (id && p) {
           const matchFound = p.find(partido => String(partido.id) === String(id));
-          if (matchFound) {
-            cargarPartidoDirecto(matchFound);
-          }
+          if (matchFound) cargarPartidoDirecto(matchFound);
         }
-      } catch (error) {
-        console.error("Error cargando el resumen general:", error);
-      }
+      } catch (error) { console.error("Error cargando el resumen general:", error); }
     }
     obtenerDatos();
   }, [id, perfil]);
@@ -302,9 +317,7 @@ function Resumen() {
 
   const cargarPartido = (idPartido) => {
     const matchFound = partidos.find(p => p.id === idPartido);
-    if (matchFound) {
-      cargarPartidoDirecto(matchFound);
-    }
+    if (matchFound) cargarPartidoDirecto(matchFound);
   };
 
   const cerrarPartido = () => {
@@ -317,10 +330,8 @@ function Resumen() {
   const obtenerUrlEmbed = () => {
     if (!partidoSeleccionado?.video_url) return '';
     const url = partidoSeleccionado.video_url;
-    
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=))([^"&?\/\s]{11})/i);
     const videoId = match ? match[1] : '';
-
     if (videoId) {
       const autoplay = tiempoVideo > 0 ? '&autoplay=1' : '';
       return `https://www.youtube.com/embed/${videoId}?start=${tiempoVideo}${autoplay}&rel=0`;
@@ -330,20 +341,16 @@ function Resumen() {
 
   const saltarAEventoVideo = (ev) => {
     if (!partidoSeleccionado?.video_url) return;
-    
     const offset = ev.periodo === 'PT' ? offsetPT : offsetST;
     const tiempoEvento = (ev.minuto * 60) + (ev.segundos || 0) + offset;
     const tiempoPrevio = Math.max(0, tiempoEvento - 5);
-    
     setTiempoVideo(tiempoPrevio);
   };
 
   const guardarUrlVideo = async () => {
     if (!partidoSeleccionado || !videoUrl) return;
     const { error } = await supabase.from('partidos').update({ video_url: videoUrl }).eq('id', partidoSeleccionado.id);
-    if (!error) {
-      setPartidoSeleccionado({ ...partidoSeleccionado, video_url: videoUrl });
-    }
+    if (!error) setPartidoSeleccionado({ ...partidoSeleccionado, video_url: videoUrl });
   };
 
   const desvincularVideo = async () => {
@@ -362,23 +369,17 @@ function Resumen() {
   };
 
   const toggleFiltroVideo = (accion) => {
-    setFiltroVideoAcciones(prev => 
-      prev.includes(accion) ? prev.filter(a => a !== accion) : [...prev, accion]
-    );
+    setFiltroVideoAcciones(prev => prev.includes(accion) ? prev.filter(a => a !== accion) : [...prev, accion]);
   };
 
   const categoriasUnicas = useMemo(() => {
     const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
-    if (esCT && misCategorias.length > 0) {
-      return catPartidos.filter(c => misCategorias.includes(c));
-    }
+    if (esCT && misCategorias.length > 0) return catPartidos.filter(c => misCategorias.includes(c));
     return catPartidos;
   }, [partidos, esCT, misCategorias]);
 
   const competicionesUnicas = useMemo(() => {
-    const filtradosPorCategoria = partidos.filter(p => 
-      filtroCategoriaGrid === 'Todas' || p.categoria === filtroCategoriaGrid
-    );
+    const filtradosPorCategoria = partidos.filter(p => filtroCategoriaGrid === 'Todas' || p.categoria === filtroCategoriaGrid);
     return [...new Set(filtradosPorCategoria.map(p => p.competicion).filter(Boolean))];
   }, [partidos, filtroCategoriaGrid]);
 
@@ -403,7 +404,6 @@ function Resumen() {
         let parts = clean.split('-');
         if (parts.length < 3) parts = clean.split('/');
         if (parts.length < 3) return 0;
-
         if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
         if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
         return 0;
@@ -416,16 +416,11 @@ function Resumen() {
   const analitica = useMemo(() => {
     if (!eventosPartido.length) return null;
 
-    let evFiltrados = filtroPeriodo === 'Todos' 
-      ? eventosPartido 
-      : eventosPartido.filter(ev => ev.periodo === filtroPeriodo);
+    let evFiltrados = filtroPeriodo === 'Todos' ? eventosPartido : eventosPartido.filter(ev => ev.periodo === filtroPeriodo);
 
     if (filtroAsimetria !== 'Todos') {
       const asimetriaLimpia = filtroAsimetria.toLowerCase().replace(/\s/g, '');
-      evFiltrados = evFiltrados.filter(ev => 
-        ev.contexto_juego && 
-        ev.contexto_juego.toLowerCase().replace(/\s/g, '') === asimetriaLimpia
-      );
+      evFiltrados = evFiltrados.filter(ev => ev.contexto_juego && ev.contexto_juego.toLowerCase().replace(/\s/g, '') === asimetriaLimpia);
     }
 
     evFiltrados.sort((a, b) => {
@@ -443,8 +438,7 @@ function Resumen() {
     });
 
     if (filtroEstadoPartido !== 'Todos') {
-      let gPropio = 0; 
-      let gRival = 0;
+      let gPropio = 0; let gRival = 0;
       evFiltrados = evFiltrados.filter(ev => {
         const diff = gPropio - gRival;
         const estadoActual = diff > 0 ? 'Ganando' : (diff < 0 ? 'Perdiendo' : 'Empatando');
@@ -458,31 +452,19 @@ function Resumen() {
     const datosProcesados = analizarPartido(evFiltrados, 'Propio', false);
 
     const stats = { 
-      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, perdidasPeligrosas: 0, rec: 0, recAltas: 0, recMedias: 0, recBajas: 0, faltas: 0, amarillas: 0, rojas: 0, accionesCampoRival: 0, totalAcciones: 0, tirosLibres: 0, pasesIncompletos: 0, ocasionesFalladas: 0, zonasPasesInc: { z1: 0, z2: 0, z3: 0, z4: 0 } }, 
+      propio: { goles: 0, asistencias: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, perdidas: 0, perdidasPeligrosas: 0, rec: 0, recAltas: 0, recMedias: 0, recBajas: 0, faltas: 0, amarillas: 0, rojas: 0, accionesCampoRival: 0, totalAcciones: 0, tirosLibres: 0, pasesIncompletos: 0, ocasionesFalladas: 0, zonasPasesInc: { z1: 0, z2: 0, z3: 0, z4: 0 }, zonasPerdidas: { z1: 0, z2: 0, z3: 0, z4: 0 } }, 
       rival: { goles: 0, atajados: 0, desviados: 0, rebatidos: 0, remates: 0, faltas: 0, amarillas: 0, rojas: 0, totalAcciones: 0, perdidas: 0, pasesIncompletos: 0, ocasionesFalladas: 0 } 
     };
 
     const abp = { corners: { favor: 0, contra: 0, rematesGenerados: 0 }, laterales: { favor: 0, contra: 0, rematesGenerados: 0 }, zonasLatFavor: { z1: 0, z2: 0, z3: 0, z4: 0 } };
-    
     const perfilRemate = { centro: 0, banda: 0, cerca: 0, lejos: 0 };
 
-    const origenGoles = {
-      'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
-      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0,
-      '5v4 / 4v3': 0, '4v5 / 3v4': 0, 
-      'No Especificado': 0
-    };
-    
-    const origenGolesRival = {
-      'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0,
-      'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0,
-      '5v4 / 4v3': 0, '4v5 / 3v4': 0, 
-      'No Especificado': 0
-    };
+    const origenGoles = { 'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0, 'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, '5v4 / 4v3': 0, '4v5 / 3v4': 0, 'No Especificado': 0 };
+    const origenGolesRival = { 'Ataque Posicional': 0, 'Contraataque': 0, 'Recuperación Alta': 0, 'Error No Forzado': 0, 'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, '5v4 / 4v3': 0, '4v5 / 3v4': 0, 'No Especificado': 0 };
+    const modificadoresRemate = { '2do Palo': 0, 'Mano a Mano': 0, 'Punteo': 0, 'Arq. Adelantado': 0, 'De Espaldas': 0, 'Bajo Presión': 0 };
 
     evFiltrados.forEach((ev, i) => {
       const p = ev.equipo === 'Propio';
-      
       const xNorm = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
       const yNorm = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
 
@@ -498,27 +480,21 @@ function Resumen() {
 
       if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') { 
         if (p) {
-          stats.propio.goles++;
-          stats.propio.remates++;
+          stats.propio.goles++; stats.propio.remates++;
           if (ev.id_asistencia) stats.propio.asistencias++;
-          
-          let origen = ev.origen_gol || 'No Especificado';
+          let origenRaw = ev.origen_gol || 'No Especificado';
+          let origen = origenRaw.split('|')[0].trim(); 
           const origenClean = origen.toLowerCase().replace(/\s/g, '');
-          
           if (origenClean === '5v4' || origenClean === '4v3' || origenClean === '5v4/4v3') origen = '5v4 / 4v3';
           else if (origenClean === '4v5' || origenClean === '3v4' || origenClean === '4v5/3v4') origen = '4v5 / 3v4';
-          
           origenGoles[origen] = (origenGoles[origen] || 0) + 1;
         } else {
-          stats.rival.goles++;
-          stats.rival.remates++;
-          
-          let origen = ev.origen_gol || 'No Especificado';
+          stats.rival.goles++; stats.rival.remates++;
+          let origenRaw = ev.origen_gol || 'No Especificado';
+          let origen = origenRaw.split('|')[0].trim();
           const origenClean = origen.toLowerCase().replace(/\s/g, '');
-          
           if (origenClean === '5v4' || origenClean === '4v3' || origenClean === '5v4/4v3') origen = '5v4 / 4v3';
           else if (origenClean === '4v5' || origenClean === '3v4' || origenClean === '4v5/3v4') origen = '4v5 / 3v4';
-          
           origenGolesRival[origen] = (origenGolesRival[origen] || 0) + 1;
         }
       }
@@ -526,23 +502,19 @@ function Resumen() {
       else if (ev.accion === 'Remate - Desviado') { p ? stats.propio.desviados++ : stats.rival.desviados++; p ? stats.propio.remates++ : stats.rival.remates++; }
       else if (ev.accion === 'Remate - Rebatido') { p ? stats.propio.rebatidos++ : stats.rival.rebatidos++; p ? stats.propio.remates++ : stats.rival.remates++; }
       
-      if (p && ev.accion?.includes('Remate')) {
-        if (yNorm > 35 && yNorm < 65) perfilRemate.centro++;
-        else perfilRemate.banda++;
-
-        const dx = (100 - xNorm) * 0.4;
-        const dy = Math.abs(50 - yNorm) * 0.2;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < 8) perfilRemate.cerca++;
-        else perfilRemate.lejos++;
+      if (p && (ev.accion?.includes('Remate') || ev.accion === 'Gol')) {
+        if (yNorm > 35 && yNorm < 65) perfilRemate.centro++; else perfilRemate.banda++;
+        const dx = (100 - xNorm) * 0.4; const dy = Math.abs(50 - yNorm) * 0.2; const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 8) perfilRemate.cerca++; else perfilRemate.lejos++;
+        if (ev.origen_gol) {
+           const parts = ev.origen_gol.split('|').map(s => s.trim());
+           parts.slice(1).forEach(mod => { if (modificadoresRemate[mod] !== undefined) modificadoresRemate[mod]++; });
+        }
       }
       else if (p && (ev.accion === 'Pase Incompleto' || ev.accion?.toLowerCase().includes('pase incompleto'))) {
         stats.propio.pasesIncompletos++;
         if (xNorm != null) {
-          if (xNorm < 25) stats.propio.zonasPasesInc.z1++;
-          else if (xNorm < 50) stats.propio.zonasPasesInc.z2++;
-          else if (xNorm < 75) stats.propio.zonasPasesInc.z3++;
-          else stats.propio.zonasPasesInc.z4++;
+          if (xNorm < 25) stats.propio.zonasPasesInc.z1++; else if (xNorm < 50) stats.propio.zonasPasesInc.z2++; else if (xNorm < 75) stats.propio.zonasPasesInc.z3++; else stats.propio.zonasPasesInc.z4++;
         }
       }
       else if (p && (ev.accion === 'Ocasión Fallada (Pase)' || ev.accion === 'Ocasión Fallada' || ev.accion === 'Pase Clave Fallado' || ev.accion?.toLowerCase().includes('ocasión fallada'))) {
@@ -550,25 +522,21 @@ function Resumen() {
       }
       else if (p && ev.accion === 'Pérdida') { 
         stats.propio.perdidas++; 
+        if (xNorm != null) {
+          if (xNorm < 25) stats.propio.zonasPerdidas.z1++; else if (xNorm < 50) stats.propio.zonasPerdidas.z2++; else if (xNorm < 75) stats.propio.zonasPerdidas.z3++; else stats.propio.zonasPerdidas.z4++;
+        }
         for(let j=1; j<=3 && i+j < evFiltrados.length; j++) {
             if (evFiltrados[i+j].equipo === 'Rival' && evFiltrados[i+j].accion?.includes('Remate')) {
-                stats.propio.perdidasPeligrosas++;
-                break;
+                stats.propio.perdidasPeligrosas++; break;
             }
         }
       }
       else if (p && ev.accion === 'Recuperación') { 
         stats.propio.rec++; 
-        if (xNorm > 66) stats.propio.recAltas++;
-        else if (xNorm > 33) stats.propio.recMedias++;
-        else stats.propio.recBajas++;
+        if (xNorm > 66) stats.propio.recAltas++; else if (xNorm > 33) stats.propio.recMedias++; else stats.propio.recBajas++;
       }
-      else if (ev.accion === 'Falta cometida' || ev.accion === 'Falta cometida (Ventaja)' || ev.accion === 'Penal en contra') {
-        p ? stats.propio.faltas++ : stats.rival.faltas++;
-      }
-      else if (ev.accion === 'Falta recibida' || ev.accion === 'Penal a favor') {
-        p ? stats.rival.faltas++ : stats.propio.faltas++;
-      }
+      else if (ev.accion === 'Falta cometida' || ev.accion === 'Falta cometida (Ventaja)' || ev.accion === 'Penal en contra') { p ? stats.propio.faltas++ : stats.rival.faltas++; }
+      else if (ev.accion === 'Falta recibida' || ev.accion === 'Penal a favor') { p ? stats.rival.faltas++ : stats.propio.faltas++; }
       else if (ev.accion === 'Tarjeta Amarilla' || ev.accion?.toLowerCase().includes('amarilla')) { p ? stats.propio.amarillas++ : stats.rival.amarillas++; }
       else if (ev.accion === 'Tarjeta Roja' || ev.accion?.toLowerCase().includes('roja')) { p ? stats.propio.rojas++ : stats.rival.rojas++; }
 
@@ -576,28 +544,18 @@ function Resumen() {
         if (p) {
           abp.corners.favor++;
           for(let j=1; j<=2 && i+j < evFiltrados.length; j++) {
-              if (evFiltrados[i+j].equipo === 'Propio' && evFiltrados[i+j].accion?.includes('Remate')) {
-                  abp.corners.rematesGenerados++; break;
-              }
+              if (evFiltrados[i+j].equipo === 'Propio' && evFiltrados[i+j].accion?.includes('Remate')) { abp.corners.rematesGenerados++; break; }
           }
         } else { abp.corners.contra++; }
       }
       if (ev.accion === 'Lateral') {
         if (p) {
           abp.laterales.favor++;
-          if (xNorm < 25) abp.zonasLatFavor.z1++;
-          else if (xNorm < 50) abp.zonasLatFavor.z2++;
-          else if (xNorm < 75) abp.zonasLatFavor.z3++;
-          else abp.zonasLatFavor.z4++;
-
+          if (xNorm < 25) abp.zonasLatFavor.z1++; else if (xNorm < 50) abp.zonasLatFavor.z2++; else if (xNorm < 75) abp.zonasLatFavor.z3++; else abp.zonasLatFavor.z4++;
           for(let j=1; j<=2 && i+j < evFiltrados.length; j++) {
-            if (evFiltrados[i+j].equipo === 'Propio' && evFiltrados[i+j].accion?.includes('Remate')) {
-                abp.laterales.rematesGenerados++; break;
-            }
+            if (evFiltrados[i+j].equipo === 'Propio' && evFiltrados[i+j].accion?.includes('Remate')) { abp.laterales.rematesGenerados++; break; }
           }
-        } else {
-          abp.laterales.contra++;
-        }
+        } else { abp.laterales.contra++; }
       }
     });
 
@@ -605,12 +563,9 @@ function Resumen() {
     jugadores.forEach(j => {
       const { xgChain, xgBuildup } = calcularCadenasValor(datosProcesados.posesiones, j.id);
       statsJugadores[j.id] = { 
-        id: j.id, nombre: j.apellido || j.nombre, dorsal: j.dorsal, posicion: j.posicion, eventos: [], 
-        remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0,
-        duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
-        pasesIncompletos: 0, ocasionesFalladas: 0,
-        xgChain, xgBuildup,
-        golesRecibidos: 0, atajadas: 0, amarillas: 0, rojas: 0
+        id: j.id, foto_url: j.foto_url || j.foto, nombre: j.apellido || j.nombre, dorsal: j.dorsal, posicion: j.posicion, eventos: [], 
+        remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0, duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
+        pasesIncompletos: 0, ocasionesFalladas: 0, pasesClave: 0, xgChain, xgBuildup, golesRecibidos: 0, atajadas: 0, amarillas: 0, rojas: 0
       };
     });
 
@@ -625,45 +580,31 @@ function Resumen() {
         if (ev.accion === 'Recuperación') statsJugadores[ev.id_jugador].rec++;
         if (ev.accion === 'Pase Incompleto' || ev.accion?.toLowerCase().includes('pase incompleto')) statsJugadores[ev.id_jugador].pasesIncompletos++;
         if (ev.accion === 'Ocasión Fallada (Pase)' || ev.accion === 'Ocasión Fallada' || ev.accion === 'Pase Clave Fallado' || ev.accion?.toLowerCase().includes('ocasión fallada')) statsJugadores[ev.id_jugador].ocasionesFalladas++;
-        
+        if (ev.accion === 'Pase Clave' || ev.accion?.toLowerCase().includes('pase clave')) statsJugadores[ev.id_jugador].pasesClave++;
         if (ev.accion === 'Falta cometida' || ev.accion === 'Falta cometida (Ventaja)' || ev.accion === 'Penal en contra') statsJugadores[ev.id_jugador].faltas++;
-        
         if (ev.accion === 'Tarjeta Amarilla' || ev.accion?.toLowerCase().includes('amarilla')) statsJugadores[ev.id_jugador].amarillas++;
         if (ev.accion === 'Tarjeta Roja' || ev.accion?.toLowerCase().includes('roja')) statsJugadores[ev.id_jugador].rojas++;
         if (ev.accion === 'Duelo DEF Ganado') { statsJugadores[ev.id_jugador].duelosDefGan++; statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo OFE Ganado') { statsJugadores[ev.id_jugador].duelosOfeGan++; statsJugadores[ev.id_jugador].duelosOfeTot++; }
         if (ev.accion === 'Duelo OFE Perdido') { statsJugadores[ev.id_jugador].duelosOfeTot++; }
-        
         if (ev.accion === 'Gol Recibido') statsJugadores[ev.id_jugador].golesRecibidos++;
         if (ev.accion === 'Atajada' || ev.accion?.toLowerCase().includes('atajada')) statsJugadores[ev.id_jugador].atajadas++;
       }
-      
       if (ev.equipo === 'Rival') {
-        // Determinar qué arquero estaba en cancha usando quinteto_activo
         let arqEnCancha = null;
         if (ev.quinteto_activo) {
           try {
-            const qa = typeof ev.quinteto_activo === 'string'
-              ? JSON.parse(ev.quinteto_activo)
-              : ev.quinteto_activo;
-            if (Array.isArray(qa)) {
-              arqEnCancha = arquerosPropios.find(arqId => qa.some(id => String(id) === String(arqId)));
-            }
+            const qa = typeof ev.quinteto_activo === 'string' ? JSON.parse(ev.quinteto_activo) : ev.quinteto_activo;
+            if (Array.isArray(qa)) arqEnCancha = arquerosPropios.find(arqId => qa.some(id => String(id) === String(arqId)));
           } catch {}
         }
-        // Si no hay quinteto_activo, fallback: arquero con más minutos hasta ese momento
-        // (evita asignar a todos cuando el dato no está disponible)
-        if (!arqEnCancha && arquerosPropios.length === 1) {
-          arqEnCancha = arquerosPropios[0];
-        }
+        if (!arqEnCancha && arquerosPropios.length === 1) arqEnCancha = arquerosPropios[0];
 
         if (arqEnCancha && statsJugadores[arqEnCancha]) {
           if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[arqEnCancha].golesRecibidos++;
           if (ev.accion === 'Remate - Atajado') statsJugadores[arqEnCancha].atajadas++;
         } else if (!arqEnCancha) {
-          // Último fallback: si no hay info de quinteto y hay varios arqueros,
-          // asignar solo al que tiene más minutos registrados hasta ahora
           const arqConMasMin = arquerosPropios.reduce((mejor, arqId) => {
             const minsActual = datosProcesados?.minutosJugados?.[arqId] || 0;
             const minsMejor = datosProcesados?.minutosJugados?.[mejor] || 0;
@@ -675,7 +616,6 @@ function Resumen() {
           }
         }
       }
-
       if (ev.equipo === 'Propio' && ev.id_asistencia && statsJugadores[ev.id_asistencia]) {
         if (ev.accion === 'Remate - Gol' || ev.accion === 'Gol') statsJugadores[ev.id_asistencia].asistencias++;
       }
@@ -686,98 +626,64 @@ function Resumen() {
       .map(j => {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
         const mins = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
-
-        // Construir eventosParaRating igual que JugadorPerfil:
-        // 1) eventos directos del jugador
-        // 2) eventos virtuales de asistencia (tipoVirtual: 'Asistencia')
         const eventosParaRating = [...j.eventos];
         evFiltrados.forEach(ev => {
           if (ev.id_asistencia == j.id && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {
             eventosParaRating.push({ ...ev, id_jugador: j.id, tipoVirtual: 'Asistencia' });
           }
         });
-
-        // Eventos rivales filtrados solo mientras el jugador estaba en cancha
-        // (igual que JugadorPerfil usa eventosRivalEnCancha con quinteto_activo)
         const eventosRivalEnCancha = evFiltrados.filter(ev => {
           if (ev.equipo !== 'Rival') return false;
           if (!ev.quinteto_activo) return false;
           try {
-            const qa = typeof ev.quinteto_activo === 'string'
-              ? JSON.parse(ev.quinteto_activo)
-              : ev.quinteto_activo;
+            const qa = typeof ev.quinteto_activo === 'string' ? JSON.parse(ev.quinteto_activo) : ev.quinteto_activo;
             return Array.isArray(qa) && qa.some(id => String(id) === String(j.id));
-          } catch {
-            return false;
-          }
+          } catch { return false; }
         });
-
         const ratingFinal = calcularRatingJugador(j, eventosParaRating, eventosRivalEnCancha, pm, mins);
         
         let rol = 'MIXTO';
         const esArqueroFijo = j.posicion && j.posicion.toLowerCase().includes('arquero');
-        
-        if (esArqueroFijo) {
-            rol = 'ARQUERO';
-        } else {
+        if (esArqueroFijo) { rol = 'ARQUERO'; } 
+        else {
             const ratioFinalizacion = j.remates / (j.xgBuildup || 1);
             const ratioDefensivo = j.rec / (j.remates || 1);
-            
-            if (ratioFinalizacion >= 2.5 && j.remates >= 2) {
-                rol = 'FINALIZADOR';
-            } else if (j.xgBuildup >= 0.4 && ratioFinalizacion < 1.5) {
-                rol = 'GENERADOR';
-            } else if (j.rec >= 3 && ratioDefensivo > 2) {
-                rol = 'MURO DEFENSIVO';
-            } else {
-                rol = 'MIXTO';
-            }
+            if (ratioFinalizacion >= 2.5 && j.remates >= 2) rol = 'FINALIZADOR';
+            else if (j.xgBuildup >= 0.4 && ratioFinalizacion < 1.5) rol = 'GENERADOR';
+            else if (j.rec >= 3 && ratioDefensivo > 2) rol = 'MURO DEFENSIVO';
+            else rol = 'MIXTO';
         }
-
         return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, rol } 
-      })
-      .sort((a, b) => {
-        const valA = a.impacto === '-' ? 0 : a.impacto;
-        const valB = b.impacto === '-' ? 0 : b.impacto;
+      }).sort((a, b) => {
+        const valA = a.impacto === '-' ? 0 : a.impacto; const valB = b.impacto === '-' ? 0 : b.impacto;
         return valB - valA;
       });
 
     const posesionesTotales = datosProcesados.posesiones.length;
     const posesionesConRemate = datosProcesados.posesiones.filter(p => p.eventos.some(e => e.accion?.includes('Remate'))).length;
     const posesionesGol = datosProcesados.posesiones.filter(p => p.eventos.some(e => e.accion === 'Gol' || e.accion === 'Remate - Gol')).length;
-
     const shotRate = posesionesTotales > 0 ? ((posesionesConRemate / posesionesTotales) * 100).toFixed(0) : 0;
     const goalRate = posesionesTotales > 0 ? ((posesionesGol / posesionesTotales) * 100).toFixed(1) : 0;
     const lossDanger = posesionesTotales > 0 ? ((stats.propio.perdidasPeligrosas / posesionesTotales) * 100).toFixed(1) : 0;
-
     const xgPorRemate = stats.propio.remates > 0 ? (datosProcesados.xgPropio / stats.propio.remates).toFixed(2) : 0;
     const golesVsXg = (stats.propio.goles - datosProcesados.xgPropio).toFixed(2);
     const rematesPorPosesion = posesionesTotales > 0 ? (stats.propio.remates / posesionesTotales).toFixed(2) : 0;
     const eficaciaTiro = stats.propio.remates > 0 ? ((stats.propio.goles / stats.propio.remates) * 100).toFixed(0) : 0;
-    
     const territoryPct = stats.propio.totalAcciones > 0 ? ((stats.propio.accionesCampoRival / stats.propio.totalAcciones) * 100).toFixed(0) : 50;
     const totalDuelosPartido = (datosProcesados.duelos.defensivos.total + datosProcesados.duelos.ofensivos.total);
     const chaosIndex = posesionesTotales > 0 ? ((stats.propio.perdidas + stats.rival.perdidas + totalDuelosPartido + datosProcesados.transiciones.length) / posesionesTotales).toFixed(1) : 0;
-
     const xgDiff = (datosProcesados.xgPropio + datosProcesados.xgRival) > 0 ? (datosProcesados.xgPropio / (datosProcesados.xgPropio + datosProcesados.xgRival)) * 100 : 50;
-    
     const totalDuelosDef = datosProcesados.duelos.defensivos.total || 0;
     const duelosDefPct = totalDuelosDef > 0 ? (datosProcesados.duelos.defensivos.ganados / totalDuelosDef) * 100 : 0;
-    
     const duelosPct = totalDuelosPartido > 0 ? ((datosProcesados.duelos.defensivos.ganados + datosProcesados.duelos.ofensivos.ganados) / totalDuelosPartido) * 100 : 50;
     const matchControl = ((xgDiff * 0.4) + (territoryPct * 0.3) + (duelosPct * 0.3)).toFixed(0);
 
-    const dataOrigenGol = Object.entries(origenGoles)
-      .filter(([_, valor]) => valor > 0)
-      .map(([nombre, valor]) => ({ name: nombre, value: valor }));
-      
-    const dataOrigenGolRival = Object.entries(origenGolesRival)
-      .filter(([_, valor]) => valor > 0)
-      .map(([nombre, valor]) => ({ name: nombre, value: valor }));
+    const dataOrigenGol = Object.entries(origenGoles).filter(([_, valor]) => valor > 0).map(([nombre, valor]) => ({ name: nombre, value: valor }));
+    const dataOrigenGolRival = Object.entries(origenGolesRival).filter(([_, valor]) => valor > 0).map(([nombre, valor]) => ({ name: nombre, value: valor }));
 
     return { 
       evFiltrados, stats, abp, ranking, eficaciaTiro, shotRate, goalRate, lossDanger, chaosIndex, matchControl, territoryPct,
-      xgPorRemate, golesVsXg, rematesPorPosesion, perfilRemate, dataOrigenGol, dataOrigenGolRival,
+      xgPorRemate, golesVsXg, rematesPorPosesion, perfilRemate, modificadoresRemate, dataOrigenGol, dataOrigenGolRival,
       xgPropio: datosProcesados.xgPropio, xgRival: datosProcesados.xgRival, marcadorReal,
       insights: datosProcesados.insights, posesiones: datosProcesados.posesiones, transiciones: datosProcesados.transiciones,
       duelos: datosProcesados.duelos, quintetos: datosProcesados.quintetos, plusMinusJugador: datosProcesados.plusMinusJugador, abpMicroZonas: datosProcesados.abpMicroZonas
@@ -786,35 +692,22 @@ function Resumen() {
 
   const eventosTimeline = useMemo(() => {
     if (!analitica) return [];
-    
     let evs = [...analitica.evFiltrados];
-
     if (filtroVideoAcciones.length > 0) {
       evs = evs.filter(ev => filtroVideoAcciones.some(filtro => ev.accion?.includes(filtro)));
     }
-
     evs.sort((a, b) => {
       if (a.periodo === 'PT' && b.periodo === 'ST') return -1;
       if (a.periodo === 'ST' && b.periodo === 'PT') return 1;
-      
-      const tiempoA = (a.minuto * 60) + (a.segundos || 0);
-      const tiempoB = (b.minuto * 60) + (b.segundos || 0);
-      return tiempoA - tiempoB;
+      return ((a.minuto * 60) + (a.segundos || 0)) - ((b.minuto * 60) + (b.segundos || 0));
     });
-
     return evs;
   }, [analitica, filtroVideoAcciones]);
 
   const reporteWellness = useMemo(() => {
     if (!partidoSeleccionado) return null;
-
     const idsJugadoresPartido = new Set(eventosPartido.map(ev => ev.id_jugador).filter(Boolean));
-    const jugadoresCategoria = new Set(
-      jugadores
-        .filter(j => j.categoria === partidoSeleccionado.categoria || idsJugadoresPartido.has(j.id))
-        .map(j => j.id)
-    );
-
+    const jugadoresCategoria = new Set(jugadores.filter(j => j.categoria === partidoSeleccionado.categoria || idsJugadoresPartido.has(j.id)).map(j => j.id));
     const wellnessFiltradoCat = wellness.filter(w => jugadoresCategoria.has(w.jugador_id));
     
     const parseDateLocal = (str) => {
@@ -824,7 +717,6 @@ function Resumen() {
         let parts = clean.split('-');
         if (parts.length < 3) parts = clean.split('/');
         if (parts.length < 3) return null;
-        
         if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
         return null;
@@ -836,7 +728,6 @@ function Resumen() {
     
     const day = fp.getDay();
     const diffToMonday = day === 0 ? -6 : 1 - day;
-    
     const inicioSemana = new Date(fp.getFullYear(), fp.getMonth(), fp.getDate() + diffToMonday);
     const finPost = new Date(fp.getFullYear(), fp.getMonth(), fp.getDate() + 2);
 
@@ -862,42 +753,26 @@ function Resumen() {
       return { rpe: rpe.toFixed(1), fatiga: fatiga.toFixed(1), sueno: sueno.toFixed(1), registros: arr.length };
     };
 
-    return { 
-      pre: calcAvg(prePartido), 
-      post: calcAvg(postPartido),
-      debug: { inicio: formatStr(inicioSemana), partido: formatStr(fp), post: formatStr(finPost) }
-    };
+    return { pre: calcAvg(prePartido), post: calcAvg(postPartido), debug: { inicio: formatStr(inicioSemana), partido: formatStr(fp), post: formatStr(finPost) } };
   }, [partidoSeleccionado, wellness, jugadores, eventosPartido]);
 
   const rematesDetalle = useMemo(() => {
     if (!analitica) return [];
-    return analitica.evFiltrados
-      .filter(ev => ev.accion?.includes('Remate') || ev.accion === 'Gol')
-      .map(ev => {
+    return analitica.evFiltrados.filter(ev => ev.accion?.includes('Remate') || ev.accion === 'Gol').map(ev => {
         const j = jugadores.find(jug => jug.id == ev.id_jugador);
         const nombre = j ? (j.apellido || j.nombre) : 'Desconocido';
-        
         const xNorm = ev.zona_x_norm !== undefined ? ev.zona_x_norm : (ev.zona_x || 0);
         const yNorm = ev.zona_y_norm !== undefined ? ev.zona_y_norm : (ev.zona_y || 50);
-
         const distToGoalX = Math.min(xNorm, 100 - xNorm);
         const dx = distToGoalX * 0.4;
         const dy = Math.abs(50 - yNorm) * 0.2;
         const dist = Math.sqrt(dx*dx + dy*dy);
         
         let xgBase = 0;
-        if (dist < 4) xgBase = 0.45;
-        else if (dist < 8) xgBase = 0.20;
-        else if (dist < 12) xgBase = 0.08;
-        else if (dist < 20) xgBase = 0.02;
-        else xgBase = 0.005;
-        
+        if (dist < 4) xgBase = 0.45; else if (dist < 8) xgBase = 0.20; else if (dist < 12) xgBase = 0.08; else if (dist < 20) xgBase = 0.02; else xgBase = 0.005;
         const anguloRadianes = Math.atan2(dx, dy);
         let xgVal = xgBase * Math.pow(Math.sin(anguloRadianes), 2);
-        
-        return {
-          ...ev, jugadorNombre: nombre, distanciaMetros: dist.toFixed(1), xgCalculado: Math.min(0.99, xgVal).toFixed(2)
-        };
+        return { ...ev, jugadorNombre: nombre, distanciaMetros: dist.toFixed(1), xgCalculado: Math.min(0.99, xgVal).toFixed(2) };
       }).sort((a,b) => a.minuto - b.minuto);
   }, [analitica, jugadores]);
 
@@ -919,9 +794,7 @@ function Resumen() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (!evMapa.length) return;
     
-    const dataPoints = evMapa
-      .filter(ev => (ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x) != null)
-      .map(ev => {
+    const dataPoints = evMapa.filter(ev => (ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x) != null).map(ev => {
         const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
         const y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
         return [ (x / 100) * canvas.width, (y / 100) * canvas.height, 1 ];
@@ -937,36 +810,22 @@ function Resumen() {
 
   const datosParaReporte = useMemo(() => {
     if (!partidoSeleccionado || !analitica) return null;
-    
-    let accLocal = 0;
-    let accVisita = 0;
+    let accLocal = 0; let accVisita = 0;
     const xgFlow = [{ minuto: 0, xgLocal: 0, xgVisitante: 0 }];
-    
     rematesDetalle.forEach(r => {
-      if(r.equipo === 'Propio') accLocal += Number(r.xgCalculado);
-      else accVisita += Number(r.xgCalculado);
-      
-      xgFlow.push({
-        minuto: r.minuto,
-        xgLocal: Number(accLocal.toFixed(2)),
-        xgVisitante: Number(accVisita.toFixed(2))
-      });
+      if(r.equipo === 'Propio') accLocal += Number(r.xgCalculado); else accVisita += Number(r.xgCalculado);
+      xgFlow.push({ minuto: r.minuto, xgLocal: Number(accLocal.toFixed(2)), xgVisitante: Number(accVisita.toFixed(2)) });
     });
-
     xgFlow.push({ minuto: 40, xgLocal: Number(accLocal.toFixed(2)), xgVisitante: Number(accVisita.toFixed(2)) });
 
-    let golesLocalPT = 0;
-    let golesVisitaPT = 0;
+    let golesLocalPT = 0; let golesVisitaPT = 0;
     eventosPartido.forEach(ev => {
       if (ev.periodo === 'PT' && (ev.accion === 'Gol' || ev.accion === 'Remate - Gol')) {
-        if (ev.equipo === 'Propio') golesLocalPT++;
-        else golesVisitaPT++;
+        if (ev.equipo === 'Propio') golesLocalPT++; else golesVisitaPT++;
       }
     });
 
-    const mapaRecuperacionesPerdidas = analitica.evFiltrados
-      .filter(ev => ev.equipo === 'Propio' && (ev.accion === 'Recuperación' || ev.accion === 'Pérdida'))
-      .map(ev => ({
+    const mapaRecuperacionesPerdidas = analitica.evFiltrados.filter(ev => ev.equipo === 'Propio' && (ev.accion === 'Recuperación' || ev.accion === 'Pérdida')).map(ev => ({
         x: ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x,
         y: ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y,
         tipo: ev.accion
@@ -977,55 +836,55 @@ function Resumen() {
         local: { nombre: partidoSeleccionado.nombre_propio || miClubGlobal, escudo: partidoSeleccionado.escudo_propio || miEscudoGlobal },
         visitante: { nombre: partidoSeleccionado.rival || 'RIVAL', escudo: partidoSeleccionado.escudo_rival }
       },
-      resultado: {
-        final: `${analitica.stats.propio.goles} - ${analitica.stats.rival.goles}`,
-        primerTiempo: `${golesLocalPT} - ${golesVisitaPT}`
-      },
-      info: {
-        fecha: partidoSeleccionado.fecha || '-',
-        torneo: partidoSeleccionado.competicion || 'Amistoso',
-        estadio: '-',
-        categoria: partidoSeleccionado.categoria || '-'
-      },
+      resultado: { final: `${analitica.stats.propio.goles} - ${analitica.stats.rival.goles}`, primerTiempo: `${golesLocalPT} - ${golesVisitaPT}` },
+      info: { fecha: partidoSeleccionado.fecha || '-', torneo: partidoSeleccionado.competicion || 'Amistoso', estadio: '-', categoria: partidoSeleccionado.categoria || '-' },
       stats: {
         local: { 
           xg: analitica.xgPropio, remates: analitica.stats.propio.remates, rematesAlArco: analitica.stats.propio.goles + analitica.stats.propio.atajados, 
           recuperaciones: analitica.stats.propio.rec, perdidas: analitica.stats.propio.perdidas, faltas: analitica.stats.propio.faltas,
-          matchControl: analitica.matchControl, chaosIndex: analitica.chaosIndex,
-          duelosGanados: analitica.duelos.defensivos.ganados + analitica.duelos.ofensivos.ganados,
-          duelosTotales: analitica.duelos.defensivos.total + analitica.duelos.ofensivos.total
+          matchControl: analitica.matchControl, chaosIndex: analitica.chaosIndex, duelosGanados: analitica.duelos.defensivos.ganados + analitica.duelos.ofensivos.ganados, duelosTotales: analitica.duelos.defensivos.total + analitica.duelos.ofensivos.total
         },
         visitante: { 
           xg: analitica.xgRival, remates: analitica.stats.rival.remates, rematesAlArco: analitica.stats.rival.goles + analitica.stats.rival.atajados, 
           recuperaciones: 0, perdidas: 0, faltas: analitica.stats.rival.faltas 
         },
-        topJugadores: analitica.ranking.filter(j => j.impacto !== '-').slice(0, 5).map(j => ({
-          nombre: (j.apellido || j.nombre || 'S/N').toUpperCase(),
-          rating: Number(j.impacto)
-        })),
-        topJugadoresExt: analitica.ranking.map(j => ({
-          nombre:    (j.apellido || j.nombre || 'S/N').toUpperCase(),
-          dorsal:    j.dorsal    || '',
-          rol:       j.rol       || '',
-          goles:     j.goles     || 0,
-          remates:   j.remates   || 0,
-          rec:       j.rec       || 0,
-          plusMinus: j.plusMinus ?? 0,
-          impacto:   Number(j.impacto) || 0
-        }))
+        topJugadores: analitica.ranking.filter(j => j.impacto !== '-').slice(0, 5).map(j => ({ nombre: (j.apellido || j.nombre || 'S/N').toUpperCase(), rating: Number(j.impacto) })),
+        topJugadoresExt: analitica.ranking.map(j => ({ nombre: (j.apellido || j.nombre || 'S/N').toUpperCase(), dorsal: j.dorsal || '', rol: j.rol || '', goles: j.goles || 0, remates: j.remates || 0, rec: j.rec || 0, plusMinus: j.plusMinus ?? 0, impacto: Number(j.impacto) || 0 }))
       },
-      tiros: rematesDetalle.map(r => ({
-        x: r.zona_x_norm !== undefined ? r.zona_x_norm : r.zona_x, y: r.zona_y_norm !== undefined ? r.zona_y_norm : r.zona_y,
-        equipo: r.equipo === 'Propio' ? 'local' : 'visitante', esGol: r.accion === 'Remate - Gol' || r.accion === 'Gol', xg: Number(r.xgCalculado)
-      })),
-      xgFlow,
-      recYPer: mapaRecuperacionesPerdidas,
+      tiros: rematesDetalle.map(r => ({ x: r.zona_x_norm !== undefined ? r.zona_x_norm : r.zona_x, y: r.zona_y_norm !== undefined ? r.zona_y_norm : r.zona_y, equipo: r.equipo === 'Propio' ? 'local' : 'visitante', esGol: r.accion === 'Remate - Gol' || r.accion === 'Gol', xg: Number(r.xgCalculado) })),
+      xgFlow, recYPer: mapaRecuperacionesPerdidas,
       golesOrigen: { 
         local: analitica.dataOrigenGol?.length > 0 ? analitica.dataOrigenGol : [{name: 'Sin Goles', value: 1}],
         rival: analitica.dataOrigenGolRival?.length > 0 ? analitica.dataOrigenGolRival : [{name: 'Sin Goles', value: 1}]
       }
     };
   }, [partidoSeleccionado, analitica, rematesDetalle, eventosPartido, miClubGlobal, miEscudoGlobal]);
+
+
+  // ---- LISTA DE GOLEADORES PARA LA VISTA EXPRESS ----
+  const goleadores = useMemo(() => {
+    if (!analitica) return { propio: [], rival: [] };
+    const p = [];
+    const r = [];
+    analitica.evFiltrados.forEach(ev => {
+      if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
+        const nombreJugador = ev.equipo === 'Propio' ? getNombreJugador(ev.id_jugador) : 'RIVAL';
+        const str = `${nombreJugador.split(' - ')[1] || nombreJugador} ${ev.minuto}'`;
+        if (ev.equipo === 'Propio') p.push(str); else r.push(str);
+      }
+    });
+    return { propio: p, rival: r };
+  }, [analitica, getNombreJugador]);
+
+  // ---- JUGADORES DESTACADOS PARA TARJETAS EXPRESS ----
+  const topJugadoresExpress = useMemo(() => {
+    if (!analitica) return { mvp: null, goleador: null, asistidor: null };
+    const r = analitica.ranking;
+    const mvp = r.filter(j => j.impacto !== '-' && j.impacto > 0).sort((a,b) => b.impacto - a.impacto)[0];
+    const goleador = [...r].filter(j => j.goles > 0).sort((a,b) => b.goles - a.goles)[0];
+    const asistidor = [...r].filter(j => j.asistencias > 0).sort((a,b) => b.asistencias - a.asistencias)[0];
+    return { mvp, goleador, asistidor };
+  }, [analitica]);
 
 
   if (!partidoSeleccionado) {
@@ -1097,17 +956,7 @@ function Resumen() {
   }
 
 const COLORS_ORIGEN = {
-    'Ataque Posicional': '#3b82f6', 
-    'Contraataque': '#f59e0b', 
-    'Recuperación Alta': '#10b981', 
-    'Error No Forzado': '#ef4444', 
-    'Córner': '#a855f7', 
-    'Lateral': '#06b6d4', 
-    'Tiro Libre': '#f472b6', 
-    'Penal / Sexta Falta': '#ffffff', 
-    '5v4 / 4v3': '#0a7fec',
-    '4v5 / 3v4': '#b6df03',
-    'No Especificado': '#4b5563' 
+    'Ataque Posicional': '#3b82f6', 'Contraataque': '#f59e0b', 'Recuperación Alta': '#10b981', 'Error No Forzado': '#ef4444', 'Córner': '#a855f7', 'Lateral': '#06b6d4', 'Tiro Libre': '#f472b6', 'Penal / Sexta Falta': '#ffffff', '5v4 / 4v3': '#0a7fec', '4v5 / 3v4': '#b6df03', 'No Especificado': '#4b5563' 
   };
 
   return (
@@ -1124,10 +973,111 @@ const COLORS_ORIGEN = {
         .pill-filtro.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.1); }
       `}</style>
 
-      <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'flex-end', marginBottom: '30px', gap: '15px' }}>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
-          <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flex: esMovil ? '1 1 auto' : 'none', justifyContent: 'center' }}>⬅ VOLVER</button>
-          {partidoSeleccionado && (
+      {/* HEADER PRINCIPAL CON BOTON VOLVER Y TOGGLE VISTA */}
+      <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', gap: '15px' }}>
+        <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flex: esMovil ? '1 1 100%' : 'none', justifyContent: 'center' }}>⬅ VOLVER</button>
+        
+        <div style={{ display: 'flex', background: '#111', padding: '4px', borderRadius: '6px', border: '1px solid #333', width: esMovil ? '100%' : 'auto' }}>
+            <button onClick={() => setVistaActiva('express')} style={{ flex: 1, padding: '8px 20px', borderRadius: '4px', border: 'none', background: vistaActiva === 'express' ? 'var(--accent)' : 'transparent', color: vistaActiva === 'express' ? '#000' : 'var(--text-dim)', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', transition: '0.2s' }}>
+                VISTA EXPRESS
+            </button>
+            <button onClick={() => setVistaActiva('avanzada')} style={{ flex: 1, padding: '8px 20px', borderRadius: '4px', border: 'none', background: vistaActiva === 'avanzada' ? 'var(--accent)' : 'transparent', color: vistaActiva === 'avanzada' ? '#000' : 'var(--text-dim)', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', transition: '0.2s' }}>
+                VISTA AVANZADA
+            </button>
+        </div>
+      </div>
+
+      {partidoSeleccionado && analitica && vistaActiva === 'express' && (
+        <div style={{ animation: 'fadeIn 0.3s', maxWidth: '800px', margin: '0 auto' }}>
+            {/* MARCADOR ESTILO TV / FIFA */}
+            <div className="bento-card" style={{ padding: '30px 20px', textAlign: 'center', marginBottom: '20px' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '20px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    {partidoSeleccionado.competicion} - {partidoSeleccionado.categoria}
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
+                    {/* EQUIPO LOCAL */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                        {partidoSeleccionado.escudo_propio ? 
+                            <img src={partidoSeleccionado.escudo_propio} alt="Local" style={{ height: '80px', objectFit: 'contain' }} /> : 
+                            <div style={{...escudoFallback, width: '80px', height: '80px', fontSize: '1.5rem'}}>MI</div>}
+                        <div style={{ fontSize: esMovil ? '1rem' : '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
+                            {partidoSeleccionado.nombre_propio || miClubGlobal}
+                        </div>
+                    </div>
+
+                    {/* SCORE */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ fontSize: esMovil ? '3.5rem' : '5rem', fontWeight: 900, color: '#fff', lineHeight: 1, textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+                            {analitica.marcadorReal.propio} <span style={{ color: 'var(--text-dim)', margin: '0 10px', fontSize: '0.8em' }}>-</span> {analitica.marcadorReal.rival}
+                        </div>
+                        <div style={{ background: '#222', color: 'var(--text-dim)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800, marginTop: '10px' }}>FINAL</div>
+                    </div>
+
+                    {/* EQUIPO RIVAL */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                        {partidoSeleccionado.escudo_rival ? 
+                            <img src={partidoSeleccionado.escudo_rival} alt="Rival" style={{ height: '80px', objectFit: 'contain' }} /> : 
+                            <div style={{...escudoFallback, borderColor: '#ef4444', color: '#ef4444', width: '80px', height: '80px', fontSize: '1.5rem'}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
+                        <div style={{ fontSize: esMovil ? '1rem' : '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
+                            {partidoSeleccionado.rival?.toUpperCase() || 'RIVAL'}
+                        </div>
+                    </div>
+                </div>
+
+                {/* GOLEADORES */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', borderTop: '1px solid #333', paddingTop: '15px' }}>
+                    <div style={{ flex: 1, textAlign: 'left', color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: '1.8' }}>
+                        {goleadores.propio.map((g, i) => <div key={i}>⚽ {g}</div>)}
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'right', color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: '1.8' }}>
+                        {goleadores.rival.map((g, i) => <div key={i}>{g} ⚽</div>)}
+                    </div>
+                </div>
+            </div>
+
+            {/* ESTADÍSTICAS BÁSICAS (BARRAS) */}
+            <div className="bento-card" style={{ padding: '30px 20px' }}>
+                <div style={{ textAlign: 'center', color: '#fff', fontWeight: 900, marginBottom: '25px', fontSize: '1.1rem', letterSpacing: '1px' }}>RESUMEN DEL PARTIDO</div>
+                
+                <StatBar label="POSESIÓN" valPropio={analitica.stats.propio.totalAcciones} valRival={analitica.stats.rival.totalAcciones} />
+                <div style={{ margin: '25px 0', borderBottom: '1px solid #222' }}></div>
+                
+                <StatBar label="REMATES TOTALES" valPropio={analitica.stats.propio.remates} valRival={analitica.stats.rival.remates} />
+                <StatBar label="REMATES AL ARCO" valPropio={analitica.stats.propio.goles + analitica.stats.propio.atajados} valRival={analitica.stats.rival.goles + analitica.stats.rival.atajados} />
+                <StatBar label="REMATES DESVIADOS / BLOQ." valPropio={analitica.stats.propio.desviados + analitica.stats.propio.rebatidos} valRival={analitica.stats.rival.desviados + analitica.stats.rival.rebatidos} />
+                <div style={{ margin: '25px 0', borderBottom: '1px solid #222' }}></div>
+                
+                <StatBar label="CÓRNERS" valPropio={analitica.abp.corners.favor} valRival={analitica.abp.corners.contra} />
+                <StatBar label="RECUPERACIONES" valPropio={analitica.stats.propio.rec} valRival={0} colorRival="#333" />
+                <StatBar label="PÉRDIDAS" valPropio={analitica.stats.propio.perdidas} valRival={analitica.stats.rival.perdidas} />
+                <div style={{ margin: '25px 0', borderBottom: '1px solid #222' }}></div>
+                
+                <StatBar label="FALTAS COMETIDAS" valPropio={analitica.stats.propio.faltas} valRival={analitica.stats.rival.faltas} colorPropio="#f59e0b" colorRival="#f59e0b" />
+                <StatBar label="TARJETAS AMARILLAS" valPropio={analitica.stats.propio.amarillas} valRival={analitica.stats.rival.amarillas} colorPropio="#fbbf24" colorRival="#fbbf24" />
+                <StatBar label="TARJETAS ROJAS" valPropio={analitica.stats.propio.rojas} valRival={analitica.stats.rival.rojas} colorPropio="#ef4444" colorRival="#ef4444" />
+            </div>
+
+            {/* JUGADORES DESTACADOS (TARJETAS) */}
+            <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
+                {topJugadoresExpress.mvp && (
+                    <TopCard titulo="MVP" nombre={topJugadoresExpress.mvp.nombre} valor={Number(topJugadoresExpress.mvp.impacto).toFixed(1)} subtexto="RATING" foto_url={topJugadoresExpress.mvp.foto_url} />
+                )}
+                {topJugadoresExpress.goleador && (
+                    <TopCard titulo="GOLEADOR" nombre={topJugadoresExpress.goleador.nombre} valor={topJugadoresExpress.goleador.goles} subtexto="GOLES" foto_url={topJugadoresExpress.goleador.foto_url} />
+                )}
+                {topJugadoresExpress.asistidor && (
+                    <TopCard titulo="ASISTIDOR" nombre={topJugadoresExpress.asistidor.nombre} valor={topJugadoresExpress.asistidor.asistencias} subtexto="ASISTENCIAS" foto_url={topJugadoresExpress.asistidor.foto_url} />
+                )}
+            </div>
+        </div>
+      )}
+
+      {partidoSeleccionado && analitica && vistaActiva === 'avanzada' && (
+        <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '20px', animation: 'fadeIn 0.3s' }}>
+          
+          {/* BARRA DE FILTROS AVANZADOS */}
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', background: '#111', padding: '15px', borderRadius: '6px', border: '1px solid #333' }}>
             <div style={{ flex: esMovil ? '1 1 auto' : 'none' }}>
               <div className="stat-label">PERIODO DE TIEMPO</div>
               <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: 'var(--accent)', color: 'var(--accent)', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
@@ -1136,8 +1086,6 @@ const COLORS_ORIGEN = {
                 <option value="ST">SEGUNDO TIEMPO (ST)</option>
               </select>
             </div>
-          )}
-          {partidoSeleccionado && (
             <div style={{ flex: esMovil ? '1 1 auto' : 'none' }}>
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 ESTADO DE PARTIDO <InfoBox texto="Aísla y analiza los eventos del partido según el resultado que había en el momento exacto en que ocurrieron." />
@@ -1149,8 +1097,6 @@ const COLORS_ORIGEN = {
                 <option value="Perdiendo">PERDIENDO</option>
               </select>
             </div>
-          )}
-          {partidoSeleccionado && (
             <div style={{ flex: esMovil ? '1 1 auto' : 'none' }}>
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 ASIMETRÍA <InfoBox texto="Aísla la matriz bajo estado de superioridad o inferioridad táctica." />
@@ -1164,23 +1110,16 @@ const COLORS_ORIGEN = {
                 <option value="3v4">3v4</option>
               </select>
             </div>
-          )}
-        </div>
-        {partidoSeleccionado && (
-          <div style={{ display: 'flex', gap: '10px', width: esMovil ? '100%' : 'auto' }}>
-            <button onClick={() => exportarEventosCSV(analitica.evFiltrados, partidoSeleccionado.rival)} className="btn-action" style={{ flex: 1, background: 'transparent', border: '1px solid var(--text-dim)', color: 'var(--text-dim)' }}>
-              CSV VIDEO
-            </button>
-            <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ flex: 1 }}>
-              EXPORTAR REPORTE
-            </button>
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+                <button onClick={() => exportarEventosCSV(analitica.evFiltrados, partidoSeleccionado.rival)} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--text-dim)', color: 'var(--text-dim)' }}>
+                CSV VIDEO
+                </button>
+                <button onClick={() => setMostrarReporte(true)} className="btn-action">
+                EXPORTAR PDF
+                </button>
+            </div>
           </div>
-        )}
-      </div>
 
-      {partidoSeleccionado && analitica && (
-        <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
           <div className="bento-card">
             <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', textAlign: 'center', marginBottom: '20px' }}>
               
@@ -1363,6 +1302,15 @@ const COLORS_ORIGEN = {
               <div style={kpiFila}><span>DESVIADOS</span><strong><span style={{color: '#888'}}>{analitica.stats.propio.desviados}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.desviados}</span></strong></div>
             </div>
 
+            <div className="bento-card" style={{ borderTop: '3px solid #f59e0b' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b' }}>MODIFICADORES TÁCTICOS (REMATES)</div>
+              <div style={kpiFila}><span>AL 2DO PALO</span><strong>{analitica.modificadoresRemate['2do Palo']}</strong></div>
+              <div style={kpiFila}><span>MANO A MANO</span><strong>{analitica.modificadoresRemate['Mano a Mano']}</strong></div>
+              <div style={kpiFila}><span>DE PUNTEO</span><strong>{analitica.modificadoresRemate['Punteo']}</strong></div>
+              <div style={kpiFila}><span>BAJO PRESIÓN</span><strong>{analitica.modificadoresRemate['Bajo Presión']}</strong></div>
+              <div style={kpiFila}><span>DE ESPALDAS</span><strong>{analitica.modificadoresRemate['De Espaldas']}</strong></div>
+            </div>
+
             <div className="bento-card" style={{ borderTop: '3px solid #00ff88' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#00ff88' }}>EFICIENCIA OFENSIVA</div>
               <div style={kpiFila}><span>xG / REMATE</span><strong style={{color: analitica.xgPorRemate > 0.15 ? '#00ff88' : '#fff'}}>{analitica.xgPorRemate}</strong></div>
@@ -1393,6 +1341,12 @@ const COLORS_ORIGEN = {
               <div style={kpiFila}><span>RECUPERACIONES TOTALES</span><strong>{analitica.stats.propio.rec}</strong></div>
               <div style={kpiFila}><span>RECUPERACIONES ALTAS</span><strong>{analitica.stats.propio.recAltas}</strong></div>
               <div style={kpiFila}><span>PÉRDIDAS PELIGROSAS</span><strong style={{ color: analitica.stats.propio.perdidasPeligrosas > 3 ? '#ef4444' : '#00ff88' }}>{analitica.stats.propio.perdidasPeligrosas}</strong></div>
+              <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginTop: '15px' }}>
+                 <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.2)', color: '#fff'}}>Z1 (SALIDA)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z1}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(245, 158, 11, 0.15)', color: '#fff'}}>Z2 (ELAB.)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z2}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: '#fff'}}>Z3 (ATAQUE)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z3}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: '#fff'}}>Z4 (FINAL.)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z4}</strong></div>
+              </div>
             </div>
 
             <div className="bento-card" style={{ borderTop: '3px solid #fbbf24' }}>
@@ -1440,7 +1394,7 @@ const COLORS_ORIGEN = {
             <div className="bento-card" style={{ borderTop: '3px solid #ef4444' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#ef4444' }}>PRECISIÓN DE DISTRIBUCIÓN</div>
               <div style={kpiFila}><span>PASES INCOMPLETOS</span><strong>{analitica.stats.propio.pasesIncompletos}</strong></div>
-              <div style={kpiFila}><span>OCASIONES FALLADAS (PASE CLAVE)</span><strong>{analitica.stats.propio.ocasionesFalladas}</strong></div>
+              <div style={kpiFila}><span>OCASIONES FALLADAS</span><strong>{analitica.stats.propio.ocasionesFalladas}</strong></div>
               <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginTop: '15px' }}>
                  <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.2)', color: '#fff'}}>Z1 (SALIDA)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z1}</strong></div>
                  <div style={{...zonePill, background: 'rgba(245, 158, 11, 0.15)', color: '#fff'}}>Z2 (ELAB.)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z2}</strong></div>
@@ -1461,7 +1415,7 @@ const COLORS_ORIGEN = {
                   <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Rival' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
                 </div>
 
-                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones' || tipoMapa === 'abp'} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: (tipoMapa === 'transiciones' || tipoMapa === 'abp') ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
+                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones' || tipoMapa === 'abp' || tipoMapa === 'tiros'} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: (tipoMapa === 'transiciones' || tipoMapa === 'abp' || tipoMapa === 'tiros') ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
                   <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS LAS ACCIONES</option>
                   <option value="Gol" style={{ background: '#111', color: '#fff' }}>GOLES</option>
                   <option value="Remate" style={{ background: '#111', color: '#fff' }}>REMATES</option>
@@ -1474,11 +1428,12 @@ const COLORS_ORIGEN = {
                 </select>
 
                 <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                  <button onClick={() => setTipoMapa('tiros')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'tiros' ? '#333' : 'transparent', color: tipoMapa === 'tiros' ? 'var(--accent)' : 'var(--text-dim)' }}>TIROS (xG)</button>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
                   <button onClick={() => setTipoMapa('zonas')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'zonas' ? '#333' : 'transparent', color: tipoMapa === 'zonas' ? 'var(--accent)' : 'var(--text-dim)' }}>ZONAS</button>
-                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
-                  <button onClick={() => setTipoMapa('abp')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'abp' ? '#06b6d4' : 'transparent', color: tipoMapa === 'abp' ? '#000' : 'var(--text-dim)' }}>ABP (MALLA)</button>
+                  <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSIC.</button>
+                  <button onClick={() => setTipoMapa('abp')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'abp' ? '#06b6d4' : 'transparent', color: tipoMapa === 'abp' ? '#000' : 'var(--text-dim)' }}>ABP</button>
                 </div>
               </div>
             </div>
@@ -1505,6 +1460,40 @@ const COLORS_ORIGEN = {
                         backgroundColor: getColorAccion(ev.accion), 
                         border: '1px solid #000', borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 0.8, zIndex: 2,
                         boxShadow: '0 0 5px rgba(0,0,0,0.5)'
+                      }} 
+                    />
+                  )
+                })}
+
+                {tipoMapa === 'tiros' && evMapa.filter(ev => ev.accion?.includes('Remate') || ev.accion === 'Gol').map((ev, i) => {
+                  const xNorm = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+                  const yNorm = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
+                  if (xNorm == null || yNorm == null) return null;
+                  
+                  const esGol = ev.accion === 'Remate - Gol' || ev.accion === 'Gol';
+                  const esAtajado = ev.accion === 'Remate - Atajado';
+                  
+                  const distToGoalX = Math.min(xNorm, 100 - xNorm);
+                  const dx = distToGoalX * 0.4;
+                  const dy = Math.abs(50 - yNorm) * 0.2;
+                  const dist = Math.sqrt(dx*dx + dy*dy);
+                  let size = 10;
+                  if (dist < 5) size = 22;
+                  else if (dist < 10) size = 16;
+                  else if (dist < 15) size = 12;
+                  
+                  return (
+                    <div 
+                      key={ev.id || i} 
+                      title={`${ev.accion} - ${getNombreJugador(ev.id_jugador)}`}
+                      style={{ 
+                        position: 'absolute', left: `${xNorm}%`, top: `${yNorm}%`, 
+                        width: `${size}px`, height: `${size}px`, 
+                        backgroundColor: esGol ? '#00ff88' : (esAtajado ? '#3b82f6' : '#555'), 
+                        border: esGol ? '2px solid #fff' : '1px solid #000', 
+                        borderRadius: esGol ? '2px' : '50%', 
+                        transform: 'translate(-50%, -50%)', opacity: 0.9, zIndex: esGol ? 3 : 2,
+                        boxShadow: esGol ? '0 0 10px #00ff88' : 'none'
                       }} 
                     />
                   )
@@ -1560,7 +1549,7 @@ const COLORS_ORIGEN = {
                  {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
               </div>
               <div className="table-wrapper custom-scroll">
-<table style={{ minWidth: '850px', width: '100%', textAlign: 'center' }}>
+<table style={{ minWidth: '950px', width: '100%', textAlign: 'center' }}>
   <thead>
     <tr>
       <th>#</th>
@@ -1578,6 +1567,9 @@ const COLORS_ORIGEN = {
         </div>
       </th>
       <th>REMATES (G)</th>
+      <th style={{ color: '#0ea5e9' }}>DUELOS OFE</th>
+      <th style={{ color: '#10b981' }}>DUELOS DEF</th>
+      <th style={{ color: '#06b6d4' }}>PASES CLAVE</th>
       <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
       <th style={{ color: '#10b981' }}>REC</th>
       <th style={{ color: '#ef4444' }}>PERD</th>
@@ -1616,6 +1608,9 @@ const COLORS_ORIGEN = {
           {j.plusMinus > 0 ? '+' : ''}{j.plusMinus}
         </td>
         <td>{j.remates} ({j.goles})</td>
+        <td style={{ color: '#0ea5e9', fontWeight: 800 }}>{j.duelosOfeGan}/{j.duelosOfeTot}</td>
+        <td style={{ color: '#10b981', fontWeight: 800 }}>{j.duelosDefGan}/{j.duelosDefTot}</td>
+        <td style={{ color: '#06b6d4', fontWeight: 800 }}>{j.pasesClave}</td>
         <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
         <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
         <td style={{ color: '#ef4444', fontWeight: 800 }}>{j.perdidas}</td>
@@ -1655,6 +1650,7 @@ const COLORS_ORIGEN = {
                         <th>+/-</th>
                         <th style={{ color: '#ef4444' }}>GOLES REC.</th>
                         <th style={{ color: '#00ff88' }}>ATAJADAS</th>
+                        <th style={{ color: '#3b82f6' }}>% ATAJADAS</th> 
                         <th style={{ color: '#f59e0b' }}>TIROS REC.</th> 
                         <th style={{ color: '#c084fc' }}>INICIO xG</th>
                         <th style={{ color: '#ef4444' }}>PASES INC.</th>
@@ -1694,6 +1690,9 @@ const COLORS_ORIGEN = {
                           </td>
                           <td style={{ fontWeight: 800, color: '#00ff88' }}>
                             {j.atajadas}
+                          </td>
+                          <td style={{ fontWeight: 800, color: '#3b82f6' }}>
+                            {j.golesRecibidos + j.atajadas > 0 ? ((j.atajadas / (j.atajadas + j.golesRecibidos)) * 100).toFixed(1) + '%' : '-'}
                           </td>
                           <td style={{ fontWeight: 800, color: '#f59e0b' }}>
                             {j.golesRecibidos + j.atajadas} 
