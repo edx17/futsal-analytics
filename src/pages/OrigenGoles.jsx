@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext'; // NUEVO: Importamos el contexto para saber quién es
+import { calcularXGEvento } from '../analytics/xg'; // Modelo de xG en vivo (mismo que usa el engine)
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -142,7 +143,7 @@ function OrigenGoles() {
   }, [partidos]);
 
   const analizarEquipo = useCallback((equipo) => {
-    const vacio = { total: 0, conteoOrigen: {}, dataPieOrigen: [], dataBarTiempo: [], topConexiones: [], pctAsistidos: 0, distPromedio: 0, xgTotal: 0, xgPromedio: 0, difDefinicion: 0, tablaGoles: [], mapaGoles: [] };
+    const vacio = { total: 0, conteoOrigen: {}, dataPieOrigen: [], dataBarTiempo: [], topConexiones: [], pctAsistidos: 0, distPromedio: 0, xgTotal: 0, xgPromedio: 0, difDefinicion: 0, contextoBuckets: { Igualdad: 0, Superioridad: 0, Inferioridad: 0 }, modificadores: [], tablaGoles: [], mapaGoles: [] };
     if (!eventos || eventos.length === 0) return vacio;
 
     const golesFiltrados = eventos.filter(ev => {
@@ -165,6 +166,11 @@ function OrigenGoles() {
 
     const conexiones = {};
 
+    // Contexto numérico (desde la óptica de mi club) y modificadores de definición
+    const contextoBuckets = { Igualdad: 0, Superioridad: 0, Inferioridad: 0 };
+    const MODIFS = ['2do Palo', 'Mano a Mano', 'Punteo', 'Arq. Adelantado', 'De Espaldas', 'Bajo Presión'];
+    const modifBuckets = Object.fromEntries(MODIFS.map(m => [m, 0]));
+
     let golesAsistidos = 0;
     let sumaDistancia = 0;
     let golesConDistancia = 0;
@@ -176,12 +182,20 @@ function OrigenGoles() {
       // origen_gol viene compuesto desde TomaDatos: "Base | Modificador | Modificador".
       // Tomamos el primer segmento como origen real; sin esto, todo gol con modificador
       // caía mal en "No Especificado".
-      const origen = (gol.origen_gol || 'No Especificado').split('|')[0].trim() || 'No Especificado';
+      const partes = (gol.origen_gol || 'No Especificado').split('|').map(s => s.trim());
+      const origen = partes[0] || 'No Especificado';
       if (conteoOrigen[origen] !== undefined) conteoOrigen[origen]++;
       else conteoOrigen['No Especificado']++;
 
-      // xG del remate que terminó en gol (mide la dificultad/peligrosidad de la chance)
-      if (gol.xg != null && !Number.isNaN(Number(gol.xg))) { xgTotal += Number(gol.xg); golesConXg++; }
+      // Modificadores de definición (2do palo, mano a mano, punteo, arq. adelantado, etc.)
+      const modsDelGol = partes.slice(1);
+      MODIFS.forEach(m => { if (modsDelGol.includes(m)) modifBuckets[m]++; });
+
+      // Contexto numérico, SIEMPRE desde la óptica de mi club (5v4 = yo con un hombre de más)
+      const ctx = gol.contexto_juego || '';
+      if (ctx === '5v4' || ctx === '4v3') contextoBuckets.Superioridad++;
+      else if (ctx === '4v5' || ctx === '3v4') contextoBuckets.Inferioridad++;
+      else contextoBuckets.Igualdad++;
 
       if (gol.minuto !== null && gol.minuto !== undefined) {
         if (gol.periodo === 'PT') {
@@ -204,7 +218,8 @@ function OrigenGoles() {
 
       let xNorm = gol.zona_x_norm !== undefined ? gol.zona_x_norm : gol.zona_x;
       let yNorm = gol.zona_y_norm !== undefined ? gol.zona_y_norm : gol.zona_y;
-      
+      let xgGol = null;
+
       if (xNorm != null && yNorm != null) {
         if (gol.equipo === 'Rival') {
           xNorm = 100 - xNorm;
@@ -216,10 +231,17 @@ function OrigenGoles() {
         const dist = Math.sqrt(dx*dx + dy*dy);
         sumaDistancia += dist;
         golesConDistancia++;
-        
-        mapaGoles.push({ ...gol, x: xNorm, y: yNorm, distancia: dist });
+
+        // xG en vivo con el mismo modelo del engine (analytics/xg.js).
+        // Pasamos las coords ya normalizadas (atacando hacia x=100) y marcamos transición por origen.
+        const esTransicion = origen === 'Contraataque' || origen === 'Recuperación Alta';
+        xgGol = calcularXGEvento({ ...gol, zona_x_norm: xNorm, zona_y_norm: yNorm }, esTransicion);
+        xgTotal += xgGol;
+        golesConXg++;
+
+        mapaGoles.push({ ...gol, x: xNorm, y: yNorm, distancia: dist, xgCalc: xgGol });
       } else {
-        mapaGoles.push({ ...gol, x: null, y: null, distancia: null });
+        mapaGoles.push({ ...gol, x: null, y: null, distancia: null, xgCalc: null });
       }
     });
 
@@ -250,12 +272,14 @@ function OrigenGoles() {
         origen: partesOrigen[0] || 'No Esp.',
         modificadores: partesOrigen.slice(1).join(' · '),
         contexto: g.contexto_juego || '',
-        xg: (g.xg != null && !Number.isNaN(Number(g.xg))) ? Number(g.xg).toFixed(2) : '-',
+        xg: (g.xgCalc != null) ? Number(g.xgCalc).toFixed(2) : '-',
         distancia: g.distancia ? g.distancia.toFixed(1) + 'm' : '-'
       }
     }).sort((a,b) => b.id - a.id);
 
-    return { total, conteoOrigen, dataPieOrigen, dataBarTiempo, topConexiones, pctAsistidos, distPromedio, xgTotal, xgPromedio, difDefinicion, tablaGoles, mapaGoles };
+    const modificadores = MODIFS.map(m => ({ name: m, value: modifBuckets[m] })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
+
+    return { total, conteoOrigen, dataPieOrigen, dataBarTiempo, topConexiones, pctAsistidos, distPromedio, xgTotal, xgPromedio, difDefinicion, contextoBuckets, modificadores, tablaGoles, mapaGoles };
   }, [eventos, mapaPartidos, jugadores, filtroCategoria, filtroTorneo]);
 
   // Vista principal (sigue el toggle a favor / en contra)
@@ -379,6 +403,73 @@ function OrigenGoles() {
                   <Bar dataKey="En contra" fill="#ef4444" radius={[0, 3, 3, 0]} barSize={13} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* CONTEXTO NUMÉRICO + MODIFICADORES DE DEFINICIÓN */}
+          {dataAnalizada.total > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+
+              {/* CONTEXTO NUMÉRICO (POWER PLAY / INFERIORIDAD) */}
+              <div className="bento-card">
+                <div className="stat-label" style={{ marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
+                  CONTEXTO NUMÉRICO <InfoBox texto="Goles según la superioridad/inferioridad de TU equipo en cancha (5v4 = vos con un hombre de más). Para los goles en contra, 'Superioridad' significa que te lo hicieron mientras vos tenías ventaja." />
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginBottom: '14px' }}>
+                  {filtroEquipo === 'Propio' ? 'Cómo aprovechamos cada situación' : 'En qué situación nos hacen daño'}
+                </div>
+                {(() => {
+                  const c = dataAnalizada.contextoBuckets;
+                  const items = [
+                    { k: 'Superioridad', label: 'SUPERIORIDAD (5v4 · 4v3)', color: '#00ff88', n: c.Superioridad },
+                    { k: 'Igualdad', label: 'IGUALDAD (5v5)', color: '#0ea5e9', n: c.Igualdad },
+                    { k: 'Inferioridad', label: 'INFERIORIDAD (4v5 · 3v4)', color: '#ef4444', n: c.Inferioridad },
+                  ];
+                  const tot = items.reduce((a, i) => a + i.n, 0) || 1;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {items.map(it => (
+                        <div key={it.k}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.72rem' }}>
+                            <span style={{ color: it.color, fontWeight: 800 }}>{it.label}</span>
+                            <span style={{ color: '#fff', fontWeight: 900 }}>{it.n} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({((it.n / tot) * 100).toFixed(0)}%)</span></span>
+                          </div>
+                          <div style={{ height: '8px', background: '#1a1a1a', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${(it.n / tot) * 100}%`, background: it.color, borderRadius: '4px' }}></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* MODIFICADORES DE DEFINICIÓN */}
+              <div className="bento-card">
+                <div className="stat-label" style={{ marginBottom: '14px', display: 'flex', alignItems: 'center' }}>
+                  MODIFICADORES DE DEFINICIÓN <InfoBox texto="Detalles del remate cargados en la toma de datos: pelota al 2do palo, mano a mano, arquero adelantado, de espaldas, bajo presión, punteo. Cuántos goles tuvieron cada condición." />
+                </div>
+                {dataAnalizada.modificadores.length === 0 ? (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', fontStyle: 'italic', padding: '10px 0' }}>
+                    Sin modificadores cargados en estos goles.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {dataAnalizada.modificadores.map(m => {
+                      const max = dataAnalizada.modificadores[0].value || 1;
+                      return (
+                        <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '0.72rem', color: '#fff', fontWeight: 700, width: '110px', flexShrink: 0 }}>{m.name}</span>
+                          <div style={{ flex: 1, height: '14px', background: '#1a1a1a', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${(m.value / max) * 100}%`, background: 'linear-gradient(90deg, #a855f7, #ec4899)', borderRadius: '4px' }}></div>
+                          </div>
+                          <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 900, width: '24px', textAlign: 'right' }}>{m.value}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

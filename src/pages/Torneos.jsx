@@ -539,6 +539,78 @@ function Torneos() {
     };
   }, [fixture, miClubGlobal, tablaPosiciones]);
 
+  // 4. PRÓXIMO RIVAL: scouting rápido del próximo pendiente (su fila en la tabla)
+  const proximoRival = useMemo(() => {
+    if (!fixture || fixture.length === 0) return null;
+    const pendientes = fixture
+      .filter(f => {
+        const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
+        return esMiPartido && f.estado === 'Pendiente';
+      })
+      .sort((a, b) => {
+        if (a.fecha && b.fecha) return new Date(a.fecha) - new Date(b.fecha);
+        if (a.fecha) return -1;
+        if (b.fecha) return 1;
+        return String(a.jornada || '').localeCompare(String(b.jornada || ''), undefined, { numeric: true });
+      });
+    const prox = pendientes[0];
+    if (!prox) return null;
+
+    const rivalNombre = prox.rival || 'Rival Desconocido';
+    const fila = tablaPosiciones.find(t => t.nombre === rivalNombre) || null;
+
+    const general = [...tablaPosiciones].sort((a, b) => (b.pts - a.pts) || (b.difGeneral - a.difGeneral) || (b.gf - a.gf));
+    const idxRival = general.findIndex(t => t.nombre === rivalNombre);
+
+    let dias = null;
+    if (prox.fecha) {
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      const fp = new Date(prox.fecha); fp.setHours(0, 0, 0, 0);
+      if (!isNaN(fp.getTime())) dias = Math.ceil((fp - hoy) / 86400000);
+    }
+
+    return {
+      partido: prox,
+      rivalNombre,
+      escudo: prox.escudo_rival || fila?.escudo || null,
+      condicion: prox.condicion || 'Local',
+      fecha: prox.fecha,
+      jornada: prox.jornada,
+      dias,
+      fila,
+      posRival: idxRival >= 0 ? idxRival + 1 : null,
+      totalEquipos: general.length,
+    };
+  }, [fixture, miClubGlobal, tablaPosiciones]);
+
+  // 5. PROYECCIÓN DE PUNTOS: run-rate, techo, posición y brecha con el líder
+  const proyeccion = useMemo(() => {
+    const pendientes = fixture.filter(f => {
+      const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
+      return esMiPartido && f.estado === 'Pendiente';
+    }).length;
+
+    const pj = stats.pj;
+    const ppp = pj > 0 ? (ptsTotales / pj) : 0; // puntos por partido (run-rate)
+    const proyFinal = Math.round(ptsTotales + ppp * pendientes);
+    const maxPosible = ptsTotales + pendientes * 3;
+
+    const general = [...tablaPosiciones].sort((a, b) => (b.pts - a.pts) || (b.difGeneral - a.difGeneral) || (b.gf - a.gf));
+    const idxYo = general.findIndex(t => t.nombre === miClubGlobal);
+    const lider = general[0] || null;
+    const yo = idxYo >= 0 ? general[idxYo] : null;
+    const brechaLider = (lider && yo && lider.nombre !== miClubGlobal) ? (lider.pts - yo.pts) : 0;
+
+    return {
+      pj, ptsTotales, pendientes,
+      ppp: ppp.toFixed(2),
+      proyFinal, maxPosible,
+      posicion: idxYo >= 0 ? idxYo + 1 : null,
+      totalEquipos: general.length,
+      lider, brechaLider,
+    };
+  }, [fixture, miClubGlobal, tablaPosiciones, stats, ptsTotales]);
+
   const calcularMejorRacha = (racha) => {
       let max = 0; let actual = 0;
       for (let r of racha) {
@@ -915,6 +987,129 @@ function Torneos() {
               ) : (
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     
+                    {/* PRÓXIMO RIVAL + PROYECCIÓN */}
+                    {(proximoRival || proyeccion.pendientes > 0 || proyeccion.pj > 0) && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+
+                        {/* PRÓXIMO RIVAL */}
+                        {proximoRival && (
+                          <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #a855f7' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                              <div className="stat-label" style={{ color: '#a855f7' }}>PRÓXIMO RIVAL</div>
+                              {proximoRival.dias != null && (
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#a855f7', background: 'rgba(168,85,247,0.12)', padding: '3px 8px', borderRadius: '10px' }}>
+                                  {proximoRival.dias <= 0 ? 'HOY' : `EN ${proximoRival.dias} DÍA${proximoRival.dias > 1 ? 'S' : ''}`}
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                              {proximoRival.escudo ? (
+                                <img src={proximoRival.escudo} alt={proximoRival.rivalNombre} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                              ) : (
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#222', border: '1px solid #444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.8rem' }}>
+                                  {proximoRival.rivalNombre.substring(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{proximoRival.rivalNombre.toUpperCase()}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                                  {proximoRival.jornada ? `${proximoRival.jornada} · ` : ''}{proximoRival.fecha || 'Fecha a definir'} · {proximoRival.condicion === 'Visitante' ? '✈️ Visitante' : '🏠 Local'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {proximoRival.fila && proximoRival.fila.pj > 0 ? (
+                              <>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                                  <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '8px 4px' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff' }}>{proximoRival.posRival ? `${proximoRival.posRival}º` : '-'}</div>
+                                    <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>POSICIÓN</div>
+                                  </div>
+                                  <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '8px 4px' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent)' }}>{proximoRival.fila.pts}</div>
+                                    <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>PTS · {proximoRival.fila.pj}PJ</div>
+                                  </div>
+                                  <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '8px 4px' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff' }}>{proximoRival.fila.gf}:{proximoRival.fila.gc}</div>
+                                    <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>GF:GC</div>
+                                  </div>
+                                  <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '8px 4px' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: proximoRival.condicion === 'Visitante' ? '#f97316' : '#3b82f6' }}>
+                                      {proximoRival.condicion === 'Visitante' ? proximoRival.fila.ptsL : proximoRival.fila.ptsV}
+                                    </div>
+                                    <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>{proximoRival.condicion === 'Visitante' ? 'PTS LOCAL' : 'PTS VISIT.'}</div>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>FORMA:</span>
+                                  {(proximoRival.fila.rachaGeneral || []).slice(-5).map((r, i) => {
+                                    let color = '#555'; if (r === 'V') color = '#00ff88'; if (r === 'D') color = '#ef4444';
+                                    return <div key={i} style={{ width: '12px', height: '12px', borderRadius: '50%', background: color }} title={r}></div>;
+                                  })}
+                                  {(!proximoRival.fila.rachaGeneral || proximoRival.fila.rachaGeneral.length === 0) && <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Sin datos</span>}
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                                Todavía no hay datos cargados de este rival en la tabla. Cargá sus partidos para verlo.
+                              </div>
+                            )}
+
+                            <button onClick={() => navigate('/scouting-rivales')} className="btn-secondary" style={{ marginTop: '14px', width: '100%', fontSize: '0.7rem', padding: '8px', fontWeight: 800 }}>
+                              🕵️‍♂️ VER SCOUTING DEL RIVAL
+                            </button>
+                          </div>
+                        )}
+
+                        {/* PROYECCIÓN DE PUNTOS */}
+                        {(proyeccion.pj > 0 || proyeccion.pendientes > 0) && (
+                          <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #00ff88' }}>
+                            <div className="stat-label" style={{ color: '#00ff88', marginBottom: '12px' }}>PROYECCIÓN DE PUNTOS</div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '14px' }}>
+                              <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '10px 4px' }}>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff' }}>{proyeccion.ptsTotales}</div>
+                                <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>PTS ({proyeccion.pj} PJ)</div>
+                              </div>
+                              <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '10px 4px' }}>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent)' }}>{proyeccion.ppp}</div>
+                                <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>PTS / PARTIDO</div>
+                              </div>
+                              <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '10px 4px' }}>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#a855f7' }}>{proyeccion.pendientes}</div>
+                                <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>FECHAS REST.</div>
+                              </div>
+                            </div>
+
+                            {proyeccion.pendientes > 0 ? (
+                              <>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)', borderRadius: '6px', padding: '10px 12px', marginBottom: '8px' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Proyección final (a este ritmo)</span>
+                                  <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#00ff88' }}>{proyeccion.proyFinal} pts</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-dim)', padding: '0 4px' }}>
+                                  <span>Techo si ganás todo</span>
+                                  <span style={{ color: '#fff', fontWeight: 800 }}>{proyeccion.maxPosible} pts</span>
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>No quedan fechas pendientes cargadas.</div>
+                            )}
+
+                            {proyeccion.posicion && (
+                              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #222', fontSize: '0.78rem', color: '#fff' }}>
+                                Vas <b style={{ color: 'var(--accent)' }}>{proyeccion.posicion}º</b> de {proyeccion.totalEquipos}.{' '}
+                                {proyeccion.brechaLider > 0
+                                  ? <>A <b style={{ color: '#f59e0b' }}>{proyeccion.brechaLider} pts</b> del líder ({proyeccion.lider?.nombre?.toUpperCase()}).</>
+                                  : <span style={{ color: '#00ff88', fontWeight: 800 }}>¡Estás puntero! 🔝</span>}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* DASHBOARD EJECUTIVO */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                       <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #00ff88' }}>
