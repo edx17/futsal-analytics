@@ -56,6 +56,9 @@ export const AuthProvider = ({ children }) => {
         } else {
           setPerfil(data);
           if (data.club_id) localStorage.setItem('club_id', data.club_id);
+          // Nombre del club propio para todos los módulos (antes solo lo seteaba Visión Global,
+          // por eso el CT caía en 'TU CLUB' y no matcheaba sus partidos).
+          if (data.clubes?.nombre) localStorage.setItem('mi_club', data.clubes.nombre);
         }
       }
     } catch (err) {

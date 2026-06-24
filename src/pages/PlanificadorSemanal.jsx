@@ -614,7 +614,17 @@ const PlanificadorSemanal = () => {
       const { data: dataSesiones, error: errSesiones } = await querySesiones;
       if (errSesiones) throw errSesiones;
 
-      let queryPartidos = supabase.from('partidos').select('*').eq('club_id', club_id).gte('fecha', inicio).lte('fecha', fin);
+      // 🛡️ SOLO PARTIDOS DE MI EQUIPO:
+      // Los cruces del fixture ajeno (otros equipos del torneo) se guardan con condicion = 'Neutral'
+      // desde Torneos.jsx. Acá los excluimos para que el Planificador muestre únicamente los partidos propios.
+      // El .or incluye los 'null' (partidos legacy sin condición) y excluye solo los 'Neutral'.
+      let queryPartidos = supabase
+        .from('partidos')
+        .select('*')
+        .eq('club_id', club_id)
+        .gte('fecha', inicio)
+        .lte('fecha', fin)
+        .or('condicion.is.null,condicion.neq.Neutral');
       
       if (filtroCategoria !== 'Todas') {
         queryPartidos = queryPartidos.eq('categoria', filtroCategoria);

@@ -9,7 +9,7 @@ import InfoBox from '../components/InfoBox';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
-  const miClubGlobal = localStorage.getItem('mi_club') || 'TU CLUB'; // <-- Unificación global del nombre del club
+  // miClubGlobal se resuelve más abajo (useMemo self-healing), una vez cargado el fixture.
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { perfil } = useAuth();
@@ -46,6 +46,22 @@ function Torneos() {
     rival_id: '', condicion: 'Local', estado: 'Pendiente', goles_propios: 0, goles_rival: 0,
     partidos_multiples: [{ local_id: '', visitante_id: '', estado: 'Pendiente', goles_local: '', goles_visitante: '' }]
   });
+
+  // 🏷️ NOMBRE DEL CLUB PROPIO — RESOLUCIÓN ROBUSTA (self-healing)
+  // El CT no tiene 'mi_club' en localStorage (solo lo setea Visión Global del superusuario),
+  // así que antes caía en 'TU CLUB', ningún partido matcheaba y el header/stats quedaban en cero.
+  // Prioridad: el nombre real ya guardado en los partidos propios del fixture (fuente de verdad,
+  // es exactamente contra lo que se comparan los partidos) -> sesión -> perfil -> fallback.
+  // Así funciona idéntico para superusuario y CT, sin depender de que el string coincida entre orígenes.
+  const miClubGlobal = useMemo(() => {
+    const propio = fixture.find(f => f && f.condicion !== 'Neutral' && f.nombre_propio);
+    return (
+      propio?.nombre_propio ||
+      localStorage.getItem('mi_club') ||
+      perfil?.clubes?.nombre ||
+      'TU CLUB'
+    );
+  }, [fixture, perfil]);
 
   useEffect(() => {
     if (clubId) {

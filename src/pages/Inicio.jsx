@@ -56,7 +56,7 @@ const DEFAULTS = {
 const LINKS = [
   { titulo: 'Nuevo Partido', icon: '⚡',  ruta: '/nuevo-partido',    color: '#10b981', roles: ['superuser', 'manager', 'ct'] },
   { titulo: 'Microciclo',    icon: '🗓️', ruta: '/microciclo',       color: '#8b5cf6', roles: ['superuser', 'manager', 'ct'] },
-  { titulo: 'Sports Science',icon: '🧬', ruta: '/rendimiento',      color: '#f43f5e', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Wellness',      icon: '🔋', ruta: '/wellness',         color: '#14b8a6', roles: ['superuser', 'manager', 'ct'] },
   { titulo: 'Scouting',      icon: '🕵️‍♂️', ruta: '/scouting-rivales', color: '#64748b', roles: ['superuser', 'manager', 'ct'] },
   { titulo: 'Disciplina',    icon: '🟨', ruta: '/disciplina',       color: '#facc15', roles: ['superuser', 'manager', 'ct'] },
   { titulo: 'Plantel',       icon: '👥', ruta: '/plantel',          color: '#0ea5e9', roles: ['superuser', 'manager', 'ct', 'admin'] },
@@ -316,28 +316,38 @@ export default function Inicio() {
         setCargando(true);
         const club = clubActivo;
         const miJug = perfil?.jugador_id;
-        if (!club && !esSuperUser) return;
+        if (!club) {
+          if (esSuperUser) { setNombreClub('VISIÓN GLOBAL'); setEscudoClub(''); }
+          setCategoriasDisponibles([]);
+          setCargando(false);
+          return;
+        }
 
         // Club / escudo
+        let clubNombre = localStorage.getItem('mi_club') || '';
         if (club) {
           const { data: c } = await supabase.from('clubes').select('nombre, escudo_url').eq('id', club).maybeSingle();
-          if (c) { setNombreClub(c.nombre); setEscudoClub(c.escudo_url); }
+          if (c) { setNombreClub(c.nombre); setEscudoClub(c.escudo_url); clubNombre = c.nombre || clubNombre; }
         } else if (esSuperUser) { setNombreClub('VISTA GLOBAL MASTER'); setEscudoClub(''); }
 
-        // Categorías disponibles
+        // Categorías disponibles (siempre del club elegido)
+        let catsClub = [];
         if (club) {
-          if (esCT && misCategorias.length > 0) setCategoriasDisponibles(misCategorias);
+          if (esCT && misCategorias.length > 0) catsClub = misCategorias;
           else {
             const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', club);
-            if (cats) setCategoriasDisponibles([...new Set(cats.map((x) => x.categoria).filter(Boolean))]);
+            catsClub = cats ? [...new Set(cats.map((x) => x.categoria).filter(Boolean))] : [];
           }
-        }
+          setCategoriasDisponibles(catsClub);
+        } else setCategoriasDisponibles([]);
+        // Solo filtramos por categoría si esa categoría existe para ESTE club (club sin categorías => no filtra)
+        const catEq = !!club && categoriaActiva !== 'Todas' && !!categoriaActiva && catsClub.includes(categoriaActiva);
 
         // Novedades
         if (club && rol !== 'jugador') {
           const { data: nov } = await supabase.from('novedades').select('*, perfiles(nombre_completo, rol)')
             .eq('club_id', club).in('publico_objetivo', ['CT', 'Ambos']).order('fecha_creacion', { ascending: false }).limit(4);
-          if (nov) setNovedades(categoriaActiva === 'Todas' ? nov : nov.filter((n) => (n.categorias || []).includes(categoriaActiva)));
+          if (nov) setNovedades(catEq ? nov.filter((n) => (n.categorias || []).includes(categoriaActiva)) : nov);
         }
 
         /* ===== JUGADOR ===== */
@@ -353,25 +363,35 @@ export default function Inicio() {
         /* ===== STAFF ===== */
         const hoyStr = new Date().toISOString().split('T')[0];
         const anio = new Date().getFullYear().toString();
-        const catEq = !!categoriaActiva && categoriaActiva !== 'Todas';
 
-        let qUlt = supabase.from('partidos').select('*').eq('club_id', club).in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(6);
-        let qPro = supabase.from('partidos').select('*').eq('club_id', club).eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(1);
-        let qAnual = supabase.from('partidos').select('id, categoria, goles_propios, goles_rival, fecha').eq('club_id', club).gte('fecha', `${anio}-01-01`).in('estado', ['Finalizado', 'Jugado']);
-        let qJug = supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion, categoria').eq('club_id', club);
-        let qMapPar = supabase.from('partidos').select('id, categoria, fecha').eq('club_id', club);
+        let qUlt = supabase.from('partidos').select('*').in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(40);
+        let qPro = supabase.from('partidos').select('*').eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(15);
+        let qAnual = supabase.from('partidos').select('id, categoria, goles_propios, goles_rival, fecha, nombre_propio, rival, condicion').gte('fecha', `${anio}-01-01`).in('estado', ['Finalizado', 'Jugado']);
+        let qJug = supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion, categoria');
+        let qMapPar = supabase.from('partidos').select('id, categoria, fecha');
+        if (club) { qUlt = qUlt.eq('club_id', club); qPro = qPro.eq('club_id', club); qAnual = qAnual.eq('club_id', club); qJug = qJug.eq('club_id', club); qMapPar = qMapPar.eq('club_id', club); }
         if (catEq) { qUlt = qUlt.eq('categoria', categoriaActiva); qPro = qPro.eq('categoria', categoriaActiva); qAnual = qAnual.eq('categoria', categoriaActiva); qJug = qJug.eq('categoria', categoriaActiva); }
 
         const [rUlt, rPro, rAnual, rJug, rMapPar] = await Promise.all([qUlt, qPro, qAnual, qJug, qMapPar]);
-        const partidosJug = (rUlt.data || []).slice().sort((a, b) => (parseFecha(b.fecha) || 0) - (parseFecha(a.fecha) || 0));
+        // Solo MIS partidos: descarto los cruces del fixture entre otros equipos
+        // (mismo club_id, pero condicion 'Neutral' y nombre_propio = otro equipo).
+        const _norm = (s) => String(s || '').trim().toLowerCase();
+        const _nombresMios = new Set([_norm(clubNombre), _norm(localStorage.getItem('mi_club') || '')].filter(Boolean));
+        // Cruce AJENO = SOLO los partidos entre otros equipos que Torneos inserta con mi club_id:
+        // SIEMPRE condicion 'Neutral' y nombre_propio = otro equipo. Un partido Local/Visitante
+        // (o sin condicion) es MÍO y se conserva siempre, sin importar el nombre_propio.
+        const esCruceAjeno = (p) => p.condicion === 'Neutral' && _nombresMios.size > 0 && p.nombre_propio
+          && !_nombresMios.has(_norm(p.nombre_propio)) && !_nombresMios.has(_norm(p.rival));
+        const esMio = (p) => !esCruceAjeno(p);
+        const partidosJug = (rUlt.data || []).filter(esMio).sort((a, b) => (parseFecha(b.fecha) || 0) - (parseFecha(a.fecha) || 0));
         const jugadores = rJug.data || [];
-        const proximoP = rPro.data?.[0] || null;
+        const proximoP = (rPro.data || []).filter(esMio)[0] || null;
         setUltimo(partidosJug[0] || null);
         setProximo(proximoP);
 
         // Balance anual + forma
         let v = 0, e = 0, d = 0, gf = 0, gc = 0;
-        (rAnual.data || []).forEach((p) => { const a = parseInt(p.goles_propios) || 0, b = parseInt(p.goles_rival) || 0; if (a > b) v++; else if (a === b) e++; else d++; gf += a; gc += b; });
+        (rAnual.data || []).filter(esMio).forEach((p) => { const a = parseInt(p.goles_propios) || 0, b = parseInt(p.goles_rival) || 0; if (a > b) v++; else if (a === b) e++; else d++; gf += a; gc += b; });
         setAnual({ v, e, d, gf, gc });
         setForma(partidosJug.slice(0, 5).reverse().map((p) => ({ id: p.id, res: resultadoDe(p), rival: p.rival, gf: parseInt(p.goles_propios) || 0, gc: parseInt(p.goles_rival) || 0 })));
 
@@ -381,6 +401,7 @@ export default function Inicio() {
           setUltAnalisis(analizarUltimo(evs || [], jugadores));
         } else setUltAnalisis({ xgPropio: 0, xgRival: 0, ranking: [] });
 
+      if (club) {
       /* ===== DISCIPLINA (misma lógica que pantalla Disciplina) ===== */
         const catDePartido = {}; (rMapPar.data || []).forEach((p) => { catDePartido[p.id] = p.categoria || 'Sin categoría'; });
         // Las amarillas resetean por temporada (año calendario en curso), igual que el balance anual.
@@ -458,6 +479,7 @@ export default function Inicio() {
           const enDuda = enRojo.length;
           setPrep({ dias, plantel, susp, enDuda, disponibles: Math.max(0, plantel - susp - enDuda) });
         } else setPrep(null);
+      } else { setTriage([]); setPulso({ score: null, registros: 0, enRojo: 0 }); setPrep(null); }
 
         setCargando(false);
       } catch (err) { console.error('Error cargando dashboard:', err); setCargando(false); }
@@ -474,11 +496,12 @@ export default function Inicio() {
       const club = listaClubes.find((c) => c.id === id); if (!club) return;
       localStorage.setItem('club_id', id); localStorage.setItem('mi_club', club.nombre);
       if (club.escudo_url) { localStorage.setItem('escudo_url', club.escudo_url); setEscudoClub(club.escudo_url); } else { localStorage.removeItem('escudo_url'); setEscudoClub(''); }
-      setClubMaster(id); setNombreClub(club.nombre);
+      setClubMaster(id); setNombreClub(club.nombre); setCategoriaActiva(''); localStorage.setItem('dash_categoria', '');
     }
   };
   const linkKiosco = `${window.location.origin}/kiosco?club=${clubActivo}`;
   const mostrarSelectorCat = rol !== 'jugador' && categoriasDisponibles.length > 1;
+  const sinClub = esSuperUser && !clubActivo;
 
   /* ---- Guard: club sin configurar ---- */
   if (!cargando && !clubActivo && !esSuperUser) {
@@ -693,7 +716,7 @@ export default function Inicio() {
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimo.id}`)} className="btn-secondary" style={{ flex: 1, fontSize: '0.65rem', padding: 7 }}>RESUMEN</button>
-                <button onClick={() => !modoEdicion && navigate(`/partido/${ultimo.id}/analisis-video`)} style={{ flex: 1, fontSize: '0.65rem', padding: 7, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer' }}>VIDEO</button>
+                <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimo.id}`)} style={{ flex: 1, fontSize: '0.65rem', padding: 7, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer' }}>VIDEO</button>
               </div>
             </div>
           ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, background: '#111', borderRadius: 8, border: '1px dashed var(--border)', fontSize: '0.8rem' }}>Sin registros</div>}
@@ -808,7 +831,7 @@ export default function Inicio() {
               {listaClubes.map((c) => <option key={c.id} value={c.id}>🏢 {c.nombre}</option>)}
             </select>
           )}
-          <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : '#222', color: modoEdicion ? '#000' : '#fff', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>{modoEdicion ? '✅ Guardar' : '⚙️ Editar'}</button>
+          {!sinClub && <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : '#222', color: modoEdicion ? '#000' : '#fff', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>{modoEdicion ? '✅ Guardar' : '⚙️ Editar'}</button>}
           {(esManager || esAdmin || esSuperUser) && clubActivo && (
             <button onClick={() => setMostrarQR(true)} style={{ background: '#10b981', color: '#000', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>📷 QR</button>
           )}
@@ -816,7 +839,7 @@ export default function Inicio() {
       </div>
 
       {/* PALETA EDICIÓN */}
-      {modoEdicion && (
+      {modoEdicion && !sinClub && (
         <div style={{ background: '#111', padding: 15, borderRadius: 8, border: '1px dashed var(--border)', marginBottom: 20, animation: 'fadeIn 0.2s' }}>
           <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem', color: '#fff' }}>Mostrá/ocultá módulos · usá ▲▼ para reordenar · 1·2·3 para el ancho</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -829,7 +852,13 @@ export default function Inicio() {
       )}
 
       {/* GRID */}
-      {cargando ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 50 }}>CARGANDO DASHBOARD...</div> : (
+      {sinClub ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-dim)' }}>
+          <div style={{ fontSize: '3.2rem', marginBottom: 14 }}>👑</div>
+          <h2 style={{ color: 'var(--accent)', fontWeight: 900, margin: '0 0 8px' }}>VISIÓN MASTER</h2>
+          <p style={{ maxWidth: 440, margin: '0 auto', lineHeight: 1.6 }}>Elegí un club en el selector de arriba para ver su tablero. No se mezcla información entre clubes.</p>
+        </div>
+      ) : cargando ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 50 }}>CARGANDO DASHBOARD...</div> : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(3, 1fr)', gap: esMovil ? 12 : 16, alignItems: 'stretch', gridAutoFlow: 'dense' }}>
             {layout.map((id, index) => { const m = widgetsPermitidos.find((w) => w.id === id); return m ? renderModulo(id, index) : null; })}
