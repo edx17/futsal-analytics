@@ -60,6 +60,7 @@ const LINKS = [
   { titulo: 'Scouting',      icon: '🕵️‍♂️', ruta: '/scouting-rivales', color: '#64748b', roles: ['superuser', 'manager', 'ct'] },
   { titulo: 'Disciplina',    icon: '🟨', ruta: '/disciplina',       color: '#facc15', roles: ['superuser', 'manager', 'ct'] },
   { titulo: 'Plantel',       icon: '👥', ruta: '/plantel',          color: '#0ea5e9', roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { titulo: 'Transferencias', icon: '💸', ruta: '/transferencias', color: '#f43f5e', roles: ['superuser', 'manager', 'admin', 'ct'] },
   { titulo: 'Tesorería',     icon: '💰', ruta: '/tesoreria',        color: '#eab308', roles: ['superuser', 'manager', 'admin'] },
   { titulo: 'Torneos',       icon: '🏆', ruta: '/torneos',          color: '#fbbf24', roles: ['superuser', 'manager', 'admin'] },
   { titulo: 'Sponsors',      icon: '🤝', ruta: '/sponsors',         color: '#0284c7', roles: ['superuser', 'manager', 'admin'] },

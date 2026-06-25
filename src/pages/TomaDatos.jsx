@@ -1059,6 +1059,17 @@ function TomaDatos() {
                           <BotonAccion label="DUELO DEF PERDIDO" color="#dc2626" onClick={() => seleccionarAccion('Duelo DEF Perdido')} />
                           <BotonAccion label="DUELO OFE GANADO" color="#0ea5e9" onClick={() => seleccionarAccion('Duelo OFE Ganado')} />
                           <BotonAccion label="DUELO OFE PERDIDO" color="#f97316" onClick={() => seleccionarAccion('Duelo OFE Perdido')} />
+                          {menuActivo === 'duelo_ind' ? (
+                            <>
+                              <BotonAccion label="OFE IND. GANADO" color="#2dd4bf" onClick={() => seleccionarAccion('Duelo OFE Indirecto Ganado')} />
+                              <BotonAccion label="OFE IND. PERDIDO" color="#fb923c" onClick={() => seleccionarAccion('Duelo OFE Indirecto Perdido')} />
+                              <BotonAccion label="DEF IND. GANADO" color="#5eead4" onClick={() => seleccionarAccion('Duelo DEF Indirecto Ganado')} />
+                              <BotonAccion label="DEF IND. PERDIDO" color="#f87171" onClick={() => seleccionarAccion('Duelo DEF Indirecto Perdido')} />
+                              <BotonAccion label="✕ CERRAR" color="#fff" span={2} onClick={() => setMenuActivo(null)} />
+                            </>
+                          ) : (
+                            <BotonAccion label="⚡ DUELO INDIRECTO (SIN PELOTA)" color="#14b8a6" span={2} onClick={() => setMenuActivo('duelo_ind')} />
+                          )}
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>

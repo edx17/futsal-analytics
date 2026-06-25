@@ -38,6 +38,7 @@ import Novedades from './pages/Novedades';
 import MiStaff from './pages/MiStaff'; 
 import AceptarTerminos from './pages/AceptarTerminos';
 import Disciplina from './pages/Disciplina';
+import Transferencias from './pages/Transferencias';
 
 import './App.css';
 
@@ -53,7 +54,8 @@ const CATALOGO_ACCIONES_FAB = [
   { id: 'torneos', label: 'Mis Torneos', path: '/torneos', icon: '🏆', roles: ['superuser', 'manager', 'admin'] },
   { id: 'rivales', label: 'Scouting Rivales', path: '/scouting-rivales', icon: '🕵️‍♂️', roles: ['superuser', 'manager', 'ct'] },
   { id: 'plantel', label: 'Gestionar Plantel', path: '/plantel', icon: '👥', roles: ['superuser', 'manager', 'admin', 'ct'] },
-  { id: 'tesoreria', label: 'Caja de Tesorería', path: '/tesoreria', icon: '💰', roles: ['superuser', 'manager', 'admin'] }
+  { id: 'tesoreria', label: 'Caja de Tesorería', path: '/tesoreria', icon: '💰', roles: ['superuser', 'manager', 'admin'] },
+  { id: 'transferencias', label: 'Transferencias', path: '/transferencias', icon: '💸', roles: ['superuser', 'manager', 'admin', 'ct'] },
 ];
 
 // ==========================================
@@ -98,6 +100,7 @@ function AppRoutes() {
       <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
       <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
       <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
+      <Route path="/transferencias" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Transferencias /></ProtectedRoute>} />
       <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
       <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
       <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
@@ -375,6 +378,7 @@ useEffect(() => {
             {menusAbiertos.plantel && !isCollapsed && (
               <>
                 {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👤 <span>MI PLANTEL</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/transferencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💸 <span>TRANSFERENCIAS</span></NavLink>}
                 {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
                 <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🌡️ <span>WELLNESS</span></NavLink>
                 <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
