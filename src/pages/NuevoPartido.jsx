@@ -79,8 +79,10 @@ function NuevoPartido() {
       const { data } = await supabase
         .from('partidos')
         .select('*')
+        .eq('club_id', clubId)
         .eq('torneo_id', idTorneo)
         .eq('estado', 'Pendiente')
+        .or('condicion.is.null,condicion.neq.Neutral')
         .order('jornada', { ascending: true });
       setPartidosTorneo(data || []);
     } else {
