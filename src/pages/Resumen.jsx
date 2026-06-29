@@ -258,7 +258,7 @@ function Resumen() {
     async function obtenerDatos() {
       try {
         const club_id = localStorage.getItem('club_id') || perfil?.club_id;
-        let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
+        let queryPartidos = supabase.from('partidos').select('*').or('condicion.is.null,condicion.neq.Neutral').order('id', { ascending: false });
         let queryJugadores = supabase.from('jugadores').select('*');
         let queryWellness = supabase.from('wellness').select('*');
 
