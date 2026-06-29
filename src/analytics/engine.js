@@ -103,7 +103,9 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
 
   const duelos = {
     defensivos: { total: 0, ganados: 0, perdidos: 0, eficacia: 0 },
-    ofensivos: { total: 0, ganados: 0, perdidos: 0, eficacia: 0 }
+    ofensivos: { total: 0, ganados: 0, perdidos: 0, eficacia: 0 },
+    defensivosInd: { total: 0, ganados: 0, perdidos: 0, eficacia: 0 },
+    ofensivosInd: { total: 0, ganados: 0, perdidos: 0, eficacia: 0 }
   };
 
   diccionarios.porEquipo.propio.forEach(ev => {
@@ -111,10 +113,16 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
     if (ev.accion === 'Duelo DEF Perdido') { duelos.defensivos.total++; duelos.defensivos.perdidos++; }
     if (ev.accion === 'Duelo OFE Ganado') { duelos.ofensivos.total++; duelos.ofensivos.ganados++; }
     if (ev.accion === 'Duelo OFE Perdido') { duelos.ofensivos.total++; duelos.ofensivos.perdidos++; }
+    if (ev.accion === 'Duelo DEF Indirecto Ganado') { duelos.defensivosInd.total++; duelos.defensivosInd.ganados++; }
+    if (ev.accion === 'Duelo DEF Indirecto Perdido') { duelos.defensivosInd.total++; duelos.defensivosInd.perdidos++; }
+    if (ev.accion === 'Duelo OFE Indirecto Ganado') { duelos.ofensivosInd.total++; duelos.ofensivosInd.ganados++; }
+    if (ev.accion === 'Duelo OFE Indirecto Perdido') { duelos.ofensivosInd.total++; duelos.ofensivosInd.perdidos++; }
   });
 
   if (duelos.defensivos.total > 0) duelos.defensivos.eficacia = (duelos.defensivos.ganados / duelos.defensivos.total) * 100;
   if (duelos.ofensivos.total > 0) duelos.ofensivos.eficacia = (duelos.ofensivos.ganados / duelos.ofensivos.total) * 100;
+  if (duelos.defensivosInd.total > 0) duelos.defensivosInd.eficacia = (duelos.defensivosInd.ganados / duelos.defensivosInd.total) * 100;
+  if (duelos.ofensivosInd.total > 0) duelos.ofensivosInd.eficacia = (duelos.ofensivosInd.ganados / duelos.ofensivosInd.total) * 100;
 
   const trackingCancha = {};
   const plusMinusJugador = {};

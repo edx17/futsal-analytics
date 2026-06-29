@@ -565,6 +565,7 @@ function Resumen() {
       statsJugadores[j.id] = { 
         id: j.id, foto_url: j.foto_url || j.foto, nombre: j.apellido || j.nombre, dorsal: j.dorsal, posicion: j.posicion, eventos: [], 
         remates: 0, goles: 0, asistencias: 0, perdidas: 0, rec: 0, faltas: 0, duelosDefGan: 0, duelosDefTot: 0, duelosOfeGan: 0, duelosOfeTot: 0,
+        duelosOfeIndGan: 0, duelosOfeIndTot: 0, duelosDefIndGan: 0, duelosDefIndTot: 0,
         pasesIncompletos: 0, ocasionesFalladas: 0, pasesClave: 0, xgChain, xgBuildup, golesRecibidos: 0, atajadas: 0, amarillas: 0, rojas: 0
       };
     });
@@ -588,6 +589,10 @@ function Resumen() {
         if (ev.accion === 'Duelo DEF Perdido') { statsJugadores[ev.id_jugador].duelosDefTot++; }
         if (ev.accion === 'Duelo OFE Ganado') { statsJugadores[ev.id_jugador].duelosOfeGan++; statsJugadores[ev.id_jugador].duelosOfeTot++; }
         if (ev.accion === 'Duelo OFE Perdido') { statsJugadores[ev.id_jugador].duelosOfeTot++; }
+        if (ev.accion === 'Duelo OFE Indirecto Ganado') { statsJugadores[ev.id_jugador].duelosOfeIndGan++; statsJugadores[ev.id_jugador].duelosOfeIndTot++; }
+        if (ev.accion === 'Duelo OFE Indirecto Perdido') { statsJugadores[ev.id_jugador].duelosOfeIndTot++; }
+        if (ev.accion === 'Duelo DEF Indirecto Ganado') { statsJugadores[ev.id_jugador].duelosDefIndGan++; statsJugadores[ev.id_jugador].duelosDefIndTot++; }
+        if (ev.accion === 'Duelo DEF Indirecto Perdido') { statsJugadores[ev.id_jugador].duelosDefIndTot++; }
         if (ev.accion === 'Gol Recibido') statsJugadores[ev.id_jugador].golesRecibidos++;
         if (ev.accion === 'Atajada' || ev.accion?.toLowerCase().includes('atajada')) statsJugadores[ev.id_jugador].atajadas++;
       }
@@ -1325,6 +1330,15 @@ const COLORS_ORIGEN = {
                   </span>
                 </strong>
               </div>
+              <div style={kpiFila}>
+                <span style={{ color: '#2dd4bf' }}>DUELOS OFE. IND. (S/PELOTA)</span>
+                <strong>
+                  {analitica.duelos.ofensivosInd.ganados} / {analitica.duelos.ofensivosInd.total} 
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analitica.duelos.ofensivosInd.total > 0 ? ((analitica.duelos.ofensivosInd.ganados / analitica.duelos.ofensivosInd.total) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
             </div>
 
             <div className="bento-card" style={{ borderTop: '3px solid #ef4444' }}>
@@ -1335,6 +1349,15 @@ const COLORS_ORIGEN = {
                   {analitica.duelos.defensivos.ganados} / {analitica.duelos.defensivos.total}
                   <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
                     ({analitica.duelos.defensivos.total > 0 ? ((analitica.duelos.defensivos.ganados / analitica.duelos.defensivos.total) * 100).toFixed(0) : 0}%)
+                  </span>
+                </strong>
+              </div>
+              <div style={kpiFila}>
+                <span style={{ color: '#5eead4' }}>DUELOS DEF. IND. (S/PELOTA)</span>
+                <strong>
+                  {analitica.duelos.defensivosInd.ganados} / {analitica.duelos.defensivosInd.total} 
+                  <span style={{ color: 'var(--text-dim)', marginLeft: '5px' }}>
+                    ({analitica.duelos.defensivosInd.total > 0 ? ((analitica.duelos.defensivosInd.ganados / analitica.duelos.defensivosInd.total) * 100).toFixed(0) : 0}%)
                   </span>
                 </strong>
               </div>
@@ -1569,6 +1592,8 @@ const COLORS_ORIGEN = {
       <th>REMATES (G)</th>
       <th style={{ color: '#0ea5e9' }}>DUELOS OFE</th>
       <th style={{ color: '#10b981' }}>DUELOS DEF</th>
+      <th style={{ color: '#2dd4bf' }}>OFE IND</th>
+      <th style={{ color: '#5eead4' }}>DEF IND</th>
       <th style={{ color: '#06b6d4' }}>PASES CLAVE</th>
       <th style={{ color: '#c084fc' }}>xG BUILDUP</th>
       <th style={{ color: '#10b981' }}>REC</th>
@@ -1610,6 +1635,8 @@ const COLORS_ORIGEN = {
         <td>{j.remates} ({j.goles})</td>
         <td style={{ color: '#0ea5e9', fontWeight: 800 }}>{j.duelosOfeGan}/{j.duelosOfeTot}</td>
         <td style={{ color: '#10b981', fontWeight: 800 }}>{j.duelosDefGan}/{j.duelosDefTot}</td>
+        <td style={{ color: '#2dd4bf', fontWeight: 800 }}>{j.duelosOfeIndGan}/{j.duelosOfeIndTot}</td>
+        <td style={{ color: '#5eead4', fontWeight: 800 }}>{j.duelosDefIndGan}/{j.duelosDefIndTot}</td>
         <td style={{ color: '#06b6d4', fontWeight: 800 }}>{j.pasesClave}</td>
         <td style={{ fontWeight: 800, color: '#c084fc' }}>{j.xgBuildup.toFixed(2)}</td>
         <td style={{ color: 'var(--accent)' }}>{j.rec}</td>
