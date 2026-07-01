@@ -39,6 +39,7 @@ import MiStaff from './pages/MiStaff';
 import AceptarTerminos from './pages/AceptarTerminos';
 import Disciplina from './pages/Disciplina';
 import Transferencias from './pages/Transferencias';
+import ResumenPlantel from './pages/ResumenPlantel';
 
 import './App.css';
 
@@ -115,6 +116,7 @@ function AppRoutes() {
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
       <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
       
+      <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/temporada" element={<ProtectedRoute><Temporada /></ProtectedRoute>} />
       <Route path="/resumen" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
       <Route path="/resumen/:id" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
@@ -378,6 +380,7 @@ useEffect(() => {
             {menusAbiertos.plantel && !isCollapsed && (
               <>
                 {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👤 <span>MI PLANTEL</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/plantel-resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📋 <span>RESUMEN PLANTEL</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/transferencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💸 <span>TRANSFERENCIAS</span></NavLink>}
                 {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
                 <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🌡️ <span>WELLNESS</span></NavLink>
