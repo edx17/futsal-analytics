@@ -40,7 +40,7 @@ import MiStaff from './pages/MiStaff';
 import AceptarTerminos from './pages/AceptarTerminos';
 import Disciplina from './pages/Disciplina';
 import Transferencias from './pages/Transferencias';
-import ResumenPlantel from './pages/ResumenPlantel';
+import ResumenPlantel from './pages/Resumenplantel';
 
 import './App.css';
 
