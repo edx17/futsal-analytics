@@ -307,7 +307,7 @@ function NuevoPartido() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
           <div>
             <div className="section-title">JORNADA / FASE</div>
             <input type="text" value={formData.jornada} onChange={e => setFormData({...formData, jornada: e.target.value})} style={isFixtureMatch ? inputDisabledStyle : inputIndustrial} placeholder="Ej: Fecha 5" disabled={isFixtureMatch} />
@@ -328,7 +328,7 @@ function NuevoPartido() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px dashed #00ff88' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px dashed #00ff88' }}>
           <div>
             <div className="section-title" style={{ color: '#00ff88' }}>HORARIO DEFINITIVO</div>
             <input type="time" value={formData.horario} onChange={e => setFormData({...formData, horario: e.target.value})} style={{...inputIndustrial, borderColor: '#00ff88'}} />
@@ -505,7 +505,7 @@ function NuevoPartido() {
   );
 }
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
+const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '16px' };
 const inputDisabledStyle = { ...inputIndustrial, background: '#1a1a1a', color: '#666', cursor: 'not-allowed', borderColor: '#222' };
 
 export default NuevoPartido;

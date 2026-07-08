@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { calcularMinutosPorJugador } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
+import { TablaResponsive } from '../components/TablaResponsive';
 
 const MONO = 'JetBrains Mono, monospace';
 const DUR_PARTIDO = 40; // minutos de un partido de futsal
@@ -366,6 +367,18 @@ export default function ResumenPlantel() {
     { k: 'pm', t: '+/-', g: 'imp', num: p => p.pmProm, r: p => { const v = p.pmProm; return (v > 0 ? '+' : '') + v.toFixed(1); } },
   ];
 
+  const COLS_ARQ = [
+    { k: 'cit', t: 'CIT', g: 'part', r: p => p.citados },
+    { k: 'pj', t: 'PJ', g: 'part', r: p => p.jugados },
+    { k: 'min', t: 'MIN', g: 'part', r: p => p.minutos },
+    { k: 'grec', t: 'G.REC', g: 'arq', r: p => p.golesRecibidos },
+    { k: 'ataj', t: 'ATAJ', g: 'arq', r: p => p.atajadas },
+    { k: 'pataj', t: '%ATAJ', g: 'arq', r: p => (p.atajadas + p.golesRecibidos) > 0 ? p.pctAtajadas.toFixed(0) + '%' : '-' },
+    { k: 'xgrec', t: 'xG REC', g: 'arq', r: p => p.xgRecibido.toFixed(1) },
+    { k: 'gevit', t: 'G.EVIT', g: 'arq', r: p => (p.golesEvitables > 0 ? '+' : '') + p.golesEvitables.toFixed(1) },
+    { k: 'rat', t: 'RATING', g: 'imp', r: p => p.ratingCount ? p.ratingProm.toFixed(1) : '-' },
+  ];
+
   // Corridas de grupos consecutivos -> colSpan de la fila de encabezado superior
   const grupoRuns = [];
   COLS.forEach(c => {
@@ -487,6 +500,34 @@ export default function ResumenPlantel() {
           )}
 
           {/* TABLA DE CAMPO */}
+          <TablaResponsive
+            filas={filasCampo}
+            columnas={COLS}
+            colsClave={['rat', 'g', 'a', 'min']}
+            grupos={GRUPOS}
+            gruposLabel={GRUPO_LABEL}
+            titulo="JUGADORES DE CAMPO"
+            getId={(p) => p.id}
+            getTitulo={(p) => nombreCompleto(p)}
+            getSubtitulo={(p) => `${p.dorsal ?? '-'} · ${(p.posicion || 'S/P')} · ${p.categoria || ''}`}
+            onRowClick={(p) => navigate('/jugador', { state: { jugadorId: p.id } })}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={setSort}
+            renderBadges={(p) => (<>
+              {filtroCategoria !== 'Todas' && p.categoria !== filtroCategoria && <span title={`Invitado desde ${p.categoria || '-'}`} style={{ fontSize: '0.55rem', background: 'rgba(168,85,247,0.15)', color: '#a855f7', padding: '1px 5px', borderRadius: '3px', fontWeight: 800 }}>INV</span>}
+              {p.aptoVencido && <span title="Apto vencido">⚠️</span>}
+              {p.sancPend > 0 && <span title="Sancionado">⛔</span>}
+            </>)}
+            colorCelda={(p, col) => {
+              if (col.k === 'rat') return colorRating(p.ratingProm);
+              if (col.k === 'pm') return p.pmProm > 0 ? '#00ff88' : (p.pmProm < 0 ? '#ef4444' : '#fff');
+              if (col.k === 'gxg') return (p.goles - p.xg) >= 0 ? '#00ff88' : '#ef4444';
+              if (['cit', 'pos', 'cat', 'perd'].includes(col.k)) return 'var(--text-dim)';
+              if (col.g === 'imp' || col.g === 'of') return GRUPOS[col.g];
+              return '#fff';
+            }}
+          >
           <div className="bento-card" style={{ overflowX: 'auto', padding: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 6px 14px', flexWrap: 'wrap', gap: '10px' }}>
               <span className="stat-label" style={{ color: 'var(--accent)' }}>JUGADORES DE CAMPO ({filasCampo.length})</span>
@@ -561,9 +602,31 @@ export default function ResumenPlantel() {
               </tbody>
             </table>
           </div>
+          </TablaResponsive>
 
           {/* TABLA DE ARQUEROS */}
           {filasArqueros.length > 0 && (
+            <TablaResponsive
+              filas={filasArqueros}
+              columnas={COLS_ARQ}
+              colsClave={['rat', 'pataj', 'grec', 'ataj']}
+              grupos={GRUPOS}
+              gruposLabel={GRUPO_LABEL}
+              titulo="🧤 ARQUEROS"
+              getId={(p) => p.id}
+              getTitulo={(p) => nombreCompleto(p)}
+              getSubtitulo={(p) => `${p.dorsal ?? '-'} · ${(p.posicion || 'Arquero')}`}
+              onRowClick={(p) => navigate('/jugador', { state: { jugadorId: p.id } })}
+              colorCelda={(p, col) => {
+                if (col.k === 'rat') return colorRating(p.ratingProm);
+                if (col.k === 'grec') return '#ef4444';
+                if (col.k === 'ataj') return '#00ff88';
+                if (col.k === 'pataj') return '#0ea5e9';
+                if (col.k === 'xgrec') return '#c084fc';
+                if (col.k === 'gevit') return p.golesEvitables >= 0 ? '#00ff88' : '#ef4444';
+                return '#fff';
+              }}
+            >
             <div className="bento-card" style={{ overflowX: 'auto', padding: '10px', marginTop: '25px' }}>
               <div className="stat-label" style={{ padding: '8px 6px 14px', color: '#a855f7' }}>🧤 ARQUEROS ({filasArqueros.length})</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', minWidth: '700px' }}>
@@ -601,6 +664,7 @@ export default function ResumenPlantel() {
                 </tbody>
               </table>
             </div>
+            </TablaResponsive>
           )}
 
           <div style={{ marginTop: '15px', fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.5 }}>

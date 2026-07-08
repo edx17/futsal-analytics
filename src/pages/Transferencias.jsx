@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import InfoBox from '../components/InfoBox';
+import { TablaResponsive } from '../components/TablaResponsive';
 
 const MONO = 'JetBrains Mono, monospace';
 
@@ -293,6 +294,18 @@ function Transferencias() {
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club.</div>;
 
+  const GRUPOS_TRANS = { gen: 'var(--text-dim)', eco: '#00ff88' };
+  const GRUPOS_TRANS_LABEL = { gen: 'DATOS', eco: 'ECONÓMICO' };
+  const COLS_TRANS = [
+    { k: 'tipo', t: 'TIPO', g: 'gen', r: t => chipTipo(t) },
+    { k: 'destino', t: 'DESTINO / ORIGEN', g: 'gen', r: t => `${t.direccion === 'Entrante' ? '← ' : '→ '}${t.club_destino || '—'}` },
+    { k: 'fecha', t: 'FECHA', g: 'gen', r: t => t.fecha_movimiento || '—' },
+    { k: 'monto', t: 'MONTO', g: 'eco', r: t => (Number(t.monto) || 0) > 0 ? fmtMoney(t.monto) : (t.compensacion_extra ? '🤝' : '—') },
+    { k: 'pct', t: '% FUT.', g: 'eco', r: t => (Number(t.porcentaje_futura_venta) || 0) > 0 ? `${t.porcentaje_futura_venta}%` : '—' },
+    { k: 'estado', t: 'ESTADO', g: 'gen', r: t => chipEstado(t.estado) },
+    { k: 'acc', t: 'ACCIÓN', g: 'gen', r: t => <button onClick={() => handleEliminar(t)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', padding: '5px 12px', borderRadius: '6px', minHeight: '40px' }}>🗑️ Eliminar</button> },
+  ];
+
   return (
     <div style={{ paddingBottom: '80px', maxWidth: '1000px', margin: '0 auto', animation: 'fadeIn 0.3s' }}>
 
@@ -440,6 +453,18 @@ function Transferencias() {
               {historial.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>No hay movimientos con ese filtro.</div>
               ) : (
+                <TablaResponsive
+                  filas={historial}
+                  columnas={COLS_TRANS}
+                  colsClave={['tipo', 'monto', 'estado']}
+                  grupos={GRUPOS_TRANS}
+                  gruposLabel={GRUPOS_TRANS_LABEL}
+                  titulo="HISTORIAL DE MOVIMIENTOS"
+                  getId={(t) => t.id}
+                  getTitulo={(t) => infoJugador(t).nombre}
+                  getSubtitulo={(t) => t.categoria || ''}
+                  colorCelda={(t, col) => col.k === 'monto' ? '#00ff88' : (col.k === 'pct' ? '#a855f7' : '#fff')}
+                >
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', minWidth: '720px' }}>
                     <thead>
@@ -490,6 +515,7 @@ function Transferencias() {
                     </tbody>
                   </table>
                 </div>
+                </TablaResponsive>
               )}
             </div>
           )}

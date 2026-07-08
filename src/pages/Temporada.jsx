@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 import { 
@@ -12,7 +13,19 @@ import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import SeasonReport from '../components/SeasonReport';
+import { TablaResponsive } from '../components/TablaResponsive';
 import { useAuth } from '../context/AuthContext'; 
+
+const GRUPOS_QUINT = { q: 'var(--accent)' };
+const GRUPOS_QUINT_LABEL = { q: 'ESTADÍSTICAS DEL QUINTETO' };
+const COLS_QUINT = [
+  { k: 'gol', t: 'GOL (F-C)', g: 'q', r: q => `${q.golesFavor} - ${q.golesContra}` },
+  { k: 'rem', t: 'REMATES', g: 'q', r: q => `${q.rematesFavor || 0} - ${q.rematesContra || 0}` },
+  { k: 'recperd', t: 'REC-PERD', g: 'q', r: q => `${q.recuperaciones || 0} - ${q.perdidas || 0}` },
+  { k: 'faltas', t: 'FALTAS (R-C)', g: 'q', r: q => `${q.faltasRecibidas || 0} - ${q.faltasCometidas || 0}` },
+  { k: 'tarj', t: '🟨/🟥', g: 'q', r: q => `${q.amarillas || 0}/${q.rojas || 0}` },
+  { k: 'rat', t: 'RATING', g: 'q', r: q => q.balanceRating.toFixed(1) },
+];
 
 function Temporada() {
   const { perfil } = useAuth(); 
@@ -28,15 +41,9 @@ function Temporada() {
 
   const [mostrarReporte, setMostrarReporte] = useState(false);
 
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+  const esMovil = useEsMovil();
 
   const heatmapRef = useRef(null);
-
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // ── 1. AUTOSELECCIÓN DE CATEGORÍA SÚPER SEGURA ──
   useEffect(() => {
@@ -58,11 +65,15 @@ function Temporada() {
   useEffect(() => {
     async function obtenerDatosGlobales() {
       // 1. Traer partidos
-      const { data: p } = await supabase
+      const clubId = localStorage.getItem('club_id');
+      let queryPartidos = supabase
         .from('partidos')
         .select('*')
+        .or('condicion.is.null,condicion.neq.Neutral')
         .in('estado', ['Finalizado', 'Jugado'])
         .order('fecha', { ascending: false });
+      if (clubId) queryPartidos = queryPartidos.eq('club_id', clubId);
+      const { data: p } = await queryPartidos;
         
       // 2. Traer jugadores
       const { data: j } = await supabase.from('jugadores').select('*');
@@ -94,7 +105,6 @@ function Temporada() {
       }
       // ─────────────────────────────────────────────────────
       
-      const clubId = localStorage.getItem('club_id');
       let escudoMiClub = null;
       if (clubId) {
           const { data: c } = await supabase.from('clubes').select('escudo_url').eq('id', clubId).single();
@@ -908,6 +918,18 @@ function Temporada() {
         {/* --- ZONA DE QUINTETOS --- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '10px' }}>
           
+          <TablaResponsive
+            filas={mejoresQuintetos}
+            columnas={COLS_QUINT}
+            colsClave={['rat', 'gol', 'rem']}
+            grupos={GRUPOS_QUINT}
+            gruposLabel={GRUPOS_QUINT_LABEL}
+            titulo="TOP QUINTETOS (RATING +)"
+            vacio="No hay suficientes datos de rotaciones."
+            getId={(q) => q.ids.join('-')}
+            getTitulo={(q) => '[' + q.ids.map(id => { const jug = jugadores.find(j => String(j.id) === String(id)); return jug ? (jug.apellido ? jug.apellido.toUpperCase() : (jug.nombre ? jug.nombre.toUpperCase() : 'S/N')) : id; }).join(' - ') + ']'}
+            colorCelda={(q, col) => col.k === 'rat' ? (q.balanceRating >= 5.5 ? 'var(--accent)' : '#ef4444') : '#fff'}
+          >
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
               TOP QUINTETOS (RATING +) 
@@ -969,7 +991,20 @@ function Temporada() {
               </table>
             </div>
           </div>
+          </TablaResponsive>
 
+          <TablaResponsive
+            filas={peoresQuintetos}
+            columnas={COLS_QUINT}
+            colsClave={['rat', 'gol', 'rem']}
+            grupos={GRUPOS_QUINT}
+            gruposLabel={GRUPOS_QUINT_LABEL}
+            titulo="QUINTETOS CRÍTICOS (RATING -)"
+            vacio="No hay suficientes datos de rotaciones."
+            getId={(q) => q.ids.join('-')}
+            getTitulo={(q) => '[' + q.ids.map(id => { const jug = jugadores.find(j => String(j.id) === String(id)); return jug ? (jug.apellido ? jug.apellido.toUpperCase() : (jug.nombre ? jug.nombre.toUpperCase() : 'S/N')) : id; }).join(' - ') + ']'}
+            colorCelda={(q, col) => col.k === 'rat' ? '#ef4444' : '#fff'}
+          >
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
               QUINTETOS CRÍTICOS (RATING -) 
@@ -1031,6 +1066,7 @@ function Temporada() {
               </table>
             </div>
           </div>
+          </TablaResponsive>
 
         </div>
         {/* --- FIN ZONA DE QUINTETOS --- */}

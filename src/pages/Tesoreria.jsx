@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { TablaResponsive } from '../components/TablaResponsive';
 import PaymentSelector from '../components/PaymentSelector';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
@@ -467,6 +468,79 @@ function Tesoreria() {
     );
   }
 
+  const GRUPOS_DEUDA = { part: '#3b82f6', eco: '#00ff88', acc: 'var(--text-dim)' };
+  const GRUPOS_DEUDA_LABEL = { part: 'ASISTENCIA', eco: 'ESTADO DE CUENTA', acc: 'ACCIONES' };
+  const COLS_DEUDA = [
+    { k: 'asistencia', t: 'ASISTENCIA', g: 'part', r: j => j.porcAsistencia !== null ? (
+      <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', background: j.porcAsistencia < 50 ? '#7f1d1d' : 'transparent', color: j.porcAsistencia < 50 ? '#fff' : j.porcAsistencia < 75 ? '#f59e0b' : '#00ff88' }}>{j.porcAsistencia}%</span>
+    ) : <span style={{ color: '#555', fontSize: '0.7rem' }}>Muestra insuf.</span> },
+    { k: 'deuda', t: 'DEUDA', g: 'eco', r: j => j.esBecado ? (
+      <span style={{ background: '#3b82f6', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO</span>
+    ) : j.deudaTotal > 0 ? (
+      <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.1rem' }}>${j.deudaTotal.toLocaleString()}</span>
+    ) : j.pagoEsteMes ? (
+      <span style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '0.8rem' }}>✅ PAGADO</span>
+    ) : (
+      <span style={{ color: '#888', fontWeight: 'bold', fontSize: '0.8rem' }}>AL DÍA</span>
+    ) },
+    { k: 'acciones', t: 'ACCIONES', g: 'acc', r: j => {
+      const misDeudasSeguras = j.misDeudas || [];
+      const pendientes = misDeudasSeguras.filter(d => ['Pendiente', 'Parcial'].includes(d.estado));
+      const deudaACobrar = pendientes[0];
+      if (!(j.deudaTotal > 0) || j.esBecado) return <span style={{ color: '#555', fontSize: '0.75rem' }}>—</span>;
+      return (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={() => setModalDetalleDeuda({ visible: true, jugador: j, deudas: pendientes })} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>📋 DETALLE</button>
+          <button onClick={() => enviarWhatsApp(j, j.deudaTotal)} style={{ background: 'transparent', color: '#25D366', border: '1px solid #25D366', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💬 AVISAR</button>
+          {deudaACobrar && (<>
+            <button onClick={() => otorgarBeca(deudaACobrar.id)} style={{ background: 'transparent', color: '#3b82f6', border: '1px solid #3b82f6', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>🎓 BECAR</button>
+            <button onClick={() => setModalPago({ visible: true, deuda: deudaACobrar, jugador: j })} style={{ background: '#00ff88', color: '#000', padding: '8px 15px', borderRadius: '4px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💸 COBRAR</button>
+          </>)}
+        </div>
+      );
+    } },
+  ];
+
+  const GRUPOS_STAFF = { gen: 'var(--text-dim)', eco: '#f59e0b', acc: 'var(--text-dim)' };
+  const GRUPOS_STAFF_LABEL = { gen: 'LIQUIDACIÓN', eco: 'MONTO', acc: 'ACCIONES' };
+  const colEmpAcciones = (color) => ({ k: 'acciones', t: 'ACCIONES', g: 'acc', r: emp => (
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: '#fff', border: '1px solid #555', padding: '8px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>✏️ EDITAR</button>
+      {emp.pagoEsteMes ? (
+        <button disabled style={{ background: '#222', color: '#555', border: '1px solid #333', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem', minHeight: '38px' }}>✅ LIQUIDADO</button>
+      ) : (
+        <button onClick={() => { setFormSueldo({ ...formSueldo, monto: emp.sueldo_base, descripcion: `${color === '#f59e0b' ? 'Sueldo' : 'Viático'} de ${nombreMesVencido}`, cajaOrigen: 'Efectivo' }); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: color, color: color === '#f59e0b' ? '#000' : '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💳 PAGAR</button>
+      )}
+    </div>
+  ) });
+  const colEmpLiq = (label) => ({ k: 'liq', t: 'LIQUIDACIÓN', g: 'gen', r: emp => emp.pagoEsteMes ? (
+    <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ {label}</span>
+  ) : (
+    <span style={{ background: '#7f1d1d', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
+  ) });
+  const colEmpMonto = { k: 'monto', t: 'MONTO', g: 'eco', r: emp => (
+    <div>
+      <span style={{ fontWeight: 900, fontSize: '1.05rem' }}>${Number(emp.sueldo_base).toLocaleString()}</span>
+      {emp.bonosExtra > 0 && <div style={{ fontSize: '0.7rem', color: '#00ff88', fontWeight: 'bold' }}>🌟 +${emp.bonosExtra.toLocaleString()}</div>}
+    </div>
+  ) };
+  const COLS_STAFF = [colEmpLiq('LIQUIDADO'), colEmpMonto, colEmpAcciones('#f59e0b')];
+  const COLS_VIATICOS = [colEmpLiq('PAGADO'), colEmpMonto, colEmpAcciones('#a855f7')];
+
+  const GRUPOS_MOV = { gen: 'var(--text-dim)', eco: '#00ff88' };
+  const GRUPOS_MOV_LABEL = { gen: 'DETALLE', eco: 'MONTO' };
+  const COLS_MOV = [
+    { k: 'tipo', t: 'TIPO', g: 'gen', r: mov => (
+      <span style={{ background: mov.tipo === 'entrada' ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: mov.tipo === 'entrada' ? '#00ff88' : '#ef4444', border: `1px solid ${mov.tipo === 'entrada' ? '#00ff88' : '#ef4444'}`, padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>{mov.tipo === 'entrada' ? '⬇️' : '⬆️'} {mov.categoria}</span>
+    ) },
+    { k: 'monto', t: 'MONTO', g: 'eco', r: mov => (
+      <span style={{ fontWeight: 900, fontSize: '1.05rem', color: mov.tipo === 'entrada' ? '#00ff88' : '#ef4444' }}>{mov.tipo === 'entrada' ? '+' : '-'} ${Number(mov.monto).toLocaleString()}</span>
+    ) },
+    { k: 'acciones', t: 'ACCIONES', g: 'gen', r: mov => (mov.id.startsWith('eg-') || mov.id.startsWith('ext-')) ? (
+      <button onClick={() => eliminarMovimientoLibroMayor(mov.id)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', padding: '8px 10px', borderRadius: '4px', minHeight: '38px' }}>🗑️ Eliminar</button>
+    ) : <span style={{ fontSize: '0.7rem', color: '#555' }}>Automático</span> },
+  ];
+
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>
       
@@ -527,6 +601,17 @@ function Tesoreria() {
                 </button>
               </div>
 
+              <TablaResponsive
+                filas={jugadoresInfo}
+                columnas={COLS_DEUDA}
+                colsClave={['asistencia', 'deuda']}
+                grupos={GRUPOS_DEUDA}
+                gruposLabel={GRUPOS_DEUDA_LABEL}
+                titulo="ESTADO DE CUENTA"
+                vacio="No hay jugadores en esta categoría."
+                getId={(j) => j.id}
+                getTitulo={(j) => `${j.apellido}, ${j.nombre}`}
+              >
               <div className="table-wrapper">
                 <table style={{ width: '100%', textAlign: 'left' }}>
                   <thead>
@@ -600,6 +685,7 @@ function Tesoreria() {
                   </tbody>
                 </table>
               </div>
+              </TablaResponsive>
             </div>
           )}
 
@@ -615,6 +701,18 @@ function Tesoreria() {
                 </button>
               </div>
 
+              <TablaResponsive
+                filas={empleados.filter(e => !e.jugador_id)}
+                columnas={COLS_STAFF}
+                colsClave={['liq', 'monto']}
+                grupos={GRUPOS_STAFF}
+                gruposLabel={GRUPOS_STAFF_LABEL}
+                titulo="STAFF"
+                vacio="No hay miembros del staff registrados."
+                getId={(e) => e.id}
+                getTitulo={(e) => e.nombre_completo}
+                getSubtitulo={(e) => (e.rol || '').toUpperCase()}
+              >
               <div className="table-wrapper">
                 <table style={{ width: '100%', textAlign: 'left' }}>
                   <thead>
@@ -666,6 +764,7 @@ function Tesoreria() {
                   </tbody>
                 </table>
               </div>
+              </TablaResponsive>
             </div>
           )}
 
@@ -681,6 +780,18 @@ function Tesoreria() {
                 </button>
               </div>
 
+              <TablaResponsive
+                filas={empleados.filter(e => e.jugador_id)}
+                columnas={COLS_VIATICOS}
+                colsClave={['liq', 'monto']}
+                grupos={GRUPOS_STAFF}
+                gruposLabel={GRUPOS_STAFF_LABEL}
+                titulo="VIÁTICOS"
+                vacio="No hay jugadores con viáticos asignados."
+                getId={(e) => e.id}
+                getTitulo={(e) => e.nombre_completo}
+                getSubtitulo={() => "Plantel Activo"}
+              >
               <div className="table-wrapper">
                 <table style={{ width: '100%', textAlign: 'left' }}>
                   <thead>
@@ -732,6 +843,7 @@ function Tesoreria() {
                   </tbody>
                 </table>
               </div>
+              </TablaResponsive>
             </div>
           )}
 
@@ -770,6 +882,18 @@ function Tesoreria() {
                   </div>
                 </div>
 
+                <TablaResponsive
+                  filas={cajaCompleta}
+                  columnas={COLS_MOV}
+                  colsClave={['tipo', 'monto']}
+                  grupos={GRUPOS_MOV}
+                  gruposLabel={GRUPOS_MOV_LABEL}
+                  titulo="LIBRO MAYOR"
+                  vacio="No hay movimientos registrados este mes."
+                  getId={(mov) => mov.id}
+                  getTitulo={(mov) => mov.descripcion || mov.categoria}
+                  getSubtitulo={(mov) => mov.fecha.split('-').reverse().join('/')}
+                >
                 <div className="table-wrapper">
                   <table style={{ width: '100%', textAlign: 'left' }}>
                     <thead>
@@ -812,6 +936,7 @@ function Tesoreria() {
                     </tbody>
                   </table>
                 </div>
+                </TablaResponsive>
               </div>
             </>
           )}

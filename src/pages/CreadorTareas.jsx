@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useReducer, useCallback } from 'react'
+import { useEsMovil } from '../utils/useEsMovil'
 import { supabase } from '../supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/ToastContext'
@@ -702,7 +703,14 @@ const CreadorTareas = () => {
 
   // ── UI state ──
   const [showModal, setShowModal]   = useState(false)
-  const [esMovil, setEsMovil]       = useState(window.innerWidth<=768)
+  const esMovil = useEsMovil()
+  const [rotarCancha, setRotarCancha] = useState(false)
+  // ── Zoom / Pan (pinch de 2 dedos) ──
+  const [view, setView] = useState({ zoom:1, panX:0, panY:0 })
+  const viewRef = useRef({ zoom:1, panX:0, panY:0 })
+  const pointersRef = useRef(new Map())
+  const gestureRef = useRef(null)
+  const resetVista = () => { const v={zoom:1,panX:0,panY:0}; viewRef.current=v; setView(v) }
   const [panelMovil, setPanelMovil] = useState(null) // 'elementos'|'trazos'|'anim'|'config'
   const [nombreTarea, setNombreTarea] = useState(tareaAEditar?.titulo||'')
   const [textModal, setTextModal]   = useState(false)
@@ -770,24 +778,29 @@ const CreadorTareas = () => {
   // ── Resize ──
   useEffect(() => {
     function measure() {
-      const mob = window.innerWidth<=768
-      setEsMovil(mob)
+      const mob = esMovil
       if (!areaRef.current) return
       const safeBottom = mob ? (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 74) : 0
       const mW = areaRef.current.clientWidth - (mob ? 8 : 40)
       const mH = areaRef.current.clientHeight - (mob ? 80 + safeBottom : 40)
       const vrt = PITCH_VARIANTS[pitchCfg.variant]||PITCH_VARIANTS['40x20']
       // En móvil usamos ratio invertido (portrait: alto > ancho)
-      const ratio = mob ? (vrt.mH / vrt.mW) : (vrt.mW / vrt.mH)
+      const rotar = mH > mW
+      setRotarCancha(rotar)
+      const ratio = rotar ? (vrt.mH / vrt.mW) : (vrt.mW / vrt.mH)
       let w = Math.min(mW, mH * ratio), h = w / ratio
       if (h > mH) { h = mH; w = h * ratio }
       setCvSize({w: Math.round(w), h: Math.round(h)})
     }
     measure()
     window.addEventListener('resize', measure)
+    window.addEventListener('orientationchange', measure)
     const t = setTimeout(measure,150)
-    return () => { window.removeEventListener('resize', measure); clearTimeout(t) }
-  }, [pitchCfg.variant, panelMovil])
+    return () => { window.removeEventListener('resize', measure); window.removeEventListener('orientationchange', measure); clearTimeout(t) }
+  }, [pitchCfg.variant, panelMovil, esMovil])
+
+  // Reset de zoom/pan al cambiar tamaño del canvas o la rotación
+  useEffect(() => { resetVista() }, [cvSize.w, cvSize.h, rotarCancha])
 
   // ── Render loop (SISTEMA DE COORDENADAS VIRTUAL) ──
   useEffect(() => {
@@ -801,7 +814,10 @@ const CreadorTareas = () => {
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, cvSize.w, cvSize.h)
 
-    if (esMovil) {
+    ctx.translate(view.panX, view.panY)
+    ctx.scale(view.zoom, view.zoom)
+
+    if (rotarCancha) {
       // Portrait: rotamos 90° — canvas físico es w×h donde h>w
       // Virtual space sigue siendo BASE_W × baseH pero lo dibujamos rotado
       // Trasladamos al centro, rotamos, escalamos
@@ -817,7 +833,7 @@ const CreadorTareas = () => {
     renderElements(ctx, displayEls, displayArrs, board.selected, BASE_W, tempRef.current.arrow, tempRef.current.zone, esMovil)
     
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil])
+  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil, rotarCancha, view])
 
   // ── FRAME MANAGEMENT ──
   function syncCurrentFrame(overrideIdx) {
@@ -928,14 +944,23 @@ const CreadorTareas = () => {
   }
 
   // ── POINTER EVENTS (Adaptado a Coordenadas Virtuales) ──
+  const rawFromEvent = (e) => {
+    const r = canvasRef.current.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
+  }
+
   const getPos = useCallback((e) => {
     const r = canvasRef.current.getBoundingClientRect()
     // Si es un evento táctil tradicional o pointer event unificado
     const src = (e.touches && e.touches.length > 0) ? e.touches[0] : (e.changedTouches && e.changedTouches.length > 0) ? e.changedTouches[0] : e
-    const rawX = src.clientX - r.left
-    const rawY = src.clientY - r.top
+    const rawXraw = src.clientX - r.left
+    const rawYraw = src.clientY - r.top
+    // Deshacemos la capa de vista (zoom/pan) antes de mapear a coords virtuales
+    const _v = viewRef.current
+    const rawX = (rawXraw - _v.panX) / _v.zoom
+    const rawY = (rawYraw - _v.panY) / _v.zoom
 
-    if (esMovil) {
+    if (rotarCancha) {
       // Canvas físico: w×h (portrait). Virtual space: BASE_W × baseH (landscape).
       // La rotación es 90° CW: virtual_x = rawY * BASE_W/r.height, virtual_y = (r.width - rawX) * baseH/r.width
       const baseH = getBaseH(pitchCfg.variant)
@@ -947,11 +972,25 @@ const CreadorTareas = () => {
     const scaleX = r.width ? BASE_W / r.width : 1
     const scaleY = r.height ? getBaseH(pitchCfg.variant) / r.height : 1
     return { x: rawX * scaleX, y: rawY * scaleY }
-  }, [pitchCfg.variant, esMovil])
+  }, [pitchCfg.variant, rotarCancha])
 
   const onPointerDown = useCallback((e) => {
     e.preventDefault()
     if (isPlaying) return
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch(_){}
+    pointersRef.current.set(e.pointerId, rawFromEvent(e))
+    if (pointersRef.current.size >= 2) {
+      // Segundo dedo: modo gesto (pinch/pan). Cancelamos interacción de 1 dedo.
+      const ixg=ixRef.current
+      ixg.dragging=false; ixg.hasDragged=false
+      if (ixg.drawingArrow){ ixg.drawingArrow=null; tempRef.current.arrow=null; forceUpdate() }
+      if (ixg.drawingZone){ ixg.drawingZone=null; tempRef.current.zone=null; forceUpdate() }
+      const pts=[...pointersRef.current.values()]
+      const gdx=pts[0].x-pts[1].x, gdy=pts[0].y-pts[1].y
+      const v=viewRef.current
+      gestureRef.current={ startDist:Math.hypot(gdx,gdy)||1, startMidX:(pts[0].x+pts[1].x)/2, startMidY:(pts[0].y+pts[1].y)/2, startZoom:v.zoom, startPanX:v.panX, startPanY:v.panY }
+      return
+    }
     if (esMovil && panelMovil) setPanelMovil(null)
     const p=getPos(e); const ix=ixRef.current
 
@@ -988,6 +1027,23 @@ const CreadorTareas = () => {
 
   const onPointerMove = useCallback((e) => {
     if(isPlaying) return
+    if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, rawFromEvent(e))
+    if (pointersRef.current.size >= 2 && gestureRef.current) {
+      const pts=[...pointersRef.current.values()]
+      const dx=pts[0].x-pts[1].x, dy=pts[0].y-pts[1].y
+      const dist=Math.hypot(dx,dy)||1
+      const midX=(pts[0].x+pts[1].x)/2, midY=(pts[0].y+pts[1].y)/2
+      const g=gestureRef.current
+      let zoom=g.startZoom*(dist/g.startDist)
+      const worldX=(g.startMidX-g.startPanX)/g.startZoom
+      const worldY=(g.startMidY-g.startPanY)/g.startZoom
+      let panX=midX-worldX*zoom, panY=midY-worldY*zoom
+      zoom=Math.max(1, Math.min(4, zoom))
+      const minPanX=cvSize.w*(1-zoom), minPanY=cvSize.h*(1-zoom)
+      panX=Math.max(minPanX, Math.min(0, panX)); panY=Math.max(minPanY, Math.min(0, panY))
+      const next={zoom,panX,panY}; viewRef.current=next; setView(next)
+      return
+    }
     const p=getPos(e); const ix=ixRef.current
     if(ix.dragging&&board.selected){
       // Detectar si ya se movió suficiente para considerarlo drag
@@ -1003,9 +1059,13 @@ const CreadorTareas = () => {
     }
     if(ix.drawingArrow){ix.drawingArrow.cx=p.x;ix.drawingArrow.cy=p.y;tempRef.current.arrow={...ix.drawingArrow};forceUpdate();return}
     if(ix.drawingZone){ix.drawingZone.w=p.x-ix.drawingZone.sx;ix.drawingZone.h=p.y-ix.drawingZone.sy;tempRef.current.zone={...ix.drawingZone};forceUpdate()}
-  },[board.selected, isPlaying, getPos, esMovil])
+  },[board.selected, isPlaying, getPos, esMovil, cvSize])
 
   const onPointerUp = useCallback((e) => {
+    pointersRef.current.delete(e.pointerId)
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch(_){}
+    if (pointersRef.current.size < 2) gestureRef.current=null
+    if (pointersRef.current.size >= 1) return
     const p=getPos(e); const ix=ixRef.current
     // Si soltó sin mover = tap = mostrar propiedades
     if(ix.dragging && !ix.hasDragged && board.selected){
@@ -1285,7 +1345,14 @@ const CreadorTareas = () => {
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
           />
+          {view.zoom > 1.01 && (
+            <button onClick={resetVista} title="Restablecer zoom"
+              style={{position:'absolute',bottom:esMovil?'96px':'16px',left:12,zIndex:20,background:'rgba(0,0,0,.72)',border:'1px solid #3a3f55',color:'#fff',height:38,padding:'0 12px',borderRadius:19,fontSize:'.78rem',fontWeight:'bold',display:'flex',alignItems:'center',gap:6,backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
+              ⊙ {view.zoom.toFixed(1)}× · Reset
+            </button>
+          )}
 
         </div>
 

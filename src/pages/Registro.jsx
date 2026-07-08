@@ -84,7 +84,7 @@ export default function Registro() {
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100%', background: 'var(--bg)', padding: '20px' }}>
-      <div style={{ background: 'var(--panel)', padding: '40px', borderRadius: '8px', border: '1px solid var(--border)', width: '100%', maxWidth: '450px' }}>
+      <div style={{ background: 'var(--panel)', padding: 'clamp(24px, 6vw, 40px)', borderRadius: '8px', border: '1px solid var(--border)', width: '100%', maxWidth: '450px' }}>
         <h2 style={{ textAlign: 'center', marginBottom: '10px', fontFamily: 'Outfit', fontWeight: 900 }}>
           CREAR <span style={{ color: 'var(--accent)' }}>CUENTA</span>
         </h2>
@@ -101,7 +101,7 @@ export default function Registro() {
             <input type="text" placeholder="Ej: Boca Juniors Futsal" value={formData.nombreClub} onChange={(e) => setFormData({...formData, nombreClub: e.target.value})} style={inputStyle} required />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', letterSpacing: '1px' }}>TU NOMBRE</label>
               <input type="text" placeholder="Ej: Lionel" value={formData.nombreAdmin} onChange={(e) => setFormData({...formData, nombreAdmin: e.target.value})} style={inputStyle} required />
@@ -136,4 +136,4 @@ export default function Registro() {
   );
 }
 
-const inputStyle = { padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
+const inputStyle = { padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '16px' };

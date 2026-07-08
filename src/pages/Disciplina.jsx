@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
+import { TablaResponsive } from '../components/TablaResponsive';
 
 // ============================================================
 // CONFIG
@@ -48,6 +49,18 @@ const sancAnio = (s) => temporadaDe(s?.fecha_sancion) || (s?.created_at ? new Da
 // ============================================================
 // COMPONENTE
 // ============================================================
+const GRUPOS_DISC = { gen: 'var(--text-dim)', dis: '#facc15' };
+const GRUPOS_DISC_LABEL = { gen: 'GENERAL', dis: 'DISCIPLINA' };
+const COLS_DISC = [
+  { k: 'categoria', t: 'Cat.', g: 'gen', r: f => f.categoria },
+  { k: 'amarillas', t: '🟨 Amar.', g: 'dis', r: f => f.amarillas },
+  { k: 'rojas', t: '🟥 Rojas', g: 'dis', r: f => f.rojas },
+  { k: 'faltas', t: 'Faltas', g: 'dis', r: f => f.faltas },
+  { k: 'pj', t: 'PJ', g: 'gen', r: f => f.pj },
+  { k: 'fpj', t: 'F/PJ', g: 'gen', r: f => f.faltasPorPartido.toFixed(1) },
+  { k: 'fechas', t: 'Susp. 🟨', g: 'dis', r: f => `${f.suspPendientes}${f.suspCumplidas > 0 ? ' /' + f.suspGanadas : ''}` },
+];
+
 export default function Disciplina() {
   const { perfil } = useAuth();
   // Resolución de club igual que Inicio.jsx: el superuser no tiene club_id propio,
@@ -616,6 +629,31 @@ export default function Disciplina() {
             Sin registros disciplinarios para este filtro.
           </div>
         ) : (
+          <TablaResponsive
+            filas={filas}
+            columnas={COLS_DISC}
+            colsClave={['amarillas', 'rojas', 'faltas', 'fechas']}
+            grupos={GRUPOS_DISC}
+            gruposLabel={GRUPOS_DISC_LABEL}
+            getId={(f) => f.rowKey}
+            getTitulo={(f) => f.nombre}
+            getSubtitulo={(f) => `${f.dorsal ?? '-'} · ${f.categoria}`}
+            onRowClick={(f) => setJugadorDetalle(f)}
+            sortKey={orden.key}
+            sortDir={orden.dir}
+            onSort={cambiarOrden}
+            renderBadges={(f) => (<>
+              {f.suspendidoActivo ? <Badge color="#ef4444" texto="SUSPENDIDO" /> : (f.alBorde ? <Badge color="#f59e0b" texto="AL BORDE" /> : null)}
+              {f.tieneRojaActiva && <Badge color="#ef4444" texto={`🟥 INHAB. ${f.fechasRojaJugador}f`} />}
+            </>)}
+            colorCelda={(f, col) => {
+              if (col.k === 'amarillas') return f.amarillas ? '#facc15' : '#444';
+              if (col.k === 'rojas') return f.rojas ? '#ef4444' : '#444';
+              if (col.k === 'faltas') return '#ec4899';
+              if (col.k === 'fechas') return f.suspPendientes ? '#fff' : '#444';
+              return 'var(--text-dim)';
+            }}
+          >
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
@@ -663,6 +701,7 @@ export default function Disciplina() {
               </tbody>
             </table>
           </div>
+          </TablaResponsive>
         )}
       </div>
 

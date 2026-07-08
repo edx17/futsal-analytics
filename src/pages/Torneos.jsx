@@ -6,6 +6,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import InfoBox from '../components/InfoBox';
+import { TablaResponsive } from '../components/TablaResponsive';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
@@ -275,6 +276,27 @@ function Torneos() {
     fetchFixture(torneoActivo.id, torneoActivo.categoria);
     if(estado === 'Finalizado') showToast("Resultado actualizado", "success");
   };
+
+  // ── COPA: definición por penales ──
+  const actualizarPenales = async (id, penales_propios, penales_rival) => {
+    const pp = (penales_propios === '' || penales_propios == null) ? null : Number(penales_propios);
+    const pr = (penales_rival === '' || penales_rival == null) ? null : Number(penales_rival);
+    const { error } = await supabase.from('partidos').update({ penales_propios: pp, penales_rival: pr }).eq('id', id);
+    if (error) { showToast('No se pudieron guardar los penales: ' + error.message, 'error'); return; }
+    fetchFixture(torneoActivo.id, torneoActivo.categoria);
+    showToast('Penales guardados', 'success');
+  };
+
+  const esCopa = torneoActivo?.tipo === 'Copa';
+  const ORDEN_RONDAS = ['64avos','32avos','treintaidosavos','16avos','dieciseisavos','octavos','cuartos','semi','final','definici'];
+  const rondasLlave = useMemo(() => {
+    const map = new Map();
+    (fixture || []).forEach(p => { const j = p.jornada || 'Sin ronda'; if (!map.has(j)) map.set(j, []); map.get(j).push(p); });
+    const idx = (name) => { const n = String(name).toLowerCase().trim(); const i = ORDEN_RONDAS.findIndex(o => n.includes(o)); return i === -1 ? 500 : i; };
+    return [...map.entries()]
+      .sort((a, b) => idx(a[0]) - idx(b[0]) || String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }))
+      .map(([ronda, cruces]) => ({ ronda, cruces }));
+  }, [fixture]);
 
   const eliminarPartido = async (idPartido) => {
     const { count, error: errorEventos } = await supabase
@@ -663,6 +685,21 @@ function Torneos() {
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club.</div>;
 
+  const valPos = (e, g, l, v) => modoTabla === 'local' ? e[l] : (modoTabla === 'visitante' ? e[v] : e[g]);
+  const GRUPOS_POS = { main: 'var(--accent)', wdl: 'var(--text-dim)', goles: '#fff' };
+  const GRUPOS_POS_LABEL = { main: 'PUNTOS', wdl: 'G / E / P', goles: 'GOLES' };
+  const colsPosiciones = [
+    { k: 'pts', t: 'PTS', g: 'main', r: e => valPos(e, 'pts', 'ptsL', 'ptsV') },
+    { k: 'pj', t: 'PJ', g: 'main', r: e => valPos(e, 'pj', 'pjL', 'pjV') },
+    { k: 'pg', t: 'G', g: 'wdl', r: e => valPos(e, 'pg', 'pgL', 'pgV') },
+    { k: 'pe', t: 'E', g: 'wdl', r: e => valPos(e, 'pe', 'peL', 'peV') },
+    { k: 'pp', t: 'P', g: 'wdl', r: e => valPos(e, 'pp', 'ppL', 'ppV') },
+    { k: 'gf', t: 'GF', g: 'goles', r: e => valPos(e, 'gf', 'gfL', 'gfV') },
+    { k: 'gc', t: 'GC', g: 'goles', r: e => valPos(e, 'gc', 'gcL', 'gcV') },
+    { k: 'dif', t: 'DIF', g: 'goles', r: e => { const d = valPos(e, 'difGeneral', 'difLocal', 'difVisita'); return d > 0 ? `+${d}` : d; } },
+    { k: 'forma', t: 'ÚLT. 5', g: 'main', r: e => { const rc = valPos(e, 'rachaGeneral', 'rachaLocal', 'rachaVisita') || []; return <span style={{ display: 'inline-flex', gap: 3 }}>{rc.slice(-5).map((r, i) => { let col = '#555'; if (r === 'V') col = '#00ff88'; if (r === 'D') col = '#ef4444'; return <span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: col }} />; })}</span>; } },
+  ];
+
   return (
     <div style={{ paddingBottom: '80px', maxWidth: '1000px', margin: '0 auto', animation: 'fadeIn 0.3s' }}>
       
@@ -764,7 +801,7 @@ function Torneos() {
                     className="tab-btn" 
                     style={{ background: tabMisTorneos === 'posiciones' ? '#222' : 'transparent', color: tabMisTorneos === 'posiciones' ? 'var(--accent)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
                   >
-                    POSICIONES
+                    {esCopa ? 'LLAVE' : 'POSICIONES'}
                   </button>
                   <button 
                     onClick={() => setTabMisTorneos('fixture')} 
@@ -786,8 +823,79 @@ function Torneos() {
               </button>
             </div>
 
+            {/* 🏆 TAB: LLAVE (COPA) */}
+            {tabMisTorneos === 'posiciones' && esCopa && (
+              <div style={{ animation: 'fadeIn 0.3s' }}>
+                <div style={{ marginBottom: '15px' }}>
+                  <span className="stat-label" style={{ color: 'var(--accent)' }}>🏆 CUADRO DE LA COPA</span>
+                </div>
+                {rondasLlave.length === 0 ? (
+                  <div className="bento-card" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>
+                    No hay cruces cargados. Agregá fechas desde el FIXTURE usando la Jornada como ronda (Octavos, Cuartos, Semi, Final).
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {rondasLlave.map(({ ronda, cruces }) => (
+                      <div key={ronda} className="bento-card">
+                        <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '12px' }}>{String(ronda).toUpperCase()}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                          {cruces.map(cruce => {
+                            const gp = Number(cruce.goles_propios) || 0;
+                            const gr = Number(cruce.goles_rival) || 0;
+                            const fin = cruce.estado === 'Finalizado';
+                            const empate = fin && gp === gr;
+                            const tienePen = cruce.penales_propios != null && cruce.penales_rival != null;
+                            let ganaL = false, ganaV = false;
+                            if (fin) {
+                              if (gp > gr) ganaL = true;
+                              else if (gr > gp) ganaV = true;
+                              else if (tienePen) { if (Number(cruce.penales_propios) > Number(cruce.penales_rival)) ganaL = true; else if (Number(cruce.penales_rival) > Number(cruce.penales_propios)) ganaV = true; }
+                            }
+                            const filaEq = (nombre, escudo, goles, gana) => (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: gana ? 'rgba(0,255,136,0.08)' : 'transparent', borderRadius: '6px' }}>
+                                {escudo ? <img src={escudo} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} /> : <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#333' }} />}
+                                <span style={{ flex: 1, fontWeight: gana ? 900 : 700, color: gana ? 'var(--accent)' : (nombre === miClubGlobal ? '#fff' : '#ccc'), fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {(nombre || '—').toUpperCase()} {nombre === miClubGlobal && <span style={{ fontSize: '0.55rem', background: 'var(--accent)', color: '#000', padding: '1px 4px', borderRadius: '3px' }}>YO</span>}
+                                </span>
+                                {gana && <span style={{ color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 900 }}>✓</span>}
+                                <span style={{ fontWeight: 900, fontFamily: 'JetBrains Mono, monospace', fontSize: '1.1rem', color: gana ? 'var(--accent)' : '#fff', minWidth: '20px', textAlign: 'center' }}>{fin ? goles : '-'}</span>
+                              </div>
+                            );
+                            return (
+                              <div key={cruce.id} style={{ background: '#0a0a0a', border: '1px solid #222', borderRadius: '10px', padding: '8px' }}>
+                                {filaEq(cruce.nombre_propio, cruce.escudo_propio, gp, ganaL)}
+                                <div style={{ height: '1px', background: '#1c1c1c', margin: '2px 8px' }} />
+                                {filaEq(cruce.rival, cruce.escudo_rival, gr, ganaV)}
+                                {empate && (
+                                  <div style={{ marginTop: '8px', padding: '8px', background: '#111', borderRadius: '6px', border: '1px dashed #333' }}>
+                                    <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800, marginBottom: '6px', textAlign: 'center' }}>DEFINICIÓN POR PENALES</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                      <input type="number" min="0" key={`pp-${cruce.id}-${cruce.penales_propios ?? ''}`} defaultValue={cruce.penales_propios ?? ''} onBlur={(e) => actualizarPenales(cruce.id, e.target.value, cruce.penales_rival ?? '')} style={{ width: '50px', textAlign: 'center', background: '#000', color: 'var(--accent)', border: '1px solid #333', padding: '6px', fontWeight: 900, borderRadius: '4px', fontSize: '1rem' }} />
+                                      <span style={{ color: 'var(--text-dim)', fontWeight: 900, fontSize: '0.7rem' }}>PEN</span>
+                                      <input type="number" min="0" key={`pr-${cruce.id}-${cruce.penales_rival ?? ''}`} defaultValue={cruce.penales_rival ?? ''} onBlur={(e) => actualizarPenales(cruce.id, cruce.penales_propios ?? '', e.target.value)} style={{ width: '50px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '6px', fontWeight: 900, borderRadius: '4px', fontSize: '1rem' }} />
+                                    </div>
+                                  </div>
+                                )}
+                                {!fin && (
+                                  <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                    <input type="number" min="0" value={cruce.goles_propios} onChange={(e) => actualizarResultado(cruce.id, e.target.value, cruce.goles_rival, 'Finalizado')} style={{ width: '46px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                    <span style={{ color: 'var(--text-dim)' }}>-</span>
+                                    <input type="number" min="0" value={cruce.goles_rival} onChange={(e) => actualizarResultado(cruce.id, cruce.goles_propios, e.target.value, 'Finalizado')} style={{ width: '46px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 🏆 TAB: POSICIONES */}
-            {tabMisTorneos === 'posiciones' && (
+            {tabMisTorneos === 'posiciones' && !esCopa && (
               <div style={{ overflowX: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                   <div style={{ display: 'flex', gap: '10px' }}>
@@ -799,6 +907,26 @@ function Torneos() {
                   </div>
                 </div>
 
+                <TablaResponsive
+                  filas={tablaPosiciones.map((e, i) => ({ ...e, _pos: i + 1 }))}
+                  columnas={colsPosiciones}
+                  colsClave={['pts', 'pj', 'dif']}
+                  grupos={GRUPOS_POS}
+                  gruposLabel={GRUPOS_POS_LABEL}
+                  titulo="TABLA DE POSICIONES"
+                  getId={(e) => e.nombre}
+                  getTitulo={(e) => `${e._pos}. ${e.nombre.toUpperCase()}`}
+                  getSubtitulo={(e) => e.nombre === miClubGlobal ? 'TU CLUB' : ''}
+                  colorCelda={(e, col) => {
+                    if (col.k === 'pts') return 'var(--accent)';
+                    if (col.k === 'dif') { const d = valPos(e, 'difGeneral', 'difLocal', 'difVisita'); return d > 0 ? '#00ff88' : (d < 0 ? '#ef4444' : '#fff'); }
+                    if (col.k === 'pg') return '#00ff88';
+                    if (col.k === 'pe') return '#fbbf24';
+                    if (col.k === 'pp') return '#ef4444';
+                    return '#fff';
+                  }}
+                  renderBadges={(e) => (e.escudo ? <img src={e.escudo} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /> : null)}
+                >
                 <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '800px' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #333', color: 'var(--text-dim)', fontSize: '0.75rem', backgroundColor: '#0a0a0a' }}>
@@ -872,6 +1000,7 @@ function Torneos() {
                     )}
                   </tbody>
                 </table>
+                </TablaResponsive>
               </div>
             )}
 

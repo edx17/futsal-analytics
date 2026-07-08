@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
+import { useEsMovil } from '../utils/useEsMovil';
 
 function ContinuarPartido() {
   const navigate = useNavigate();
+  const esMovil = useEsMovil();
   const clubId = localStorage.getItem('club_id');
 
   const [partidos, setPartidos] = useState([]);
@@ -106,7 +108,7 @@ function ContinuarPartido() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             {partidosFiltrados.map(p => (
-              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: '#111', border: '1px solid #333', borderRadius: '6px' }}>
+              <div key={p.id} style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', gap: esMovil ? '12px' : '0', padding: '15px', background: '#111', border: '1px solid #333', borderRadius: '6px' }}>
                 <div>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px' }}>
                     <span style={{ background: '#222', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>
@@ -127,7 +129,7 @@ function ContinuarPartido() {
                 <button 
                   onClick={() => reanudarPartido(p)} 
                   className="btn-action" 
-                  style={{ padding: '10px 20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  style={{ padding: '10px 20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
                   <span>▶️</span> CONTINUAR
                 </button>
@@ -141,6 +143,6 @@ function ContinuarPartido() {
   );
 }
 
-const inputStyle = { width: '100%', background: '#000', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '4px', outline: 'none' };
+const inputStyle = { width: '100%', background: '#000', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '4px', outline: 'none', fontSize: '16px' };
 
 export default ContinuarPartido;

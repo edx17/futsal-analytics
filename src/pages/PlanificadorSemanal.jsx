@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
@@ -479,19 +480,14 @@ const PlanificadorSemanal = () => {
   const [cargando, setCargando] = useState(true);
 
   // --- RESPONSIVE STATE ---
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const esMovil = useEsMovil();
 
   // Modal State
   const [mostrarModal, setMostrarModal] = useState(false);
   const [modoModal, setModoModal] = useState('crear'); 
   const [tareaSeleccionadaDetalle, setTareaSeleccionadaDetalle] = useState(null); 
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
+  const [diaSheet, setDiaSheet] = useState(null); // vista mensual mobile: hoja de sesiones del día
   const [busquedaTarea, setBusquedaTarea] = useState('');
   const [filtroFaseTarea, setFiltroFaseTarea] = useState('Todas');
   const [filtroFormatoTarea, setFiltroFormatoTarea] = useState('Todas');
@@ -1029,7 +1025,7 @@ const PlanificadorSemanal = () => {
                 return (
                   <div 
                     key={idx} 
-                    onClick={() => abrirModal(dia)} 
+                    onClick={() => esMovil ? setDiaSheet({ dia, sesiones: sesionesDia, partidos: partidosDia }) : abrirModal(dia)} 
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleDrop(e, dia.fechaStr)}
                     style={{ background: dia.isHoy ? '#111827' : '#0a0a0a', border: dia.isHoy ? '1px solid var(--accent)' : '1px solid #222', borderRadius: esMovil ? '4px' : '8px', display: 'flex', flexDirection: 'column', minHeight: esMovil ? '60px' : '100px', padding: esMovil ? '2px' : '5px', opacity: opacidadMes, cursor: 'pointer', overflow: 'hidden' }} 
@@ -1087,6 +1083,45 @@ const PlanificadorSemanal = () => {
       )}
 
       {/* MODAL PRINCIPAL: DETALLES / EDICIÓN DE SESIÓN */}
+      {/* HOJA DE DÍA (vista mensual mobile) */}
+      {diaSheet && (
+        <div onClick={() => setDiaSheet(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'flex-end' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--panel)', borderTop: '2px solid var(--accent)', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', width: '100%', maxHeight: '75vh', overflowY: 'auto', padding: '16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', animation: 'fadeIn 0.2s' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <span className="stat-label" style={{ color: 'var(--accent)' }}>{diaSheet.dia.numero} · {(mesesNombres[fechaReferencia.getMonth()] || '').toUpperCase()}</span>
+              <button onClick={() => setDiaSheet(null)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+
+            {diaSheet.partidos.map(partido => (
+              <div key={`p-${partido.id}`} style={{ background: 'rgba(59,130,246,0.15)', borderLeft: '3px solid #3b82f6', borderRadius: '6px', padding: '12px', marginBottom: '8px' }}>
+                <div style={{ color: '#93c5fd', fontWeight: 900, fontSize: '0.85rem' }}>🆚 vs {(partido.rival || '—').toUpperCase()}</div>
+              </div>
+            ))}
+
+            {diaSheet.sesiones.length === 0 && diaSheet.partidos.length === 0 ? (
+              <div style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '20px 0', fontSize: '0.85rem' }}>No hay sesiones este día.</div>
+            ) : diaSheet.sesiones.map(sesion => {
+              const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || '#888';
+              return (
+                <button key={sesion.id} onClick={() => { abrirModal(diaSheet.dia, sesion); setDiaSheet(null); }}
+                  style={{ width: '100%', textAlign: 'left', background: `${colorNivel}15`, borderLeft: `3px solid ${colorNivel}`, border: `1px solid ${colorNivel}40`, borderRadius: '8px', padding: '12px', marginBottom: '8px', cursor: 'pointer', color: '#fff', minHeight: '48px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontWeight: 900, fontSize: '0.9rem' }}>{(sesion.tipo_sesion || 'SESIÓN').toUpperCase()} {sesion.bloque_fisico && '🏃‍♂️'}</span>
+                    {sesion.tareas_ids?.length > 0 && <span style={{ color: colorNivel, fontSize: '0.75rem', fontWeight: 800 }}>{sesion.tareas_ids.length}T</span>}
+                  </div>
+                  {sesion.objetivo && <div style={{ fontSize: '0.75rem', color: '#aaa', fontStyle: 'italic', marginTop: '4px' }}>"{sesion.objetivo}"</div>}
+                </button>
+              );
+            })}
+
+            <button onClick={() => { abrirModal(diaSheet.dia); setDiaSheet(null); }}
+              style={{ width: '100%', marginTop: '8px', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)', padding: '14px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 900, cursor: 'pointer', minHeight: '48px' }}>
+              + AGREGAR SESIÓN
+            </button>
+          </div>
+        </div>
+      )}
+
       {mostrarModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: esMovil ? '10px' : '20px' }}>
           

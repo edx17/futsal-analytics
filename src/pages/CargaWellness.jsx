@@ -380,7 +380,7 @@ const CargaWellness = () => {
               </div>
 
               {/* NAVEGADOR DE FECHAS */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#000', padding: '5px', borderRadius: '8px', border: '1px solid #333', height: '37px', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#000', padding: '5px', borderRadius: '8px', border: '1px solid #333', height: '44px', boxSizing: 'border-box' }}>
                 <button onClick={() => navegarPeriodo(-1)} style={navBtn}>⬅</button>
                 <span style={{ fontWeight: '900', color: '#fff', fontSize: '0.75rem', minWidth: '110px', textAlign: 'center' }}>
                   {getTextoPeriodo()}
@@ -804,7 +804,7 @@ const labelStyle = { display: 'block', fontSize: '0.75rem', color: '#888', fontW
 const inputStyle = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', borderRadius: '8px', color: '#fff', fontSize: '1rem', outline: 'none', fontWeight: 'bold' };
 const tabBtn = { flex: 1, minWidth: '120px', padding: '15px', border: 'none', borderRadius: '12px', fontWeight: '900', fontSize: '0.9rem', cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' };
 const mainTabBtn = { flex: 1, minWidth: '150px', padding: '15px', border: '1px solid #333', borderRadius: '8px', fontWeight: '900', fontSize: '0.85rem', cursor: 'pointer', transition: '0.2s' };
-const navBtn = { background: '#222', border: 'none', color: '#fff', width: '30px', height: '30px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
+const navBtn = { background: '#222', border: 'none', color: '#fff', width: '38px', height: '38px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
 const toggleBtnStyle = { border: 'none', borderRadius: '4px', padding: '5px 10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' };
 
 export default CargaWellness;

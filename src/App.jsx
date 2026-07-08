@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useEsMovil } from './utils/useEsMovil';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -145,7 +146,7 @@ function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+  const esMovil = useEsMovil();
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
   const [drawerAbierto, setDrawerAbierto] = useState(false);
   const [fabAbierto, setFabAbierto] = useState(false);
@@ -162,12 +163,6 @@ function AppLayout() {
     administracion: false,
     sistema: false
   });
-
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
 // Minimiza la barra lateral al entrar al dashboard, para que el resumen luzca mejor.
 useEffect(() => {

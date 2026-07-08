@@ -676,7 +676,7 @@ function Usuarios() {
 
 // Estilos reutilizables
 const labelStyle = { fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '5px', display: 'block', fontWeight: 'bold' };
-const inputStyle = { width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
+const inputStyle = { width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '16px' };
 const btnIconoClaro = { background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', transition: '0.2s' };
 const btnIconoRojo = { background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', transition: '0.2s' };
 const tabBtnStyle = { padding: '8px 15px', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' };

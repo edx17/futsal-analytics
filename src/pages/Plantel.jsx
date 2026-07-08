@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { TablaResponsive } from '../components/TablaResponsive';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext'; // <-- IMPORTAMOS EL CONTEXTO DE AUTENTICACIÓN
@@ -315,6 +316,22 @@ function Plantel() {
     return <div style={{ color: '#ef4444', textAlign: 'center', marginTop: '50px' }}>Debes configurar tu club primero.</div>;
   }
 
+  const GRUPOS_PLANTEL = { gen: 'var(--text-dim)' };
+  const GRUPOS_PLANTEL_LABEL = { gen: 'DATOS' };
+  const COLS_PLANTEL = [
+    { k: 'dorsal', t: 'DORSAL', g: 'gen', r: j => j.dorsal ?? '—' },
+    { k: 'posicion', t: 'POSICIÓN', g: 'gen', r: j => j.posicion?.toUpperCase() || '—' },
+    { k: 'categoria', t: 'CATEGORÍA', g: 'gen', r: j => j.categoria?.toUpperCase() || '—' },
+    { k: 'acciones', t: 'ACCIONES', g: 'gen', r: j => (
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: '#fff', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>💬 WhatsApp</button>
+        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={{ background: '#222', border: '1px solid #333', color: '#fff', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>📋 PIN</button>
+        <button onClick={(e) => { e.stopPropagation(); abrirEdicion(j); }} style={{ ...btnGhost, minHeight: '40px' }}>EDITAR</button>
+        <button onClick={(e) => { e.stopPropagation(); eliminarJugador(j.id); }} style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444', minHeight: '40px' }}>✕ ELIMINAR</button>
+      </div>
+    ) },
+  ];
+
   return (
     <div style={{ animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>
       <div className="bento-card">
@@ -355,6 +372,19 @@ function Plantel() {
           })}
         </div>
 
+        <TablaResponsive
+          filas={jugadoresOrdenados}
+          columnas={COLS_PLANTEL}
+          colsClave={['dorsal', 'posicion', 'categoria']}
+          grupos={GRUPOS_PLANTEL}
+          gruposLabel={GRUPOS_PLANTEL_LABEL}
+          titulo="PLANTEL"
+          vacio="No hay jugadores cargados en esta categoría."
+          getId={(j) => j.id}
+          getTitulo={(j) => `${j.apellido ? j.apellido.toUpperCase() + ' ' : ''}${(j.nombre || '').toUpperCase()}`}
+          onRowClick={(j) => setJugadorSeleccionado(j)}
+          renderBadges={(j) => (<div style={{ width: 26, height: 26, borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>{j.foto ? <img src={j.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: 'var(--accent)' }}>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</span>}</div>)}
+        >
         <div className="table-wrapper">
           <table>
             <thead>
@@ -409,6 +439,7 @@ function Plantel() {
             </tbody>
           </table>
         </div>
+        </TablaResponsive>
       </div>
 
       {jugadorSeleccionado && (
@@ -569,7 +600,7 @@ function Plantel() {
 
               <div style={{ background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>FICHA MÉDICA Y FÍSICA</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '15px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '15px', marginBottom: '15px' }}>
                   <div><div className="section-title">NACIMIENTO</div><input type="date" value={formData.fechanac} onChange={e => setFormData({...formData, fechanac: e.target.value})} style={inputIndustrial} /></div>
                   <div><div className="section-title">DNI</div><input type="number" value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} style={inputIndustrial} placeholder="Sin puntos" /></div>
                   <div><div className="section-title">PESO (KG)</div><input type="number" step="0.1" value={formData.peso} onChange={e => setFormData({...formData, peso: e.target.value})} style={inputIndustrial} placeholder="Ej: 75.5" /></div>

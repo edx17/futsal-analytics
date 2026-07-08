@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { useEsMovil } from '../utils/useEsMovil';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Cell 
@@ -19,13 +20,7 @@ function Presentismo() {
   const misCategorias = perfil?.categorias_asignadas || [];
 
   // --- RESPONSIVE STATE ---
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const esMovil = useEsMovil();
 
   const obtenerFechaLocal = () => {
     const hoy = new Date();

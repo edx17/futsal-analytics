@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 import { 
@@ -14,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import ReportGenerator from '../components/ReportGenerator';
 import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
+import { TablaResponsive } from '../components/TablaResponsive';
 
 // Componente para la Malla de Microzonas Tácticas (Filtro ZONAS)
 const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
@@ -190,6 +192,28 @@ const MallaABP = ({ microZonas }) => {
   );
 };
 
+const GRUPOS_RES = { id: 'var(--text-dim)', imp: 'var(--accent)', of: '#00ff88', lu: '#0ea5e9', dis: '#fbbf24' };
+const GRUPOS_RES_LABEL = { id: 'GENERAL', imp: 'IMPACTO', of: 'OFENSIVA', lu: 'JUEGO / DUELOS', dis: 'DISCIPLINA' };
+const COLS_RES_CAMPO = [
+  { k: 'rol', t: 'ROL', g: 'id', r: j => j.rol },
+  { k: 'min', t: 'MIN', g: 'id', r: j => `${j.minutos}'` },
+  { k: 'rat', t: 'RATING', g: 'imp', r: j => j.impacto === '-' ? '-' : j.impacto.toFixed(1) },
+  { k: 'pm', t: '+/-', g: 'imp', r: j => `${j.plusMinus > 0 ? '+' : ''}${j.plusMinus}` },
+  { k: 'rem', t: 'REM (G)', g: 'of', r: j => `${j.remates} (${j.goles})` },
+  { k: 'pc', t: 'PASES CLAVE', g: 'of', r: j => j.pasesClave },
+  { k: 'xgb', t: 'xG BUILDUP', g: 'of', r: j => j.xgBuildup.toFixed(2) },
+  { k: 'ocf', t: 'OC. FALLADAS', g: 'of', r: j => j.ocasionesFalladas },
+  { k: 'dofe', t: 'DUELOS OFE', g: 'lu', r: j => `${j.duelosOfeGan}/${j.duelosOfeTot}` },
+  { k: 'ddef', t: 'DUELOS DEF', g: 'lu', r: j => `${j.duelosDefGan}/${j.duelosDefTot}` },
+  { k: 'ofei', t: 'OFE IND', g: 'lu', r: j => `${j.duelosOfeIndGan}/${j.duelosOfeIndTot}` },
+  { k: 'defi', t: 'DEF IND', g: 'lu', r: j => `${j.duelosDefIndGan}/${j.duelosDefIndTot}` },
+  { k: 'rec', t: 'REC', g: 'lu', r: j => j.rec },
+  { k: 'perd', t: 'PERD', g: 'lu', r: j => j.perdidas },
+  { k: 'pinc', t: 'PASES INC.', g: 'lu', r: j => j.pasesIncompletos },
+  { k: 'faltas', t: 'FALTAS (C/R)', g: 'dis', r: j => `${j.faltas || 0} / ${(j.eventos || []).filter(e => e.accion === 'Falta recibida' || e.accion === 'Penal a favor').length || 0}` },
+  { k: 'tarj', t: '🟨/🟥', g: 'dis', r: j => `${j.amarillas || 0}/${j.rojas || 0}` },
+];
+
 function Resumen() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -199,16 +223,10 @@ function Resumen() {
   const esCT = rol === 'ct';
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
+  const esMovil = useEsMovil();
 
   // NUEVO ESTADO: VISTA EXPRESS O AVANZADA
   const [vistaActiva, setVistaActiva] = useState('express');
-
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const miClubGlobal = localStorage.getItem('mi_club') || perfil?.clubes?.nombre || 'MI EQUIPO';
   const miEscudoGlobal = localStorage.getItem('escudo_url') || perfil?.clubes?.escudo_url || null;
@@ -1566,6 +1584,27 @@ const COLORS_ORIGEN = {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
+            <TablaResponsive
+              filas={analitica.ranking.filter(j => j.rol !== 'ARQUERO')}
+              columnas={COLS_RES_CAMPO}
+              colsClave={['rat', 'pm', 'rem', 'min']}
+              grupos={GRUPOS_RES}
+              gruposLabel={GRUPOS_RES_LABEL}
+              titulo="RENDIMIENTO: JUGADORES DE CAMPO"
+              getId={(j) => j.id}
+              getTitulo={(j) => `${j.nombre.toUpperCase()} ${j.apellido ? j.apellido.toUpperCase() : ''}`}
+              getSubtitulo={(j) => `${j.dorsal} · ${j.rol}`}
+              onRowClick={(j) => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+              colorCelda={(j, col) => {
+                if (col.k === 'rat') return j.impacto === '-' ? 'var(--text-dim)' : (j.impacto >= 6.0 ? 'var(--accent)' : '#ef4444');
+                if (col.k === 'pm') return j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff');
+                if (['perd', 'pinc', 'ocf'].includes(col.k)) return '#ef4444';
+                if (col.g === 'of') return '#00ff88';
+                if (col.g === 'lu') return '#0ea5e9';
+                if (col.g === 'dis') return '#fbbf24';
+                return '#fff';
+              }}
+            >
             <div className="bento-card">
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                  <div className="stat-label" style={{ color: 'var(--accent)' }}>RENDIMIENTO: JUGADORES DE CAMPO</div>
@@ -1659,6 +1698,7 @@ const COLORS_ORIGEN = {
 </table>
               </div>
             </div>
+            </TablaResponsive>
 
             {analitica.ranking.some(j => j.rol === 'ARQUERO') && (
               <div className="bento-card" style={{ borderTop: '2px solid #3b82f6' }}>

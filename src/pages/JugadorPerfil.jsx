@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 import { 
@@ -134,13 +135,7 @@ function JugadorPerfil() {
   const [userCats, setUserCats] = useState([]); // ── CAMBIO: Nuevo estado para blindar categorías
   const [cargandoAuth, setCargandoAuth] = useState(true);
 
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
+  const esMovil = useEsMovil();
   const [clubId, setClubId] = useState(localStorage.getItem('club_id') || null);
   const [jugadores, setJugadores] = useState([]);
   
