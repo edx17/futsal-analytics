@@ -276,7 +276,7 @@ function Resumen() {
     async function obtenerDatos() {
       try {
         const club_id = localStorage.getItem('club_id') || perfil?.club_id;
-        let queryPartidos = supabase.from('partidos').select('*').or('condicion.is.null,condicion.neq.Neutral').order('id', { ascending: false });
+        let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
         let queryJugadores = supabase.from('jugadores').select('*');
         let queryWellness = supabase.from('wellness').select('*');
 
@@ -287,7 +287,13 @@ function Resumen() {
         }
 
         const { data: p } = await queryPartidos;
-        setPartidos(p || []);
+        // Filtramos solo MIS partidos reales (igual criterio que Torneos: esMiPartido),
+        // en vez de excluir por condicion==='Neutral' (eso también tapaba mis propios
+        // cruces de Copa jugados en cancha neutral, aunque tuvieran eventos trackeados).
+        const misPartidos = (p || []).filter(partido =>
+          (!partido.nombre_propio || partido.nombre_propio === miClubGlobal) || (partido.rival === miClubGlobal)
+        );
+        setPartidos(misPartidos);
         
         const { data: j } = await queryJugadores;
         setJugadores(j || []);
