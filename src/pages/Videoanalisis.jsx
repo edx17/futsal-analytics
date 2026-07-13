@@ -152,7 +152,7 @@ export default function Videoanalisis() {
       setCargando(true);
       const [{ data: v }, { data: p }, { data: cfg }] = await Promise.all([
         supabase.from('video_analisis').select('*, video_clips(count)').eq('club_id', clubId).order('created_at', { ascending: false }),
-        supabase.from('partidos').select('id, rival, fecha, categoria').eq('club_id', clubId).order('fecha', { ascending: false }).limit(100),
+        supabase.from('partidos').select('id, rival, fecha, categoria, video_url').eq('club_id', clubId).order('fecha', { ascending: false }).limit(100),
         supabase.from('video_config').select('*').eq('club_id', clubId).maybeSingle(),
       ]);
       setVideos(v || []);
@@ -234,6 +234,19 @@ export default function Videoanalisis() {
     }]).select().single();
     setGuardandoVideo(false);
     if (error) { setErrorForm('Error al guardar: ' + error.message); return; }
+
+    // Si el partido asociado todavía no tenía video, se lo dejamos cargado también
+    // (así el "saltar al evento" de Resumen empieza a funcionar de yapa, sin pedir nada más).
+    if (formPartido) {
+      const partidoActual = partidos.find(p => p.id === formPartido);
+      if (partidoActual && !partidoActual.video_url) {
+        const { error: errPartido } = await supabase.from('partidos').update({ video_url: formUrl.trim() }).eq('id', formPartido);
+        if (!errPartido) {
+          setPartidos(prev => prev.map(p => p.id === formPartido ? { ...p, video_url: formUrl.trim() } : p));
+        }
+      }
+    }
+
     cerrarModalNuevo();
     setVideos(prev => [{ ...data, video_clips: [{ count: 0 }] }, ...prev]);
     abrirVideo(data);
@@ -647,6 +660,25 @@ export default function Videoanalisis() {
   const categorias = useMemo(() => ['TODAS', ...new Set(clips.map(c => c.etiqueta))], [clips]);
   const clipsFiltrados = useMemo(() => filtroCategoria === 'TODAS' ? clips : clips.filter(c => c.etiqueta === filtroCategoria), [clips, filtroCategoria]);
 
+  // ── Reutilizar el video ya cargado en el partido (mismo campo que usa Resumen) ──
+  const partidoConVideo = useMemo(() => {
+    if (!formPartido) return null;
+    const p = partidos.find(x => x.id === formPartido);
+    return p?.video_url ? p : null;
+  }, [formPartido, partidos]);
+
+  const usarVideoDelPartido = () => {
+    if (!partidoConVideo) return;
+    const fuente = detectarFuente(partidoConVideo.video_url);
+    if (fuente === 'youtube' || fuente === 'drive') {
+      setTabFuente(fuente);
+      setFormUrl(partidoConVideo.video_url);
+      setErrorForm('');
+    } else {
+      setErrorForm('No pude reconocer automáticamente el video de este partido. Pegalo manualmente en la pestaña que corresponda.');
+    }
+  };
+
   // ══════════════════════════════════════════════════════════════════════
   // VISTA: LISTA DE VIDEOS
   // ══════════════════════════════════════════════════════════════════════
@@ -765,13 +797,22 @@ export default function Videoanalisis() {
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '6px' }}>ASOCIAR A UN PARTIDO (opcional)</label>
               <select
                 value={formPartido} onChange={(e) => setFormPartido(e.target.value)}
-                style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '18px', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: partidoConVideo ? '8px' : '18px', boxSizing: 'border-box' }}
               >
                 <option value="">— Sin asociar —</option>
                 {partidos.map(p => (
-                  <option key={p.id} value={p.id}>vs {p.rival} · {p.fecha} · {p.categoria}</option>
+                  <option key={p.id} value={p.id}>vs {p.rival} · {p.fecha} · {p.categoria} {p.video_url ? '🎬' : ''}</option>
                 ))}
               </select>
+
+              {partidoConVideo && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: 'rgba(0,255,136,0.06)', border: '1px solid var(--accent)', borderRadius: '6px', padding: '10px 12px', marginBottom: '18px' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--accent)' }}>🎬 Este partido ya tiene un video cargado</span>
+                  <button onClick={usarVideoDelPartido} style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '7px 12px', borderRadius: '6px', fontSize: '0.68rem', fontWeight: 900, cursor: 'pointer', flexShrink: 0 }}>
+                    USAR ESTE
+                  </button>
+                </div>
+              )}
 
               {errorForm && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '14px', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px' }}>{errorForm}</div>}
 

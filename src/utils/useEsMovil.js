@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 
-const BREAKPOINT = 768
+const BREAKPOINT_VENTANA = 768  // ventana angosta de escritorio (sin touch): resize normal de navegador
+const BREAKPOINT_TACTIL  = 600  // lado corto para diferenciar TELÉFONO de TABLET (dispositivos táctiles)
 
 // ¿El input primario es táctil? (celu/tablet = coarse; notebook con trackpad = fine)
 function esTactil() {
@@ -14,15 +15,15 @@ function medir() {
   const ancho = window.innerWidth
   const alto = window.innerHeight
   const ladoCorto = Math.min(ancho, alto)
+  const tactil = esTactil()
   return {
     ancho,
     alto,
-    // Móvil si:
-    //  - la ventana es angosta (ancho < 768): cubre celu vertical y ventanas chicas de PC.
-    //  - O es táctil con lado corto de teléfono (< 768): cubre el CELU ACOSTADO.
-    // La tablet (lado corto = 768) NO entra: se comporta como PC en ambas orientaciones.
-    // La notebook (no táctil) tampoco, aunque tenga la ventana bajita.
-    esMovil: ancho < BREAKPOINT || (esTactil() && ladoCorto < BREAKPOINT),
+    // Táctil (celu/tablet): decide por el LADO CORTO del dispositivo, no por el ancho actual.
+    //   Así un celu acostado sigue siendo "móvil" (mismo lado corto en cualquier orientación),
+    //   y una tablet (aunque esté angosta en portrait) NO cae en el umbral de teléfono.
+    // No táctil (PC/notebook): decide por el ancho de la ventana, como un resize normal.
+    esMovil: tactil ? (ladoCorto < BREAKPOINT_TACTIL) : (ancho < BREAKPOINT_VENTANA),
   }
 }
 
