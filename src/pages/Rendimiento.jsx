@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
-import { useEsMovil } from '../utils/useEsMovil';
-import { TablaResponsive } from '../components/TablaResponsive';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
@@ -87,7 +85,7 @@ export default function Rendimiento() {
   const [selId, setSelId] = useState(null);
 
   // --- RESPONSIVE Y UX ESTADOS ---
-  const esMovil = useEsMovil();
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 800);
   const [perfilExpandido, setPerfilExpandido] = useState(false); 
 
   const { showToast } = useToast();
@@ -242,7 +240,7 @@ export default function Rendimiento() {
       <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '260px 1fr', gap: esMovil ? 15 : 24, alignItems: 'start' }} className="rend-layout-grid">
 
         {/* ══ SIDEBAR OPTIMIZADO PARA MÓVIL ══ */}
-        <div style={{ position: esMovil ? 'relative' : 'sticky', top: esMovil ? 0 : 16, zIndex: 10 }}>
+        <div style={{ position: esMovil ? 'relative' : 'sticky', top: esMovil ? 0 : 16, zIndex: 10, minWidth: 0 }}>
           <div style={{ background: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: esMovil ? 12 : 18, backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* ── SELECTOR GLOBAL ── */}
@@ -351,7 +349,7 @@ export default function Rendimiento() {
         </div>
 
         {/* ══ MAIN CONTENT ══ */}
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={{ animation: 'fadeUp 0.2s ease' }}>
             {tab === 'resumen' && <TabResumen jug={jug} stats={stats} historial={historial} ultimosDatos={ultimosDatos} esJugador={esJugador} selId={selId} />}
             {tab === 'fisico'  && <TabFisico  jug={jug} stats={stats} ultimosDatos={ultimosDatos} ultimosDatosGlobal={ultimosDatosGlobal} esJugador={esJugador} selId={selId} />}
@@ -427,9 +425,9 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
               const gapColor = gap == null ? '#334155' : ok ? '#10b981' : Math.abs(gap) < elite * 0.1 ? '#f59e0b' : '#ef4444';
               return (
                 <div key={lbl}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6, flexWrap: 'wrap', rowGap: 4 }}>
                     <span style={{ fontSize: '0.72rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>{lbl}</span>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
                       {gap != null && (
                         <span style={{ fontSize: '0.62rem', color: gapColor, fontWeight: 900 }}>
                           {ok ? '▲' : '▼'} {Math.abs(gap).toFixed(lbl === 'Broad Jump' ? 2 : 1)}{unit} vs élite
@@ -976,17 +974,6 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
   }, [ultimosDatos]);
 
   const ranking = [...ultimosDatos].sort((a, b) => (b.cmj || 0) - (a.cmj || 0));
-  const GRUPOS_RANK = { pos: 'var(--text-dim)', fis: '#3b82f6', comp: '#f59e0b' };
-  const GRUPOS_RANK_LABEL = { pos: 'GENERAL', fis: 'FÍSICO', comp: 'COMPOSICIÓN' };
-  const COLS_RANK = [
-    { k: 'cmj', t: 'CMJ', g: 'fis', r: d => d.cmj ?? '—' },
-    { k: 'abk', t: 'ABK', g: 'fis', r: d => d.abk ?? '—' },
-    { k: 'broad', t: 'BROAD', g: 'fis', r: d => d.broad ?? '—' },
-    { k: 'yoyo', t: 'YO-YO', g: 'fis', r: d => (d.y26 || d.y25) ?? '—' },
-    { k: 'musc', t: 'MUSC%', g: 'comp', r: d => d.musc ?? '—' },
-    { k: 'adip', t: 'ADIP%', g: 'comp', r: d => d.adip ?? '—' },
-    { k: 'asim', t: 'ASIM', g: 'comp', r: d => d.asym_cmj != null ? `${d.asym_cmj.toFixed(1)}%` : '—' },
-  ];
 
   const yoyoEvol = useMemo(() => {
     const byFecha = {};
@@ -1122,26 +1109,6 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
 
       <div className="glass-panel" style={{ padding: 20 }}>
         <SecTitle>📋 Ranking General — Todos los Jugadores</SecTitle>
-        <TablaResponsive
-          filas={ranking}
-          columnas={COLS_RANK}
-          colsClave={['cmj', 'yoyo', 'musc']}
-          grupos={GRUPOS_RANK}
-          gruposLabel={GRUPOS_RANK_LABEL}
-          titulo="RANKING GENERAL"
-          getId={(d) => d.id}
-          getTitulo={(d) => `${d.id_jugador === selId ? '👤 ' : ''}${d.jugadores?.apellido || 'S/N'}`}
-          getSubtitulo={(d) => d.jugadores?.posicion || ''}
-          colorCelda={(d, col) => {
-            if (col.k === 'adip') return d.adip > 20 ? '#ef4444' : '#64748b';
-            if (col.k === 'asim') return d.asym_cmj != null ? asimColor(d.asym_cmj) : '#64748b';
-            if (col.k === 'cmj' || col.k === 'musc') return '#3b82f6';
-            if (col.k === 'yoyo') return '#f59e0b';
-            if (col.k === 'broad') return '#10b981';
-            if (col.k === 'abk') return '#8b5cf6';
-            return '#fff';
-          }}
-        >
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table" style={{ minWidth: 680 }}>
             <thead>
@@ -1182,7 +1149,6 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
             </tbody>
           </table>
         </div>
-        </TablaResponsive>
       </div>
     </div>
   );
@@ -1430,7 +1396,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
   const renderField = (label, val, set, step = '0.1', type = 'number', ph = '') => (
     <div>
       <label style={{ fontSize: '0.65rem', color: '#e2e8f0', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{label}</label>
-      <input type={type} step={step} value={val} onChange={e => set(e.target.value)} className="select-dark" placeholder={ph} style={{ fontSize: 16 }} />
+      <input type={type} step={step} value={val} onChange={e => set(e.target.value)} className="select-dark" placeholder={ph} />
     </div>
   );
 
@@ -1441,7 +1407,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
           <h2 style={{ margin: 0, color: 'var(--accent)', fontWeight: 900, fontSize: '1.05rem' }}>NUEVA TOMA DE DATOS</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#334155', fontSize: '1.3rem', cursor: 'pointer' }}>✕</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 11, marginBottom: 15 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 15 }}>
           <div>
             <label style={{ fontSize: '0.65rem', color: '#e2e8f0', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Jugador</label>
             <select className="select-dark" value={jugId} onChange={e => setJugId(e.target.value)}>
@@ -1465,7 +1431,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
         </div>
 
         {tipo === 'fisico' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
             {renderField('CMJ (bi) cm', fF.cmj, v => setFF({ ...fF, cmj: v }))}
             {renderField('ABK cm', fF.abk, v => setFF({ ...fF, abk: v }))}
             <div />
@@ -1484,7 +1450,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
 
         {tipo === 'nutri' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
               {renderField('Peso (kg)', fN.peso, v => setFN({ ...fN, peso: v }))}
               {renderField('Altura (cm)', fN.talla, v => setFN({ ...fN, talla: v }))}
               {renderField('Músculo %', fN.musc, v => setFN({ ...fN, musc: v }))}
@@ -1497,21 +1463,21 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
             </div>
             
             <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 900, marginTop: 10, borderBottom: '1px solid #1e293b', paddingBottom: 5 }}>PLIEGUES (mm)</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
               {[['Tricipital', 'pl_tri'], ['Subescapular', 'pl_sub'], ['Bicipital', 'pl_bic'], ['C. Ilíaca', 'pl_cre'], ['Supraespinal', 'pl_sup'], ['Abdominal', 'pl_abd'], ['Muslo', 'pl_mus'], ['Pantorrilla', 'pl_pan']].map(([lbl, k]) => (
                 <div key={k}>{renderField(lbl, fN[k], v => setFN({ ...fN, [k]: v }))}</div>
               ))}
             </div>
 
             <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 900, marginTop: 10, borderBottom: '1px solid #1e293b', paddingBottom: 5 }}>PERÍMETROS (cm)</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
               {[['Brazo Relaj.', 'per_bra_r'], ['Brazo Flex.', 'per_bra_f'], ['Cintura', 'per_cin'], ['Cadera', 'per_cad'], ['Pantorrilla', 'per_pan']].map(([lbl, k]) => (
                 <div key={k}>{renderField(lbl, fN[k], v => setFN({ ...fN, [k]: v }))}</div>
               ))}
             </div>
 
             <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 900, marginTop: 10, borderBottom: '1px solid #1e293b', paddingBottom: 5 }}>DIÁMETROS (cm)</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {[['Húmero', 'dia_hum'], ['Fémur', 'dia_fem']].map(([lbl, k]) => (
                 <div key={k}>{renderField(lbl, fN[k], v => setFN({ ...fN, [k]: v }))}</div>
               ))}
@@ -1525,7 +1491,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
         )}
 
         {tipo === 'kine' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[['Tobillo / Pie', 'kin_t', 'ej: movilidad'], ['Cadera (Jurdan)', 'kin_c', 'ej: isquio'], ['Zona Media', 'kin_u', 'ej: pelvica'], ['Sentadilla', 'kin_s', 'ej: optimo'], ['Pierna Hábil', 'pierna', 'Derecho / Izquierdo']].map(([lbl, k, ph]) => (
               <div key={k}>
                 <label style={{ fontSize: '0.65rem', color: '#e2e8f0', fontWeight: 900, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>{lbl}</label>

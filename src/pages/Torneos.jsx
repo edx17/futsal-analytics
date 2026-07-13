@@ -10,7 +10,6 @@ import { TablaResponsive } from '../components/TablaResponsive';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
-  // miClubGlobal se resuelve más abajo (useMemo self-healing), una vez cargado el fixture.
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { perfil } = useAuth();
@@ -48,12 +47,11 @@ function Torneos() {
     partidos_multiples: [{ local_id: '', visitante_id: '', estado: 'Pendiente', goles_local: '', goles_visitante: '' }]
   });
 
-  // 🏷️ NOMBRE DEL CLUB PROPIO — RESOLUCIÓN ROBUSTA (self-healing)
-  // El CT no tiene 'mi_club' en localStorage (solo lo setea Visión Global del superusuario),
-  // así que antes caía en 'TU CLUB', ningún partido matcheaba y el header/stats quedaban en cero.
-  // Prioridad: el nombre real ya guardado en los partidos propios del fixture (fuente de verdad,
-  // es exactamente contra lo que se comparan los partidos) -> sesión -> perfil -> fallback.
-  // Así funciona idéntico para superusuario y CT, sin depender de que el string coincida entre orígenes.
+  // ESTADOS DEL COMPARADOR DE EVOLUCIÓN
+  const [compEq1, setCompEq1] = useState('');
+  const [compEq2, setCompEq2] = useState('');
+  const [compMetrica, setCompMetrica] = useState('pts');
+
   const miClubGlobal = useMemo(() => {
     const propio = fixture.find(f => f && f.condicion !== 'Neutral' && f.nombre_propio);
     return (
@@ -123,14 +121,12 @@ function Torneos() {
       .select('*, rivales(nombre, escudo)')
       .eq('torneo_id', idTorneo)
       .eq('categoria', categoriaTorneo);
-      // Quitamos el order de SQL para usar Natural Sort en JavaScript
       
     if (!partidosData || partidosData.length === 0) {
       setFixture([]);
       return;
     }
 
-    // ORDENAMIENTO NATURAL DE JORNADAS (1, 2, 3... 10, 11)
     partidosData.sort((a, b) => {
       const jA = a.jornada || '';
       const jB = b.jornada || '';
@@ -244,7 +240,7 @@ function Torneos() {
           escudo_propio: eqLocal.escudo,
           jornada: formFixture.jornada,
           fecha: formFixture.fecha_partido, 
-          condicion: 'Neutral', // Por defecto los múltiples son neutrales o asumen que el 1ro es local
+          condicion: 'Neutral',
           estado: p.estado,
           goles_propios: p.estado === 'Finalizado' ? (Number(p.goles_local) || 0) : 0,
           goles_rival: p.estado === 'Finalizado' ? (Number(p.goles_visitante) || 0) : 0,
@@ -277,7 +273,6 @@ function Torneos() {
     if(estado === 'Finalizado') showToast("Resultado actualizado", "success");
   };
 
-  // ── COPA: definición por penales ──
   const actualizarPenales = async (id, penales_propios, penales_rival) => {
     const pp = (penales_propios === '' || penales_propios == null) ? null : Number(penales_propios);
     const pr = (penales_rival === '' || penales_rival == null) ? null : Number(penales_rival);
@@ -323,7 +318,6 @@ function Torneos() {
 
   const irATrackear = (partido) => navigate('/toma-datos', { state: { partido } });
 
-  // 1. MOTOR ANALÍTICO DE TU EQUIPO
   const { stats, local, visitante, racha, vallasInvictas, chartDataEvolucion, chartDataLocalia, ptsTotales, eficacia } = useMemo(() => {
     const partidosMios = fixture.filter(f => (f.nombre_propio === miClubGlobal || !f.nombre_propio) && (f.estado === 'Finalizado' || f.estado === 'Jugado')).sort((a,b) => {
       if(a.fecha && b.fecha) return new Date(a.fecha) - new Date(b.fecha);
@@ -383,7 +377,6 @@ function Torneos() {
     return { stats: s, local: l, visitante: v, racha: rList, vallasInvictas: vIn, chartDataEvolucion: chartEvol, chartDataLocalia: cLocalia, ptsTotales: ptsTot, eficacia: efi };
   }, [fixture, miClubGlobal]);
 
-  // 2. MOTOR TABLA DE POSICIONES DINÁMICA PREMIUM (General, Local, Visitante)
   const tablaPosiciones = useMemo(() => {
     const tabla = {};
 
@@ -395,7 +388,6 @@ function Torneos() {
       let escudoLocal = null;
       let escudoVisita = null;
 
-      // Determinación estricta de local y visitante para separar las tablas
       if (esMiPartido) {
         if (f.condicion === 'Visitante') {
            equipoLocal = f.rival || 'Rival Desconocido';
@@ -415,7 +407,6 @@ function Torneos() {
         escudoVisita = f.escudo_rival;
       }
 
-      // Estructura base ampliada
       [equipoLocal, equipoVisita].forEach((eq, index) => {
         if (!tabla[eq]) {
           tabla[eq] = { 
@@ -440,12 +431,10 @@ function Torneos() {
         const tLocal = tabla[equipoLocal];
         const tVisita = tabla[equipoVisita];
 
-        // Sumar General
         tLocal.pj++; tVisita.pj++;
         tLocal.gf += golesLocal; tVisita.gf += golesVisita;
         tLocal.gc += golesVisita; tVisita.gc += golesLocal;
 
-        // Sumar Local/Visitante
         tLocal.pjL++; tLocal.gfL += golesLocal; tLocal.gcL += golesVisita;
         tVisita.pjV++; tVisita.gfV += golesVisita; tVisita.gcV += golesLocal;
 
@@ -463,13 +452,11 @@ function Torneos() {
     });
 
     return Object.values(tabla).map(t => {
-      // Calculamos las diferencias según el modo
       t.difGeneral = t.gf - t.gc;
       t.difLocal = t.gfL - t.gcL;
       t.difVisita = t.gfV - t.gcV;
       return t;
     }).sort((a, b) => {
-      // Ordenamiento Dinámico
       if (modoTabla === 'local') {
         if (b.ptsL !== a.ptsL) return b.ptsL - a.ptsL;
         if (b.difLocal !== a.difLocal) return b.difLocal - a.difLocal;
@@ -486,7 +473,6 @@ function Torneos() {
     });
   }, [fixture, miClubGlobal, modoTabla]);
 
-  // 3. MOTOR NUEVO: REPORTE DE LA LIGA COMPLETA PREMIUM
   const reporteLiga = useMemo(() => {
     if (!fixture || fixture.length === 0) return null;
     
@@ -515,14 +501,12 @@ function Torneos() {
         golesLocal = Number(f.goles_propios) || 0; golesVisita = Number(f.goles_rival) || 0;
       }
 
-      // Analítica de Goles (Over/Under)
       partidosJugadosTotales++;
       const golesPartido = golesLocal + golesVisita;
       golesTotalesLiga += golesPartido;
       if (golesPartido > 3) partidosOver3++;
       if (golesPartido > 5) partidosOver5++;
 
-      // Cálculo de Mayor Goleada conservando el formato estricto (Local X - Y Visita)
       const difGoles = Math.abs(golesLocal - golesVisita);
       if (difGoles > mayorGoleada.dif) {
         mayorGoleada = { dif: difGoles, text: `${equipoLocal} ${golesLocal} - ${golesVisita} ${equipoVisita}` };
@@ -531,22 +515,18 @@ function Torneos() {
 
     if (partidosJugadosTotales === 0) return null;
 
-    // Tomamos la data ya procesada de tablaPosiciones (en modo general) para sacar rankings
     const rankings = [...tablaPosiciones].sort((a, b) => b.pts - a.pts);
     const masGoleador = [...rankings].sort((a,b) => b.gf - a.gf)[0];
-    const mejorDefensa = [...rankings].filter(t => t.pj > 0).sort((a,b) => a.gc - b.gc)[0]; // Menos goles recibidos
+    const mejorDefensa = [...rankings].filter(t => t.pj > 0).sort((a,b) => a.gc - b.gc)[0]; 
     const mejorLocal = [...rankings].sort((a,b) => b.ptsL - a.ptsL)[0];
     const mejorVisita = [...rankings].sort((a,b) => b.ptsV - a.ptsV)[0];
 
-    // Power Ranking (Indice de Dominio)
-    // Formula Inventada: (Pts% * 50) + (DifGoles * 2) + (GF/PJ * 10) - (GC/PJ * 10)
     const powerRankingData = rankings.filter(t => t.pj > 0).map(t => {
       const pctPuntos = (t.pts / (t.pj * 3)) * 100;
       const gfProm = t.gf / t.pj;
       const gcProm = t.gc / t.pj;
       const dominioRaw = (pctPuntos * 0.5) + (t.difGeneral * 1.5) + (gfProm * 5) - (gcProm * 5);
       
-      // Forma reciente (Ultimos 5)
       const ults5 = t.rachaGeneral.slice(-5);
       let ptsForma = 0;
       ults5.forEach(r => { if(r==='V') ptsForma+=3; if(r==='E') ptsForma+=1; });
@@ -577,7 +557,6 @@ function Torneos() {
     };
   }, [fixture, miClubGlobal, tablaPosiciones]);
 
-  // 4. PRÓXIMO RIVAL: scouting rápido del próximo pendiente (su fila en la tabla)
   const proximoRival = useMemo(() => {
     if (!fixture || fixture.length === 0) return null;
     const pendientes = fixture
@@ -621,7 +600,6 @@ function Torneos() {
     };
   }, [fixture, miClubGlobal, tablaPosiciones]);
 
-  // 5. PROYECCIÓN DE PUNTOS: run-rate, techo, posición y brecha con el líder
   const proyeccion = useMemo(() => {
     const pendientes = fixture.filter(f => {
       const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
@@ -629,7 +607,7 @@ function Torneos() {
     }).length;
 
     const pj = stats.pj;
-    const ppp = pj > 0 ? (ptsTotales / pj) : 0; // puntos por partido (run-rate)
+    const ppp = pj > 0 ? (ptsTotales / pj) : 0; 
     const proyFinal = Math.round(ptsTotales + ppp * pendientes);
     const maxPosible = ptsTotales + pendientes * 3;
 
@@ -658,7 +636,6 @@ function Torneos() {
       return max;
   };
 
-  // DATOS PARA FILTROS DEL FIXTURE ORDENADOS
   const jornadasUnicas = useMemo(() => {
     const arr = [...new Set(fixture.map(f => f.jornada))].filter(Boolean);
     return arr.sort((a,b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
@@ -671,6 +648,14 @@ function Torneos() {
     ])].filter(Boolean).sort();
   }, [fixture, miClubGlobal]);
 
+  // SETEO INICIAL DEL COMPARADOR DE EVOLUCIÓN
+  useEffect(() => {
+    if (equiposUnicos.length > 0) {
+      if (!compEq1) setCompEq1(miClubGlobal || equiposUnicos[0]);
+      if (!compEq2) setCompEq2(equiposUnicos.find(e => e !== miClubGlobal) || equiposUnicos[1] || equiposUnicos[0]);
+    }
+  }, [equiposUnicos, miClubGlobal]);
+
   const fixtureFiltrado = useMemo(() => {
     return fixture.filter(f => {
       const jMatch = filtroJornada === '' || f.jornada === filtroJornada;
@@ -682,6 +667,50 @@ function Torneos() {
     });
   }, [fixture, filtroJornada, filtroEquipo, miClubGlobal]);
 
+  // MOTOR COMPARADOR FECHA A FECHA
+  const chartDataComparativa = useMemo(() => {
+    if (!fixture || fixture.length === 0 || !compEq1 || !compEq2) return [];
+    
+    const matches = fixture.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado');
+    const jornadas = [...new Set(matches.map(m => m.jornada))].filter(Boolean)
+      .sort((a,b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+    let acum1 = { pts: 0, gf: 0, gc: 0, dif: 0 };
+    let acum2 = { pts: 0, gf: 0, gc: 0, dif: 0 };
+    const data = [];
+
+    jornadas.forEach(j => {
+       const mJornada = matches.filter(m => m.jornada === j);
+       
+       const getStats = (match, teamName) => {
+           if(!match) return null;
+           const isLocal = (match.nombre_propio || miClubGlobal) === teamName;
+           const isVisita = (match.rival || 'Rival Desconocido') === teamName;
+           if(!isLocal && !isVisita) return null;
+           
+           let gf = 0, gc = 0;
+           if (isLocal) { gf = Number(match.goles_propios)||0; gc = Number(match.goles_rival)||0; }
+           else { gf = Number(match.goles_rival)||0; gc = Number(match.goles_propios)||0; }
+           
+           let pts = 0;
+           if(gf > gc) pts = 3; else if (gf === gc) pts = 1;
+           return { gf, gc, pts, dif: gf - gc };
+       };
+
+       const s1 = getStats(mJornada.find(m => (m.nombre_propio || miClubGlobal) === compEq1 || m.rival === compEq1), compEq1);
+       const s2 = getStats(mJornada.find(m => (m.nombre_propio || miClubGlobal) === compEq2 || m.rival === compEq2), compEq2);
+
+       if (s1) { acum1.pts += s1.pts; acum1.gf += s1.gf; acum1.gc += s1.gc; acum1.dif += s1.dif; }
+       if (s2) { acum2.pts += s2.pts; acum2.gf += s2.gf; acum2.gc += s2.gc; acum2.dif += s2.dif; }
+
+       data.push({
+          name: j,
+          [compEq1]: acum1[compMetrica],
+          [compEq2]: acum2[compMetrica]
+       });
+    });
+    return data;
+  }, [fixture, compEq1, compEq2, compMetrica, miClubGlobal]);
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club.</div>;
 
@@ -952,7 +981,6 @@ function Torneos() {
                       tablaPosiciones.map((equipo, index) => {
                         const esMiEquipo = equipo.nombre === miClubGlobal;
                         
-                        // Variables dinámicas según el modo de tabla seleccionado
                         let pts = equipo.pts; let pj = equipo.pj; let pg = equipo.pg; let pe = equipo.pe; let pp = equipo.pp; let gf = equipo.gf; let gc = equipo.gc; let dif = equipo.difGeneral; let racha = equipo.rachaGeneral;
                         
                         if (modoTabla === 'local') {
@@ -1007,7 +1035,6 @@ function Torneos() {
             {/* 📅 TAB: FIXTURE */}
             {tabMisTorneos === 'fixture' && (
               <>
-                {/* FILTROS DE FIXTURE */}
                 <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '8px', border: '1px solid #222' }}>
                   <div style={{ flex: 1 }}>
                     <div className="stat-label" style={{ marginBottom: '5px' }}>FILTRAR POR FECHA</div>
@@ -1125,18 +1152,16 @@ function Torneos() {
               </>
             )}
 
-            {/* 📈 TAB: REPORTE DE LA LIGA (POWER RANKING & ANALYTICS) */}
+            {/* 📈 TAB: REPORTE DE LA LIGA */}
             {tabMisTorneos === 'reporte' && (
               !reporteLiga ? (
                  <p style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '30px' }}>No hay suficientes datos procesados para generar el reporte premium. Asegurate de tener partidos finalizados.</p>
               ) : (
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     
-                    {/* PRÓXIMO RIVAL + PROYECCIÓN */}
                     {(proximoRival || proyeccion.pendientes > 0 || proyeccion.pj > 0) && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
 
-                        {/* PRÓXIMO RIVAL */}
                         {proximoRival && (
                           <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #a855f7' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -1207,7 +1232,6 @@ function Torneos() {
                           </div>
                         )}
 
-                        {/* PROYECCIÓN DE PUNTOS */}
                         {(proyeccion.pj > 0 || proyeccion.pendientes > 0) && (
                           <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #00ff88' }}>
                             <div className="stat-label" style={{ color: '#00ff88', marginBottom: '12px' }}>PROYECCIÓN DE PUNTOS</div>
@@ -1255,7 +1279,6 @@ function Torneos() {
                       </div>
                     )}
 
-                    {/* DASHBOARD EJECUTIVO */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                       <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #00ff88' }}>
                          <div className="stat-label">MÁS GOLEADOR</div>
@@ -1282,7 +1305,6 @@ function Torneos() {
                       </div>
                     </div>
 
-                    {/* TENDENCIAS DE GOLES (OVER/UNDER) */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
                       {reporteLiga.mayorGoleada.dif > 0 && (
                          <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid var(--accent)' }}>
@@ -1311,7 +1333,6 @@ function Torneos() {
                       </div>
                     </div>
 
-                    {/* KPI AVANZADOS - ESTILO SOFASCORE */}
                     <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', overflowX: 'auto' }}>
                        <div className="stat-label" style={{ marginBottom: '15px' }}>ESTADÍSTICAS AVANZADAS Y PODER OFENSIVO</div>
                        <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
@@ -1343,6 +1364,50 @@ function Torneos() {
                            ))}
                          </tbody>
                        </table>
+                    </div>
+
+                    {/* COMPARADOR DE RENDIMIENTO (NUEVO) */}
+                    <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', marginTop: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                        <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>
+                          EVOLUCIÓN COMPARATIVA <InfoBox texto="Compará el rendimiento acumulado fecha a fecha entre dos equipos del torneo." />
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                          <select value={compEq1} onChange={e => setCompEq1(e.target.value)} style={{ ...inputIndustrial, padding: '8px', width: 'auto' }}>
+                            {equiposUnicos.map(eq => <option key={`eq1-${eq}`} value={eq}>{eq.toUpperCase()}</option>)}
+                          </select>
+                          <span style={{ color: 'var(--text-dim)', alignSelf: 'center', fontWeight: 900 }}>VS</span>
+                          <select value={compEq2} onChange={e => setCompEq2(e.target.value)} style={{ ...inputIndustrial, padding: '8px', width: 'auto' }}>
+                            {equiposUnicos.map(eq => <option key={`eq2-${eq}`} value={eq}>{eq.toUpperCase()}</option>)}
+                          </select>
+                          <select value={compMetrica} onChange={e => setCompMetrica(e.target.value)} style={{ ...inputIndustrial, padding: '8px', width: 'auto', borderLeft: '2px solid var(--accent)' }}>
+                            <option value="pts">Puntos Acumulados</option>
+                            <option value="dif">Diferencia de Gol Acumulada</option>
+                            <option value="gf">Goles a Favor Acumulados</option>
+                            <option value="gc">Goles en Contra Acumulados</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ width: '100%', height: 300 }}>
+                        {chartDataComparativa.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartDataComparativa} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                              <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
+                              <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
+                              <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                              <Legend wrapperStyle={{ fontSize: '11px' }} iconType="circle" />
+                              <Line type="monotone" dataKey={compEq1} name={compEq1.toUpperCase()} stroke="#00ff88" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                              <Line type="monotone" dataKey={compEq2} name={compEq2.toUpperCase()} stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+                            No hay datos suficientes para comparar a estos equipos.
+                          </div>
+                        )}
+                      </div>
                     </div>
                  </div>
               )

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext'; // NUEVO: Importamos el contexto para saber quién es
 import { calcularXGEvento } from '../analytics/xg'; // Modelo de xG en vivo (mismo que usa el engine)
+import { TablaResponsive } from '../components/TablaResponsive';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -312,6 +313,23 @@ function OrigenGoles() {
     return j ? (j.apellido || j.nombre).toUpperCase() : 'DESCONOCIDO';
   };
 
+  const GRUPOS_GOLES = { gen: 'var(--text-dim)', tac: '#f59e0b' };
+  const GRUPOS_GOLES_LABEL = { gen: 'DETALLE', tac: 'TÁCTICO' };
+  const COLS_GOLES = [
+    { k: 'minuto', t: 'MINUTO', g: 'gen', r: g => g.minuto !== null ? `${g.minuto}' ${g.periodo}` : '-' },
+    { k: 'asistidor', t: 'ASISTENCIA', g: 'gen', r: g => g.asistidor },
+    { k: 'origen', t: 'ORIGEN TÁCTICO', g: 'tac', r: g => (
+      <>
+        <span style={{ background: COLORS_ORIGEN[g.origen] || '#4b5563', color: g.origen === 'Penal / Sexta Falta' ? '#000' : '#fff', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
+          {g.origen.toUpperCase()}
+        </span>
+        {g.modificadores && <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '3px' }}>{g.modificadores}</div>}
+      </>
+    ) },
+    { k: 'xg', t: 'xG', g: 'tac', r: g => g.xg },
+    { k: 'distancia', t: 'DISTANCIA', g: 'gen', r: g => g.distancia },
+  ];
+
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       
@@ -571,6 +589,24 @@ function OrigenGoles() {
           {/* TABLA DE DESGLOSE */}
           <div className="bento-card">
             <div className="stat-label" style={{ marginBottom: '20px' }}>REGISTRO DETALLADO DE GOLES</div>
+            <TablaResponsive
+              filas={dataAnalizada.tablaGoles}
+              columnas={COLS_GOLES}
+              colsClave={['minuto', 'xg', 'origen']}
+              grupos={GRUPOS_GOLES}
+              gruposLabel={GRUPOS_GOLES_LABEL}
+              titulo="REGISTRO DETALLADO DE GOLES"
+              vacio="No hay goles registrados con estos filtros."
+              getId={(g) => g.id}
+              getTitulo={(g) => `${g.autor}`}
+              getSubtitulo={(g) => `vs ${g.rival.toUpperCase()} · ${g.competicion}`}
+              colorCelda={(g, col) => {
+                if (col.k === 'xg') return '#a855f7';
+                if (col.k === 'minuto') return 'var(--accent)';
+                if (col.k === 'asistidor') return '#c084fc';
+                return '#fff';
+              }}
+            >
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse' }}>
                 <thead>
@@ -604,6 +640,7 @@ function OrigenGoles() {
                 </tbody>
               </table>
             </div>
+            </TablaResponsive>
           </div>
 
         </div>

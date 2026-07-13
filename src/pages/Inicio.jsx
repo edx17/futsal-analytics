@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useEsMovil } from '../utils/useEsMovil';
 
 import { analizarPartido } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
@@ -218,12 +219,7 @@ export default function Inicio() {
   }
 
   /* ---- ESTADO BASE ---- */
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-  useEffect(() => {
-    const h = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', h);
-    return () => window.removeEventListener('resize', h);
-  }, []);
+  const esMovil = useEsMovil();
 
   const rol = (perfil?.rol || 'jugador').toLowerCase();
   const esSuperUser = rol === 'superuser';

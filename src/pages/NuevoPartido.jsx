@@ -5,6 +5,7 @@ import { supabase } from '../supabase';
 function NuevoPartido() {
   const navigate = useNavigate();
   const clubId = localStorage.getItem('club_id');
+  const miClubGlobal = localStorage.getItem('mi_club') || 'MI EQUIPO';
 
   // DATOS RELACIONALES
   const [rivalesBD, setRivalesBD] = useState([]);
@@ -82,9 +83,14 @@ function NuevoPartido() {
         .eq('club_id', clubId)
         .eq('torneo_id', idTorneo)
         .eq('estado', 'Pendiente')
-        .or('condicion.is.null,condicion.neq.Neutral')
         .order('jornada', { ascending: true });
-      setPartidosTorneo(data || []);
+      // Solo MIS partidos pendientes (mismo criterio que Torneos.jsx: esMiPartido).
+      // Antes se excluía por condicion==='Neutral', pero eso también tapaba mis propios
+      // cruces de Copa a jugarse en cancha neutral.
+      const misPendientes = (data || []).filter(p =>
+        (!p.nombre_propio || p.nombre_propio === miClubGlobal) || (p.rival === miClubGlobal)
+      );
+      setPartidosTorneo(misPendientes);
     } else {
       setPartidosTorneo([]);
     }

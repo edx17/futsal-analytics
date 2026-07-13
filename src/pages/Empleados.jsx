@@ -116,7 +116,7 @@ function Empleados() {
           <div className="bento-card" style={{ width: '600px', border: '1px solid #3b82f6', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0, color: '#3b82f6' }}>{form.id ? 'Editar Ficha Laboral' : 'Alta de Personal'}</h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '15px', marginTop: '15px' }}>
               <div style={{ gridColumn: '1 / -1' }}><label style={lblStyle}>Nombre Completo</label><input type="text" value={form.nombre_completo} onChange={e => setForm({...form, nombre_completo: e.target.value})} style={inputStyle} /></div>
               
               <div><label style={lblStyle}>Rol / Cargo</label><input type="text" value={form.rol} onChange={e => setForm({...form, rol: e.target.value})} style={inputStyle} /></div>
@@ -129,7 +129,7 @@ function Empleados() {
 
               <div style={{ gridColumn: '1 / -1', background: '#111', padding: '10px', borderRadius: '6px', border: '1px solid #222', marginTop: '10px' }}>
                 <h4 style={{ margin: '0 0 10px 0', color: '#aaa', fontSize: '0.8rem' }}>DATOS BANCARIOS</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                   <div><label style={lblStyle}>Banco</label><input type="text" value={form.banco} onChange={e => setForm({...form, banco: e.target.value})} style={inputStyle} placeholder="Ej: Galicia / MercadoPago" /></div>
                   <div><label style={lblStyle}>Alias</label><input type="text" value={form.alias} onChange={e => setForm({...form, alias: e.target.value})} style={inputStyle} /></div>
                   <div style={{ gridColumn: '1 / -1' }}><label style={lblStyle}>CBU / CVU</label><input type="text" value={form.cbu} onChange={e => setForm({...form, cbu: e.target.value})} style={inputStyle} /></div>
@@ -160,6 +160,6 @@ function Empleados() {
 }
 
 const lblStyle = { fontSize: '0.75rem', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' };
-const inputStyle = { width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none' };
+const inputStyle = { width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px' };
 
 export default Empleados;

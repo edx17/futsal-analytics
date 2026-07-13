@@ -41,6 +41,7 @@ import AceptarTerminos from './pages/AceptarTerminos';
 import Disciplina from './pages/Disciplina';
 import Transferencias from './pages/Transferencias';
 import ResumenPlantel from './pages/Resumenplantel';
+import Videoanalisis from './pages/Videoanalisis';
 
 import './App.css';
 
@@ -107,7 +108,8 @@ function AppRoutes() {
       <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
       <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
       <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
-      
+      <Route path="/videoanalisis" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Videoanalisis /></ProtectedRoute>} />
+
       <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
       <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
       <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
@@ -362,6 +364,7 @@ useEffect(() => {
                 )}
                 <NavLink to="/banco-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🗃️ <span>BANCO DE TAREAS</span></NavLink>
                 <NavLink to="/libro-tactico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📘 <span>LIBRO TÁCTICO</span></NavLink>
+                <NavLink to="/videoanalisis" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎬 <span>VIDEOANÁLISIS</span></NavLink>
               </>
             )}
           </>

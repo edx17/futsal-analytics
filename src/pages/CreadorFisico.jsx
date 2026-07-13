@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 // IMPORTAMOS AUTH para sacar las categorías del usuario
 import { useAuth } from '../context/AuthContext'; 
+import { useEsMovil } from '../utils/useEsMovil';
 
 const CreadorFisico = () => {
   const navigate = useNavigate();
@@ -18,12 +19,7 @@ const CreadorFisico = () => {
   const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null);
 
   // --- RESPONSIVE STATE ---
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const esMovil = useEsMovil();
 
   // --- ESTADO GENERAL DE LA FICHA ---
   const [fichaTecnica, setFichaTecnica] = useState({
@@ -397,7 +393,7 @@ const CreadorFisico = () => {
 
 // --- ESTILOS ---
 const labelStyle = { display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '5px' };
-const inputStyle = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' };
+const inputStyle = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' };
 
 const miniLabel = { display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' };
 const miniInput = { width: '100%', padding: '10px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' };

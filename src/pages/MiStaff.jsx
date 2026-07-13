@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
+import { useEsMovil } from '../utils/useEsMovil';
 
 // --- Iconos ---
 const IconEdit = () => (
@@ -32,12 +33,7 @@ export default function MiStaff() {
   const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
   const [guardando, setGuardando] = useState(false);
 
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const esMovil = useEsMovil();
 
   // 🔥 REGLA DE ORO: Determinar el clubID objetivo
   const clubIdObjetivo = perfil?.rol === 'superuser' 
@@ -173,7 +169,7 @@ export default function MiStaff() {
         <div style={modalOverlay}>
           <div style={modalContent}>
             <h3 style={{ margin: '0 0 20px 0', color: 'var(--accent)' }}>Permisos: {usuarioEditando?.nombre_completo}</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
               {categoriasClub.map(cat => (
                 <button key={cat} onClick={() => toggleCategoria(cat)} style={categoriasSeleccionadas.includes(cat) ? catActive : catInactive}>
                   {cat}

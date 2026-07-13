@@ -178,7 +178,7 @@ export default function Novedades() {
       <div className="bento-card" style={{ marginBottom: '20px' }}>
         <form onSubmit={enviarNovedad} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
             <div>
               <label className="stat-label">PÚBLICO OBJETIVO</label>
               <select value={publico} onChange={(e) => setPublico(e.target.value)} style={inputBase}>
@@ -351,7 +351,7 @@ export default function Novedades() {
 const inputBase = {
   width: '100%', padding: '12px', background: '#000',
   border: '1px solid var(--border)', color: '#fff', borderRadius: '4px',
-  outline: 'none', marginTop: '5px', boxSizing: 'border-box'
+  outline: 'none', marginTop: '5px', boxSizing: 'border-box', fontSize: '16px'
 };
 const btnFiltro = {
   padding: '8px 14px', borderRadius: '20px', border: '1px solid var(--border)',

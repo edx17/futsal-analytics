@@ -30,7 +30,7 @@ export default function AceptarTerminos() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', padding: '20px', alignItems: 'center', boxSizing: 'border-box' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)', padding: '20px', alignItems: 'center', boxSizing: 'border-box' }}>
       <div style={{ background: 'var(--panel)', padding: '30px', borderRadius: '12px', border: '1px solid var(--border)', width: '100%', maxWidth: '800px', flex: 1, display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         <h1 style={{ color: 'var(--accent)', marginBottom: '20px', fontSize: '1.5rem', textAlign: 'center', fontWeight: '900' }}>
           TÉRMINOS Y CONDICIONES Y POLÍTICA DE PRIVACIDAD – VIRTUAL.CLUB

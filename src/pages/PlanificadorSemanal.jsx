@@ -611,16 +611,16 @@ const PlanificadorSemanal = () => {
       if (errSesiones) throw errSesiones;
 
       // 🛡️ SOLO PARTIDOS DE MI EQUIPO:
-      // Los cruces del fixture ajeno (otros equipos del torneo) se guardan con condicion = 'Neutral'
-      // desde Torneos.jsx. Acá los excluimos para que el Planificador muestre únicamente los partidos propios.
-      // El .or incluye los 'null' (partidos legacy sin condición) y excluye solo los 'Neutral'.
+      // Antes se excluía por condicion==='Neutral', pero eso también tapaba mis propios
+      // cruces de Copa jugados en cancha neutral. Ahora usamos el mismo criterio que
+      // Torneos.jsx (esMiPartido): comparamos nombre_propio/rival contra mi club.
+      const miClubGlobal = localStorage.getItem('mi_club') || 'MI EQUIPO';
       let queryPartidos = supabase
         .from('partidos')
         .select('*')
         .eq('club_id', club_id)
         .gte('fecha', inicio)
-        .lte('fecha', fin)
-        .or('condicion.is.null,condicion.neq.Neutral');
+        .lte('fecha', fin);
       
       if (filtroCategoria !== 'Todas') {
         queryPartidos = queryPartidos.eq('categoria', filtroCategoria);
@@ -628,8 +628,11 @@ const PlanificadorSemanal = () => {
         queryPartidos = queryPartidos.in('categoria', misCategorias);
       }
 
-      const { data: dataPartidos, error: errPartidos } = await queryPartidos;
+      const { data: dataPartidosRaw, error: errPartidos } = await queryPartidos;
       if (errPartidos) throw errPartidos;
+      const dataPartidos = (dataPartidosRaw || []).filter(p =>
+        (!p.nombre_propio || p.nombre_propio === miClubGlobal) || (p.rival === miClubGlobal)
+      );
       
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')

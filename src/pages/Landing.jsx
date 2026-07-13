@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useEsMovil } from '../utils/useEsMovil';
 
 // ==========================================
 // CONFIGURACIÓN VISUAL
@@ -91,12 +92,12 @@ const Section = ({ children, style, id, darkBg = false }) => (
 
 const Title = ({ children, style }) => (
   <h2 style={{
-    fontSize: '3.5rem',
+    fontSize: 'clamp(1.8rem, 4vw + 1rem, 3.5rem)',
     fontWeight: 900,
     textAlign: 'center',
     marginBottom: '20px',
     lineHeight: 1.05,
-    letterSpacing: '-2px',
+    letterSpacing: 'clamp(-1px, -0.15vw, -2px)',
     ...style
   }}>{children}</h2>
 );
@@ -151,6 +152,7 @@ const TESTIMONIOS = [
 // ==========================================
 function Landing() {
   const navigate = useNavigate();
+  const esMovil = useEsMovil();
 
   useEffect(() => {
     console.log("Estructura de landing cargada.");
@@ -162,8 +164,8 @@ function Landing() {
       
       {/* NAVBAR */}
       <nav style={{ 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-        padding: '15px 40px', borderBottom: `1px solid ${COLORS.border}`,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: '10px',
+        padding: esMovil ? '12px 16px' : '15px 40px', borderBottom: `1px solid ${COLORS.border}`,
         position: 'sticky', top: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(15px)', zIndex: 1000
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => navigate('/')}>
@@ -173,7 +175,7 @@ function Landing() {
           </div>
         </div>
         
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => navigate('/kiosco')} style={secondaryNavLinkStyle}>📱 INGRESO JUGADORES</button>
           <MainButton onClick={() => navigate('/login')} style={{padding: '10px 20px', fontSize: '0.85rem'}}>INICIAR SESIÓN</MainButton>
         </div>
@@ -202,7 +204,7 @@ function Landing() {
           <p style={heroSubtitleStyle}>
             Plataforma integral de videotracking y datos estructurados. Medí el impacto real de cada jugada y quinteto en tiempo real.
           </p>
-          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <MainButton onClick={() => navigate('/registro?plan=trial')}>SOLICITAR DEMO GRATIS</MainButton>
             <MainButton onClick={() => window.location.href='#demo'} primary={false}>VER CÓMO FUNCIONA ⬇</MainButton>
           </div>
@@ -223,7 +225,7 @@ function Landing() {
 
       {/* QUÉ ES */}
       <Section id="que-es" darkBg={true}>
-        <div style={splitLayoutStyle}>
+        <div style={esMovil ? { ...splitLayoutStyle, gridTemplateColumns: '1fr', gap: '40px' } : splitLayoutStyle}>
           <div style={mockupContainerStyle}>
             <div style={phoneMockupWrapperStyle}>
               <img src="/assets/Screenshot_movil.png" alt="App Virtual Club en el celular" style={phoneMockupImgStyle} />
@@ -233,7 +235,7 @@ function Landing() {
           <div style={textBlockStyle}>
             {/* FIX: Se cambia <badge> por <span> */}
             <span style={{color: COLORS.accent, fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', display: 'block'}}>Inteligencia Deportiva</span>
-            <h2 style={{...titleStyle, textAlign: 'left', fontSize: '2.8rem', marginTop: '10px'}}>Mucho más que una planilla glorificada.</h2>
+            <h2 style={{...titleStyle, textAlign: 'left', fontSize: 'clamp(1.9rem, 4vw + 1rem, 2.8rem)', marginTop: '10px'}}>Mucho más que una planilla glorificada.</h2>
             <p style={descriptionStyle}>
               Virtual Club transforma el video crudo en decisiones tácticas. Centraliza gestión, wellness y análisis avanzado en un flujo dinámico diseñado para el futsal moderno.
             </p>
@@ -311,7 +313,7 @@ function Landing() {
         <Title>Tu fuerte son los datos.<br />Mostralos.</Title>
         <Subtitle>Gráficos reales, heatmaps dinámicos y mapas de transiciones. Nada de fakes.</Subtitle>
         
-        <div style={dataGridStyle}>
+        <div style={esMovil ? { ...dataGridStyle, gridTemplateColumns: '1fr', gap: '20px' } : dataGridStyle}>
           <div style={dataVisualizationWrapperStyle}>
             <div style={dataImgWrapperStyle}>
               <img src="/assets/mapa.png" alt="Mapa de calor del equipo" style={dataImgStyle} />
@@ -334,7 +336,7 @@ function Landing() {
         </div>
 
         {/* SHOWCASE: REPORTE EXPORTABLE PARA REDES */}
-        <div style={reportShowcaseStyle}>
+        <div style={esMovil ? { ...reportShowcaseStyle, gridTemplateColumns: '1fr', gap: '30px', marginTop: '50px', paddingTop: '40px' } : reportShowcaseStyle}>
           <div style={reportTextBlockStyle}>
             <span style={{color: COLORS.accent, fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', display: 'block', marginBottom: '12px'}}>Listo para compartir</span>
             <h3 style={{fontSize: '2.2rem', fontWeight: 900, lineHeight: 1.1, marginBottom: '20px', letterSpacing: '-1px'}}>Reportes que parecen de un equipo de Champions.</h3>
@@ -393,7 +395,7 @@ function Landing() {
             VIRTUAL<span style={{color: COLORS.accent}}>CLUB</span>
           </div>
           <p style={{color: '#888', maxWidth: '500px', margin: '0 auto'}}>La ventaja injusta que estabas buscando para tu staff técnico.</p>
-          <div style={{marginTop: '40px', display: 'flex', gap: '20px', justifyContent: 'center', color: '#444'}}>
+          <div style={{marginTop: '40px', display: 'flex', gap: '20px', justifyContent: 'center', color: '#444', flexWrap: 'wrap'}}>
             <span>Soporte</span> | <span>Precios</span> | <span>Contacto</span>
           </div>
           <p style={{ marginTop: '50px', fontSize: '0.8rem', color: '#333' }}>© 2026 VirtualFutsal. Software diseñado para la victoria.</p>
@@ -429,7 +431,7 @@ const heroOverlayStyle = { position: 'absolute', top: 0, left: 0, width: '100%',
 const heroContentStyle = { position: 'relative', zIndex: 10, maxWidth: '850px', padding: '0 20px' };
 
 const badgeStyle = { display: 'inline-block', padding: '6px 16px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${COLORS.accent}44`, color: COLORS.accent, borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '2px', marginBottom: '20px', textTransform: 'uppercase' };
-const heroTitleStyle = { fontSize: '5rem', fontWeight: 900, marginBottom: '25px', lineHeight: 1.0, letterSpacing: '-3px' };
+const heroTitleStyle = { fontSize: 'clamp(2.3rem, 6vw + 1rem, 5rem)', fontWeight: 900, marginBottom: '25px', lineHeight: 1.0, letterSpacing: 'clamp(-1.5px, -0.2vw, -3px)' };
 const heroSubtitleStyle = { fontSize: '1.4rem', color: COLORS.text, opacity: 0.8, marginBottom: '50px', lineHeight: 1.6, maxWidth: '650px', margin: '0 auto 50px auto' };
 const heroStatsOverlayStyle = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5, pointerEvents: 'none' };
 const floatingStatStyle = { position: 'absolute', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', padding: '10px 18px', borderRadius: '8px', border: '1px solid #333', fontSize: '0.85rem', fontWeight: 'bold', color: '#fff', animation: 'floatStats 4s infinite ease-in-out' };

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
+import { useEsMovil } from '../utils/useEsMovil';
 
 const IconWellness = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -56,13 +57,7 @@ export default function LoginKiosco() {
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [mostrarMenu, setMostrarMenu] = useState(false);
 
-  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const handleResize = () => setEsMovil(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const esMovil = useEsMovil();
 
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -541,7 +536,7 @@ export default function LoginKiosco() {
   );
 }
 
-const inputStyle = { padding: '15px', background: '#000', border: '1px solid var(--accent)', color: '#fff', borderRadius: '4px', textAlign: 'center', fontWeight: 800, outline: 'none', boxSizing: 'border-box', width: '100%' };
+const inputStyle = { padding: '15px', background: '#000', border: '1px solid var(--accent)', color: '#fff', borderRadius: '4px', textAlign: 'center', fontWeight: 800, outline: 'none', boxSizing: 'border-box', width: '100%', fontSize: '16px' };
 const btnSubmit = { padding: '15px', background: 'var(--accent)', color: '#000', fontWeight: 800, border: 'none', cursor: 'pointer', borderRadius: '4px', width: '100%', boxSizing: 'border-box' };
 const btnSecundario = { padding: '15px', background: 'transparent', color: 'var(--text-dim)', fontWeight: 800, border: '1px solid #333', cursor: 'pointer', borderRadius: '4px', width: '100%', boxSizing: 'border-box', transition: 'all 0.2s' };
 const btnVolver = { background: 'rgba(255,255,255,0.05)', border: '1px solid #333', color: '#fff', padding: '8px 15px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' };

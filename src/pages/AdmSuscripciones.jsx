@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
+import { TablaResponsive } from '../components/TablaResponsive';
 
 function AdmSuscripciones() {
   const { perfil } = useAuth();
@@ -76,6 +77,29 @@ function AdmSuscripciones() {
     return <div style={{ color: '#ef4444', textAlign: 'center', marginTop: '50px' }}>Acceso denegado. Solo para administradores del sistema.</div>;
   }
 
+  const GRUPOS_CLUBES = { gen: 'var(--text-dim)' };
+  const GRUPOS_CLUBES_LABEL = { gen: 'ESTADO DE CUENTA' };
+  const COLS_CLUBES = [
+    { k: 'plan', t: 'PLAN', g: 'gen', r: c => (c.plan_actual || 'Básico').toUpperCase() },
+    { k: 'estado', t: 'ESTADO', g: 'gen', r: c => c.suscripcion_activa
+      ? <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}>✅ ACTIVA</span>
+      : <span style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}>🛑 SUSPENDIDA</span> },
+    { k: 'venc', t: 'VENCIMIENTO', g: 'gen', r: c => {
+      if (!c.fecha_vencimiento) return '-';
+      const dias = Math.ceil((new Date(c.fecha_vencimiento) - new Date()) / (1000 * 60 * 60 * 24));
+      return <>
+        {new Date(c.fecha_vencimiento).toLocaleDateString('es-AR')}
+        {c.suscripcion_activa && dias <= 5 && dias > 0 && <span style={{ color: '#facc15', marginLeft: '8px', fontSize: '0.7rem' }}>⚠️ ({dias}d)</span>}
+        {c.suscripcion_activa && dias <= 0 && <span style={{ color: '#ef4444', marginLeft: '8px', fontSize: '0.7rem' }}>❌ Vencida</span>}
+      </>;
+    } },
+    { k: 'acc', t: 'ACCIONES', g: 'gen', r: c => (
+      <button onClick={() => abrirEdicion(c)} style={{ background: 'transparent', border: '1px solid #c084fc', color: '#c084fc', padding: '8px 12px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', minHeight: '38px' }}>
+        ⚙️ GESTIONAR
+      </button>
+    ) },
+  ];
+
   return (
     <div style={{ animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>
       <div style={{ marginBottom: '30px' }}>
@@ -87,6 +111,17 @@ function AdmSuscripciones() {
         {loading ? (
           <div style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '20px' }}>Cargando clubes...</div>
         ) : (
+          <TablaResponsive
+            filas={clubes}
+            columnas={COLS_CLUBES}
+            colsClave={['plan', 'estado', 'venc']}
+            grupos={GRUPOS_CLUBES}
+            gruposLabel={GRUPOS_CLUBES_LABEL}
+            titulo="CLUBES REGISTRADOS"
+            vacio="No hay clubes registrados."
+            getId={(c) => c.id}
+            getTitulo={(c) => c.nombre.toUpperCase()}
+          >
           <div className="table-wrapper">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
@@ -142,6 +177,7 @@ function AdmSuscripciones() {
               </tbody>
             </table>
           </div>
+          </TablaResponsive>
         )}
       </div>
 

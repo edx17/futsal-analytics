@@ -3,7 +3,8 @@ import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 import { 
-  PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
+  PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -191,6 +192,109 @@ const MallaABP = ({ microZonas }) => {
     </svg>
   );
 };
+
+// COMPONENTE NUEVO: Momentum del Partido (Minuto a Minuto)
+const GraficoMomentumPartido = ({ eventos }) => {
+  const dataProcesada = useMemo(() => {
+    if (!eventos || eventos.length === 0) return [];
+    
+    // Asumimos 40 minutos base para Futsal, pero si hay alargue toma el máximo
+    const maxMinuto = Math.max(...eventos.map(e => e.minuto || 0), 40); 
+    
+    // Creamos la línea de tiempo vacía
+    const timeline = Array.from({ length: maxMinuto + 1 }, (_, i) => ({
+      minuto: i,
+      presionPropia: 0,
+      presionRival: 0
+    }));
+
+    // Asignamos "peso" a cada evento para calcular la presión
+    eventos.forEach(ev => {
+      const m = ev.minuto || 0;
+      if (m > maxMinuto) return;
+
+      const esPropio = ev.equipo === 'Propio';
+      let peso = 0;
+
+      const accion = (ev.accion || '').toLowerCase();
+      if (accion.includes('gol')) {
+        peso = 10;
+      } else if (accion.includes('tiro') || accion.includes('remate') || accion.includes('mano a mano')) {
+        peso = 5;
+      } else if (accion.includes('pase clave') || accion.includes('centro') || accion.includes('asistencia')) {
+        peso = 3;
+      } else if (accion.includes('recuperación') || accion.includes('intercepción')) {
+        peso = 2;
+      } else {
+        peso = 1;
+      }
+
+      if (esPropio) {
+        timeline[m].presionPropia += peso;
+      } else {
+        timeline[m].presionRival += peso;
+      }
+    });
+
+    // SUAVIZADO (Moving Average de 5 períodos) para generar el efecto "Ola"
+    const suavizado = timeline.map((t, index, arr) => {
+      const prev2 = arr[index - 2] || t;
+      const prev1 = arr[index - 1] || t;
+      const curr = t;
+      const next1 = arr[index + 1] || t;
+      const next2 = arr[index + 2] || t;
+      
+      return {
+        ...t,
+        label: `${t.minuto}'`,
+        presionPropiaSuavizada: (prev2.presionPropia + prev1.presionPropia + curr.presionPropia + next1.presionPropia + next2.presionPropia) / 5,
+        presionRivalSuavizada: (prev2.presionRival + prev1.presionRival + curr.presionRival + next1.presionRival + next2.presionRival) / 5
+      };
+    });
+
+    return suavizado;
+  }, [eventos]);
+
+  if (!eventos || eventos.length === 0) return null;
+
+  return (
+    <div style={{ background: 'rgba(20, 20, 20, 0.8)', padding: '20px', borderRadius: '12px', border: '1px solid #333', marginTop: '20px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h3 style={{ color: '#fff', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Momentum del Partido</h3>
+        <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600 }}>PRESIÓN MINUTO A MINUTO</span>
+      </div>
+      
+      <div style={{ width: '100%', height: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={dataProcesada} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorPropio" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--accent, #10b981)" stopOpacity={0.6}/>
+                <stop offset="95%" stopColor="var(--accent, #10b981)" stopOpacity={0.0}/>
+              </linearGradient>
+              <linearGradient id="colorRival" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.6}/>
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+            <XAxis dataKey="label" stroke="#888" tick={{ fill: '#aaa', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={15} />
+            <YAxis stroke="#888" tick={false} tickLine={false} axisLine={false} />
+            <RechartsTooltip 
+              contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff', borderRadius: '8px' }}
+              labelStyle={{ color: '#aaa', fontWeight: 'bold' }}
+              itemStyle={{ fontWeight: 'bold' }}
+              formatter={(value) => [value.toFixed(1), 'Índice de Presión']}
+            />
+            <Area type="monotone" dataKey="presionRivalSuavizada" name="Rival" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorRival)" activeDot={false} />
+            <Area type="monotone" dataKey="presionPropiaSuavizada" name="Propio" stroke="var(--accent, #10b981)" strokeWidth={2} fillOpacity={1} fill="url(#colorPropio)" activeDot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
 
 const GRUPOS_RES = { id: 'var(--text-dim)', imp: 'var(--accent)', of: '#00ff88', lu: '#0ea5e9', dis: '#fbbf24' };
 const GRUPOS_RES_LABEL = { id: 'GENERAL', imp: 'IMPACTO', of: 'OFENSIVA', lu: 'JUEGO / DUELOS', dis: 'DISCIPLINA' };
@@ -1087,6 +1191,9 @@ const COLORS_ORIGEN = {
                 <StatBar label="TARJETAS ROJAS" valPropio={analitica.stats.propio.rojas} valRival={analitica.stats.rival.rojas} colorPropio="#ef4444" colorRival="#ef4444" />
             </div>
 
+            {/* MOMENTUM DEL PARTIDO AQUÍ */}
+            <GraficoMomentumPartido eventos={eventosPartido} />
+
             {/* JUGADORES DESTACADOS (TARJETAS) */}
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
                 {topJugadoresExpress.mvp && (
@@ -1198,6 +1305,9 @@ const COLORS_ORIGEN = {
               </div>
             </div>
           </div>
+          
+          {/* MOMENTUM DEL PARTIDO TAMBIÉN ACÁ EN AVANZADA */}
+          <GraficoMomentumPartido eventos={eventosPartido} />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
