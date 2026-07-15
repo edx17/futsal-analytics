@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase'; // IMPORTAMOS SUPABASE
 import { useToast } from '../components/ToastContext';
+import { useTheme } from '../context/ThemeContext';
 
 function Configuracion() {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ function Configuracion() {
   const [clubId, setClubId] = useState(localStorage.getItem('club_id') || '');
   const [escudoUrl, setEscudoUrl] = useState(localStorage.getItem('escudo_url') || '');
   const [subiendo, setSubiendo] = useState(false);
+
+  const { theme, toggleTheme } = useTheme();
 
   // Al cargar, buscamos si ya existe el club en la base para traer su escudo
   useEffect(() => {
@@ -107,12 +110,38 @@ function Configuracion() {
         <p style={{ color: 'var(--text-dim)' }}>Establecé los datos de tu equipo o vinculá este dispositivo a un club existente.</p>
       </div>
 
+      {/* TARJETA DE APARIENCIA */}
+      <div className="bento-card" style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div className="stat-label">APARIENCIA VISUAL</div>
+          <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-dim)' }}>Alterná entre modo claro y oscuro.</p>
+        </div>
+        <button 
+          onClick={toggleTheme} 
+          style={{
+            padding: '10px 20px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            background: 'var(--bg)',
+            color: 'var(--text)',
+            border: '1px solid var(--border)',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}
+        >
+          {theme === 'dark' ? '☀️ Claro' : '🌙 Oscuro'}
+        </button>
+      </div>
+
+      {/* TARJETA DE DATOS PRINCIPALES */}
       <div className="bento-card" style={{ marginBottom: '30px' }}>
         <div className="stat-label" style={{ marginBottom: '20px' }}>DATOS PRINCIPALES</div>
         
         {/* ESCUDO DEL CLUB */}
         <div style={{ marginBottom: '25px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: '#111', border: '2px dashed var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '15px' }}>
+          <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'var(--panel)', border: '2px dashed var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '15px' }}>
             {subiendo ? (
               <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Subiendo...</span>
             ) : escudoUrl ? (
@@ -140,7 +169,7 @@ function Configuracion() {
             value={clubName} 
             onChange={(e) => setClubName(e.target.value)} 
             placeholder="Nombre de mi Club"
-            style={{ width: '100%', padding: '15px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '1.2rem', fontWeight: 800 }}
+            style={{ width: '100%', padding: '15px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', fontSize: '1.2rem', fontWeight: 800 }}
           />
         </div>
 
@@ -151,7 +180,7 @@ function Configuracion() {
             value={clubId} 
             onChange={(e) => setClubId(e.target.value)} 
             placeholder="Dejar en blanco para generar uno nuevo"
-            style={{ width: '100%', padding: '15px', background: '#111', border: '1px dashed var(--accent)', color: 'var(--accent)', borderRadius: '4px', outline: 'none', fontSize: '16px' }}
+            style={{ width: '100%', padding: '15px', background: 'var(--panel)', border: '1px dashed var(--accent)', color: 'var(--accent)', borderRadius: '4px', outline: 'none', fontSize: '16px' }}
           />
           <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '10px' }}>
             *Si estás creando el club por primera vez, <strong>ingresá el ID que te informamos.</strong>. Si tenes problemas para vincular tu club, contactanos.

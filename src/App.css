@@ -9,6 +9,18 @@
   --text-dim: #888888;
 }
 
+/* ==========================================
+   MODO CLARO (LIGHT MODE)
+   ========================================== */
+:root[data-theme='light'] {
+  --bg: #f3f4f6;
+  --panel: #ffffff;
+  --border: #e5e7eb;
+  --accent: #00b35e;
+  --text: #111827;
+  --text-dim: #6b7280;
+}
+
 /* BASE GLOBAL (obligatorio) */
 html, body, #root {
   height: 100%;
@@ -70,7 +82,7 @@ body {
 }
 
 .nav-item:hover {
-  background: #1a1a1a;
+  background: var(--border);
   color: var(--text);
 }
 
@@ -83,7 +95,7 @@ body {
   font-weight: 800; 
   font-size: 1.3rem; 
   margin-bottom: 40px; 
-  color: #fff;
+  color: var(--text);
   text-align: left;
 }
 
@@ -136,8 +148,8 @@ body {
 .btn-secondary:hover { border-color: var(--text-dim); }
 
 .pitch-container {
-  border: 2px solid #333;
-  background: #080808;
+  border: 2px solid var(--border);
+  background: var(--panel);
   position: relative;
   border-radius: 4px;
 }
@@ -207,17 +219,17 @@ body {
 }
 table { width: 100%; border-collapse: collapse; }
 th { font-size: 0.75rem; color: var(--text-dim); padding: 12px; border-bottom: 1px solid var(--border); }
-td { padding: 15px 10px; font-size: 0.95rem; border-bottom: 1px solid #1a1a1a; }
-tr:hover td { background: #151515; }
+td { padding: 15px 10px; font-size: 0.95rem; border-bottom: 1px solid var(--border); }
+tr:hover td { background: var(--bg); }
 .mono-accent { font-family: 'JetBrains Mono'; color: var(--accent); font-weight: 700; }
 .pos-label { color: var(--text-dim); font-size: 0.75rem; }
 .row-active { background: rgba(0, 255, 136, 0.05) !important; }
 
 .input-field label { display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-input, select { background: #000; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 4px; width: 100%; box-sizing: border-box; }
+input, select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 4px; width: 100%; box-sizing: border-box; }
 input:focus, select:focus { border-color: var(--accent); outline: none; }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #333; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }

@@ -732,7 +732,7 @@ function TomaDatos() {
             </button>
             <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             TRACKER // vs {partido.rivales?.nombre?.toUpperCase() || partido.rival?.toUpperCase() || 'RIVAL'}
-              <div style={{ background: '#111', padding: '4px 12px', borderRadius: '4px', border: '1px solid #333', fontSize: '1.2rem', fontFamily: 'JetBrains Mono', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ background: 'var(--panel)', padding: '4px 12px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '1.2rem', fontFamily: 'JetBrains Mono', display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <span style={{ color: 'var(--accent)' }}>{statsEnVivo.golesMios}</span>
                 <span style={{ color: '#555' }}>-</span>
                 <span style={{ color: '#ef4444' }}>{statsEnVivo.golesRival}</span>
@@ -767,7 +767,7 @@ function TomaDatos() {
               <select 
                 value={contextoJuego} 
                 onChange={e => setContextoJuego(e.target.value)}
-                style={{ background: '#111', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}
+                style={{ background: 'var(--panel)', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}
               >
                 <option value="5v5">5v5 (Normal)</option>
                 <option value="5v4">5v4 (A Favor)</option>
@@ -782,7 +782,7 @@ function TomaDatos() {
           
           <button 
             onClick={() => setDireccionAtaque(d => d === 'derecha' ? 'izquierda' : 'derecha')}
-            style={{ background: '#111', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 15px', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 0 10px rgba(0,255,136,0.1)' }}
+            style={{ background: 'var(--panel)', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 15px', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 0 10px rgba(0,255,136,0.1)' }}
           >
             MI EQUIPO ATACA HACIA: <span style={{ fontSize: '1.2rem' }}>{direccionAtaque === 'derecha' ? '➡️' : '⬅️'}</span>
           </button>
@@ -805,7 +805,7 @@ function TomaDatos() {
               FINALIZAR
             </button>
 
-            <button onClick={() => setPanelAbierto(!panelAbierto)} className="btn-action" style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem' }}>{panelAbierto ? "OCULTAR" : "MOSTRAR"} PANEL</button>
+            <button onClick={() => setPanelAbierto(!panelAbierto)} className="btn-action" style={{ background: '#ffffff', border: '1px solid var(--border)', fontSize: '0.7rem' }}>{panelAbierto ? "OCULTAR" : "MOSTRAR"} PANEL</button>
             
             {eventos.length === 0 && (
               <button onClick={abrirModalTitulares} className="btn-action" style={{ background: 'var(--accent)', color: '#000', border: '1px solid var(--accent)', fontSize: '0.7rem', fontWeight: 800 }}>EDITAR 5 INICIAL</button>
@@ -814,7 +814,7 @@ function TomaDatos() {
             <button 
               onClick={() => setModalCambio(true)} 
               className="btn-action" 
-              style={{ background: '#ffffff', border: '1px solid #333', fontSize: '0.7rem', cursor: 'pointer' }}
+              style={{ background: '#ffffff', border: '1px solid var(--border)', fontSize: '0.7rem', cursor: 'pointer' }}
             >
               CAMBIOS
             </button>
@@ -864,7 +864,7 @@ function TomaDatos() {
                 />
               </div>
 
-              <select value={periodo} onChange={manejarCambioPeriodo} style={{ background: 'transparent', border: 'none', color: '#888' }}>
+              <select value={periodo} onChange={manejarCambioPeriodo} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)' }}>
                 <option value="PT">PT</option><option value="ST">ST</option>
               </select>
             </div>
@@ -1023,7 +1023,7 @@ function TomaDatos() {
                       {pasoRegistro === 4 && 'CONFIRMAR EQUIPO'}
                       {pasoRegistro === 5 && '4. CONTEXTO TÁCTICO (xG)'}
                     </div>
-                    <button onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
+                    <button onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
                   </div>
 
                   {pasoRegistro === 1 && (
@@ -1113,7 +1113,7 @@ function TomaDatos() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
                       <div className="stat-label" style={{ color: '#06b6d4', marginBottom: '5px' }}>¿QUIÉN DIO EL PASE PREVIO?</div>
                       {jugadoresActivos.filter(j => j.id != autorGol).map(j => (
-                        <button key={j.id} onClick={() => guardarEventoFinal(j.id)} className="btn-action" style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid #06b6d4', padding: '15px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', color: '#fff', cursor: 'pointer' }}>
+                        <button key={j.id} onClick={() => guardarEventoFinal(j.id)} className="btn-action" style={{ background: 'rgba(6, 182, 212, 0.1)', border: '1px solid #06b6d4', padding: '15px', textAlign: 'left', display: 'flex', justifyContent: 'space-between', color: 'var(--text)', cursor: 'pointer' }}>
                           <span>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span>
                           <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>{j.dorsal}</span>
                         </button>
@@ -1133,7 +1133,7 @@ function TomaDatos() {
                       <button onClick={() => guardarEventoRapido('Propio')} className="btn-action" style={{ background: 'rgba(0,255,136,0.1)', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '20px', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', borderRadius: '4px' }}>
                         MI EQUIPO
                       </button>
-                      <button onClick={() => guardarEventoRapido('Rival')} className="btn-action" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #555', color: '#fff', padding: '20px', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', borderRadius: '4px' }}>
+                      <button onClick={() => guardarEventoRapido('Rival')} className="btn-action" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #555', color: 'var(--text)', padding: '20px', fontSize: '1.2rem', fontWeight: 800, cursor: 'pointer', borderRadius: '4px' }}>
                         RIVAL
                       </button>
                     </div>
@@ -1186,14 +1186,14 @@ function TomaDatos() {
             <div style={{ marginBottom: '15px' }}>
                 <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>PERÍODO Y MINUTO</label>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <select value={eventoEditando.periodo} onChange={e => setEventoEditando({...eventoEditando, periodo: e.target.value})} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', border: '1px solid #444' }}>
+                  <select value={eventoEditando.periodo} onChange={e => setEventoEditando({...eventoEditando, periodo: e.target.value})} style={{ flex: 1, padding: '10px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid #444' }}>
                     <option value="PT">PT</option><option value="ST">ST</option>
                   </select>
-                  <input type="number" value={eventoEditando.minuto} onChange={e => setEventoEditando({...eventoEditando, minuto: e.target.value})} style={{ flex: 1, padding: '10px', background: '#111', color: '#fff', border: '1px solid #444' }} />
+                  <input type="number" value={eventoEditando.minuto} onChange={e => setEventoEditando({...eventoEditando, minuto: e.target.value})} style={{ flex: 1, padding: '10px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid #444' }} />
                 </div>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setEventoEditando(null)} className="btn-action" style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setEventoEditando(null)} className="btn-action" style={{ flex: 1, background: 'var(--panel)', padding: '10px', color: 'var(--text)', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={confirmarEdicion} className="btn-action" style={{ flex: 1, padding: '10px', background: 'var(--accent)', color: '#000', fontWeight: 'bold', cursor: 'pointer' }}>GUARDAR CAMBIOS</button>
             </div>
           </div>
@@ -1203,7 +1203,7 @@ function TomaDatos() {
       {modalCambio && (
         <div style={overlayStyle}>
           <div style={{ ...modalIndustrial, width: '450px' }}>
-            <div className="stat-label" style={{ marginBottom: '15px', color: '#fff' }}>🔄 GESTIÓN DE CAMBIOS MÚLTIPLES</div>
+            <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--text)' }}>🔄 GESTIÓN DE CAMBIOS MÚLTIPLES</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '20px', lineHeight: 1.4 }}>
               Marcá los jugadores que <strong style={{color: '#ef4444'}}>SALEN</strong> y los que <strong style={{color: '#10b981'}}>ENTRAN</strong>. <br/>
               Asegurate de que salga y entre la misma cantidad.
@@ -1268,7 +1268,7 @@ function TomaDatos() {
                 onClick={() => { setModalCambio(false); setSalenIds([]); setEntranIds([]); }} 
                 disabled={isSavingCambio}
                 className="btn-action" 
-                style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}
+                style={{ flex: 1, background: 'var(--panel)', padding: '10px', color: 'var(--text)', border: '1px solid #444', cursor: 'pointer' }}
               >
                 CANCELAR
               </button>
@@ -1306,7 +1306,7 @@ function TomaDatos() {
           <div style={{ ...modalIndustrial, width: '450px' }}>
             <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>EDITAR 5 INICIAL</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '20px', lineHeight: 1.4 }}>
-              Tocá a un jugador para cambiarlo de lista. Para poder guardar, deben haber <strong style={{color: '#fff'}}>exactamente 5 jugadores</strong> en la lista de titulares.
+              Tocá a un jugador para cambiarlo de lista. Para poder guardar, deben haber <strong style={{color: 'var(--text)'}}>exactamente 5 jugadores</strong> en la lista de titulares.
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
@@ -1316,7 +1316,7 @@ function TomaDatos() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   {tempTitulares.map(j => (
-                    <button key={j.id} onClick={() => toggleTitular(j, true)} style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid var(--accent)', color: '#fff', padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                    <button key={j.id} onClick={() => toggleTitular(j, true)} style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid var(--accent)', color: 'var(--text)', padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
                       <span>{j.apellido || j.nombre}</span> <span style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{j.dorsal}</span>
                     </button>
                   ))}
@@ -1330,7 +1330,7 @@ function TomaDatos() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '200px', overflowY: 'auto' }}>
                   {tempSuplentes.map(j => (
-                    <button key={j.id} onClick={() => toggleTitular(j, false)} style={{ background: '#111', border: '1px solid #333', color: '#aaa', padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                    <button key={j.id} onClick={() => toggleTitular(j, false)} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: '#aaa', padding: '8px', textAlign: 'left', cursor: 'pointer', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
                       <span>{j.apellido || j.nombre}</span> <span style={{ fontWeight: 'bold', color: '#666' }}>{j.dorsal}</span>
                     </button>
                   ))}
@@ -1340,7 +1340,7 @@ function TomaDatos() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setModalEditarTitulares(false)} disabled={isSavingTitulares} className="btn-action" style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalEditarTitulares(false)} disabled={isSavingTitulares} className="btn-action" style={{ flex: 1, background: 'var(--panel)', padding: '10px', color: 'var(--text)', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
               <button 
                 onClick={guardarNuevosTitulares} 
                 disabled={isSavingTitulares || tempTitulares.length !== 5} 
@@ -1363,8 +1363,8 @@ function TomaDatos() {
               Esta acción actualizará el estado en la base de datos y te llevará al reporte final.
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setModalFinalizar(false)} disabled={isFinishing} className="btn-action" style={{ flex: 1, background: '#222', padding: '10px', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={confirmarFinalizarPartido} disabled={isFinishing} className="btn-action" style={{ flex: 1, padding: '10px', background: '#dc2626', color: '#fff', fontWeight: 'bold', border: '1px solid #991b1b', cursor: 'pointer' }}>
+              <button onClick={() => setModalFinalizar(false)} disabled={isFinishing} className="btn-action" style={{ flex: 1, background: 'var(--panel)', padding: '10px', color: 'var(--text)', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={confirmarFinalizarPartido} disabled={isFinishing} className="btn-action" style={{ flex: 1, padding: '10px', background: '#dc2626', color: 'var(--text)', fontWeight: 'bold', border: '1px solid #991b1b', cursor: 'pointer' }}>
                 {isFinishing ? 'PROCESANDO...' : 'SÍ, FINALIZAR'}
               </button>
             </div>

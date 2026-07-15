@@ -243,7 +243,7 @@ function Presentismo() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px', background: '#000', padding: '5px', borderRadius: '10px', border: '1px solid #333' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px', background: 'var(--bg)', padding: '5px', borderRadius: '10px', border: '1px solid var(--border)' }}>
           <button onClick={() => setVista('tomar')} style={{ ...tabBtn, background: vista === 'tomar' ? 'var(--accent)' : 'transparent', color: vista === 'tomar' ? '#000' : '#888' }}>📝 PASAR LISTA</button>
           <button onClick={() => setVista('mensual')} style={{ ...tabBtn, background: vista === 'mensual' ? '#3b82f6' : 'transparent', color: vista === 'mensual' ? '#fff' : '#888' }}>📅 RESUMEN</button>
           <button onClick={() => setVista('anual')} style={{ ...tabBtn, background: vista === 'anual' ? '#a855f7' : 'transparent', color: vista === 'anual' ? '#fff' : '#888' }}>📊 DASHBOARD</button>
@@ -260,7 +260,7 @@ function Presentismo() {
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>
                   Planilla del <strong>{fecha.split('-').reverse().join('/')}</strong>
                 </span>
-                <span style={{ background: '#222', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                <span style={{ background: 'var(--panel)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold' }}>
                   {jugadores.length} JUGADORES
                 </span>
               </div>
@@ -269,7 +269,7 @@ function Presentismo() {
                 // 📱 VERSIÓN MÓVIL: Tarjetas
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   {jugadores.map(j => (
-                    <div key={j.id} style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222' }}>
+                    <div key={j.id} style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                       <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
                         {j.apellido}, {j.nombre}
                       </div>
@@ -300,7 +300,7 @@ function Presentismo() {
                             type="text" 
                             value={notasHoy[j.id] || ''} 
                             onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
-                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '12px', color: '#fff', fontSize: '0.9rem', width: '100%', outline: 'none' }} 
+                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px', color: 'var(--text)', fontSize: '0.9rem', width: '100%', outline: 'none' }} 
                             placeholder="Ej: Problemas familiares..." 
                           />
                         </div>
@@ -346,7 +346,7 @@ function Presentismo() {
                                 type="text" 
                                 value={notasHoy[j.id] || ''} 
                                 onChange={(e) => setNotasHoy({...notasHoy, [j.id]: e.target.value})} 
-                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #333', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '0.8rem', width: '100%', outline: 'none', animation: 'fadeIn 0.2s ease-in-out' }} 
+                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: 'var(--text)', fontSize: '0.8rem', width: '100%', outline: 'none', animation: 'fadeIn 0.2s ease-in-out' }} 
                                 placeholder="Indicar motivo..." 
                               />
                             ) : (
@@ -372,15 +372,15 @@ function Presentismo() {
             <div className="bento-card" style={{ borderTop: '3px solid #3b82f6' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ margin: 0, color: '#3b82f6' }}>RESUMEN ({fecha.substring(5,7)}/{fecha.substring(0,4)})</h3>
-                {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+                {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '30px' }}>
-                <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222', textAlign: 'center' }}>
+                <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#3b82f6' }}>{stats.mes.promedio}%</div>
                   <div className="stat-label">PROMEDIO MES</div>
                 </div>
-                <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #222', textAlign: 'center' }}>
+                <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900 }}>{stats.mes.diasCargados}</div>
                   <div className="stat-label">DÍAS COMPUTADOS</div>
                 </div>
@@ -408,7 +408,7 @@ function Presentismo() {
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {j.estadoGral === 'desertor' ? (
-                            <span style={{ background: '#7f1d1d', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>🚩 DESERCIÓN (+3 FALTAS)</span>
+                            <span style={{ background: '#7f1d1d', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>🚩 DESERCIÓN (+3 FALTAS)</span>
                           ) : j.porc === 100 && j.total > 0 ? (
                             <span style={{ background: 'rgba(0, 255, 136, 0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, border: '1px solid rgba(0, 255, 136, 0.3)' }}>⭐ PERFECTA</span>
                           ) : (
@@ -452,7 +452,7 @@ function Presentismo() {
                     <BarChart data={stats.año.top10} layout="vertical" margin={{ left: 30, right: 10 }}>
                       <XAxis type="number" hide domain={[0, 100]} />
                       <YAxis dataKey="nombre" type="category" stroke="#888" fontSize={10} width={80} />
-                      <Tooltip cursor={{fill: '#222'}} contentStyle={{ background: '#111', border: '1px solid #333', borderRadius:'8px' }} />
+                      <Tooltip cursor={{fill: '#222'}} contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius:'8px' }} />
                       <Bar dataKey="porc" radius={[0, 4, 4, 0]} barSize={14}>
                          {stats.año.top10.map((entry, index) => (
                           <Cell key={index} fill={entry.porc >= 85 ? '#00ff88' : '#a855f7'} />
@@ -477,7 +477,7 @@ function Presentismo() {
 }
 
 const tabBtn = { padding: '10px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '900', transition: '0.2s', flex: '1 1 auto', textAlign: 'center' };
-const selectStyle = { padding: '10px 15px', background: '#111', color: '#fff', border: '1px solid #333', borderRadius: '8px', fontWeight: 'bold', outline: 'none' };
-const inputStyle = { padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 'bold', color: '#fff', outline: 'none', cursor: 'pointer' };
+const selectStyle = { padding: '10px 15px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 'bold', outline: 'none' };
+const inputStyle = { padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 'bold', color: 'var(--text)', outline: 'none', cursor: 'pointer' };
 
 export default Presentismo;

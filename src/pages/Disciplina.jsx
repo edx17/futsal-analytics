@@ -549,7 +549,7 @@ export default function Disciplina() {
       {/* HEADER */}
       <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ color: '#fff', fontSize: '1.6rem', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 style={{ color: 'var(--text)', fontSize: '1.6rem', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span>🟨🟥</span> DISCIPLINA
           </h1>
           <p style={{ color: 'var(--text-dim)', margin: '4px 0 0', fontSize: '0.85rem' }}>
@@ -596,7 +596,7 @@ export default function Disciplina() {
             <div key={`s-${f.rowKey}`} style={alertaStyle('#991b1b', '#ef4444')}>
               <span style={{ fontSize: '1.3rem' }}>🚫</span>
               <div>
-                <strong style={{ color: '#fff' }}>{f.nombre}</strong> ({f.categoria}) alcanzó <b style={{ color: '#fca5a5' }}>{f.amarillas} amarillas</b> → SUSPENDIDO 1 fecha en {f.categoria}.
+                <strong style={{ color: 'var(--text)' }}>{f.nombre}</strong> ({f.categoria}) alcanzó <b style={{ color: '#fca5a5' }}>{f.amarillas} amarillas</b> → SUSPENDIDO 1 fecha en {f.categoria}.
               </div>
             </div>
           ))}
@@ -604,7 +604,7 @@ export default function Disciplina() {
             <div key={`b-${f.rowKey}`} style={alertaStyle('#78350f', '#f59e0b')}>
               <span style={{ fontSize: '1.3rem' }}>⚠️</span>
               <div>
-                <strong style={{ color: '#fff' }}>{f.nombre}</strong> ({f.categoria}) tiene <b style={{ color: '#fcd34d' }}>{f.amarillas} amarillas</b> en {f.categoria} — a <b>1 de la suspensión</b> (próximo corte en {Math.ceil((f.amarillas + 1) / umbral) * umbral}).
+                <strong style={{ color: 'var(--text)' }}>{f.nombre}</strong> ({f.categoria}) tiene <b style={{ color: '#fcd34d' }}>{f.amarillas} amarillas</b> en {f.categoria} — a <b>1 de la suspensión</b> (próximo corte en {Math.ceil((f.amarillas + 1) / umbral) * umbral}).
               </div>
             </div>
           ))}
@@ -676,7 +676,7 @@ export default function Disciplina() {
                     onClick={() => setJugadorDetalle(f)}
                     style={{ borderTop: '1px solid var(--border)', cursor: 'pointer', background: f.suspendidoActivo ? 'rgba(239,68,68,0.06)' : f.alBorde ? 'rgba(245,158,11,0.05)' : 'transparent' }}>
                     <td style={{ ...tdStyle, color: '#555', fontFamily: 'JetBrains Mono, monospace' }}>{f.dorsal}</td>
-                    <td style={{ ...tdStyle, color: '#fff', fontWeight: 700 }}>{f.nombre}</td>
+                    <td style={{ ...tdStyle, color: 'var(--text)', fontWeight: 700 }}>{f.nombre}</td>
                     <td style={{ ...tdStyle, color: 'var(--text-dim)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{f.categoria}</td>
                     <td style={{ ...tdNum, color: f.amarillas ? '#facc15' : '#444' }}>{f.amarillas}</td>
                     <td style={{ ...tdNum, color: f.rojas ? '#ef4444' : '#444' }}>{f.rojas}</td>
@@ -727,7 +727,7 @@ export default function Disciplina() {
               return (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: '#0d0d0d', border: `1px solid ${saldada ? '#1f3a1f' : 'var(--border)'}`, borderRadius: 8, padding: '12px 14px', opacity: saldada ? 0.7 : 1 }}>
                   <div>
-                    <div style={{ color: '#fff', fontWeight: 700 }}>🟥 {nombreJug(r.jugador)}</div>
+                    <div style={{ color: 'var(--text)', fontWeight: 700 }}>🟥 {nombreJug(r.jugador)}</div>
                     <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>
                       vs {r.partido?.rival || '—'} · {r.partido?.fecha || ''} {r.evento?.minuto != null ? `· min ${r.evento.minuto}` : ''}
                     </div>
@@ -738,7 +738,7 @@ export default function Disciplina() {
                         {saldada ? (
                           <div style={{ color: 'var(--accent)', fontWeight: 900, fontSize: '0.8rem' }}>✓ CUMPLIDA</div>
                         ) : (
-                          <div style={{ color: '#fff', fontWeight: 900, fontSize: '0.8rem' }}>
+                          <div style={{ color: 'var(--text)', fontWeight: 900, fontSize: '0.8rem' }}>
                             Sanción: {total} · Cumplido: {cumplidas} · <span style={{ color: '#fca5a5' }}>restan {restantes}</span>
                           </div>
                         )}
@@ -784,7 +784,7 @@ export default function Disciplina() {
       {/* DETALLE JUGADOR */}
       {jugadorDetalle && (
         <Overlay onClose={() => setJugadorDetalle(null)}>
-          <h2 style={{ color: '#fff', margin: '0 0 4px' }}>{jugadorDetalle.nombre} <span style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontWeight: 400 }}>· {jugadorDetalle.categoria}</span></h2>
+          <h2 style={{ color: 'var(--text)', margin: '0 0 4px' }}>{jugadorDetalle.nombre} <span style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontWeight: 400 }}>· {jugadorDetalle.categoria}</span></h2>
           <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 16 }}>
             {fTemporadaNum ? `Temporada ${fTemporadaNum}: ` : 'Histórico: '}
             {jugadorDetalle.amarillas} 🟨 · {jugadorDetalle.rojas} 🟥 · {jugadorDetalle.faltas} faltas en {jugadorDetalle.pj} PJ
@@ -853,7 +853,7 @@ export default function Disciplina() {
                 return (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8rem', color: '#ccc' }}>
                     <span>{esRoja ? '🟥' : '🟨'}</span>
-                    <span style={{ color: '#fff' }}>vs {par?.rival || '—'}</span>
+                    <span style={{ color: 'var(--text)' }}>vs {par?.rival || '—'}</span>
                     <span style={{ color: '#666', flex: 1 }}>{par?.fecha || ''} · {ev.periodo || ''} {ev.minuto != null ? `min ${ev.minuto}` : ''}{ev.etiqueta_tactica === 'carga_manual' ? ' · manual' : ''}</span>
                     <button onClick={() => borrarTarjeta(ev.id)} title="Borrar esta tarjeta" style={{ background: 'transparent', border: '1px solid #5a1a1a', color: '#ef4444', borderRadius: 4, padding: '2px 7px', fontSize: '0.7rem', cursor: 'pointer' }}>🗑</button>
                   </div>
@@ -947,7 +947,7 @@ function ModalRoja({ data, onClose, onSave }) {
 
   return (
     <Overlay onClose={onClose}>
-      <h2 style={{ color: '#fff', margin: '0 0 4px' }}>🟥 {data.jugador ? `${data.jugador.nombre} ${data.jugador.apellido || ''}`.trim() : 'Jugador'}</h2>
+      <h2 style={{ color: 'var(--text)', margin: '0 0 4px' }}>🟥 {data.jugador ? `${data.jugador.nombre} ${data.jugador.apellido || ''}`.trim() : 'Jugador'}</h2>
       <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 18 }}>
         Expulsión vs {data.partido?.rival || '—'} · {data.partido?.fecha || ''}
       </div>
@@ -972,7 +972,7 @@ function ModalRoja({ data, onClose, onSave }) {
       <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
 
       <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-        <button onClick={onClose} style={{ ...btnMini, flex: 1, background: 'transparent', color: '#888', border: '1px solid #333' }}>Cancelar</button>
+        <button onClick={onClose} style={{ ...btnMini, flex: 1, background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)' }}>Cancelar</button>
         <button
           onClick={() => onSave({
             evento: data.evento, jugador: data.jugador, partido: data.partido,
@@ -1018,7 +1018,7 @@ function ModalCargaTarjeta({ jugadores, partidos, torneos, categorias, onClose, 
 
   return (
     <Overlay onClose={onClose}>
-      <h2 style={{ color: '#fff', margin: '0 0 4px' }}>Cargar tarjeta manual</h2>
+      <h2 style={{ color: 'var(--text)', margin: '0 0 4px' }}>Cargar tarjeta manual</h2>
       <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 18 }}>
         Para tarjetas que no quedaron registradas en vivo. El torneo y la categoría salen del partido.
       </div>
@@ -1077,7 +1077,7 @@ function ModalCargaTarjeta({ jugadores, partidos, torneos, categorias, onClose, 
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-        <button onClick={onClose} style={{ ...btnMini, flex: 1, background: 'transparent', color: '#888', border: '1px solid #333' }}>Cancelar</button>
+        <button onClick={onClose} style={{ ...btnMini, flex: 1, background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)' }}>Cancelar</button>
         <button
           disabled={!valido}
           onClick={() => onSave({ jugadorId, tipo, partidoId, periodo, minuto })}
@@ -1093,15 +1093,15 @@ function ModalCargaTarjeta({ jugadores, partidos, torneos, categorias, onClose, 
 // ESTILOS
 // ============================================================
 const cardStyle = { background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 };
-const selectStyle = { background: 'var(--panel)', border: '1px solid var(--border)', color: '#fff', borderRadius: 8, padding: '10px 12px', fontSize: '0.85rem', cursor: 'pointer' };
+const selectStyle = { background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: '0.85rem', cursor: 'pointer' };
 const thStyle = { padding: '6px 8px', fontWeight: 900 };
 const thCenter = { ...thStyle, textAlign: 'center' };
 const tdStyle = { padding: '10px 8px' };
 const tdNum = { ...tdStyle, textAlign: 'center', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 };
 const tdCenter = { ...tdStyle, textAlign: 'center' };
 const labelStyle = { display: 'block', color: 'var(--text-dim)', fontSize: '0.72rem', fontWeight: 700, margin: '10px 0 5px', textTransform: 'uppercase', letterSpacing: 0.5 };
-const inputStyle = { width: '100%', background: '#0d0d0d', border: '1px solid var(--border)', color: '#fff', borderRadius: 8, padding: '10px 12px', fontSize: '0.9rem', boxSizing: 'border-box' };
-const btnMini = { background: '#1a1a1a', color: '#fff', border: '1px solid #333', borderRadius: 6, padding: '8px 14px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' };
+const inputStyle = { width: '100%', background: '#0d0d0d', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: '0.9rem', boxSizing: 'border-box' };
+const btnMini = { background: '#1a1a1a', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 14px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' };
 
 const alertaStyle = (bg, border) => ({
   display: 'flex', alignItems: 'center', gap: 12,

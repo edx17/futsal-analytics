@@ -691,10 +691,10 @@ export default function Videoanalisis() {
             <div style={{ fontSize: esMovil ? '1.4rem' : '1.8rem', fontWeight: 900 }}>Marcá momentos, armá tu playlist</div>
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button onClick={abrirExplorador} style={{ background: 'transparent', border: '1px solid #333', color: '#fff', padding: '12px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '44px' }}>
+            <button onClick={abrirExplorador} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '12px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '44px' }}>
               🔍 EXPLORAR CLIPS
             </button>
-            <button onClick={abrirModalConfig} style={{ background: 'transparent', border: '1px solid #333', color: '#fff', padding: '12px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '44px' }}>
+            <button onClick={abrirModalConfig} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '12px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '44px' }}>
               ⚙️ BOTONERA
             </button>
             <button onClick={() => setModalNuevo(true)} className="btn-action" style={{ padding: '12px 22px', minHeight: '44px' }}>
@@ -717,7 +717,7 @@ export default function Videoanalisis() {
                 <div key={v.id} onClick={() => abrirVideo(v)} className="bento-card" style={{ cursor: 'pointer', position: 'relative', padding: '18px' }}>
                   <button onClick={(e) => eliminarVideo(v, e)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1rem', padding: '4px' }}>✕</button>
                   <div style={{ fontSize: '1.6rem', marginBottom: '10px' }}>{v.fuente === 'youtube' ? '▶️' : v.fuente === 'upload' ? '📱' : '📁'}</div>
-                  <div style={{ fontWeight: 900, fontSize: '1rem', color: '#fff', marginBottom: '6px', paddingRight: '20px' }}>
+                  <div style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--text)', marginBottom: '6px', paddingRight: '20px' }}>
                     {v.titulo || (v.fuente === 'youtube' ? 'Video de YouTube' : 'Video')}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: MONO }}>
@@ -734,7 +734,7 @@ export default function Videoanalisis() {
             <div className="bento-card" style={{ width: '100%', maxWidth: '480px', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '92dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>NUEVO ANÁLISIS DE VIDEO</div>
-                <button onClick={cerrarModalNuevo} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                <button onClick={cerrarModalNuevo} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
@@ -749,7 +749,7 @@ export default function Videoanalisis() {
                   <input
                     type="text" value={formUrl} onChange={(e) => setFormUrl(e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=..."
-                    style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '14px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '14px', boxSizing: 'border-box' }}
                   />
                 </>
               )}
@@ -760,7 +760,7 @@ export default function Videoanalisis() {
                   <input
                     type="file" accept="video/*"
                     onChange={(e) => { setArchivoElegido(e.target.files[0] || null); setErrorForm(''); }}
-                    style={{ width: '100%', padding: '10px', background: '#000', border: '1px dashed #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '0.85rem', marginBottom: '8px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '10px', background: 'var(--bg)', border: '1px dashed #333', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.85rem', marginBottom: '8px', boxSizing: 'border-box' }}
                   />
                   {archivoElegido && (
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '14px', fontFamily: MONO }}>
@@ -779,7 +779,7 @@ export default function Videoanalisis() {
                   <input
                     type="text" value={formUrl} onChange={(e) => setFormUrl(e.target.value)}
                     placeholder="https://drive.google.com/file/d/..."
-                    style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '8px', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '8px', boxSizing: 'border-box' }}
                   />
                   <div style={{ fontSize: '0.68rem', color: '#facc15', marginBottom: '14px', background: 'rgba(250,204,21,0.08)', padding: '8px 10px', borderRadius: '6px' }}>
                     ⚠️ Compartilo como "Cualquiera con el enlace". Funciona bien para clips cortos; en partidos completos Drive a veces bloquea la reproducción directa por el tamaño del archivo — si falla, subilo directo o probá con YouTube.
@@ -791,13 +791,13 @@ export default function Videoanalisis() {
               <input
                 type="text" value={formTitulo} onChange={(e) => setFormTitulo(e.target.value)}
                 placeholder="Ej: vs Racing - Vuelta"
-                style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '14px', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '14px', boxSizing: 'border-box' }}
               />
 
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '6px' }}>ASOCIAR A UN PARTIDO (opcional)</label>
               <select
                 value={formPartido} onChange={(e) => setFormPartido(e.target.value)}
-                style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: partidoConVideo ? '8px' : '18px', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: partidoConVideo ? '8px' : '18px', boxSizing: 'border-box' }}
               >
                 <option value="">— Sin asociar —</option>
                 {partidos.map(p => (
@@ -832,7 +832,7 @@ export default function Videoanalisis() {
             <div className="bento-card" style={{ width: '100%', maxWidth: '520px', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>CONFIGURAR BOTONERA</div>
-                <button onClick={() => setModalConfig(false)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                <button onClick={() => setModalConfig(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
               </div>
 
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '10px' }}>ETIQUETAS RÁPIDAS</label>
@@ -841,12 +841,12 @@ export default function Videoanalisis() {
                   <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input
                       type="color" value={et.c} onChange={(e) => actualizarEtiquetaEdit(i, 'c', e.target.value)}
-                      style={{ width: '38px', height: '38px', padding: 0, border: '1px solid #333', borderRadius: '6px', background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
+                      style={{ width: '38px', height: '38px', padding: 0, border: '1px solid var(--border)', borderRadius: '6px', background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
                     />
                     <input
                       type="text" value={et.t} onChange={(e) => actualizarEtiquetaEdit(i, 't', e.target.value)}
                       placeholder="Nombre de la etiqueta"
-                      style={{ flex: 1, minWidth: 0, padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px', boxSizing: 'border-box' }}
+                      style={{ flex: 1, minWidth: 0, padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', boxSizing: 'border-box' }}
                     />
                     <button onClick={() => eliminarEtiquetaEdit(i)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0, minWidth: '32px' }}>✕</button>
                   </div>
@@ -858,9 +858,9 @@ export default function Videoanalisis() {
 
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '8px' }}>COLCHÓN POR DEFECTO (segundos hacia atrás al marcar)</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                <button onClick={() => setPrerollEdit(p => Math.max(2, p - 2))} style={{ background: '#111', border: '1px solid #333', color: '#fff', width: '36px', height: '36px', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem' }}>-</button>
+                <button onClick={() => setPrerollEdit(p => Math.max(2, p - 2))} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '36px', height: '36px', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem' }}>-</button>
                 <span style={{ fontFamily: MONO, fontSize: '1.1rem', minWidth: '50px', textAlign: 'center' }}>{prerollEdit}s</span>
-                <button onClick={() => setPrerollEdit(p => Math.min(30, p + 2))} style={{ background: '#111', border: '1px solid #333', color: '#fff', width: '36px', height: '36px', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem' }}>+</button>
+                <button onClick={() => setPrerollEdit(p => Math.min(30, p + 2))} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '36px', height: '36px', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem' }}>+</button>
               </div>
 
               <button onClick={guardarConfig} disabled={guardandoConfig} className="btn-action" style={{ width: '100%', padding: '15px', minHeight: '48px' }}>
@@ -881,7 +881,7 @@ export default function Videoanalisis() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <button onClick={() => setVista('lista')} style={{ background: 'transparent', border: '1px solid #333', color: '#fff', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px', marginBottom: '10px' }}>
+            <button onClick={() => setVista('lista')} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px', marginBottom: '10px' }}>
               ← Mis videos
             </button>
             <div className="stat-label" style={{ color: 'var(--accent)' }}>EXPLORADOR DE CLIPS</div>
@@ -913,11 +913,11 @@ export default function Videoanalisis() {
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                <select value={filtroVideoExplor} onChange={(e) => setFiltroVideoExplor(e.target.value)} style={{ padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '0.8rem' }}>
+                <select value={filtroVideoExplor} onChange={(e) => setFiltroVideoExplor(e.target.value)} style={{ padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.8rem' }}>
                   <option value="">— Todos los videos —</option>
                   {videosDisponiblesExplor.map(v => <option key={v.id} value={v.id}>{v.titulo || 'Video sin título'}</option>)}
                 </select>
-                <select value={filtroPartidoExplor} onChange={(e) => setFiltroPartidoExplor(e.target.value)} style={{ padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '0.8rem' }}>
+                <select value={filtroPartidoExplor} onChange={(e) => setFiltroPartidoExplor(e.target.value)} style={{ padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.8rem' }}>
                   <option value="">— Todos los partidos —</option>
                   {partidosDisponiblesExplor.map(([id, p]) => <option key={id} value={id}>vs {p.rival} · {p.fecha}</option>)}
                 </select>
@@ -943,12 +943,12 @@ export default function Videoanalisis() {
                       <div key={clip.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: enSeleccion ? 'rgba(0,255,136,0.06)' : '#0a0a0a', border: `1px solid ${enSeleccion ? 'var(--accent)' : '#222'}`, borderRadius: '8px', padding: '10px' }}>
                         <input type="checkbox" checked={enSeleccion} onChange={() => toggleSeleccionExplor(clip.id)} style={{ width: '18px', height: '18px', flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 900, fontSize: '0.82rem', color: '#fff' }}>{clip.etiqueta}</div>
+                          <div style={{ fontWeight: 900, fontSize: '0.82rem', color: 'var(--text)' }}>{clip.etiqueta}</div>
                           <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', fontFamily: MONO, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {clip.video.titulo || 'Video'} {clip.video.partidos && `· vs ${clip.video.partidos.rival}`} · {fmtTiempo(clip.inicio)}–{fmtTiempo(clip.fin)} ({Math.round(clip.fin - clip.inicio)}s)
                           </div>
                         </div>
-                        <button onClick={() => abrirVideo(clip.video)} title="Editar este clip" style={{ background: 'transparent', border: '1px solid #333', color: '#888', borderRadius: '6px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>✎</button>
+                        <button onClick={() => abrirVideo(clip.video)} title="Editar este clip" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>✎</button>
                       </div>
                     );
                   })}
@@ -972,9 +972,9 @@ export default function Videoanalisis() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px', maxHeight: '300px', overflowY: 'auto' }}>
                   {itemsSeleccionExplor.map((clip, i) => (
-                    <div key={clip.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0a0a0a', border: '1px solid #222', borderRadius: '6px', padding: '8px' }}>
+                    <div key={clip.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0a0a0a', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px' }}>
                       <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: MONO, minWidth: '18px' }}>{i + 1}</span>
-                      <span style={{ flex: 1, minWidth: 0, fontSize: '0.75rem', fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clip.etiqueta}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: '0.75rem', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clip.etiqueta}</span>
                       <button onClick={() => moverSeleccionExplor(clip.id, -1)} disabled={i === 0} style={{ ...btnAjuste, opacity: i === 0 ? 0.3 : 1 }}>↑</button>
                       <button onClick={() => moverSeleccionExplor(clip.id, 1)} disabled={i === itemsSeleccionExplor.length - 1} style={{ ...btnAjuste, opacity: i === itemsSeleccionExplor.length - 1 ? 0.3 : 1 }}>↓</button>
                       <button onClick={() => toggleSeleccionExplor(clip.id)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer' }}>✕</button>
@@ -991,7 +991,7 @@ export default function Videoanalisis() {
                 <input
                   value={nombreNuevaPlaylist} onChange={(e) => setNombreNuevaPlaylist(e.target.value)}
                   placeholder="Nombre para guardar..."
-                  style={{ flex: 1, minWidth: 0, padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px' }}
+                  style={{ flex: 1, minWidth: 0, padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px' }}
                 />
                 <button onClick={guardarPlaylist} disabled={guardandoPlaylist || !nombreNuevaPlaylist.trim() || itemsSeleccionExplor.length === 0} style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '6px', padding: '10px 14px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0, opacity: (!nombreNuevaPlaylist.trim() || itemsSeleccionExplor.length === 0) ? 0.5 : 1 }}>
                   💾
@@ -1004,9 +1004,9 @@ export default function Videoanalisis() {
                 <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '10px' }}>PLAYLISTS GUARDADAS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {playlistsGuardadas.map(pl => (
-                    <div key={pl.id} onClick={() => cargarPlaylist(pl)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0a0a0a', border: '1px solid #222', borderRadius: '6px', padding: '10px', cursor: 'pointer' }}>
+                    <div key={pl.id} onClick={() => cargarPlaylist(pl)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0a0a0a', border: '1px solid var(--border)', borderRadius: '6px', padding: '10px', cursor: 'pointer' }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.8rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pl.nombre}</div>
+                        <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pl.nombre}</div>
                         <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: MONO }}>{(pl.clip_ids || []).length} clips</div>
                       </div>
                       <button onClick={(e) => eliminarPlaylist(pl, e)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', flexShrink: 0 }}>✕</button>
@@ -1027,7 +1027,7 @@ export default function Videoanalisis() {
   return (
     <div style={{ maxWidth: '1300px', margin: '0 auto', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-        <button onClick={volverALista} style={{ background: 'transparent', border: '1px solid #333', color: '#fff', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>
+        <button onClick={volverALista} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>
           ← Mis videos
         </button>
         <div style={{ fontWeight: 900, fontSize: esMovil ? '0.9rem' : '1.1rem', textAlign: 'right' }}>
@@ -1039,7 +1039,7 @@ export default function Videoanalisis() {
 
         {/* ── COLUMNA PRINCIPAL: reproductor + botonera ── */}
         <div style={{ minWidth: 0 }}>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: '#000', borderRadius: '10px', overflow: 'hidden', marginBottom: '14px' }}>
+          <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--bg)', borderRadius: '10px', overflow: 'hidden', marginBottom: '14px' }}>
             {videoActivo?.fuente === 'youtube' ? (
               <div id="yt-player-video-analisis" style={{ width: '100%', height: '100%' }} />
             ) : (
@@ -1056,7 +1056,7 @@ export default function Videoanalisis() {
                     }
                   }}
                   onError={() => setErrorReproduccion(true)}
-                  style={{ width: '100%', height: '100%', background: '#000' }}
+                  style={{ width: '100%', height: '100%', background: 'var(--bg)' }}
                 />
               )
             )}
@@ -1078,9 +1078,9 @@ export default function Videoanalisis() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
                 <span style={{ fontFamily: MONO }}>▶ {fmtTiempo(tiempoActual)}</span>
                 <span>· colchón</span>
-                <button onClick={() => setPreroll(p => Math.max(2, p - 2))} style={{ background: '#111', border: '1px solid #333', color: '#fff', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>-</button>
+                <button onClick={() => setPreroll(p => Math.max(2, p - 2))} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>-</button>
                 <span style={{ fontFamily: MONO, minWidth: '28px', textAlign: 'center' }}>{preroll}s</span>
-                <button onClick={() => setPreroll(p => Math.min(30, p + 2))} style={{ background: '#111', border: '1px solid #333', color: '#fff', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>+</button>
+                <button onClick={() => setPreroll(p => Math.min(30, p + 2))} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>+</button>
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
@@ -1115,7 +1115,7 @@ export default function Videoanalisis() {
             </div>
 
             {categorias.length > 2 && (
-              <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={{ width: '100%', padding: '8px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '0.75rem', marginBottom: '12px' }}>
+              <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={{ width: '100%', padding: '8px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.75rem', marginBottom: '12px' }}>
                 {categorias.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             )}
@@ -1134,7 +1134,7 @@ export default function Videoanalisis() {
                         <input type="checkbox" checked={seleccionados.has(clip.id)} onChange={() => toggleSeleccion(clip.id)} style={{ width: '18px', height: '18px', flexShrink: 0 }} />
                         <input
                           value={clip.etiqueta} onChange={(e) => editarEtiqueta(clip, e.target.value)}
-                          style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', color: '#fff', fontWeight: 900, fontSize: '0.8rem', outline: 'none' }}
+                          style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', color: 'var(--text)', fontWeight: 900, fontSize: '0.8rem', outline: 'none' }}
                         />
                         <button onClick={() => eliminarClip(clip)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', flexShrink: 0 }}>✕</button>
                       </div>
@@ -1155,7 +1155,7 @@ export default function Videoanalisis() {
                       </div>
 
                       <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-                        <button onClick={() => reproducirCola([{ clip, video: videoActivo }])} style={{ flex: 1, background: activo ? 'var(--accent)' : '#151515', color: activo ? '#000' : '#fff', border: '1px solid #333', borderRadius: '6px', padding: '8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', minHeight: '36px' }}>
+                        <button onClick={() => reproducirCola([{ clip, video: videoActivo }])} style={{ flex: 1, background: activo ? 'var(--accent)' : '#151515', color: activo ? '#000' : '#fff', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', minHeight: '36px' }}>
                           {activo ? '⏸ REPRODUCIENDO' : '▶ VER CLIP'}
                         </button>
                         <button onClick={() => moverClip(clip, -1)} disabled={i === 0 || filtroCategoria !== 'TODAS'} title={filtroCategoria !== 'TODAS' ? 'Reordenar solo con el filtro en TODAS' : ''} style={{ ...btnAjuste, opacity: (i === 0 || filtroCategoria !== 'TODAS') ? 0.3 : 1 }}>↑</button>
@@ -1173,4 +1173,4 @@ export default function Videoanalisis() {
   );
 }
 
-const btnAjuste = { background: '#151515', border: '1px solid #333', color: '#aaa', borderRadius: '4px', padding: '4px 7px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 700, minHeight: '28px' };
+const btnAjuste = { background: '#151515', border: '1px solid var(--border)', color: '#aaa', borderRadius: '4px', padding: '4px 7px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 700, minHeight: '28px' };

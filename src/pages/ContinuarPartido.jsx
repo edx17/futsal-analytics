@@ -108,17 +108,17 @@ function ContinuarPartido() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             {partidosFiltrados.map(p => (
-              <div key={p.id} style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', gap: esMovil ? '12px' : '0', padding: '15px', background: '#111', border: '1px solid #333', borderRadius: '6px' }}>
+              <div key={p.id} style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', gap: esMovil ? '12px' : '0', padding: '15px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px' }}>
                 <div>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '5px' }}>
-                    <span style={{ background: '#222', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>
+                    <span style={{ background: 'var(--panel)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>
                       {p.competicion}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 800 }}>
                       {p.categoria?.toUpperCase()}
                     </span>
                   </div>
-                  <div style={{ fontWeight: 900, fontSize: '1.2rem', color: '#fff' }}>
+                  <div style={{ fontWeight: 900, fontSize: '1.2rem', color: 'var(--text)' }}>
                     vs {p.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '5px' }}>
@@ -143,6 +143,6 @@ function ContinuarPartido() {
   );
 }
 
-const inputStyle = { width: '100%', background: '#000', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '4px', outline: 'none', fontSize: '16px' };
+const inputStyle = { width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px', borderRadius: '4px', outline: 'none', fontSize: '16px' };
 
 export default ContinuarPartido;

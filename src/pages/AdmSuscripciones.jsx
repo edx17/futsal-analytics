@@ -141,7 +141,7 @@ function AdmSuscripciones() {
 
                   return (
                     <tr key={c.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
-                      <td style={{ padding: '15px 10px', fontWeight: 800, color: '#fff' }}>{c.nombre.toUpperCase()}</td>
+                      <td style={{ padding: '15px 10px', fontWeight: 800, color: 'var(--text)' }}>{c.nombre.toUpperCase()}</td>
                       <td style={{ padding: '15px 10px', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase' }}>
                         {c.plan_actual || 'Básico'}
                       </td>
@@ -186,8 +186,8 @@ function AdmSuscripciones() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
           <div className="bento-card" style={{ maxWidth: '500px', width: '100%', border: '1px solid #c084fc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
-              <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff' }}>EDITAR CLUB: <span style={{ color: '#c084fc' }}>{clubSeleccionado.nombre}</span></div>
-              <button onClick={() => setClubSeleccionado(null)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+              <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>EDITAR CLUB: <span style={{ color: '#c084fc' }}>{clubSeleccionado.nombre}</span></div>
+              <button onClick={() => setClubSeleccionado(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             </div>
 
             <form onSubmit={handleGuardar} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -197,7 +197,7 @@ function AdmSuscripciones() {
                 <select 
                   value={formData.plan_actual} 
                   onChange={(e) => setFormData({...formData, plan_actual: e.target.value})}
-                  style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' }}
+                  style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' }}
                 >
                   <option value="trial">Trial (Prueba)</option>
                   <option value="basico">Básico</option>
@@ -211,12 +211,12 @@ function AdmSuscripciones() {
                 <select 
                   value={formData.suscripcion_activa.toString()} 
                   onChange={(e) => setFormData({...formData, suscripcion_activa: e.target.value === 'true'})}
-                  style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: formData.suscripcion_activa ? '#00ff88' : '#ef4444', borderRadius: '4px', outline: 'none', fontWeight: 800 }}
+                  style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: formData.suscripcion_activa ? '#00ff88' : '#ef4444', borderRadius: '4px', outline: 'none', fontWeight: 800 }}
                 >
                   <option value="true">✅ ACTIVO (Con Acceso)</option>
                   <option value="false">🛑 SUSPENDIDO (Sin Acceso)</option>
                 </select>
-                <p style={{ fontSize: '0.7rem', color: '#888', marginTop: '5px' }}>Si lo suspendés, los usuarios de este club no podrán cargar datos ni ver reportes.</p>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Si lo suspendés, los usuarios de este club no podrán cargar datos ni ver reportes.</p>
               </div>
 
               <div>
@@ -225,7 +225,7 @@ function AdmSuscripciones() {
                   type="date" 
                   value={formData.fecha_vencimiento} 
                   onChange={(e) => setFormData({...formData, fecha_vencimiento: e.target.value})}
-                  style={{ width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' }}
+                  style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' }}
                 />
               </div>
 

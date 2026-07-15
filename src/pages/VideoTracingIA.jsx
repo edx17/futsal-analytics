@@ -8,11 +8,11 @@ const VideoTracingIA = () => {
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [selectedCategoria, setSelectedCategoria] = useState('Todas');
-  const [selectedPartido, setSelectedPartido] = useState('');
+  const [selectedPartido, setSelectedPartido] = useState(');
 
   const [videoFile, setVideoFile] = useState(null);
-  const [videoUrl, setVideoUrl] = useState('');
-  const [publicStorageUrl, setPublicStorageUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState(');
+  const [publicStorageUrl, setPublicStorageUrl] = useState(');
   const [points, setPoints] = useState([]); 
   const [renderPoints, setRenderPoints] = useState([]); 
 
@@ -237,9 +237,9 @@ const VideoTracingIA = () => {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <select 
               value={selectedCategoria} 
-              onChange={(e) => { setSelectedCategoria(e.target.value); setSelectedPartido(''); }} 
+              onChange={(e) => { setSelectedCategoria(e.target.value); setSelectedPartido('); }} 
               disabled={mappingMode}
-              style={{ flex: 1, minWidth: '150px', background: '#000', border: '1px solid #222', padding: '10px', color: '#fff' }}
+              style={{ flex: 1, minWidth: '150px', background: 'var(--bg)', border: '1px solid var(--border)', padding: '10px', color: 'var(--text)' }}
             >
               {categoriasUnicas.map(cat => <option key={cat} value={cat}>{cat}</option>)}
             </select>
@@ -248,17 +248,17 @@ const VideoTracingIA = () => {
               value={selectedPartido} 
               onChange={(e) => setSelectedPartido(e.target.value)} 
               disabled={mappingMode}
-              style={{ flex: 2, minWidth: '200px', background: '#000', border: '1px solid #222', padding: '10px', color: '#fff' }}
+              style={{ flex: 2, minWidth: '200px', background: 'var(--bg)', border: '1px solid var(--border)', padding: '10px', color: 'var(--text)' }}
             >
               <option value="">Seleccionar Partido...</option>
               {partidosFiltrados.map(p => <option key={p.id} value={p.id}>{p.fecha} - vs {p.rival}</option>)}
             </select>
           </div>
 
-          <input type="file" accept="video/mp4" onChange={handleFileChange} disabled={mappingMode} style={{ background: '#000', border: '1px solid #222', padding: '10px', color: '#fff' }} />
+          <input type="file" accept="video/mp4" onChange={handleFileChange} disabled={mappingMode} style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '10px', color: 'var(--text)' }} />
           
           {videoUrl && (
-            <div style={{ position: 'relative', width: '100%', background: '#000', border: '1px solid #222', overflow: 'hidden', borderRadius: '4px' }}>
+            <div style={{ position: 'relative', width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', borderRadius: '4px' }}>
               <video 
                 ref={videoRef} 
                 src={videoUrl} 
@@ -289,7 +289,7 @@ const VideoTracingIA = () => {
         {mappingMode && (
           <section className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', gridColumn: '1 / -1', animation: 'fadeIn 0.5s' }}>
             <div className="stat-label" style={{ color: '#00ff88' }}>2. MAPEO DE IDENTIDADES (CONGELADO EN FRAME INICIAL)</div>
-            <div style={{ fontSize: '0.85rem', color: '#888' }}>Asigná los dorsales a los puntos amarillos que ves en el radar para que el seguimiento sea preciso.</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Asigná los dorsales a los puntos amarillos que ves en el radar para que el seguimiento sea preciso.</div>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
               {uniqueTrackerIds.map(tId => (
@@ -297,13 +297,13 @@ const VideoTracingIA = () => {
                   key={tId} 
                   onMouseEnter={() => setHoveredTrackerId(tId)}
                   onMouseLeave={() => setHoveredTrackerId(null)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: hoveredTrackerId === tId ? '#222' : '#111', padding: '12px', border: '1px solid #333', borderRadius: '6px', transition: '0.2s' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: hoveredTrackerId === tId ? '#222' : '#111', padding: '12px', border: '1px solid var(--border)', borderRadius: '6px', transition: '0.2s' }}
                 >
                   <span style={{ fontSize: '0.85rem', fontWeight: 800, color: idMapping[tId] ? '#00ff88' : '#facc15' }}>IA #{tId}</span>
                   <select 
-                    value={idMapping[tId] || ''}
+                    value={idMapping[tId] || '}
                     onChange={(e) => setIdMapping(prev => ({ ...prev, [tId]: parseInt(e.target.value) }))}
-                    style={{ background: '#000', border: '1px solid #444', padding: '6px', color: '#fff', fontSize: '0.8rem', width: '140px', borderRadius: '4px' }}
+                    style={{ background: 'var(--bg)', border: '1px solid #444', padding: '6px', color: 'var(--text)', fontSize: '0.8rem', width: '140px', borderRadius: '4px' }}
                   >
                     <option value="">Rival / Desconocido</option>
                     {jugadores.filter(j => selectedCategoria === 'Todas' || j.categoria === selectedCategoria).map(j => (
@@ -325,11 +325,11 @@ const VideoTracingIA = () => {
 
         <section className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', gridColumn: '1 / -1' }}>
           <div className="stat-label" style={{ color: '#00ff88' }}>RADAR TÁCTICO 2D (40x20m)</div>
-          <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', aspectRatio: '2/1', backgroundColor: '#050505', border: '1px solid #222', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', aspectRatio: '2/1', backgroundColor: '#050505', border: '1px solid var(--border)', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
              <canvas ref={radarRef} width={1000} height={500} style={{ width: '100%', height: '100%', display: 'block' }} />
           </div>
           {analysisData && !mappingMode && (
-            <div style={{ textAlign: 'center', fontSize: '0.8rem', color: '#888' }}>
+            <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
               Dale Play al video para ver el movimiento sincronizado.
             </div>
           )}

@@ -341,7 +341,7 @@ export default function LoginKiosco() {
           <div style={avatarGigante}>
             {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span>{jugadorSeleccionado.nombre.charAt(0)}</span>}
           </div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#fff', textTransform: 'uppercase', margin: '15px 0 5px 0', lineHeight: 1 }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text)', textTransform: 'uppercase', margin: '15px 0 5px 0', lineHeight: 1 }}>
             HOLA, <span style={{ color: 'var(--accent)' }}>{jugadorSeleccionado.nombre}</span>
           </h1>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0 }}>¿Qué querés hacer hoy?</p>
@@ -378,7 +378,7 @@ export default function LoginKiosco() {
               <>
                 <div style={{ display: 'flex', gap: '10px', flexDirection: esMovil ? 'column' : 'row' }}>
                   {clubConfig?.alias_cobro && (
-                    <button onClick={procesarPagoMP} style={{ flex: 1, padding: '10px', background: '#00b1ea', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <button onClick={procesarPagoMP} style={{ flex: 1, padding: '10px', background: '#00b1ea', color: 'var(--text)', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                       🤝 PAGAR CON MP
                     </button>
                   )}
@@ -390,7 +390,7 @@ export default function LoginKiosco() {
                 </div>
                 {clubConfig?.alias_cobro && (
                   <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>
-                    Al tocar el botón se copiará el Alias: <strong style={{color: '#fff'}}>{clubConfig.alias_cobro}</strong>
+                    Al tocar el botón se copiará el Alias: <strong style={{color: 'var(--text)'}}>{clubConfig.alias_cobro}</strong>
                   </div>
                 )}
               </>
@@ -411,7 +411,7 @@ export default function LoginKiosco() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {novedadesJugador.map(n => (
                 <div key={n.id} style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '10px' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#fff', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{n.mensaje}</div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text)', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{n.mensaje}</div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '5px', textAlign: 'right' }}>
                     — {n.perfiles?.nombre_completo || 'Administración'} · {new Date(n.fecha_creacion).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
                   </div>
@@ -505,7 +505,7 @@ export default function LoginKiosco() {
                 <div style={avatar}>
                   {j.foto ? <img src={j.foto} alt="foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span>{j.nombre.charAt(0)}</span>}
                 </div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fff', wordBreak: 'break-word', lineHeight: 1.1 }}>{j.apellido?.toUpperCase()}</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text)', wordBreak: 'break-word', lineHeight: 1.1 }}>{j.apellido?.toUpperCase()}</div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--accent)', marginTop: '3px' }}>{j.nombre.toUpperCase()}</div>
               </div>
             ))}
@@ -528,7 +528,7 @@ export default function LoginKiosco() {
             ))}
             <button onClick={volverAtras} style={{ ...estiloNumpadDinamico, background: '#ef4444' }}>✕</button>
             <button onClick={() => handleNumpad('0')} style={estiloNumpadDinamico}>0</button>
-            <button onClick={() => setPin('')} style={{ ...estiloNumpadDinamico, background: '#333' }}>⌫</button>
+            <button onClick={() => setPin('')} style={{ ...estiloNumpadDinamico, background: 'var(--border)' }}>⌫</button>
           </div>
         </div>
       )}
@@ -536,15 +536,15 @@ export default function LoginKiosco() {
   );
 }
 
-const inputStyle = { padding: '15px', background: '#000', border: '1px solid var(--accent)', color: '#fff', borderRadius: '4px', textAlign: 'center', fontWeight: 800, outline: 'none', boxSizing: 'border-box', width: '100%', fontSize: '16px' };
+const inputStyle = { padding: '15px', background: 'var(--bg)', border: '1px solid var(--accent)', color: 'var(--text)', borderRadius: '4px', textAlign: 'center', fontWeight: 800, outline: 'none', boxSizing: 'border-box', width: '100%', fontSize: '16px' };
 const btnSubmit = { padding: '15px', background: 'var(--accent)', color: '#000', fontWeight: 800, border: 'none', cursor: 'pointer', borderRadius: '4px', width: '100%', boxSizing: 'border-box' };
-const btnSecundario = { padding: '15px', background: 'transparent', color: 'var(--text-dim)', fontWeight: 800, border: '1px solid #333', cursor: 'pointer', borderRadius: '4px', width: '100%', boxSizing: 'border-box', transition: 'all 0.2s' };
-const btnVolver = { background: 'rgba(255,255,255,0.05)', border: '1px solid #333', color: '#fff', padding: '8px 15px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' };
+const btnSecundario = { padding: '15px', background: 'transparent', color: 'var(--text-dim)', fontWeight: 800, border: '1px solid var(--border)', cursor: 'pointer', borderRadius: '4px', width: '100%', boxSizing: 'border-box', transition: 'all 0.2s' };
+const btnVolver = { background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 15px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' };
 const btnDesvincular = { background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: '0.7rem', textDecoration: 'underline', cursor: 'pointer' };
 
 const cardJugador = { background: 'var(--panel)', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' };
-const avatar = { width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', margin: '0 auto 8px auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent)', flexShrink: 0 };
-const btnNumpad = { borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', color: '#fff', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxSizing: 'border-box', outline: 'none', WebkitTapHighlightColor: 'transparent' };
+const avatar = { width: '50px', height: '50px', borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', margin: '0 auto 8px auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent)', flexShrink: 0 };
+const btnNumpad = { borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, boxSizing: 'border-box', outline: 'none', WebkitTapHighlightColor: 'transparent' };
 const btnFiltroCat = { padding: '6px 14px', borderRadius: '20px', border: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.2s', outline: 'none' };
 
-const avatarGigante = { width: '85px', height: '85px', borderRadius: '50%', background: '#111', border: '3px solid var(--accent)', margin: '0 auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)', flexShrink: 0, boxShadow: '0 0 25px rgba(0,255,136,0.15)' };
+const avatarGigante = { width: '85px', height: '85px', borderRadius: '50%', background: 'var(--panel)', border: '3px solid var(--accent)', margin: '0 auto', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent)', flexShrink: 0, boxShadow: '0 0 25px rgba(0,255,136,0.15)' };

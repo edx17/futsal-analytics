@@ -8,7 +8,7 @@ function Empleados() {
   const clubId = perfil?.club_id || localStorage.getItem('club_id');
   const { showToast } = useToast();
 
-  const rol = perfil?.rol?.toLowerCase() || '';
+  const rol = perfil?.rol?.toLowerCase() || ';
   const puedeEditar = ['admin', 'tesorero', 'superuser'].includes(rol);
 
   const [empleados, setEmpleados] = useState([]);
@@ -16,8 +16,8 @@ function Empleados() {
   const [modalVisible, setModalVisible] = useState(false);
 
   const [form, setForm] = useState({
-    id: null, nombre_completo: '', dni: '', telefono: '', direccion: '',
-    cbu: '', alias: '', banco: '', rol: '', sueldo_base: '', fecha_ingreso: '', estado: 'Activo'
+    id: null, nombre_completo: ', dni: ', telefono: ', direccion: ',
+    cbu: ', alias: ', banco: ', rol: ', sueldo_base: ', fecha_ingreso: ', estado: 'Activo'
   });
 
   useEffect(() => {
@@ -64,9 +64,9 @@ function Empleados() {
 
   const abrirEdicion = (emp) => {
     setForm({
-      id: emp.id, nombre_completo: emp.nombre_completo, dni: emp.dni || '', telefono: emp.telefono || '',
-      direccion: emp.direccion || '', cbu: emp.cbu || '', alias: emp.alias || '', banco: emp.banco || '',
-      rol: emp.rol, sueldo_base: emp.sueldo_base, fecha_ingreso: emp.fecha_ingreso || '', estado: emp.estado || 'Activo'
+      id: emp.id, nombre_completo: emp.nombre_completo, dni: emp.dni || ', telefono: emp.telefono || ',
+      direccion: emp.direccion || ', cbu: emp.cbu || ', alias: emp.alias || ', banco: emp.banco || ',
+      rol: emp.rol, sueldo_base: emp.sueldo_base, fecha_ingreso: emp.fecha_ingreso || ', estado: emp.estado || 'Activo'
     });
     setModalVisible(true);
   };
@@ -80,7 +80,7 @@ function Empleados() {
             <h2 style={{ margin: 0, fontSize: '1.8rem' }}>STAFF Y EMPLEADOS</h2>
           </div>
           {puedeEditar && (
-            <button onClick={() => { setForm({ id: null, nombre_completo: '', dni: '', telefono: '', direccion: '', cbu: '', alias: '', banco: '', rol: '', sueldo_base: '', fecha_ingreso: '', estado: 'Activo' }); setModalVisible(true); }} style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+            <button onClick={() => { setForm({ id: null, nombre_completo: ', dni: ', telefono: ', direccion: ', cbu: ', alias: ', banco: ', rol: ', sueldo_base: ', fecha_ingreso: ', estado: 'Activo' }); setModalVisible(true); }} style={{ background: '#3b82f6', color: 'var(--text)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
               + NUEVO EMPLEADO
             </button>
           )}
@@ -88,9 +88,9 @@ function Empleados() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
           {empleados.map(emp => (
-            <div key={emp.id} style={{ background: '#111', padding: '20px', borderRadius: '12px', border: `1px solid ${emp.estado === 'Activo' ? '#333' : '#ef4444'}`, position: 'relative' }}>
+            <div key={emp.id} style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: `1px solid ${emp.estado === 'Activo' ? '#333' : '#ef4444'}`, position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <h3 style={{ margin: '0 0 5px 0', color: '#fff' }}>{emp.nombre_completo}</h3>
+                <h3 style={{ margin: '0 0 5px 0', color: 'var(--text)' }}>{emp.nombre_completo}</h3>
                 {puedeEditar && <button onClick={() => abrirEdicion(emp)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>✏️</button>}
               </div>
               <div style={{ fontSize: '0.8rem', color: '#3b82f6', fontWeight: 'bold', marginBottom: '15px' }}>{emp.rol.toUpperCase()}</div>
@@ -100,11 +100,11 @@ function Empleados() {
                 <div>🏠 {emp.direccion || 'Sin dirección'}</div>
               </div>
 
-              <div style={{ background: '#0a0a0a', padding: '10px', borderRadius: '8px', border: '1px solid #222', marginTop: '15px' }}>
+              <div style={{ background: '#0a0a0a', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', marginTop: '15px' }}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>DATOS BANCARIOS</div>
-                <div style={{ fontSize: '0.85rem', color: '#fff', marginTop: '5px' }}>🏦 {emp.banco || 'No registrado'}</div>
-                <div style={{ fontSize: '0.85rem', color: '#fff' }}>🔄 CBU: <span style={{ fontFamily: 'monospace', color: '#00ff88' }}>{emp.cbu || 'N/A'}</span></div>
-                <div style={{ fontSize: '0.85rem', color: '#fff' }}>🔤 Alias: <span style={{ fontFamily: 'monospace', color: '#a855f7' }}>{emp.alias || 'N/A'}</span></div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text)', marginTop: '5px' }}>🏦 {emp.banco || 'No registrado'}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text)' }}>🔄 CBU: <span style={{ fontFamily: 'monospace', color: '#00ff88' }}>{emp.cbu || 'N/A'}</span></div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text)' }}>🔤 Alias: <span style={{ fontFamily: 'monospace', color: '#a855f7' }}>{emp.alias || 'N/A'}</span></div>
               </div>
             </div>
           ))}
@@ -127,7 +127,7 @@ function Empleados() {
               
               <div style={{ gridColumn: '1 / -1' }}><label style={lblStyle}>Dirección</label><input type="text" value={form.direccion} onChange={e => setForm({...form, direccion: e.target.value})} style={inputStyle} /></div>
 
-              <div style={{ gridColumn: '1 / -1', background: '#111', padding: '10px', borderRadius: '6px', border: '1px solid #222', marginTop: '10px' }}>
+              <div style={{ gridColumn: '1 / -1', background: 'var(--panel)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)', marginTop: '10px' }}>
                 <h4 style={{ margin: '0 0 10px 0', color: '#aaa', fontSize: '0.8rem' }}>DATOS BANCARIOS</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                   <div><label style={lblStyle}>Banco</label><input type="text" value={form.banco} onChange={e => setForm({...form, banco: e.target.value})} style={inputStyle} placeholder="Ej: Galicia / MercadoPago" /></div>
@@ -147,8 +147,8 @@ function Empleados() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
-              <button onClick={() => setModalVisible(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={guardarEmpleado} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>
+              <button onClick={() => setModalVisible(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={guardarEmpleado} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>
                 {cargando ? 'GUARDANDO...' : 'GUARDAR FICHA'}
               </button>
             </div>
@@ -160,6 +160,6 @@ function Empleados() {
 }
 
 const lblStyle = { fontSize: '0.75rem', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' };
-const inputStyle = { width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px' };
+const inputStyle = { width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px' };
 
 export default Empleados;

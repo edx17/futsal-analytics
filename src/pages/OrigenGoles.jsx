@@ -25,7 +25,7 @@ const InfoBox = ({ texto }) => {
         visibility: abierto ? 'visible' : 'hidden', 
         opacity: abierto ? 1 : 0, 
         transition: 'all 0.2s ease-in-out',
-        position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: '#111', color: '#fff', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid #333', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' 
+        position: 'absolute', bottom: '130%', left: '50%', transform: 'translateX(-50%)', background: 'var(--panel)', color: 'var(--text)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', border: '1px solid var(--border)', zIndex: 100, pointerEvents: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.8)', textTransform: 'none', letterSpacing: 'normal', fontWeight: 'normal', lineHeight: '1.4' 
       }}>
         {texto}
       </div>
@@ -375,7 +375,7 @@ function OrigenGoles() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px', borderTop: '2px solid var(--accent)' }}>
                 <div className="stat-label">GOLES TOTALES</div>
-                <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#fff' }}>{dataAnalizada.total}</div>
+                <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--text)' }}>{dataAnalizada.total}</div>
              </div>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                 <div className="stat-label">ASISTIDOS vs SOLOS <InfoBox texto="Porcentaje de goles que provinieron de una asistencia directa." /></div>
@@ -415,7 +415,7 @@ function OrigenGoles() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={false} />
                   <XAxis type="number" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} allowDecimals={false} />
                   <YAxis type="category" dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 10, fontWeight: 700 }} width={120} />
-                  <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                  <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)' }} />
                   <Legend wrapperStyle={{ fontSize: '11px' }} iconType="circle" />
                   <Bar dataKey="A favor" fill="#00ff88" radius={[0, 3, 3, 0]} barSize={13} />
                   <Bar dataKey="En contra" fill="#ef4444" radius={[0, 3, 3, 0]} barSize={13} />
@@ -450,7 +450,7 @@ function OrigenGoles() {
                         <div key={it.k}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.72rem' }}>
                             <span style={{ color: it.color, fontWeight: 800 }}>{it.label}</span>
-                            <span style={{ color: '#fff', fontWeight: 900 }}>{it.n} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({((it.n / tot) * 100).toFixed(0)}%)</span></span>
+                            <span style={{ color: 'var(--text)', fontWeight: 900 }}>{it.n} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({((it.n / tot) * 100).toFixed(0)}%)</span></span>
                           </div>
                           <div style={{ height: '8px', background: '#1a1a1a', borderRadius: '4px', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${(it.n / tot) * 100}%`, background: it.color, borderRadius: '4px' }}></div>
@@ -477,11 +477,11 @@ function OrigenGoles() {
                       const max = dataAnalizada.modificadores[0].value || 1;
                       return (
                         <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '0.72rem', color: '#fff', fontWeight: 700, width: '110px', flexShrink: 0 }}>{m.name}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text)', fontWeight: 700, width: '110px', flexShrink: 0 }}>{m.name}</span>
                           <div style={{ flex: 1, height: '14px', background: '#1a1a1a', borderRadius: '4px', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${(m.value / max) * 100}%`, background: 'linear-gradient(90deg, #a855f7, #ec4899)', borderRadius: '4px' }}></div>
                           </div>
-                          <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 900, width: '24px', textAlign: 'right' }}>{m.value}</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text)', fontWeight: 900, width: '24px', textAlign: 'right' }}>{m.value}</span>
                         </div>
                       );
                     })}
@@ -506,7 +506,7 @@ function OrigenGoles() {
                         <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
                       ))}
                     </Pie>
-                    <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }} itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '4px' }} itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }} />
                     <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
                   </PieChart>
                 </ResponsiveContainer>
@@ -523,7 +523,7 @@ function OrigenGoles() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                   <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 10, fontWeight: 700 }} />
                   <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} allowDecimals={false} />
-                  <RechartsTooltip cursor={{ fill: '#222' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                  <RechartsTooltip cursor={{ fill: '#222' }} contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)' }} />
                   <Bar dataKey="Goles" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={35} />
                 </BarChart>
               </ResponsiveContainer>
@@ -537,7 +537,7 @@ function OrigenGoles() {
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>MAPA DE DISPERSIÓN <InfoBox texto="Punto exacto desde donde se pateó para convertir." /></div>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '10px 0' }}>
-                <div className="pitch-container" style={{ width: '100%', maxWidth: '500px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: '#111', border: '2px solid rgba(255,255,255,0.1)' }}>
+                <div className="pitch-container" style={{ width: '100%', maxWidth: '500px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: 'var(--panel)', border: '2px solid rgba(255,255,255,0.1)' }}>
                   
                   <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '2px', backgroundColor: 'rgba(255,255,255,0.1)', transform: 'translateX(-50%)' }}></div>
                   <div style={{ position: 'absolute', left: '50%', top: '50%', width: '15%', height: '30%', border: '2px solid rgba(255,255,255,0.1)', borderRadius: '50%', transform: 'translate(-50%, -50%)' }}></div>
@@ -571,11 +571,11 @@ function OrigenGoles() {
                   {dataAnalizada.topConexiones.map((con, idx) => (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(192, 132, 252, 0.05)', border: '1px solid rgba(192, 132, 252, 0.2)', borderRadius: '6px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
-                        <div style={{ flex: 1, textAlign: 'right', fontWeight: 800, fontSize: '0.8rem', color: '#fff' }}>{getNombre(con.asistidor)}</div>
+                        <div style={{ flex: 1, textAlign: 'right', fontWeight: 800, fontSize: '0.8rem', color: 'var(--text)' }}>{getNombre(con.asistidor)}</div>
                         <div style={{ color: '#c084fc', fontSize: '1rem' }}>➔</div>
                         <div style={{ flex: 1, textAlign: 'left', fontWeight: 800, fontSize: '0.8rem', color: '#00ff88' }}>{getNombre(con.definidor)}</div>
                       </div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', marginLeft: '20px', background: '#000', padding: '2px 10px', borderRadius: '4px', border: '1px solid #333' }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)', marginLeft: '20px', background: 'var(--bg)', padding: '2px 10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                         {con.cantidad}
                       </div>
                     </div>
@@ -652,7 +652,7 @@ function OrigenGoles() {
 const selectStyle = { 
   padding: '8px 15px', 
   fontSize: '0.85rem', 
-  background: '#111', 
+  background: 'var(--panel)', 
   color: 'var(--accent)', 
   border: '1px solid var(--border)', 
   borderRadius: '4px', 

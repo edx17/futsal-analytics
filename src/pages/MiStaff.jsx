@@ -119,7 +119,7 @@ export default function MiStaff() {
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '40px' }}>
       <div style={{ marginBottom: '30px' }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', textTransform: 'uppercase', margin: 0 }}>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text)', textTransform: 'uppercase', margin: 0 }}>
           MI <span style={{ color: 'var(--accent)' }}>STAFF</span>
         </h1>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Gestioná los accesos de tu cuerpo técnico.</p>
@@ -133,17 +133,17 @@ export default function MiStaff() {
           return (
             <div key={usuario.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', position: 'relative' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
-                <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900 }}>
+                <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 900 }}>
                   {usuario.nombre_completo?.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, color: '#fff' }}>{usuario.nombre_completo}</div>
+                  <div style={{ fontWeight: 800, color: 'var(--text)' }}>{usuario.nombre_completo}</div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--accent)', textTransform: 'uppercase' }}>{usuario.rol}</div>
                 </div>
               </div>
 
               <div style={{ minHeight: '60px' }}>
-                <div style={{ fontSize: '0.65rem', color: '#888', fontWeight: 800, marginBottom: '8px' }}>ACCESO A:</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, marginBottom: '8px' }}>ACCESO A:</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                   {esAdmin ? (
                     <span style={tagStyleAdmin}>TODAS</span>
@@ -188,12 +188,12 @@ export default function MiStaff() {
 }
 
 // --- Estilos ---
-const tagStyle = { background: '#222', color: '#ccc', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700, border: '1px solid #333' };
+const tagStyle = { background: 'var(--panel)', color: '#ccc', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700, border: '1px solid var(--border)' };
 const tagStyleAdmin = { background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 900, border: '1px solid var(--accent)' };
-const btnEdit = { marginTop: '15px', width: '100%', padding: '10px', background: '#111', border: '1px solid #333', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' };
+const btnEdit = { marginTop: '15px', width: '100%', padding: '10px', background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' };
 const modalOverlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 };
-const modalContent = { background: '#111', border: '1px solid var(--accent)', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '400px' };
-const catInactive = { padding: '12px', background: '#1a1a1a', border: '1px solid #333', color: '#666', borderRadius: '6px', cursor: 'pointer', fontWeight: 800 };
+const modalContent = { background: 'var(--panel)', border: '1px solid var(--accent)', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '400px' };
+const catInactive = { padding: '12px', background: '#1a1a1a', border: '1px solid var(--border)', color: '#666', borderRadius: '6px', cursor: 'pointer', fontWeight: 800 };
 const catActive = { padding: '12px', background: 'rgba(0,255,136,0.1)', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '6px', cursor: 'pointer', fontWeight: 800 };
 const btnSave = { flex: 1, padding: '12px', background: 'var(--accent)', border: 'none', borderRadius: '6px', fontWeight: 900, cursor: 'pointer' };
-const btnCancel = { flex: 1, padding: '12px', background: 'transparent', border: '1px solid #444', color: '#fff', borderRadius: '6px', cursor: 'pointer' };
+const btnCancel = { flex: 1, padding: '12px', background: 'transparent', border: '1px solid #444', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' };

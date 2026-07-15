@@ -258,10 +258,10 @@ const GraficoMomentumPartido = ({ eventos }) => {
   if (!eventos || eventos.length === 0) return null;
 
   return (
-    <div style={{ background: 'rgba(20, 20, 20, 0.8)', padding: '20px', borderRadius: '12px', border: '1px solid #333', marginTop: '20px', marginBottom: '20px' }}>
+    <div style={{ background: 'rgba(20, 20, 20, 0.8)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)', marginTop: '20px', marginBottom: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h3 style={{ color: '#fff', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Momentum del Partido</h3>
-        <span style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600 }}>PRESIÓN MINUTO A MINUTO</span>
+        <h3 style={{ color: 'var(--text)', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Momentum del Partido</h3>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600 }}>PRESIÓN MINUTO A MINUTO</span>
       </div>
       
       <div style={{ width: '100%', height: 200 }}>
@@ -281,7 +281,7 @@ const GraficoMomentumPartido = ({ eventos }) => {
             <XAxis dataKey="label" stroke="#888" tick={{ fill: '#aaa', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={15} />
             <YAxis stroke="#888" tick={false} tickLine={false} axisLine={false} />
             <RechartsTooltip 
-              contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: '#fff', borderRadius: '8px' }}
+              contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: 'var(--text)', borderRadius: '8px' }}
               labelStyle={{ color: '#aaa', fontWeight: 'bold' }}
               itemStyle={{ fontWeight: 'bold' }}
               formatter={(value) => [value.toFixed(1), 'Índice de Presión']}
@@ -1042,7 +1042,7 @@ function Resumen() {
 
             <div style={{ flex: esMovil ? '1 1 45%' : 'auto' }}>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR CATEGORÍA</div>
-              <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
+              <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
                 {!(esCT && misCategorias.length > 0) && (
                   <option value="Todas">TODAS</option>
                 )}
@@ -1051,7 +1051,7 @@ function Resumen() {
             </div>
             <div style={{ flex: esMovil ? '1 1 45%' : 'auto' }}>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR COMPETICIÓN</div>
-              <select value={filtroCompeticionGrid} onChange={(e) => setFiltroCompeticionGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: '#111', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
+              <select value={filtroCompeticionGrid} onChange={(e) => setFiltroCompeticionGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
                 <option value="Todas">TODAS</option>
                 {competicionesUnicas.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -1064,18 +1064,18 @@ function Resumen() {
             <div key={p.id} className="bento-card match-card" onClick={() => cargarPartido(p.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{p.fecha}</span>
-                <span style={{ background: '#222', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>{p.categoria || 'S/C'} | {p.competicion || 'Amistoso'}</span>
+                <span style={{ background: 'var(--panel)', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>{p.categoria || 'S/C'} | {p.competicion || 'Amistoso'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
-                  {p.escudo_propio ? <img src={p.escudo_propio} alt="Local" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.2rem' }}>MI</div>}
+                  {p.escudo_propio ? <img src={p.escudo_propio} alt="Local" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: '1.2rem' }}>MI</div>}
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>
                     {p.nombre_propio || miClubGlobal}
                   </span>
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#333', fontStyle: 'italic', width: '20%', textAlign: 'center' }}>VS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
-                  {p.escudo_rival ? <img src={p.escudo_rival} alt="Rival" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1.2rem' }}>{p.rival?.substring(0, 2).toUpperCase() || 'R'}</div>}
+                  {p.escudo_rival ? <img src={p.escudo_rival} alt="Rival" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', fontWeight: 800, fontSize: '1.2rem' }}>{p.rival?.substring(0, 2).toUpperCase() || 'R'}</div>}
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{p.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</span>
                 </div>
               </div>
@@ -1108,9 +1108,9 @@ const COLORS_ORIGEN = {
 
       {/* HEADER PRINCIPAL CON BOTON VOLVER Y TOGGLE VISTA */}
       <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', gap: '15px' }}>
-        <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flex: esMovil ? '1 1 100%' : 'none', justifyContent: 'center' }}>⬅ VOLVER</button>
+        <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flex: esMovil ? '1 1 100%' : 'none', justifyContent: 'center' }}>⬅ VOLVER</button>
         
-        <div style={{ display: 'flex', background: '#111', padding: '4px', borderRadius: '6px', border: '1px solid #333', width: esMovil ? '100%' : 'auto' }}>
+        <div style={{ display: 'flex', background: 'var(--panel)', padding: '4px', borderRadius: '6px', border: '1px solid var(--border)', width: esMovil ? '100%' : 'auto' }}>
             <button onClick={() => setVistaActiva('express')} style={{ flex: 1, padding: '8px 20px', borderRadius: '4px', border: 'none', background: vistaActiva === 'express' ? 'var(--accent)' : 'transparent', color: vistaActiva === 'express' ? '#000' : 'var(--text-dim)', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', transition: '0.2s' }}>
                 VISTA EXPRESS
             </button>
@@ -1134,17 +1134,17 @@ const COLORS_ORIGEN = {
                         {partidoSeleccionado.escudo_propio ? 
                             <img src={partidoSeleccionado.escudo_propio} alt="Local" style={{ height: '80px', objectFit: 'contain' }} /> : 
                             <div style={{...escudoFallback, width: '80px', height: '80px', fontSize: '1.5rem'}}>MI</div>}
-                        <div style={{ fontSize: esMovil ? '1rem' : '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
+                        <div style={{ fontSize: esMovil ? '1rem' : '1.2rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>
                             {partidoSeleccionado.nombre_propio || miClubGlobal}
                         </div>
                     </div>
 
                     {/* SCORE */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ fontSize: esMovil ? '3.5rem' : '5rem', fontWeight: 900, color: '#fff', lineHeight: 1, textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+                        <div style={{ fontSize: esMovil ? '3.5rem' : '5rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1, textShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
                             {analitica.marcadorReal.propio} <span style={{ color: 'var(--text-dim)', margin: '0 10px', fontSize: '0.8em' }}>-</span> {analitica.marcadorReal.rival}
                         </div>
-                        <div style={{ background: '#222', color: 'var(--text-dim)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800, marginTop: '10px' }}>FINAL</div>
+                        <div style={{ background: 'var(--panel)', color: 'var(--text-dim)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800, marginTop: '10px' }}>FINAL</div>
                     </div>
 
                     {/* EQUIPO RIVAL */}
@@ -1152,7 +1152,7 @@ const COLORS_ORIGEN = {
                         {partidoSeleccionado.escudo_rival ? 
                             <img src={partidoSeleccionado.escudo_rival} alt="Rival" style={{ height: '80px', objectFit: 'contain' }} /> : 
                             <div style={{...escudoFallback, borderColor: '#ef4444', color: '#ef4444', width: '80px', height: '80px', fontSize: '1.5rem'}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
-                        <div style={{ fontSize: esMovil ? '1rem' : '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
+                        <div style={{ fontSize: esMovil ? '1rem' : '1.2rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>
                             {partidoSeleccionado.rival?.toUpperCase() || 'RIVAL'}
                         </div>
                     </div>
@@ -1171,7 +1171,7 @@ const COLORS_ORIGEN = {
 
             {/* ESTADÍSTICAS BÁSICAS (BARRAS) */}
             <div className="bento-card" style={{ padding: '30px 20px' }}>
-                <div style={{ textAlign: 'center', color: '#fff', fontWeight: 900, marginBottom: '25px', fontSize: '1.1rem', letterSpacing: '1px' }}>RESUMEN DEL PARTIDO</div>
+                <div style={{ textAlign: 'center', color: 'var(--text)', fontWeight: 900, marginBottom: '25px', fontSize: '1.1rem', letterSpacing: '1px' }}>RESUMEN DEL PARTIDO</div>
                 
                 <StatBar label="POSESIÓN" valPropio={analitica.stats.propio.totalAcciones} valRival={analitica.stats.rival.totalAcciones} />
                 <div style={{ margin: '25px 0', borderBottom: '1px solid #222' }}></div>
@@ -1213,10 +1213,10 @@ const COLORS_ORIGEN = {
         <div id="printable-area" style={{ display: 'flex', flexDirection: 'column', gap: '20px', animation: 'fadeIn 0.3s' }}>
           
           {/* BARRA DE FILTROS AVANZADOS */}
-          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', background: '#111', padding: '15px', borderRadius: '6px', border: '1px solid #333' }}>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', background: 'var(--panel)', padding: '15px', borderRadius: '6px', border: '1px solid var(--border)' }}>
             <div style={{ flex: esMovil ? '1 1 auto' : 'none' }}>
               <div className="stat-label">PERIODO DE TIEMPO</div>
-              <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: 'var(--accent)', color: 'var(--accent)', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
+              <select value={filtroPeriodo} onChange={(e) => setFiltroPeriodo(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: 'var(--accent)', color: 'var(--accent)', background: 'var(--bg)', outline: 'none', padding: '6px', borderRadius: '4px' }}>
                 <option value="Todos">PARTIDO COMPLETO</option>
                 <option value="PT">PRIMER TIEMPO (PT)</option>
                 <option value="ST">SEGUNDO TIEMPO (ST)</option>
@@ -1226,7 +1226,7 @@ const COLORS_ORIGEN = {
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 ESTADO DE PARTIDO <InfoBox texto="Aísla y analiza los eventos del partido según el resultado que había en el momento exacto en que ocurrieron." />
               </div>
-              <select value={filtroEstadoPartido} onChange={(e) => setFiltroEstadoPartido(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: '#3b82f6', color: '#3b82f6', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
+              <select value={filtroEstadoPartido} onChange={(e) => setFiltroEstadoPartido(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: '#3b82f6', color: '#3b82f6', background: 'var(--bg)', outline: 'none', padding: '6px', borderRadius: '4px' }}>
                 <option value="Todos">SIN FILTRO</option>
                 <option value="Ganando">GANANDO</option>
                 <option value="Empatando">EMPATANDO</option>
@@ -1237,7 +1237,7 @@ const COLORS_ORIGEN = {
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 ASIMETRÍA <InfoBox texto="Aísla la matriz bajo estado de superioridad o inferioridad táctica." />
               </div>
-              <select value={filtroAsimetria} onChange={(e) => setFiltroAsimetria(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: '#f59e0b', color: '#f59e0b', background: '#000', outline: 'none', padding: '6px', borderRadius: '4px' }}>
+              <select value={filtroAsimetria} onChange={(e) => setFiltroAsimetria(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '150px', borderColor: '#f59e0b', color: '#f59e0b', background: 'var(--bg)', outline: 'none', padding: '6px', borderRadius: '4px' }}>
                 <option value="Todos">SIN FILTRO</option>
                 <option value="5v5">5v5</option>
                 <option value="5v4">5v4</option>
@@ -1265,7 +1265,7 @@ const COLORS_ORIGEN = {
               </div>
               
               <div style={{ flex: 1.5, padding: '0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ fontSize: esMovil ? '2rem' : '3.5rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>
+                <div style={{ fontSize: esMovil ? '2rem' : '3.5rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>
                   {analitica.marcadorReal.propio} - {analitica.marcadorReal.rival}
                 </div>
                 <div className="stat-label" style={{ color: 'var(--accent)', marginTop: '5px', fontSize: esMovil ? '0.6rem' : '0.75rem' }}>
@@ -1288,16 +1288,16 @@ const COLORS_ORIGEN = {
               </div>
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={{ height: esMovil ? '40px' : '60px', objectFit: 'contain' }} /> : <div style={{...escudoFallback, borderColor: '#555', color: '#fff', width: esMovil ? '40px' : '60px', height: esMovil ? '40px' : '60px', fontSize: esMovil ? '1rem' : '1.5rem', marginBottom: 0}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
+                {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={{ height: esMovil ? '40px' : '60px', objectFit: 'contain' }} /> : <div style={{...escudoFallback, borderColor: '#555', color: 'var(--text)', width: esMovil ? '40px' : '60px', height: esMovil ? '40px' : '60px', fontSize: esMovil ? '1rem' : '1.5rem', marginBottom: 0}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
                 <div className="stat-label" style={{ fontSize: esMovil ? '0.65rem' : '0.8rem', lineHeight: 1.2 }}>{partidoSeleccionado.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</div>
               </div>
               
             </div>
 
-            <div style={{ background: '#000', padding: '15px', borderRadius: '6px', border: '1px solid #333' }}>
+            <div style={{ background: 'var(--bg)', padding: '15px', borderRadius: '6px', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="stat-label" style={{ color: 'var(--accent)' }}>INDICE DE CONTROL <InfoBox texto="Fórmula: 40% Dominio xG + 30% Dominio Territorial + 30% Duelos Ganados." /></span>
-                <span style={{ fontWeight: 900, color: '#fff', fontSize: esMovil ? '0.8rem' : '1rem' }}>{analitica.matchControl}% NOSOTROS</span>
+                <span style={{ fontWeight: 900, color: 'var(--text)', fontSize: esMovil ? '0.8rem' : '1rem' }}>{analitica.matchControl}% NOSOTROS</span>
               </div>
               <div className="mci-bar">
                 <div style={{ width: `${analitica.matchControl}%`, background: 'var(--accent)', transition: '1s' }}></div>
@@ -1342,27 +1342,27 @@ const COLORS_ORIGEN = {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '20px' }}>
                 
-                <div style={{ background: '#000', padding: '15px', borderRadius: '6px', border: '1px solid #222' }}>
+                <div style={{ background: 'var(--bg)', padding: '15px', borderRadius: '6px', border: '1px solid var(--border)' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '10px', textAlign: 'center', fontWeight: 'bold' }}>
                     SEMANA PREVIA <br/>
                     <span style={{ color: '#10b981', fontSize: '0.65rem' }}>(Del {reporteWellness.debug.inicio} al {reporteWellness.debug.partido})</span>
                   </div>
-                  <div style={kpiFila}><span>RPE PROMEDIO</span><strong style={{color: '#fff'}}>{reporteWellness.pre.rpe}</strong></div>
-                  <div style={kpiFila}><span>NIVEL FATIGA</span><strong style={{color: '#fff'}}>{reporteWellness.pre.fatiga}</strong></div>
-                  <div style={kpiFila}><span>CALIDAD SUEÑO</span><strong style={{color: '#fff'}}>{reporteWellness.pre.sueno}</strong></div>
+                  <div style={kpiFila}><span>RPE PROMEDIO</span><strong style={{color: 'var(--text)'}}>{reporteWellness.pre.rpe}</strong></div>
+                  <div style={kpiFila}><span>NIVEL FATIGA</span><strong style={{color: 'var(--text)'}}>{reporteWellness.pre.fatiga}</strong></div>
+                  <div style={kpiFila}><span>CALIDAD SUEÑO</span><strong style={{color: 'var(--text)'}}>{reporteWellness.pre.sueno}</strong></div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '10px', textAlign: 'right' }}>
                     Registros capturados: <span style={{ color: reporteWellness.pre.registros > 0 ? '#10b981' : '#ef4444', fontWeight: 900 }}>{reporteWellness.pre.registros}</span>
                   </div>
                 </div>
 
-                <div style={{ background: '#000', padding: '15px', borderRadius: '6px', border: '1px solid #222' }}>
+                <div style={{ background: 'var(--bg)', padding: '15px', borderRadius: '6px', border: '1px solid var(--border)' }}>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '10px', textAlign: 'center', fontWeight: 'bold' }}>
                     RECUPERACIÓN <br/>
                     <span style={{ color: '#3b82f6', fontSize: '0.65rem' }}>(Hasta {reporteWellness.debug.post})</span>
                   </div>
-                  <div style={kpiFila}><span>RPE PROMEDIO</span><strong style={{color: '#fff'}}>{reporteWellness.post.rpe}</strong></div>
-                  <div style={kpiFila}><span>NIVEL FATIGA</span><strong style={{color: '#fff'}}>{reporteWellness.post.fatiga}</strong></div>
-                  <div style={kpiFila}><span>CALIDAD SUEÑO</span><strong style={{color: '#fff'}}>{reporteWellness.post.sueno}</strong></div>
+                  <div style={kpiFila}><span>RPE PROMEDIO</span><strong style={{color: 'var(--text)'}}>{reporteWellness.post.rpe}</strong></div>
+                  <div style={kpiFila}><span>NIVEL FATIGA</span><strong style={{color: 'var(--text)'}}>{reporteWellness.post.fatiga}</strong></div>
+                  <div style={kpiFila}><span>CALIDAD SUEÑO</span><strong style={{color: 'var(--text)'}}>{reporteWellness.post.sueno}</strong></div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '10px', textAlign: 'right' }}>
                     Registros capturados: <span style={{ color: reporteWellness.post.registros > 0 ? '#3b82f6' : '#ef4444', fontWeight: 900 }}>{reporteWellness.post.registros}</span>
                   </div>
@@ -1392,7 +1392,7 @@ const COLORS_ORIGEN = {
                       </PieChart>
                     </ResponsiveContainer>
                     <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analitica.stats.propio.goles}</span><br/>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>{analitica.stats.propio.goles}</span><br/>
                       <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>A FAVOR</span>
                     </div>
                   </>
@@ -1419,7 +1419,7 @@ const COLORS_ORIGEN = {
                       </PieChart>
                     </ResponsiveContainer>
                     <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analitica.stats.rival.goles}</span><br/>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>{analitica.stats.rival.goles}</span><br/>
                       <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>EN CONTRA</span>
                     </div>
                   </>
@@ -1438,7 +1438,7 @@ const COLORS_ORIGEN = {
               <div className="stat-label" style={{ marginBottom: '5px', color: '#3b82f6' }}>DESGLOSE DE REMATES</div>
               <div style={kpiFila}><span>GOLES</span><strong><span style={{color: '#00ff88'}}>{analitica.stats.propio.goles}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.goles}</span></strong></div>
               <div style={kpiFila}><span>ATAJADOS</span><strong><span style={{color: '#3b82f6'}}>{analitica.stats.propio.atajados}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.atajados}</span></strong></div>
-              <div style={kpiFila}><span>DESVIADOS</span><strong><span style={{color: '#888'}}>{analitica.stats.propio.desviados}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.desviados}</span></strong></div>
+              <div style={kpiFila}><span>DESVIADOS</span><strong><span style={{color: 'var(--text-dim)'}}>{analitica.stats.propio.desviados}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.desviados}</span></strong></div>
             </div>
 
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b' }}>
@@ -1499,10 +1499,10 @@ const COLORS_ORIGEN = {
               <div style={kpiFila}><span>RECUPERACIONES ALTAS</span><strong>{analitica.stats.propio.recAltas}</strong></div>
               <div style={kpiFila}><span>PÉRDIDAS PELIGROSAS</span><strong style={{ color: analitica.stats.propio.perdidasPeligrosas > 3 ? '#ef4444' : '#00ff88' }}>{analitica.stats.propio.perdidasPeligrosas}</strong></div>
               <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginTop: '15px' }}>
-                 <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.2)', color: '#fff'}}>Z1 (SALIDA)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z1}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(245, 158, 11, 0.15)', color: '#fff'}}>Z2 (ELAB.)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z2}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: '#fff'}}>Z3 (ATAQUE)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z3}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: '#fff'}}>Z4 (FINAL.)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z4}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.2)', color: 'var(--text)'}}>Z1 (SALIDA)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z1}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--text)'}}>Z2 (ELAB.)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z2}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text)'}}>Z3 (ATAQUE)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z3}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text)'}}>Z4 (FINAL.)<br/><strong style={{fontSize:'0.9rem'}}>{analitica.stats.propio.zonasPerdidas.z4}</strong></div>
               </div>
             </div>
 
@@ -1553,10 +1553,10 @@ const COLORS_ORIGEN = {
               <div style={kpiFila}><span>PASES INCOMPLETOS</span><strong>{analitica.stats.propio.pasesIncompletos}</strong></div>
               <div style={kpiFila}><span>OCASIONES FALLADAS</span><strong>{analitica.stats.propio.ocasionesFalladas}</strong></div>
               <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginTop: '15px' }}>
-                 <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.2)', color: '#fff'}}>Z1 (SALIDA)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z1}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(245, 158, 11, 0.15)', color: '#fff'}}>Z2 (ELAB.)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z2}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: '#fff'}}>Z3 (ATAQUE)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z3}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: '#fff'}}>Z4 (FINAL.)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z4}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(239, 68, 68, 0.2)', color: 'var(--text)'}}>Z1 (SALIDA)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z1}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(245, 158, 11, 0.15)', color: 'var(--text)'}}>Z2 (ELAB.)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z2}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text)'}}>Z3 (ATAQUE)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z3}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text)'}}>Z4 (FINAL.)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z4}</strong></div>
               </div>
             </div>
           </div>
@@ -1566,25 +1566,25 @@ const COLORS_ORIGEN = {
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO TÁCTICO <InfoBox texto="Visualización espacial de las acciones del equipo en este partido." /></div>
               
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
-                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Ambos' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
                   <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Propio' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
                   <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Rival' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
                 </div>
 
-                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones' || tipoMapa === 'abp' || tipoMapa === 'tiros'} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: (tipoMapa === 'transiciones' || tipoMapa === 'abp' || tipoMapa === 'tiros') ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
-                  <option value="Todas" style={{ background: '#111', color: '#fff' }}>TODAS LAS ACCIONES</option>
-                  <option value="Gol" style={{ background: '#111', color: '#fff' }}>GOLES</option>
-                  <option value="Remate" style={{ background: '#111', color: '#fff' }}>REMATES</option>
-                  <option value="Recuperación" style={{ background: '#111', color: '#fff' }}>RECUPERACIONES</option>
-                  <option value="Pérdida" style={{ background: '#111', color: '#fff' }}>PÉRDIDAS</option>
-                  <option value="Pase Incompleto" style={{ background: '#111', color: '#fff' }}>PASES INCOMPLETOS</option>
-                  <option value="Ocasión Fallada" style={{ background: '#111', color: '#fff' }}>OCASIONES FALLADAS</option>
-                  <option value="Duelo" style={{ background: '#111', color: '#fff' }}>DUELOS</option>
-                  <option value="Falta" style={{ background: '#111', color: '#fff' }}>FALTAS</option>
+                <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones' || tipoMapa === 'abp' || tipoMapa === 'tiros'} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', opacity: (tipoMapa === 'transiciones' || tipoMapa === 'abp' || tipoMapa === 'tiros') ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
+                  <option value="Todas" style={{ background: 'var(--panel)', color: 'var(--text)' }}>TODAS LAS ACCIONES</option>
+                  <option value="Gol" style={{ background: 'var(--panel)', color: 'var(--text)' }}>GOLES</option>
+                  <option value="Remate" style={{ background: 'var(--panel)', color: 'var(--text)' }}>REMATES</option>
+                  <option value="Recuperación" style={{ background: 'var(--panel)', color: 'var(--text)' }}>RECUPERACIONES</option>
+                  <option value="Pérdida" style={{ background: 'var(--panel)', color: 'var(--text)' }}>PÉRDIDAS</option>
+                  <option value="Pase Incompleto" style={{ background: 'var(--panel)', color: 'var(--text)' }}>PASES INCOMPLETOS</option>
+                  <option value="Ocasión Fallada" style={{ background: 'var(--panel)', color: 'var(--text)' }}>OCASIONES FALLADAS</option>
+                  <option value="Duelo" style={{ background: 'var(--panel)', color: 'var(--text)' }}>DUELOS</option>
+                  <option value="Falta" style={{ background: 'var(--panel)', color: 'var(--text)' }}>FALTAS</option>
                 </select>
 
-                <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setTipoMapa('tiros')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'tiros' ? '#333' : 'transparent', color: tipoMapa === 'tiros' ? 'var(--accent)' : 'var(--text-dim)' }}>TIROS (xG)</button>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
@@ -1596,7 +1596,7 @@ const COLORS_ORIGEN = {
             </div>
             
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: '#111', border: '2px solid rgba(255,255,255,0.2)' }}>
+              <div className="pitch-container" style={{ width: '100%', maxWidth: '800px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: 'var(--panel)', border: '2px solid rgba(255,255,255,0.2)' }}>
                 <PitchLinesOptimized />
                 
                 {tipoMapa === 'calor' && (
@@ -1724,7 +1724,7 @@ const COLORS_ORIGEN = {
             <div className="bento-card">
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                  <div className="stat-label" style={{ color: 'var(--accent)' }}>RENDIMIENTO: JUGADORES DE CAMPO</div>
-                 {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+                 {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
               </div>
               <div className="table-wrapper custom-scroll">
 <table style={{ minWidth: '950px', width: '100%', textAlign: 'center' }}>
@@ -1820,7 +1820,7 @@ const COLORS_ORIGEN = {
               <div className="bento-card" style={{ borderTop: '2px solid #3b82f6' }}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                    <div className="stat-label" style={{ color: '#3b82f6' }}>RENDIMIENTO: ARQUEROS</div>
-                   {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+                   {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
                 </div>
                 <div className="table-wrapper custom-scroll">
                   <table style={{ minWidth: '700px', width: '100%', textAlign: 'center' }}>
@@ -1906,7 +1906,7 @@ const COLORS_ORIGEN = {
                 RENDIMIENTO POR QUINTETOS 
                 <InfoBox texto="Rendimiento del equipo al jugar con estas combinaciones específicas de 5 jugadores en este partido." />
               </div>
-              {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+              {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
             </div>
             <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
@@ -1959,7 +1959,7 @@ const COLORS_ORIGEN = {
 
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
-                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.75rem' }}>
+                        <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: 'var(--text)', fontSize: '0.75rem' }}>
                           [{nombresQuinteto}]
                         </td>
                         <td style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-dim)' }}>
@@ -2003,7 +2003,7 @@ const COLORS_ORIGEN = {
           <div className="bento-card">
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                <div className="stat-label" style={{ color: 'var(--accent)' }}>DETALLE DE REMATES</div>
-               {esMovil && <span style={{fontSize: '0.65rem', color: '#888'}}>👉 Deslizá la tabla</span>}
+               {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
             </div>
             <div className="table-wrapper custom-scroll">
               <table style={{ minWidth: '500px', width: '100%', textAlign: 'center' }}>
@@ -2050,13 +2050,13 @@ const COLORS_ORIGEN = {
             </div>
             
             {!partidoSeleccionado.video_url ? (
-              <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '10px', alignItems: 'stretch', background: '#111', padding: '20px', borderRadius: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '10px', alignItems: 'stretch', background: 'var(--panel)', padding: '20px', borderRadius: '4px' }}>
                 <input 
                   type="text" 
                   placeholder="Pegá el link de YouTube..."
                   value={videoUrl}
                   onChange={(e) => setVideoUrl(e.target.value)}
-                  style={{ flex: 1, padding: '12px', background: '#000', color: '#fff', border: '1px solid var(--border)', borderRadius: '4px' }}
+                  style={{ flex: 1, padding: '12px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px' }}
                 />
                 <button onClick={guardarUrlVideo} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontWeight: 'bold', padding: '12px 25px' }}>
                   VINCULAR
@@ -2065,7 +2065,7 @@ const COLORS_ORIGEN = {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', background: 'var(--panel)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)', alignSelf: 'center', marginRight: '10px' }}>FILTROS:</span>
                   {['Gol', 'Remate', 'Pérdida', 'Recuperación', 'Falta', 'Duelo'].map(acc => (
                     <button 
@@ -2081,7 +2081,7 @@ const COLORS_ORIGEN = {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
                   
                   <div style={{ flex: '1 1 100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <div style={{ background: '#000', borderRadius: '4px', overflow: 'hidden', border: '1px solid #333', width: '100%', aspectRatio: '16/9' }}>
+                    <div style={{ background: 'var(--bg)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)', width: '100%', aspectRatio: '16/9' }}>
                       <iframe 
                         width="100%" 
                         height="100%" 
@@ -2094,21 +2094,21 @@ const COLORS_ORIGEN = {
                       ></iframe>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '20px', padding: '15px', background: '#111', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', gap: '20px', padding: '15px', background: 'var(--panel)', borderRadius: '4px' }}>
                         <div style={{ flex: 1 }}>
                           <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO PT</label>
-                          <input type="number" value={offsetPT} onChange={(e) => setOffsetPT(Number(e.target.value))} style={{ width: '100%', padding: '8px', background: '#000', color: '#fff', border: '1px solid #333' }} />
+                          <input type="number" value={offsetPT} onChange={(e) => setOffsetPT(Number(e.target.value))} style={{ width: '100%', padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }} />
                         </div>
                         <div style={{ flex: 1 }}>
                           <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO ST</label>
-                          <input type="number" value={offsetST} onChange={(e) => setOffsetST(Number(e.target.value))} style={{ width: '100%', padding: '8px', background: '#000', color: '#fff', border: '1px solid #333' }} />
+                          <input type="number" value={offsetST} onChange={(e) => setOffsetST(Number(e.target.value))} style={{ width: '100%', padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }} />
                         </div>
                     </div>
                   </div>
 
                   <div style={{ flex: esMovil ? '1 1 100%' : '1 1 300px', display: 'flex', flexDirection: 'column', maxHeight: esMovil ? '400px' : '550px', minWidth: 0 }}>
                     <div className="stat-label" style={{ marginBottom: '10px' }}>EVENTOS DEL PARTIDO ({eventosTimeline.length})</div>
-                    <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', background: '#111', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', background: 'var(--panel)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                       {eventosTimeline.length === 0 ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.8rem' }}>No hay eventos para estos filtros.</div>
                       ) : (
@@ -2118,7 +2118,7 @@ const COLORS_ORIGEN = {
                             <button 
                               key={ev.id || idx}
                               onClick={() => saltarAEventoVideo(ev)}
-                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000', border: `1px solid ${color}`, borderLeft: `4px solid ${color}`, padding: '8px 10px', cursor: 'pointer', borderRadius: '4px', textAlign: 'left' }}
+                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', border: `1px solid ${color}`, borderLeft: `4px solid ${color}`, padding: '8px 10px', cursor: 'pointer', borderRadius: '4px', textAlign: 'left' }}
                             >
                               <div style={{ pointerEvents: 'none' }}>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: color }}>{ev.accion.toUpperCase()}</div>
@@ -2150,7 +2150,7 @@ const COLORS_ORIGEN = {
           <div style={{ textAlign: 'right', maxWidth: '1000px', margin: '0 auto' }}>
             <button 
               onClick={() => setMostrarReporte(false)} 
-              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
+              style={{ background: '#ef4444', color: 'var(--text)', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
             >
               CERRAR VISTA PREVIA ✖
             </button>
@@ -2164,7 +2164,7 @@ const COLORS_ORIGEN = {
   );
 }
 
-const escudoFallback = { borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, margin: '0 auto' };
+const escudoFallback = { borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, margin: '0 auto' };
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontSize: '0.9rem', alignItems: 'center' };
 const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };

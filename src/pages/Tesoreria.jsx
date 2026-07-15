@@ -475,13 +475,13 @@ function Tesoreria() {
       <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', background: j.porcAsistencia < 50 ? '#7f1d1d' : 'transparent', color: j.porcAsistencia < 50 ? '#fff' : j.porcAsistencia < 75 ? '#f59e0b' : '#00ff88' }}>{j.porcAsistencia}%</span>
     ) : <span style={{ color: '#555', fontSize: '0.7rem' }}>Muestra insuf.</span> },
     { k: 'deuda', t: 'DEUDA', g: 'eco', r: j => j.esBecado ? (
-      <span style={{ background: '#3b82f6', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO</span>
+      <span style={{ background: '#3b82f6', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO</span>
     ) : j.deudaTotal > 0 ? (
       <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.1rem' }}>${j.deudaTotal.toLocaleString()}</span>
     ) : j.pagoEsteMes ? (
       <span style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '0.8rem' }}>✅ PAGADO</span>
     ) : (
-      <span style={{ color: '#888', fontWeight: 'bold', fontSize: '0.8rem' }}>AL DÍA</span>
+      <span style={{ color: 'var(--text-dim)', fontWeight: 'bold', fontSize: '0.8rem' }}>AL DÍA</span>
     ) },
     { k: 'acciones', t: 'ACCIONES', g: 'acc', r: j => {
       const misDeudasSeguras = j.misDeudas || [];
@@ -505,9 +505,9 @@ function Tesoreria() {
   const GRUPOS_STAFF_LABEL = { gen: 'LIQUIDACIÓN', eco: 'MONTO', acc: 'ACCIONES' };
   const colEmpAcciones = (color) => ({ k: 'acciones', t: 'ACCIONES', g: 'acc', r: emp => (
     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-      <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: '#fff', border: '1px solid #555', padding: '8px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>✏️ EDITAR</button>
+      <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid #555', padding: '8px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>✏️ EDITAR</button>
       {emp.pagoEsteMes ? (
-        <button disabled style={{ background: '#222', color: '#555', border: '1px solid #333', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem', minHeight: '38px' }}>✅ LIQUIDADO</button>
+        <button disabled style={{ background: 'var(--panel)', color: '#555', border: '1px solid var(--border)', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem', minHeight: '38px' }}>✅ LIQUIDADO</button>
       ) : (
         <button onClick={() => { setFormSueldo({ ...formSueldo, monto: emp.sueldo_base, descripcion: `${color === '#f59e0b' ? 'Sueldo' : 'Viático'} de ${nombreMesVencido}`, cajaOrigen: 'Efectivo' }); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: color, color: color === '#f59e0b' ? '#000' : '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💳 PAGAR</button>
       )}
@@ -516,7 +516,7 @@ function Tesoreria() {
   const colEmpLiq = (label) => ({ k: 'liq', t: 'LIQUIDACIÓN', g: 'gen', r: emp => emp.pagoEsteMes ? (
     <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ {label}</span>
   ) : (
-    <span style={{ background: '#7f1d1d', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
+    <span style={{ background: '#7f1d1d', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
   ) });
   const colEmpMonto = { k: 'monto', t: 'MONTO', g: 'eco', r: emp => (
     <div>
@@ -555,17 +555,17 @@ function Tesoreria() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
             <button 
               onClick={() => setModalConfig(true)} 
-              style={{ background: 'transparent', color: '#fff', border: '1px solid #333', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
+              style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
             >
               ⚙️ CONFIG. BANCARIA
             </button>
-            <div style={{ background: '#0a0a0a', padding: '10px 15px', borderRadius: '8px', border: '1px solid #333' }}>
+            <div style={{ background: '#0a0a0a', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>PERÍODO ACTIVO</span>
               <input 
                 type="month" 
                 value={periodo} 
                 onChange={(e) => setPeriodo(e.target.value)} 
-                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer' }}
               />
             </div>
           </div>
@@ -596,7 +596,7 @@ function Tesoreria() {
                   </select>
                   <h3 style={{ margin: 0 }}>Estado de Cuenta</h3>
                 </div>
-                <button onClick={() => setModalGenerar(true)} style={{ background: '#a855f7', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button onClick={() => setModalGenerar(true)} style={{ background: '#a855f7', color: 'var(--text)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <span>⚙️</span> GENERAR CUOTAS MASIVAS
                 </button>
               </div>
@@ -642,7 +642,7 @@ function Tesoreria() {
                           </td>
                           <td style={{ padding: '12px' }}>
                             {j.esBecado ? (
-                              <span style={{ background: '#3b82f6', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO / EXENTO</span>
+                              <span style={{ background: '#3b82f6', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO / EXENTO</span>
                             ) : j.deudaTotal > 0 ? (
                               <div>
                                 <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.1rem' }}>${j.deudaTotal.toLocaleString()}</span>
@@ -653,7 +653,7 @@ function Tesoreria() {
                             ) : j.pagoEsteMes ? (
                               <span style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '0.8rem' }}>✅ PAGADO ESTE MES</span>
                             ) : (
-                              <span style={{ color: '#888', fontWeight: 'bold', fontSize: '0.8rem' }}>AL DÍA (Sin deuda)</span>
+                              <span style={{ color: 'var(--text-dim)', fontWeight: 'bold', fontSize: '0.8rem' }}>AL DÍA (Sin deuda)</span>
                             )}
                           </td>
                           <td style={{ textAlign: 'right', padding: '12px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -737,7 +737,7 @@ function Tesoreria() {
                               <div style={{ color: '#aaa', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                             </div>
                           ) : (
-                            <span style={{ background: '#7f1d1d', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
+                            <span style={{ background: '#7f1d1d', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right' }}>
@@ -749,11 +749,11 @@ function Tesoreria() {
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: '#fff', border: '1px solid #555', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
+                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid #555', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
                           {emp.pagoEsteMes ? (
-                             <button disabled style={{ background: '#222', color: '#555', border: '1px solid #333', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
+                             <button disabled style={{ background: 'var(--panel)', color: '#555', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
                           ) : (
-                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Sueldo de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR BASE</button>
+                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Sueldo de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#ef4444', color: 'var(--text)', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR BASE</button>
                           )}
                         </td>
                       </tr>
@@ -775,7 +775,7 @@ function Tesoreria() {
             <div className="bento-card" style={{ borderTop: '3px solid #a855f7' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                 <h3 style={{ margin: 0, color: '#a855f7' }}>Viáticos de Jugadores - {nombreMesVencido}</h3>
-                <button onClick={() => { setFormEmpleado({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' }); setModalEmpleado(true); }} style={{ background: '#a855f7', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                <button onClick={() => { setFormEmpleado({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' }); setModalEmpleado(true); }} style={{ background: '#a855f7', color: 'var(--text)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   + ASIGNAR VIÁTICO
                 </button>
               </div>
@@ -816,7 +816,7 @@ function Tesoreria() {
                                <div style={{ color: '#aaa', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                              </div>
                           ) : (
-                            <span style={{ background: '#7f1d1d', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
+                            <span style={{ background: '#7f1d1d', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right' }}>
@@ -828,11 +828,11 @@ function Tesoreria() {
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: '#fff', border: '1px solid #555', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
+                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid #555', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
                           {emp.pagoEsteMes ? (
-                             <button disabled style={{ background: '#222', color: '#555', border: '1px solid #333', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
+                             <button disabled style={{ background: 'var(--panel)', color: '#555', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
                           ) : (
-                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Viático de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#a855f7', color: '#fff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR VIÁTICO</button>
+                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Viático de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#a855f7', color: 'var(--text)', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR VIÁTICO</button>
                           )}
                         </td>
                       </tr>
@@ -853,16 +853,16 @@ function Tesoreria() {
           {vista === 'egresos' && (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-                <div style={{ background: '#111', padding: '20px', borderRadius: '12px', border: '1px solid #00ff88', textAlign: 'center' }}>
+                <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: '1px solid #00ff88', textAlign: 'center' }}>
                   <div className="stat-label">INGRESOS DEL MES</div>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#00ff88' }}>+ ${balance.ingresos.toLocaleString()}</div>
                 </div>
-                <div style={{ background: '#111', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444', textAlign: 'center' }}>
+                <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444', textAlign: 'center' }}>
                   <div className="stat-label">SALIDAS DEL MES</div>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#ef4444' }}>- ${balance.egresos.toLocaleString()}</div>
                 </div>
                 <div style={{ background: '#0a0a0a', padding: '20px', borderRadius: '12px', border: `2px solid ${(balance.ingresos - balance.egresos) >= 0 ? '#3b82f6' : '#ef4444'}`, textAlign: 'center' }}>
-                  <div className="stat-label" style={{ color: '#fff' }}>BALANCE FINAL</div>
+                  <div className="stat-label" style={{ color: 'var(--text)' }}>BALANCE FINAL</div>
                   <div style={{ fontSize: '2.5rem', fontWeight: 900, color: (balance.ingresos - balance.egresos) >= 0 ? '#3b82f6' : '#ef4444' }}>
                     ${(balance.ingresos - balance.egresos).toLocaleString()}
                   </div>
@@ -876,7 +876,7 @@ function Tesoreria() {
                     <button onClick={() => setModalIngresoExtra(true)} style={{ background: '#00ff88', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                       + INGRESAR PLATA
                     </button>
-                    <button onClick={() => setModalGasto(true)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                    <button onClick={() => setModalGasto(true)} style={{ background: '#ef4444', color: 'var(--text)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                       - REGISTRAR SALIDA
                     </button>
                   </div>
@@ -972,7 +972,7 @@ function Tesoreria() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false}/>
                       <XAxis dataKey="name" stroke="#555" fontSize={10}/>
                       <YAxis stroke="#555" fontSize={10} width={60} tickFormatter={(val) => `$${val/1000}k`} />
-                      <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} itemStyle={{ color: '#fff', fontWeight: 'bold' }} labelStyle={{ color: '#aaa', marginBottom: '5px' }} />
+                      <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} labelStyle={{ color: '#aaa', marginBottom: '5px' }} />
                       <Line type="monotone" name="Ingresos" dataKey="ingresos" stroke="#00ff88" strokeWidth={3} dot={{fill: '#00ff88'}} />
                       <Line type="monotone" name="Egresos" dataKey="egresos" stroke="#ef4444" strokeWidth={3} dot={{fill: '#ef4444'}} />
                     </LineChart>
@@ -987,18 +987,18 @@ function Tesoreria() {
                         <Pie data={datosReporte.dataTortaIngresos} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none">
                           {datosReporte.dataTortaIngresos.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                         </Pie>
-                        <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} itemStyle={{ color: '#fff', fontWeight: 'bold' }} formatter={(val) => `$${val.toLocaleString()}`} />
+                        <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} formatter={(val) => `$${val.toLocaleString()}`} />
                       </PieChart>
                    </ResponsiveContainer>
                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.7rem', color: '#888' }}>Total</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Total</div>
                       <div style={{ fontWeight: 'bold' }}>${datosReporte.ingresosTotal.toLocaleString()}</div>
                    </div>
                  </div>
               </div>
 
               <div className="bento-card" style={{ gridColumn: '1 / -1', display: 'flex', gap: '20px', flexWrap: 'wrap', background: 'transparent', border: 'none', padding: 0 }}>
-                <div style={{ flex: 1, minWidth: '300px', background: '#111', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444' }}>
+                <div style={{ flex: 1, minWidth: '300px', background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                     <div className="stat-label" style={{ color: '#ef4444' }}>🔴 TOP 5 DEUDORES (HISTÓRICO)</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ef4444' }}>${datosReporte.deudaTotal.toLocaleString()} <span style={{fontSize: '0.7rem', color:'#666'}}>en la calle</span></div>
@@ -1017,14 +1017,14 @@ function Tesoreria() {
                   )}
                 </div>
 
-                <div style={{ flex: 1, minWidth: '300px', background: '#111', padding: '20px', borderRadius: '12px', border: '1px solid #333' }}>
+                <div style={{ flex: 1, minWidth: '300px', background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   <div className="stat-label" style={{ marginBottom: '15px' }}>DISTRIBUCIÓN DE EGRESOS</div>
                   <div style={{ height: '200px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={datosReporte.dataCat} layout="vertical" margin={{ left: 30, right: 20 }}>
                           <XAxis type="number" hide />
                           <YAxis dataKey="nombre" type="category" stroke="#888" fontSize={10} width={90} />
-                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ background: '#000', border: '1px solid #333', borderRadius:'8px' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} labelStyle={{ color: '#aaa' }} formatter={(val) => `$${val.toLocaleString()}`} />
+                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius:'8px' }} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} labelStyle={{ color: '#aaa' }} formatter={(val) => `$${val.toLocaleString()}`} />
                           <Bar dataKey="monto" radius={[0, 4, 4, 0]} barSize={15}>
                             {datosReporte.dataCat.map((entry, index) => <Cell key={index} fill={entry.nombre === 'Sueldos y Viáticos' ? '#f59e0b' : '#333'} />)}
                           </Bar>
@@ -1046,7 +1046,7 @@ function Tesoreria() {
           <div className="bento-card" style={{ width: '450px', border: '1px solid #facc15' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <h3 style={{ marginTop: 0, color: '#facc15' }}>Detalle de Obligaciones</h3>
-              <button onClick={() => setModalDetalleDeuda({ visible: false, jugador: null, deudas: [] })} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+              <button onClick={() => setModalDetalleDeuda({ visible: false, jugador: null, deudas: [] })} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
             </div>
             
             <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '20px' }}>
@@ -1058,9 +1058,9 @@ function Tesoreria() {
                 <div style={{ textAlign: 'center', color: '#666', padding: '20px' }}>No hay deudas pendientes detectadas.</div>
               ) : (
                 modalDetalleDeuda.deudas.map(d => (
-                  <div key={d.id} style={{ background: '#111', padding: '12px', borderRadius: '8px', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={d.id} style={{ background: 'var(--panel)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#fff' }}>{d.concepto}</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text)' }}>{d.concepto}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
                         Original: ${Number(d.monto_original).toLocaleString()} | Pagado: <span style={{ color: d.monto_pagado > 0 ? '#00ff88' : '#888' }}>${Number(d.monto_pagado).toLocaleString()}</span>
                       </div>
@@ -1101,8 +1101,8 @@ function Tesoreria() {
               <div><label style={lblStyle}>WhatsApp Tesorería (para comprobantes)</label><input type="text" value={formConfig.whatsapp_tesoreria} onChange={(e) => setFormConfig({...formConfig, whatsapp_tesoreria: e.target.value})} style={inputFormStyle} /><span style={{fontSize: '0.7rem', color: '#555'}}>Ej: 5491144445555</span></div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalConfig(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={guardarConfigBancaria} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GUARDAR</button>
+              <button onClick={() => setModalConfig(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={guardarConfigBancaria} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GUARDAR</button>
             </div>
           </div>
         </div>
@@ -1122,8 +1122,8 @@ function Tesoreria() {
               <div><label style={lblStyle}>Fecha Límite</label><input type="date" value={formCuota.vencimiento} onChange={(e) => setFormCuota({...formCuota, vencimiento: e.target.value})} style={inputFormStyle} /></div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalGenerar(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={generarCuotasMasivas} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#a855f7', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GENERAR</button>
+              <button onClick={() => setModalGenerar(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={generarCuotasMasivas} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#a855f7', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GENERAR</button>
             </div>
           </div>
         </div>
@@ -1133,7 +1133,7 @@ function Tesoreria() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="bento-card" style={{ width: '400px', border: '1px solid #00ff88' }}>
             <h3 style={{ marginTop: 0, color: '#00ff88' }}>Registrar Ingreso</h3>
-            <div style={{ background: '#111', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #333' }}>
+            <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>De:</div>
               <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>{modalPago.jugador.apellido}, {modalPago.jugador.nombre}</div>
               <div style={{ fontSize: '0.8rem', color: '#3b82f6', marginTop: '5px' }}>📌 {modalPago.deuda.concepto}</div>
@@ -1149,7 +1149,7 @@ function Tesoreria() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => {setModalPago({visible: false, deuda: null, jugador: null}); setMontoPagar(''); setMetodoPago('Efectivo');}} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>CANCELAR</button>
+              <button onClick={() => {setModalPago({visible: false, deuda: null, jugador: null}); setMontoPagar(''); setMetodoPago('Efectivo');}} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>CANCELAR</button>
               <button onClick={procesarPago} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#00ff88', border: 'none', color: '#000', fontWeight: '900', borderRadius: '6px', cursor: 'pointer' }}>COBRAR</button>
             </div>
           </div>
@@ -1161,7 +1161,7 @@ function Tesoreria() {
           <div className="bento-card" style={{ width: '450px', border: '1px solid #f59e0b' }}>
             <h3 style={{ marginTop: 0, color: '#f59e0b' }}>{formEmpleado.id ? 'Modificar Empleado' : 'Alta de Personal'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-              <div style={{ background: '#111', padding: '10px', borderRadius: '6px', border: '1px solid #333' }}>
+              <div style={{ background: 'var(--panel)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }}>
                 <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>¿Es jugador?</label>
                 <select value={formEmpleado.jugador_id} onChange={(e) => { const jId = e.target.value; const jSel = jugadoresInfo.find(j => String(j.id) === jId); setFormEmpleado({ ...formEmpleado, jugador_id: jId, nombre_completo: jSel ? `${jSel.nombre} ${jSel.apellido}` : formEmpleado.nombre_completo }); }} style={{ ...inputFormStyle, border: 'none', background: 'transparent', padding: '5px 0' }}>
                   <option value="">No, es personal externo.</option>{jugadoresInfo.map(j => <option key={j.id} value={j.id}>{j.apellido}, {j.nombre}</option>)}
@@ -1174,7 +1174,7 @@ function Tesoreria() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalEmpleado(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalEmpleado(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={guardarEmpleado} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#f59e0b', border: 'none', color: '#000', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GUARDAR</button>
             </div>
           </div>
@@ -1188,13 +1188,13 @@ function Tesoreria() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div><label style={lblStyle}>Monto a enviar ($)</label><input type="number" value={formSueldo.monto} onChange={(e) => setFormSueldo({...formSueldo, monto: e.target.value})} style={{ ...inputFormStyle, borderColor: '#ef4444', fontSize: '1.2rem', padding: '15px' }} /></div>
               <div><label style={lblStyle}>Detalle</label><input type="text" value={formSueldo.descripcion} onChange={(e) => setFormSueldo({...formSueldo, descripcion: e.target.value})} placeholder={`Sueldo de ${nombreMesVencido}`} style={inputFormStyle} /></div>
-              <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #333' }}>
+              <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <PaymentSelector titulo="¿Con qué transferís?" onMethodSelect={(metodo) => setFormSueldo({...formSueldo, cajaOrigen: metodo})} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalSueldo({visible: false, empleado: null})} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={registrarPagoSueldo} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#ef4444', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>PAGAR</button>
+              <button onClick={() => setModalSueldo({visible: false, empleado: null})} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={registrarPagoSueldo} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#ef4444', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>PAGAR</button>
             </div>
           </div>
         </div>
@@ -1213,13 +1213,13 @@ function Tesoreria() {
               </div>
               <div><label style={lblStyle}>Monto ($)</label><input type="number" value={formGasto.monto} onChange={(e) => setFormGasto({...formGasto, monto: e.target.value})} style={{ ...inputFormStyle, borderColor: '#ef4444', fontSize: '1.2rem', padding: '15px' }} /></div>
               <div><label style={lblStyle}>Descripción</label><input type="text" value={formGasto.descripcion} onChange={(e) => setFormGasto({...formGasto, descripcion: e.target.value})} style={inputFormStyle} /></div>
-              <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #333' }}>
+              <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <PaymentSelector titulo="¿Con qué app pagás?" onMethodSelect={(metodo) => setFormGasto({...formGasto, cajaOrigen: metodo})} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalGasto(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={registrarGastoGeneral} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#ef4444', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>REGISTRAR</button>
+              <button onClick={() => setModalGasto(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={registrarGastoGeneral} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#ef4444', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>REGISTRAR</button>
             </div>
           </div>
         </div>
@@ -1246,7 +1246,7 @@ function Tesoreria() {
               <div><label style={lblStyle}>Descripción</label><input type="text" value={formIngresoExtra.descripcion} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, descripcion: e.target.value})} style={inputFormStyle} /></div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalIngresoExtra(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalIngresoExtra(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={registrarIngresoExtraordinario} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#00ff88', border: 'none', color: '#000', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>SUMAR</button>
             </div>
           </div>
@@ -1258,8 +1258,8 @@ function Tesoreria() {
 }
 
 const tabBtn = { padding: '10px 15px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '900', transition: '0.2s' };
-const selectStyle = { padding: '8px 15px', background: '#111', color: '#fff', border: '1px solid #333', borderRadius: '8px', fontWeight: 'bold', outline: 'none' };
-const inputFormStyle = { width: '100%', padding: '10px', background: '#111', border: '1px solid #333', color: '#fff', borderRadius: '6px', marginTop: '5px', outline: 'none' };
+const selectStyle = { padding: '8px 15px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 'bold', outline: 'none' };
+const inputFormStyle = { width: '100%', padding: '10px', background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', marginTop: '5px', outline: 'none' };
 const lblStyle = { fontSize: '0.75rem', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' };
 
 export default Tesoreria;

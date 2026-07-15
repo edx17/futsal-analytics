@@ -324,8 +324,8 @@ function Plantel() {
     { k: 'categoria', t: 'CATEGORÍA', g: 'gen', r: j => j.categoria?.toUpperCase() || '—' },
     { k: 'acciones', t: 'ACCIONES', g: 'gen', r: j => (
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: '#fff', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>💬 WhatsApp</button>
-        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={{ background: '#222', border: '1px solid #333', color: '#fff', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>📋 PIN</button>
+        <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: 'var(--text)', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>💬 WhatsApp</button>
+        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>📋 PIN</button>
         <button onClick={(e) => { e.stopPropagation(); abrirEdicion(j); }} style={{ ...btnGhost, minHeight: '40px' }}>EDITAR</button>
         <button onClick={(e) => { e.stopPropagation(); eliminarJugador(j.id); }} style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444', minHeight: '40px' }}>✕ ELIMINAR</button>
       </div>
@@ -337,7 +337,7 @@ function Plantel() {
       <div className="bento-card">
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-          <div className="stat-label" style={{ fontSize: '1.2rem', color: '#fff' }}>MI PLANTEL ({jugadoresOrdenados.length})</div>
+          <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--text)' }}>MI PLANTEL ({jugadoresOrdenados.length})</div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR CT</button>
             <button onClick={copiarTodosSeparados} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR WHATSAPP</button>
@@ -383,7 +383,7 @@ function Plantel() {
           getId={(j) => j.id}
           getTitulo={(j) => `${j.apellido ? j.apellido.toUpperCase() + ' ' : ''}${(j.nombre || '').toUpperCase()}`}
           onRowClick={(j) => setJugadorSeleccionado(j)}
-          renderBadges={(j) => (<div style={{ width: 26, height: 26, borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>{j.foto ? <img src={j.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: 'var(--accent)' }}>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</span>}</div>)}
+          renderBadges={(j) => (<div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>{j.foto ? <img src={j.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: 'var(--accent)' }}>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</span>}</div>)}
         >
         <div className="table-wrapper">
           <table>
@@ -400,8 +400,8 @@ function Plantel() {
               {jugadoresOrdenados.map(j => (
                 <tr key={j.id} style={{ textAlign: 'center' }}>
                   <td className="mono-accent">{j.dorsal}</td>
-                  <td style={{ textAlign: 'left', fontWeight: 700, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={() => setJugadorSeleccionado(j)}>
-                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                  <td style={{ textAlign: 'left', fontWeight: 700, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={() => setJugadorSeleccionado(j)}>
+                    <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
                        {j.foto ? <img src={j.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span style={{fontSize:'0.6rem', color:'var(--accent)'}}>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</span>}
                     </div>
                     <span style={{ textDecoration: 'underline', textUnderlineOffset: '4px' }}>
@@ -416,7 +416,7 @@ function Plantel() {
                       <button 
                         onClick={() => enviarPorWhatsApp(j)} 
                         title={j.contacto ? "Enviar directo por WhatsApp" : "Enviar (Elegir contacto en WhatsApp)"}
-                        style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: '#fff', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: 'var(--text)', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         💬
                       </button>
@@ -424,7 +424,7 @@ function Plantel() {
                       <button 
                         onClick={() => copiarPinIndividual(j)} 
                         title="Copiar mensaje de acceso"
-                        style={{ background: '#222', border: '1px solid #333', color: '#fff', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         📋
                       </button>
@@ -444,15 +444,15 @@ function Plantel() {
 
       {jugadorSeleccionado && (
         <div className="modal-overlay">
-          <div className="bento-card modal-content" style={{ maxWidth: '600px', background: '#111' }}>
+          <div className="bento-card modal-content" style={{ maxWidth: '600px', background: 'var(--panel)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #333', paddingBottom: '20px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
                    {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span style={{fontSize:'1.2rem', fontWeight:800, color:'var(--accent)'}}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.charAt(0) : ''}{jugadorSeleccionado.nombre.charAt(0)}</span>}
                 </div>
                 <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
                 <div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.toUpperCase() + ' ' : ''}{jugadorSeleccionado.nombre.toUpperCase()}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.toUpperCase() + ' ' : ''}{jugadorSeleccionado.nombre.toUpperCase()}</div>
                   <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginTop: '5px' }}>{jugadorSeleccionado.posicion?.toUpperCase()} // {jugadorSeleccionado.categoria?.toUpperCase()}</div>
                 </div>
               </div>
@@ -488,7 +488,7 @@ function Plantel() {
                    {/* WhatsApp Directo */}
                    <button 
                     onClick={() => enviarPorWhatsApp(jugadorSeleccionado)} 
-                    style={{ background: jugadorSeleccionado.contacto ? '#25D366' : '#128C7E', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                    style={{ background: jugadorSeleccionado.contacto ? '#25D366' : '#128C7E', border: 'none', color: 'var(--text)', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
                    >
                     💬 ENVIAR WHATSAPP
                    </button>
@@ -506,7 +506,7 @@ function Plantel() {
                
                <div style={fichaRow}>
                 <span>Código de Club (UUID):</span> 
-                <strong style={{ color: '#fff', fontSize: '0.75rem', fontFamily: 'monospace' }}>{clubId}</strong>
+                <strong style={{ color: 'var(--text)', fontSize: '0.75rem', fontFamily: 'monospace' }}>{clubId}</strong>
                </div>
                
                <div style={fichaRow}>
@@ -530,7 +530,7 @@ function Plantel() {
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '800px' }}>
             <div className="modal-header">
-              <div className="stat-label" style={{ fontSize: '1.2rem', color: '#fff' }}>
+              <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--text)' }}>
                 {formData.id ? 'EDITAR FICHA MÉDICA Y TÉCNICA' : 'NUEVA FICHA DE JUGADOR'}
               </div>
               <button onClick={() => setMostrarModalAlta(false)} className="close-btn">×</button>
@@ -538,10 +538,10 @@ function Plantel() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
-              <div style={{ background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
+              <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>IDENTIFICACIÓN Y CANCHA</div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
-                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
                       {formData.foto ? <img src={formData.foto} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'#555', fontWeight:800}}>FOTO</span>}
                     </div>
                     <div style={{ flex: 1 }}>
@@ -598,7 +598,7 @@ function Plantel() {
                 </div>
               </div>
 
-              <div style={{ background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
+              <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>FICHA MÉDICA Y FÍSICA</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '15px', marginBottom: '15px' }}>
                   <div><div className="section-title">NACIMIENTO</div><input type="date" value={formData.fechanac} onChange={e => setFormData({...formData, fechanac: e.target.value})} style={inputIndustrial} /></div>
@@ -613,7 +613,7 @@ function Plantel() {
                 </div>
               </div>
 
-              <div style={{ background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
+              <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>CONTACTO E INDUMENTARIA</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
                   <div><div className="section-title">TELÉFONO</div><input type="number" value={formData.contacto} onChange={e => setFormData({...formData, contacto: e.target.value})} style={inputIndustrial} placeholder="Ej: 1123456789" /></div>
@@ -648,8 +648,8 @@ function Plantel() {
   );
 }
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
-const btnGhost = { background: 'transparent', border: '1px solid #333', color: '#fff', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800 };
+const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' };
+const btnGhost = { background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800 };
 const fichaRow = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px dashed #333', color: 'var(--text-dim)', fontSize: '0.9rem' };
 
 export default Plantel;

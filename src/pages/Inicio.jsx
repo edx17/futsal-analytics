@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
+import Campanita from '../components/Campanita';
 
 import { analizarPartido } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
@@ -207,7 +208,7 @@ export default function Inicio() {
         <p style={{ color: 'var(--text-dim)', marginBottom: 40 }}>¿Qué necesitás hacer hoy?</p>
         <div style={{ display: 'grid', gap: 20 }}>
           {accesos.map((a) => (
-            <button key={a.ruta} onClick={() => navigate(a.ruta)} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'var(--panel)', border: '1px solid var(--border)', padding: 20, borderRadius: 12, color: '#fff', cursor: 'pointer', textAlign: 'left' }}>
+            <button key={a.ruta} onClick={() => navigate(a.ruta)} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'var(--panel)', border: '1px solid var(--border)', padding: 20, borderRadius: 12, color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}>
               <span style={{ fontSize: '2.5rem' }}>{a.icon}</span>
               <div><strong style={{ display: 'block', fontSize: '1.2rem' }}>{a.t}</strong><span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{a.s}</span></div>
             </button>
@@ -552,14 +553,14 @@ export default function Inicio() {
       return (
         <Card key={id} id={id} accent="var(--accent)" index={index}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: enRacha ? '#10b981' : 'var(--text-dim)', background: enRacha ? 'rgba(16,185,129,0.1)' : '#111', border: `1px solid ${enRacha ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, padding: '5px 12px', borderRadius: 20 }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: enRacha ? '#10b981' : 'var(--text-dim)', background: enRacha ? 'rgba(16,185,129,0.1)' : 'var(--bg)', border: `1px solid ${enRacha ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, padding: '5px 12px', borderRadius: 20 }}>
               {enRacha ? `🔥 En racha · ${nInv} invicto` : forma.length ? 'Forma estable' : 'Sin partidos aún'}
             </span>
             {forma.length > 1 && <svg width="80" height="30" viewBox="0 0 80 30"><polyline points={poly} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 14 }}>
-            {[{ n: pts, l: 'PTS', c: '#fff' }, { n: (dg > 0 ? '+' : '') + dg, l: 'DG', c: dg >= 0 ? '#10b981' : '#ef4444' }, { n: `${v}-${e}-${d}`, l: 'V-E-D', c: '#fff', sm: true }, { n: `${gf}/${gc}`, l: 'GF/GC', c: 'var(--accent)', sm: true }].map((b, i) => (
-              <div key={i} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
+            {[{ n: pts, l: 'PTS', c: 'var(--text)' }, { n: (dg > 0 ? '+' : '') + dg, l: 'DG', c: dg >= 0 ? '#10b981' : '#ef4444' }, { n: `${v}-${e}-${d}`, l: 'V-E-D', c: 'var(--text)', sm: true }, { n: `${gf}/${gc}`, l: 'GF/GC', c: 'var(--accent)', sm: true }].map((b, i) => (
+              <div key={i} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
                 <div style={{ ...mono, fontSize: b.sm ? '0.95rem' : '1.4rem', fontWeight: 900, color: b.c }}>{b.n}</div>
                 <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700, marginTop: 2 }}>{b.l}</div>
               </div>
@@ -578,10 +579,10 @@ export default function Inicio() {
           {triage.length === 0 ? <div style={{ textAlign: 'center', color: '#10b981', padding: 14, fontSize: '0.85rem' }}>✅ Todo en orden. Sin alertas.</div> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {triage.map((a, i) => (
-                <div key={i} onClick={() => !modoEdicion && a.ruta && navigate(a.ruta)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', cursor: modoEdicion ? 'default' : 'pointer' }}>
+                <div key={i} onClick={() => !modoEdicion && a.ruta && navigate(a.ruta)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', cursor: modoEdicion ? 'default' : 'pointer' }}>
                   <span style={{ width: 30, height: 30, borderRadius: 8, background: bg[a.nivel], color: col[a.nivel], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{a.ico}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.titulo}</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.titulo}</div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{a.sub}</div>
                   </div>
                   <span style={{ color: 'var(--text-dim)' }}>›</span>
@@ -603,13 +604,13 @@ export default function Inicio() {
           {proximo ? (
             <>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, margin: '2px 0 12px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff' }}>vs {proximo.rival?.toUpperCase()}</span>
+                <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>vs {proximo.rival?.toUpperCase()}</span>
                 <span style={{ ...mono, fontSize: '0.7rem', color: 'var(--text-dim)' }}>{proximo.fecha?.split('-').reverse().join('/')} · {proximo.competicion || proximo.torneo_id || ''}</span>
               </div>
               {prep && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
                   {[{ n: prep.disponibles, l: 'disponibles', c: '#10b981' }, { n: prep.susp, l: 'suspendidos', c: '#ef4444' }, { n: prep.enDuda, l: 'en duda', c: '#f59e0b' }].map((b, i) => (
-                    <div key={i} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 4px', textAlign: 'center' }}>
+                    <div key={i} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 4px', textAlign: 'center' }}>
                       <div style={{ ...mono, fontSize: '1.2rem', fontWeight: 900, color: b.c }}>{b.n}</div>
                       <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>{b.l}</div>
                     </div>
@@ -618,10 +619,10 @@ export default function Inicio() {
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <button onClick={() => !modoEdicion && navigate('/scouting-rivales')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: 10 }}>🕵️‍♂️ Scouting rival</button>
-                <button onClick={() => !modoEdicion && navigate('/microciclo')} style={{ fontSize: '0.75rem', padding: 10, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>🗓️ Planificar sesión</button>
+                <button onClick={() => !modoEdicion && navigate('/microciclo')} style={{ fontSize: '0.75rem', padding: 10, background: '#8b5cf6', color: 'var(--text)', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>🗓️ Planificar sesión</button>
               </div>
             </>
-          ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, background: '#111', borderRadius: 8, border: '1px dashed var(--border)', fontSize: '0.8rem' }}>Sin partidos pendientes</div>}
+          ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, background: 'var(--bg)', borderRadius: 8, border: '1px dashed var(--border)', fontSize: '0.8rem' }}>Sin partidos pendientes</div>}
         </Card>
       );
     }
@@ -643,7 +644,7 @@ export default function Inicio() {
           {forma.length > 1 && <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', textAlign: 'right', marginTop: 4 }}>más reciente →</div>}
           {hayXg && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>xG últ. <span style={{ ...mono, color: '#fff' }}>{xgPropio.toFixed(1)}</span> a favor · <span style={{ ...mono, color: '#ef4444' }}>{xgRival.toFixed(1)}</span> en contra</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>xG últ. <span style={{ ...mono, color: 'var(--text)' }}>{xgPropio.toFixed(1)}</span> a favor · <span style={{ ...mono, color: '#ef4444' }}>{xgRival.toFixed(1)}</span> en contra</span>
               {ver && <span style={{ fontSize: '0.65rem', color: ver.c, background: `rgba(${hexToRgb(ver.c)},0.12)`, padding: '3px 8px', borderRadius: 8, fontWeight: 700 }}>{ver.t}</span>}
             </div>
           )}
@@ -660,9 +661,9 @@ export default function Inicio() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {top.map((j, i) => (
                 <div key={j.id} onClick={() => !modoEdicion && navigate('/jugador', { state: { jugadorId: j.id } })} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: modoEdicion ? 'default' : 'pointer' }}>
-                  <span style={{ width: 24, height: 24, borderRadius: '50%', background: i === 0 ? 'rgba(0,230,118,0.15)' : '#111', color: i === 0 ? 'var(--accent)' : 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
+                  <span style={{ width: 24, height: 24, borderRadius: '50%', background: i === 0 ? 'rgba(0,230,118,0.15)' : 'var(--bg)', color: i === 0 ? 'var(--accent)' : 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, flexShrink: 0 }}>{i + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(j.nombre || '').toUpperCase()}</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(j.nombre || '').toUpperCase()}</div>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{j.posicion || '—'}</div>
                   </div>
                   <span style={{ ...mono, fontWeight: 800, fontSize: '0.95rem', color: Number(j.impacto) >= 6 ? 'var(--accent)' : '#ef4444' }}>{Number(j.impacto).toFixed(1)}</span>
@@ -681,11 +682,11 @@ export default function Inicio() {
           {pulso.registros === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', padding: 10 }}>Sin cargas de wellness hoy</div> : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
                   <div style={{ ...mono, fontSize: '1.4rem', fontWeight: 900, color: pulso.score >= 3.5 ? '#10b981' : pulso.score >= 2.5 ? '#f59e0b' : '#ef4444' }}>{pulso.score}<span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>/5</span></div>
                   <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700 }}>READINESS</div>
                 </div>
-                <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 4px', textAlign: 'center' }}>
                   <div style={{ ...mono, fontSize: '1.4rem', fontWeight: 900, color: pulso.enRojo > 0 ? '#ef4444' : '#10b981' }}>{pulso.enRojo}</div>
                   <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700 }}>EN ROJO</div>
                 </div>
@@ -703,7 +704,7 @@ export default function Inicio() {
         <Card key={id} id={id} accent="var(--text-dim)" index={index}>
           <Label>ÚLTIMO RESULTADO</Label>
           {ultimo ? (
-            <div style={{ background: '#111', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
+            <div style={{ background: 'var(--bg)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: 6 }}>
                 <span>{ultimo.fecha?.split('-').reverse().join('/')}</span><span>{ultimo.competicion || ''}</span>
               </div>
@@ -713,10 +714,10 @@ export default function Inicio() {
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimo.id}`)} className="btn-secondary" style={{ flex: 1, fontSize: '0.65rem', padding: 7 }}>RESUMEN</button>
-                <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimo.id}`)} style={{ flex: 1, fontSize: '0.65rem', padding: 7, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer' }}>VIDEO</button>
+                <button onClick={() => !modoEdicion && navigate(`/resumen/${ultimo.id}`)} style={{ flex: 1, fontSize: '0.65rem', padding: 7, background: '#8b5cf6', color: 'var(--text)', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer' }}>VIDEO</button>
               </div>
             </div>
-          ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, background: '#111', borderRadius: 8, border: '1px dashed var(--border)', fontSize: '0.8rem' }}>Sin registros</div>}
+          ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, background: 'var(--bg)', borderRadius: 8, border: '1px dashed var(--border)', fontSize: '0.8rem' }}>Sin registros</div>}
         </Card>
       );
     }
@@ -728,11 +729,11 @@ export default function Inicio() {
           {novedades.length === 0 ? <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, fontSize: '0.8rem' }}>Sin novedades recientes.</div> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {novedades.map((n) => (
-                <div key={n.id} style={{ background: '#111', borderLeft: '3px solid #facc15', padding: 10, borderRadius: 4 }}>
+                <div key={n.id} style={{ background: 'var(--bg)', borderLeft: '3px solid #facc15', padding: 10, borderRadius: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: 4 }}>
                     <strong>{n.perfiles?.nombre_completo || 'Administración'}</strong><span>{new Date(n.fecha_creacion).toLocaleDateString()}</span>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: '#fff', whiteSpace: 'pre-wrap', lineHeight: 1.3 }}>{n.mensaje}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.3 }}>{n.mensaje}</div>
                 </div>
               ))}
             </div>
@@ -766,8 +767,8 @@ export default function Inicio() {
           {u ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
               {[{ l: 'SUEÑO', v: u.sueno }, { l: 'FATIGA', v: u.fatiga }, { l: 'DOLOR', v: u.dolor_muscular }, { l: 'RPE', v: u.rpe }].map((m, i) => (
-                <div key={i} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 2px', textAlign: 'center' }}>
-                  <div style={{ ...mono, fontSize: '1.3rem', fontWeight: 900, color: '#fff' }}>{m.v ?? '—'}</div>
+                <div key={i} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 2px', textAlign: 'center' }}>
+                  <div style={{ ...mono, fontSize: '1.3rem', fontWeight: 900, color: 'var(--text)' }}>{m.v ?? '—'}</div>
                   <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 700 }}>{m.l}</div>
                 </div>
               ))}
@@ -783,15 +784,15 @@ export default function Inicio() {
         <Card key={id} id={id} accent="#3b82f6" index={index}>
           <Label color="#3b82f6">MI PERFIL</Label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#111', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🏃‍♂️</div>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--bg)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🏃‍♂️</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff' }}>{perfil?.nombre || 'Jugador'}</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text)' }}>{perfil?.nombre || 'Jugador'}</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Tus métricas, videos y evolución.</div>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
             <button onClick={() => navigate('/jugador-perfil')} className="btn-secondary" style={{ fontSize: '0.8rem', padding: 10 }}>📊 Mi juego</button>
-            <button onClick={() => navigate('/rendimiento')} style={{ fontSize: '0.8rem', padding: 10, background: '#f43f5e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>🧬 Biomecánica</button>
+            <button onClick={() => navigate('/rendimiento')} style={{ fontSize: '0.8rem', padding: 10, background: '#f43f5e', color: 'var(--text)', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>🧬 Biomecánica</button>
           </div>
         </Card>
       );
@@ -807,7 +808,7 @@ export default function Inicio() {
       {/* HEADER + SELECTORES (arriba de todo) */}
       <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', marginBottom: 25, paddingBottom: 20, borderBottom: '1px solid var(--border)', gap: 15 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-          <div style={{ width: esMovil ? 50 : 60, height: esMovil ? 50 : 60, borderRadius: '50%', background: '#222', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: esMovil ? '1rem' : '1.5rem', overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ width: esMovil ? 50 : 60, height: esMovil ? 50 : 60, borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: esMovil ? '1rem' : '1.5rem', overflow: 'hidden', flexShrink: 0 }}>
             {esSuperUser && !clubActivo ? '👑' : escudoClub ? <img src={escudoClub} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : nombreClub.substring(0, 2).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -828,7 +829,8 @@ export default function Inicio() {
               {listaClubes.map((c) => <option key={c.id} value={c.id}>🏢 {c.nombre}</option>)}
             </select>
           )}
-          {!sinClub && <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : '#222', color: modoEdicion ? '#000' : '#fff', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>{modoEdicion ? '✅ Guardar' : '⚙️ Editar'}</button>}
+          {!sinClub && <Campanita clubId={clubActivo} misCategorias={misCategorias} />}
+          {!sinClub && <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : 'var(--panel)', color: modoEdicion ? '#000' : 'var(--text)', border: '1px solid var(--border)', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>{modoEdicion ? '✅ Guardar' : '⚙️ Editar'}</button>}
           {(esManager || esAdmin || esSuperUser) && clubActivo && (
             <button onClick={() => setMostrarQR(true)} style={{ background: '#10b981', color: '#000', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>📷 QR</button>
           )}
@@ -837,12 +839,12 @@ export default function Inicio() {
 
       {/* PALETA EDICIÓN */}
       {modoEdicion && !sinClub && (
-        <div style={{ background: '#111', padding: 15, borderRadius: 8, border: '1px dashed var(--border)', marginBottom: 20, animation: 'fadeIn 0.2s' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem', color: '#fff' }}>Mostrá/ocultá módulos · usá ▲▼ para reordenar · 1·2·3 para el ancho</h3>
+        <div style={{ background: 'var(--bg)', padding: 15, borderRadius: 8, border: '1px dashed var(--border)', marginBottom: 20, animation: 'fadeIn 0.2s' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--text)' }}>Mostrá/ocultá módulos · usá ▲▼ para reordenar · 1·2·3 para el ancho</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {widgetsPermitidos.map((m) => {
               const on = layout.includes(m.id);
-              return <button key={m.id} onClick={() => toggleWidget(m.id)} style={{ background: on ? 'rgba(255,255,255,0.1)' : 'transparent', border: `1px solid ${on ? 'var(--accent)' : '#333'}`, color: on ? '#fff' : '#666', padding: '7px 12px', borderRadius: 20, cursor: 'pointer', fontSize: '0.8rem', fontWeight: on ? 'bold' : 'normal' }}>{m.titulo}{on && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>✓</span>}</button>;
+              return <button key={m.id} onClick={() => toggleWidget(m.id)} style={{ background: on ? 'var(--border)' : 'transparent', border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`, color: on ? 'var(--text)' : 'var(--text-dim)', padding: '7px 12px', borderRadius: 20, cursor: 'pointer', fontSize: '0.8rem', fontWeight: on ? 'bold' : 'normal' }}>{m.titulo}{on && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>✓</span>}</button>;
             })}
           </div>
         </div>
@@ -867,14 +869,14 @@ export default function Inicio() {
       {/* MODAL QR */}
       {mostrarQR && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: 20 }}>
-          <div style={{ background: '#111', border: '1px solid #10b981', borderRadius: 8, padding: 30, maxWidth: 400, width: '100%', textAlign: 'center', position: 'relative', animation: 'fadeIn 0.3s' }}>
-            <h2 style={{ color: '#fff', marginTop: 0, marginBottom: 5, fontSize: '1.4rem' }}>INGRESO <span style={{ color: '#10b981' }}>RÁPIDO</span></h2>
+          <div style={{ background: 'var(--panel)', border: '1px solid #10b981', borderRadius: 8, padding: 30, maxWidth: 400, width: '100%', textAlign: 'center', position: 'relative', animation: 'fadeIn 0.3s' }}>
+            <h2 style={{ color: 'var(--text)', marginTop: 0, marginBottom: 5, fontSize: '1.4rem' }}>INGRESO <span style={{ color: '#10b981' }}>RÁPIDO</span></h2>
             <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 20 }}>Pegá este QR en el vestuario para que entren directo al Kiosco.</p>
             <div style={{ background: '#fff', padding: 15, borderRadius: 8, display: 'inline-block', marginBottom: 20 }}>
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(linkKiosco)}`} alt="QR" style={{ width: 250, height: 250 }} />
             </div>
-            <input type="text" readOnly value={linkKiosco} style={{ width: '100%', padding: 10, background: '#000', color: '#888', border: '1px solid #333', borderRadius: 4, fontSize: '0.7rem', textAlign: 'center', marginBottom: 15 }} />
-            <button onClick={() => setMostrarQR(false)} className="btn-action" style={{ width: '100%', background: '#333', color: '#fff', fontWeight: 900, padding: 12, border: 'none', borderRadius: 4, cursor: 'pointer' }}>CERRAR</button>
+            <input type="text" readOnly value={linkKiosco} style={{ width: '100%', padding: 10, background: 'var(--bg)', color: 'var(--text-dim)', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.7rem', textAlign: 'center', marginBottom: 15 }} />
+            <button onClick={() => setMostrarQR(false)} className="btn-action" style={{ width: '100%', background: 'var(--border)', color: 'var(--text)', fontWeight: 900, padding: 12, border: 'none', borderRadius: 4, cursor: 'pointer' }}>CERRAR</button>
           </div>
         </div>
       )}
@@ -883,6 +885,6 @@ export default function Inicio() {
 }
 
 /* ---- estilos sueltos ---- */
-const editBtn = { background: 'rgba(0,0,0,0.85)', color: '#fff', border: '1px solid #555', borderRadius: 4, width: 26, height: 26, cursor: 'pointer', fontSize: '0.7rem' };
-const sizeBtn = (active) => ({ background: active ? 'var(--accent)' : 'rgba(0,0,0,0.85)', color: active ? '#000' : '#fff', border: '1px solid #555', borderRadius: 4, width: 24, height: 26, cursor: 'pointer', fontSize: '0.7rem', fontWeight: 800 });
-const selStyle = (m) => ({ padding: m ? 12 : '8px 10px', background: '#111', border: '1px solid var(--border)', color: '#fff', borderRadius: 8, outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: m ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' });
+const editBtn = { background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, width: 26, height: 26, cursor: 'pointer', fontSize: '0.7rem' };
+const sizeBtn = (active) => ({ background: active ? 'var(--accent)' : 'var(--panel)', color: active ? '#000' : 'var(--text)', border: '1px solid var(--border)', borderRadius: 4, width: 24, height: 26, cursor: 'pointer', fontSize: '0.7rem', fontWeight: 800 });
+const selStyle = (m) => ({ padding: m ? 12 : '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, outline: 'none', fontWeight: 800, cursor: 'pointer', fontSize: m ? '1rem' : '0.85rem', width: '100%', WebkitAppearance: 'none' });

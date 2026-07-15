@@ -394,7 +394,7 @@ function Landing() {
           <div style={{ fontSize: '1.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
             VIRTUAL<span style={{color: COLORS.accent}}>CLUB</span>
           </div>
-          <p style={{color: '#888', maxWidth: '500px', margin: '0 auto'}}>La ventaja injusta que estabas buscando para tu staff técnico.</p>
+          <p style={{color: 'var(--text-dim)', maxWidth: '500px', margin: '0 auto'}}>La ventaja injusta que estabas buscando para tu staff técnico.</p>
           <div style={{marginTop: '40px', display: 'flex', gap: '20px', justifyContent: 'center', color: '#444', flexWrap: 'wrap'}}>
             <span>Soporte</span> | <span>Precios</span> | <span>Contacto</span>
           </div>
@@ -424,7 +424,7 @@ const secondaryNavLinkStyle = { padding: '8px 20px', background: 'transparent', 
 // quede visible contra el negro del body. NO ponerle background acá.
 const heroContainerStyle = { height: '90vh', width: '100%', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: COLORS.text, zIndex: 1 };
 // Video en la capa inferior del contenedor (-1). background:#000 => si no carga, negro (no blanco).
-const heroVideoStyle = { position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', zIndex: -1, transform: 'translateX(-50%) translateY(-50%)', objectFit: 'cover', background: '#000' };
+const heroVideoStyle = { position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', zIndex: -1, transform: 'translateX(-50%) translateY(-50%)', objectFit: 'cover', background: 'var(--bg)' };
 // Oscurecimiento arriba del video (0)
 const heroOverlayStyle = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: `linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, ${COLORS.overlay} 50%, rgba(0,0,0,0.9) 100%)`, zIndex: 0 };
 // Textos y botones arriba de todo (10)
@@ -434,21 +434,21 @@ const badgeStyle = { display: 'inline-block', padding: '6px 16px', background: '
 const heroTitleStyle = { fontSize: 'clamp(2.3rem, 6vw + 1rem, 5rem)', fontWeight: 900, marginBottom: '25px', lineHeight: 1.0, letterSpacing: 'clamp(-1.5px, -0.2vw, -3px)' };
 const heroSubtitleStyle = { fontSize: '1.4rem', color: COLORS.text, opacity: 0.8, marginBottom: '50px', lineHeight: 1.6, maxWidth: '650px', margin: '0 auto 50px auto' };
 const heroStatsOverlayStyle = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 5, pointerEvents: 'none' };
-const floatingStatStyle = { position: 'absolute', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', padding: '10px 18px', borderRadius: '8px', border: '1px solid #333', fontSize: '0.85rem', fontWeight: 'bold', color: '#fff', animation: 'floatStats 4s infinite ease-in-out' };
+const floatingStatStyle = { position: 'absolute', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', padding: '10px 18px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text)', animation: 'floatStats 4s infinite ease-in-out' };
 
 const splitLayoutStyle = { display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '80px', alignItems: 'center' };
 const mockupContainerStyle = { position: 'relative', width: '100%' };
 const textBlockStyle = { textAlign: 'left' };
 const descriptionStyle = { color: COLORS.textDim, lineHeight: 1.8, fontSize: '1.1rem', marginBottom: '30px' };
-const microVideoContainerStyle = { background: '#080808', border: '1px solid #222', borderRadius: '8px', padding: '15px', display: 'flex', alignItems: 'center', gap: '15px' };
-const microVideoStyle = { width: '80px', height: '50px', objectFit: 'cover', borderRadius: '4px', background: '#000' };
+const microVideoContainerStyle = { background: '#080808', border: '1px solid var(--border)', borderRadius: '8px', padding: '15px', display: 'flex', alignItems: 'center', gap: '15px' };
+const microVideoStyle = { width: '80px', height: '50px', objectFit: 'cover', borderRadius: '4px', background: 'var(--bg)' };
 
 const demoFlowContainerStyle = { display: 'flex', alignItems: 'center', gap: '30px', justifyContent: 'center', marginTop: '60px', flexWrap: 'wrap' };
-const verticalVideoWrapperStyle = { width: '220px', aspectRatio: '9/16', background: '#000', borderRadius: '12px', border: `2px solid #333`, overflow: 'hidden', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' };
-const verticalVideoStyle = { width: '100%', height: '100%', objectFit: 'cover', background: '#000' };
+const verticalVideoWrapperStyle = { width: '220px', aspectRatio: '9/16', background: 'var(--bg)', borderRadius: '12px', border: `2px solid #333`, overflow: 'hidden', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' };
+const verticalVideoStyle = { width: '100%', height: '100%', objectFit: 'cover', background: 'var(--bg)' };
 const videoLabelStyle = { position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', padding: '20px 10px 10px 10px', fontSize: '0.8rem', fontWeight: 700, color: COLORS.accent, textAlign: 'center' };
 const flowArrowStyle = { fontSize: '3rem', color: '#333', fontWeight: 900 };
-const dashboardResultWrapperStyle = { flex: 1, maxWidth: '600px', aspectRatio: '16/10', background: '#000', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' };
+const dashboardResultWrapperStyle = { flex: 1, maxWidth: '600px', aspectRatio: '16/10', background: 'var(--bg)', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative', boxShadow: '0 10px 40px rgba(0,0,0,0.4)' };
 const dashboardImgStyle = { width: '100%', height: '100%', objectFit: 'cover' };
 
 const centralBadgeStyle = { display: 'block', textAlign: 'center', color: COLORS.accent, fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', marginBottom: '10px' };
@@ -461,27 +461,27 @@ const featureTitleStyle = { fontSize: '1.4rem', fontWeight: 800, marginBottom: '
 const featureDescStyle = { color: COLORS.textDim, fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '15px' };
 
 const dataGridStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', flexWrap: 'wrap' };
-const dataVisualizationWrapperStyle = { background: '#000', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '15px', position: 'relative', overflow: 'hidden' };
+const dataVisualizationWrapperStyle = { background: 'var(--bg)', border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '15px', position: 'relative', overflow: 'hidden' };
 const dataLabelStyle = { display: 'block', marginTop: '15px', fontSize: '0.9rem', color: COLORS.textDim, fontWeight: 600, textAlign: 'center' };
 
 // ESTILOS DE IMÁGENES (capturas reales)
-const phoneMockupWrapperStyle = { width: '100%', height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', border: `1px solid ${COLORS.border}`, borderRadius: '24px', overflow: 'hidden', padding: '20px' };
+const phoneMockupWrapperStyle = { width: '100%', height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', border: `1px solid ${COLORS.border}`, borderRadius: '24px', overflow: 'hidden', padding: '20px' };
 const phoneMockupImgStyle = { height: '100%', width: 'auto', maxWidth: '100%', objectFit: 'contain', borderRadius: '16px', boxShadow: '0 15px 50px rgba(0,0,0,0.6)' };
 
-const featureImgWrapperStyle = { marginTop: 'auto', height: '150px', width: '100%', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: '#000' };
+const featureImgWrapperStyle = { marginTop: 'auto', height: '150px', width: '100%', borderRadius: '6px', overflow: 'hidden', border: `1px solid ${COLORS.border}`, background: 'var(--bg)' };
 const featureImgStyle = { width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' };
 
-const dataImgWrapperStyle = { width: '100%', borderRadius: '8px', overflow: 'hidden', background: '#000' };
+const dataImgWrapperStyle = { width: '100%', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg)' };
 const dataImgStyle = { width: '100%', height: 'auto', display: 'block' };
 
 const reportShowcaseStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center', marginTop: '80px', paddingTop: '60px', borderTop: `1px solid ${COLORS.border}` };
 const reportTextBlockStyle = { textAlign: 'left' };
-const reportImgWrapperStyle = { width: '100%', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${COLORS.accent}33`, boxShadow: `0 20px 60px rgba(0,0,0,0.5)`, background: '#000' };
+const reportImgWrapperStyle = { width: '100%', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${COLORS.accent}33`, boxShadow: `0 20px 60px rgba(0,0,0,0.5)`, background: 'var(--bg)' };
 const reportImgStyle = { width: '100%', height: 'auto', display: 'block' };
 
 const testimoniosGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' };
-const testimonioCardStyle = { width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative', background: '#000' };
-const testimonioVideoStyle = { width: '100%', height: '100%', objectFit: 'cover', background: '#000' };
+const testimonioCardStyle = { width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative', background: 'var(--bg)' };
+const testimonioVideoStyle = { width: '100%', height: '100%', objectFit: 'cover', background: 'var(--bg)' };
 const testimonioOverlayStyle = { position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', padding: '30px 15px 15px 15px' };
 
 const ctaCardStyle = { background: '#0c0c0c', borderRadius: '12px', border: `1px solid ${COLORS.accent}66`, padding: '80px 40px', textAlign: 'center', position: 'relative', overflow: 'hidden', boxShadow: `0 10px 40px ${COLORS.accent}11` };
@@ -489,7 +489,7 @@ const ctaContentStyle = { position: 'relative', zIndex: 2 };
 
 // FOOTER SIN fondo sólido: así el video del final (zIndex:-1) vuelve a verse.
 const footerStyle = { padding: '100px 20px', textAlign: 'center', position: 'relative', overflow: 'hidden', borderTop: `1px solid ${COLORS.border}` };
-const footerVideoStyle = { position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', zIndex: -1, transform: 'translateX(-50%) translateY(-50%)', objectFit: 'cover', opacity: 0.3, background: '#000' };
+const footerVideoStyle = { position: 'absolute', top: '50%', left: '50%', minWidth: '100%', minHeight: '100%', width: 'auto', height: 'auto', zIndex: -1, transform: 'translateX(-50%) translateY(-50%)', objectFit: 'cover', opacity: 0.3, background: 'var(--bg)' };
 const footerOverlayStyle = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: `linear-gradient(to bottom, #000 0%, ${COLORS.overlay} 50%, #000 100%)`, zIndex: 0 };
 const footerContentStyle = { position: 'relative', zIndex: 10 };
 

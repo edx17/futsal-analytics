@@ -600,7 +600,7 @@ export default function TomaDatosAsincrono() {
 
   // ─── LOADING ───────────────────────────────────────────────────────────────
   if (cargando) return (
-    <div style={{ background: '#000', height: '100vh', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ background: 'var(--bg)', height: '100vh', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '12px' }}>
       <div style={{ width: '40px', height: '40px', border: '3px solid #333', borderTop: '3px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <span style={{ color: '#666', fontSize: '0.8rem', fontWeight: 900, letterSpacing: '0.1em' }}>PROCESANDO DATOS...</span>
@@ -618,33 +618,33 @@ export default function TomaDatosAsincrono() {
       (filtroCompeticion === 'Todas' || p.competicion === filtroCompeticion)
     );
     return (
-      <div style={{ padding: '40px', background: 'var(--bg)', minHeight: '100vh', color: '#fff' }}>
+      <div style={{ padding: '40px', background: 'var(--bg)', minHeight: '100vh', color: 'var(--text)' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
             <h1 style={{ margin: 0, color: 'var(--accent)', textTransform: 'uppercase' }}>SELECCIONAR PARTIDO</h1>
             <button onClick={() => navigate('/inicio')} className="btn-secondary" style={{ padding: '10px 20px', fontWeight: 'bold' }}>VOLVER AL INICIO</button>
           </div>
           <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-            <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={{ padding: '12px', background: '#111', color: '#fff', border: '1px solid #333', borderRadius: '4px', outline: 'none', fontWeight: 900, flex: 1, cursor: 'pointer' }}>
+            <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={{ padding: '12px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none', fontWeight: 900, flex: 1, cursor: 'pointer' }}>
               {categorias.map(c => <option key={c} value={c}>{c === 'Todas' ? 'CATEGORÍA: TODAS' : c}</option>)}
             </select>
-            <select value={filtroCompeticion} onChange={e => setFiltroCompeticion(e.target.value)} style={{ padding: '12px', background: '#111', color: '#fff', border: '1px solid #333', borderRadius: '4px', outline: 'none', fontWeight: 900, flex: 1, cursor: 'pointer' }}>
+            <select value={filtroCompeticion} onChange={e => setFiltroCompeticion(e.target.value)} style={{ padding: '12px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none', fontWeight: 900, flex: 1, cursor: 'pointer' }}>
               {competiciones.map(c => <option key={c} value={c}>{c === 'Todas' ? 'COMPETENCIA: TODAS' : c}</option>)}
             </select>
           </div>
           <div style={{ display: 'grid', gap: '10px' }}>
             {filtrados.map(p => (
-              <div key={p.id} onClick={() => seleccionarPartido(p.id)} style={{ background: '#111', border: '1px solid #333', padding: '20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'border-color 0.2s' }}
+              <div key={p.id} onClick={() => seleccionarPartido(p.id)} style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'border-color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#333'}>
                 <div>
-                  <div style={{ fontSize: '0.8rem', color: '#888', fontWeight: 900 }}>{p.fecha?.split('-').reverse().join('/')} | {p.categoria} | {p.competicion}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 900 }}>{p.fecha?.split('-').reverse().join('/')} | {p.categoria} | {p.competicion}</div>
                   <div style={{ fontSize: '1.2rem', fontWeight: 900, textTransform: 'uppercase' }}>VS {p.rival}</div>
                 </div>
                 <div style={{ background: 'var(--accent)', color: '#000', padding: '8px 16px', borderRadius: '4px', fontWeight: 900, fontSize: '0.8rem' }}>ANALIZAR</div>
               </div>
             ))}
-            {filtrados.length === 0 && <div style={{ color: '#888', textAlign: 'center', padding: '20px', background: '#111', borderRadius: '8px', border: '1px solid #333' }}>NO SE ENCONTRARON PARTIDOS.</div>}
+            {filtrados.length === 0 && <div style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '20px', background: 'var(--panel)', borderRadius: '8px', border: '1px solid var(--border)' }}>NO SE ENCONTRARON PARTIDOS.</div>}
           </div>
         </div>
       </div>
@@ -656,19 +656,19 @@ export default function TomaDatosAsincrono() {
   // ══════════════════════════════════════════════════════════════════
   if (fase === 1) {
     return (
-      <div style={{ padding: '40px', background: 'var(--bg)', minHeight: '100vh', color: '#fff' }}>
+      <div style={{ padding: '40px', background: 'var(--bg)', minHeight: '100vh', color: 'var(--text)' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
             <div>
               <h1 style={{ margin: 0, color: 'var(--accent)', textTransform: 'uppercase' }}>CONVOCATORIA</h1>
-              <div style={{ color: '#888', fontSize: '0.9rem' }}>VS {partidoActual?.rival}</div>
+              <div style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>VS {partidoActual?.rival}</div>
             </div>
             <button onClick={() => navigate('/analisis-video')} className="btn-secondary" style={{ padding: '10px 20px', fontWeight: 'bold' }}>VOLVER</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', marginBottom: '30px' }}>
             {jugadoresClub.map(j => (
               <div key={j.id} onClick={() => toggleJugador(j.id)} style={{ background: seleccionadosId.includes(j.id) ? 'rgba(0,255,136,0.1)' : '#111', border: `1px solid ${seleccionadosId.includes(j.id) ? 'var(--accent)' : '#333'}`, padding: '15px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '30px', height: '30px', background: '#000', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontWeight: 900 }}>{j.dorsal}</div>
+                <div style={{ width: '30px', height: '30px', background: 'var(--bg)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontWeight: 900 }}>{j.dorsal}</div>
                 <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{j.apellido || j.nombre}</div>
               </div>
             ))}
@@ -686,18 +686,18 @@ export default function TomaDatosAsincrono() {
   // ══════════════════════════════════════════════════════════════════
   if (fase === 2) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: '#fff', padding: '20px' }}>
-        <div style={{ background: '#111', border: '1px solid var(--border)', padding: '40px', borderRadius: '8px', textAlign: 'center', maxWidth: '600px', width: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--text)', padding: '20px' }}>
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '40px', borderRadius: '8px', textAlign: 'center', maxWidth: '600px', width: '100%' }}>
           <h2 style={{ margin: '0 0 10px 0', color: 'var(--accent)', textTransform: 'uppercase' }}>TRACKING ASÍNCRONO</h2>
-          <div style={{ fontSize: '0.9rem', color: '#888', marginBottom: '30px' }}>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', marginBottom: '30px' }}>
             <strong>PARTIDO:</strong> VS {partidoActual?.rival} ({partidoActual?.categoria})<br />
             <strong>PLANTILLA:</strong> {jugadoresConvocados.length} JUGADORES
           </div>
-          <label style={{ display: 'inline-block', background: '#3b82f6', color: '#fff', padding: '15px 30px', borderRadius: '4px', cursor: 'pointer', fontWeight: 900, width: '100%', boxSizing: 'border-box' }}>
+          <label style={{ display: 'inline-block', background: '#3b82f6', color: 'var(--text)', padding: '15px 30px', borderRadius: '4px', cursor: 'pointer', fontWeight: 900, width: '100%', boxSizing: 'border-box' }}>
             SELECCIONAR ARCHIVO DE VIDEO LOCAL
             <input type="file" accept="video/*" onChange={handleCargaVideo} style={{ display: 'none' }} />
           </label>
-          <button onClick={() => navigate('/analisis-video')} style={{ width: '100%', marginTop: '15px', padding: '15px 30px', background: 'transparent', border: '1px solid #444', color: '#888', borderRadius: '4px', cursor: 'pointer', fontWeight: 900 }}>VOLVER</button>
+          <button onClick={() => navigate('/analisis-video')} style={{ width: '100%', marginTop: '15px', padding: '15px 30px', background: 'transparent', border: '1px solid #444', color: 'var(--text-dim)', borderRadius: '4px', cursor: 'pointer', fontWeight: 900 }}>VOLVER</button>
         </div>
       </div>
     );
@@ -720,7 +720,7 @@ export default function TomaDatosAsincrono() {
           .btn-accion.activo { background:rgba(0,255,136,0.12);color:var(--accent);border-color:var(--accent); }
         `}</style>
 
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden', background: '#000', color: '#fff', fontFamily: 'system-ui,sans-serif' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'system-ui,sans-serif' }}>
 
           {/* ── HEADER ── */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0d0d0d', borderBottom: '1px solid #222', padding: '0 16px', height: '56px', flexShrink: 0, gap: '12px' }}>
@@ -733,11 +733,11 @@ export default function TomaDatosAsincrono() {
               </div>
 
               {/* Reloj y Botón SYNC */}
-              <div style={{ display: 'flex', alignItems: 'center', background: '#111', border: '1px solid #333', borderRadius: '6px', padding: '0 8px', gap: '8px', height: '36px' }}>
-                <button onClick={() => setReloj(r => ({ ...r, corriendo: !r.corriendo }))} style={{ background: reloj.corriendo ? '#ef4444' : '#10b981', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '3px', cursor: 'pointer', fontWeight: 900, fontSize: '0.65rem', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', padding: '0 8px', gap: '8px', height: '36px' }}>
+                <button onClick={() => setReloj(r => ({ ...r, corriendo: !r.corriendo }))} style={{ background: reloj.corriendo ? '#ef4444' : '#10b981', color: 'var(--text)', border: 'none', padding: '4px 10px', borderRadius: '3px', cursor: 'pointer', fontWeight: 900, fontSize: '0.65rem', flexShrink: 0 }}>
                   {reloj.corriendo ? '⏸' : '▶'}
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#000', padding: '2px 6px', borderRadius: '3px', border: '1px solid #2a2a2a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg)', padding: '2px 6px', borderRadius: '3px', border: '1px solid #2a2a2a' }}>
                   <input type="text" className="input-reloj" value={String(reloj.minuto).padStart(2, '0')} onChange={e => setReloj(r => ({ ...r, minuto: parseInt(e.target.value.replace(/\D/g,''),10)||0 }))} />
                   <span style={{ fontWeight: 900, paddingBottom: '1px' }}>:</span>
                   <input type="text" className="input-reloj" value={String(reloj.segundos).padStart(2, '0')} onChange={e => { let v=parseInt(e.target.value.replace(/\D/g,''),10)||0; if(v>59)v=59; setReloj(r=>({...r,segundos:v})); }} />
@@ -785,12 +785,12 @@ export default function TomaDatosAsincrono() {
               )}
 
               {/* Etiqueta táctica */}
-              <select value={etiquetaTactica} onChange={e => setEtiquetaTactica(e.target.value)} style={{ background: '#111', color: etiquetaTactica !== '—' ? '#fbbf24' : '#666', border: `1px solid ${etiquetaTactica !== '—' ? '#f59e0b' : '#333'}`, borderRadius: '4px', padding: '4px 8px', fontWeight: 900, fontSize: '0.7rem', outline: 'none', cursor: 'pointer' }}>
+              <select value={etiquetaTactica} onChange={e => setEtiquetaTactica(e.target.value)} style={{ background: 'var(--panel)', color: etiquetaTactica !== '—' ? '#fbbf24' : '#666', border: `1px solid ${etiquetaTactica !== '—' ? '#f59e0b' : '#333'}`, borderRadius: '4px', padding: '4px 8px', fontWeight: 900, fontSize: '0.7rem', outline: 'none', cursor: 'pointer' }}>
                 {ETIQUETAS_TACTICAS.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
 
               {/* Toggle equipo */}
-              <div style={{ display: 'flex', background: '#111', border: '1px solid #333', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ display: 'flex', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
                 <button onClick={() => setEquipoActivo('Propio')} style={{ padding: '4px 10px', background: equipoActivo==='Propio' ? '#3b82f6' : 'transparent', color: equipoActivo==='Propio' ? '#fff' : '#666', border: 'none', fontWeight: 900, fontSize: '0.65rem', cursor: 'pointer' }}>PROPIO</button>
                 <button onClick={() => setEquipoActivo('Rival')} style={{ padding: '4px 10px', background: equipoActivo==='Rival' ? '#ef4444' : 'transparent', color: equipoActivo==='Rival' ? '#fff' : '#666', border: 'none', fontWeight: 900, fontSize: '0.65rem', cursor: 'pointer' }}>RIVAL</button>
               </div>
@@ -801,10 +801,10 @@ export default function TomaDatosAsincrono() {
               <button onClick={() => setMostrarDashboard(true)} style={{ background: 'transparent', border: '1px solid #3b82f6', color: '#3b82f6', padding: '6px 12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontSize: '0.75rem' }}>
                 📊 STATS
               </button>
-              <button onClick={() => setMostrarAyuda(true)} style={{ background: 'transparent', border: '1px solid #444', color: '#888', padding: '6px 12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontSize: '0.75rem' }}>
+              <button onClick={() => setMostrarAyuda(true)} style={{ background: 'transparent', border: '1px solid #444', color: 'var(--text-dim)', padding: '6px 12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontSize: '0.75rem' }}>
                 ❔
               </button>
-              <button onClick={() => setFase(2)} style={{ background: 'transparent', border: '1px solid #333', color: '#666', padding: '6px 12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontSize: '0.75rem' }}>
+              <button onClick={() => setFase(2)} style={{ background: 'transparent', border: '1px solid var(--border)', color: '#666', padding: '6px 12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontSize: '0.75rem' }}>
                 CERRAR
               </button>
               <div style={{ color: bufferEventos.length > 0 ? '#10b981' : '#444', fontSize: '0.75rem', fontWeight: 900, minWidth: '70px', textAlign: 'right' }}>
@@ -823,7 +823,7 @@ export default function TomaDatosAsincrono() {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid #1a1a1a', minHeight: 0 }}>
 
               {/* Video */}
-              <div style={{ background: '#000', flex: 1, position: 'relative', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ background: 'var(--bg)', flex: 1, position: 'relative', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <video
                   ref={videoRef}
                   src={videoSrc}
@@ -834,7 +834,7 @@ export default function TomaDatosAsincrono() {
 
                 {/* Banner evento activo */}
                 {pasoRegistro > 0 && (
-                  <div className="evento-badge" style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', background: 'rgba(239,68,68,0.92)', color: '#fff', padding: '8px 20px', borderRadius: '20px', fontWeight: 900, fontSize: '0.85rem', border: '1.5px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)', whiteSpace: 'nowrap' }}>
+                  <div className="evento-badge" style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', background: 'rgba(239,68,68,0.92)', color: 'var(--text)', padding: '8px 20px', borderRadius: '20px', fontWeight: 900, fontSize: '0.85rem', border: '1.5px solid rgba(255,255,255,0.3)', backdropFilter: 'blur(4px)', whiteSpace: 'nowrap' }}>
                     ● {eventoPendiente?.accion?.toUpperCase()} — PASO {pasoRegistro}/{ eventoPendiente?.accion === 'Remate' ? 3 : 2}
                     {eventoPendiente?.xT && <span style={{ marginLeft: '10px', opacity: 0.8, fontSize: '0.75rem' }}>xT {eventoPendiente.xT}</span>}
                   </div>
@@ -842,7 +842,7 @@ export default function TomaDatosAsincrono() {
 
                 {/* Toast */}
                 {toast && (
-                  <div style={{ position: 'absolute', bottom: 60, right: 16, background: toast.tipo === 'danger' ? '#ef4444' : toast.tipo === 'success' ? '#10b981' : toast.tipo === 'turbo' ? '#a78bfa' : '#f59e0b', color: '#fff', padding: '8px 16px', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', animation: 'fadeSlide 0.2s ease' }}>
+                  <div style={{ position: 'absolute', bottom: 60, right: 16, background: toast.tipo === 'danger' ? '#ef4444' : toast.tipo === 'success' ? '#10b981' : toast.tipo === 'turbo' ? '#a78bfa' : '#f59e0b', color: 'var(--text)', padding: '8px 16px', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', animation: 'fadeSlide 0.2s ease' }}>
                     {toast.msg}
                   </div>
                 )}
@@ -863,12 +863,12 @@ export default function TomaDatosAsincrono() {
                 {editandoTecla && (
                   <input autoFocus onKeyDown={setNuevaTecla} onBlur={() => setEditandoTecla(null)}
                     placeholder="Presione nueva tecla..."
-                    style={{ position: 'absolute', zIndex: 200, background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', fontWeight: 900, borderRadius: '4px', fontSize: '0.8rem' }} />
+                    style={{ position: 'absolute', zIndex: 200, background: '#ef4444', color: 'var(--text)', border: 'none', padding: '8px 12px', fontWeight: 900, borderRadius: '4px', fontSize: '0.8rem' }} />
                 )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                   {Object.entries(teclas).map(([accion, tecla]) => (
-                    <div key={accion} onClick={() => setEditandoTecla(accion)} style={{ background: '#111', border: '1px solid #222', padding: '3px 7px', borderRadius: '3px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <span style={{ fontSize: '0.6rem', color: '#888' }}>{accion}</span>
+                    <div key={accion} onClick={() => setEditandoTecla(accion)} style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '3px 7px', borderRadius: '3px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{accion}</span>
                       <span style={{ background: '#1a1a1a', color: 'var(--accent)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.65rem', fontWeight: 900 }}>{tecla}</span>
                     </div>
                   ))}
@@ -884,7 +884,7 @@ export default function TomaDatosAsincrono() {
                 <div style={{ padding: '8px 12px', background: '#080808', borderBottom: '1px solid #1a1a1a', display: 'flex', gap: '5px', overflowX: 'auto', flexShrink: 0, whiteSpace: 'nowrap' }}>
                   <button onClick={() => setHerramientaMapa('accion')} className={`btn-accion${herramientaMapa==='accion'?' activo':''}`}>📍 ACCIÓN</button>
                   <button onClick={() => setHerramientaMapa('rival')} style={{ ...{background:'#1a1a1a',color:'#ccc',border:'1px solid #333',padding:'8px 12px',borderRadius:'4px',cursor:'pointer',fontWeight:900,fontSize:'0.75rem'}, ...(herramientaMapa==='rival'?{background:'rgba(239,68,68,0.15)',color:'#ef4444',borderColor:'#ef4444'}:{}) }}>🔴 RIVAL</button>
-                  <div style={{ width: '1px', background: '#222', margin: '0 2px' }} />
+                  <div style={{ width: '1px', background: 'var(--panel)', margin: '0 2px' }} />
                   {jugadoresConvocados.map(j => (
                     <button key={j.id} onClick={() => setHerramientaMapa(j.id)} style={{ background: herramientaMapa===j.id ? 'rgba(59,130,246,0.15)' : '#1a1a1a', color: herramientaMapa===j.id ? '#60a5fa' : '#888', border: `1px solid ${herramientaMapa===j.id ? '#3b82f6' : '#333'}`, padding: '6px 9px', borderRadius: '4px', cursor: 'pointer', fontWeight: 900, fontSize: '0.7rem' }}>
                       {j.dorsal}
@@ -903,12 +903,12 @@ export default function TomaDatosAsincrono() {
                       
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {/* BOTÓN DE ROTAR CANCHA */}
-                        <button onClick={() => setRotarCancha(!rotarCancha)} style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #333', padding: '3px 8px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer', fontWeight: 900, transition: '0.2s' }}>
+                        <button onClick={() => setRotarCancha(!rotarCancha)} style={{ background: '#1a1a1a', color: 'var(--text)', border: '1px solid var(--border)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.6rem', cursor: 'pointer', fontWeight: 900, transition: '0.2s' }}>
                           🔄 {rotarCancha ? 'ATACANDO IZQ' : 'ATACANDO DER'}
                         </button>
                         
                         {eventoPendiente?.zona_x != null && (
-                          <span style={{ fontSize: '0.65rem', color: '#888' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>
                             {eventoPendiente.xT && <span style={{ color: '#f59e0b', marginRight: '8px' }}>xT {eventoPendiente.xT}</span>}
                             {eventoPendiente.xG && <span style={{ color: '#3b82f6' }}>xG {eventoPendiente.xG}</span>}
                           </span>
@@ -960,7 +960,7 @@ export default function TomaDatosAsincrono() {
                       <button onClick={() => confirmarMapeoYContinuar(false)} disabled={eventoPendiente?.zona_x == null} style={{ flex: 1, background: eventoPendiente?.zona_x != null ? 'var(--accent)' : '#1a1a1a', color: eventoPendiente?.zona_x != null ? '#000' : '#444', border: 'none', padding: '8px', borderRadius: '4px', fontWeight: 900, cursor: eventoPendiente?.zona_x != null ? 'pointer' : 'default', fontSize: '0.8rem' }}>
                         CONFIRMAR MAPA
                       </button>
-                      <button onClick={() => confirmarMapeoYContinuar(true)} style={{ background: '#1a1a1a', color: '#888', border: '1px solid #333', padding: '8px 12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontSize: '0.75rem' }} title="Enter">
+                      <button onClick={() => confirmarMapeoYContinuar(true)} style={{ background: '#1a1a1a', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '8px 12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', fontSize: '0.75rem' }} title="Enter">
                         SKIP [↵]
                       </button>
                     </div>
@@ -976,7 +976,7 @@ export default function TomaDatosAsincrono() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                       {jugadoresConvocados.map(jug => (
-                        <button key={jug.id} onClick={() => asignarJugador(jug.id)} style={{ background: '#161616', color: '#fff', border: '1px solid #2a2a2a', padding: '10px', borderRadius: '6px', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'border-color 0.1s' }}
+                        <button key={jug.id} onClick={() => asignarJugador(jug.id)} style={{ background: '#161616', color: 'var(--text)', border: '1px solid #2a2a2a', padding: '10px', borderRadius: '6px', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'border-color 0.1s' }}
                           onMouseEnter={e=>e.currentTarget.style.borderColor='var(--accent)'}
                           onMouseLeave={e=>e.currentTarget.style.borderColor='#2a2a2a'}>
                           <span style={{ color: 'var(--accent)', fontWeight: 900, background: '#0a0a0a', padding: '2px 5px', borderRadius: '3px', minWidth: '28px', textAlign: 'center' }}>{jug.dorsal}</span>
@@ -1066,7 +1066,7 @@ export default function TomaDatosAsincrono() {
                             padding: '8px', borderRadius: '5px', display: 'flex', alignItems: 'center', gap: '8px',
                             opacity: enCancha ? 1 : 0.4 
                           }}>
-                            <span style={{ fontWeight: 900, background: '#000', color: enCancha ? '#3b82f6' : 'var(--accent)', padding: '2px 5px', borderRadius: '3px', minWidth: '26px', textAlign: 'center', fontSize: '0.8rem' }}>{jug.dorsal}</span>
+                            <span style={{ fontWeight: 900, background: 'var(--bg)', color: enCancha ? '#3b82f6' : 'var(--accent)', padding: '2px 5px', borderRadius: '3px', minWidth: '26px', textAlign: 'center', fontSize: '0.8rem' }}>{jug.dorsal}</span>
                             <div style={{ overflow: 'hidden', flex: 1 }}>
                               <div style={{ fontSize: '0.7rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#ddd' }}>{jug.apellido || jug.nombre}</div>
                               <div style={{ fontSize: '0.6rem', color: '#555' }}>xT {xTJug}{gJug > 0 && <span style={{ color: '#10b981', marginLeft: '4px' }}>⚽{gJug}</span>}</div>
@@ -1099,7 +1099,7 @@ export default function TomaDatosAsincrono() {
                               return (
                                 <div key={ev.id} onClick={() => iniciarEnriquecimiento(ev)} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', background: 'rgba(245,158,11,0.1)', border: '1px dashed #f59e0b', borderRadius: '4px', cursor: 'pointer' }}>
                                   <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 900, minWidth: '30px' }}>{ev.periodo} {ev.minuto}'</span>
-                                  <span style={{ fontSize: '0.75rem', color: '#fff', fontWeight: 'bold', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.accion}</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text)', fontWeight: 'bold', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.accion}</span>
                                   {jug && <span style={{ fontSize: '0.65rem', color: '#fbbf24', fontWeight: 900 }}>#{jug.dorsal}</span>}
                                   <span style={{ fontSize: '0.6rem', background: '#f59e0b', color: '#000', padding: '2px 6px', borderRadius: '3px', fontWeight: 900 }}>MAPEAR</span>
                                 </div>
@@ -1124,12 +1124,12 @@ export default function TomaDatosAsincrono() {
                               
                               return (
                                 <div key={ev.id || `buf-${i}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 8px', background: ev.isUpdate ? 'rgba(59,130,246,0.1)' : '#080808', borderRadius: '3px', borderLeft: `2px solid ${getColorAccion(ev.accion)}` }}>
-                                  <span style={{ fontSize: '0.6rem', color: '#888', fontWeight: 900, minWidth: '35px' }}>{minsVideo}:{secsVideo}</span>
+                                  <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 900, minWidth: '35px' }}>{minsVideo}:{secsVideo}</span>
                                   <span style={{ fontSize: '0.7rem', color: getColorAccion(ev.accion), fontWeight: 900, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {ev.accion} {ev.origen_gol ? `(${ev.origen_gol})` : ''}
                                   </span>
                                   {jug && <span style={{ fontSize: '0.6rem', color: '#ccc' }}>#{jug.dorsal}</span>}
-                                  {ev.xT && <span style={{ fontSize: '0.55rem', color: '#f59e0b', background: '#222', padding: '1px 3px', borderRadius: '2px' }}>xT {ev.xT}</span>}
+                                  {ev.xT && <span style={{ fontSize: '0.55rem', color: '#f59e0b', background: 'var(--panel)', padding: '1px 3px', borderRadius: '2px' }}>xT {ev.xT}</span>}
                                 </div>
                               );
                           })}
@@ -1155,7 +1155,7 @@ export default function TomaDatosAsincrono() {
         {/* ══ MODAL DASHBOARD ══════════════════════════════════════════════ */}
         {mostrarDashboard && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '20px', overflowY: 'auto' }}>
-            <div style={{ background: '#0d0d0d', border: '1px solid #222', borderRadius: '8px', padding: '24px', maxWidth: '700px', width: '100%', color: '#fff' }}>
+            <div style={{ background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: '8px', padding: '24px', maxWidth: '700px', width: '100%', color: 'var(--text)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1rem', textTransform: 'uppercase', fontWeight: 900 }}>Dashboard en Vivo — VS {partidoActual?.rival}</h2>
                 <button onClick={() => setMostrarDashboard(false)} style={{ background: 'transparent', border: 'none', color: '#666', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
@@ -1234,7 +1234,7 @@ export default function TomaDatosAsincrono() {
                   const pts = heatmapData(jug.id);
                   return (
                     <div key={jug.id} style={{ background: '#080808', border: '1px solid #1a1a1a', borderRadius: '4px', padding: '6px' }}>
-                      <div style={{ fontSize: '0.6rem', color: '#888', fontWeight: 900, marginBottom: '4px' }}>#{jug.dorsal} {jug.apellido||jug.nombre}</div>
+                      <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 900, marginBottom: '4px' }}>#{jug.dorsal} {jug.apellido||jug.nombre}</div>
                       <div style={{ width: '100%', aspectRatio: '2/1', background: '#030a05', border: '1px solid #1a3a22', position: 'relative', borderRadius: '2px', overflow: 'hidden' }}>
                         {pts.map((p, i) => (
                           <div key={i} style={{ position: 'absolute', left: `${p.x}%`, top: `${p.y}%`, width: '6px', height: '6px', background: getColorAccion(p.accion), borderRadius: '50%', transform: 'translate(-50%,-50%)', opacity: 0.7 }} />
@@ -1256,7 +1256,7 @@ export default function TomaDatosAsincrono() {
         {/* ══ MODAL AYUDA ══════════════════════════════════════════════════ */}
         {mostrarAyuda && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-            <div style={{ background: '#0d0d0d', border: '1px solid #3b82f6', borderRadius: '8px', padding: '24px', maxWidth: '560px', width: '100%', color: '#fff', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ background: '#0d0d0d', border: '1px solid #3b82f6', borderRadius: '8px', padding: '24px', maxWidth: '560px', width: '100%', color: 'var(--text)', maxHeight: '90vh', overflowY: 'auto' }}>
               <h2 style={{ margin: '0 0 16px', color: '#3b82f6', textTransform: 'uppercase', fontSize: '1rem', fontWeight: 900 }}>Manual Operativo</h2>
 
               {[
@@ -1272,11 +1272,11 @@ export default function TomaDatosAsincrono() {
               ].map(item => (
                 <div key={item.t} style={{ marginBottom: '12px', paddingLeft: '10px', borderLeft: `2px solid ${item.color}` }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 900, color: item.color, marginBottom: '2px' }}>{item.t}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#888', lineHeight: '1.5' }}>{item.c}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', lineHeight: '1.5' }}>{item.c}</div>
                 </div>
               ))}
 
-              <button onClick={() => setMostrarAyuda(false)} style={{ width: '100%', background: '#3b82f6', color: '#fff', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', marginTop: '8px' }}>
+              <button onClick={() => setMostrarAyuda(false)} style={{ width: '100%', background: '#3b82f6', color: 'var(--text)', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 900, cursor: 'pointer', marginTop: '8px' }}>
                 ENTENDIDO
               </button>
             </div>

@@ -169,7 +169,7 @@ export default function Novedades() {
   return (
     <div style={{ animation: 'fadeIn 0.3s', maxWidth: '800px', margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff', margin: 0 }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text)', margin: 0 }}>
           CENTRO DE <span style={{ color: 'var(--accent)' }}>COMUNICACIONES</span>
         </h1>
       </div>
@@ -244,7 +244,7 @@ export default function Novedades() {
               😀
             </button>
             {mostrarEmojis && (
-              <div style={{ position: 'absolute', right: '0', top: '70px', background: '#111', border: '1px solid #333', padding: '10px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px', zIndex: 10 }}>
+              <div style={{ position: 'absolute', right: '0', top: '70px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '10px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px', zIndex: 10 }}>
                 {EMOJIS.map(e => (
                   <button key={e} type="button" onClick={() => insertarEmoji(e)}
                     style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>
@@ -275,7 +275,7 @@ export default function Novedades() {
               const labelVenc = labelVencimiento(h.fecha_vencimiento);
 
               return (
-                <div key={h.id} style={{ background: '#000', border: '1px solid #222', padding: '15px', borderRadius: '6px', position: 'relative' }}>
+                <div key={h.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '15px', borderRadius: '6px', position: 'relative' }}>
 
                   {/* Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px dashed #333', paddingBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
@@ -297,7 +297,7 @@ export default function Novedades() {
                           ⏱ {labelVenc}
                         </span>
                       )}
-                      <span style={{ fontSize: '0.65rem', color: '#888' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>
                         {new Date(h.fecha_creacion).toLocaleDateString('es-AR', {
                           day: '2-digit', month: '2-digit', year: 'numeric',
                           hour: '2-digit', minute: '2-digit'
@@ -307,14 +307,14 @@ export default function Novedades() {
                   </div>
 
                   {/* Mensaje */}
-                  <p style={{ margin: '0 0 10px 0', color: '#fff', fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', paddingRight: puedeEliminar ? '30px' : '0' }}>
+                  <p style={{ margin: '0 0 10px 0', color: 'var(--text)', fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: '1.5', paddingRight: puedeEliminar ? '30px' : '0' }}>
                     {h.mensaje}
                   </p>
 
                   {/* Categorías */}
                   <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                     {(h.categorias || []).map(c => (
-                      <span key={c} style={{ background: '#222', color: 'var(--accent)', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>
+                      <span key={c} style={{ background: 'var(--panel)', color: 'var(--accent)', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>
                         {c}
                       </span>
                     ))}
@@ -349,8 +349,8 @@ export default function Novedades() {
 }
 
 const inputBase = {
-  width: '100%', padding: '12px', background: '#000',
-  border: '1px solid var(--border)', color: '#fff', borderRadius: '4px',
+  width: '100%', padding: '12px', background: 'var(--bg)',
+  border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px',
   outline: 'none', marginTop: '5px', boxSizing: 'border-box', fontSize: '16px'
 };
 const btnFiltro = {

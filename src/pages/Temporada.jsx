@@ -107,14 +107,14 @@ const GraficoMomentumTemporada = ({ partidos, eventos }) => {
   return (
     <div className="bento-card" style={{ padding: '20px', marginTop: '20px', marginBottom: '20px', borderTop: `3px solid ${color}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-        <h3 style={{ color: '#fff', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
+        <h3 style={{ color: 'var(--text)', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
           Momentum de la Temporada <span style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>({partidos.length} PJ)</span>
         </h3>
         
         <select
           value={metrica}
           onChange={(e) => setMetrica(e.target.value)}
-          style={{ background: '#222', color: '#fff', border: '1px solid var(--border)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, outline: 'none' }}
+          style={{ background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, outline: 'none' }}
         >
           <optgroup label="Efectividad y Peligro">
             <option value="golesFavor">Evolución: Goles a Favor</option>
@@ -146,8 +146,8 @@ const GraficoMomentumTemporada = ({ partidos, eventos }) => {
             <XAxis dataKey="nombre" stroke="#888" tick={{ fill: '#aaa', fontSize: 11 }} tickLine={false} axisLine={false} />
             <YAxis stroke="#888" tick={{ fill: '#aaa', fontSize: 11 }} tickLine={false} axisLine={false} />
             <RechartsTooltip
-              contentStyle={{ backgroundColor: '#111', borderColor: color, color: '#fff', borderRadius: '8px', padding: '10px' }}
-              itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+              contentStyle={{ backgroundColor: '#111', borderColor: color, color: 'var(--text)', borderRadius: '8px', padding: '10px' }}
+              itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }}
               labelStyle={{ color: '#aaa', marginBottom: '5px' }}
               formatter={(value, name, props) => [key === 'dominio' ? `${value}%` : value, `vs ${props.payload.rival}`]}
             />
@@ -765,7 +765,7 @@ function Temporada() {
       {/* ========================================================= */}
       {/* PANEL DE FILTROS AVANZADOS                                */}
       {/* ========================================================= */}
-      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #222', marginBottom: '25px' }}>
+      <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '25px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
           <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             📊 FILTROS AVANZADOS DE TEMPORADA <InfoBox texto="Aislá contextos específicos. Las estadísticas de abajo se recalcularán al instante cruzando todas las opciones que elijas." />
@@ -827,7 +827,7 @@ function Temporada() {
       </div>
 
       {!analiticaGlobal ? (
-        <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-dim)', background: '#111', padding: '40px', borderRadius: '12px' }}>
+        <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-dim)', background: 'var(--panel)', padding: '40px', borderRadius: '12px' }}>
           NO HAY PARTIDOS QUE COINCIDAN CON LOS FILTROS SELECCIONADOS.
         </div>
       ) : (
@@ -838,7 +838,7 @@ function Temporada() {
                   <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>PARTIDOS (V-E-D) <InfoBox texto="Victorias, Empates y Derrotas bajo los filtros actuales." /></div>
                   <div className="stat-value" style={{ color: 'var(--text)' }}>
                     <span style={{color: 'var(--accent)'}}>{analiticaGlobal.statsEquipo.victorias}</span>-
-                    <span style={{color: '#888'}}>{analiticaGlobal.statsEquipo.empates}</span>-
+                    <span style={{color: 'var(--text-dim)'}}>{analiticaGlobal.statsEquipo.empates}</span>-
                     <span style={{color: '#ef4444'}}>{analiticaGlobal.statsEquipo.derrotas}</span>
                   </div>
               </div>
@@ -893,14 +893,14 @@ function Temporada() {
                             ))}
                           </Pie>
                           <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
-                            itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }}
+                            contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '4px' }}
+                            itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }}
                           />
                           <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
                         </PieChart>
                       </ResponsiveContainer>
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analiticaGlobal.golesPropiosTotales}</span><br/>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>{analiticaGlobal.golesPropiosTotales}</span><br/>
                         <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>A FAVOR</span>
                       </div>
                     </>
@@ -933,14 +933,14 @@ function Temporada() {
                             ))}
                           </Pie>
                           <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
-                            itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }}
+                            contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '4px' }}
+                            itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }}
                           />
                           <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
                         </PieChart>
                       </ResponsiveContainer>
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none', marginTop: '-15px' }}>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{analiticaGlobal.golesRivalesTotales}</span><br/>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>{analiticaGlobal.golesRivalesTotales}</span><br/>
                         <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>EN CONTRA</span>
                       </div>
                     </>
@@ -964,7 +964,7 @@ function Temporada() {
                 </div>
                 <div style={kpiFila}>
                   <span>REMATES ACUMULADOS</span>
-                  <strong style={{color: '#fff'}}>{analiticaGlobal.rematesPropiosTotales}</strong>
+                  <strong style={{color: 'var(--text)'}}>{analiticaGlobal.rematesPropiosTotales}</strong>
                 </div>
                 <div style={kpiFila}>
                   <span>DUELOS OFE. GANADOS</span>
@@ -1061,10 +1061,10 @@ function Temporada() {
                     <YAxis dataKey="nombre" type="category" stroke="#555" tick={{ fill: '#fff', fontSize: 10, fontWeight: 700 }} width={80} />
                     <RechartsTooltip 
                       cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                      contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '4px' }}
+                      contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '4px' }}
                       itemStyle={{ fontSize: '0.8rem', fontWeight: 800 }}
                     />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#888', paddingTop: '10px' }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: 'var(--text-dim)', paddingTop: '10px' }} />
                     <Bar dataKey="Creación" stackId="a" fill="#c084fc" barSize={15} />
                     <Bar dataKey="Finalización" stackId="a" fill="#00ff88" barSize={15} radius={[0, 4, 4, 0]} />
                   </ComposedChart>
@@ -1083,8 +1083,8 @@ function Temporada() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
                   <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 11, fontWeight: 700 }} />
                   <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', color: '#fff' }} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: '#888' }} />
+                  <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', color: 'var(--text)' }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: 'var(--text-dim)' }} />
                   <Bar dataKey="Anotados" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={40} />
                   <Bar dataKey="Recibidos" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
                 </BarChart>
@@ -1111,7 +1111,7 @@ function Temporada() {
               {analiticaGlobal.topGoleadores.slice(0, 5).map((j, i) => (
                 <div key={j.id} style={{...rankingRowSmall, position: 'relative', overflow: 'hidden'}}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', zIndex: 1 }}><span style={{ color: 'var(--text-dim)', fontWeight: 800, width: '15px' }}>{i+1}</span><span className="mono-accent" style={{ fontSize: '0.8rem' }}>{j.dorsal}</span><span style={{ fontWeight: 700 }}>{j.apellido ? j.apellido.toUpperCase() : j.nombre.toUpperCase()}</span></div>
-                  <strong style={{ fontSize: '1.1rem', color: '#fff', zIndex: 1 }}>{j.goles}</strong>
+                  <strong style={{ fontSize: '1.1rem', color: 'var(--text)', zIndex: 1 }}>{j.goles}</strong>
                   <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, background: 'var(--accent)', opacity: 0.1, width: `${(j.goles / Math.max(1, analiticaGlobal.topGoleadores[0]?.goles)) * 100}%`, zIndex: 0 }} />
                 </div>
               ))}
@@ -1209,7 +1209,7 @@ function Temporada() {
 
                       return (
                         <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
-                          <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.7rem' }}>
+                          <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: 'var(--text)', fontSize: '0.7rem' }}>
                             [{nombresQuinteto}]
                           </td>
                           <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor}</span> - <span style={{color: '#ef4444'}}>{q.golesContra}</span></td>
@@ -1284,7 +1284,7 @@ function Temporada() {
 
                       return (
                         <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
-                          <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: '#fff', fontSize: '0.7rem' }}>
+                          <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: 'var(--text)', fontSize: '0.7rem' }}>
                             [{nombresQuinteto}]
                           </td>
                           <td style={{ fontSize: '0.85rem', fontWeight: 700 }}><span style={{color: '#00ff88'}}>{q.golesFavor}</span> - <span style={{color: '#ef4444'}}>{q.golesContra}</span></td>
@@ -1390,7 +1390,7 @@ function Temporada() {
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
                               {escudoPropio ? <img src={escudoPropio} style={{width:'20px',height:'20px',objectFit:'contain', filter:'grayscale(1) brightness(2)'}} alt="MI" /> : <div style={{width:'20px',height:'20px',borderRadius:'50%',background:'#222',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.55rem',border:'1px solid var(--accent)',color:'var(--accent)'}}>MI</div>}
-                              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', letterSpacing: '0.5px' }}>
+                              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text)', letterSpacing: '0.5px' }}>
                                 vs {p.rival.toUpperCase()}
                               </div>
                               {escudoRival ? <img src={escudoRival} style={{width:'20px',height:'20px',objectFit:'contain', filter:'grayscale(1) brightness(2)'}} alt="RIVAL" /> : <div style={{width:'20px',height:'20px',borderRadius:'50%',background:'#222',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.55rem',border:'1px solid #555',color:'#fff'}}>{p.rival?.substring(0,2).toUpperCase()}</div>}
@@ -1400,7 +1400,7 @@ function Temporada() {
                                 {p.fechaCorta} • {p.categoria || 'S/C'} • {p.competicion || 'Amistoso'} • J{p.jornada || '-'}
                               </span>
                             </div>
-                            <div style={{ fontSize: '0.65rem', color: '#888', marginTop: '4px', fontWeight: 600 }}>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '4px', fontWeight: 600 }}>
                               👥 {convocados} CONVOCADOS
                             </div>
                           </div>
@@ -1408,7 +1408,7 @@ function Temporada() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
                           <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '1px', marginBottom: '2px' }}>RESULTADO</div>
-                          <div style={{ background: '#000', border: '1px solid #222', padding: '4px 10px', borderRadius: '4px', fontSize: '1.3rem', fontWeight: 900, color: '#fff', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: '4px', fontSize: '1.3rem', fontWeight: 900, color: 'var(--text)', display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <span style={{ color: p.golesPropio > p.golesRival ? 'var(--accent)' : '#fff' }}>{p.golesPropio}</span>
                             <span style={{ color: '#555', fontSize: '1rem' }}>-</span>
                             <span style={{ color: p.golesRival > p.golesPropio ? '#ef4444' : '#fff' }}>{p.golesRival}</span>
@@ -1427,17 +1427,17 @@ function Temporada() {
                 <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO ACUMULADO <InfoBox texto="Visualización espacial de todas las acciones ofensivas del equipo a lo largo de la temporada. Útil para detectar zonas preferenciales de ataque." /></div>
                 
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '8px', fontSize: '0.8rem', width: 'auto', background: '#111', color: '#fff', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
-                    <option value="" style={{ background: '#111', color: '#fff' }}>TODAS LAS ACCIONES</option>
-                    <option value="Gol" style={{ background: '#111', color: '#fff' }}>SOLO GOLES</option>
-                    <option value="Remate" style={{ background: '#111', color: '#fff' }}>SOLO REMATES</option>
-                    <option value="Recuperación" style={{ background: '#111', color: '#fff' }}>SOLO RECUPERACIONES</option>
-                    <option value="Duelo" style={{ background: '#111', color: '#fff' }}>SOLO DUELOS</option>
-                    <option value="Falta cometida" style={{ background: '#111', color: '#fff' }}>FALTAS COMETIDAS</option>
-                    <option value="Falta recibida" style={{ background: '#111', color: '#fff' }}>FALTAS RECIBIDAS</option>
+                  <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones'} style={{ padding: '8px', fontSize: '0.8rem', width: 'auto', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', opacity: tipoMapa === 'transiciones' ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
+                    <option value="" style={{ background: 'var(--panel)', color: 'var(--text)' }}>TODAS LAS ACCIONES</option>
+                    <option value="Gol" style={{ background: 'var(--panel)', color: 'var(--text)' }}>SOLO GOLES</option>
+                    <option value="Remate" style={{ background: 'var(--panel)', color: 'var(--text)' }}>SOLO REMATES</option>
+                    <option value="Recuperación" style={{ background: 'var(--panel)', color: 'var(--text)' }}>SOLO RECUPERACIONES</option>
+                    <option value="Duelo" style={{ background: 'var(--panel)', color: 'var(--text)' }}>SOLO DUELOS</option>
+                    <option value="Falta cometida" style={{ background: 'var(--panel)', color: 'var(--text)' }}>FALTAS COMETIDAS</option>
+                    <option value="Falta recibida" style={{ background: 'var(--panel)', color: 'var(--text)' }}>FALTAS RECIBIDAS</option>
                   </select>
 
-                  <div style={{ display: 'flex', gap: '5px', background: '#000', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
                     <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                     <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
                     <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
@@ -1552,7 +1552,7 @@ function Temporada() {
             <button
               onClick={() => setMostrarReporte(false)}
               style={{
-                background: '#ef4444', color: '#fff', border: 'none',
+                background: '#ef4444', color: 'var(--text)', border: 'none',
                 padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px'
               }}
             >
@@ -1571,9 +1571,9 @@ function Temporada() {
 
 const selectFilterStyle = {
   width: '100%',
-  background: '#000',
-  color: '#fff',
-  border: '1px solid #333',
+  background: 'var(--bg)',
+  color: 'var(--text)',
+  border: '1px solid var(--border)',
   outline: 'none',
   padding: '8px',
   borderRadius: '4px',

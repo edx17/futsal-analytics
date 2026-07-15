@@ -282,7 +282,7 @@ function Usuarios() {
         
         {/* SELECTOR DE TABS PARA EL SUPERUSER */}
         {esSuperUser && (
-          <div style={{ display: 'flex', background: '#000', borderRadius: '8px', padding: '5px', border: '1px solid #333' }}>
+          <div style={{ display: 'flex', background: 'var(--bg)', borderRadius: '8px', padding: '5px', border: '1px solid var(--border)' }}>
             <button 
               onClick={() => setTabActiva('usuarios')} 
               style={{ ...tabBtnStyle, background: tabActiva === 'usuarios' ? '#c084fc' : 'transparent', color: tabActiva === 'usuarios' ? '#000' : '#888' }}
@@ -398,7 +398,7 @@ function Usuarios() {
                         </td>
                         {esSuperUser && (
                           <td style={{ padding: '12px 10px', color: 'var(--text-dim)' }}>
-                            {u.clubes?.nombre || <span style={{ color: '#888', fontStyle: 'italic' }}>Sin club</span>}
+                            {u.clubes?.nombre || <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>Sin club</span>}
                           </td>
                         )}
                         <td style={{ padding: '12px 10px' }}>
@@ -454,7 +454,7 @@ function Usuarios() {
                 <input type="url" value={nuevoClub.escudo_url} onChange={e => setNuevoClub({ ...nuevoClub, escudo_url: e.target.value })} placeholder="https://..." style={inputStyle} />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', background: '#111', padding: '15px', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', background: 'var(--panel)', padding: '15px', borderRadius: '8px' }}>
                 <input 
                   type="checkbox" 
                   id="suscripcion_activa"
@@ -462,7 +462,7 @@ function Usuarios() {
                   onChange={e => setNuevoClub({ ...nuevoClub, suscripcion_activa: e.target.checked })} 
                   style={{ transform: 'scale(1.5)', cursor: 'pointer' }}
                 />
-                <label htmlFor="suscripcion_activa" style={{ color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>Suscripción Habilitada</label>
+                <label htmlFor="suscripcion_activa" style={{ color: 'var(--text)', fontWeight: 'bold', cursor: 'pointer' }}>Suscripción Habilitada</label>
               </div>
 
               <button type="submit" style={{ background: '#c084fc', color: '#000', padding: '15px', fontWeight: 900, border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '15px' }} disabled={procesandoClub}>
@@ -500,13 +500,13 @@ function Usuarios() {
                             {c.escudo_url ? (
                               <img src={c.escudo_url} alt="Escudo" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                             ) : (
-                              <div style={{ width: '24px', height: '24px', background: '#333', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.6rem' }}>?</div>
+                              <div style={{ width: '24px', height: '24px', background: 'var(--border)', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.6rem' }}>?</div>
                             )}
-                            <div style={{ fontWeight: 800, color: '#fff' }}>{c.nombre}</div>
+                            <div style={{ fontWeight: 800, color: 'var(--text)' }}>{c.nombre}</div>
                           </td>
                           <td style={{ padding: '12px 10px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: '#333', color: '#c084fc', width: 'fit-content', fontWeight: 'bold' }}>{c.plan_actual}</span>
+                              <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'var(--border)', color: '#c084fc', width: 'fit-content', fontWeight: 'bold' }}>{c.plan_actual}</span>
                               <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: estadoAprobado ? '#10b98122' : '#ef444422', color: estadoAprobado ? '#10b981' : '#ef4444', width: 'fit-content' }}>
                                 {c.suscripcion_activa ? 'Activo' : 'Suspendido'}
                               </span>
@@ -542,8 +542,8 @@ function Usuarios() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', animation: 'fadeIn 0.2s' }}>
           <div className="bento-card custom-scroll" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--accent)', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
-              <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff' }}>EDITAR USUARIO</div>
-              <button onClick={() => setUsuarioEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+              <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>EDITAR USUARIO</div>
+              <button onClick={() => setUsuarioEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             </div>
             
             <form onSubmit={guardarEdicionUsuario} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -555,7 +555,7 @@ function Usuarios() {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block' }}>EMAIL REGISTRADO</label>
-                  <div style={{ color: '#fff', fontSize: '0.8rem', wordBreak: 'break-all' }}>{usuarioEnEdicion.email || '-'}</div>
+                  <div style={{ color: 'var(--text)', fontSize: '0.8rem', wordBreak: 'break-all' }}>{usuarioEnEdicion.email || '-'}</div>
                 </div>
               </div>
 
@@ -591,11 +591,11 @@ function Usuarios() {
               {usuarioEnEdicion.rol === 'ct' && (
                 <div className="input-field" style={{ gridColumn: 'span 2' }}>
                   <label style={labelStyle}>CATEGORÍAS ASIGNADAS (Filtra la vista del CT)</label>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#0a0a0a', padding: '10px', borderRadius: '4px', border: '1px solid #333' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#0a0a0a', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                     {['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', '2016', '2017', '2018', '2019'].map(cat => {
                       const checked = (usuarioEnEdicion.categorias_asignadas || []).includes(cat);
                       return (
-                        <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#fff', fontSize: '0.8rem', cursor: 'pointer', padding: '4px 8px', background: checked ? '#10b98122' : 'transparent', borderRadius: '4px', border: checked ? '1px solid #10b981' : '1px solid transparent' }}>
+                        <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text)', fontSize: '0.8rem', cursor: 'pointer', padding: '4px 8px', background: checked ? '#10b98122' : 'transparent', borderRadius: '4px', border: checked ? '1px solid #10b981' : '1px solid transparent' }}>
                           <input type="checkbox" checked={checked} onChange={(e) => handleCategoriaChange(cat, e.target.checked)} style={{ cursor: 'pointer' }} />
                           {cat}
                         </label>
@@ -621,7 +621,7 @@ function Usuarios() {
           <div className="bento-card custom-scroll" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #c084fc', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#c084fc' }}>EDITAR CLUB</div>
-              <button onClick={() => setClubEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+              <button onClick={() => setClubEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             </div>
             
             <form onSubmit={guardarEdicionClub} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -651,7 +651,7 @@ function Usuarios() {
                 <input type="url" value={clubEnEdicion.escudo_url} onChange={e => setClubEnEdicion({ ...clubEnEdicion, escudo_url: e.target.value })} style={inputStyle} />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', background: '#111', padding: '15px', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', background: 'var(--panel)', padding: '15px', borderRadius: '8px' }}>
                 <input 
                   type="checkbox" 
                   id="suscripcion_activa_edit"
@@ -659,7 +659,7 @@ function Usuarios() {
                   onChange={e => setClubEnEdicion({ ...clubEnEdicion, suscripcion_activa: e.target.checked })} 
                   style={{ transform: 'scale(1.5)', cursor: 'pointer' }}
                 />
-                <label htmlFor="suscripcion_activa_edit" style={{ color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>Suscripción Habilitada</label>
+                <label htmlFor="suscripcion_activa_edit" style={{ color: 'var(--text)', fontWeight: 'bold', cursor: 'pointer' }}>Suscripción Habilitada</label>
               </div>
 
               <button type="submit" disabled={procesandoClub} style={{ background: '#c084fc', color: '#000', padding: '15px', fontWeight: 900, border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '10px' }}>
@@ -676,8 +676,8 @@ function Usuarios() {
 
 // Estilos reutilizables
 const labelStyle = { fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '5px', display: 'block', fontWeight: 'bold' };
-const inputStyle = { width: '100%', padding: '10px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '16px' };
-const btnIconoClaro = { background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', transition: '0.2s' };
+const inputStyle = { width: '100%', padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', fontSize: '16px' };
+const btnIconoClaro = { background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', transition: '0.2s' };
 const btnIconoRojo = { background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', transition: '0.2s' };
 const tabBtnStyle = { padding: '8px 15px', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' };
 

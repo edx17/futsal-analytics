@@ -923,7 +923,7 @@ function JugadorPerfil() {
           </div>
           <div style={{ width: esMovil ? '100%' : 'auto' }}>
             <div className="stat-label">FILTRAR POR CATEGORÍA</div>
-            <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '200px', background: '#000', color: '#fff', padding: '8px', borderRadius: '4px', border: '1px solid #333', outline: 'none' }}>
+            <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ marginTop: '5px', width: '100%', minWidth: '200px', background: 'var(--bg)', color: 'var(--text)', padding: '8px', borderRadius: '4px', border: '1px solid var(--border)', outline: 'none' }}>
               <option value="Todas">TODAS LAS CATEGORÍAS</option>
               {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
             </select>
@@ -946,7 +946,7 @@ function JugadorPerfil() {
                       {j.foto ? <img src={j.foto} alt="Foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</>}
                     </div>
                     <div>
-                      <div style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1.1 }}>{j.apellido || '-'}</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1.1 }}>{j.apellido || '-'}</div>
                       <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>{j.nombre || '-'}</div>
                     </div>
                   </div>
@@ -973,11 +973,11 @@ function JugadorPerfil() {
                   <div className="player-card-glow" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at top right, rgba(0,255,136,0.05), transparent 70%)', opacity: 0, transition: 'opacity 0.3s', pointerEvents: 'none' }} />
                   <div style={{ position: 'absolute', right: '-8px', top: '-20px', fontSize: '5.5rem', fontWeight: 900, color: 'rgba(255,255,255,0.025)', pointerEvents: 'none' }}>{j.dorsal}</div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#111', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '1rem', fontWeight: 800, color: 'var(--accent)', flexShrink: 0 }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', fontSize: '1rem', fontWeight: 800, color: 'var(--accent)', flexShrink: 0 }}>
                       {j.foto ? <img src={j.foto} alt="Foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</>}
                     </div>
                     <div>
-                      <div style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', color: '#fff', lineHeight: 1.1 }}>{j.apellido || '-'}</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1.1 }}>{j.apellido || '-'}</div>
                       <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>{j.nombre || '-'}</div>
                     </div>
                   </div>
@@ -1027,7 +1027,7 @@ function JugadorPerfil() {
                 localStorage.removeItem('kiosco_jugador_id');
                 navigate('/kiosco');
               }} 
-              style={{ padding: '12px 20px', background: '#ef4444', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 900, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', border: 'none', width: esMovil ? '100%' : 'auto', justifyContent: 'center' }}
+              style={{ padding: '12px 20px', background: '#ef4444', color: 'var(--text)', borderRadius: '8px', cursor: 'pointer', fontWeight: 900, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', border: 'none', width: esMovil ? '100%' : 'auto', justifyContent: 'center' }}
             >
               👋 SALIR / CERRAR MI PERFIL
             </button>
@@ -1052,7 +1052,7 @@ function JugadorPerfil() {
 
         {jugadorId && perfil && !perfil.vacio && (
           <div style={{ display: 'flex', gap: '8px', width: esMovil ? '100%' : 'auto', flexDirection: esMovil ? 'column' : 'row' }}>
-            <button onClick={() => setMostrarStory(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', background: '#c084fc', color: '#fff', border: 'none', boxShadow: '0 4px 15px rgba(192,132,252,0.2)', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={() => setMostrarStory(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', background: '#c084fc', color: 'var(--text)', border: 'none', boxShadow: '0 4px 15px rgba(192,132,252,0.2)', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
               📱 STORY
             </button>
             <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
@@ -1098,7 +1098,7 @@ function JugadorPerfil() {
 
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-                  <div style={{ fontSize: esMovil ? '1.8rem' : '2.4rem', fontWeight: 900, textTransform: 'uppercase', color: '#fff', lineHeight: 1, letterSpacing: '-0.02em' }}>
+                  <div style={{ fontSize: esMovil ? '1.8rem' : '2.4rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--text)', lineHeight: 1, letterSpacing: '-0.02em' }}>
                     {jugadorSeleccionado.apellido}
                   </div>
                   <span style={{ background: accentColor, color: '#000', padding: '4px 10px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.08em' }}>
@@ -1117,7 +1117,7 @@ function JugadorPerfil() {
 
               <div style={{ display: 'flex', gap: esMovil ? '16px' : '24px', flexWrap: 'wrap', borderTop: esMovil ? `1px solid rgba(255,255,255,0.08)` : 'none', paddingTop: esMovil ? '14px' : '0', width: esMovil ? '100%' : 'auto', justifyContent: esMovil ? 'space-around' : 'flex-end' }}>
                 {[
-                  { label: 'PARTIDOS', val: perfil.partidosJugados, color: '#fff' },
+                  { label: 'PARTIDOS', val: perfil.partidosJugados, color: 'var(--text)' },
                   { label: 'MINUTOS', val: `${perfil.minutos}'`, color: 'rgba(255,255,255,0.7)' },
                   { label: 'RATING', val: perfil.impacto !== '-' ? (perfil.impacto.toFixed ? perfil.impacto.toFixed(1) : perfil.impacto) : '-', color: typeof perfil.impacto === 'number' && perfil.impacto >= 6 ? '#00ff88' : '#ef4444' },
                   { label: '+/-', val: perfil.plusMinus > 0 ? `+${perfil.plusMinus}` : perfil.plusMinus, color: perfil.plusMinus > 0 ? '#00ff88' : perfil.plusMinus < 0 ? '#ef4444' : '#fff' },
@@ -1246,7 +1246,7 @@ function JugadorPerfil() {
                     {[
                       { label: 'EFECTIVIDAD', val: `${perfil.pctAtajadas}%`, sub: `${perfil.totalAtajadas}/${perfil.totalAtajadas + perfil.totalGolesRecibidos}`, color: '#00ff88', icon: '🛡️' },
                       { label: 'GOLES PREVENIDOS', val: perfil.golesPrevenidos > 0 ? `+${perfil.golesPrevenidos}` : perfil.golesPrevenidos, sub: `vs ${perfil.xgEnContra.toFixed(2)} xG recibido`, color: Number(perfil.golesPrevenidos) > 0 ? '#00ff88' : '#ef4444', icon: '✨' },
-                      { label: 'REMATES RECIBIDOS', val: perfil.totalGolesRecibidos + perfil.totalAtajadas + (perfil.rivalStats?.Desviado || 0) + (perfil.rivalStats?.Rebatido || 0), sub: 'incl. desviados', color: '#fff', icon: '⚡' },
+                      { label: 'REMATES RECIBIDOS', val: perfil.totalGolesRecibidos + perfil.totalAtajadas + (perfil.rivalStats?.Desviado || 0) + (perfil.rivalStats?.Rebatido || 0), sub: 'incl. desviados', color: 'var(--text)', icon: '⚡' },
                       { label: 'GOLES RECIBIDOS', val: perfil.totalGolesRecibidos, sub: `xG recibido: ${perfil.xgEnContra.toFixed(2)}`, color: '#ef4444', icon: '❌' },
                     ].map((m, i) => (
                       <div key={i} className="bento-card jp-stat-card" style={{ textAlign: 'center', padding: '18px 12px', borderTop: `2px solid ${m.color}` }}>
@@ -1416,7 +1416,7 @@ function JugadorPerfil() {
                                   <Cell key={`cell-${i}`} fill={COLORS_REMATES[entry.name] || '#555'} />
                                 ))}
                               </Pie>
-                              <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333', borderRadius: '6px' }} itemStyle={{ color: '#fff', fontSize: '0.8rem', fontWeight: 800 }} />
+                              <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '6px' }} itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }} />
                               <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
                             </PieChart>
                           </ResponsiveContainer>
@@ -1445,7 +1445,7 @@ function JugadorPerfil() {
                           {perfil.topSocios.map((socio, idx) => (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0a0a0a', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', cursor: isKiosco ? 'default' : 'pointer', opacity: isKiosco ? 0.9 : 1 }}
                               onClick={() => !isKiosco && navigate('/jugador', { state: { jugadorId: socio.id, partidoFiltro } })}>
-                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>
                                 {socio.apellido?.charAt(0)}{socio.nombre?.charAt(0)}
                               </div>
                               <span style={{ flex: 1, fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>{socio.apellido || socio.nombre}</span>
@@ -1478,7 +1478,7 @@ function JugadorPerfil() {
                 </div>
                 
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
-                  <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} style={{ flex: esMovil ? '1 1 100%' : 'auto', padding: '8px 10px', fontSize: '0.75rem', background: '#0a0a0a', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', outline: 'none', borderRadius: '6px' }}>
+                  <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} style={{ flex: esMovil ? '1 1 100%' : 'auto', padding: '8px 10px', fontSize: '0.75rem', background: '#0a0a0a', color: 'var(--text)', border: '1px solid rgba(255,255,255,0.1)', outline: 'none', borderRadius: '6px' }}>
                     <option value="Todas">TODAS SUS ACCIONES</option>
                     <option value="Gol">SOLO GOLES</option>
                     {esArquero && <option value="Goles Recibidos">GOLES RECIBIDOS</option>}
@@ -1632,7 +1632,7 @@ function JugadorPerfil() {
       {mostrarStory && jugadorSeleccionado && perfil && !perfil.vacio && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.97)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px' }}>
           <div style={{ textAlign: 'right', maxWidth: '1200px', margin: '0 auto' }}>
-            <button onClick={() => setMostrarStory(false)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px', marginBottom: '10px' }}>✖ CERRAR STORY</button>
+            <button onClick={() => setMostrarStory(false)} style={{ background: '#ef4444', color: 'var(--text)', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px', marginBottom: '10px' }}>✖ CERRAR STORY</button>
           </div>
           <PlayerReportIGStory 
             jugador={jugadorSeleccionado} 
@@ -1652,7 +1652,7 @@ function JugadorPerfil() {
       {mostrarReporte && jugadorSeleccionado && perfil && !perfil.vacio && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.97)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px' }}>
           <div style={{ textAlign: 'right', maxWidth: '1200px', margin: '0 auto' }}>
-            <button onClick={() => setMostrarReporte(false)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px', marginBottom: '10px' }}>✖ CERRAR REPORTE</button>
+            <button onClick={() => setMostrarReporte(false)} style={{ background: '#ef4444', color: 'var(--text)', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px', marginBottom: '10px' }}>✖ CERRAR REPORTE</button>
           </div>
           <PlayerReportGenerator jugador={jugadorSeleccionado} perfil={perfil} wellness={metricasWellness} clubInfo={clubInfo} jugadores={jugadores}
             contexto={partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : (() => { const p = partidos.find(p => p.id == partidoFiltro); return p ? `VS ${p.rival?.toUpperCase()} (${p.fecha})` : ''; })()}

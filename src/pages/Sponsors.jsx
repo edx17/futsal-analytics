@@ -123,7 +123,7 @@ function Sponsors() {
             <h2 style={{ margin: 0, fontSize: '1.8rem' }}>SPONSORS Y SUBSIDIOS</h2>
           </div>
           {puedeEditar && (
-            <button onClick={() => { setFormSponsor({ id: null, nombre: '', contacto_nombre: '', monto_aporte: '', periodicidad: 'mensual', estado: 'activo', fecha_vencimiento: '' }); setModalSponsor(true); }} style={{ background: '#a855f7', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+            <button onClick={() => { setFormSponsor({ id: null, nombre: '', contacto_nombre: '', monto_aporte: '', periodicidad: 'mensual', estado: 'activo', fecha_vencimiento: '' }); setModalSponsor(true); }} style={{ background: '#a855f7', color: 'var(--text)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
               + AGREGAR SPONSOR
             </button>
           )}
@@ -133,13 +133,13 @@ function Sponsors() {
           {sponsors.map(s => {
             const estaVencido = s.fecha_vencimiento && new Date(s.fecha_vencimiento) < new Date();
             return (
-              <div key={s.id} style={{ background: '#111', padding: '20px', borderRadius: '12px', border: `1px solid ${estaVencido ? '#ef4444' : '#333'}`, position: 'relative' }}>
+              <div key={s.id} style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: `1px solid ${estaVencido ? '#ef4444' : '#333'}`, position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <h3 style={{ margin: '0 0 5px 0', color: '#fff' }}>{s.nombre.toUpperCase()}</h3>
-                  {puedeEditar && <button onClick={() => { setFormSponsor(s); setModalSponsor(true); }} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', fontSize: '1rem' }} title="Editar">✏️</button>}
+                  <h3 style={{ margin: '0 0 5px 0', color: 'var(--text)' }}>{s.nombre.toUpperCase()}</h3>
+                  {puedeEditar && <button onClick={() => { setFormSponsor(s); setModalSponsor(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem' }} title="Editar">✏️</button>}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '15px' }}>👤 {s.contacto_nombre || 'Sin contacto'}</div>
-                <div style={{ background: '#0a0a0a', padding: '10px', borderRadius: '8px', border: '1px solid #222', marginBottom: '15px' }}>
+                <div style={{ background: '#0a0a0a', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '15px' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>ACUERDO ({s.periodicidad.toUpperCase()})</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a855f7' }}>${Number(s.monto_aporte).toLocaleString()}</div>
                 </div>
@@ -148,7 +148,7 @@ function Sponsors() {
                   <span style={{ color: estaVencido ? '#ef4444' : '#888' }}>{s.fecha_vencimiento ? `Vence: ${s.fecha_vencimiento.split('-').reverse().join('/')}` : 'Sin vencimiento'}</span>
                 </div>
                 {puedeEditar && (
-                  <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], descripcion: '', aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
+                  <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], descripcion: '', aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
                     💸 REGISTRAR COBRO
                   </button>
                 )}
@@ -176,8 +176,8 @@ function Sponsors() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
-              <button onClick={() => setModalSponsor(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={guardarSponsor} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#a855f7', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{cargando ? 'GUARDANDO...' : 'GUARDAR'}</button>
+              <button onClick={() => setModalSponsor(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={guardarSponsor} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#a855f7', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{cargando ? 'GUARDANDO...' : 'GUARDAR'}</button>
             </div>
           </div>
         </div>
@@ -216,7 +216,7 @@ function Sponsors() {
 
               {/* SECCIÓN COMISIÓN (Oculta si es en especie porque no entra plata a repartir) */}
               {formPago.metodo_pago !== 'Especie' && (
-                <div style={{ background: '#111', padding: '15px', borderRadius: '8px', border: '1px solid #333', marginTop: '10px' }}>
+                <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', marginTop: '10px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', color: formPago.aplicaComision ? '#f59e0b' : '#fff' }}>
                     <input type="checkbox" checked={formPago.aplicaComision} onChange={(e) => setFormPago({...formPago, aplicaComision: e.target.checked})} style={{ width: '18px', height: '18px' }} />
                     ¿Repartir comisión por este Sponsor?
@@ -257,8 +257,8 @@ function Sponsors() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
-              <button onClick={() => setModalPago({visible: false, sponsor: null})} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: '#fff', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={registrarPago} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{cargando ? 'REGISTRANDO...' : 'CONFIRMAR COBRO'}</button>
+              <button onClick={() => setModalPago({visible: false, sponsor: null})} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={registrarPago} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{cargando ? 'REGISTRANDO...' : 'CONFIRMAR COBRO'}</button>
             </div>
           </div>
         </div>
@@ -268,6 +268,6 @@ function Sponsors() {
 }
 
 const lblStyle = { fontSize: '0.75rem', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' };
-const inputStyle = { width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px', outline: 'none', fontSize: '16px' };
+const inputStyle = { width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px' };
 
 export default Sponsors;

@@ -284,9 +284,9 @@ function Transferencias() {
 
   const Avatar = ({ foto, nombre, size = 44 }) => (
     foto ? (
-      <img src={foto} alt={nombre} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '1px solid #333', flexShrink: 0 }} />
+      <img src={foto} alt={nombre} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} />
     ) : (
-      <div style={{ width: size, height: size, borderRadius: '50%', background: '#1a1a1a', border: '1px solid #333', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: size * 0.32, color: 'var(--accent)', flexShrink: 0 }}>
+      <div style={{ width: size, height: size, borderRadius: '50%', background: '#1a1a1a', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: size * 0.32, color: 'var(--accent)', flexShrink: 0 }}>
         {iniciales(nombre)}
       </div>
     )
@@ -357,7 +357,7 @@ function Transferencias() {
       </div>
 
       {/* TABS */}
-      <div style={{ display: 'flex', gap: '5px', background: '#0a0a0a', padding: '5px', borderRadius: '8px', border: '1px solid #333', marginBottom: '20px', width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: '5px', background: '#0a0a0a', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '20px', width: 'fit-content' }}>
         <button onClick={() => setTab('activos')} style={{ ...tabBtn, background: tab === 'activos' ? '#222' : 'transparent', color: tab === 'activos' ? 'var(--accent)' : 'var(--text-dim)' }}>
           PRÉSTAMOS ACTIVOS
         </button>
@@ -388,7 +388,7 @@ function Transferencias() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
                           <Avatar foto={info.foto} nombre={info.nombre} />
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {info.dorsal != null && <span style={{ color: 'var(--accent)', fontFamily: MONO }}>#{info.dorsal} </span>}
                               {info.nombre}
                             </div>
@@ -402,7 +402,7 @@ function Transferencias() {
                         </div>
 
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '8px' }}>
-                          {entrante ? 'Viene de' : 'Cedido a'} <strong style={{ color: '#fff' }}>{t.club_destino}</strong>
+                          {entrante ? 'Viene de' : 'Cedido a'} <strong style={{ color: 'var(--text)' }}>{t.club_destino}</strong>
                         </div>
 
                         {t.opcion_compra ? (
@@ -444,7 +444,7 @@ function Transferencias() {
             <div className="bento-card">
               <div style={{ display: 'flex', gap: '5px', marginBottom: '15px', flexWrap: 'wrap' }}>
                 {['Todos', 'Prestamo', 'Venta', 'Libre'].map(tp => (
-                  <button key={tp} onClick={() => setFiltroTipo(tp)} style={{ ...tabBtn, fontSize: '0.7rem', padding: '7px 14px', background: filtroTipo === tp ? '#222' : 'transparent', color: filtroTipo === tp ? 'var(--accent)' : 'var(--text-dim)', border: '1px solid #333' }}>
+                  <button key={tp} onClick={() => setFiltroTipo(tp)} style={{ ...tabBtn, fontSize: '0.7rem', padding: '7px 14px', background: filtroTipo === tp ? '#222' : 'transparent', color: filtroTipo === tp ? 'var(--accent)' : 'var(--text-dim)', border: '1px solid var(--border)' }}>
                     {tp === 'Prestamo' ? 'PRÉSTAMOS' : tp.toUpperCase()}
                   </button>
                 ))}
@@ -488,13 +488,13 @@ function Transferencias() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <Avatar foto={info.foto} nombre={info.nombre} size={30} />
                                 <div>
-                                  <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.85rem' }}>{info.nombre}</div>
+                                  <div style={{ fontWeight: 800, color: 'var(--text)', fontSize: '0.85rem' }}>{info.nombre}</div>
                                   {t.categoria && <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{t.categoria}</div>}
                                 </div>
                               </div>
                             </td>
                             <td style={{ padding: '12px' }}>{chipTipo(t)}</td>
-                            <td style={{ padding: '12px', color: '#fff', fontSize: '0.85rem' }}>
+                            <td style={{ padding: '12px', color: 'var(--text)', fontSize: '0.85rem' }}>
                               <span style={{ color: 'var(--text-dim)', marginRight: '5px' }}>{t.direccion === 'Entrante' ? '←' : '→'}</span>
                               {t.club_destino}
                             </td>
@@ -666,8 +666,8 @@ const chipBase = { fontSize: '0.6rem', fontWeight: 800, padding: '3px 8px', bord
 
 const tabBtn = { border: 'none', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit', padding: '10px 18px', borderRadius: '4px', fontWeight: 800, fontSize: '0.8rem' };
 
-const selectStyle = { padding: '10px 15px', fontSize: '1rem', background: '#111', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '6px', outline: 'none', fontWeight: 800, cursor: 'pointer', minWidth: '220px' };
+const selectStyle = { padding: '10px 15px', fontSize: '1rem', background: 'var(--panel)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '6px', outline: 'none', fontWeight: 800, cursor: 'pointer', minWidth: '220px' };
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', boxSizing: 'border-box' };
+const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', boxSizing: 'border-box' };
 
 export default Transferencias;

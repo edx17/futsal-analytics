@@ -168,7 +168,7 @@ export default function Login() {
   );
 }
 
-const inputStyle = { padding: '15px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '16px' };
+const inputStyle = { padding: '15px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', fontSize: '16px' };
 const btnSubmit = { padding: '15px', background: 'var(--accent)', color: '#000', fontWeight: 900, border: 'none', cursor: 'pointer', borderRadius: '4px' };
 const btnSecundario = { background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', fontWeight: 800, cursor: 'pointer', borderRadius: '4px' };
 const btnGoogle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '12px', background: '#fff', color: '#000', fontWeight: 800, border: 'none', cursor: 'pointer', borderRadius: '4px', fontSize: '0.9rem' };

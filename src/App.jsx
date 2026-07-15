@@ -79,7 +79,7 @@ const getSidebarLinkStyle = (isCollapsed) => ({
 const getSidebarGroupTitle = (isCollapsed) => ({ 
   padding: isCollapsed ? '20px 0 5px 0' : '20px 20px 5px 20px', 
   fontSize: '0.65rem', 
-  color: '#888', 
+  color: 'var(--text-dim)', 
   fontWeight: 900, 
   letterSpacing: '1px', 
   cursor: 'pointer', 
@@ -461,10 +461,10 @@ useEffect(() => {
             {sidebarAbierta && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                 <img src="/favicon-32x32.png" alt="VS" style={{ height: '26px', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none' }} />
-                <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '1px' }}>VIRTUAL<span style={{ color: 'var(--accent)' }}>.CLUB</span></div>
+                <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '1px', color: 'var(--text)' }}>VIRTUAL<span style={{ color: 'var(--accent)' }}>.CLUB</span></div>
               </div>
             )}
-            <button onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}>
+            <button onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}>
               {sidebarAbierta ? '◀' : '▶'}
             </button>
           </div>
@@ -539,13 +539,13 @@ useEffect(() => {
                 <div style={{fontSize: '0.7rem', color: 'var(--text-dim)', textAlign: 'center', fontWeight: 'bold', marginBottom: '5px'}}>ACCIONES RÁPIDAS</div>
                 
                 {accionesActivasUsuario.length === 0 ? (
-                  <div style={{ fontSize: '0.75rem', color: '#666', textAlign: 'center', padding: '10px' }}>No tenés atajos activos.</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center', padding: '10px' }}>No tenés atajos activos.</div>
                 ) : (
                   accionesActivasUsuario.map((acc) => (
                     <button 
                       key={acc.id} 
                       onClick={() => { navigate(acc.path); setFabAbierto(false); }} 
-                      style={{ background: '#111', color: '#fff', border: '1px solid #333', padding: '12px', borderRadius: '8px', textAlign: 'left', fontWeight: 'bold', display: 'flex', gap: '10px', alignItems: 'center' }}
+                      style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '12px', borderRadius: '8px', textAlign: 'left', fontWeight: 'bold', display: 'flex', gap: '10px', alignItems: 'center' }}
                     >
                       <span>{acc.icon}</span> {acc.label}
                     </button>
@@ -571,12 +571,12 @@ useEffect(() => {
                       <div 
                         key={acc.id}
                         onClick={() => toggleAccionFab(acc.id)}
-                        style={{ background: isActive ? 'rgba(0, 255, 136, 0.05)' : '#111', color: isActive ? '#fff' : '#888', border: `1px solid ${isActive ? 'var(--accent)' : '#222'}`, padding: '10px', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontSize: '0.8rem' }}
+                        style={{ background: isActive ? 'rgba(0, 255, 136, 0.05)' : 'var(--bg)', color: isActive ? 'var(--text)' : 'var(--text-dim)', border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`, padding: '10px', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontSize: '0.8rem' }}
                       >
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <span>{acc.icon}</span> <span>{acc.label}</span>
                         </div>
-                        <span style={{ color: isActive ? 'var(--accent)' : '#444', fontSize: '0.9rem' }}>
+                        <span style={{ color: isActive ? 'var(--accent)' : 'var(--text-dim)', fontSize: '0.9rem' }}>
                           {isActive ? '●' : '○'}
                         </span>
                       </div>
@@ -611,7 +611,7 @@ useEffect(() => {
           }}>
             <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 900, color: 'var(--accent)', letterSpacing: '1px' }}>VIRTUAL.CLUB</span>
-              <button onClick={() => setDrawerAbierto(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', padding: 0 }}>×</button>
+              <button onClick={() => setDrawerAbierto(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.5rem', padding: 0 }}>×</button>
             </div>
             <nav style={{ flex: 1, paddingBottom: '20px', display: 'flex', flexDirection: 'column' }}>
               {renderNavLinks(false)}

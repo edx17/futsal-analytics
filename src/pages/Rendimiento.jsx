@@ -213,7 +213,7 @@ export default function Rendimiento() {
   ];
 
   return (
-    <div style={{ padding: esMovil ? '15px' : '20px', maxWidth: 1500, margin: '0 auto', color: '#fff', paddingBottom: 80 }} className="fade-in">
+    <div style={{ padding: esMovil ? '15px' : '20px', maxWidth: 1500, margin: '0 auto', color: 'var(--text)', paddingBottom: 80 }} className="fade-in">
 
       {/* --- BOTÓN VOLVER ATRÁS --- */}
       <button 
@@ -233,7 +233,7 @@ export default function Rendimiento() {
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '-1px', margin: 0 }}>Dpto. Rendimiento</h1>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: 4 }}>Rendimiento · Biomecánica · Antropometría · Nutrición</p>
         </div>
-        {esStaff && <button onClick={() => setModalOpen(true)} className="btn-action" style={{ padding: '10px 20px', background: '#3b82f6', color: '#fff', fontWeight: 900 }}>+ NUEVA TOMA</button>}
+        {esStaff && <button onClick={() => setModalOpen(true)} className="btn-action" style={{ padding: '10px 20px', background: '#3b82f6', color: 'var(--text)', fontWeight: 900 }}>+ NUEVA TOMA</button>}
       </div>
 
       {/* ── LAYOUT: SIDEBAR + CONTENT ──────────────────────────────────────── */}
@@ -1421,7 +1421,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: '#000', padding: 4, borderRadius: 8 }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'var(--bg)', padding: 4, borderRadius: 8 }}>
           {[{ id: 'fisico', lbl: 'Físico', c: '#3b82f6' }, { id: 'nutri', lbl: 'Nutrición', c: '#f59e0b' }, { id: 'kine', lbl: 'Kinesio', c: '#10b981' }].map(t => (
             <button key={t.id} onClick={() => setTipo(t.id)}
               style={{ flex: 1, padding: '8px', background: tipo === t.id ? t.c : 'transparent', color: tipo === t.id ? '#000' : '#334155', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 900, fontSize: '0.72rem', transition: '0.15s' }}>
@@ -1502,7 +1502,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
         )}
 
         <button onClick={handleGuardar} disabled={loading} className="btn-action"
-          style={{ width: '100%', padding: 13, marginTop: 18, background: '#3b82f6', color: '#fff', fontWeight: 900, opacity: loading ? 0.5 : 1, fontSize: '0.86rem', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+          style={{ width: '100%', padding: 13, marginTop: 18, background: '#3b82f6', color: 'var(--text)', fontWeight: 900, opacity: loading ? 0.5 : 1, fontSize: '0.86rem', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
           {loading ? 'GUARDANDO...' : '💾 GUARDAR EN HISTORIAL'}
         </button>
       </div>

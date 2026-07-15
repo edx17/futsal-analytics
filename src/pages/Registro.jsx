@@ -89,7 +89,7 @@ export default function Registro() {
           CREAR <span style={{ color: 'var(--accent)' }}>CUENTA</span>
         </h2>
         <p style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '30px' }}>
-          Estás a punto de dar de alta el plan <strong style={{color: '#fff', textTransform: 'uppercase'}}>{planElegido}</strong>
+          Estás a punto de dar de alta el plan <strong style={{color: 'var(--text)', textTransform: 'uppercase'}}>{planElegido}</strong>
         </p>
         
         {error && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '0.8rem', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: '10px', borderRadius: '4px' }}>{error}</div>}
@@ -136,4 +136,4 @@ export default function Registro() {
   );
 }
 
-const inputStyle = { padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '16px' };
+const inputStyle = { padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', fontSize: '16px' };

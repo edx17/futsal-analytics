@@ -218,10 +218,10 @@ function ScoutingRivales() {
           return (
             <div key={rival.id} onClick={() => abrirPerfilRival(rival)} className="bento-card" style={{ cursor: 'pointer', transition: '0.2s', position: 'relative', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
-                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#222', border: '1px solid #444', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid #444', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
                   {rival.escudo ? <img src={rival.escudo} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: '#555', fontWeight: 800 }}>ESCUDO</span>}
                 </div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1.1 }}>{rival.nombre.toUpperCase()}</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>{rival.nombre.toUpperCase()}</div>
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #333', paddingTop: '10px', fontSize: '0.8rem' }}>
@@ -229,7 +229,7 @@ function ScoutingRivales() {
               </div>
               
               {tacticoResumen.jugadores_claves && (
-                <div style={{ marginTop: '10px', fontSize: '0.75rem', color: '#ccc', background: '#111', padding: '8px', borderRadius: '4px', borderLeft: '2px solid #ef4444' }}>
+                <div style={{ marginTop: '10px', fontSize: '0.75rem', color: '#ccc', background: 'var(--panel)', padding: '8px', borderRadius: '4px', borderLeft: '2px solid #ef4444' }}>
                   <strong style={{ color: '#ef4444' }}>CLAVES:</strong> {tacticoResumen.jugadores_claves}
                 </div>
               )}
@@ -244,13 +244,13 @@ function ScoutingRivales() {
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '600px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <div className="stat-label" style={{ color: '#fff' }}>{formData.id ? 'PERFIL Y SCOUTING DEL RIVAL' : 'NUEVO RIVAL'}</div>
+              <div className="stat-label" style={{ color: 'var(--text)' }}>{formData.id ? 'PERFIL Y SCOUTING DEL RIVAL' : 'NUEVO RIVAL'}</div>
               <button onClick={() => setMostrarModal(false)} className="close-btn">×</button>
             </div>
 
             {/* SECCIÓN CLUB (GLOBAL) */}
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px', background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#222', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px', background: 'var(--panel)', padding: '15px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
                 {formData.escudo ? <img src={formData.escudo} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'#555', fontWeight:800}}>ESCUDO</span>}
               </div>
               <div style={{ flex: 1, display: 'flex', gap: '15px' }}>
@@ -309,7 +309,7 @@ function ScoutingRivales() {
               <textarea value={infoTactivaActiva.notas || ''} onChange={e => handleTacticoChange('notas', e.target.value)} style={{...inputIndustrial, height: '80px', resize: 'none'}} placeholder="Ej: En los córners defienden en zona mixta..."></textarea>
             </div>
 
-            <div style={{ marginBottom: '25px', background: '#111', padding: '15px', borderRadius: '4px', border: '1px solid #333' }}>
+            <div style={{ marginBottom: '25px', background: 'var(--panel)', padding: '15px', borderRadius: '4px', border: '1px solid var(--border)' }}>
               <div className="section-title">ANÁLISIS EN VIDEO (URL DE YOUTUBE)</div>
               <input type="text" value={infoTactivaActiva.video_url || ''} onChange={e => handleTacticoChange('video_url', e.target.value)} style={inputIndustrial} placeholder="https://www.youtube.com/watch?v=..." />
               
@@ -339,18 +339,18 @@ function ScoutingRivales() {
                 {cargandoHistorial ? (
                   <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center' }}>Cargando historial...</div>
                 ) : historialFiltrado.length === 0 ? (
-                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', background: '#111', padding: '15px', borderRadius: '4px' }}>
+                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', background: 'var(--panel)', padding: '15px', borderRadius: '4px' }}>
                     No hay registros contra este rival en la categoría {categoriaScouting}.
                   </div>
                 ) : (
                   <>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '10px', textAlign: 'center', marginBottom: '20px' }}>
-                      <div style={{ background: '#111', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.pj}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>PJ</div></div>
+                      <div style={{ background: 'var(--panel)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.pj}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>PJ</div></div>
                       <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid var(--accent)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent)' }}>{statsH2H.pg}</div><div style={{ fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 800 }}>PG</div></div>
-                      <div style={{ background: '#111', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fbbf24' }}>{statsH2H.pe}</div><div style={{ fontSize: '0.6rem', color: '#fbbf24', fontWeight: 800 }}>PE</div></div>
+                      <div style={{ background: 'var(--panel)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fbbf24' }}>{statsH2H.pe}</div><div style={{ fontSize: '0.6rem', color: '#fbbf24', fontWeight: 800 }}>PE</div></div>
                       <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ef4444' }}>{statsH2H.pp}</div><div style={{ fontSize: '0.6rem', color: '#ef4444', fontWeight: 800 }}>PP</div></div>
-                      <div style={{ background: '#111', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.gf}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>GF</div></div>
-                      <div style={{ background: '#111', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.gc}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>GC</div></div>
+                      <div style={{ background: 'var(--panel)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.gf}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>GF</div></div>
+                      <div style={{ background: 'var(--panel)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.gc}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>GC</div></div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '180px', overflowY: 'auto', paddingRight: '5px' }}>
@@ -360,7 +360,7 @@ function ScoutingRivales() {
                         if (p.goles_propios < p.goles_rival) { resultadoColor = '#ef4444'; textoR = 'D'; }
 
                         return (
-                          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#000', border: '1px solid #333', padding: '10px', borderRadius: '4px' }}>
+                          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', border: '1px solid var(--border)', padding: '10px', borderRadius: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                               <div style={{ background: resultadoColor, color: '#000', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '3px', fontWeight: 900, fontSize: '0.7rem' }}>{textoR}</div>
                               <div>
@@ -392,6 +392,6 @@ function ScoutingRivales() {
   );
 }
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '16px' };
+const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', fontSize: '16px' };
 
 export default ScoutingRivales;

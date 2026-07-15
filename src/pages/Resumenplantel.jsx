@@ -477,7 +477,7 @@ export default function ResumenPlantel() {
           <div className="stat-label" style={{ marginBottom: '8px' }}>BUSCAR JUGADOR</div>
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Apellido o nombre..." style={inputIndustrial} />
         </div>
-        <button onClick={() => setSoloConMinutos(v => !v)} className="btn-secondary" style={{ padding: '12px 16px', fontWeight: 800, fontSize: '0.8rem', borderColor: soloConMinutos ? 'var(--accent)' : '#333', color: soloConMinutos ? 'var(--accent)' : 'var(--text-dim)' }}>
+        <button onClick={() => setSoloConMinutos(v => !v)} className="btn-secondary" style={{ padding: '12px 16px', fontWeight: 800, fontSize: '0.8rem', borderColor: 'var(--border)', color: soloConMinutos ? 'var(--accent)' : 'var(--text-dim)' }}>
           {soloConMinutos ? '✓ ' : ''}SOLO CON MINUTOS
         </button>
       </div>
@@ -492,7 +492,7 @@ export default function ResumenPlantel() {
               {destacados.map((d, i) => (
                 <div key={i} className="bento-card" style={{ padding: '14px', borderLeft: '3px solid var(--accent)' }}>
                   <div className="stat-label" style={{ fontSize: '0.6rem' }}>{d.ico} {d.t}</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#fff', marginTop: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nombreCompleto(d.n)}</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', marginTop: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nombreCompleto(d.n)}</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 800, fontFamily: MONO }}>{d.v}</div>
                 </div>
               ))}
@@ -521,31 +521,31 @@ export default function ResumenPlantel() {
             </>)}
             colorCelda={(p, col) => {
               if (col.k === 'rat') return colorRating(p.ratingProm);
-              if (col.k === 'pm') return p.pmProm > 0 ? '#00ff88' : (p.pmProm < 0 ? '#ef4444' : '#fff');
+              if (col.k === 'pm') return p.pmProm > 0 ? '#00ff88' : (p.pmProm < 0 ? '#ef4444' : 'var(--text)');
               if (col.k === 'gxg') return (p.goles - p.xg) >= 0 ? '#00ff88' : '#ef4444';
               if (['cit', 'pos', 'cat', 'perd'].includes(col.k)) return 'var(--text-dim)';
               if (col.g === 'imp' || col.g === 'of') return GRUPOS[col.g];
-              return '#fff';
+              return 'var(--text)';
             }}
           >
           <div className="bento-card" style={{ overflowX: 'auto', padding: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 6px 14px', flexWrap: 'wrap', gap: '10px' }}>
               <span className="stat-label" style={{ color: 'var(--accent)' }}>JUGADORES DE CAMPO ({filasCampo.length})</span>
               <button onClick={() => setMostrarGlosario(v => !v)} title="Qué significa cada columna"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: mostrarGlosario ? 'var(--accent)' : 'transparent', color: mostrarGlosario ? '#000' : 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '20px', padding: '5px 12px', cursor: 'pointer', fontWeight: 800, fontSize: '0.7rem' }}>
-                <span style={{ width: '16px', height: '16px', borderRadius: '50%', border: `1px solid ${mostrarGlosario ? '#000' : 'var(--accent)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900 }}>!</span>
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: mostrarGlosario ? 'var(--accent)' : 'transparent', color: mostrarGlosario ? 'var(--bg)' : 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '20px', padding: '5px 12px', cursor: 'pointer', fontWeight: 800, fontSize: '0.7rem' }}>
+                <span style={{ width: '16px', height: '16px', borderRadius: '50%', border: `1px solid ${mostrarGlosario ? 'var(--bg)' : 'var(--accent)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900 }}>!</span>
                 {mostrarGlosario ? 'OCULTAR REFERENCIAS' : 'QUÉ SIGNIFICA CADA COLUMNA'}
               </button>
             </div>
 
             {mostrarGlosario && (
-              <div style={{ background: '#0a0a0a', border: '1px solid #222', borderRadius: '8px', padding: '16px', marginBottom: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px' }}>
+              <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px' }}>
                 {GLOSARIO.map(sec => (
                   <div key={sec.g}>
                     <div style={{ fontSize: '0.68rem', fontWeight: 900, color: GRUPOS[sec.g] || '#a855f7', marginBottom: '7px', letterSpacing: '0.5px' }}>{GRUPO_LABEL[sec.g]}</div>
                     {sec.items.map(([a, d]) => (
                       <div key={a} style={{ display: 'flex', gap: '8px', fontSize: '0.72rem', marginBottom: '4px' }}>
-                        <span style={{ fontFamily: MONO, color: '#fff', fontWeight: 800, minWidth: '54px', flexShrink: 0 }}>{a}</span>
+                        <span style={{ fontFamily: MONO, color: 'var(--text)', fontWeight: 800, minWidth: '54px', flexShrink: 0 }}>{a}</span>
                         <span style={{ color: 'var(--text-dim)' }}>{d}</span>
                       </div>
                     ))}
@@ -556,18 +556,18 @@ export default function ResumenPlantel() {
 
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', minWidth: '1100px' }}>
               <thead>
-                <tr style={{ background: '#0a0a0a' }}>
+                <tr style={{ background: 'var(--bg)' }}>
                   <th rowSpan={2} style={{ ...thSticky, textAlign: 'left', verticalAlign: 'bottom' }}>JUGADOR</th>
                   {grupoRuns.map((r, i) => (
-                    <th key={i} colSpan={r.span} style={{ textAlign: 'center', padding: '7px 6px', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.5px', color: GRUPOS[r.g], borderLeft: i > 0 ? '1px solid #222' : 'none', borderBottom: '1px solid #1c1c1c' }}>
+                    <th key={i} colSpan={r.span} style={{ textAlign: 'center', padding: '7px 6px', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.5px', color: GRUPOS[r.g], borderLeft: i > 0 ? '1px solid var(--border)' : 'none', borderBottom: '1px solid var(--border)' }}>
                       {GRUPO_LABEL[r.g]}
                     </th>
                   ))}
                 </tr>
-                <tr style={{ borderBottom: '2px solid #333', background: '#0a0a0a' }}>
+                <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--bg)' }}>
                   {COLS.map((c, i) => (
                     <th key={c.k} onClick={() => setSort(c.k)} title="Ordenar"
-                      style={{ ...thBase, color: GRUPOS[c.g], background: sortKey === c.k ? '#1a1a1a' : '#0a0a0a', borderLeft: (i > 0 && COLS[i - 1].g !== c.g) ? '1px solid #222' : 'none' }}>
+                      style={{ ...thBase, color: GRUPOS[c.g], background: sortKey === c.k ? 'var(--panel)' : 'var(--bg)', borderLeft: (i > 0 && COLS[i - 1].g !== c.g) ? '1px solid var(--border)' : 'none' }}>
                       {c.t}{sortKey === c.k ? (sortDir === 'desc' ? ' ▾' : ' ▴') : ''}
                     </th>
                   ))}
@@ -577,7 +577,7 @@ export default function ResumenPlantel() {
                 {filasCampo.length === 0 ? (
                   <tr><td colSpan={COLS.length + 1} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>No hay jugadores con esos filtros.</td></tr>
                 ) : filasCampo.map(p => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #1c1c1c' }}>
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ ...tdSticky }}>
                       <span onClick={() => navigate('/jugador', { state: { jugadorId: p.id } })}
                         style={{ cursor: 'pointer', color: '#3b82f6', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -589,9 +589,9 @@ export default function ResumenPlantel() {
                       </span>
                     </td>
                     {COLS.map(c => {
-                      let color = '#fff';
+                      let color = 'var(--text)';
                       if (c.k === 'rat') color = colorRating(p.ratingProm);
-                      else if (c.k === 'pm') color = p.pmProm > 0 ? '#00ff88' : (p.pmProm < 0 ? '#ef4444' : '#fff');
+                      else if (c.k === 'pm') color = p.pmProm > 0 ? '#00ff88' : (p.pmProm < 0 ? '#ef4444' : 'var(--text)');
                       else if (c.k === 'gxg') color = (p.goles - p.xg) >= 0 ? '#00ff88' : '#ef4444';
                       else if (['cit', 'pos', 'cat', 'perd'].includes(c.k)) color = 'var(--text-dim)';
                       else if (c.g === 'imp' || c.g === 'of') color = GRUPOS[c.g];
@@ -624,14 +624,14 @@ export default function ResumenPlantel() {
                 if (col.k === 'pataj') return '#0ea5e9';
                 if (col.k === 'xgrec') return '#c084fc';
                 if (col.k === 'gevit') return p.golesEvitables >= 0 ? '#00ff88' : '#ef4444';
-                return '#fff';
+                return 'var(--text)';
               }}
             >
             <div className="bento-card" style={{ overflowX: 'auto', padding: '10px', marginTop: '25px' }}>
               <div className="stat-label" style={{ padding: '8px 6px 14px', color: '#a855f7' }}>🧤 ARQUEROS ({filasArqueros.length})</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', minWidth: '700px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #333', background: '#0a0a0a', color: 'var(--text-dim)' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--bg)', color: 'var(--text-dim)' }}>
                     <th style={{ ...thBase, textAlign: 'left' }}>ARQUERO</th>
                     <th style={thBase}>CIT</th><th style={thBase}>PJ</th><th style={thBase}>MIN</th>
                     <th style={{ ...thBase, color: '#ef4444' }}>G.REC</th>
@@ -644,7 +644,7 @@ export default function ResumenPlantel() {
                 </thead>
                 <tbody>
                   {filasArqueros.map(p => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid #1c1c1c' }}>
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ ...tdBase, textAlign: 'left' }}>
                         <span onClick={() => navigate('/jugador', { state: { jugadorId: p.id } })} style={{ cursor: 'pointer', color: '#3b82f6', fontWeight: 800 }}>
                           <span style={{ color: 'var(--text-dim)', fontFamily: MONO, fontSize: '0.7rem', marginRight: '6px' }}>{p.dorsal ?? '-'}</span>{nombreCompleto(p)}
@@ -688,9 +688,9 @@ const GLOSARIO = [
 ];
 
 /* ---------- estilos ---------- */
-const selectStyle = { padding: '10px 15px', fontSize: '1rem', background: '#111', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '6px', outline: 'none', fontWeight: 800, cursor: 'pointer', minWidth: '200px' };
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', boxSizing: 'border-box' };
+const selectStyle = { padding: '10px 15px', fontSize: '1rem', background: 'var(--panel)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '6px', outline: 'none', fontWeight: 800, cursor: 'pointer', minWidth: '200px' };
+const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', boxSizing: 'border-box' };
 const thBase = { padding: '10px 8px', textAlign: 'center', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none' };
 const tdBase = { padding: '9px 8px', textAlign: 'center', fontWeight: 700, whiteSpace: 'nowrap' };
-const thSticky = { padding: '10px 12px', fontSize: '0.66rem', fontWeight: 800, position: 'sticky', left: 0, background: '#0a0a0a', zIndex: 2, minWidth: '170px', color: 'var(--text-dim)' };
+const thSticky = { padding: '10px 12px', fontSize: '0.66rem', fontWeight: 800, position: 'sticky', left: 0, background: 'var(--bg)', zIndex: 2, minWidth: '170px', color: 'var(--text-dim)' };
 const tdSticky = { padding: '9px 12px', textAlign: 'left', position: 'sticky', left: 0, background: 'var(--panel)', zIndex: 1, minWidth: '170px' };

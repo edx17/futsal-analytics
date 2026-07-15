@@ -299,11 +299,11 @@ function NuevoPartido() {
                 onChange={handleSeleccionarPartidoProgramado} 
                 style={{ ...inputIndustrial, borderColor: '#00ff88', color: '#00ff88', fontWeight: 'bold' }}
               >
-                <option value="" style={{color: '#fff'}}>+ Crear partido suelto / No está en la lista...</option>
+                <option value="" style={{color: 'var(--text)'}}>+ Crear partido suelto / No está en la lista...</option>
                 {partidosTorneo.map(p => {
                    const riv = rivalesBD.find(r => r.id === p.rival_id);
                    return (
-                     <option key={p.id} value={p.id} style={{color: '#fff'}}>
+                     <option key={p.id} value={p.id} style={{color: 'var(--text)'}}>
                        {p.jornada ? `${p.jornada.toUpperCase()} ` : ''}- vs {riv ? riv.nombre.toUpperCase() : 'Desconocido'} ({p.condicion})
                      </option>
                    )
@@ -345,18 +345,18 @@ function NuevoPartido() {
           </div>
         </div>
 
-        <div style={{ background: isFixtureMatch ? '#111' : 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px solid var(--accent)', marginTop: '10px' }}>
-          <div className="section-title" style={{ color: isFixtureMatch ? '#666' : 'var(--accent)' }}>SELECCIONAR RIVAL</div>
-          <select value={formData.rival_id} onChange={handleSeleccionarRival} style={{ ...(isFixtureMatch ? inputDisabledStyle : inputIndustrial), borderColor: isFixtureMatch ? '#222' : 'var(--accent)', marginBottom: rivalSeleccionado ? '15px' : '0' }} disabled={isFixtureMatch}>
+        <div style={{ background: isFixtureMatch ? 'var(--panel)' : 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px solid var(--accent)', marginTop: '10px' }}>
+          <div className="section-title" style={{ color: isFixtureMatch ? 'var(--text-dim)' : 'var(--accent)' }}>SELECCIONAR RIVAL</div>
+          <select value={formData.rival_id} onChange={handleSeleccionarRival} style={{ ...(isFixtureMatch ? inputDisabledStyle : inputIndustrial), borderColor: isFixtureMatch ? 'var(--border)' : 'var(--accent)', marginBottom: rivalSeleccionado ? '15px' : '0' }} disabled={isFixtureMatch}>
             <option value="">Seleccione de la libreta de Scouting...</option>
             {rivalesBD.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
           </select>
 
           {rivalSeleccionado && (
-            <div style={{ animation: 'fadeIn 0.3s', background: '#000', padding: '15px', borderRadius: '4px', borderLeft: '3px solid var(--accent)' }}>
+            <div style={{ animation: 'fadeIn 0.3s', background: 'var(--bg)', padding: '15px', borderRadius: '4px', borderLeft: '3px solid var(--accent)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                 <span style={{ fontSize: '1.2rem' }}>📋</span>
-                <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#fff' }}>REPORTE RÁPIDO: {rivalSeleccionado.nombre.toUpperCase()}</span>
+                <span style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text)' }}>REPORTE RÁPIDO: {rivalSeleccionado.nombre.toUpperCase()}</span>
               </div>
               <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div><span style={{ color: 'var(--text-dim)' }}>Sistema Frecuente:</span> <strong style={{ color: 'var(--accent)' }}>{rivalSeleccionado.sistema_tactico || 'Sin datos'}</strong></div>
@@ -364,7 +364,7 @@ function NuevoPartido() {
                   <div><span style={{ color: 'var(--text-dim)' }}>Claves:</span> <span style={{ color: '#ef4444', fontWeight: 700 }}>{rivalSeleccionado.jugadores_claves}</span></div>
                 )}
                 {rivalSeleccionado.notas && (
-                  <div style={{ fontStyle: 'italic', color: '#ccc', marginTop: '5px' }}>"{rivalSeleccionado.notas}"</div>
+                  <div style={{ fontStyle: 'italic', color: 'var(--text-dim)', marginTop: '5px' }}>"{rivalSeleccionado.notas}"</div>
                 )}
               </div>
             </div>
@@ -378,7 +378,7 @@ function NuevoPartido() {
             <div className="stat-label">CONVOCATORIA Y SISTEMA INICIAL</div>
             <div style={{ display: 'flex', gap: '15px', marginTop: '10px', fontSize: '0.85rem' }}>
               <div style={{ color: totalConvocados > limiteConvocados ? '#ef4444' : 'var(--text-dim)', fontWeight: totalConvocados > limiteConvocados ? 'bold' : 'normal' }}>
-                CONVOCADOS: <strong style={{ color: totalConvocados > limiteConvocados ? '#ef4444' : '#fff' }}>{totalConvocados} / {limiteConvocados}</strong>
+                CONVOCADOS: <strong style={{ color: totalConvocados > limiteConvocados ? '#ef4444' : 'var(--text)' }}>{totalConvocados} / {limiteConvocados}</strong>
                 {formData.competicion && <span style={{fontSize: '0.6rem', marginLeft: '5px'}}>({formData.competicion.toUpperCase()})</span>}
               </div>
               <div style={{ color: totalTitulares !== 5 ? '#f97316' : 'var(--text-dim)', fontWeight: totalTitulares !== 5 ? 'bold' : 'normal' }}>
@@ -388,15 +388,15 @@ function NuevoPartido() {
           </div>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <select value={filtroVerCategoria} onChange={(e) => setFiltroVerCategoria(e.target.value)} style={{ padding: '5px', background: '#000', color: '#fff', border: '1px solid #333', borderRadius: '4px' }}>
+            <select value={filtroVerCategoria} onChange={(e) => setFiltroVerCategoria(e.target.value)} style={{ padding: '5px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px' }}>
               {categoriasDisponibles.map(cat => (
                 <option key={cat} value={cat}>{cat.toUpperCase()}</option>
               ))}
             </select>
 
-            <div style={{ display: 'flex', background: '#000', border: '1px solid #333', borderRadius: '4px', overflow: 'hidden' }}>
-              <button onClick={() => setVistaJugadores('lista')} style={{ padding: '5px 10px', background: vistaJugadores === 'lista' ? '#333' : 'transparent', color: vistaJugadores === 'lista' ? '#fff' : '#888', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>☰ LISTA</button>
-              <button onClick={() => setVistaJugadores('grilla')} style={{ padding: '5px 10px', background: vistaJugadores === 'grilla' ? '#333' : 'transparent', color: vistaJugadores === 'grilla' ? '#fff' : '#888', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>⊞ GRILLA</button>
+            <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
+              <button onClick={() => setVistaJugadores('lista')} style={{ padding: '5px 10px', background: vistaJugadores === 'lista' ? 'var(--text)' : 'transparent', color: vistaJugadores === 'lista' ? 'var(--bg)' : 'var(--text-dim)', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>☰ LISTA</button>
+              <button onClick={() => setVistaJugadores('grilla')} style={{ padding: '5px 10px', background: vistaJugadores === 'grilla' ? 'var(--text)' : 'transparent', color: vistaJugadores === 'grilla' ? 'var(--bg)' : 'var(--text-dim)', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>⊞ GRILLA</button>
             </div>
           </div>
         </div>
@@ -429,7 +429,7 @@ function NuevoPartido() {
                         {j.apellido ? <span style={{ fontWeight: 800 }}>{j.apellido.toUpperCase()} </span> : ''}
                         {j.nombre.toUpperCase()}
                       </td>
-                      <td className="pos-label" style={{ fontSize: '0.7rem', color: '#888' }}>{j.posicion ? j.posicion.substring(0,3).toUpperCase() : 'N/A'}</td>
+                      <td className="pos-label" style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{j.posicion ? j.posicion.substring(0,3).toUpperCase() : 'N/A'}</td>
                       <td><input type="checkbox" checked={estado.convocado} onChange={() => manejarTilde(j.id, 'convocado')} style={{ transform: 'scale(1.3)', cursor: 'pointer' }} /></td>
                       <td><input type="checkbox" checked={estado.titular} onChange={() => manejarTilde(j.id, 'titular')} disabled={!estado.convocado} style={{ transform: 'scale(1.3)', cursor: estado.convocado ? 'pointer' : 'not-allowed', accentColor: 'var(--accent)' }} /></td>
                     </tr>
@@ -445,40 +445,40 @@ function NuevoPartido() {
             {jugadoresProcesados.map((j) => {
               const estado = seleccion[j.id] || { convocado: false, titular: false };
               
-              let cardBorder = '1px solid #333';
+              let cardBorder = '1px solid var(--border)';
               let cardBg = 'transparent';
-              if (estado.convocado) { cardBorder = '1px solid #666'; }
+              if (estado.convocado) { cardBorder = '1px solid var(--text-dim)'; }
               if (estado.titular) { cardBorder = '1px solid var(--accent)'; cardBg = 'rgba(0, 255, 136, 0.05)'; }
 
               return (
                 <div key={j.id} style={{ border: cardBorder, background: cardBg, borderRadius: '6px', padding: '15px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', transition: '0.2s' }}>
                   
                   <div className="mono-accent" style={{ position: 'absolute', top: '10px', left: '10px', fontSize: '1rem', color: 'var(--accent)', fontWeight: 'bold' }}>{j.dorsal || '-'}</div>
-                  <div className="pos-label" style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '0.65rem', color: '#888' }}>{j.posicion ? j.posicion.substring(0,3).toUpperCase() : 'N/A'}</div>
+                  <div className="pos-label" style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '0.65rem', color: 'var(--text-dim)' }}>{j.posicion ? j.posicion.substring(0,3).toUpperCase() : 'N/A'}</div>
                   
-                  <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#222', marginTop: '10px', marginBottom: '15px', border: '1px solid #444', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'var(--panel)', marginTop: '10px', marginBottom: '15px', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     {j.foto ? (
                       <img src={j.foto} alt="Perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <span style={{ color: '#555', fontSize: '0.7rem', fontWeight: 800 }}>FOTO</span>
+                      <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem', fontWeight: 800 }}>FOTO</span>
                     )}
                   </div>
 
                   <div style={{ textAlign: 'center', marginBottom: '15px', minHeight: '40px' }}>
-                    {j.apellido && <div style={{ fontWeight: 900, fontSize: '1.1rem', lineHeight: '1.1', color: '#fff' }}>{j.apellido.toUpperCase()}</div>}
+                    {j.apellido && <div style={{ fontWeight: 900, fontSize: '1.1rem', lineHeight: '1.1', color: 'var(--text)' }}>{j.apellido.toUpperCase()}</div>}
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '2px' }}>{j.nombre.toUpperCase()}</div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '5px', width: '100%' }}>
                     <button 
                       onClick={() => manejarTilde(j.id, 'convocado')} 
-                      style={{ flex: 1, padding: '8px 5px', background: estado.convocado ? '#333' : 'transparent', border: estado.convocado ? '1px solid #666' : '1px solid #333', color: estado.convocado ? '#fff' : '#666', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                      style={{ flex: 1, padding: '8px 5px', background: estado.convocado ? 'var(--text)' : 'transparent', border: estado.convocado ? '1px solid var(--text)' : '1px solid var(--border)', color: estado.convocado ? 'var(--bg)' : 'var(--text-dim)', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}>
                       {estado.convocado ? '✔ CONV' : 'CONVOCAR'}
                     </button>
                     <button 
                       onClick={() => manejarTilde(j.id, 'titular')} 
                       disabled={!estado.convocado}
-                      style={{ flex: 1, padding: '8px 5px', background: estado.titular ? 'var(--accent)' : 'transparent', border: estado.titular ? '1px solid var(--accent)' : '1px solid #333', color: estado.titular ? '#000' : '#555', borderRadius: '4px', cursor: estado.convocado ? 'pointer' : 'not-allowed', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                      style={{ flex: 1, padding: '8px 5px', background: estado.titular ? 'var(--accent)' : 'transparent', border: estado.titular ? '1px solid var(--accent)' : '1px solid var(--border)', color: estado.titular ? '#000' : 'var(--text-dim)', borderRadius: '4px', cursor: estado.convocado ? 'pointer' : 'not-allowed', fontSize: '0.7rem', fontWeight: 'bold' }}>
                       TITULAR
                     </button>
                   </div>
@@ -493,7 +493,7 @@ function NuevoPartido() {
           onClick={handleIniciarPartido} 
           disabled={isSubmitting}
           className="btn-action" 
-          style={{ width: '100%', marginTop: '30px', padding: '20px', fontSize: '1.1rem', opacity: isSubmitting ? 0.5 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer', background: totalConvocados > limiteConvocados || totalTitulares !== 5 ? '#555' : 'var(--accent)', color: totalConvocados > limiteConvocados || totalTitulares !== 5 ? '#888' : '#000' }}
+          style={{ width: '100%', marginTop: '30px', padding: '20px', fontSize: '1.1rem', opacity: isSubmitting ? 0.5 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer', background: totalConvocados > limiteConvocados || totalTitulares !== 5 ? 'var(--panel)' : 'var(--accent)', color: totalConvocados > limiteConvocados || totalTitulares !== 5 ? 'var(--text-dim)' : '#000' }}
         >
           {isSubmitting ? 'GENERANDO ENTORNO...' : (totalConvocados > limiteConvocados || totalTitulares !== 5 ? 'REVISAR LÍMITES PARA CONTINUAR' : '⚡ INICIAR PARTIDO Y TOMA DE DATOS')}
         </button>
@@ -503,15 +503,15 @@ function NuevoPartido() {
         .section-title { color: var(--text-dim); font-size: 0.8rem; font-weight: 800; margin-bottom: 5px; letter-spacing: 1px; text-transform: uppercase; }
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; border-bottom: 1px solid #222; text-align: center; color: #fff; }
-        th { font-size: 0.75rem; color: var(--text-dim); font-weight: 800; border-bottom: 2px solid #333; transition: color 0.2s ease; }
-        th:hover { color: #fff; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--border); text-align: center; color: var(--text); }
+        th { font-size: 0.75rem; color: var(--text-dim); font-weight: 800; border-bottom: 2px solid var(--border); transition: color 0.2s ease; }
+        th:hover { color: var(--text); }
       `}</style>
     </div>
   );
 }
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none', fontSize: '16px' };
-const inputDisabledStyle = { ...inputIndustrial, background: '#1a1a1a', color: '#666', cursor: 'not-allowed', borderColor: '#222' };
+const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', fontSize: '16px' };
+const inputDisabledStyle = { ...inputIndustrial, background: 'var(--panel)', color: 'var(--text-dim)', cursor: 'not-allowed', borderColor: 'var(--border)' };
 
 export default NuevoPartido;

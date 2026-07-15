@@ -184,7 +184,7 @@ const CreadorFisico = () => {
         
         {/* COLUMNA IZQUIERDA: DATOS GENERALES */}
         <div style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <div className="bento-card" style={{ background: '#111', border: '1px solid #333', padding: '20px' }}>
+          <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px' }}>
             <h3 style={{ color: '#f59e0b', margin: '0 0 15px 0', textTransform: 'uppercase', fontSize: '1.1rem', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Ficha de la Rutina</h3>
             
             <div style={{ marginBottom: '15px' }}>
@@ -246,7 +246,7 @@ const CreadorFisico = () => {
         <div style={{ flex: '2 1 600px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
           
           {/* TOGGLE MODO */}
-          <div className="bento-card" style={{ background: '#111', border: '1px solid #333', padding: '10px', display: 'flex', gap: '10px' }}>
+          <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '10px', display: 'flex', gap: '10px' }}>
             <button 
               onClick={() => setModoFisico('gimnasio')} 
               style={{ ...toggleBtnMode, background: modoFisico === 'gimnasio' ? '#f59e0b' : '#222', color: modoFisico === 'gimnasio' ? '#000' : '#888' }}
@@ -262,7 +262,7 @@ const CreadorFisico = () => {
           </div>
 
           {/* ÁREA DE CONSTRUCCIÓN */}
-          <div className="bento-card" style={{ background: '#0a0a0a', border: '1px solid #222', padding: esMovil ? '15px' : '25px', minHeight: '400px' }}>
+          <div className="bento-card" style={{ background: '#0a0a0a', border: '1px solid var(--border)', padding: esMovil ? '15px' : '25px', minHeight: '400px' }}>
             
             {/* ==================================================== */}
             {/* MODO GIMNASIO */}
@@ -270,13 +270,13 @@ const CreadorFisico = () => {
             {modoFisico === 'gimnasio' && (
               <div style={{ animation: 'fadeIn 0.3s' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ color: '#fff', margin: 0 }}>Lista de Ejercicios</h3>
+                  <h3 style={{ color: 'var(--text)', margin: 0 }}>Lista de Ejercicios</h3>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Volumen total: {bloquesGimnasio.length} ej.</span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   {bloquesGimnasio.map((ej, index) => (
-                    <div key={ej.id} style={{ background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '15px', position: 'relative' }}>
+                    <div key={ej.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '15px', position: 'relative' }}>
                       <div style={{ position: 'absolute', top: '-10px', left: '-10px', background: '#f59e0b', color: '#000', width: '25px', height: '25px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '0.8rem' }}>{index + 1}</div>
                       <button onClick={() => eliminarEjercicio(ej.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
                       
@@ -324,12 +324,12 @@ const CreadorFisico = () => {
             {modoFisico === 'cancha' && (
               <div style={{ animation: 'fadeIn 0.3s' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ color: '#fff', margin: 0 }}>Bloques de Acondicionamiento</h3>
+                  <h3 style={{ color: 'var(--text)', margin: 0 }}>Bloques de Acondicionamiento</h3>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {bloquesCancha.map((bloque, index) => (
-                    <div key={bloque.id} style={{ background: '#111', border: '1px solid #333', borderRadius: '8px', padding: '20px', position: 'relative' }}>
+                    <div key={bloque.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '20px', position: 'relative' }}>
                       <button onClick={() => eliminarBloqueCancha(bloque.id)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
                       
                       <input 
@@ -367,12 +367,12 @@ const CreadorFisico = () => {
                       </div>
 
                       {/* Info calculada en vivo */}
-                      <div style={{ marginTop: '15px', padding: '10px', background: '#000', borderRadius: '6px', border: '1px solid #222', display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#888' }}>
-                          Volumen Bloque: <strong style={{color: '#fff'}}>{(Number(bloque.distancia) * Number(bloque.pasadas) * Number(bloque.series)) || 0} mts</strong>
+                      <div style={{ marginTop: '15px', padding: '10px', background: 'var(--bg)', borderRadius: '6px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                          Volumen Bloque: <strong style={{color: 'var(--text)'}}>{(Number(bloque.distancia) * Number(bloque.pasadas) * Number(bloque.series)) || 0} mts</strong>
                         </span>
-                        <span style={{ fontSize: '0.75rem', color: '#888' }}>
-                          Pasadas Totales: <strong style={{color: '#fff'}}>{(Number(bloque.pasadas) * Number(bloque.series)) || 0}</strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                          Pasadas Totales: <strong style={{color: 'var(--text)'}}>{(Number(bloque.pasadas) * Number(bloque.series)) || 0}</strong>
                         </span>
                       </div>
                     </div>
@@ -393,12 +393,12 @@ const CreadorFisico = () => {
 
 // --- ESTILOS ---
 const labelStyle = { display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '5px' };
-const inputStyle = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '16px', outline: 'none', boxSizing: 'border-box' };
+const inputStyle = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '16px', outline: 'none', boxSizing: 'border-box' };
 
-const miniLabel = { display: 'block', fontSize: '0.65rem', color: '#888', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' };
-const miniInput = { width: '100%', padding: '10px', background: '#000', border: '1px solid #333', borderRadius: '6px', color: '#fff', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' };
+const miniLabel = { display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' };
+const miniInput = { width: '100%', padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' };
 
-const btnSecundario = { background: '#222', border: '1px solid #444', color: '#fff', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
+const btnSecundario = { background: 'var(--panel)', border: '1px solid #444', color: 'var(--text)', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
 const toggleBtnMode = { flex: 1, padding: '12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '900', fontSize: '0.85rem', transition: '0.2s' };
 
 export default CreadorFisico;

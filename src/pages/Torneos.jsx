@@ -715,7 +715,7 @@ function Torneos() {
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Debes configurar tu club.</div>;
 
   const valPos = (e, g, l, v) => modoTabla === 'local' ? e[l] : (modoTabla === 'visitante' ? e[v] : e[g]);
-  const GRUPOS_POS = { main: 'var(--accent)', wdl: 'var(--text-dim)', goles: '#fff' };
+  const GRUPOS_POS = { main: 'var(--accent)', wdl: 'var(--text-dim)', goles: 'var(--text)' };
   const GRUPOS_POS_LABEL = { main: 'PUNTOS', wdl: 'G / E / P', goles: 'GOLES' };
   const colsPosiciones = [
     { k: 'pts', t: 'PTS', g: 'main', r: e => valPos(e, 'pts', 'ptsL', 'ptsV') },
@@ -726,7 +726,7 @@ function Torneos() {
     { k: 'gf', t: 'GF', g: 'goles', r: e => valPos(e, 'gf', 'gfL', 'gfV') },
     { k: 'gc', t: 'GC', g: 'goles', r: e => valPos(e, 'gc', 'gcL', 'gcV') },
     { k: 'dif', t: 'DIF', g: 'goles', r: e => { const d = valPos(e, 'difGeneral', 'difLocal', 'difVisita'); return d > 0 ? `+${d}` : d; } },
-    { k: 'forma', t: 'ÚLT. 5', g: 'main', r: e => { const rc = valPos(e, 'rachaGeneral', 'rachaLocal', 'rachaVisita') || []; return <span style={{ display: 'inline-flex', gap: 3 }}>{rc.slice(-5).map((r, i) => { let col = '#555'; if (r === 'V') col = '#00ff88'; if (r === 'D') col = '#ef4444'; return <span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: col }} />; })}</span>; } },
+    { k: 'forma', t: 'ÚLT. 5', g: 'main', r: e => { const rc = valPos(e, 'rachaGeneral', 'rachaLocal', 'rachaVisita') || []; return <span style={{ display: 'inline-flex', gap: 3 }}>{rc.slice(-5).map((r, i) => { let col = 'var(--text-dim)'; if (r === 'V') col = '#00ff88'; if (r === 'D') col = '#ef4444'; return <span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: col }} />; })}</span>; } },
   ];
 
   return (
@@ -737,7 +737,7 @@ function Torneos() {
         <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>GESTOR DE COMPETICIÓN</div>
       </div>
 
-      <div className="bento-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-end', marginBottom: '30px', background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%)' }}>
+      <div className="bento-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'flex-end', marginBottom: '30px', background: 'linear-gradient(180deg, var(--panel) 0%, transparent 100%)' }}>
         <div>
           <div className="stat-label" style={{ marginBottom: '8px' }}>CATEGORÍA</div>
           <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={selectStyle}>
@@ -760,14 +760,14 @@ function Torneos() {
         <>
           <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '15px', marginBottom: '20px', textAlign: 'center' }}>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{ptsTotales}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>PUNTOS</div></div>
-            <div><div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{stats.pj}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>JUGADOS</div></div>
+            <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text)' }}>{stats.pj}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>JUGADOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00ff88' }}>{stats.pg}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>GANADOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fbbf24' }}>{stats.pe}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>EMPATADOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ef4444' }}>{stats.pp}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>PERDIDOS</div></div>
-            <div><div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{stats.gf}:{stats.gc}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>GOLES (DIF {stats.gf - stats.gc})</div></div>
+            <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text)' }}>{stats.gf}:{stats.gc}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>GOLES (DIF {stats.gf - stats.gc})</div></div>
             
-            <div style={{ borderLeft: '1px solid #333', paddingLeft: '15px' }}>
-               <div style={{ fontSize: '1.5rem', fontWeight: 900, color: eficacia >= 50 ? '#0ea5e9' : '#fff' }}>{eficacia}%</div>
+            <div style={{ borderLeft: '1px solid var(--border)', paddingLeft: '15px' }}>
+               <div style={{ fontSize: '1.5rem', fontWeight: 900, color: eficacia >= 50 ? '#0ea5e9' : 'var(--text)' }}>{eficacia}%</div>
                <div className="stat-label" style={{ fontSize: '0.65rem' }}>EFICACIA</div>
             </div>
             <div>
@@ -781,15 +781,15 @@ function Torneos() {
                <div className="stat-label">ESTADO DE FORMA <InfoBox texto="Últimos 5 partidos (de izquierda a derecha)."/></div>
                <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
                   {racha.slice(-5).map((r, i) => {
-                     let bg = '#333'; let color = '#fff';
+                     let bg = 'var(--border)'; let color = 'var(--text)';
                      if(r === 'V') { bg = 'var(--accent)'; color = '#000'; }
-                     else if(r === 'D') { bg = '#ef4444'; color = '#fff'; }
+                     else if(r === 'D') { bg = '#ef4444'; color = 'var(--text)'; }
                      return <div key={i} style={{ width: '35px', height: '35px', borderRadius: '4px', background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.2rem' }}>{r}</div>
                   })}
                   {racha.length === 0 && <span style={{ color: 'var(--text-dim)' }}>Aún sin partidos finalizados</span>}
                </div>
                <div style={{ marginTop: '15px', fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center' }}>
-                  Mejor Racha Invicta: <strong>{calcularMejorRacha(racha)} partidos</strong>
+                 Mejor Racha Invicta: <strong>{calcularMejorRacha(racha)} partidos</strong>
                </div>
             </div>
 
@@ -797,10 +797,10 @@ function Torneos() {
                <div className="stat-label" style={{ marginBottom: '15px' }}>EFICACIA DE LOCALÍA <InfoBox texto="Rendimiento de puntos jugando de Local vs Visitante."/></div>
                <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={chartDataLocalia} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                     <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 11, fontWeight: 700 }} />
-                     <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} domain={[0, 100]} tickFormatter={val => `${val}%`} />
-                     <RechartsTooltip cursor={{ fill: '#222' }} contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                     <XAxis dataKey="name" stroke="var(--text-dim)" tick={{ fill: 'var(--text-dim)', fontSize: 11, fontWeight: 700 }} />
+                     <YAxis stroke="var(--text-dim)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} domain={[0, 100]} tickFormatter={val => `${val}%`} />
+                     <RechartsTooltip cursor={{ fill: 'var(--border)' }} contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)' }} />
                      <Bar dataKey="Eficacia" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={40} name="Eficacia (%)" />
                   </BarChart>
                </ResponsiveContainer>
@@ -810,10 +810,10 @@ function Torneos() {
                <div className="stat-label" style={{ marginBottom: '15px' }}>EVOLUCIÓN DE GOLES <InfoBox texto="Tendencia de goles anotados (GF) vs recibidos (GC) fecha a fecha."/></div>
                <ResponsiveContainer width="100%" height={180}>
                   <LineChart data={chartDataEvolucion} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                     <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                     <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
-                     <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
-                     <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                     <XAxis dataKey="name" stroke="var(--text-dim)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} />
+                     <YAxis stroke="var(--text-dim)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} />
+                     <RechartsTooltip contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)' }} />
                      <Legend wrapperStyle={{ fontSize: '11px' }} iconType="circle" />
                      <Line type="monotone" dataKey="GF" stroke="#00ff88" strokeWidth={3} dot={{ r: 4, fill: '#00ff88' }} />
                      <Line type="monotone" dataKey="GC" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} />
@@ -824,25 +824,25 @@ function Torneos() {
 
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-              <div style={{ display: 'flex', gap: '5px', background: '#0a0a0a', padding: '5px', borderRadius: '8px', border: '1px solid #333' }}>
+              <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                   <button 
                     onClick={() => setTabMisTorneos('posiciones')} 
                     className="tab-btn" 
-                    style={{ background: tabMisTorneos === 'posiciones' ? '#222' : 'transparent', color: tabMisTorneos === 'posiciones' ? 'var(--accent)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
+                    style={{ background: tabMisTorneos === 'posiciones' ? 'var(--border)' : 'transparent', color: tabMisTorneos === 'posiciones' ? 'var(--accent)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
                   >
                     {esCopa ? 'LLAVE' : 'POSICIONES'}
                   </button>
                   <button 
                     onClick={() => setTabMisTorneos('fixture')} 
                     className="tab-btn" 
-                    style={{ background: tabMisTorneos === 'fixture' ? '#222' : 'transparent', color: tabMisTorneos === 'fixture' ? 'var(--accent)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
+                    style={{ background: tabMisTorneos === 'fixture' ? 'var(--border)' : 'transparent', color: tabMisTorneos === 'fixture' ? 'var(--accent)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
                   >
                     FIXTURE
                   </button>
                   <button 
                     onClick={() => setTabMisTorneos('reporte')} 
                     className="tab-btn" 
-                    style={{ background: tabMisTorneos === 'reporte' ? '#222' : 'transparent', color: tabMisTorneos === 'reporte' ? '#a855f7' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
+                    style={{ background: tabMisTorneos === 'reporte' ? 'var(--border)' : 'transparent', color: tabMisTorneos === 'reporte' ? '#a855f7' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
                   >
                     REPORTE
                   </button>
@@ -882,34 +882,34 @@ function Torneos() {
                             }
                             const filaEq = (nombre, escudo, goles, gana) => (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: gana ? 'rgba(0,255,136,0.08)' : 'transparent', borderRadius: '6px' }}>
-                                {escudo ? <img src={escudo} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} /> : <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#333' }} />}
-                                <span style={{ flex: 1, fontWeight: gana ? 900 : 700, color: gana ? 'var(--accent)' : (nombre === miClubGlobal ? '#fff' : '#ccc'), fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {escudo ? <img src={escudo} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} /> : <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--border)' }} />}
+                                <span style={{ flex: 1, fontWeight: gana ? 900 : 700, color: gana ? 'var(--accent)' : (nombre === miClubGlobal ? 'var(--text)' : 'var(--text-dim)'), fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {(nombre || '—').toUpperCase()} {nombre === miClubGlobal && <span style={{ fontSize: '0.55rem', background: 'var(--accent)', color: '#000', padding: '1px 4px', borderRadius: '3px' }}>YO</span>}
                                 </span>
                                 {gana && <span style={{ color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 900 }}>✓</span>}
-                                <span style={{ fontWeight: 900, fontFamily: 'JetBrains Mono, monospace', fontSize: '1.1rem', color: gana ? 'var(--accent)' : '#fff', minWidth: '20px', textAlign: 'center' }}>{fin ? goles : '-'}</span>
+                                <span style={{ fontWeight: 900, fontFamily: 'JetBrains Mono, monospace', fontSize: '1.1rem', color: gana ? 'var(--accent)' : 'var(--text)', minWidth: '20px', textAlign: 'center' }}>{fin ? goles : '-'}</span>
                               </div>
                             );
                             return (
-                              <div key={cruce.id} style={{ background: '#0a0a0a', border: '1px solid #222', borderRadius: '10px', padding: '8px' }}>
+                              <div key={cruce.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '8px' }}>
                                 {filaEq(cruce.nombre_propio, cruce.escudo_propio, gp, ganaL)}
-                                <div style={{ height: '1px', background: '#1c1c1c', margin: '2px 8px' }} />
+                                <div style={{ height: '1px', background: 'var(--border)', margin: '2px 8px' }} />
                                 {filaEq(cruce.rival, cruce.escudo_rival, gr, ganaV)}
                                 {empate && (
-                                  <div style={{ marginTop: '8px', padding: '8px', background: '#111', borderRadius: '6px', border: '1px dashed #333' }}>
+                                  <div style={{ marginTop: '8px', padding: '8px', background: 'var(--panel)', borderRadius: '6px', border: '1px dashed var(--border)' }}>
                                     <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800, marginBottom: '6px', textAlign: 'center' }}>DEFINICIÓN POR PENALES</div>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                      <input type="number" min="0" key={`pp-${cruce.id}-${cruce.penales_propios ?? ''}`} defaultValue={cruce.penales_propios ?? ''} onBlur={(e) => actualizarPenales(cruce.id, e.target.value, cruce.penales_rival ?? '')} style={{ width: '50px', textAlign: 'center', background: '#000', color: 'var(--accent)', border: '1px solid #333', padding: '6px', fontWeight: 900, borderRadius: '4px', fontSize: '1rem' }} />
+                                      <input type="number" min="0" key={`pp-${cruce.id}-${cruce.penales_propios ?? ''}`} defaultValue={cruce.penales_propios ?? ''} onBlur={(e) => actualizarPenales(cruce.id, e.target.value, cruce.penales_rival ?? '')} style={{ width: '50px', textAlign: 'center', background: 'var(--bg)', color: 'var(--accent)', border: '1px solid var(--border)', padding: '6px', fontWeight: 900, borderRadius: '4px', fontSize: '1rem' }} />
                                       <span style={{ color: 'var(--text-dim)', fontWeight: 900, fontSize: '0.7rem' }}>PEN</span>
-                                      <input type="number" min="0" key={`pr-${cruce.id}-${cruce.penales_rival ?? ''}`} defaultValue={cruce.penales_rival ?? ''} onBlur={(e) => actualizarPenales(cruce.id, cruce.penales_propios ?? '', e.target.value)} style={{ width: '50px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '6px', fontWeight: 900, borderRadius: '4px', fontSize: '1rem' }} />
+                                      <input type="number" min="0" key={`pr-${cruce.id}-${cruce.penales_rival ?? ''}`} defaultValue={cruce.penales_rival ?? ''} onBlur={(e) => actualizarPenales(cruce.id, cruce.penales_propios ?? '', e.target.value)} style={{ width: '50px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '6px', fontWeight: 900, borderRadius: '4px', fontSize: '1rem' }} />
                                     </div>
                                   </div>
                                 )}
                                 {!fin && (
                                   <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                    <input type="number" min="0" value={cruce.goles_propios} onChange={(e) => actualizarResultado(cruce.id, e.target.value, cruce.goles_rival, 'Finalizado')} style={{ width: '46px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                    <input type="number" min="0" value={cruce.goles_propios} onChange={(e) => actualizarResultado(cruce.id, e.target.value, cruce.goles_rival, 'Finalizado')} style={{ width: '46px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
                                     <span style={{ color: 'var(--text-dim)' }}>-</span>
-                                    <input type="number" min="0" value={cruce.goles_rival} onChange={(e) => actualizarResultado(cruce.id, cruce.goles_propios, e.target.value, 'Finalizado')} style={{ width: '46px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                    <input type="number" min="0" value={cruce.goles_rival} onChange={(e) => actualizarResultado(cruce.id, cruce.goles_propios, e.target.value, 'Finalizado')} style={{ width: '46px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
                                   </div>
                                 )}
                               </div>
@@ -928,7 +928,7 @@ function Torneos() {
               <div style={{ overflowX: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <select value={modoTabla} onChange={(e) => setModoTabla(e.target.value)} style={{ padding: '8px', background: '#000', color: '#fff', border: '1px solid #333', borderRadius: '4px', fontWeight: 800, outline: 'none', cursor: 'pointer' }}>
+                    <select value={modoTabla} onChange={(e) => setModoTabla(e.target.value)} style={{ padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', fontWeight: 800, outline: 'none', cursor: 'pointer' }}>
                       <option value="general">📊 TABLA GENERAL</option>
                       <option value="local">🏠 SOLO LOCAL</option>
                       <option value="visitante">✈️ SOLO VISITANTE</option>
@@ -948,17 +948,17 @@ function Torneos() {
                   getSubtitulo={(e) => e.nombre === miClubGlobal ? 'TU CLUB' : ''}
                   colorCelda={(e, col) => {
                     if (col.k === 'pts') return 'var(--accent)';
-                    if (col.k === 'dif') { const d = valPos(e, 'difGeneral', 'difLocal', 'difVisita'); return d > 0 ? '#00ff88' : (d < 0 ? '#ef4444' : '#fff'); }
+                    if (col.k === 'dif') { const d = valPos(e, 'difGeneral', 'difLocal', 'difVisita'); return d > 0 ? '#00ff88' : (d < 0 ? '#ef4444' : 'var(--text)'); }
                     if (col.k === 'pg') return '#00ff88';
                     if (col.k === 'pe') return '#fbbf24';
                     if (col.k === 'pp') return '#ef4444';
-                    return '#fff';
+                    return 'var(--text)';
                   }}
                   renderBadges={(e) => (e.escudo ? <img src={e.escudo} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /> : null)}
                 >
                 <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '800px' }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #333', color: 'var(--text-dim)', fontSize: '0.75rem', backgroundColor: '#0a0a0a' }}>
+                    <tr style={{ borderBottom: '2px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.75rem', backgroundColor: 'var(--bg)' }}>
                       <th style={{ padding: '12px', width: '40px' }}>#</th>
                       <th style={{ textAlign: 'left', padding: '12px' }}>EQUIPO</th>
                       <th style={{ padding: '12px' }}>PTS</th>
@@ -990,32 +990,32 @@ function Torneos() {
                         }
 
                         return (
-                          <tr key={index} style={{ borderBottom: '1px solid #222', backgroundColor: esMiEquipo ? 'rgba(0, 255, 136, 0.05)' : 'transparent', transition: '0.2s' }}>
-                            <td style={{ padding: '12px', fontWeight: 900, color: index < 4 ? 'var(--accent)' : '#fff' }}>{index + 1}</td>
-                            <td style={{ textAlign: 'left', padding: '12px', fontWeight: 800, color: esMiEquipo ? 'var(--accent)' : '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <tr key={index} style={{ borderBottom: '1px solid var(--border)', backgroundColor: esMiEquipo ? 'rgba(0, 255, 136, 0.05)' : 'transparent', transition: '0.2s' }}>
+                            <td style={{ padding: '12px', fontWeight: 900, color: index < 4 ? 'var(--accent)' : 'var(--text)' }}>{index + 1}</td>
+                            <td style={{ textAlign: 'left', padding: '12px', fontWeight: 800, color: esMiEquipo ? 'var(--accent)' : 'var(--text)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                               {equipo.escudo ? (
                                 <img src={equipo.escudo} alt={equipo.nombre} style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                               ) : (
-                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#333', border: `1px solid ${esMiEquipo ? 'var(--accent)' : '#555'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900 }}>
+                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--border)', border: `1px solid ${esMiEquipo ? 'var(--accent)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900 }}>
                                   {equipo.nombre.substring(0,2).toUpperCase()}
                                 </div>
                               )}
                               {equipo.nombre.toUpperCase()} {esMiEquipo && <span style={{fontSize: '0.6rem', background: 'var(--accent)', color: '#000', padding: '2px 6px', borderRadius: '4px'}}>TU CLUB</span>}
                             </td>
-                            <td style={{ padding: '12px', fontWeight: 900, fontSize: '1.1rem', color: '#fff' }}>{pts}</td>
+                            <td style={{ padding: '12px', fontWeight: 900, fontSize: '1.1rem', color: 'var(--text)' }}>{pts}</td>
                             <td style={{ padding: '12px', color: 'var(--text-dim)' }}>{pj}</td>
                             <td style={{ padding: '12px', color: '#00ff88' }}>{pg}</td>
                             <td style={{ padding: '12px', color: '#fbbf24' }}>{pe}</td>
                             <td style={{ padding: '12px', color: '#ef4444' }}>{pp}</td>
-                            <td style={{ padding: '12px', color: '#fff' }}>{gf}</td>
-                            <td style={{ padding: '12px', color: '#fff' }}>{gc}</td>
-                            <td style={{ padding: '12px', fontWeight: 800, color: dif > 0 ? '#00ff88' : (dif < 0 ? '#ef4444' : '#fff') }}>
+                            <td style={{ padding: '12px', color: 'var(--text)' }}>{gf}</td>
+                            <td style={{ padding: '12px', color: 'var(--text)' }}>{gc}</td>
+                            <td style={{ padding: '12px', fontWeight: 800, color: dif > 0 ? '#00ff88' : (dif < 0 ? '#ef4444' : 'var(--text)') }}>
                               {dif > 0 ? `+${dif}` : dif}
                             </td>
                             {modoTabla === 'general' && (
                               <td style={{ padding: '12px', display: 'flex', justifyContent: 'center', gap: '4px' }}>
                                 {racha.slice(-5).map((r, i) => {
-                                   let color = '#555';
+                                   let color = 'var(--border)';
                                    if(r === 'V') color = '#00ff88';
                                    if(r === 'D') color = '#ef4444';
                                    return <div key={i} style={{ width: '12px', height: '12px', borderRadius: '50%', background: color }} title={r}></div>
@@ -1035,7 +1035,7 @@ function Torneos() {
             {/* 📅 TAB: FIXTURE */}
             {tabMisTorneos === 'fixture' && (
               <>
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '8px', border: '1px solid #222' }}>
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                   <div style={{ flex: 1 }}>
                     <div className="stat-label" style={{ marginBottom: '5px' }}>FILTRAR POR FECHA</div>
                     <select value={filtroJornada} onChange={e => setFiltroJornada(e.target.value)} style={{ ...inputIndustrial, padding: '8px' }}>
@@ -1061,12 +1061,12 @@ function Torneos() {
                       const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
                       
                       return (
-                        <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: estaCompletado ? 'rgba(0, 255, 136, 0.05)' : '#111', padding: '15px', borderRadius: '6px', border: estaCompletado ? '1px solid var(--accent)' : '1px solid #333', flexWrap: 'wrap', gap: '10px' }}>
+                        <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: estaCompletado ? 'rgba(0, 255, 136, 0.05)' : 'var(--panel)', padding: '15px', borderRadius: '6px', border: estaCompletado ? '1px solid var(--accent)' : '1px solid var(--border)', flexWrap: 'wrap', gap: '10px' }}>
                           
                           <div style={{ minWidth: '150px' }}>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>{f.jornada?.toUpperCase()} {esMiPartido ? `// ${f.condicion}` : '// EXTERNO'}</div>
                             
-                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                               {esMiPartido ? (
                                 f.rivales?.nombre?.toUpperCase() || f.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'
                               ) : (
@@ -1078,8 +1078,8 @@ function Torneos() {
                               <span>📅 {f.fecha || 'A definir'}</span>
                               <span style={{
                                 padding: '3px 6px', borderRadius: '4px',
-                                background: f.esTrackeado ? 'rgba(0, 255, 136, 0.1)' : (f.estado === 'Pendiente' ? 'rgba(255,255,255,0.1)' : 'rgba(59, 130, 246, 0.1)'),
-                                color: f.esTrackeado ? 'var(--accent)' : (f.estado === 'Pendiente' ? '#aaa' : '#3b82f6'),
+                                background: f.esTrackeado ? 'rgba(0, 255, 136, 0.1)' : (f.estado === 'Pendiente' ? 'var(--border)' : 'rgba(59, 130, 246, 0.1)'),
+                                color: f.esTrackeado ? 'var(--accent)' : (f.estado === 'Pendiente' ? 'var(--text-dim)' : '#3b82f6'),
                                 fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.5px'
                               }}>
                                 {f.esTrackeado ? 'TRACKEADO' : f.estado.toUpperCase()}
@@ -1094,7 +1094,7 @@ function Torneos() {
                                   <button onClick={() => irATrackear(f)} className="btn-action" style={{ fontSize: '0.75rem', padding: '8px 15px', display: 'flex', gap: '5px', alignItems: 'center' }}>
                                     {f.esTrackeado ? '▶ CONTINUAR' : '⚡ TRACKEAR'}
                                   </button>
-                                  <div style={{ height: '20px', width: '1px', background: '#333' }}></div>
+                                  <div style={{ height: '20px', width: '1px', background: 'var(--border)' }}></div>
                                 </>
                               )}
                               <button onClick={() => actualizarResultado(f.id, 0, 0, 'Finalizado')} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px' }}>
@@ -1110,7 +1110,7 @@ function Torneos() {
                                 {f.esTrackeado ? (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0, 255, 136, 0.1)', padding: '5px 15px', borderRadius: '4px', border: '1px solid var(--accent)' }}>
                                     <span style={{ color: 'var(--accent)', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_propios}</span>
-                                    <span style={{ color: '#fff', fontWeight: 900 }}>-</span>
+                                    <span style={{ color: 'var(--text)', fontWeight: 900 }}>-</span>
                                     <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_rival}</span>
                                     <span style={{ fontSize: '0.6rem', color: 'var(--accent)', marginLeft: '10px', fontWeight: 800 }}>✓ FINALIZADO</span>
                                   </div>
@@ -1118,12 +1118,12 @@ function Torneos() {
                                   <>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                       <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{esMiPartido ? 'MI EQUIPO' : 'LOCAL'}</span>
-                                      <input type="number" value={f.goles_propios} onChange={(e) => actualizarResultado(f.id, e.target.value, f.goles_rival, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: esMiPartido ? 'var(--accent)' : '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                      <input type="number" min="0" value={f.goles_propios} onChange={(e) => actualizarResultado(f.id, e.target.value, f.goles_rival, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: 'var(--bg)', color: esMiPartido ? 'var(--accent)' : 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
                                     </div>
                                     <span style={{ fontWeight: 900 }}>-</span>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                       <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{esMiPartido ? 'RIVAL' : 'VISIT.'}</span>
-                                      <input type="number" value={f.goles_rival} onChange={(e) => actualizarResultado(f.id, f.goles_propios, e.target.value, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: '#000', color: '#fff', border: '1px solid #333', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                      <input type="number" min="0" value={f.goles_rival} onChange={(e) => actualizarResultado(f.id, f.goles_propios, e.target.value, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
                                     </div>
                                     <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}>↺</button>
                                   </>
@@ -1163,7 +1163,7 @@ function Torneos() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
 
                         {proximoRival && (
-                          <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #a855f7' }}>
+                          <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: '4px solid #a855f7' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                               <div className="stat-label" style={{ color: '#a855f7' }}>PRÓXIMO RIVAL</div>
                               {proximoRival.dias != null && (
@@ -1177,12 +1177,12 @@ function Torneos() {
                               {proximoRival.escudo ? (
                                 <img src={proximoRival.escudo} alt={proximoRival.rivalNombre} style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
                               ) : (
-                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#222', border: '1px solid #444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.8rem' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.8rem' }}>
                                   {proximoRival.rivalNombre.substring(0, 2).toUpperCase()}
                                 </div>
                               )}
                               <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{proximoRival.rivalNombre.toUpperCase()}</div>
+                                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{proximoRival.rivalNombre.toUpperCase()}</div>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
                                   {proximoRival.jornada ? `${proximoRival.jornada} · ` : ''}{proximoRival.fecha || 'Fecha a definir'} · {proximoRival.condicion === 'Visitante' ? '✈️ Visitante' : '🏠 Local'}
                                 </div>
@@ -1192,19 +1192,19 @@ function Torneos() {
                             {proximoRival.fila && proximoRival.fila.pj > 0 ? (
                               <>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                                  <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '8px 4px' }}>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff' }}>{proximoRival.posRival ? `${proximoRival.posRival}º` : '-'}</div>
+                                  <div style={{ textAlign: 'center', background: 'var(--bg)', borderRadius: '6px', padding: '8px 4px' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>{proximoRival.posRival ? `${proximoRival.posRival}º` : '-'}</div>
                                     <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>POSICIÓN</div>
                                   </div>
-                                  <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '8px 4px' }}>
+                                  <div style={{ textAlign: 'center', background: 'var(--bg)', borderRadius: '6px', padding: '8px 4px' }}>
                                     <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent)' }}>{proximoRival.fila.pts}</div>
                                     <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>PTS · {proximoRival.fila.pj}PJ</div>
                                   </div>
-                                  <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '8px 4px' }}>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff' }}>{proximoRival.fila.gf}:{proximoRival.fila.gc}</div>
+                                  <div style={{ textAlign: 'center', background: 'var(--bg)', borderRadius: '6px', padding: '8px 4px' }}>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>{proximoRival.fila.gf}:{proximoRival.fila.gc}</div>
                                     <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>GF:GC</div>
                                   </div>
-                                  <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '8px 4px' }}>
+                                  <div style={{ textAlign: 'center', background: 'var(--bg)', borderRadius: '6px', padding: '8px 4px' }}>
                                     <div style={{ fontSize: '1.1rem', fontWeight: 900, color: proximoRival.condicion === 'Visitante' ? '#f97316' : '#3b82f6' }}>
                                       {proximoRival.condicion === 'Visitante' ? proximoRival.fila.ptsL : proximoRival.fila.ptsV}
                                     </div>
@@ -1214,7 +1214,7 @@ function Torneos() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>FORMA:</span>
                                   {(proximoRival.fila.rachaGeneral || []).slice(-5).map((r, i) => {
-                                    let color = '#555'; if (r === 'V') color = '#00ff88'; if (r === 'D') color = '#ef4444';
+                                    let color = 'var(--border)'; if (r === 'V') color = '#00ff88'; if (r === 'D') color = '#ef4444';
                                     return <div key={i} style={{ width: '12px', height: '12px', borderRadius: '50%', background: color }} title={r}></div>;
                                   })}
                                   {(!proximoRival.fila.rachaGeneral || proximoRival.fila.rachaGeneral.length === 0) && <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Sin datos</span>}
@@ -1233,19 +1233,19 @@ function Torneos() {
                         )}
 
                         {(proyeccion.pj > 0 || proyeccion.pendientes > 0) && (
-                          <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #00ff88' }}>
+                          <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: '4px solid #00ff88' }}>
                             <div className="stat-label" style={{ color: '#00ff88', marginBottom: '12px' }}>PROYECCIÓN DE PUNTOS</div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '14px' }}>
-                              <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '10px 4px' }}>
-                                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff' }}>{proyeccion.ptsTotales}</div>
+                              <div style={{ textAlign: 'center', background: 'var(--bg)', borderRadius: '6px', padding: '10px 4px' }}>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}>{proyeccion.ptsTotales}</div>
                                 <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>PTS ({proyeccion.pj} PJ)</div>
                               </div>
-                              <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '10px 4px' }}>
+                              <div style={{ textAlign: 'center', background: 'var(--bg)', borderRadius: '6px', padding: '10px 4px' }}>
                                 <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent)' }}>{proyeccion.ppp}</div>
                                 <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>PTS / PARTIDO</div>
                               </div>
-                              <div style={{ textAlign: 'center', background: '#0a0a0a', borderRadius: '6px', padding: '10px 4px' }}>
+                              <div style={{ textAlign: 'center', background: 'var(--bg)', borderRadius: '6px', padding: '10px 4px' }}>
                                 <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#a855f7' }}>{proyeccion.pendientes}</div>
                                 <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)' }}>FECHAS REST.</div>
                               </div>
@@ -1259,7 +1259,7 @@ function Torneos() {
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-dim)', padding: '0 4px' }}>
                                   <span>Techo si ganás todo</span>
-                                  <span style={{ color: '#fff', fontWeight: 800 }}>{proyeccion.maxPosible} pts</span>
+                                  <span style={{ color: 'var(--text)', fontWeight: 800 }}>{proyeccion.maxPosible} pts</span>
                                 </div>
                               </>
                             ) : (
@@ -1267,7 +1267,7 @@ function Torneos() {
                             )}
 
                             {proyeccion.posicion && (
-                              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #222', fontSize: '0.78rem', color: '#fff' }}>
+                              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text)' }}>
                                 Vas <b style={{ color: 'var(--accent)' }}>{proyeccion.posicion}º</b> de {proyeccion.totalEquipos}.{' '}
                                 {proyeccion.brechaLider > 0
                                   ? <>A <b style={{ color: '#f59e0b' }}>{proyeccion.brechaLider} pts</b> del líder ({proyeccion.lider?.nombre?.toUpperCase()}).</>
@@ -1280,45 +1280,45 @@ function Torneos() {
                     )}
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #00ff88' }}>
+                      <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: '4px solid #00ff88' }}>
                          <div className="stat-label">MÁS GOLEADOR</div>
-                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: '#fff' }}>{reporteLiga.masGoleador?.nombre.toUpperCase()}</div>
+                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: 'var(--text)' }}>{reporteLiga.masGoleador?.nombre.toUpperCase()}</div>
                          <div style={{ color: '#00ff88', fontWeight: 800, fontSize: '0.8rem' }}>{reporteLiga.masGoleador?.gf} Goles a favor</div>
                       </div>
 
-                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #ef4444' }}>
+                      <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: '4px solid #ef4444' }}>
                          <div className="stat-label">MEJOR DEFENSA</div>
-                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: '#fff' }}>{reporteLiga.mejorDefensa?.nombre.toUpperCase()}</div>
+                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: 'var(--text)' }}>{reporteLiga.mejorDefensa?.nombre.toUpperCase()}</div>
                          <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.8rem' }}>Solo {reporteLiga.mejorDefensa?.gc} goles en contra</div>
                       </div>
 
-                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #3b82f6' }}>
+                      <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: '4px solid #3b82f6' }}>
                          <div className="stat-label">MEJOR LOCAL</div>
-                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: '#fff' }}>{reporteLiga.mejorLocal?.nombre.toUpperCase()}</div>
+                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: 'var(--text)' }}>{reporteLiga.mejorLocal?.nombre.toUpperCase()}</div>
                          <div style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.8rem' }}>{reporteLiga.mejorLocal?.ptsL} Puntos en casa</div>
                       </div>
 
-                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', borderLeft: '4px solid #f97316' }}>
+                      <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: '4px solid #f97316' }}>
                          <div className="stat-label">MEJOR VISITANTE</div>
-                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: '#fff' }}>{reporteLiga.mejorVisita?.nombre.toUpperCase()}</div>
+                         <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: 'var(--text)' }}>{reporteLiga.mejorVisita?.nombre.toUpperCase()}</div>
                          <div style={{ color: '#f97316', fontWeight: 800, fontSize: '0.8rem' }}>{reporteLiga.mejorVisita?.ptsV} Puntos fuera</div>
                       </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
                       {reporteLiga.mayorGoleada.dif > 0 && (
-                         <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid var(--accent)' }}>
+                         <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--accent)' }}>
                             <div className="stat-label">MAYOR GOLEADA</div>
                             <div style={{ fontSize: '1.5rem', fontWeight: 900, marginTop: '10px', color: 'var(--accent)' }}>{reporteLiga.mayorGoleada.text.toUpperCase()}</div>
                             <div style={{ color: 'var(--text-dim)', fontWeight: 800, fontSize: '0.8rem', marginTop: '5px' }}>Diferencia de {reporteLiga.mayorGoleada.dif} goles</div>
                          </div>
                       )}
                       
-                      <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                          <div className="stat-label">TENDENCIA DE GOLES</div>
                          <div style={{ display: 'flex', gap: '20px', marginTop: '10px' }}>
                             <div>
-                               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff' }}>{reporteLiga.promedioGolLiga}</div>
+                               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>{reporteLiga.promedioGolLiga}</div>
                                <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Goles/Partido</div>
                             </div>
                             <div>
@@ -1333,11 +1333,11 @@ function Torneos() {
                       </div>
                     </div>
 
-                    <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', overflowX: 'auto' }}>
+                    <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', overflowX: 'auto' }}>
                        <div className="stat-label" style={{ marginBottom: '15px' }}>ESTADÍSTICAS AVANZADAS Y PODER OFENSIVO</div>
                        <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                          <thead>
-                           <tr style={{ color: 'var(--text-dim)', fontSize: '0.7rem', borderBottom: '1px solid #333' }}>
+                           <tr style={{ color: 'var(--text-dim)', fontSize: '0.7rem', borderBottom: '1px solid var(--border)' }}>
                              <th style={{ padding: '8px', textAlign: 'left' }}>EQUIPO</th>
                              <th style={{ padding: '8px' }} title="Puntos obtenidos sobre puntos posibles">% EFECTIVIDAD</th>
                              <th style={{ padding: '8px' }}>GF/PJ (Ataque)</th>
@@ -1347,14 +1347,14 @@ function Torneos() {
                          </thead>
                          <tbody>
                            {reporteLiga.powerRanking.map((eq, index) => (
-                             <tr key={index} style={{ borderBottom: '1px solid #222' }}>
-                               <td style={{ padding: '10px', textAlign: 'left', fontWeight: 800, color: eq.nombre === miClubGlobal ? 'var(--accent)' : '#fff' }}>{eq.nombre.toUpperCase()}</td>
-                               <td style={{ padding: '10px', color: eq.pctPuntos > 60 ? '#00ff88' : '#fff', fontWeight: 900 }}>{eq.pctPuntos}%</td>
+                             <tr key={index} style={{ borderBottom: '1px solid var(--border)' }}>
+                               <td style={{ padding: '10px', textAlign: 'left', fontWeight: 800, color: eq.nombre === miClubGlobal ? 'var(--accent)' : 'var(--text)' }}>{eq.nombre.toUpperCase()}</td>
+                               <td style={{ padding: '10px', color: eq.pctPuntos > 60 ? '#00ff88' : 'var(--text)', fontWeight: 900 }}>{eq.pctPuntos}%</td>
                                <td style={{ padding: '10px', color: '#0ea5e9', fontWeight: 800 }}>{eq.gfPromedio}</td>
                                <td style={{ padding: '10px', color: '#ef4444', fontWeight: 800 }}>{eq.gcPromedio}</td>
                                <td style={{ padding: '10px' }}>
                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
-                                   <div style={{ width: '100px', height: '6px', background: '#333', borderRadius: '3px', overflow: 'hidden' }}>
+                                   <div style={{ width: '100px', height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
                                      <div style={{ height: '100%', width: `${Math.min(Math.max(eq.dominioRaw, 0), 100)}%`, background: 'linear-gradient(90deg, #3b82f6, #a855f7)' }}></div>
                                    </div>
                                    <span style={{ fontSize: '0.8rem', fontWeight: 900 }}>{Math.max(eq.dominioRaw, 0).toFixed(0)}</span>
@@ -1367,7 +1367,7 @@ function Torneos() {
                     </div>
 
                     {/* COMPARADOR DE RENDIMIENTO (NUEVO) */}
-                    <div style={{ background: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #333', marginTop: '20px' }}>
+                    <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', marginTop: '20px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
                         <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>
                           EVOLUCIÓN COMPARATIVA <InfoBox texto="Compará el rendimiento acumulado fecha a fecha entre dos equipos del torneo." />
@@ -1393,10 +1393,10 @@ function Torneos() {
                         {chartDataComparativa.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={chartDataComparativa} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                              <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
-                              <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
-                              <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #333' }} />
+                              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                              <XAxis dataKey="name" stroke="var(--text-dim)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} />
+                              <YAxis stroke="var(--text-dim)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} />
+                              <RechartsTooltip contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)' }} />
                               <Legend wrapperStyle={{ fontSize: '11px' }} iconType="circle" />
                               <Line type="monotone" dataKey={compEq1} name={compEq1.toUpperCase()} stroke="#00ff88" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                               <Line type="monotone" dataKey={compEq2} name={compEq2.toUpperCase()} stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
@@ -1465,13 +1465,13 @@ function Torneos() {
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button 
                   onClick={() => setFormFixture({...formFixture, tipo_partido: 'propio'})} 
-                  style={{ flex: 1, padding: '10px', background: formFixture.tipo_partido === 'propio' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', border: `1px solid ${formFixture.tipo_partido === 'propio' ? 'var(--accent)' : '#333'}`, color: formFixture.tipo_partido === 'propio' ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '10px', background: formFixture.tipo_partido === 'propio' ? 'rgba(0, 255, 136, 0.1)' : 'transparent', border: `1px solid ${formFixture.tipo_partido === 'propio' ? 'var(--accent)' : 'var(--border)'}`, color: formFixture.tipo_partido === 'propio' ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer' }}
                 >
                   TU CLUB (1 CRUCE)
                 </button>
                 <button 
                   onClick={() => setFormFixture({...formFixture, tipo_partido: 'multiple'})} 
-                  style={{ flex: 1, padding: '10px', background: formFixture.tipo_partido === 'multiple' ? '#222' : 'transparent', border: `1px solid ${formFixture.tipo_partido === 'multiple' ? '#fff' : '#333'}`, color: formFixture.tipo_partido === 'multiple' ? '#fff' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer' }}
+                  style={{ flex: 1, padding: '10px', background: formFixture.tipo_partido === 'multiple' ? 'var(--border)' : 'transparent', border: `1px solid ${formFixture.tipo_partido === 'multiple' ? 'var(--text)' : 'var(--border)'}`, color: formFixture.tipo_partido === 'multiple' ? 'var(--text)' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer' }}
                 >
                   CARGA MÚLTIPLE (FECHA)
                 </button>
@@ -1512,7 +1512,7 @@ function Torneos() {
                 <div className="section-title" style={{ marginBottom: '10px' }}>CRUCES DE LA FECHA</div>
                 <div style={{ maxHeight: '35vh', overflowY: 'auto', paddingRight: '5px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {formFixture.partidos_multiples.map((p, index) => (
-                    <div key={index} style={{ background: '#111', padding: '12px', borderRadius: '6px', border: '1px solid #333' }}>
+                    <div key={index} style={{ background: 'var(--panel)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
                          <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800 }}>PARTIDO #{index + 1}</span>
                          {formFixture.partidos_multiples.length > 1 && (
@@ -1538,10 +1538,10 @@ function Torneos() {
                         </select>
                         
                         {p.estado === 'Finalizado' ? (
-                          <div style={{ display: 'flex', gap: '5px', flex: 1, alignItems: 'center', background: '#000', borderRadius: '4px', border: '1px solid #333', padding: '2px' }}>
-                            <input type="number" value={p.goles_local} onChange={e => actualizarPartidoMultiple(index, 'goles_local', e.target.value)} placeholder="Goles L" style={{...inputIndustrial, padding: '6px', textAlign: 'center', border: 'none'}} />
-                            <span style={{color: '#fff', fontWeight: 900}}>-</span>
-                            <input type="number" value={p.goles_visitante} onChange={e => actualizarPartidoMultiple(index, 'goles_visitante', e.target.value)} placeholder="Goles V" style={{...inputIndustrial, padding: '6px', textAlign: 'center', border: 'none'}} />
+                          <div style={{ display: 'flex', gap: '5px', flex: 1, alignItems: 'center', background: 'var(--bg)', borderRadius: '4px', border: '1px solid var(--border)', padding: '2px' }}>
+                            <input type="number" value={p.goles_local} onChange={e => actualizarPartidoMultiple(index, 'goles_local', e.target.value)} placeholder="Goles L" style={{...inputIndustrial, padding: '6px', textAlign: 'center', border: 'none', marginBottom: '0'}} />
+                            <span style={{color: 'var(--text)', fontWeight: 900}}>-</span>
+                            <input type="number" value={p.goles_visitante} onChange={e => actualizarPartidoMultiple(index, 'goles_visitante', e.target.value)} placeholder="Goles V" style={{...inputIndustrial, padding: '6px', textAlign: 'center', border: 'none', marginBottom: '0'}} />
                           </div>
                         ) : (
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', flex: 1, textAlign: 'center' }}>Sin resultado (0-0)</span>
@@ -1567,7 +1567,7 @@ function Torneos() {
 
       <style>{`
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 99999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
-        .modal-content { width: 100%; border: 1px solid var(--accent); }
+        .modal-content { width: 100%; border: 1px solid var(--accent); background: var(--panel); }
         .section-title { color: var(--text-dim); font-size: 0.8rem; font-weight: 800; margin-bottom: 5px; }
         .tab-btn { border: none; background: transparent; cursor: pointer; transition: all 0.2s; font-family: inherit; }
         .tab-btn:hover { opacity: 0.85; }
@@ -1579,7 +1579,7 @@ function Torneos() {
 const selectStyle = { 
   padding: '10px 15px', 
   fontSize: '1rem', 
-  background: '#111', 
+  background: 'var(--panel)', 
   color: 'var(--accent)', 
   border: '1px solid var(--accent)', 
   borderRadius: '6px', 
@@ -1589,6 +1589,6 @@ const selectStyle = {
   minWidth: '220px'
 };
 
-const inputIndustrial = { width: '100%', padding: '12px', background: '#000', border: '1px solid #333', color: '#fff', borderRadius: '4px', outline: 'none' };
+const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' };
 
 export default Torneos;
