@@ -25,7 +25,7 @@ function extraerYoutubeId(url) {
   if (!url) return null;
   const limpio = url.trim();
   if (/^[a-zA-Z0-9_-]{11}$/.test(limpio)) return limpio; // pegaron solo el ID
-  const m = limpio.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  const m = limpio.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : null;
 }
 
@@ -80,9 +80,18 @@ export default function Videoanalisis() {
   const [etiquetas, setEtiquetas] = useState(ETIQUETAS_DEFAULT);
   const [configId, setConfigId] = useState(null);
   const [modalConfig, setModalConfig] = useState(false);
-  const [etiquetasEdit, setEtiquetasEdit] = useState([]);
   const [prerollEdit, setPrerollEdit] = useState(PREROLL_DEFAULT);
   const [guardandoConfig, setGuardandoConfig] = useState(false);
+
+  // ── Presets de botonera: varias guardadas, se puede saltar entre ellas ──
+  const [presets, setPresets] = useState([]); // [{ id, nombre, etiquetas: [{t,c}] }]
+  const [presetActivoId, setPresetActivoId] = useState(null);
+  const [presetsEdit, setPresetsEdit] = useState([]); // clon editable dentro del modal
+  const [presetIdEdit, setPresetIdEdit] = useState(null); // cuál se está editando ahora en el modal
+
+  // ── Pantalla grande (para mostrarle clips a los jugadores) ──
+  const [enPantallaCompleta, setEnPantallaCompleta] = useState(false);
+  const videoWrapRef = useRef(null);
 
   // ── Explorador de clips: cruza clips de TODOS los videos del club ──
   const [todosLosClips, setTodosLosClips] = useState([]);
@@ -102,6 +111,7 @@ export default function Videoanalisis() {
   const [errorReproduccion, setErrorReproduccion] = useState(false);
   const [tiempoActual, setTiempoActual] = useState(0);
   const [reproduciendoClipId, setReproduciendoClipId] = useState(null);
+  const [clipActivo, setClipActivo] = useState(null); // clip completo (etiqueta + notas) que se está mostrando ahora
   const [seleccionados, setSeleccionados] = useState(() => new Set());
   const [filtroCategoria, setFiltroCategoria] = useState('TODAS');
   const [preroll, setPreroll] = useState(PREROLL_DEFAULT);
@@ -159,8 +169,22 @@ export default function Videoanalisis() {
       setPartidos(p || []);
       if (cfg) {
         setConfigId(cfg.id);
-        if (Array.isArray(cfg.etiquetas) && cfg.etiquetas.length > 0) setEtiquetas(cfg.etiquetas);
+        let lista = Array.isArray(cfg.presets) && cfg.presets.length > 0 ? cfg.presets : null;
+        if (!lista) {
+          // Club viejo: todavía no tiene "presets", solo la botonera plana de antes.
+          // La envolvemos en un preset único para que nada se rompa.
+          const etiquetasLegacy = Array.isArray(cfg.etiquetas) && cfg.etiquetas.length > 0 ? cfg.etiquetas : ETIQUETAS_DEFAULT;
+          lista = [{ id: 'principal', nombre: 'PRINCIPAL', etiquetas: etiquetasLegacy }];
+        }
+        setPresets(lista);
+        const activoId = cfg.preset_activo && lista.some(pr => pr.id === cfg.preset_activo) ? cfg.preset_activo : lista[0].id;
+        setPresetActivoId(activoId);
+        setEtiquetas(lista.find(pr => pr.id === activoId)?.etiquetas || ETIQUETAS_DEFAULT);
         if (cfg.preroll_default) setPreroll(cfg.preroll_default);
+      } else {
+        const inicial = [{ id: 'principal', nombre: 'PRINCIPAL', etiquetas: ETIQUETAS_DEFAULT }];
+        setPresets(inicial);
+        setPresetActivoId('principal');
       }
       setCargando(false);
     })();
@@ -319,37 +343,99 @@ export default function Videoanalisis() {
     setFormUrl(''); setFormTitulo(''); setFormPartido(''); setArchivoElegido(null); setErrorForm('');
   };
 
-  // ── Configuración de botonera (etiquetas + colchón) ──
+  // ── Configuración de botonera (presets + colchón) ──
   const abrirModalConfig = () => {
-    setEtiquetasEdit(etiquetas.map(e => ({ ...e })));
+    setPresetsEdit(presets.map(pr => ({ ...pr, etiquetas: pr.etiquetas.map(e => ({ ...e })) })));
+    setPresetIdEdit(presetActivoId || presets[0]?.id || null);
     setPrerollEdit(preroll);
     setModalConfig(true);
   };
 
+  const presetEnEdicion = presetsEdit.find(pr => pr.id === presetIdEdit) || null;
+
+  const agregarPreset = () => {
+    const nuevo = { id: `preset_${Date.now()}`, nombre: 'NUEVA BOTONERA', etiquetas: [] };
+    setPresetsEdit(prev => [...prev, nuevo]);
+    setPresetIdEdit(nuevo.id);
+  };
+
+  const renombrarPresetEdit = (nombre) => {
+    setPresetsEdit(prev => prev.map(pr => pr.id === presetIdEdit ? { ...pr, nombre } : pr));
+  };
+
+  const eliminarPresetEdit = (id) => {
+    setPresetsEdit(prev => {
+      const resto = prev.filter(pr => pr.id !== id);
+      if (resto.length === 0) return prev; // no dejar la botonera sin ningún preset
+      if (presetIdEdit === id) setPresetIdEdit(resto[0].id);
+      return resto;
+    });
+  };
+
   const agregarEtiquetaEdit = () => {
-    setEtiquetasEdit(prev => [...prev, { t: '', c: '#3b82f6' }]);
+    setPresetsEdit(prev => prev.map(pr => pr.id === presetIdEdit ? { ...pr, etiquetas: [...pr.etiquetas, { t: '', c: '#3b82f6' }] } : pr));
   };
 
   const actualizarEtiquetaEdit = (i, campo, valor) => {
-    setEtiquetasEdit(prev => prev.map((e, idx) => idx === i ? { ...e, [campo]: valor } : e));
+    setPresetsEdit(prev => prev.map(pr => pr.id !== presetIdEdit ? pr : {
+      ...pr,
+      etiquetas: pr.etiquetas.map((e, idx) => idx === i ? { ...e, [campo]: valor } : e),
+    }));
   };
 
   const eliminarEtiquetaEdit = (i) => {
-    setEtiquetasEdit(prev => prev.filter((_, idx) => idx !== i));
+    setPresetsEdit(prev => prev.map(pr => pr.id !== presetIdEdit ? pr : {
+      ...pr,
+      etiquetas: pr.etiquetas.filter((_, idx) => idx !== i),
+    }));
   };
 
   const guardarConfig = async () => {
-    const limpias = etiquetasEdit.map(e => ({ ...e, t: e.t.trim().toUpperCase() })).filter(e => e.t);
-    if (limpias.length === 0) return;
+    const limpio = presetsEdit
+      .map(pr => ({
+        ...pr,
+        nombre: (pr.nombre || 'BOTONERA').trim().toUpperCase(),
+        etiquetas: pr.etiquetas.map(e => ({ ...e, t: e.t.trim().toUpperCase() })).filter(e => e.t),
+      }))
+      .filter(pr => pr.etiquetas.length > 0);
+    if (limpio.length === 0) return;
+
     setGuardandoConfig(true);
-    const payload = { club_id: clubId, etiquetas: limpias, preroll_default: prerollEdit, updated_at: new Date().toISOString() };
+    // Si el preset que estaba activo para taggear sigue existiendo, seguimos ahí.
+    // Si lo borraste en el modal, caemos al primero que haya quedado.
+    const activoId = limpio.some(pr => pr.id === presetActivoId) ? presetActivoId : limpio[0].id;
+    const etiquetasActivas = limpio.find(pr => pr.id === activoId)?.etiquetas || limpio[0].etiquetas;
+    const payload = {
+      club_id: clubId,
+      presets: limpio,
+      preset_activo: activoId,
+      etiquetas: etiquetasActivas, // se mantiene en paralelo por compatibilidad
+      preroll_default: prerollEdit,
+      updated_at: new Date().toISOString(),
+    };
     const { data, error } = await supabase.from('video_config').upsert(payload, { onConflict: 'club_id' }).select().single();
     setGuardandoConfig(false);
     if (!error && data) {
       setConfigId(data.id);
-      setEtiquetas(limpias);
+      setPresets(limpio);
+      setPresetActivoId(activoId);
+      setEtiquetas(etiquetasActivas);
       setPreroll(prerollEdit);
       setModalConfig(false);
+    }
+  };
+
+  // ── Cambio rápido de preset (mientras tagueás, sin abrir el modal completo) ──
+  const cambiarPreset = async (id) => {
+    const preset = presets.find(pr => pr.id === id);
+    if (!preset) return;
+    setPresetActivoId(id);
+    setEtiquetas(preset.etiquetas);
+    if (clubId) {
+      await supabase.from('video_config').upsert(
+        { club_id: clubId, presets, preset_activo: id, etiquetas: preset.etiquetas, preroll_default: preroll, updated_at: new Date().toISOString() },
+        { onConflict: 'club_id' }
+      );
     }
   };
 
@@ -446,6 +532,40 @@ export default function Videoanalisis() {
     await supabase.from('video_clips').update({ etiqueta: nuevaEtiqueta }).eq('id', clip.id);
   };
 
+  // Subtítulo/nota del clip: separado de la etiqueta a propósito — la etiqueta
+  // es la categoría que se usa para filtrar, si mezclamos texto libre ahí se
+  // rompe el filtrado. Se guarda solo al salir del campo (onBlur), no en cada
+  // tecla, para no generar un update por letra tipeada.
+  const editarNota = async (clip, nuevaNota) => {
+    await supabase.from('video_clips').update({ notas: nuevaNota }).eq('id', clip.id);
+  };
+
+  const cambiarNotaLocal = (clip, nuevaNota) => {
+    setClips(prev => prev.map(c => c.id === clip.id ? { ...c, notas: nuevaNota } : c));
+  };
+
+  // ── Pantalla grande: fullscreen nativo del contenedor del video ──
+  useEffect(() => {
+    const onFsChange = () => setEnPantallaCompleta(!!(document.fullscreenElement || document.webkitFullscreenElement));
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
+  }, []);
+
+  const togglePantallaCompleta = () => {
+    const el = videoWrapRef.current;
+    if (!el) return;
+    const yaEnFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!yaEnFullscreen) {
+      (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    }
+  };
+
   const eliminarClip = async (clip) => {
     setClips(prev => prev.filter(c => c.id !== clip.id));
     setSeleccionados(prev => { const n = new Set(prev); n.delete(clip.id); return n; });
@@ -470,6 +590,7 @@ export default function Videoanalisis() {
   const reproducirClipSolo = useCallback((clip) => {
     detenerPolling();
     setReproduciendoClipId(clip.id);
+    setClipActivo(clip);
     adaptador.seekTo(clip.inicio);
     adaptador.play();
     intervalRef.current = setInterval(() => {
@@ -490,6 +611,7 @@ export default function Videoanalisis() {
     if (idx >= cola.length - 1) {
       adaptador.pause();
       setReproduciendoClipId(null);
+      setClipActivo(null);
       colaRef.current = [];
       return;
     }
@@ -659,6 +781,16 @@ export default function Videoanalisis() {
 
   const categorias = useMemo(() => ['TODAS', ...new Set(clips.map(c => c.etiqueta))], [clips]);
   const clipsFiltrados = useMemo(() => filtroCategoria === 'TODAS' ? clips : clips.filter(c => c.etiqueta === filtroCategoria), [clips, filtroCategoria]);
+  const conteoPorEtiqueta = useMemo(() => {
+    const m = new Map();
+    clips.forEach(c => m.set(c.etiqueta, (m.get(c.etiqueta) || 0) + 1));
+    return m;
+  }, [clips]);
+  const conteoPorEtiquetaExplor = useMemo(() => {
+    const m = new Map();
+    todosLosClips.forEach(c => m.set(c.etiqueta, (m.get(c.etiqueta) || 0) + 1));
+    return m;
+  }, [todosLosClips]);
 
   // ── Reutilizar el video ya cargado en el partido (mismo campo que usa Resumen) ──
   const partidoConVideo = useMemo(() => {
@@ -835,26 +967,67 @@ export default function Videoanalisis() {
                 <button onClick={() => setModalConfig(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
               </div>
 
-              <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '10px' }}>ETIQUETAS RÁPIDAS</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-                {etiquetasEdit.map((et, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input
-                      type="color" value={et.c} onChange={(e) => actualizarEtiquetaEdit(i, 'c', e.target.value)}
-                      style={{ width: '38px', height: '38px', padding: 0, border: '1px solid var(--border)', borderRadius: '6px', background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
-                    />
-                    <input
-                      type="text" value={et.t} onChange={(e) => actualizarEtiquetaEdit(i, 't', e.target.value)}
-                      placeholder="Nombre de la etiqueta"
-                      style={{ flex: 1, minWidth: 0, padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', boxSizing: 'border-box' }}
-                    />
-                    <button onClick={() => eliminarEtiquetaEdit(i)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0, minWidth: '32px' }}>✕</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>BOTONERAS GUARDADAS</label>
+                <button onClick={agregarPreset} style={{ background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)', borderRadius: '6px', padding: '5px 10px', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer' }}>
+                  + NUEVA
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                {presetsEdit.map(pr => (
+                  <div
+                    key={pr.id}
+                    onClick={() => setPresetIdEdit(pr.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 6px 6px 12px', borderRadius: '20px', cursor: 'pointer',
+                      border: `1px solid ${pr.id === presetIdEdit ? 'var(--accent)' : 'var(--border)'}`,
+                      background: pr.id === presetIdEdit ? 'rgba(0,255,136,0.1)' : 'transparent',
+                      color: pr.id === presetIdEdit ? 'var(--accent)' : 'var(--text-dim)',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>{pr.nombre}</span>
+                    {presetsEdit.length > 1 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); eliminarPresetEdit(pr.id); }}
+                        style={{ background: 'transparent', border: 'none', color: 'inherit', opacity: 0.6, cursor: 'pointer', fontSize: '0.8rem', padding: '0 4px' }}
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
-              <button onClick={agregarEtiquetaEdit} style={{ width: '100%', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', marginBottom: '20px' }}>
-                + AGREGAR ETIQUETA
-              </button>
+
+              {presetEnEdicion && (
+                <>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '8px' }}>NOMBRE DE ESTA BOTONERA</label>
+                  <input
+                    type="text" value={presetEnEdicion.nombre} onChange={(e) => renombrarPresetEdit(e.target.value)}
+                    style={{ width: '100%', padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '14px', boxSizing: 'border-box' }}
+                  />
+
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '10px' }}>ETIQUETAS RÁPIDAS</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                    {presetEnEdicion.etiquetas.map((et, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          type="color" value={et.c} onChange={(e) => actualizarEtiquetaEdit(i, 'c', e.target.value)}
+                          style={{ width: '38px', height: '38px', padding: 0, border: '1px solid var(--border)', borderRadius: '6px', background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
+                        />
+                        <input
+                          type="text" value={et.t} onChange={(e) => actualizarEtiquetaEdit(i, 't', e.target.value)}
+                          placeholder="Nombre de la etiqueta"
+                          style={{ flex: 1, minWidth: 0, padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', boxSizing: 'border-box' }}
+                        />
+                        <button onClick={() => eliminarEtiquetaEdit(i)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0, minWidth: '32px' }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={agregarEtiquetaEdit} style={{ width: '100%', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)', padding: '10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', marginBottom: '20px' }}>
+                    + AGREGAR ETIQUETA
+                  </button>
+                </>
+              )}
 
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '8px' }}>COLCHÓN POR DEFECTO (segundos hacia atrás al marcar)</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
@@ -902,9 +1075,10 @@ export default function Videoanalisis() {
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     {etiquetasDisponiblesExplor.map(et => {
                       const activa = filtroEtiquetasExplor.has(et);
+                      const n = conteoPorEtiquetaExplor.get(et) || 0;
                       return (
                         <button key={et} onClick={() => toggleEtiquetaExplor(et)} style={{ padding: '6px 12px', borderRadius: '20px', border: `1px solid ${activa ? 'var(--accent)' : '#333'}`, background: activa ? 'rgba(0,255,136,0.12)' : '#111', color: activa ? 'var(--accent)' : '#888', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}>
-                          {et}
+                          {et} ({n})
                         </button>
                       );
                     })}
@@ -947,6 +1121,11 @@ export default function Videoanalisis() {
                           <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', fontFamily: MONO, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {clip.video.titulo || 'Video'} {clip.video.partidos && `· vs ${clip.video.partidos.rival}`} · {fmtTiempo(clip.inicio)}–{fmtTiempo(clip.fin)} ({Math.round(clip.fin - clip.inicio)}s)
                           </div>
+                          {clip.notas && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              💬 {clip.notas}
+                            </div>
+                          )}
                         </div>
                         <button onClick={() => abrirVideo(clip.video)} title="Editar este clip" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>✎</button>
                       </div>
@@ -1039,7 +1218,7 @@ export default function Videoanalisis() {
 
         {/* ── COLUMNA PRINCIPAL: reproductor + botonera ── */}
         <div style={{ minWidth: 0 }}>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--bg)', borderRadius: '10px', overflow: 'hidden', marginBottom: '14px' }}>
+          <div ref={videoWrapRef} style={{ position: 'relative', width: '100%', aspectRatio: enPantallaCompleta ? 'auto' : '16 / 9', height: enPantallaCompleta ? '100%' : 'auto', background: 'var(--bg)', borderRadius: enPantallaCompleta ? 0 : '10px', overflow: 'hidden', marginBottom: '14px' }}>
             {videoActivo?.fuente === 'youtube' ? (
               <div id="yt-player-video-analisis" style={{ width: '100%', height: '100%' }} />
             ) : (
@@ -1070,7 +1249,34 @@ export default function Videoanalisis() {
                 Cargando video...
               </div>
             )}
+            {clipActivo && (
+              <div
+                style={{
+                  position: 'absolute', top: '10px', left: '10px', right: '60px', maxWidth: '75%',
+                  background: 'rgba(0,0,0,0.65)', borderRadius: '8px',
+                  padding: enPantallaCompleta ? '12px 18px' : '8px 12px',
+                  zIndex: 5, pointerEvents: 'none',
+                }}
+              >
+                <div style={{ color: '#fff', fontWeight: 900, fontSize: enPantallaCompleta ? '1.6rem' : '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1.2 }}>
+                  {clipActivo.etiqueta}
+                </div>
+                {clipActivo.notas && (
+                  <div style={{ color: '#ddd', fontSize: enPantallaCompleta ? '1.1rem' : '0.72rem', marginTop: '4px', lineHeight: 1.3 }}>
+                    {clipActivo.notas}
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={togglePantallaCompleta}
+              title={enPantallaCompleta ? 'Salir de pantalla completa' : 'Pantalla grande (para mostrarle a los jugadores)'}
+              style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: '6px', padding: '8px 10px', fontSize: '0.9rem', cursor: 'pointer', zIndex: 5 }}
+            >
+              {enPantallaCompleta ? '✕' : '⛶'}
+            </button>
           </div>
+
 
           <div className="bento-card" style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
@@ -1083,21 +1289,42 @@ export default function Videoanalisis() {
                 <button onClick={() => setPreroll(p => Math.min(30, p + 2))} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>+</button>
               </div>
             </div>
+            {presets.length > 1 && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                {presets.map(pr => (
+                  <button
+                    key={pr.id}
+                    onClick={() => cambiarPreset(pr.id)}
+                    style={{
+                      padding: '6px 12px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer',
+                      border: `1px solid ${pr.id === presetActivoId ? 'var(--accent)' : 'var(--border)'}`,
+                      background: pr.id === presetActivoId ? 'rgba(0,255,136,0.12)' : 'transparent',
+                      color: pr.id === presetActivoId ? 'var(--accent)' : 'var(--text-dim)',
+                    }}
+                  >
+                    {pr.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
-              {etiquetas.map(et => (
-                <button
-                  key={et.t}
-                  onClick={() => marcarClip(et.t)}
-                  disabled={!listoActual}
-                  style={{
-                    padding: '14px 8px', background: `${et.c}18`, border: `1px solid ${et.c}`, color: et.c,
-                    borderRadius: '8px', fontWeight: 900, fontSize: '0.75rem', cursor: listoActual ? 'pointer' : 'not-allowed',
-                    minHeight: '48px', opacity: listoActual ? 1 : 0.5,
-                  }}
-                >
-                  {et.t}
-                </button>
-              ))}
+              {etiquetas.map(et => {
+                const n = conteoPorEtiqueta.get(et.t) || 0;
+                return (
+                  <button
+                    key={et.t}
+                    onClick={() => marcarClip(et.t)}
+                    disabled={!listoActual}
+                    style={{
+                      padding: '14px 8px', background: `${et.c}18`, border: `1px solid ${et.c}`, color: et.c,
+                      borderRadius: '8px', fontWeight: 900, fontSize: '0.75rem', cursor: listoActual ? 'pointer' : 'not-allowed',
+                      minHeight: '48px', opacity: listoActual ? 1 : 0.5,
+                    }}
+                  >
+                    {et.t}{n > 0 && <span style={{ opacity: 0.7 }}> ({n})</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1116,7 +1343,7 @@ export default function Videoanalisis() {
 
             {categorias.length > 2 && (
               <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={{ width: '100%', padding: '8px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.75rem', marginBottom: '12px' }}>
-                {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+                {categorias.map(c => <option key={c} value={c}>{c === 'TODAS' ? `TODAS (${clips.length})` : `${c} (${conteoPorEtiqueta.get(c) || 0})`}</option>)}
               </select>
             )}
 
@@ -1153,6 +1380,14 @@ export default function Videoanalisis() {
                         </div>
                         <span style={{ fontSize: '0.65rem', color: '#555', fontFamily: MONO }}>({Math.round(clip.fin - clip.inicio)}s)</span>
                       </div>
+
+                      <input
+                        value={clip.notas || ''}
+                        onChange={(e) => cambiarNotaLocal(clip, e.target.value)}
+                        onBlur={(e) => editarNota(clip, e.target.value)}
+                        placeholder="Subtítulo / nota (opcional)..."
+                        style={{ width: '100%', marginTop: '8px', background: 'transparent', border: '1px dashed var(--border)', borderRadius: '6px', padding: '6px 8px', color: 'var(--text-dim)', fontSize: '0.72rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
 
                       <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
                         <button onClick={() => reproducirCola([{ clip, video: videoActivo }])} style={{ flex: 1, background: activo ? 'var(--accent)' : '#151515', color: activo ? '#000' : '#fff', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', minHeight: '36px' }}>

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTablon } from '../utils/useTablon'; // vive junto a useEsMovil.js
+import { activarNotificaciones, estaSuscripto, pushSoportado } from '../utils/pushNotificaciones';
 
 const COLOR_PRIORIDAD = {
   bloqueante: '#ff5252',
@@ -19,9 +20,21 @@ const ETIQUETA_CATEGORIA = {
 // que viste (el dropdown estirando el header) era justamente porque le faltaba
 // position:absolute — al no existir esas clases en ningún .css, el div se
 // renderizaba como un bloque normal dentro del flex del header.
-export default function Campanita({ clubId, misCategorias }) {
+export default function Campanita({ clubId, misCategorias, perfilId }) {
   const { alertas, loading, descartar } = useTablon(clubId, misCategorias);
   const [abierto, setAbierto] = useState(false);
+  const [pushEstado, setPushEstado] = useState('desconocido'); // desconocido | activando | activo | error | no-soportado
+
+  useEffect(() => {
+    if (!pushSoportado()) { setPushEstado('no-soportado'); return; }
+    estaSuscripto().then((si) => setPushEstado(si ? 'activo' : 'inactivo'));
+  }, []);
+
+  const handleActivarPush = async () => {
+    setPushEstado('activando');
+    const res = await activarNotificaciones(clubId, perfilId);
+    setPushEstado(res.ok ? 'activo' : 'error');
+  };
 
   const bloqueantes = alertas.filter((a) => a.prioridad === 'bloqueante').length;
 
@@ -171,6 +184,33 @@ export default function Campanita({ clubId, misCategorias }) {
                   </button>
                 </a>
               ))}
+
+            {pushEstado !== 'no-soportado' && (
+              <div style={{ borderTop: '1px solid #222', marginTop: 6, paddingTop: 8 }}>
+                {pushEstado === 'activo' ? (
+                  <p style={{ margin: 0, padding: '4px 8px', fontSize: '0.75rem', color: 'var(--accent, #00e676)', textAlign: 'center' }}>
+                    🔔 Notificaciones activadas en este dispositivo
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleActivarPush}
+                    disabled={pushEstado === 'activando'}
+                    style={{
+                      width: '100%',
+                      background: 'transparent',
+                      border: '1px dashed #333',
+                      color: 'var(--text-dim, #888)',
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                      fontSize: '0.75rem',
+                      cursor: pushEstado === 'activando' ? 'default' : 'pointer',
+                    }}
+                  >
+                    {pushEstado === 'activando' ? 'Activando...' : pushEstado === 'error' ? '⚠️ No se pudo activar — reintentar' : '🔔 Activar notificaciones en este dispositivo'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}

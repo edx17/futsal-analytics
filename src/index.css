@@ -50,9 +50,10 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--panel);
+  color: var(--text);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color 0.25s, background-color 0.25s;
 }
 button:hover {
   border-color: #646cff;
@@ -62,26 +63,17 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
+/* NOTA: el modo claro/oscuro real ahora se maneja por atributo
+   [data-theme] via ThemeContext, no por prefers-color-scheme del SO. */
 
-:root {
+:root, [data-theme="dark"] {
   --bg: #000000;
   --panel: #111111;
   --border: #222222;
   --accent: #00ff88;
   --text: #ffffff;
   --text-dim: #888888;
+  --hover: #151515;
 }
 
 /* BASE GLOBAL (obligatorio) */
@@ -271,8 +263,8 @@ html, body, #root {
 }
 table { width: 100%; border-collapse: collapse; }
 th { font-size: 0.75rem; color: var(--text-dim); padding: 12px; border-bottom: 1px solid var(--border); }
-td { padding: 15px 10px; font-size: 0.95rem; border-bottom: 1px solid #1a1a1a; }
-tr:hover td { background: #151515; }
+td { padding: 15px 10px; font-size: 0.95rem; border-bottom: 1px solid var(--border); }
+tr:hover td { background: var(--hover); }
 
 .mono-accent { color: var(--accent); font-weight: 700; }
 
@@ -280,7 +272,7 @@ tr:hover td { background: #151515; }
 .row-active { background: rgba(0, 255, 136, 0.05) !important; }
 
 .input-field label { display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-input, select { background: #000; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 4px; width: 100%; box-sizing: border-box; }
+input, select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px; border-radius: 4px; width: 100%; box-sizing: border-box; }
 input:focus, select:focus { border-color: var(--accent); outline: none; }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }

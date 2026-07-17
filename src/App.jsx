@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useEsMovil } from './utils/useEsMovil';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ToastProvider } from './components/ToastContext';
 
@@ -626,13 +627,15 @@ useEffect(() => {
 
 function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Router>
-          <AppLayout />
-        </Router>
-      </ToastProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <Router>
+            <AppLayout />
+          </Router>
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
