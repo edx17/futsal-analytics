@@ -90,8 +90,9 @@ export default function Videoanalisis() {
   const [presetsEdit, setPresetsEdit] = useState([]); // clon editable dentro del modal
   const [presetIdEdit, setPresetIdEdit] = useState(null); // cuál se está editando ahora en el modal
 
-  // ── Pantalla grande (para mostrarle clips a los jugadores) ──
+  // ── Pantalla grande y Modo Cine ──
   const [enPantallaCompleta, setEnPantallaCompleta] = useState(false);
+  const [modoCine, setModoCine] = useState(false);
   const videoWrapRef = useRef(null);
 
   // ── Explorador de clips: cruza clips de TODOS los videos del club ──
@@ -510,7 +511,7 @@ export default function Videoanalisis() {
   };
 
   // ── Marcar un clip con la botonera (funciona igual para YouTube o video subido) ──
-  const marcarClip = async (etiqueta) => {
+  const marcarClip = useCallback(async (etiqueta) => {
     if (!listoActual) return;
     const fin = adaptador.getTiempo();
     const inicio = Math.max(0, fin - preroll);
@@ -522,7 +523,31 @@ export default function Videoanalisis() {
     if (!error && data) {
       setClips(prev => [...prev, data].sort((a, b) => a.inicio - b.inicio));
     }
-  };
+  }, [listoActual, adaptador, preroll, videoActivo, clubId]);
+
+  // ── NUEVO: ATAJOS DE TECLADO PARA CLIPS ──
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Evitamos disparar los clips si estás tipeando el nombre de una playlist, nota del clip, etc.
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+      
+      const num = parseInt(e.key);
+      if (!isNaN(num) && num >= 1 && num <= 9) {
+        const idx = num - 1;
+        if (etiquetas[idx]) { 
+            e.preventDefault(); 
+            marcarClip(etiquetas[idx].t); 
+        }
+      } else if (e.key === '0') {
+        if (etiquetas[9]) { 
+            e.preventDefault(); 
+            marcarClip(etiquetas[9].t); 
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [etiquetas, marcarClip]);
 
   // ── Editar duración de un clip (+/- 2s en cada punta) ──
   const ajustarClip = async (clip, campo, delta) => {
@@ -1371,7 +1396,7 @@ export default function Videoanalisis() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'minmax(0, 1.6fr) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: (esMovil || modoCine) ? '1fr' : 'minmax(0, 1.6fr) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
 
         {/* ── COLUMNA PRINCIPAL: reproductor + botonera ── */}
         <div style={{ minWidth: 0 }}>
@@ -1425,6 +1450,16 @@ export default function Videoanalisis() {
                 )}
               </div>
             )}
+            
+            {/* BOTÓN MODO CINE */}
+            <button
+              onClick={() => setModoCine(!modoCine)}
+              title={modoCine ? 'Salir de Modo Cine' : 'Modo Cine (Pantalla Ancha)'}
+              style={{ position: 'absolute', top: '10px', right: '50px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: '6px', padding: '8px 10px', fontSize: '0.9rem', cursor: 'pointer', zIndex: 5 }}
+            >
+              {modoCine ? '🔳' : '🔲'}
+            </button>
+
             <button
               onClick={togglePantallaCompleta}
               title={enPantallaCompleta ? 'Salir de pantalla completa' : 'Pantalla grande (para mostrarle a los jugadores)'}
@@ -1433,7 +1468,6 @@ export default function Videoanalisis() {
               {enPantallaCompleta ? '✕' : '⛶'}
             </button>
           </div>
-
 
           <div className="bento-card" style={{ marginBottom: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
@@ -1465,8 +1499,10 @@ export default function Videoanalisis() {
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
-              {etiquetas.map(et => {
+              {etiquetas.map((et, index) => {
                 const n = conteoPorEtiqueta.get(et.t) || 0;
+                // Para mostrar visualmente el atajo (1 al 9, 0 para el décimo)
+                const shortcut = index < 9 ? index + 1 : index === 9 ? 0 : null;
                 return (
                   <button
                     key={et.t}
@@ -1476,8 +1512,14 @@ export default function Videoanalisis() {
                       padding: '14px 8px', background: `${et.c}18`, border: `1px solid ${et.c}`, color: et.c,
                       borderRadius: '8px', fontWeight: 900, fontSize: '0.75rem', cursor: listoActual ? 'pointer' : 'not-allowed',
                       minHeight: '48px', opacity: listoActual ? 1 : 0.5,
+                      position: 'relative'
                     }}
                   >
+                    {shortcut !== null && (
+                      <span style={{ position: 'absolute', top: '4px', left: '6px', fontSize: '0.55rem', opacity: 0.6 }}>
+                        [{shortcut}]
+                      </span>
+                    )}
                     {et.t}{n > 0 && <span style={{ opacity: 0.7 }}> ({n})</span>}
                   </button>
                 );

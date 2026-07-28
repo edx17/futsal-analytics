@@ -458,7 +458,8 @@ function Resumen() {
   const obtenerUrlEmbed = () => {
     if (!partidoSeleccionado?.video_url) return '';
     const url = partidoSeleccionado.video_url;
-    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=))([^"&?\/\s]{11})/i);
+    // Actualizado para soportar links de /live/ (igual que en Videoanalisis)
+    const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
     const videoId = match ? match[1] : '';
     if (videoId) {
       const autoplay = tiempoVideo > 0 ? '&autoplay=1' : '';
