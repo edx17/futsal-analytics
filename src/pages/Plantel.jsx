@@ -341,7 +341,7 @@ function Plantel() {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR CT</button>
             <button onClick={copiarTodosSeparados} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR WHATSAPP</button>
-            <button onClick={abrirNuevo} className="btn-action" style={{ background: '#00ff88', color: '#000', padding: '8px 15px', fontSize: '0.8rem' }}>+ NUEVO JUGADOR</button>
+            <button onClick={abrirNuevo} className="btn-action" style={{ background: 'var(--accent)', color: '#000', padding: '8px 15px', fontSize: '0.8rem' }}>+ NUEVO JUGADOR</button>
           </div>
         </div>
 
@@ -356,8 +356,8 @@ function Plantel() {
                 style={{
                   padding: '8px 16px',
                   borderRadius: '20px',
-                  border: activo ? '1px solid var(--accent)' : '1px solid #333',
-                  background: activo ? 'var(--accent)' : '#111',
+                  border: activo ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  background: activo ? 'var(--accent)' : 'var(--panel)',
                   color: activo ? '#000' : 'var(--text-dim)',
                   fontWeight: 800,
                   fontSize: '0.75rem',
@@ -428,7 +428,7 @@ function Plantel() {
                       >
                         📋
                       </button>
-                      <span style={{ color: '#333', fontSize: '0.85rem' }}>|</span>
+                      <span style={{ color: 'var(--border)', fontSize: '0.85rem' }}>|</span>
                       <button onClick={() => abrirEdicion(j)} style={btnGhost}>EDITAR</button>
                       <button onClick={() => eliminarJugador(j.id)} style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444' }}>✕</button>
                     </div>
@@ -445,7 +445,7 @@ function Plantel() {
       {jugadorSeleccionado && (
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '600px', background: 'var(--panel)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #333', paddingBottom: '20px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: '20px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                 <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
                    {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span style={{fontSize:'1.2rem', fontWeight:800, color:'var(--accent)'}}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.charAt(0) : ''}{jugadorSeleccionado.nombre.charAt(0)}</span>}
@@ -542,7 +542,7 @@ function Plantel() {
                 <div className="section-title" style={{ marginTop: 0 }}>IDENTIFICACIÓN Y CANCHA</div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
                     <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-                      {formData.foto ? <img src={formData.foto} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'#555', fontWeight:800}}>FOTO</span>}
+                      {formData.foto ? <img src={formData.foto} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'var(--text-dim)', fontWeight:800}}>FOTO</span>}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div className="section-title" style={{ marginBottom: '5px' }}>FOTO DE PERFIL (Cargar Archivo)</div>
@@ -634,12 +634,12 @@ function Plantel() {
       )}
 
       <style>{`
-        .inputFiltro { padding: 12px 15px; background: #000; border: 1px solid #333; border-radius: 8px; color: #fff; fontSize: 0.9rem; min-width: 250px; outline: none; }
-        .inputIndustrial { background: transparent; border: 1px solid var(--border); width: 100%; padding: 12px; color: #fff; border-radius: 4px; outline: none; }
+        .inputFiltro { padding: 12px 15px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); fontSize: 0.9rem; min-width: 250px; outline: none; }
+        .inputIndustrial { background: transparent; border: 1px solid var(--border); width: 100%; padding: 12px; color: var(--text); border-radius: 4px; outline: none; }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
         .modal-content { width: 100%; border: 1px solid var(--accent); animation: scaleIn 0.2s; max-height: 90vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
-        .close-btn { background: transparent; border: none; color: #fff; font-size: 1.8rem; cursor: pointer; line-height: 1; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+        .close-btn { background: transparent; border: none; color: var(--text); font-size: 1.8rem; cursor: pointer; line-height: 1; }
         .close-btn:hover { color: var(--accent); }
         .section-title { color: var(--text-dim); font-size: 0.8rem; font-weight: 800; margin-bottom: 15px; letter-spacing: 1px; padding-top: 10px; }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -650,6 +650,6 @@ function Plantel() {
 
 const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' };
 const btnGhost = { background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800 };
-const fichaRow = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px dashed #333', color: 'var(--text-dim)', fontSize: '0.9rem' };
+const fichaRow = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px dashed var(--border)', color: 'var(--text-dim)', fontSize: '0.9rem' };
 
 export default Plantel;

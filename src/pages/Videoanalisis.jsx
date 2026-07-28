@@ -58,6 +58,7 @@ export default function Videoanalisis() {
   const { perfil } = useAuth();
   const esMovil = useEsMovil();
   const clubId = perfil?.club_id || localStorage.getItem('club_id');
+  const esModoJugador = perfil?.rol === 'jugador'; // kiosco: solo ve playlists compartidas
 
   const [vista, setVista] = useState('lista'); // 'lista' | 'trabajo' | 'explorador'
   const [videos, setVideos] = useState([]);
@@ -102,6 +103,12 @@ export default function Videoanalisis() {
   const [filtroPartidoExplor, setFiltroPartidoExplor] = useState('');
   const [seleccionExplor, setSeleccionExplor] = useState([]); // array ORDENADO de clip ids
   const [playlistsGuardadas, setPlaylistsGuardadas] = useState([]);
+  const [jugadoresClub, setJugadoresClub] = useState([]);
+  const [modalCompartir, setModalCompartir] = useState(null); // playlist en edición
+  const [catsCompartirEdit, setCatsCompartirEdit] = useState([]);
+  const [jugsCompartirEdit, setJugsCompartirEdit] = useState([]);
+  const [busquedaJugCompartir, setBusquedaJugCompartir] = useState('');
+  const [guardandoCompartir, setGuardandoCompartir] = useState(false);
   const [nombreNuevaPlaylist, setNombreNuevaPlaylist] = useState('');
   const [guardandoPlaylist, setGuardandoPlaylist] = useState(false);
 
@@ -688,6 +695,52 @@ export default function Videoanalisis() {
     setPlaylistsGuardadas(data || []);
   }, [clubId]);
 
+  const fetchJugadoresClub = useCallback(async () => {
+    if (!clubId) return;
+    const { data } = await supabase.from('jugadores').select('id, nombre, apellido, categoria').eq('club_id', clubId).order('apellido');
+    setJugadoresClub(data || []);
+  }, [clubId]);
+
+  const categoriasClub = useMemo(() => [...new Set(jugadoresClub.map(j => j.categoria).filter(Boolean))].sort(), [jugadoresClub]);
+
+  // ── Modal "compartir con jugadores" ──
+  const abrirModalCompartir = (playlist, e) => {
+    e.stopPropagation();
+    if (jugadoresClub.length === 0) fetchJugadoresClub();
+    setModalCompartir(playlist);
+    setCatsCompartirEdit(playlist.compartida_categorias || []);
+    setJugsCompartirEdit(playlist.compartida_jugadores || []);
+    setBusquedaJugCompartir('');
+  };
+
+  const toggleCatCompartir = (cat) => {
+    setCatsCompartirEdit(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
+  };
+
+  const toggleJugCompartir = (jugadorId) => {
+    setJugsCompartirEdit(prev => prev.includes(jugadorId) ? prev.filter(id => id !== jugadorId) : [...prev, jugadorId]);
+  };
+
+  const guardarCompartir = async () => {
+    if (!modalCompartir) return;
+    setGuardandoCompartir(true);
+    const { error } = await supabase
+      .from('video_playlists')
+      .update({ compartida_categorias: catsCompartirEdit, compartida_jugadores: jugsCompartirEdit })
+      .eq('id', modalCompartir.id);
+    setGuardandoCompartir(false);
+    if (!error) {
+      setPlaylistsGuardadas(prev => prev.map(p => p.id === modalCompartir.id ? { ...p, compartida_categorias: catsCompartirEdit, compartida_jugadores: jugsCompartirEdit } : p));
+      setModalCompartir(null);
+    }
+  };
+
+  const jugadoresFiltradosCompartir = useMemo(() => {
+    const q = busquedaJugCompartir.trim().toLowerCase();
+    if (!q) return [];
+    return jugadoresClub.filter(j => `${j.apellido} ${j.nombre}`.toLowerCase().includes(q)).slice(0, 8);
+  }, [busquedaJugCompartir, jugadoresClub]);
+
   const abrirExplorador = () => {
     setVista('explorador');
     if (!explorCargado) {
@@ -814,6 +867,11 @@ export default function Videoanalisis() {
   // ══════════════════════════════════════════════════════════════════════
   // VISTA: LISTA DE VIDEOS
   // ══════════════════════════════════════════════════════════════════════
+  // Kiosco/jugador: pantalla de solo lectura, nada de tagueo ni configuración.
+  if (esModoJugador) {
+    return <VideoanalisisJugador clubId={clubId} jugadorId={perfil?.jugador_id} />;
+  }
+
   if (vista === 'lista') {
     return (
       <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
@@ -1042,6 +1100,83 @@ export default function Videoanalisis() {
             </div>
           </div>
         )}
+
+        {modalCompartir && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: esMovil ? 'flex-end' : 'center', padding: esMovil ? 0 : '20px' }}>
+            <div className="bento-card" style={{ width: '100%', maxWidth: '480px', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ fontSize: '1.05rem', fontWeight: 900 }}>COMPARTIR CON JUGADORES</div>
+                <button onClick={() => setModalCompartir(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '18px' }}>
+                "{modalCompartir.nombre}" — elegí quién la puede ver desde el kiosco. Podés combinar categorías enteras con jugadores puntuales (para análisis individual).
+              </div>
+
+              <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '8px' }}>CATEGORÍAS COMPLETAS</label>
+              {categoriasClub.length === 0 ? (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '16px' }}>No hay categorías cargadas en el plantel.</div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
+                  {categoriasClub.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => toggleCatCompartir(cat)}
+                      style={{
+                        padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer',
+                        border: `1px solid ${catsCompartirEdit.includes(cat) ? 'var(--accent)' : 'var(--border)'}`,
+                        background: catsCompartirEdit.includes(cat) ? 'rgba(0,255,136,0.12)' : 'transparent',
+                        color: catsCompartirEdit.includes(cat) ? 'var(--accent)' : 'var(--text-dim)',
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '8px' }}>JUGADORES PUNTUALES (análisis individual)</label>
+              <input
+                type="text"
+                value={busquedaJugCompartir}
+                onChange={(e) => setBusquedaJugCompartir(e.target.value)}
+                placeholder="Buscar por apellido o nombre..."
+                style={{ width: '100%', padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '8px', boxSizing: 'border-box' }}
+              />
+              {jugadoresFiltradosCompartir.length > 0 && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: '6px', marginBottom: '10px', overflow: 'hidden' }}>
+                  {jugadoresFiltradosCompartir.map(j => (
+                    <div
+                      key={j.id}
+                      onClick={() => { toggleJugCompartir(j.id); setBusquedaJugCompartir(''); }}
+                      style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text)', borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      {j.apellido}, {j.nombre} <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>· {j.categoria}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {jugsCompartirEdit.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
+                  {jugsCompartirEdit.map(id => {
+                    const j = jugadoresClub.find(x => x.id === id);
+                    return (
+                      <span key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 6px 5px 10px', borderRadius: '20px', border: '1px solid var(--accent)', background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 800 }}>
+                        {j ? `${j.apellido}, ${j.nombre}` : `#${id}`}
+                        <button onClick={() => toggleJugCompartir(id)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}>✕</button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              <button onClick={guardarCompartir} disabled={guardandoCompartir} className="btn-action" style={{ width: '100%', padding: '15px', minHeight: '48px' }}>
+                {guardandoCompartir ? 'GUARDANDO...' : 'GUARDAR'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1141,7 +1276,7 @@ export default function Videoanalisis() {
             <div className="bento-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <div className="stat-label" style={{ color: 'var(--accent)' }}>TU PLAYLIST ({itemsSeleccionExplor.length})</div>
-                {itemsSeleccionExplor.length > 0 && <button onClick={() => setSeleccionExplor([])} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.7rem' }}>vaciar</button>}
+                {itemsSeleccionExplor.length > 0 && <button onClick={() => setSeleccionExplor([])} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.7rem' }}>vaciar</button>}
               </div>
 
               {itemsSeleccionExplor.length === 0 ? (
@@ -1182,15 +1317,37 @@ export default function Videoanalisis() {
               <div className="bento-card">
                 <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '10px' }}>PLAYLISTS GUARDADAS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {playlistsGuardadas.map(pl => (
-                    <div key={pl.id} onClick={() => cargarPlaylist(pl)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0a0a0a', border: '1px solid var(--border)', borderRadius: '6px', padding: '10px', cursor: 'pointer' }}>
-                      <div style={{ minWidth: 0 }}>
+                  {playlistsGuardadas.map(pl => {
+                    const catsCount = (pl.compartida_categorias || []).length;
+                    const jugsCount = (pl.compartida_jugadores || []).length;
+                    const compartidaConAlguien = catsCount > 0 || jugsCount > 0;
+                    return (
+                    <div key={pl.id} onClick={() => cargarPlaylist(pl)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', padding: '10px', cursor: 'pointer', gap: '8px' }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pl.nombre}</div>
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: MONO }}>{(pl.clip_ids || []).length} clips</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: MONO }}>
+                          {(pl.clip_ids || []).length} clips
+                          {compartidaConAlguien && (
+                            <span style={{ color: 'var(--accent)' }}> · {catsCount > 0 ? `${catsCount} cat.` : ''}{catsCount > 0 && jugsCount > 0 ? ' + ' : ''}{jugsCount > 0 ? `${jugsCount} jug.` : ''}</span>
+                          )}
+                        </div>
                       </div>
-                      <button onClick={(e) => eliminarPlaylist(pl, e)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                      <button
+                        onClick={(e) => abrirModalCompartir(pl, e)}
+                        title="Elegir quién puede verla desde el kiosco"
+                        style={{
+                          background: compartidaConAlguien ? 'rgba(0,255,136,0.15)' : 'transparent',
+                          border: `1px solid ${compartidaConAlguien ? 'var(--accent)' : 'var(--border)'}`,
+                          color: compartidaConAlguien ? 'var(--accent)' : 'var(--text-dim)',
+                          borderRadius: '6px', padding: '6px 8px', cursor: 'pointer', flexShrink: 0, fontSize: '0.85rem',
+                        }}
+                      >
+                        📱
+                      </button>
+                      <button onClick={(e) => eliminarPlaylist(pl, e)} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1408,4 +1565,215 @@ export default function Videoanalisis() {
   );
 }
 
-const btnAjuste = { background: '#151515', border: '1px solid var(--border)', color: '#aaa', borderRadius: '4px', padding: '4px 7px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 700, minHeight: '28px' };
+const btnAjuste = { background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '4px', padding: '4px 7px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 700, minHeight: '28px' };
+
+// ============================================================================
+// VISTA DE JUGADOR (kiosco): solo lectura. Lista las playlists que el CT marcó
+// como "compartida" y las reproduce en secuencia. Nada de tagueo, config ni
+// carga de video — por diseño no reusa la UI del editor, es una pantalla aparte.
+// ============================================================================
+function VideoanalisisJugador({ clubId, jugadorId }) {
+  const [playlists, setPlaylists] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [playlistActiva, setPlaylistActiva] = useState(null);
+  const [clipsCola, setClipsCola] = useState([]);
+  const [indice, setIndice] = useState(0);
+  const [ytListo, setYtListo] = useState(false);
+  const videoElRef = useRef(null);
+  const playerRef = useRef(null);
+
+  useEffect(() => {
+    if (!clubId) return;
+    (async () => {
+      setCargando(true);
+
+      // Necesitamos SU categoría para poder filtrar por "categorías completas".
+      // El id de jugador viene de localStorage (mismo criterio que el resto del
+      // kiosco: wellness, rendimiento, etc.), no hay sesión propia por jugador.
+      let miCategoria = null;
+      if (jugadorId) {
+        const { data: yo } = await supabase.from('jugadores').select('categoria').eq('id', jugadorId).maybeSingle();
+        miCategoria = yo?.categoria || null;
+      }
+
+      // RLS ya filtra a "compartida con alguien" (categorías o jugadores no vacío)
+      // y acá filtramos del lado del cliente cuál de esas es PARA ESTE jugador.
+      const { data } = await supabase
+        .from('video_playlists')
+        .select('*')
+        .eq('club_id', clubId)
+        .order('created_at', { ascending: false });
+
+      const visibles = (data || []).filter((pl) => {
+        const cats = pl.compartida_categorias || [];
+        const jugs = pl.compartida_jugadores || [];
+        return (miCategoria && cats.includes(miCategoria)) || (jugadorId && jugs.includes(Number(jugadorId)));
+      });
+
+      setPlaylists(visibles);
+      setCargando(false);
+    })();
+  }, [clubId, jugadorId]);
+
+  // Carga la API de YouTube una sola vez (versión mínima, sin todo lo del editor)
+  useEffect(() => {
+    if (window.YT && window.YT.Player) { setYtListo(true); return; }
+    const yaExiste = document.getElementById('yt-iframe-api-script');
+    if (!yaExiste) {
+      const tag = document.createElement('script');
+      tag.id = 'yt-iframe-api-script';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.body.appendChild(tag);
+    }
+    const anterior = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { setYtListo(true); if (anterior) anterior(); };
+  }, []);
+
+  const abrirPlaylist = async (playlist) => {
+    setCargando(true);
+    const ids = playlist.clip_ids || [];
+    const { data } = await supabase
+      .from('video_clips')
+      .select('*, video_analisis(id, titulo, fuente, video_id, video_url)')
+      .in('id', ids.length > 0 ? ids : [-1]);
+    // Respetamos el orden guardado en la playlist, no el que devuelva la query
+    const ordenados = ids.map((id) => (data || []).find((c) => c.id === id)).filter(Boolean);
+    setClipsCola(ordenados);
+    setPlaylistActiva(playlist);
+    setIndice(0);
+    setCargando(false);
+  };
+
+  const volverALista = () => {
+    if (playerRef.current) { try { playerRef.current.destroy(); } catch (e) {} playerRef.current = null; }
+    setPlaylistActiva(null);
+    setClipsCola([]);
+  };
+
+  const clipActual = clipsCola[indice] || null;
+  const video = clipActual?.video_analisis;
+
+  const avanzar = useCallback(() => {
+    setIndice((i) => (i + 1 < clipsCola.length ? i + 1 : i));
+  }, [clipsCola.length]);
+  const retroceder = () => setIndice((i) => Math.max(0, i - 1));
+
+  useEffect(() => {
+    if (!clipActual || !video) return;
+
+    if (video.fuente === 'youtube' && ytListo) {
+      if (playerRef.current && playerRef.current.loadVideoById) {
+        playerRef.current.loadVideoById({ videoId: video.video_id, startSeconds: clipActual.inicio });
+      } else {
+        playerRef.current = new window.YT.Player('yt-player-kiosco', {
+          videoId: video.video_id,
+          playerVars: { start: Math.floor(clipActual.inicio), autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+          events: {
+            onReady: (e) => e.target.playVideo(),
+            onStateChange: (e) => {
+              if (e.data === window.YT.PlayerState.PLAYING) {
+                const chequeo = setInterval(() => {
+                  if (!playerRef.current) { clearInterval(chequeo); return; }
+                  if (playerRef.current.getCurrentTime() >= clipActual.fin) {
+                    clearInterval(chequeo);
+                    avanzar();
+                  }
+                }, 300);
+              }
+            },
+          },
+        });
+      }
+    } else if (video.fuente !== 'youtube' && videoElRef.current) {
+      videoElRef.current.currentTime = clipActual.inicio;
+      videoElRef.current.play().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indice, clipActual?.id, ytListo]);
+
+  if (cargando) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)' }}>Cargando...</div>;
+  }
+
+  // ── Lista de playlists compartidas ──
+  if (!playlistActiva) {
+    return (
+      <div style={{ maxWidth: '700px', margin: '0 auto', padding: '10px 0 40px' }}>
+        <h2 style={{ color: 'var(--accent)', marginBottom: '20px', fontSize: '1.3rem' }}>🎬 VIDEOS PARA VOS</h2>
+        {playlists.length === 0 ? (
+          <div className="bento-card" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '30px' }}>
+            Tu CT todavía no te compartió ninguna playlist.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {playlists.map((pl) => (
+              <div
+                key={pl.id}
+                onClick={() => abrirPlaylist(pl)}
+                className="bento-card"
+                style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <div style={{ fontWeight: 800, color: 'var(--text)' }}>{pl.nombre}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: MONO }}>{(pl.clip_ids || []).length} clips ▶</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Reproductor ──
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '10px 0 40px' }}>
+      <button onClick={volverALista} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', marginBottom: '12px', fontSize: '0.85rem' }}>
+        ← Volver a mis playlists
+      </button>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <div style={{ fontWeight: 900, color: 'var(--accent)' }}>{playlistActiva.nombre}</div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: MONO }}>{indice + 1} / {clipsCola.length}</div>
+      </div>
+
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--bg)', borderRadius: '10px', overflow: 'hidden', marginBottom: '14px' }}>
+        {video?.fuente === 'youtube' ? (
+          <div id="yt-player-kiosco" style={{ width: '100%', height: '100%' }} />
+        ) : (
+          video && (
+            <video
+              ref={videoElRef}
+              src={video.video_url}
+              controls
+              playsInline
+              onEnded={avanzar}
+              style={{ width: '100%', height: '100%', background: 'var(--bg)' }}
+            />
+          )
+        )}
+      </div>
+
+      {clipActual?.notas && (
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
+          💬 {clipActual.notas}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button
+          onClick={retroceder}
+          disabled={indice === 0}
+          style={{ flex: 1, padding: '14px', background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '8px', fontWeight: 800, cursor: indice === 0 ? 'not-allowed' : 'pointer', opacity: indice === 0 ? 0.4 : 1 }}
+        >
+          ◀ ANTERIOR
+        </button>
+        <button
+          onClick={avanzar}
+          disabled={indice >= clipsCola.length - 1}
+          style={{ flex: 1, padding: '14px', background: 'var(--accent)', border: 'none', color: '#000', borderRadius: '8px', fontWeight: 900, cursor: indice >= clipsCola.length - 1 ? 'not-allowed' : 'pointer', opacity: indice >= clipsCola.length - 1 ? 0.4 : 1 }}
+        >
+          SIGUIENTE ▶
+        </button>
+      </div>
+    </div>
+  );
+}

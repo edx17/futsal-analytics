@@ -583,7 +583,7 @@ export default function Disciplina() {
       </div>
 
       {/* AVISO TEMPORADA */}
-      <div style={{ marginBottom: 16, fontSize: '0.72rem', color: '#777' }}>
+      <div style={{ marginBottom: 16, fontSize: '0.72rem', color: 'var(--text-dim)' }}>
         {fTemporadaNum
           ? <>Mostrando la <b style={{ color: 'var(--accent)' }}>temporada {fTemporadaNum}</b>. Las amarillas se acumulan dentro del año; las rojas del tribunal arrastran hasta cumplirse. Abrí un jugador para ver su evolución interanual.</>
           : <>Mostrando el <b style={{ color: 'var(--accent)' }}>histórico completo</b> (todas las temporadas sumadas). Elegí una temporada para ver la acumulación que corre de verdad.</>}
@@ -625,7 +625,7 @@ export default function Disciplina() {
           RANKING DISCIPLINARIO
         </div>
         {filas.length === 0 ? (
-          <div style={{ color: '#666', textAlign: 'center', padding: 30, fontSize: '0.9rem' }}>
+          <div style={{ color: 'var(--text-dim)', textAlign: 'center', padding: 30, fontSize: '0.9rem' }}>
             Sin registros disciplinarios para este filtro.
           </div>
         ) : (
@@ -647,10 +647,10 @@ export default function Disciplina() {
               {f.tieneRojaActiva && <Badge color="#ef4444" texto={`🟥 INHAB. ${f.fechasRojaJugador}f`} />}
             </>)}
             colorCelda={(f, col) => {
-              if (col.k === 'amarillas') return f.amarillas ? '#facc15' : '#444';
-              if (col.k === 'rojas') return f.rojas ? '#ef4444' : '#444';
+              if (col.k === 'amarillas') return f.amarillas ? '#facc15' : 'var(--text-dim)';
+              if (col.k === 'rojas') return f.rojas ? '#ef4444' : 'var(--text-dim)';
               if (col.k === 'faltas') return '#ec4899';
-              if (col.k === 'fechas') return f.suspPendientes ? '#fff' : '#444';
+              if (col.k === 'fechas') return f.suspPendientes ? 'var(--text)' : 'var(--text-dim)';
               return 'var(--text-dim)';
             }}
           >
@@ -675,16 +675,16 @@ export default function Disciplina() {
                   <tr key={f.rowKey}
                     onClick={() => setJugadorDetalle(f)}
                     style={{ borderTop: '1px solid var(--border)', cursor: 'pointer', background: f.suspendidoActivo ? 'rgba(239,68,68,0.06)' : f.alBorde ? 'rgba(245,158,11,0.05)' : 'transparent' }}>
-                    <td style={{ ...tdStyle, color: '#555', fontFamily: 'JetBrains Mono, monospace' }}>{f.dorsal}</td>
+                    <td style={{ ...tdStyle, color: 'var(--text-dim)', fontFamily: 'JetBrains Mono, monospace' }}>{f.dorsal}</td>
                     <td style={{ ...tdStyle, color: 'var(--text)', fontWeight: 700 }}>{f.nombre}</td>
                     <td style={{ ...tdStyle, color: 'var(--text-dim)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{f.categoria}</td>
-                    <td style={{ ...tdNum, color: f.amarillas ? '#facc15' : '#444' }}>{f.amarillas}</td>
-                    <td style={{ ...tdNum, color: f.rojas ? '#ef4444' : '#444' }}>{f.rojas}</td>
+                    <td style={{ ...tdNum, color: f.amarillas ? '#facc15' : 'var(--text-dim)' }}>{f.amarillas}</td>
+                    <td style={{ ...tdNum, color: f.rojas ? '#ef4444' : 'var(--text-dim)' }}>{f.rojas}</td>
                     <td style={{ ...tdNum, color: '#ec4899' }}>{f.faltas}</td>
                     <td style={{ ...tdNum, color: 'var(--text-dim)' }}>{f.pj}</td>
                     <td style={{ ...tdNum, color: 'var(--text-dim)' }}>{f.faltasPorPartido.toFixed(1)}</td>
-                    <td style={{ ...tdNum, color: f.suspPendientes ? '#fff' : '#444', fontWeight: 900 }}>
-                      {f.suspPendientes}{f.suspCumplidas > 0 ? <span style={{ color: '#555', fontWeight: 400, fontSize: '0.7rem' }}> /{f.suspGanadas}</span> : ''}
+                    <td style={{ ...tdNum, color: f.suspPendientes ? 'var(--text)' : 'var(--text-dim)', fontWeight: 900 }}>
+                      {f.suspPendientes}{f.suspCumplidas > 0 ? <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: '0.7rem' }}> /{f.suspGanadas}</span> : ''}
                     </td>
                     <td style={tdCenter}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
@@ -692,7 +692,7 @@ export default function Disciplina() {
                           ? <Badge color="#ef4444" texto="SUSPENDIDO" />
                           : f.alBorde
                             ? <Badge color="#f59e0b" texto="AL BORDE" />
-                            : (!f.tieneRojaActiva && <span style={{ color: '#444', fontSize: '0.7rem' }}>—</span>)}
+                            : (!f.tieneRojaActiva && <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>—</span>)}
                         {f.tieneRojaActiva && <Badge color="#ef4444" texto={`🟥 INHAB. ${f.fechasRojaJugador}f`} />}
                       </div>
                     </td>
@@ -710,11 +710,11 @@ export default function Disciplina() {
         <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 900, letterSpacing: 1, marginBottom: 4 }}>
           ROJAS Y TRIBUNAL DE DISCIPLINA
         </div>
-        <div style={{ fontSize: '0.72rem', color: '#777', marginBottom: 12 }}>
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: 12 }}>
           La suspensión por roja inhabilita al jugador en <b>todas las categorías</b>, sin importar dónde recibió la tarjeta.
         </div>
         {rojasDetectadas.length === 0 ? (
-          <div style={{ color: '#666', textAlign: 'center', padding: 24, fontSize: '0.85rem' }}>
+          <div style={{ color: 'var(--text-dim)', textAlign: 'center', padding: 24, fontSize: '0.85rem' }}>
             No hay expulsiones registradas en este filtro.
           </div>
         ) : (
@@ -725,7 +725,7 @@ export default function Disciplina() {
               const restantes = Math.max(0, total - cumplidas);
               const saldada = r.sancion && restantes === 0;
               return (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: '#0d0d0d', border: `1px solid ${saldada ? '#1f3a1f' : 'var(--border)'}`, borderRadius: 8, padding: '12px 14px', opacity: saldada ? 0.7 : 1 }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: 'var(--panel)', border: `1px solid ${saldada ? '#1f3a1f' : 'var(--border)'}`, borderRadius: 8, padding: '12px 14px', opacity: saldada ? 0.7 : 1 }}>
                   <div>
                     <div style={{ color: 'var(--text)', fontWeight: 700 }}>🟥 {nombreJug(r.jugador)}</div>
                     <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>
@@ -742,7 +742,7 @@ export default function Disciplina() {
                             Sanción: {total} · Cumplido: {cumplidas} · <span style={{ color: '#fca5a5' }}>restan {restantes}</span>
                           </div>
                         )}
-                        <div style={{ color: '#666', fontSize: '0.65rem' }}>
+                        <div style={{ color: 'var(--text-dim)', fontSize: '0.65rem' }}>
                           Trib. {r.sancion.fechas_tribunal} + Int. {r.sancion.fechas_internas}
                         </div>
                       </div>
@@ -795,7 +795,7 @@ export default function Disciplina() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <div>
                     Por amarillas en <b>{jugadorDetalle.categoria}</b>: Sanción {jugadorDetalle.suspGanadas} · Cumplido {jugadorDetalle.suspCumplidas} · <b style={{ color: jugadorDetalle.suspPendientes ? '#fca5a5' : 'var(--accent)' }}>restan {jugadorDetalle.suspPendientes}</b>
-                    <div style={{ color: '#977', fontSize: '0.7rem' }}>Solo afecta a esta categoría{fTemporadaNum ? ` · temporada ${fTemporadaNum}` : ''}.</div>
+                    <div style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>Solo afecta a esta categoría{fTemporadaNum ? ` · temporada ${fTemporadaNum}` : ''}.</div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {jugadorDetalle.suspCumplidas > 0 && (
@@ -809,7 +809,7 @@ export default function Disciplina() {
               )}
               {jugadorDetalle.tieneRojaActiva && (
                 <div style={{ borderTop: jugadorDetalle.suspGanadas > 0 ? '1px solid #5a1a1a' : 'none', paddingTop: jugadorDetalle.suspGanadas > 0 ? 8 : 0 }}>
-                  Por roja: <b>{jugadorDetalle.fechasRojaJugador} fecha(s)</b> pendientes — inhabilita en <b>todas las categorías</b>. <span style={{ color: '#977' }}>(Se descuenta desde el panel de Rojas.)</span>
+                  Por roja: <b>{jugadorDetalle.fechasRojaJugador} fecha(s)</b> pendientes — inhabilita en <b>todas las categorías</b>. <span style={{ color: 'var(--text-dim)' }}>(Se descuenta desde el panel de Rojas.)</span>
                 </div>
               )}
             </div>
@@ -826,8 +826,8 @@ export default function Disciplina() {
                   {hist.map(h => {
                     const esActual = fTemporadaNum && h.anio === fTemporadaNum;
                     return (
-                      <div key={h.anio} style={{ display: 'flex', alignItems: 'center', gap: 12, background: esActual ? 'rgba(0,230,118,0.06)' : '#0d0d0d', border: `1px solid ${esActual ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '8px 12px' }}>
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 900, color: esActual ? 'var(--accent)' : '#fff', width: 46, flexShrink: 0 }}>{h.anio}</span>
+                      <div key={h.anio} style={{ display: 'flex', alignItems: 'center', gap: 12, background: esActual ? 'rgba(0,230,118,0.06)' : 'var(--panel)', border: `1px solid ${esActual ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 8, padding: '8px 12px' }}>
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 900, color: esActual ? 'var(--accent)' : 'var(--text)', width: 46, flexShrink: 0 }}>{h.anio}</span>
                         <span style={{ color: h.amarillas ? '#facc15' : '#444', fontWeight: 700, fontSize: '0.85rem' }}>{h.amarillas} 🟨</span>
                         <span style={{ color: h.rojas ? '#ef4444' : '#444', fontWeight: 700, fontSize: '0.85rem' }}>{h.rojas} 🟥</span>
                         <span style={{ color: '#ec4899', fontWeight: 700, fontSize: '0.85rem' }}>{h.faltas} faltas</span>
@@ -836,7 +836,7 @@ export default function Disciplina() {
                     );
                   })}
                 </div>
-                <div style={{ fontSize: '0.6rem', color: '#666', marginTop: 6 }}>Acumulado por temporada, todas las categorías. La fila resaltada es la temporada que estás viendo.</div>
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: 6 }}>Acumulado por temporada, todas las categorías. La fila resaltada es la temporada que estás viendo.</div>
               </div>
             );
           })()}
@@ -851,16 +851,16 @@ export default function Disciplina() {
                 const par = mapPar.get(ev.id_partido);
                 const esRoja = ev.accion === ACC.ROJA;
                 return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8rem', color: '#ccc' }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8rem', color: 'var(--text-dim)' }}>
                     <span>{esRoja ? '🟥' : '🟨'}</span>
                     <span style={{ color: 'var(--text)' }}>vs {par?.rival || '—'}</span>
-                    <span style={{ color: '#666', flex: 1 }}>{par?.fecha || ''} · {ev.periodo || ''} {ev.minuto != null ? `min ${ev.minuto}` : ''}{ev.etiqueta_tactica === 'carga_manual' ? ' · manual' : ''}</span>
+                    <span style={{ color: 'var(--text-dim)', flex: 1 }}>{par?.fecha || ''} · {ev.periodo || ''} {ev.minuto != null ? `min ${ev.minuto}` : ''}{ev.etiqueta_tactica === 'carga_manual' ? ' · manual' : ''}</span>
                     <button onClick={() => borrarTarjeta(ev.id)} title="Borrar esta tarjeta" style={{ background: 'transparent', border: '1px solid #5a1a1a', color: '#ef4444', borderRadius: 4, padding: '2px 7px', fontSize: '0.7rem', cursor: 'pointer' }}>🗑</button>
                   </div>
                 );
               })}
             {jugadorDetalle.eventosAmarilla.length === 0 && jugadorDetalle.eventosRoja.length === 0 && (
-              <span style={{ color: '#555', fontSize: '0.8rem' }}>Sin tarjetas en este filtro.</span>
+              <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Sin tarjetas en este filtro.</span>
             )}
           </div>
         </Overlay>
@@ -958,7 +958,7 @@ function ModalRoja({ data, onClose, onSave }) {
       <label style={labelStyle}>Fechas extra (regla interna del club)</label>
       <input type="number" min={0} value={internas} onChange={e => setInternas(e.target.value)} style={inputStyle} />
 
-      <div style={{ background: '#0d0d0d', border: '1px solid var(--border)', borderRadius: 8, padding: 12, margin: '6px 0 14px', textAlign: 'center' }}>
+      <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, margin: '6px 0 14px', textAlign: 'center' }}>
         <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>TOTAL A CUMPLIR </span>
         <b style={{ color: 'var(--accent)', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.1rem' }}>
           {(parseInt(tribunal, 10) || 0) + (parseInt(internas, 10) || 0)} fechas
@@ -1035,8 +1035,8 @@ function ModalCargaTarjeta({ jugadores, partidos, torneos, categorias, onClose, 
 
       <label style={labelStyle}>Tipo de tarjeta</label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-        <button onClick={() => setTipo('Tarjeta Amarilla')} style={{ ...btnMini, flex: 1, background: tipo === 'Tarjeta Amarilla' ? 'rgba(250,204,21,0.15)' : 'transparent', borderColor: tipo === 'Tarjeta Amarilla' ? '#facc15' : '#333', color: tipo === 'Tarjeta Amarilla' ? '#facc15' : '#888' }}>🟨 Amarilla</button>
-        <button onClick={() => setTipo('Tarjeta Roja')} style={{ ...btnMini, flex: 1, background: tipo === 'Tarjeta Roja' ? 'rgba(239,68,68,0.15)' : 'transparent', borderColor: tipo === 'Tarjeta Roja' ? '#ef4444' : '#333', color: tipo === 'Tarjeta Roja' ? '#ef4444' : '#888' }}>🟥 Roja</button>
+        <button onClick={() => setTipo('Tarjeta Amarilla')} style={{ ...btnMini, flex: 1, background: tipo === 'Tarjeta Amarilla' ? 'rgba(250,204,21,0.15)' : 'transparent', borderColor: tipo === 'Tarjeta Amarilla' ? '#facc15' : 'var(--border)', color: tipo === 'Tarjeta Amarilla' ? '#facc15' : 'var(--text-dim)' }}>🟨 Amarilla</button>
+        <button onClick={() => setTipo('Tarjeta Roja')} style={{ ...btnMini, flex: 1, background: tipo === 'Tarjeta Roja' ? 'rgba(239,68,68,0.15)' : 'transparent', borderColor: tipo === 'Tarjeta Roja' ? '#ef4444' : 'var(--border)', color: tipo === 'Tarjeta Roja' ? '#ef4444' : 'var(--text-dim)' }}>🟥 Roja</button>
       </div>
 
       {/* Filtros para encontrar el partido */}
@@ -1081,7 +1081,7 @@ function ModalCargaTarjeta({ jugadores, partidos, torneos, categorias, onClose, 
         <button
           disabled={!valido}
           onClick={() => onSave({ jugadorId, tipo, partidoId, periodo, minuto })}
-          style={{ ...btnMini, flex: 1, background: valido ? 'var(--accent)' : '#222', color: valido ? '#000' : '#555', border: 'none', fontWeight: 900, cursor: valido ? 'pointer' : 'not-allowed' }}>
+          style={{ ...btnMini, flex: 1, background: valido ? 'var(--accent)' : 'var(--panel)', color: valido ? '#000' : 'var(--text-dim)', border: 'none', fontWeight: 900, cursor: valido ? 'pointer' : 'not-allowed' }}>
           Cargar tarjeta
         </button>
       </div>
@@ -1100,11 +1100,11 @@ const tdStyle = { padding: '10px 8px' };
 const tdNum = { ...tdStyle, textAlign: 'center', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 };
 const tdCenter = { ...tdStyle, textAlign: 'center' };
 const labelStyle = { display: 'block', color: 'var(--text-dim)', fontSize: '0.72rem', fontWeight: 700, margin: '10px 0 5px', textTransform: 'uppercase', letterSpacing: 0.5 };
-const inputStyle = { width: '100%', background: '#0d0d0d', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: '0.9rem', boxSizing: 'border-box' };
-const btnMini = { background: '#1a1a1a', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 14px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' };
+const inputStyle = { width: '100%', background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 8, padding: '10px 12px', fontSize: '0.9rem', boxSizing: 'border-box' };
+const btnMini = { background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 14px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' };
 
 const alertaStyle = (bg, border) => ({
   display: 'flex', alignItems: 'center', gap: 12,
   background: `${bg}33`, border: `1px solid ${border}`, borderRadius: 10,
-  padding: '12px 16px', fontSize: '0.85rem', color: '#eee',
+  padding: '12px 16px', fontSize: '0.85rem', color: 'var(--text)',
 });

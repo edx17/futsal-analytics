@@ -125,7 +125,7 @@ function AdmSuscripciones() {
           <div className="table-wrapper">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', textAlign: 'left' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', textAlign: 'left' }}>
                   <th style={{ padding: '10px' }}>CLUB</th>
                   <th style={{ padding: '10px' }}>PLAN</th>
                   <th style={{ padding: '10px' }}>ESTADO</th>
@@ -140,7 +140,7 @@ function AdmSuscripciones() {
                     : 0;
 
                   return (
-                    <tr key={c.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
+                    <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '15px 10px', fontWeight: 800, color: 'var(--text)' }}>{c.nombre.toUpperCase()}</td>
                       <td style={{ padding: '15px 10px', color: 'var(--accent)', fontWeight: 800, textTransform: 'uppercase' }}>
                         {c.plan_actual || 'Básico'}
@@ -185,7 +185,7 @@ function AdmSuscripciones() {
       {clubSeleccionado && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
           <div className="bento-card" style={{ maxWidth: '500px', width: '100%', border: '1px solid #c084fc' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>EDITAR CLUB: <span style={{ color: '#c084fc' }}>{clubSeleccionado.nombre}</span></div>
               <button onClick={() => setClubSeleccionado(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             </div>

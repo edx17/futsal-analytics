@@ -297,13 +297,13 @@ const CargaWellness = () => {
               onClick={() => setValor(num)}
               style={{
                 flex: 1, height: '45px', borderRadius: '8px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem',
-                background: valor === num ? renderColores[num - 1] : '#222', color: valor === num ? '#000' : '#888',
+                background: valor === num ? renderColores[num - 1] : 'var(--panel)', color: valor === num ? '#000' : 'var(--text-dim)',
                 transition: 'all 0.2s', cursor: 'pointer', boxShadow: valor === num ? `0 0 10px ${renderColores[num - 1]}80` : 'none', minWidth: 0
               }}
             >{num}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '0.65rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '0.65rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 'bold' }}>
           <span>{labelBajo}</span><span>{labelAlto}</span>
         </div>
       </div>
@@ -312,13 +312,13 @@ const CargaWellness = () => {
 
   const RenderMetricaDetalle = ({ label, valor, invertido = false }) => {
     const paleta = invertido ? ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'] : ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
-    const color = paleta[valor - 1] || '#888';
+    const color = paleta[valor - 1] || 'var(--text-dim)';
     return (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.85rem' }}>
-        <span style={{ color: '#ccc' }}>{label}</span>
+        <span style={{ color: 'var(--text-dim)' }}>{label}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ display: 'flex', gap: '2px' }}>
-            {[1, 2, 3, 4, 5].map(v => <div key={v} style={{ width: '15px', height: '6px', borderRadius: '2px', background: v <= valor ? color : '#222' }} />)}
+            {[1, 2, 3, 4, 5].map(v => <div key={v} style={{ width: '15px', height: '6px', borderRadius: '2px', background: v <= valor ? color : 'var(--panel)' }} />)}
           </div>
           <span style={{ fontWeight: 'bold', color: color, width: '20px', textAlign: 'right' }}>{valor}</span>
         </div>
@@ -338,10 +338,10 @@ const CargaWellness = () => {
 
       {!esJugador && (
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          <button onClick={() => setVistaActiva('reporte')} style={{ ...mainTabBtn, background: vistaActiva === 'reporte' ? 'var(--accent)' : '#111', color: vistaActiva === 'reporte' ? '#000' : '#888' }}>
+          <button onClick={() => setVistaActiva('reporte')} style={{ ...mainTabBtn, background: vistaActiva === 'reporte' ? 'var(--accent)' : 'var(--panel)', color: vistaActiva === 'reporte' ? '#000' : 'var(--text-dim)' }}>
             📊 REPORTE DEL PLANTEL
           </button>
-          <button onClick={() => setVistaActiva('carga')} style={{ ...mainTabBtn, background: vistaActiva === 'carga' ? 'var(--accent)' : '#111', color: vistaActiva === 'carga' ? '#000' : '#888' }}>
+          <button onClick={() => setVistaActiva('carga')} style={{ ...mainTabBtn, background: vistaActiva === 'carga' ? 'var(--accent)' : 'var(--panel)', color: vistaActiva === 'carga' ? '#000' : 'var(--text-dim)' }}>
             📝 INGRESAR DATOS MANUAL
           </button>
         </div>
@@ -373,9 +373,9 @@ const CargaWellness = () => {
               <div>
                 <label style={labelStyle}>Vista</label>
                 <div style={{ display: 'flex', background: 'var(--bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                  <button onClick={() => setModoVistaReporte('dia')} style={{...toggleBtnStyle, background: modoVistaReporte === 'dia' ? '#333' : 'transparent', color: modoVistaReporte === 'dia' ? '#fff' : '#888'}}>Día</button>
-                  <button onClick={() => setModoVistaReporte('semana')} style={{...toggleBtnStyle, background: modoVistaReporte === 'semana' ? '#333' : 'transparent', color: modoVistaReporte === 'semana' ? '#fff' : '#888'}}>Sem.</button>
-                  <button onClick={() => setModoVistaReporte('mes')} style={{...toggleBtnStyle, background: modoVistaReporte === 'mes' ? '#333' : 'transparent', color: modoVistaReporte === 'mes' ? '#fff' : '#888'}}>Mes</button>
+                  <button onClick={() => setModoVistaReporte('dia')} style={{...toggleBtnStyle, background: modoVistaReporte === 'dia' ? 'var(--hover)' : 'transparent', color: modoVistaReporte === 'dia' ? 'var(--text)' : 'var(--text-dim)'}}>Día</button>
+                  <button onClick={() => setModoVistaReporte('semana')} style={{...toggleBtnStyle, background: modoVistaReporte === 'semana' ? 'var(--hover)' : 'transparent', color: modoVistaReporte === 'semana' ? 'var(--text)' : 'var(--text-dim)'}}>Sem.</button>
+                  <button onClick={() => setModoVistaReporte('mes')} style={{...toggleBtnStyle, background: modoVistaReporte === 'mes' ? 'var(--hover)' : 'transparent', color: modoVistaReporte === 'mes' ? 'var(--text)' : 'var(--text-dim)'}}>Mes</button>
                 </div>
               </div>
 
@@ -397,10 +397,10 @@ const CargaWellness = () => {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
               {jugadoresFiltrados.map((j) => (
-                <div key={j.id} style={{ background: '#0a0a0a', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #1a1a1a', paddingBottom: '8px' }}>
+                <div key={j.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
                     <span style={{ fontWeight: 'bold', color: 'var(--text)', fontSize: '1.05rem' }}>{j.apellido}, {j.nombre}</span>
-                    {j.posicion && <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', background: '#1a1a1a', padding: '3px 8px', borderRadius: '12px', textTransform: 'uppercase', fontWeight: 'bold' }}>{j.posicion}</span>}
+                    {j.posicion && <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', background: 'var(--panel)', padding: '3px 8px', borderRadius: '12px', textTransform: 'uppercase', fontWeight: 'bold' }}>{j.posicion}</span>}
                   </div>
                   
                   {/* --- RENDER DINÁMICO SEGÚN LA VISTA --- */}
@@ -412,7 +412,7 @@ const CargaWellness = () => {
                     const score = calcularScoreReadiness(registro);
                     
                     if (!registro || (score === null && !registro.rpe)) {
-                      return <div style={{ color: '#444', fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', padding: '15px 0' }}>Sin datos cargados hoy</div>;
+                      return <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', padding: '15px 0' }}>Sin datos cargados hoy</div>;
                     }
 
                     return (
@@ -459,16 +459,16 @@ const CargaWellness = () => {
                             onMouseEnter={(e) => registro && (e.currentTarget.style.transform = 'scale(1.05)')}
                             onMouseLeave={(e) => registro && (e.currentTarget.style.transform = 'scale(1)')}
                           >
-                            <span style={{ fontSize: '0.55rem', color: esHoy ? '#3b82f6' : '#666', fontWeight: 'bold' }}>{dia.nombre}</span>
-                            <span style={{ fontSize: '0.75rem', color: esHoy ? '#fff' : '#aaa', fontWeight: '900', marginBottom: '4px' }}>{dia.numero}</span>
+                            <span style={{ fontSize: '0.55rem', color: esHoy ? '#3b82f6' : 'var(--text-dim)', fontWeight: 'bold' }}>{dia.nombre}</span>
+                            <span style={{ fontSize: '0.75rem', color: esHoy ? 'var(--text)' : 'var(--text-dim)', fontWeight: '900', marginBottom: '4px' }}>{dia.numero}</span>
                             {score !== null ? (
                               <div style={{ width: '100%', height: '22px', background: getColorPorPuntos(score).bg, color: getColorPorPuntos(score).text, border: `1px solid ${getColorPorPuntos(score).border}`, borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: '900', position: 'relative' }}>
-                                {score}% {registro.notas_mentales && <span style={{ position: 'absolute', top: '-3px', right: '-3px', width: '8px', height: '8px', background: '#a855f7', borderRadius: '50%', border: '1px solid #000' }} />}
+                                {score}% {registro.notas_mentales && <span style={{ position: 'absolute', top: '-3px', right: '-3px', width: '8px', height: '8px', background: '#a855f7', borderRadius: '50%', border: '1px solid var(--panel)' }} />}
                               </div>
-                            ) : <div style={{ width: '100%', height: '22px', background: 'var(--panel)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: '#444' }}>-</div>}
+                            ) : <div style={{ width: '100%', height: '22px', background: 'var(--panel)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'var(--text-dim)' }}>-</div>}
                             {registro?.rpe ? (
                               <div style={{ width: '100%', height: '22px', background: getColorPorRPE(registro.rpe).bg, color: getColorPorRPE(registro.rpe).text, border: `1px solid ${getColorPorRPE(registro.rpe).border}`, borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: '900' }}>R{registro.rpe}</div>
-                            ) : <div style={{ width: '100%', height: '22px', background: 'var(--panel)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: '#444' }}>-</div>}
+                            ) : <div style={{ width: '100%', height: '22px', background: 'var(--panel)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'var(--text-dim)' }}>-</div>}
                           </div>
                         );
                       })}
@@ -483,7 +483,7 @@ const CargaWellness = () => {
                       <div>
                         {/* Cabecera L M M J V S D */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '4px' }}>
-                          {['L','M','M','J','V','S','D'].map((d,i) => <div key={i} style={{ textAlign: 'center', fontSize: '0.55rem', color: '#666', fontWeight: 'bold' }}>{d}</div>)}
+                          {['L','M','M','J','V','S','D'].map((d,i) => <div key={i} style={{ textAlign: 'center', fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>{d}</div>)}
                         </div>
                         {/* Grilla de días */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
@@ -492,7 +492,7 @@ const CargaWellness = () => {
                             const registro = datosReporte.find(d => d.jugador_id === j.id && d.fecha === dia.fechaStr);
                             const score = calcularScoreReadiness(registro);
                             const tieneData = registro && (score !== null || registro.rpe);
-                            let bg = '#111'; let border = '1px solid #1a1a1a';
+                            let bg = 'var(--panel)'; let border = '1px solid var(--border)';
                             if (tieneData) {
                               if (score !== null) { bg = getColorPorPuntos(score).bg; border = `1px solid ${getColorPorPuntos(score).text}`; }
                               else { bg = getColorPorRPE(registro.rpe).bg; border = `1px solid ${getColorPorRPE(registro.rpe).text}`; }
@@ -506,7 +506,7 @@ const CargaWellness = () => {
                                 style={{
                                   aspectRatio: '1', borderRadius: '4px', background: bg, border: esHoy ? '2px solid #3b82f6' : border,
                                   display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: tieneData ? 'pointer' : 'default',
-                                  fontSize: '0.6rem', color: tieneData ? '#fff' : '#444', fontWeight: 'bold', position: 'relative'
+                                  fontSize: '0.6rem', color: tieneData ? 'var(--text)' : 'var(--text-dim)', fontWeight: 'bold', position: 'relative'
                                 }}
                               >
                                 {dia.numero}
@@ -537,7 +537,7 @@ const CargaWellness = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
           <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '700px', border: '1px solid var(--border)', position: 'relative', animation: 'fadeIn 0.2s', padding: 0, overflow: 'hidden' }}>
             
-            <div style={{ background: '#0a0a0a', padding: '20px', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: 'var(--panel)', padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.3rem', textTransform: 'uppercase' }}>{detalleRegistro.jugador.apellido}, {detalleRegistro.jugador.nombre}</h3>
                 <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 'bold' }}>🗓️ Reporte del día: {detalleRegistro.dia}</span>
@@ -576,7 +576,7 @@ const CargaWellness = () => {
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
                 {detalleRegistro.registro.sueno && (
-                  <div style={{ flex: '1 1 300px', background: '#0a0a0a', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div style={{ flex: '1 1 300px', background: 'var(--panel)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                     <h4 style={{ color: 'var(--accent)', margin: '0 0 15px 0', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
                       🌞 Pre-Físico
                     </h4>
@@ -588,7 +588,7 @@ const CargaWellness = () => {
                 )}
 
                 {detalleRegistro.registro.animo && (
-                  <div style={{ flex: '1 1 300px', background: '#0a0a0a', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div style={{ flex: '1 1 300px', background: 'var(--panel)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                     <h4 style={{ color: '#c084fc', margin: '0 0 15px 0', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
                       🧠 Mindset
                     </h4>
@@ -687,19 +687,19 @@ const CargaWellness = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <button onClick={() => setModo('pre')} style={{ ...tabBtn, background: modo === 'pre' ? 'var(--accent)' : '#111', color: modo === 'pre' ? '#000' : '#888' }}>
+            <button onClick={() => setModo('pre')} style={{ ...tabBtn, background: modo === 'pre' ? 'var(--accent)' : 'var(--panel)', color: modo === 'pre' ? '#000' : 'var(--text-dim)' }}>
               🌞 PRE (Físico)
             </button>
-            <button onClick={() => setModo('mental')} style={{ ...tabBtn, background: modo === 'mental' ? '#a855f7' : '#111', color: modo === 'mental' ? '#fff' : '#888' }}>
+            <button onClick={() => setModo('mental')} style={{ ...tabBtn, background: modo === 'mental' ? '#a855f7' : 'var(--panel)', color: modo === 'mental' ? '#fff' : 'var(--text-dim)' }}>
               🧠 MENTAL (Mindset)
             </button>
-            <button onClick={() => setModo('post')} style={{ ...tabBtn, background: modo === 'post' ? '#3b82f6' : '#111', color: modo === 'post' ? '#fff' : '#888' }}>
+            <button onClick={() => setModo('post')} style={{ ...tabBtn, background: modo === 'post' ? '#3b82f6' : 'var(--panel)', color: modo === 'post' ? '#fff' : 'var(--text-dim)' }}>
               🔋 POST (Carga)
             </button>
           </div>
 
           {modo === 'pre' && (
-            <div className="bento-card" style={{ background: '#0a0a0a', border: '1px solid var(--border)' }}>
+            <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '20px' }}>
                 ¿Cómo te levantaste hoy? Evalúa tu cuerpo antes de iniciar la actividad.
               </p>
@@ -711,7 +711,7 @@ const CargaWellness = () => {
           )}
 
           {modo === 'mental' && (
-            <div className="bento-card" style={{ background: '#0a0a0a', border: '1px solid #a855f7' }}>
+            <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid #a855f7' }}>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '20px' }}>
                 ¿Cómo está tu cabeza hoy? Recordá que esta info es confidencial para el Cuerpo Técnico.
               </p>
@@ -733,7 +733,7 @@ const CargaWellness = () => {
           )}
 
           {modo === 'post' && (
-            <div className="bento-card" style={{ background: '#0a0a0a', border: '1px solid #1e3a8a' }}>
+            <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid #1e3a8a' }}>
                <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '20px' }}>
                 A los 30 min de terminar, evaluá la sesión completa.
               </p>
@@ -776,7 +776,7 @@ const CargaWellness = () => {
                   <span>10 - Máximo</span>
                 </div>
 
-                <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px dashed #333', textAlign: 'center' }}>
+                <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px dashed var(--border)', textAlign: 'center' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>CARGA DE LA SESIÓN (UC)</span>
                   <div style={{ fontSize: '2.5rem', fontWeight: '900', color: 'var(--text)', letterSpacing: '-1px' }}>
                     {cargaPost.rpe * cargaPost.minutos_actividad}

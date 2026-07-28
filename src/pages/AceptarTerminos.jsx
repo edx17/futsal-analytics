@@ -36,7 +36,7 @@ export default function AceptarTerminos() {
           TÉRMINOS Y CONDICIONES Y POLÍTICA DE PRIVACIDAD – VIRTUAL.CLUB
         </h1>
         
-        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '15px', color: '#ccc', fontSize: '0.9rem', lineHeight: '1.6' }}>
+        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '15px', color: 'var(--text)', fontSize: '0.9rem', lineHeight: '1.6' }}>
           <p>El presente documento establece las condiciones de uso y el deslinde de responsabilidad legal aplicable a todos los usuarios (Clubes, Cuerpos Técnicos, Administradores y Jugadores) de la plataforma <strong>Virtual.Club</strong> (en adelante, "la Plataforma" o "la App"). Al acceder, registrarse o utilizar la Plataforma, usted acepta íntegramente estos términos.</p>
 
           <h3 style={{ color: 'var(--text)', marginTop: '20px', fontWeight: 'bold' }}>1. NATURALEZA DEL SERVICIO Y DESLINDE MÉDICO (Disclaimer)</h3>

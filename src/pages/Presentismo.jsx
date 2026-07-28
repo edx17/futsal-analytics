@@ -244,9 +244,9 @@ function Presentismo() {
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px', background: 'var(--bg)', padding: '5px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-          <button onClick={() => setVista('tomar')} style={{ ...tabBtn, background: vista === 'tomar' ? 'var(--accent)' : 'transparent', color: vista === 'tomar' ? '#000' : '#888' }}>📝 PASAR LISTA</button>
-          <button onClick={() => setVista('mensual')} style={{ ...tabBtn, background: vista === 'mensual' ? '#3b82f6' : 'transparent', color: vista === 'mensual' ? '#fff' : '#888' }}>📅 RESUMEN</button>
-          <button onClick={() => setVista('anual')} style={{ ...tabBtn, background: vista === 'anual' ? '#a855f7' : 'transparent', color: vista === 'anual' ? '#fff' : '#888' }}>📊 DASHBOARD</button>
+          <button onClick={() => setVista('tomar')} style={{ ...tabBtn, background: vista === 'tomar' ? 'var(--accent)' : 'transparent', color: vista === 'tomar' ? '#000' : 'var(--text-dim)' }}>📝 PASAR LISTA</button>
+          <button onClick={() => setVista('mensual')} style={{ ...tabBtn, background: vista === 'mensual' ? '#3b82f6' : 'transparent', color: vista === 'mensual' ? '#fff' : 'var(--text-dim)' }}>📅 RESUMEN</button>
+          <button onClick={() => setVista('anual')} style={{ ...tabBtn, background: vista === 'anual' ? '#a855f7' : 'transparent', color: vista === 'anual' ? '#fff' : 'var(--text-dim)' }}>📊 DASHBOARD</button>
         </div>
       </div>
 
@@ -270,7 +270,7 @@ function Presentismo() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   {jugadores.map(j => (
                     <div key={j.id} style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid #333', paddingBottom: '8px' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
                         {j.apellido}, {j.nombre}
                       </div>
                       <div style={{ marginBottom: asistenciasHoy[j.id] !== 'presente' ? '10px' : '0' }}>
@@ -313,7 +313,7 @@ function Presentismo() {
                 <div className="table-wrapper">
                   <table style={{ width: '100%', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
+                      <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: 'var(--panel)' }}>
                         <th style={{ padding: '10px' }}>JUGADOR</th>
                         <th style={{ padding: '10px', width: '20%' }}>ESTADO</th>
                         <th style={{ padding: '10px', width: '40%' }}>OBSERVACIONES</th>
@@ -321,7 +321,7 @@ function Presentismo() {
                     </thead>
                     <tbody>
                       {jugadores.map(j => (
-                        <tr key={j.id} style={{ borderBottom: '1px solid #222' }}>
+                        <tr key={j.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '12px 10px', fontWeight: 'bold' }}>{j.apellido}, {j.nombre}</td>
                           <td style={{ padding: '5px 10px' }}>
                             <select 
@@ -350,7 +350,7 @@ function Presentismo() {
                                 placeholder="Indicar motivo..." 
                               />
                             ) : (
-                              <div style={{ color: '#444', fontSize: '0.8rem', padding: '8px', textAlign: 'center' }}>
+                              <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', padding: '8px', textAlign: 'center' }}>
                                 —
                               </div>
                             )}
@@ -389,7 +389,7 @@ function Presentismo() {
               <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', minWidth: '400px' }}>
                   <thead>
-                    <tr style={{ background: '#0a0a0a' }}>
+                    <tr style={{ background: 'var(--panel)' }}>
                       <th style={{ padding: '10px', textAlign: 'left', color: 'var(--text-dim)', fontSize: '0.75rem' }}>JUGADOR</th>
                       <th style={{ padding: '10px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem' }}>% MES</th>
                       <th style={{ padding: '10px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem' }}>ASISTENCIAS</th>
@@ -398,21 +398,21 @@ function Presentismo() {
                   </thead>
                   <tbody>
                     {stats.mes.ranking.map(j => (
-                      <tr key={j.id} style={{ borderBottom: '1px solid #222' }}>
+                      <tr key={j.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '12px 10px', fontWeight: 'bold' }}>{j.nombre}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 900, color: j.porc < 70 && j.total > 0 ? '#ef4444' : '#fff' }}>
+                        <td style={{ textAlign: 'center', fontWeight: 900, color: j.porc < 70 && j.total > 0 ? '#ef4444' : 'var(--text)' }}>
                           {j.total > 0 ? `${j.porc}%` : '-'}
                         </td>
-                        <td style={{ textAlign: 'center', fontSize: '0.8rem', color: '#aaa' }}>
+                        <td style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
                           {j.presentes} / {j.total}
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {j.estadoGral === 'desertor' ? (
                             <span style={{ background: '#7f1d1d', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>🚩 DESERCIÓN (+3 FALTAS)</span>
                           ) : j.porc === 100 && j.total > 0 ? (
-                            <span style={{ background: 'rgba(0, 255, 136, 0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, border: '1px solid rgba(0, 255, 136, 0.3)' }}>⭐ PERFECTA</span>
+                            <span style={{ background: 'rgba(0, 255, 136, 0.1)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, border: '1px solid rgba(0, 255, 136, 0.3)' }}>⭐ PERFECTA</span>
                           ) : (
-                            <span style={{ color: '#555', fontSize: '0.7rem' }}>Activo</span>
+                            <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>Activo</span>
                           )}
                         </td>
                       </tr>
@@ -437,10 +437,10 @@ function Presentismo() {
                  <div className="stat-label" style={{ marginBottom:'15px' }}>EVOLUCIÓN MES A MES</div>
                  <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={stats.año.dataMeses} margin={{ left: -20, right: 10 }}>
-                      <CartesianGrid stroke="#222" vertical={false}/>
-                      <XAxis dataKey="name" stroke="#555" fontSize={10}/>
+                      <CartesianGrid stroke="var(--border)" vertical={false}/>
+                      <XAxis dataKey="name" stroke="var(--text-dim)" fontSize={10}/>
                       <YAxis hide domain={[0,100]}/>
-                      <Tooltip contentStyle={{background:'#111', border:'#333', borderRadius:'8px'}}/>
+                      <Tooltip contentStyle={{background:'var(--panel)', border:'var(--border)', borderRadius:'8px'}}/>
                       <Line type="monotone" dataKey="porcentaje" stroke="#a855f7" strokeWidth={4} dot={{fill:'#a855f7', strokeWidth: 2}}/>
                     </LineChart>
                  </ResponsiveContainer>
@@ -451,11 +451,11 @@ function Presentismo() {
                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={stats.año.top10} layout="vertical" margin={{ left: 30, right: 10 }}>
                       <XAxis type="number" hide domain={[0, 100]} />
-                      <YAxis dataKey="nombre" type="category" stroke="#888" fontSize={10} width={80} />
-                      <Tooltip cursor={{fill: '#222'}} contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius:'8px' }} />
+                      <YAxis dataKey="nombre" type="category" stroke="var(--text-dim)" fontSize={10} width={80} />
+                      <Tooltip cursor={{fill: 'var(--hover)'}} contentStyle={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius:'8px' }} />
                       <Bar dataKey="porc" radius={[0, 4, 4, 0]} barSize={14}>
                          {stats.año.top10.map((entry, index) => (
-                          <Cell key={index} fill={entry.porc >= 85 ? '#00ff88' : '#a855f7'} />
+                          <Cell key={index} fill={entry.porc >= 85 ? 'var(--accent)' : '#a855f7'} />
                          ))}
                       </Bar>
                     </BarChart>

@@ -27,6 +27,66 @@ const COLS_QUINT = [
   { k: 'rat', t: 'RATING', g: 'q', r: q => q.balanceRating.toFixed(1) },
 ];
 
+// COMPONENTE: Malla de Microzonas Tácticas (Filtro ZONAS)
+const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
+  const zX = ['Z1', 'Z2', 'Z3', 'Z4'];
+  const zY = ['I', 'C', 'D'];
+
+  const counts = useMemo(() => {
+    const map = {};
+    eventos.forEach(ev => {
+      const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+      const y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
+      if (x == null || y == null) return;
+      
+      const col = x < 25 ? 'Z1' : x < 50 ? 'Z2' : x < 75 ? 'Z3' : 'Z4';
+      const row = y < 33.33 ? 'I' : y < 66.66 ? 'C' : 'D';
+      const key = `${col}-${row}`;
+      map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [eventos]);
+
+  return (
+    <svg viewBox="0 0 100 50" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' }}>
+      {zX.map((xVal, colIdx) => (
+        zY.map((yVal, rowIdx) => {
+          const key = `${xVal}-${yVal}`;
+          const count = counts[key] || 0;
+          const opacity = count > 0 ? Math.min(0.8, (count / (maxCount || 10)) * 0.6 + 0.1) : 0;
+          return (
+            <g key={key}>
+              <rect 
+                x={colIdx * 25} y={rowIdx * 16.66} 
+                width="25" height="16.66" 
+                fill={count > 0 ? `rgba(59, 130, 246, ${opacity})` : 'transparent'} 
+                stroke="rgba(255,255,255,0.1)" 
+                strokeWidth="0.1" 
+              />
+              <text 
+                x={(colIdx * 25) + 1} y={(rowIdx * 16.66) + 3} 
+                fill="rgba(255,255,255,0.25)" fontSize="2" fontWeight="bold"
+              >
+                {key}
+              </text>
+              
+              {count > 0 && (
+                <text 
+                  x={(colIdx * 25) + 12.5} y={(rowIdx * 16.66) + 10} 
+                  fill="#fff" fontSize="6" textAnchor="middle" fontWeight="900" 
+                  style={{ filter: 'drop-shadow(0px 0px 2px rgba(0,0,0,1))' }}
+                >
+                  {count}
+                </text>
+              )}
+            </g>
+          );
+        })
+      ))}
+    </svg>
+  );
+};
+
 // COMPONENTE: Momentum de la Temporada (Partido a Partido)
 const GraficoMomentumTemporada = ({ partidos, eventos }) => {
   const [metrica, setMetrica] = useState('golesFavor'); 
@@ -142,13 +202,13 @@ const GraficoMomentumTemporada = ({ partidos, eventos }) => {
                 <stop offset="95%" stopColor={color} stopOpacity={0.0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-            <XAxis dataKey="nombre" stroke="#888" tick={{ fill: '#aaa', fontSize: 11 }} tickLine={false} axisLine={false} />
-            <YAxis stroke="#888" tick={{ fill: '#aaa', fontSize: 11 }} tickLine={false} axisLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="nombre" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} tickLine={false} axisLine={false} />
+            <YAxis stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} tickLine={false} axisLine={false} />
             <RechartsTooltip
-              contentStyle={{ backgroundColor: '#111', borderColor: color, color: 'var(--text)', borderRadius: '8px', padding: '10px' }}
+              contentStyle={{ backgroundColor: 'var(--panel)', borderColor: color, color: 'var(--text)', borderRadius: '8px', padding: '10px' }}
               itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }}
-              labelStyle={{ color: '#aaa', marginBottom: '5px' }}
+              labelStyle={{ color: 'var(--text-dim)', marginBottom: '5px' }}
               formatter={(value, name, props) => [key === 'dominio' ? `${value}%` : value, `vs ${props.payload.rival}`]}
             />
             <Area 
@@ -159,7 +219,7 @@ const GraficoMomentumTemporada = ({ partidos, eventos }) => {
               strokeWidth={3} 
               fillOpacity={1} 
               fill={`url(#colorMomentumTemporada_${key})`} 
-              activeDot={{ r: 6, fill: '#111', stroke: color, strokeWidth: 2 }} 
+              activeDot={{ r: 6, fill: 'var(--panel)', stroke: color, strokeWidth: 2 }} 
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -493,7 +553,7 @@ function Temporada() {
       } else if (ev.accion === 'Remate - Atajado') {
         p ? desgloseRemates.propio.atajados++ : desgloseRemates.rival.atajados++;
       } else if (ev.accion === 'Remate - Desviado') {
-        p ? desgloseRemates.propio.desviados++ : desgloseRemates.rival.atajados++;
+        p ? desgloseRemates.propio.desviados++ : desgloseRemates.rival.desviados++;
       } else if (ev.accion === 'Remate - Rebatido') {
         p ? desgloseRemates.propio.rebatidos++ : desgloseRemates.rival.rebatidos++;
       }
@@ -640,7 +700,7 @@ function Temporada() {
     const dataLimpia = analiticaGlobal.matrizTalento
       .filter(j => j.creacion > 0 || j.finalizacion > 0)
       .map(j => ({
-        nombre: j.nombre.substring(0, 10), 
+        nombre: j.nombre.substring(0, 10).toUpperCase(), 
         Creación: Number(j.creacion.toFixed(2)),
         Finalización: Number(j.finalizacion.toFixed(2)),
         total: j.creacion + j.finalizacion
@@ -649,6 +709,30 @@ function Temporada() {
       .slice(0, 8); 
 
     return dataLimpia;
+  }, [analiticaGlobal]);
+
+  const dataGolesAsistencias = useMemo(() => {
+    if (!analiticaGlobal) return [];
+    
+    const map = {};
+    if (analiticaGlobal.topGoleadores) {
+      analiticaGlobal.topGoleadores.forEach(j => {
+        if (!map[j.id]) map[j.id] = { nombre: (j.apellido || j.nombre || 'S/N').substring(0, 10).toUpperCase(), Goles: 0, Asistencias: 0 };
+        map[j.id].Goles = j.goles || 0;
+      });
+    }
+    
+    if (analiticaGlobal.topAsistidores) {
+      analiticaGlobal.topAsistidores.forEach(j => {
+        if (!map[j.id]) map[j.id] = { nombre: (j.apellido || j.nombre || 'S/N').substring(0, 10).toUpperCase(), Goles: 0, Asistencias: 0 };
+        map[j.id].Asistencias = j.asistencias || 0;
+      });
+    }
+
+    return Object.values(map)
+      .map(j => ({ ...j, total: j.Goles + j.Asistencias }))
+      .filter(j => j.total > 0)
+      .sort((a, b) => b.total - a.total);
   }, [analiticaGlobal]);
 
   const datosParaReporte = useMemo(() => {
@@ -758,7 +842,7 @@ function Temporada() {
         .custom-scroll { -webkit-overflow-scrolling: touch; }
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent); }
       `}</style>
 
@@ -834,7 +918,7 @@ function Temporada() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '20px' }}>
-              <div className="bento-card" style={{ textAlign: 'center', padding: '20px', background: 'linear-gradient(180deg, #111 0%, #000 100%)', borderTop: '2px solid var(--accent)' }}>
+              <div className="bento-card" style={{ textAlign: 'center', padding: '20px', background: 'linear-gradient(180deg, var(--panel) 0%, var(--bg) 100%)', borderTop: '2px solid var(--accent)' }}>
                   <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>PARTIDOS (V-E-D) <InfoBox texto="Victorias, Empates y Derrotas bajo los filtros actuales." /></div>
                   <div className="stat-value" style={{ color: 'var(--text)' }}>
                     <span style={{color: 'var(--accent)'}}>{analiticaGlobal.statsEquipo.victorias}</span>-
@@ -852,7 +936,7 @@ function Temporada() {
               </div>
               <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                   <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>EFECTIVIDAD EN REMATES <InfoBox texto="Porcentaje general de remates que terminaron en gol." /></div>
-                  <div className="stat-value" style={{ color: (analiticaGlobal.rematesPropiosTotales > 0 ? ((analiticaGlobal.golesPropiosTotales / analiticaGlobal.rematesPropiosTotales) * 100).toFixed(1) : 0) >= 15 ? 'var(--accent)' : '#fff' }}>{(analiticaGlobal.rematesPropiosTotales > 0 ? ((analiticaGlobal.golesPropiosTotales / analiticaGlobal.rematesPropiosTotales) * 100).toFixed(1) : 0)}%</div>
+                  <div className="stat-value" style={{ color: (analiticaGlobal.rematesPropiosTotales > 0 ? ((analiticaGlobal.golesPropiosTotales / analiticaGlobal.rematesPropiosTotales) * 100).toFixed(1) : 0) >= 15 ? 'var(--accent)' : 'var(--text)' }}>{(analiticaGlobal.rematesPropiosTotales > 0 ? ((analiticaGlobal.golesPropiosTotales / analiticaGlobal.rematesPropiosTotales) * 100).toFixed(1) : 0)}%</div>
               </div>
               <div className="bento-card" style={{ textAlign: 'center', padding: '20px' }}>
                   <div className="stat-label" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>BALANCE DE PRESIÓN <InfoBox texto="Recuperaciones Altas (en ataque) versus Pérdidas Peligrosas (en defensa). Mide qué tanto rinde asumir riesgos." /></div>
@@ -893,7 +977,7 @@ function Temporada() {
                             ))}
                           </Pie>
                           <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '4px' }}
+                            contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '4px' }}
                             itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }}
                           />
                           <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
@@ -933,7 +1017,7 @@ function Temporada() {
                             ))}
                           </Pie>
                           <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '4px' }}
+                            contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '4px' }}
                             itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }}
                           />
                           <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem', paddingTop: '10px' }} iconType="circle" />
@@ -962,10 +1046,28 @@ function Temporada() {
                   <span>GOLES vs xG <InfoBox texto="Positivo: Anotamos más goles de lo que la probabilidad marcaba. Negativo: Desperdiciamos situaciones claras."/></span>
                   <strong style={{color: (analiticaGlobal.golesPropiosTotales - analiticaGlobal.statsEquipo.xgTotal).toFixed(2) > 0 ? '#00ff88' : ((analiticaGlobal.golesPropiosTotales - analiticaGlobal.statsEquipo.xgTotal).toFixed(2) < 0 ? '#ef4444' : '#fff')}}>{(analiticaGlobal.golesPropiosTotales - analiticaGlobal.statsEquipo.xgTotal).toFixed(2) > 0 ? '+' : ''}{(analiticaGlobal.golesPropiosTotales - analiticaGlobal.statsEquipo.xgTotal).toFixed(2)}</strong>
                 </div>
+                
                 <div style={kpiFila}>
-                  <span>REMATES ACUMULADOS</span>
+                  <span>REMATES TOTALES</span>
                   <strong style={{color: 'var(--text)'}}>{analiticaGlobal.rematesPropiosTotales}</strong>
                 </div>
+                <div style={kpiFila}>
+                  <span>GOLES</span>
+                  <strong style={{color: '#00ff88'}}>{analiticaGlobal.desgloseRemates.propio.goles}</strong>
+                </div>
+                <div style={kpiFila}>
+                  <span>ATAJADOS (AL ARCO)</span>
+                  <strong style={{color: '#3b82f6'}}>{analiticaGlobal.desgloseRemates.propio.atajados}</strong>
+                </div>
+                <div style={kpiFila}>
+                  <span>DESVIADOS (AFUERA)</span>
+                  <strong style={{color: 'var(--text-dim)'}}>{analiticaGlobal.desgloseRemates.propio.desviados}</strong>
+                </div>
+                <div style={kpiFila}>
+                  <span>REBATIDOS (BLOQ.)</span>
+                  <strong style={{color: '#f59e0b'}}>{analiticaGlobal.desgloseRemates.propio.rebatidos}</strong>
+                </div>
+
                 <div style={kpiFila}>
                   <span>DUELOS OFE. GANADOS</span>
                   <strong>
@@ -1019,7 +1121,7 @@ function Temporada() {
                 </div>
                 <div style={kpiFila}><span>GOLES DE TIRO LIBRE</span><strong>{analiticaGlobal.dataOrigenGol?.find(d => d.name === 'Tiro Libre')?.value || 0}</strong></div>
                 
-                <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dashed #333' }}>
+                <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px dashed var(--border)' }}>
                   <div className="stat-label" style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '8px', textAlign: 'center' }}>LATERALES FAVOR POR ZONAS</div>
                   <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between' }}>
                      <div style={zonePill}>Z1 (0-10) <br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analiticaGlobal.abp.zonasLatFavor.z1}</strong></div>
@@ -1056,12 +1158,12 @@ function Temporada() {
               {dataCreacionFin.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <ComposedChart data={dataCreacionFin} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={true} vertical={false} />
-                    <XAxis type="number" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
-                    <YAxis dataKey="nombre" type="category" stroke="#555" tick={{ fill: '#fff', fontSize: 10, fontWeight: 700 }} width={80} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={true} vertical={false} />
+                    <XAxis type="number" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} />
+                    <YAxis dataKey="nombre" type="category" stroke="var(--border)" tick={{ fill: 'var(--text)', fontSize: 10, fontWeight: 700 }} width={80} />
                     <RechartsTooltip 
                       cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                      contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '4px' }}
                       itemStyle={{ fontSize: '0.8rem', fontWeight: 800 }}
                     />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: 'var(--text-dim)', paddingTop: '10px' }} />
@@ -1077,13 +1179,43 @@ function Temporada() {
             </div>
 
             <div className="bento-card">
+              <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
+                PARTICIPACIÓN DIRECTA EN GOLES (G+A) <InfoBox texto="Suma de Goles y Asistencias de todos los jugadores que aportaron en la red durante la temporada." />
+              </div>
+              
+              {dataGolesAsistencias.length > 0 ? (
+                <div className="custom-scroll" style={{ overflowY: 'auto', maxHeight: '350px', paddingRight: '5px' }}>
+                  <ResponsiveContainer width="100%" height={Math.max(250, dataGolesAsistencias.length * 30)}>
+                    <ComposedChart data={dataGolesAsistencias} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={true} vertical={false} />
+                      <XAxis type="number" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} allowDecimals={false} />
+                      <YAxis dataKey="nombre" type="category" stroke="var(--border)" tick={{ fill: 'var(--text)', fontSize: 10, fontWeight: 700 }} width={80} />
+                      <RechartsTooltip 
+                        cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                        contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '4px' }}
+                        itemStyle={{ fontSize: '0.8rem', fontWeight: 800 }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: 'var(--text-dim)', paddingTop: '10px' }} />
+                      <Bar dataKey="Goles" stackId="a" fill="#00ff88" barSize={15} />
+                      <Bar dataKey="Asistencias" stackId="a" fill="#3b82f6" barSize={15} radius={[0, 4, 4, 0]} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div style={{ height: '250px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+                  No hay datos de goles o asistencias.
+                </div>
+              )}
+            </div>
+
+            <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>GOLES PT VS ST <InfoBox texto="Compara desgaste físico y táctico. Si recibís muchos más goles en el ST, puede haber un déficit de resistencia aeróbica en el plantel." /></div>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={dataDesgaste} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                  <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 11, fontWeight: 700 }} />
-                  <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} />
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', color: 'var(--text)' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11, fontWeight: 700 }} />
+                  <YAxis stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} />
+                  <RechartsTooltip contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)' }} />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', color: 'var(--text-dim)' }} />
                   <Bar dataKey="Anotados" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={40} />
                   <Bar dataKey="Recibidos" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={40} />
@@ -1095,7 +1227,7 @@ function Temporada() {
               <div className="stat-label" style={{ marginBottom: '10px', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ADN DEL EQUIPO <InfoBox texto="Perfil táctico general del equipo normalizado de 0 a 100. Ayuda a entender cuál es tu modelo de juego predominante real." /></div>
               <ResponsiveContainer width="100%" height={250}>
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={dataRadar}>
-                  <PolarGrid stroke="#333" />
+                  <PolarGrid stroke="var(--border)" />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-dim)', fontSize: 10, fontWeight: 700 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                   <Radar name="Equipo" dataKey="A" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.4} />
@@ -1169,7 +1301,7 @@ function Temporada() {
               vacio="No hay suficientes datos de rotaciones."
               getId={(q) => q.ids.join('-')}
               getTitulo={(q) => '[' + q.ids.map(id => { const jug = jugadores.find(j => String(j.id) === String(id)); return jug ? (jug.apellido ? jug.apellido.toUpperCase() : (jug.nombre ? jug.nombre.toUpperCase() : 'S/N')) : id; }).join(' - ') + ']'}
-              colorCelda={(q, col) => col.k === 'rat' ? (q.balanceRating >= 5.5 ? 'var(--accent)' : '#ef4444') : '#fff'}
+              colorCelda={(q, col) => col.k === 'rat' ? (q.balanceRating >= 5.5 ? 'var(--accent)' : '#ef4444') : 'var(--text)'}
             >
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '20px', color: 'var(--accent)', display: 'flex', alignItems: 'center' }}>
@@ -1179,7 +1311,7 @@ function Temporada() {
               <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
                       <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETO</th>
                       <th style={{ color: '#00ff88' }} title="Goles a Favor / En Contra">GOL</th>
                       <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
@@ -1208,7 +1340,7 @@ function Temporada() {
                       }).join(' - ');
 
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: 'var(--text)', fontSize: '0.7rem' }}>
                             [{nombresQuinteto}]
                           </td>
@@ -1244,7 +1376,7 @@ function Temporada() {
               vacio="No hay suficientes datos de rotaciones."
               getId={(q) => q.ids.join('-')}
               getTitulo={(q) => '[' + q.ids.map(id => { const jug = jugadores.find(j => String(j.id) === String(id)); return jug ? (jug.apellido ? jug.apellido.toUpperCase() : (jug.nombre ? jug.nombre.toUpperCase() : 'S/N')) : id; }).join(' - ') + ']'}
-              colorCelda={(q, col) => col.k === 'rat' ? '#ef4444' : '#fff'}
+              colorCelda={(q, col) => col.k === 'rat' ? '#ef4444' : 'var(--text)'}
             >
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '20px', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
@@ -1254,7 +1386,7 @@ function Temporada() {
               <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
                       <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETO</th>
                       <th style={{ color: '#00ff88' }} title="Goles a Favor / En Contra">GOL</th>
                       <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
@@ -1283,7 +1415,7 @@ function Temporada() {
                       }).join(' - ');
 
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: 'var(--text)', fontSize: '0.7rem' }}>
                             [{nombresQuinteto}]
                           </td>
@@ -1341,16 +1473,16 @@ function Temporada() {
                        </div>
                      )
                   })}
-                  {analiticaGlobal.historialPartidos.length === 0 && <span style={{ fontSize: '0.7rem', color: '#555' }}>S/D</span>}
+                  {analiticaGlobal.historialPartidos.length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>S/D</span>}
                </div>
 
                <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', maxHeight: esMovil ? '400px' : 'auto', paddingRight: '5px' }}>
                   {analiticaGlobal.historialPartidos.map(p => {
-                    let badgeColor = '#333'; 
+                    let badgeColor = 'var(--border)'; 
                     let textColor = 'var(--text-dim)';
                     let text = 'E';
                     let bgTinte = 'transparent';
-                    let borderLeft = '4px solid #333';
+                    let borderLeft = '4px solid var(--border)';
 
                     if (p.resultado === 'V') { 
                       badgeColor = 'rgba(0, 255, 136, 0.15)'; 
@@ -1380,7 +1512,7 @@ function Temporada() {
                     const escudoRival = partidoOriginal?.escudo_rival;
 
                     return (
-                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0a0a0a', backgroundImage: bgTinte, padding: '12px 15px', border: '1px solid var(--border)', borderLeft: borderLeft, borderRadius: '6px', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.transform = 'translateX(5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateX(0px)'}>
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', backgroundImage: bgTinte, padding: '12px 15px', border: '1px solid var(--border)', borderLeft: borderLeft, borderRadius: '6px', transition: 'transform 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.transform = 'translateX(5px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateX(0px)'}>
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                           <div style={{ background: badgeColor, color: textColor, fontWeight: 900, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', fontSize: '1rem', border: `1px solid ${textColor}`, flexShrink: 0 }}>
@@ -1389,11 +1521,11 @@ function Temporada() {
                           
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                              {escudoPropio ? <img src={escudoPropio} style={{width:'20px',height:'20px',objectFit:'contain', filter:'grayscale(1) brightness(2)'}} alt="MI" /> : <div style={{width:'20px',height:'20px',borderRadius:'50%',background:'#222',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.55rem',border:'1px solid var(--accent)',color:'var(--accent)'}}>MI</div>}
+                              {escudoPropio ? <img src={escudoPropio} style={{width:'20px',height:'20px',objectFit:'contain', filter:'grayscale(1) brightness(2)'}} alt="MI" /> : <div style={{width:'20px',height:'20px',borderRadius:'50%',background:'var(--panel)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.55rem',border:'1px solid var(--accent)',color:'var(--accent)'}}>MI</div>}
                               <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text)', letterSpacing: '0.5px' }}>
                                 vs {p.rival.toUpperCase()}
                               </div>
-                              {escudoRival ? <img src={escudoRival} style={{width:'20px',height:'20px',objectFit:'contain', filter:'grayscale(1) brightness(2)'}} alt="RIVAL" /> : <div style={{width:'20px',height:'20px',borderRadius:'50%',background:'#222',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.55rem',border:'1px solid #555',color:'#fff'}}>{p.rival?.substring(0,2).toUpperCase()}</div>}
+                              {escudoRival ? <img src={escudoRival} style={{width:'20px',height:'20px',objectFit:'contain', filter:'grayscale(1) brightness(2)'}} alt="RIVAL" /> : <div style={{width:'20px',height:'20px',borderRadius:'50%',background:'var(--panel)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.55rem',border:'1px solid var(--border)',color:'var(--text)'}}>{p.rival?.substring(0,2).toUpperCase()}</div>}
                             </div>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
                               <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
@@ -1409,9 +1541,9 @@ function Temporada() {
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
                           <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '1px', marginBottom: '2px' }}>RESULTADO</div>
                           <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: '4px', fontSize: '1.3rem', fontWeight: 900, color: 'var(--text)', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span style={{ color: p.golesPropio > p.golesRival ? 'var(--accent)' : '#fff' }}>{p.golesPropio}</span>
-                            <span style={{ color: '#555', fontSize: '1rem' }}>-</span>
-                            <span style={{ color: p.golesRival > p.golesPropio ? '#ef4444' : '#fff' }}>{p.golesRival}</span>
+                            <span style={{ color: p.golesPropio > p.golesRival ? 'var(--accent)' : 'var(--text)' }}>{p.golesPropio}</span>
+                            <span style={{ color: 'var(--text-dim)', fontSize: '1rem' }}>-</span>
+                            <span style={{ color: p.golesRival > p.golesPropio ? '#ef4444' : 'var(--text)' }}>{p.golesRival}</span>
                           </div>
                         </div>
 
@@ -1438,8 +1570,9 @@ function Temporada() {
                   </select>
 
                   <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
-                    <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
-                    <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
+                    <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, background: tipoMapa === 'puntos' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
+                    <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, background: tipoMapa === 'calor' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
+                    <button onClick={() => setTipoMapa('zonas')} style={{ ...btnTab, background: tipoMapa === 'zonas' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'zonas' ? 'var(--accent)' : 'var(--text-dim)' }}>ZONAS</button>
                     <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSICIONES</button>
                   </div>
                 </div>
@@ -1473,6 +1606,10 @@ function Temporada() {
                       />
                     )
                   })}
+
+                  {tipoMapa === 'zonas' && (
+                     <MallaTacticaInteractiva eventos={evMapa} maxCount={Math.max(15, Math.floor(evMapa.length / 10))} />
+                  )}
 
                   {tipoMapa === 'transiciones' && (
                     <svg style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }}>
@@ -1542,7 +1679,7 @@ function Temporada() {
                 }
               }}
               style={{
-                background: '#00e676', color: '#000', border: 'none',
+                background: 'var(--accent)', color: '#000', border: 'none',
                 padding: '10px 20px', fontWeight: 900, cursor: 'pointer',
                 borderRadius: '4px', fontSize: '0.85rem'
               }}
@@ -1582,9 +1719,9 @@ const selectFilterStyle = {
   cursor: 'pointer'
 };
 
-const rankingRowSmall = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid #222', fontSize: '0.75rem', fontWeight: 600 };
+const rankingRowSmall = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 600 };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
-const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontSize: '0.9rem', alignItems: 'center' };
+const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)', fontSize: '0.9rem', alignItems: 'center' };
 const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };
 
 export default Temporada;

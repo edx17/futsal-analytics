@@ -51,8 +51,8 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
           width: 44,
           height: 44,
           borderRadius: 10,
-          background: abierto ? '#1a1a1a' : '#111',
-          border: `1px solid ${abierto ? 'var(--accent, #00e676)' : '#333'}`,
+          background: abierto ? 'var(--hover)' : 'var(--panel)',
+          border: `1px solid ${abierto ? 'var(--accent, #00e676)' : 'var(--border)'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -80,7 +80,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid #000',
+              border: '2px solid var(--panel)',
               boxSizing: 'content-box',
             }}
           >
@@ -106,8 +106,8 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
               maxWidth: 'calc(100vw - 24px)',
               maxHeight: 420,
               overflowY: 'auto',
-              background: '#111',
-              border: '1px solid #333',
+              background: 'var(--panel)',
+              border: '1px solid var(--border)',
               borderRadius: 12,
               boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
               zIndex: 1000,
@@ -139,7 +139,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                     textDecoration: 'none',
                     color: 'inherit',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#1a1a1a'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   <span
@@ -156,7 +156,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                     <small style={{ color: 'var(--accent, #00e676)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       {ETIQUETA_CATEGORIA[a.categoria] || a.categoria}
                     </small>
-                    <p style={{ margin: '2px 0 0', color: '#fff', fontSize: '0.85rem', lineHeight: 1.35 }}>
+                    <p style={{ margin: '2px 0 0', color: 'var(--text)', fontSize: '0.85rem', lineHeight: 1.35 }}>
                       {a.titulo}
                     </p>
                   </div>
@@ -168,9 +168,9 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                     }}
                     aria-label="Descartar"
                     style={{
-                      background: '#1a1a1a',
-                      border: '1px solid #333',
-                      color: '#888',
+                      background: 'var(--hover)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-dim)',
                       borderRadius: 6,
                       width: 22,
                       height: 22,
@@ -186,7 +186,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
               ))}
 
             {pushEstado !== 'no-soportado' && (
-              <div style={{ borderTop: '1px solid #222', marginTop: 6, paddingTop: 8 }}>
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: 6, paddingTop: 8 }}>
                 {pushEstado === 'activo' ? (
                   <p style={{ margin: 0, padding: '4px 8px', fontSize: '0.75rem', color: 'var(--accent, #00e676)', textAlign: 'center' }}>
                     🔔 Notificaciones activadas en este dispositivo
@@ -198,7 +198,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                     style={{
                       width: '100%',
                       background: 'transparent',
-                      border: '1px dashed #333',
+                      border: '1px dashed var(--border)',
                       color: 'var(--text-dim, #888)',
                       borderRadius: 8,
                       padding: '8px 10px',

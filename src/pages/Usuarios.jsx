@@ -285,13 +285,13 @@ function Usuarios() {
           <div style={{ display: 'flex', background: 'var(--bg)', borderRadius: '8px', padding: '5px', border: '1px solid var(--border)' }}>
             <button 
               onClick={() => setTabActiva('usuarios')} 
-              style={{ ...tabBtnStyle, background: tabActiva === 'usuarios' ? '#c084fc' : 'transparent', color: tabActiva === 'usuarios' ? '#000' : '#888' }}
+              style={{ ...tabBtnStyle, background: tabActiva === 'usuarios' ? '#c084fc' : 'transparent', color: tabActiva === 'usuarios' ? '#000' : 'var(--text-dim)' }}
             >
               👥 Usuarios ({usuarios.length})
             </button>
             <button 
               onClick={() => setTabActiva('clubes')} 
-              style={{ ...tabBtnStyle, background: tabActiva === 'clubes' ? '#c084fc' : 'transparent', color: tabActiva === 'clubes' ? '#000' : '#888' }}
+              style={{ ...tabBtnStyle, background: tabActiva === 'clubes' ? '#c084fc' : 'transparent', color: tabActiva === 'clubes' ? '#000' : 'var(--text-dim)' }}
             >
               🛡️ Clubes ({clubes.length})
             </button>
@@ -371,7 +371,7 @@ function Usuarios() {
               <div className="table-wrapper">
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', textAlign: 'left' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', textAlign: 'left' }}>
                       <th style={{ padding: '10px' }}>USUARIO / EMAIL</th>
                       <th style={{ padding: '10px' }}>NOMBRE</th>
                       <th style={{ padding: '10px' }}>ROL</th>
@@ -381,7 +381,7 @@ function Usuarios() {
                   </thead>
                   <tbody>
                     {usuarios.map(u => (
-                      <tr key={u.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
+                      <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '12px 10px' }}>
                           <div style={{ fontWeight: 800, color: 'var(--accent)' }}>{u.username || 'Sin Username'}</div>
                           {u.email && <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{u.email}</div>}
@@ -390,7 +390,7 @@ function Usuarios() {
                         <td style={{ padding: '12px 10px' }}>
                           <span style={{
                             fontSize: '0.65rem', padding: '4px 8px', borderRadius: '4px', fontWeight: 800,
-                            background: u.rol === 'superuser' ? '#c084fc' : u.rol === 'manager' ? '#f97316' : u.rol === 'admin' ? '#3b82f6' : u.rol === 'ct' ? '#10b981' : '#222',
+                            background: u.rol === 'superuser' ? '#c084fc' : u.rol === 'manager' ? '#f97316' : u.rol === 'admin' ? '#3b82f6' : u.rol === 'ct' ? '#10b981' : 'var(--panel)',
                             color: u.rol === 'jugador' ? 'var(--text-dim)' : '#000'
                           }}>
                             {u.rol?.toUpperCase()}
@@ -481,7 +481,7 @@ function Usuarios() {
               <div className="table-wrapper">
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', textAlign: 'left' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', textAlign: 'left' }}>
                       <th style={{ padding: '10px' }}>CLUB</th>
                       <th style={{ padding: '10px' }}>ESTADO / PLAN</th>
                       <th style={{ padding: '10px' }}>VENCIMIENTO</th>
@@ -495,7 +495,7 @@ function Usuarios() {
                       const estadoAprobado = c.suscripcion_activa && !estaVencido;
                       
                       return (
-                        <tr key={c.id} style={{ borderBottom: '1px solid #1a1a1a' }}>
+                        <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '12px 10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             {c.escudo_url ? (
                               <img src={c.escudo_url} alt="Escudo" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
@@ -515,7 +515,7 @@ function Usuarios() {
                           <td style={{ padding: '12px 10px', color: estaVencido ? '#ef4444' : 'var(--text-dim)' }}>
                             {c.fecha_vencimiento ? new Date(c.fecha_vencimiento).toLocaleDateString('es-AR') : 'Sin Límite'}
                           </td>
-                          <td style={{ padding: '12px 10px', fontFamily: 'monospace', fontSize: '0.7rem', color: '#666' }}>
+                          <td style={{ padding: '12px 10px', fontFamily: 'monospace', fontSize: '0.7rem', color: 'var(--text-dim)' }}>
                             {c.id.split('-')[0]}...
                           </td>
                           <td style={{ padding: '12px 10px' }}>
@@ -541,14 +541,14 @@ function Usuarios() {
       {usuarioEnEdicion && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', animation: 'fadeIn 0.2s' }}>
           <div className="bento-card custom-scroll" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--accent)', position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>EDITAR USUARIO</div>
               <button onClick={() => setUsuarioEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             </div>
             
             <form onSubmit={guardarEdicionUsuario} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {/* Contenido del modal (igual al que ya tenías) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: '#0a0a0a', padding: '15px', borderRadius: '4px', border: '1px dashed #333' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', background: 'var(--panel)', padding: '15px', borderRadius: '4px', border: '1px dashed var(--border)' }}>
                 <div>
                   <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block' }}>USERNAME</label>
                   <div style={{ color: 'var(--accent)', fontWeight: 800, fontSize: '0.9rem' }}>{usuarioEnEdicion.username || '-'}</div>
@@ -591,7 +591,7 @@ function Usuarios() {
               {usuarioEnEdicion.rol === 'ct' && (
                 <div className="input-field" style={{ gridColumn: 'span 2' }}>
                   <label style={labelStyle}>CATEGORÍAS ASIGNADAS (Filtra la vista del CT)</label>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: '#0a0a0a', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: 'var(--panel)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                     {['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', '2016', '2017', '2018', '2019'].map(cat => {
                       const checked = (usuarioEnEdicion.categorias_asignadas || []).includes(cat);
                       return (
@@ -619,7 +619,7 @@ function Usuarios() {
       {clubEnEdicion && esSuperUser && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px', animation: 'fadeIn 0.2s' }}>
           <div className="bento-card custom-scroll" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #c084fc', position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#c084fc' }}>EDITAR CLUB</div>
               <button onClick={() => setClubEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             </div>
@@ -677,7 +677,7 @@ function Usuarios() {
 // Estilos reutilizables
 const labelStyle = { fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '5px', display: 'block', fontWeight: 'bold' };
 const inputStyle = { width: '100%', padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none', fontSize: '16px' };
-const btnIconoClaro = { background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', transition: '0.2s' };
+const btnIconoClaro = { background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', transition: '0.2s' };
 const btnIconoRojo = { background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', transition: '0.2s' };
 const tabBtnStyle = { padding: '8px 15px', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' };
 

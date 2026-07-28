@@ -1194,7 +1194,7 @@ function JugadorPerfil() {
                   </div>
                   <StatRow label="Faltas cometidas" value={perfil.stats.faltasCometidas} sub={`(${(perfil.stats.faltasCometidas * factor40).toFixed(1)} p40)`} />
                   <StatRow label="Faltas recibidas" value={perfil.stats.faltasRecibidas} sub={`(${(perfil.stats.faltasRecibidas * factor40).toFixed(1)} p40)`} color="#00ff88" />
-                  <StatRow label="Sanciones pendientes" value={perfil.stats.sancPend} color={perfil.stats.sancPend > 0 ? '#ef4444' : '#fff'} border={false} />
+                  <StatRow label="Sanciones pendientes" value={perfil.stats.sancPend} color={perfil.stats.sancPend > 0 ? '#ef4444' : 'var(--text)'} border={false} />
                 </div>
               </div>
 
@@ -1314,7 +1314,7 @@ function JugadorPerfil() {
                       <StatRow label="Asistencias a gol" value={perfil.stats.asistencias} color="#00ff88" />
                       <StatRow label="Pases clave" value={perfil.stats.pasesClave} color="#c084fc" />
                       <StatRow label="Cortes / recuperaciones" value={perfil.stats.recuperaciones} color="#fbbf24" />
-                      <StatRow label="Pérdidas en salida" value={perfil.stats.perdidasPeligrosas} color={perfil.stats.perdidasPeligrosas > 2 ? '#ef4444' : '#fff'} border={false} />
+                      <StatRow label="Pérdidas en salida" value={perfil.stats.perdidasPeligrosas} color={perfil.stats.perdidasPeligrosas > 2 ? '#ef4444' : 'var(--text)'} border={false} />
                     </div>
 
                     <div className="bento-card jp-section">
@@ -1355,7 +1355,7 @@ function JugadorPerfil() {
                       <StatRow label="Goles menos xG (G-xG)" value={(perfil.stats.goles - perfil.stats.xG).toFixed(1)} color={(perfil.stats.goles - perfil.stats.xG) >= 0 ? '#00ff88' : '#ef4444'} />
                       <StatRow label="Remates totales" value={perfil.stats.remates} sub={`(${(perfil.stats.remates * factor40).toFixed(1)} p40)`} />
                       <StatRow label="% Remates al arco" value={`${perfil.stats.pctArco.toFixed(0)}%`} color="#0ea5e9" sub={`${perfil.stats.goles + perfil.stats.atajados} al arco`} />
-                      <StatRow label="Ocasiones falladas" value={perfil.stats.ocasionesFalladas} color={perfil.stats.ocasionesFalladas > 2 ? '#ef4444' : '#888'} />
+                      <StatRow label="Ocasiones falladas" value={perfil.stats.ocasionesFalladas} color={perfil.stats.ocasionesFalladas > 2 ? '#ef4444' : 'var(--text-dim)'} />
                       <StatRow label="Asistencias a gol" value={perfil.stats.asistencias} color="#c084fc" sub={`A/PJ: ${perfil.stats.aPorPJ.toFixed(2)}`} />
                       <StatRow label="Pases clave" value={perfil.stats.pasesClave} color="#c084fc" />
                       
@@ -1416,7 +1416,7 @@ function JugadorPerfil() {
                                   <Cell key={`cell-${i}`} fill={COLORS_REMATES[entry.name] || '#555'} />
                                 ))}
                               </Pie>
-                              <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '6px' }} itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }} />
+                              <RechartsTooltip contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px' }} itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }} />
                               <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
                             </PieChart>
                           </ResponsiveContainer>

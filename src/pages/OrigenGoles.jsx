@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabase';
-import { useAuth } from '../context/AuthContext'; // NUEVO: Importamos el contexto para saber quién es
-import { calcularXGEvento } from '../analytics/xg'; // Modelo de xG en vivo (mismo que usa el engine)
+import { useAuth } from '../context/AuthContext'; 
+import { calcularXGEvento } from '../analytics/xg'; 
 import { TablaResponsive } from '../components/TablaResponsive';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ComposedChart, Line
 } from 'recharts';
 
-// --- COMPONENTE TOOLTIP UX (CLICK/TOUCH) ---
 const InfoBox = ({ texto }) => {
   const [abierto, setAbierto] = useState(false);
 
@@ -34,16 +33,13 @@ const InfoBox = ({ texto }) => {
 };
 
 function OrigenGoles() {
-  const { perfil } = useAuth(); // Obtenemos el perfil del usuario activo
+  const { perfil } = useAuth(); 
   
-  // Lógica de roles y categorías permitidas
   const rol = (perfil?.rol || '').toLowerCase();
   const esCT = rol === 'ct';
   const esSuperUser = rol === 'superuser';
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
-  // Resolución de club igual que Inicio.jsx / Disciplina.jsx: el superuser lee el club elegido
-  // del localStorage; el kiosco usa el suyo; el resto, su propio club_id.
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
   const clubId = isKioscoMode
     ? localStorage.getItem('kiosco_club_id')
@@ -55,7 +51,6 @@ function OrigenGoles() {
   const [torneos, setTorneos] = useState([]);
   const [cargando, setCargando] = useState(true); 
   
-  // Inicializamos el filtro priorizando la categoría asignada si es CT
   const [filtroCategoria, setFiltroCategoria] = useState(() => {
     if (esCT && misCategorias.length > 0) return misCategorias[0];
     return 'Todas';
@@ -64,8 +59,6 @@ function OrigenGoles() {
   const [filtroTorneo, setFiltroTorneo] = useState('');
   const [filtroEquipo, setFiltroEquipo] = useState('Propio');
 
-  // --- EFECTO DE PROTECCIÓN CT ---
-  // Si por algún motivo cambia el estado y es CT, lo forzamos a sus categorías
   useEffect(() => {
     if (esCT && misCategorias.length > 0) {
       if (filtroCategoria === 'Todas' || !misCategorias.includes(filtroCategoria)) {
@@ -79,8 +72,7 @@ function OrigenGoles() {
       try {
         setCargando(true);
         if (!clubId) { setPartidos([]); setJugadores([]); setEventos([]); setTorneos([]); setCargando(false); return; }
-        // Scopeamos SIEMPRE por club_id: el superuser cambia de club desde el switcher y RLS
-        // por sí sola le devolvería goles de todos los clubes mezclados.
+        
         const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria, torneo_id').eq('club_id', clubId);
         const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal').eq('club_id', clubId);
         const { data: t } = await supabase.from('torneos').select('id, nombre, categoria').eq('club_id', clubId);
@@ -121,30 +113,25 @@ function OrigenGoles() {
     obtenerDatos();
   }, [clubId]);
 
-  // Filtramos las opciones del select según el rol
   const categoriasUnicas = useMemo(() => {
     const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
     if (esCT && misCategorias.length > 0) {
-      // El CT solo ve las que tiene asignadas Y que además existan en la DB
       return catPartidos.filter(c => misCategorias.includes(c));
     }
     return catPartidos;
   }, [partidos, esCT, misCategorias]);
 
-  // Torneos disponibles para la categoría elegida
   const torneosFiltrados = useMemo(() => {
     if (filtroCategoria === 'Todas') return torneos;
     return torneos.filter(t => !t.categoria || t.categoria === filtroCategoria);
   }, [torneos, filtroCategoria]);
 
-  // --- MOTOR DE PROCESAMIENTO (DATA SCIENCE) ---
-  // Parametrizado por equipo para poder calcular "a favor" y "en contra" en paralelo.
   const mapaPartidos = useMemo(() => {
     const m = new Map(); partidos.forEach(p => m.set(p.id, p)); return m;
   }, [partidos]);
 
   const analizarEquipo = useCallback((equipo) => {
-    const vacio = { total: 0, conteoOrigen: {}, dataPieOrigen: [], dataBarTiempo: [], topConexiones: [], pctAsistidos: 0, distPromedio: 0, xgTotal: 0, xgPromedio: 0, difDefinicion: 0, contextoBuckets: { Igualdad: 0, Superioridad: 0, Inferioridad: 0 }, modificadores: [], tablaGoles: [], mapaGoles: [] };
+    const vacio = { total: 0, conteoOrigen: {}, macroTactico: { Posicional: 0, Transiciones: 0, ABP: 0 }, dataEfectividadOrigen: [], dataPieOrigen: [], dataBarTiempo: [], topConexiones: [], pctAsistidos: 0, distPromedio: 0, xgTotal: 0, xgPromedio: 0, difDefinicion: 0, contextoBuckets: { Igualdad: 0, Superioridad: 0, Inferioridad: 0 }, modificadores: [], tablaGoles: [], mapaGoles: [] };
     if (!eventos || eventos.length === 0) return vacio;
 
     const golesFiltrados = eventos.filter(ev => {
@@ -160,6 +147,10 @@ function OrigenGoles() {
       'Córner': 0, 'Lateral': 0, 'Tiro Libre': 0, 'Penal / Sexta Falta': 0, '5v4 / 4v3': 0, '4v5 / 3v4': 0, 'No Especificado': 0
     };
 
+    const statsPorOrigen = {};
+
+    const macroTactico = { Posicional: 0, Transiciones: 0, ABP: 0 };
+
     const binsTiempo = {
       'PT 0-10': 0, 'PT 10-20': 0, 'PT 20+': 0,
       'ST 0-10': 0, 'ST 10-20': 0, 'ST 20+': 0
@@ -167,7 +158,6 @@ function OrigenGoles() {
 
     const conexiones = {};
 
-    // Contexto numérico (desde la óptica de mi club) y modificadores de definición
     const contextoBuckets = { Igualdad: 0, Superioridad: 0, Inferioridad: 0 };
     const MODIFS = ['2do Palo', 'Mano a Mano', 'Punteo', 'Arq. Adelantado', 'De Espaldas', 'Bajo Presión'];
     const modifBuckets = Object.fromEntries(MODIFS.map(m => [m, 0]));
@@ -180,19 +170,19 @@ function OrigenGoles() {
     const mapaGoles = [];
 
     golesFiltrados.forEach(gol => {
-      // origen_gol viene compuesto desde TomaDatos: "Base | Modificador | Modificador".
-      // Tomamos el primer segmento como origen real; sin esto, todo gol con modificador
-      // caía mal en "No Especificado".
       const partes = (gol.origen_gol || 'No Especificado').split('|').map(s => s.trim());
       const origen = partes[0] || 'No Especificado';
+      
       if (conteoOrigen[origen] !== undefined) conteoOrigen[origen]++;
       else conteoOrigen['No Especificado']++;
 
-      // Modificadores de definición (2do palo, mano a mano, punteo, arq. adelantado, etc.)
+      if (origen === 'Ataque Posicional' || origen === '5v4 / 4v3') macroTactico.Posicional++;
+      else if (['Contraataque', 'Recuperación Alta', 'Error No Forzado'].includes(origen)) macroTactico.Transiciones++;
+      else if (['Córner', 'Lateral', 'Tiro Libre', 'Penal / Sexta Falta'].includes(origen)) macroTactico.ABP++;
+
       const modsDelGol = partes.slice(1);
       MODIFS.forEach(m => { if (modsDelGol.includes(m)) modifBuckets[m]++; });
 
-      // Contexto numérico, SIEMPRE desde la óptica de mi club (5v4 = yo con un hombre de más)
       const ctx = gol.contexto_juego || '';
       if (ctx === '5v4' || ctx === '4v3') contextoBuckets.Superioridad++;
       else if (ctx === '4v5' || ctx === '3v4') contextoBuckets.Inferioridad++;
@@ -233,8 +223,6 @@ function OrigenGoles() {
         sumaDistancia += dist;
         golesConDistancia++;
 
-        // xG en vivo con el mismo modelo del engine (analytics/xg.js).
-        // Pasamos las coords ya normalizadas (atacando hacia x=100) y marcamos transición por origen.
         const esTransicion = origen === 'Contraataque' || origen === 'Recuperación Alta';
         xgGol = calcularXGEvento({ ...gol, zona_x_norm: xNorm, zona_y_norm: yNorm }, esTransicion);
         xgTotal += xgGol;
@@ -244,9 +232,17 @@ function OrigenGoles() {
       } else {
         mapaGoles.push({ ...gol, x: null, y: null, distancia: null, xgCalc: null });
       }
+
+      if (!statsPorOrigen[origen]) statsPorOrigen[origen] = { name: origen, Goles: 0, xG: 0 };
+      statsPorOrigen[origen].Goles++;
+      if (xgGol != null) statsPorOrigen[origen].xG += xgGol;
     });
 
     const dataPieOrigen = Object.entries(conteoOrigen).filter(([_, v]) => v > 0).map(([name, value]) => ({ name, value }));
+    const dataEfectividadOrigen = Object.values(statsPorOrigen)
+      .map(d => ({ ...d, xG: Number(d.xG.toFixed(2)) }))
+      .sort((a, b) => b.Goles - a.Goles);
+
     const dataBarTiempo = Object.entries(binsTiempo).map(([name, value]) => ({ name, Goles: value }));
     const topConexiones = Object.values(conexiones).sort((a,b) => b.cantidad - a.cantidad).slice(0, 5);
 
@@ -254,7 +250,7 @@ function OrigenGoles() {
     const pctAsistidos = total > 0 ? ((golesAsistidos / total) * 100).toFixed(0) : 0;
     const distPromedio = golesConDistancia > 0 ? (sumaDistancia / golesConDistancia).toFixed(1) : 0;
     const xgPromedio = golesConXg > 0 ? (xgTotal / golesConXg) : 0;
-    const difDefinicion = total - xgTotal; // goles reales vs lo esperado por la chance
+    const difDefinicion = total - xgTotal;
 
     const tablaGoles = mapaGoles.map(g => {
       const p = mapaPartidos.get(g.id_partido);
@@ -280,13 +276,11 @@ function OrigenGoles() {
 
     const modificadores = MODIFS.map(m => ({ name: m, value: modifBuckets[m] })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
 
-    return { total, conteoOrigen, dataPieOrigen, dataBarTiempo, topConexiones, pctAsistidos, distPromedio, xgTotal, xgPromedio, difDefinicion, contextoBuckets, modificadores, tablaGoles, mapaGoles };
+    return { total, conteoOrigen, macroTactico, dataEfectividadOrigen, dataPieOrigen, dataBarTiempo, topConexiones, pctAsistidos, distPromedio, xgTotal, xgPromedio, difDefinicion, contextoBuckets, modificadores, tablaGoles, mapaGoles };
   }, [eventos, mapaPartidos, jugadores, filtroCategoria, filtroTorneo]);
 
-  // Vista principal (sigue el toggle a favor / en contra)
   const dataAnalizada = useMemo(() => analizarEquipo(filtroEquipo), [analizarEquipo, filtroEquipo]);
 
-  // Comparativa SIEMPRE a favor vs en contra, sin importar el toggle: el contraste es el insight.
   const comparativa = useMemo(() => {
     const af = analizarEquipo('Propio');
     const ec = analizarEquipo('Rival');
@@ -338,7 +332,6 @@ function OrigenGoles() {
           <div>
             <div className="stat-label">ORIGEN DE LOS GOLES</div>
             <select value={filtroCategoria} onChange={(e) => { setFiltroCategoria(e.target.value); setFiltroTorneo(''); }} style={selectStyle}>
-              {/* Solo mostramos "Todas" si NO es CT, o si es CT pero por alguna razón no tiene categorías */}
               {!(esCT && misCategorias.length > 0) && (
                 <option value="Todas">TODAS LAS CATEGORÍAS</option>
               )}
@@ -365,11 +358,36 @@ function OrigenGoles() {
       {cargando ? (
         <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-dim)' }}>PROCESANDO DATOS...</div>
       ) : dataAnalizada.total === 0 ? (
-        <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-dim)', padding: '40px', background: 'var(--panel)', borderRadius: '12px', border: '1px dashed #333' }}>
+        <div style={{ textAlign: 'center', marginTop: '50px', color: 'var(--text-dim)', padding: '40px', background: 'var(--panel)', borderRadius: '12px', border: '1px dashed var(--border)' }}>
           NO HAY GOLES REGISTRADOS CON ESTOS FILTROS.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+          {/* MACRO TÁCTICO */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+             <div className="bento-card" style={{ textAlign: 'center', padding: '15px', borderTop: '3px solid #3b82f6', background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%)' }}>
+                <div className="stat-label">ATAQUE POSICIONAL <InfoBox texto="Goles generados construyendo desde nuestra mitad o ataque de 5v4." /></div>
+                <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#3b82f6' }}>{dataAnalizada.macroTactico.Posicional}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 700 }}>
+                  {dataAnalizada.total > 0 ? ((dataAnalizada.macroTactico.Posicional / dataAnalizada.total) * 100).toFixed(1) : 0}% DEL TOTAL
+                </div>
+             </div>
+             <div className="bento-card" style={{ textAlign: 'center', padding: '15px', borderTop: '3px solid #f59e0b', background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.05) 0%, transparent 100%)' }}>
+                <div className="stat-label">TRANSICIONES <InfoBox texto="Goles generados de Contraataque, Recuperaciones Altas o Errores del rival." /></div>
+                <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#f59e0b' }}>{dataAnalizada.macroTactico.Transiciones}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 700 }}>
+                  {dataAnalizada.total > 0 ? ((dataAnalizada.macroTactico.Transiciones / dataAnalizada.total) * 100).toFixed(1) : 0}% DEL TOTAL
+                </div>
+             </div>
+             <div className="bento-card" style={{ textAlign: 'center', padding: '15px', borderTop: '3px solid #06b6d4', background: 'linear-gradient(180deg, rgba(6, 182, 212, 0.05) 0%, transparent 100%)' }}>
+                <div className="stat-label">PELOTA PARADA (ABP) <InfoBox texto="Goles generados de Córner, Lateral, Tiro Libre o Penal." /></div>
+                <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#06b6d4' }}>{dataAnalizada.macroTactico.ABP}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 700 }}>
+                  {dataAnalizada.total > 0 ? ((dataAnalizada.macroTactico.ABP / dataAnalizada.total) * 100).toFixed(1) : 0}% DEL TOTAL
+                </div>
+             </div>
+          </div>
 
           {/* KPIs SUPERIORES */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
@@ -400,29 +418,52 @@ function OrigenGoles() {
              </div>
           </div>
 
-          {/* COMPARATIVA A FAVOR vs EN CONTRA POR ORIGEN */}
-          {comparativa.data.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+            
+            {/* GOLES VS xG POR ORIGEN */}
             <div className="bento-card">
               <div className="stat-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
-                ADN COMPARADO: CÓMO MARCAMOS vs CÓMO NOS HACEN <InfoBox texto="Goles a favor (verde) y en contra (rojo) según cómo se gestaron. El contraste muestra de qué nos hacen daño y de qué lastimamos nosotros." />
+                EFECTIVIDAD POR ORIGEN (GOLES VS xG) <InfoBox texto="Cruza los goles marcados (Barras) con el peligro real que acarreaban (Línea). Si la barra está muy por encima de la línea, convertiste chances muy difíciles. Si la línea supera a la barra, generás peligro ahí pero te cuesta embocarla." />
               </div>
-              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px', fontSize: '0.8rem' }}>
-                <span style={{ color: '#00ff88', fontWeight: 800 }}>● A favor: {comparativa.totalAF} goles <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({comparativa.xgAF.toFixed(1)} xG)</span></span>
-                <span style={{ color: '#ef4444', fontWeight: 800 }}>● En contra: {comparativa.totalEC} goles <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({comparativa.xgEC.toFixed(1)} xG)</span></span>
-              </div>
-              <ResponsiveContainer width="100%" height={Math.max(220, comparativa.data.length * 42)}>
-                <BarChart data={comparativa.data} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={false} />
-                  <XAxis type="number" stroke="#555" tick={{ fill: '#888', fontSize: 11 }} allowDecimals={false} />
-                  <YAxis type="category" dataKey="name" stroke="#555" tick={{ fill: '#aaa', fontSize: 10, fontWeight: 700 }} width={120} />
-                  <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)' }} />
-                  <Legend wrapperStyle={{ fontSize: '11px' }} iconType="circle" />
-                  <Bar dataKey="A favor" fill="#00ff88" radius={[0, 3, 3, 0]} barSize={13} />
-                  <Bar dataKey="En contra" fill="#ef4444" radius={[0, 3, 3, 0]} barSize={13} />
-                </BarChart>
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={dataAnalizada.dataEfectividadOrigen} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 10, fontWeight: 700 }} angle={-25} textAnchor="end" height={60} />
+                  <YAxis yAxisId="left" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" stroke="var(--border)" tick={{ fill: '#a855f7', fontSize: 11 }} />
+                  <RechartsTooltip cursor={{ fill: 'var(--hover)' }} contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '15px' }} />
+                  <Bar yAxisId="left" dataKey="Goles" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={30} />
+                  <Line yAxisId="right" type="monotone" dataKey="xG" stroke="#a855f7" strokeWidth={3} dot={{ r: 5, fill: '#a855f7', stroke: 'var(--panel)' }} activeDot={{ r: 8 }} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
-          )}
+
+            {/* COMPARATIVA A FAVOR vs EN CONTRA POR ORIGEN */}
+            {comparativa.data.length > 0 && (
+              <div className="bento-card">
+                <div className="stat-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
+                  ADN COMPARADO: CÓMO MARCAMOS vs CÓMO NOS HACEN <InfoBox texto="Goles a favor (verde) y en contra (rojo) según cómo se gestaron. El contraste muestra de qué nos hacen daño y de qué lastimamos nosotros." />
+                </div>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px', fontSize: '0.8rem' }}>
+                  <span style={{ color: '#00ff88', fontWeight: 800 }}>● A favor: {comparativa.totalAF} goles <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({comparativa.xgAF.toFixed(1)} xG)</span></span>
+                  <span style={{ color: '#ef4444', fontWeight: 800 }}>● En contra: {comparativa.totalEC} goles <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({comparativa.xgEC.toFixed(1)} xG)</span></span>
+                </div>
+                <ResponsiveContainer width="100%" height={Math.max(220, comparativa.data.length * 42)}>
+                  <BarChart data={comparativa.data} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                    <XAxis type="number" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 10, fontWeight: 700 }} width={120} />
+                    <RechartsTooltip cursor={{ fill: 'var(--hover)' }} contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)' }} />
+                    <Legend wrapperStyle={{ fontSize: '11px' }} iconType="circle" />
+                    <Bar dataKey="A favor" fill="#00ff88" radius={[0, 3, 3, 0]} barSize={13} />
+                    <Bar dataKey="En contra" fill="#ef4444" radius={[0, 3, 3, 0]} barSize={13} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+          </div>
 
           {/* CONTEXTO NUMÉRICO + MODIFICADORES DE DEFINICIÓN */}
           {dataAnalizada.total > 0 && (
@@ -452,7 +493,7 @@ function OrigenGoles() {
                             <span style={{ color: it.color, fontWeight: 800 }}>{it.label}</span>
                             <span style={{ color: 'var(--text)', fontWeight: 900 }}>{it.n} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({((it.n / tot) * 100).toFixed(0)}%)</span></span>
                           </div>
-                          <div style={{ height: '8px', background: '#1a1a1a', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ height: '8px', background: 'var(--panel)', borderRadius: '4px', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${(it.n / tot) * 100}%`, background: it.color, borderRadius: '4px' }}></div>
                           </div>
                         </div>
@@ -478,7 +519,7 @@ function OrigenGoles() {
                       return (
                         <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <span style={{ fontSize: '0.72rem', color: 'var(--text)', fontWeight: 700, width: '110px', flexShrink: 0 }}>{m.name}</span>
-                          <div style={{ flex: 1, height: '14px', background: '#1a1a1a', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ flex: 1, height: '14px', background: 'var(--panel)', borderRadius: '4px', overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${(m.value / max) * 100}%`, background: 'linear-gradient(90deg, #a855f7, #ec4899)', borderRadius: '4px' }}></div>
                           </div>
                           <span style={{ fontSize: '0.85rem', color: 'var(--text)', fontWeight: 900, width: '24px', textAlign: 'right' }}>{m.value}</span>
@@ -506,7 +547,7 @@ function OrigenGoles() {
                         <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
                       ))}
                     </Pie>
-                    <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)', borderRadius: '4px' }} itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }} />
+                    <RechartsTooltip contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '4px' }} itemStyle={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 800 }} />
                     <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
                   </PieChart>
                 </ResponsiveContainer>
@@ -520,10 +561,10 @@ function OrigenGoles() {
               </div>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={dataAnalizada.dataBarTiempo} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                  <XAxis dataKey="name" stroke="#555" tick={{ fill: '#888', fontSize: 10, fontWeight: 700 }} />
-                  <YAxis stroke="#555" tick={{ fill: '#888', fontSize: 11 }} allowDecimals={false} />
-                  <RechartsTooltip cursor={{ fill: '#222' }} contentStyle={{ backgroundColor: '#111', border: '1px solid var(--border)' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 10, fontWeight: 700 }} />
+                  <YAxis stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} allowDecimals={false} />
+                  <RechartsTooltip cursor={{ fill: 'var(--hover)' }} contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)' }} />
                   <Bar dataKey="Goles" fill="var(--accent)" radius={[4, 4, 0, 0]} barSize={35} />
                 </BarChart>
               </ResponsiveContainer>
@@ -533,9 +574,11 @@ function OrigenGoles() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
             
-            {/* MAPA DE DISPERSIÓN DE GOLES */}
+            {/* MAPA DE DISPERSIÓN DE GOLES INTELIGENTE */}
             <div className="bento-card">
-              <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>MAPA DE DISPERSIÓN <InfoBox texto="Punto exacto desde donde se pateó para convertir." /></div>
+              <div className="stat-label" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
+                MAPA DE DISPERSIÓN xG <InfoBox texto="Punto exacto desde donde se pateó. El tamaño de la burbuja refleja la calidad de la chance (xG). Burbujas grandes = goles cantados. Burbujas chicas = goles fuera de contexto o de muy lejos." />
+              </div>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '10px 0' }}>
                 <div className="pitch-container" style={{ width: '100%', maxWidth: '500px', aspectRatio: '2/1', overflow: 'hidden', position: 'relative', background: 'var(--panel)', border: '2px solid rgba(255,255,255,0.1)' }}>
                   
@@ -546,13 +589,26 @@ function OrigenGoles() {
 
                   {dataAnalizada.mapaGoles.map((g, i) => {
                     if (g.x == null || g.y == null) return null;
+                    
+                    // Cálculo dinámico del radio en función del xG (mínimo 8px, máximo sumando 20px extra para un gol hecho)
+                    const baseSize = 8;
+                    const xgMultiplier = g.xgCalc != null ? (g.xgCalc * 25) : 2; 
+                    const size = baseSize + xgMultiplier;
+
                     return (
                       <div 
                         key={i} 
-                        title={`Gol vs ${partidos.find(p=>p.id===g.id_partido)?.rival} - ${g.distancia?.toFixed(1)}m`}
+                        title={`Gol vs ${partidos.find(p=>p.id===g.id_partido)?.rival} - xG: ${g.xgCalc?.toFixed(2) || 'S/D'} - ${g.distancia?.toFixed(1)}m`}
                         style={{ 
-                          position: 'absolute', left: `${g.x}%`, top: `${g.y}%`, width: '10px', height: '10px', 
-                          backgroundColor: filtroEquipo === 'Rival' ? '#ef4444' : '#00ff88', border: '1px solid #000', borderRadius: '50%', transform: 'translate(-50%, -50%)', opacity: 0.9, zIndex: 2, boxShadow: filtroEquipo === 'Rival' ? '0 0 8px rgba(239,68,68,0.8)' : '0 0 8px rgba(0,255,136,0.8)'
+                          position: 'absolute', 
+                          left: `${g.x}%`, top: `${g.y}%`, 
+                          width: `${size}px`, height: `${size}px`, 
+                          backgroundColor: filtroEquipo === 'Rival' ? '#ef4444' : '#00ff88', 
+                          border: '1px solid rgba(0,0,0,0.5)', 
+                          borderRadius: '50%', 
+                          transform: 'translate(-50%, -50%)', 
+                          opacity: 0.85, zIndex: 2, 
+                          boxShadow: filtroEquipo === 'Rival' ? '0 0 5px rgba(239,68,68,0.5)' : '0 0 5px rgba(0,255,136,0.5)'
                         }} 
                       />
                     )
@@ -604,13 +660,13 @@ function OrigenGoles() {
                 if (col.k === 'xg') return '#a855f7';
                 if (col.k === 'minuto') return 'var(--accent)';
                 if (col.k === 'asistidor') return '#c084fc';
-                return '#fff';
+                return 'var(--text)';
               }}
             >
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.75rem' }}>
+                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.75rem' }}>
                     <th style={{ padding: '10px', textAlign: 'left' }}>PARTIDO</th>
                     <th>MINUTO</th>
                     <th>AUTOR</th>
@@ -622,7 +678,7 @@ function OrigenGoles() {
                 </thead>
                 <tbody>
                   {dataAnalizada.tablaGoles.map(g => (
-                    <tr key={g.id} style={{ borderBottom: '1px solid #222', fontSize: '0.85rem' }}>
+                    <tr key={g.id} style={{ borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
                       <td style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 700 }}>vs {g.rival.toUpperCase()} <span style={{ color: 'var(--text-dim)', fontSize: '0.65rem', display: 'block' }}>{g.competicion}</span></td>
                       <td style={{ color: 'var(--accent)' }}>{g.minuto !== null ? `${g.minuto}' ${g.periodo}` : '-'}</td>
                       <td style={{ fontWeight: 800, color: filtroEquipo === 'Rival' ? '#ef4444' : '#00ff88' }}>{g.autor}</td>

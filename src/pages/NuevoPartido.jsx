@@ -293,11 +293,11 @@ function NuevoPartido() {
 
           {partidosTorneo.length > 0 && (
             <div style={{ animation: 'fadeIn 0.3s' }}>
-              <div className="section-title" style={{ color: '#00ff88' }}>✅ PARTIDO PROGRAMADO EN EL FIXTURE</div>
+              <div className="section-title" style={{ color: 'var(--accent)' }}>✅ PARTIDO PROGRAMADO EN EL FIXTURE</div>
               <select 
                 value={formData.id || ''} 
                 onChange={handleSeleccionarPartidoProgramado} 
-                style={{ ...inputIndustrial, borderColor: '#00ff88', color: '#00ff88', fontWeight: 'bold' }}
+                style={{ ...inputIndustrial, borderColor: 'var(--accent)', color: 'var(--accent)', fontWeight: 'bold' }}
               >
                 <option value="" style={{color: 'var(--text)'}}>+ Crear partido suelto / No está en la lista...</option>
                 {partidosTorneo.map(p => {
@@ -334,14 +334,14 @@ function NuevoPartido() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px dashed #00ff88' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px dashed var(--accent)' }}>
           <div>
-            <div className="section-title" style={{ color: '#00ff88' }}>HORARIO DEFINITIVO</div>
-            <input type="time" value={formData.horario} onChange={e => setFormData({...formData, horario: e.target.value})} style={{...inputIndustrial, borderColor: '#00ff88'}} />
+            <div className="section-title" style={{ color: 'var(--accent)' }}>HORARIO DEFINITIVO</div>
+            <input type="time" value={formData.horario} onChange={e => setFormData({...formData, horario: e.target.value})} style={{...inputIndustrial, borderColor: 'var(--accent)'}} />
           </div>
           <div>
-            <div className="section-title" style={{ color: '#00ff88' }}>LUGAR / ESTADIO</div>
-            <input type="text" value={formData.lugar} onChange={e => setFormData({...formData, lugar: e.target.value})} style={{...inputIndustrial, borderColor: '#00ff88'}} placeholder="Ej: Microestadio..." />
+            <div className="section-title" style={{ color: 'var(--accent)' }}>LUGAR / ESTADIO</div>
+            <input type="text" value={formData.lugar} onChange={e => setFormData({...formData, lugar: e.target.value})} style={{...inputIndustrial, borderColor: 'var(--accent)'}} placeholder="Ej: Microestadio..." />
           </div>
         </div>
 

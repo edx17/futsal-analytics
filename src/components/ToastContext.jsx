@@ -54,8 +54,8 @@ export const ToastProvider = ({ children }) => {
             pointer-events: none;
           }
           .toast-item {
-            background: #111;
-            color: #fff;
+            background: var(--panel);
+            color: var(--text);
             padding: 12px 20px;
             border-radius: 6px;
             display: flex;

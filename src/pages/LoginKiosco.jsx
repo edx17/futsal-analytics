@@ -24,6 +24,13 @@ const IconStats = () => (
   </svg>
 );
 
+const IconVideos = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+  </svg>
+);
+
 const IconPartidos = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -441,6 +448,11 @@ export default function LoginKiosco() {
             <span className="hub-icon"><IconPartidos /></span>
             <span className="hub-title">PARTIDOS</span>
           </div>
+
+          <div className="hub-card" onClick={() => navigate('/kiosco/videoanalisis')}>
+            <span className="hub-icon"><IconVideos /></span>
+            <span className="hub-title">VIDEOS</span>
+          </div>
         </div>
 
         <button onClick={volverAtras} style={{ ...btnSecundario, width: '100%', maxWidth: '380px', marginTop: '30px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', padding: '16px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '40px' }}>
@@ -476,7 +488,7 @@ export default function LoginKiosco() {
             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '5px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', flexShrink: 0 }}>
               <button 
                 onClick={() => setFiltroCategoria('Todas')} 
-                style={{ ...btnFiltroCat, background: filtroCategoria === 'Todas' ? 'var(--accent)' : '#111', color: filtroCategoria === 'Todas' ? '#000' : 'var(--text-dim)' }}
+                style={{ ...btnFiltroCat, background: filtroCategoria === 'Todas' ? 'var(--accent)' : 'var(--panel)', color: filtroCategoria === 'Todas' ? '#000' : 'var(--text-dim)' }}
               >
                 TODAS
               </button>
@@ -484,7 +496,7 @@ export default function LoginKiosco() {
                 <button 
                   key={cat} 
                   onClick={() => setFiltroCategoria(cat)} 
-                  style={{ ...btnFiltroCat, background: filtroCategoria === cat ? 'var(--accent)' : '#111', color: filtroCategoria === cat ? '#000' : 'var(--text-dim)' }}
+                  style={{ ...btnFiltroCat, background: filtroCategoria === cat ? 'var(--accent)' : 'var(--panel)', color: filtroCategoria === cat ? '#000' : 'var(--text-dim)' }}
                 >
                   {cat.toUpperCase()}
                 </button>

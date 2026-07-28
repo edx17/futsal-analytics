@@ -21,8 +21,8 @@ const RenderRutinaFisica = ({ data }) => {
   if (!data || !data.bloques) return <div style={{padding: '20px', color: 'var(--text-dim)'}}>Sin detalles físicos cargados.</div>;
 
   return (
-    <div style={{ padding: '15px', width: '100%', height: '100%', overflowY: 'auto', background: '#0a0a0a', boxSizing: 'border-box', textAlign: 'left' }}>
-      <h4 style={{ color: '#f59e0b', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
+    <div style={{ padding: '15px', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--panel)', boxSizing: 'border-box', textAlign: 'left' }}>
+      <h4 style={{ color: '#f59e0b', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
         {data.sub_modo === 'gimnasio' ? '🏋️‍♂️ Circuito de Gimnasio / Fuerza' : '🏃‍♂️ Bloques de Acondicionamiento en Cancha'}
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -37,7 +37,7 @@ const RenderRutinaFisica = ({ data }) => {
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>INTENSIDAD</span><strong style={{ color: 'var(--text)' }}>{b.rir || '-'}</strong></div>
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>PAUSA</span><strong style={{ color: 'var(--text)' }}>{b.pausa || '-'}</strong></div>
                 </div>
-                {b.notas && <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '10px', fontStyle: 'italic' }}>📌 {b.notas}</div>}
+                {b.notas && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '10px', fontStyle: 'italic' }}>📌 {b.notas}</div>}
               </>
             ) : (
               <>
@@ -951,12 +951,12 @@ const PlanificadorSemanal = () => {
 
               if (modoVista === 'semanal') {
                 return (
-                  <div key={idx} style={{ background: dia.isHoy ? '#111827' : '#0a0a0a', border: dia.isHoy ? '2px solid var(--accent)' : '1px solid #222', borderRadius: '12px', display: 'flex', flexDirection: esMovil ? 'row' : 'column', overflow: 'hidden', minHeight: esMovil ? 'auto' : '400px' }}>
+                  <div key={idx} style={{ background: dia.isHoy ? '#111827' : 'var(--panel)', border: dia.isHoy ? '2px solid var(--accent)' : '1px solid var(--border)', borderRadius: '12px', display: 'flex', flexDirection: esMovil ? 'row' : 'column', overflow: 'hidden', minHeight: esMovil ? 'auto' : '400px' }}>
                     
                     {/* CABECERA DEL DÍA */}
-                    <div style={{ background: dia.isHoy ? 'var(--accent)' : '#111', padding: '10px', textAlign: 'center', borderBottom: esMovil ? 'none' : '1px solid #222', borderRight: esMovil ? '1px solid #222' : 'none', minWidth: esMovil ? '70px' : 'auto', maxWidth: esMovil ? '70px' : 'auto', display: 'flex', flexDirection: 'column', justifyContent: esMovil ? 'flex-start' : 'center', flexShrink: 0 }}>
+                    <div style={{ background: dia.isHoy ? 'var(--accent)' : 'var(--panel)', padding: '10px', textAlign: 'center', borderBottom: esMovil ? 'none' : '1px solid var(--border)', borderRight: esMovil ? '1px solid var(--border)' : 'none', minWidth: esMovil ? '70px' : 'auto', maxWidth: esMovil ? '70px' : 'auto', display: 'flex', flexDirection: 'column', justifyContent: esMovil ? 'flex-start' : 'center', flexShrink: 0 }}>
                       <span style={{ display: 'block', fontSize: esMovil ? '0.8rem' : '0.7rem', fontWeight: '900', color: dia.isHoy ? '#000' : 'var(--text-dim)' }}>{dia.diaNombre}</span>
-                      <span style={{ fontSize: '1.8rem', fontWeight: '900', color: dia.isHoy ? '#000' : '#fff' }}>{dia.numero}</span>
+                      <span style={{ fontSize: '1.8rem', fontWeight: '900', color: dia.isHoy ? '#000' : 'var(--text)' }}>{dia.numero}</span>
                     </div>
 
                     {/* CONTENIDO DEL DÍA (AÑADIDOS EVENTOS ONDRAG Y ONDROP) */}
@@ -976,7 +976,7 @@ const PlanificadorSemanal = () => {
                       ))}
 
                       {sesionesDia.map(sesion => {
-                        const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || '#888';
+                        const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || 'var(--text-dim)';
                         const tareasIds = sesion.tareas_ids || [];
                         
                         return (
@@ -997,10 +997,10 @@ const PlanificadorSemanal = () => {
                               </div>
                             )}
 
-                            {sesion.objetivo && <div style={{ fontSize: '0.75rem', color: '#aaa', fontStyle: 'italic', marginBottom: '8px', lineHeight: '1.2' }}>"{sesion.objetivo}"</div>}
+                            {sesion.objetivo && <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic', marginBottom: '8px', lineHeight: '1.2' }}>"{sesion.objetivo}"</div>}
 
                             {tareasIds.length > 0 && !esMovil && (
-                              <div style={{ borderTop: '1px solid #222', paddingTop: '8px', marginTop: '8px' }}>
+                              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '8px' }}>
                                 <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>TAREAS:</span>
                                 <ul style={{ margin: 0, paddingLeft: '15px', color: 'var(--text)', fontSize: '0.7rem', lineHeight: '1.4' }}>
                                   {tareasIds.map(id => {
@@ -1011,13 +1011,13 @@ const PlanificadorSemanal = () => {
                               </div>
                             )}
                             {tareasIds.length > 0 && esMovil && (
-                               <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '5px', borderTop: '1px solid #222', paddingTop: '5px' }}>📋 {tareasIds.length} tareas asignadas</div>
+                               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '5px', borderTop: '1px solid var(--border)', paddingTop: '5px' }}>📋 {tareasIds.length} tareas asignadas</div>
                             )}
                           </div>
                         );
                       })}
 
-                      <button onClick={() => abrirModal(dia)} style={{ marginTop: 'auto', background: 'transparent', border: '1px dashed #444', color: 'var(--text-dim)', padding: '12px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s', width: '100%', minHeight: '44px' }}>
+                      <button onClick={() => abrirModal(dia)} style={{ marginTop: 'auto', background: 'transparent', border: '1px dashed var(--border)', color: 'var(--text-dim)', padding: '12px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 'bold', transition: '0.2s', width: '100%', minHeight: '44px' }}>
                         + AGREGAR
                       </button>
                     </div>
@@ -1031,10 +1031,10 @@ const PlanificadorSemanal = () => {
                     onClick={() => esMovil ? setDiaSheet({ dia, sesiones: sesionesDia, partidos: partidosDia }) : abrirModal(dia)} 
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleDrop(e, dia.fechaStr)}
-                    style={{ background: dia.isHoy ? '#111827' : '#0a0a0a', border: dia.isHoy ? '1px solid var(--accent)' : '1px solid #222', borderRadius: esMovil ? '4px' : '8px', display: 'flex', flexDirection: 'column', minHeight: esMovil ? '60px' : '100px', padding: esMovil ? '2px' : '5px', opacity: opacidadMes, cursor: 'pointer', overflow: 'hidden' }} 
+                    style={{ background: dia.isHoy ? '#111827' : 'var(--panel)', border: dia.isHoy ? '1px solid var(--accent)' : '1px solid var(--border)', borderRadius: esMovil ? '4px' : '8px', display: 'flex', flexDirection: 'column', minHeight: esMovil ? '60px' : '100px', padding: esMovil ? '2px' : '5px', opacity: opacidadMes, cursor: 'pointer', overflow: 'hidden' }} 
                     className="mes-card"
                   >
-                    <div style={{ textAlign: 'right', fontSize: esMovil ? '0.7rem' : '0.8rem', fontWeight: '900', color: dia.isHoy ? 'var(--accent)' : (dia.isMesActual ? '#fff' : '#666'), marginBottom: '2px' }}>
+                    <div style={{ textAlign: 'right', fontSize: esMovil ? '0.7rem' : '0.8rem', fontWeight: '900', color: dia.isHoy ? 'var(--accent)' : (dia.isMesActual ? 'var(--text)' : 'var(--text-dim)'), marginBottom: '2px' }}>
                       {dia.numero}
                     </div>
                     
@@ -1050,7 +1050,7 @@ const PlanificadorSemanal = () => {
                       ))}
 
                       {sesionesDia.map(sesion => {
-                        const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || '#888';
+                        const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || 'var(--text-dim)';
                         return esMovil ? (
                           <div 
                             key={sesion.id} 
@@ -1081,7 +1081,7 @@ const PlanificadorSemanal = () => {
               }
             })}
           </div>
-          <style>{`.mes-card:hover { border-color: #555 !important; background: #111 !important; }`}</style>
+          <style>{`.mes-card:hover { border-color: var(--border) !important; background: var(--panel) !important; }`}</style>
         </div>
       )}
 
@@ -1104,7 +1104,7 @@ const PlanificadorSemanal = () => {
             {diaSheet.sesiones.length === 0 && diaSheet.partidos.length === 0 ? (
               <div style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '20px 0', fontSize: '0.85rem' }}>No hay sesiones este día.</div>
             ) : diaSheet.sesiones.map(sesion => {
-              const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || '#888';
+              const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || 'var(--text-dim)';
               return (
                 <button key={sesion.id} onClick={() => { abrirModal(diaSheet.dia, sesion); setDiaSheet(null); }}
                   style={{ width: '100%', textAlign: 'left', background: `${colorNivel}15`, borderLeft: `3px solid ${colorNivel}`, border: `1px solid ${colorNivel}40`, borderRadius: '8px', padding: '12px', marginBottom: '8px', cursor: 'pointer', color: 'var(--text)', minHeight: '48px' }}>
@@ -1112,7 +1112,7 @@ const PlanificadorSemanal = () => {
                     <span style={{ fontWeight: 900, fontSize: '0.9rem' }}>{(sesion.tipo_sesion || 'SESIÓN').toUpperCase()} {sesion.bloque_fisico && '🏃‍♂️'}</span>
                     {sesion.tareas_ids?.length > 0 && <span style={{ color: colorNivel, fontSize: '0.75rem', fontWeight: 800 }}>{sesion.tareas_ids.length}T</span>}
                   </div>
-                  {sesion.objetivo && <div style={{ fontSize: '0.75rem', color: '#aaa', fontStyle: 'italic', marginTop: '4px' }}>"{sesion.objetivo}"</div>}
+                  {sesion.objetivo && <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontStyle: 'italic', marginTop: '4px' }}>"{sesion.objetivo}"</div>}
                 </button>
               );
             })}
@@ -1131,7 +1131,7 @@ const PlanificadorSemanal = () => {
           <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '950px', border: '2px solid var(--accent)', maxHeight: esMovil ? '90vh' : '95vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', display: 'flex', flexDirection: 'column', position: 'relative', padding: esMovil ? '15px' : '30px' }}>
             
             {/* HEADER DEL MODAL PRINCIPAL */}
-            <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', marginBottom: '15px', borderBottom: '1px solid #333', paddingBottom: '10px', alignItems: esMovil ? 'flex-start' : 'center', gap: esMovil ? '15px' : '0', position: 'relative' }}>
+            <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', marginBottom: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '10px', alignItems: esMovil ? 'flex-start' : 'center', gap: esMovil ? '15px' : '0', position: 'relative' }}>
               <div style={{ paddingRight: esMovil ? '40px' : '0' }}>
                 <h3 style={{ margin: 0, color: 'var(--accent)', textTransform: 'uppercase', fontSize: esMovil ? '1.1rem' : '1.3rem' }}>
                   {modoModal === 'ver' ? '👁️ Detalles de la Sesión' : (nuevaSesion.id ? '✏️ Editar Sesión' : '➕ Planificar Nueva Sesión')} <br/>
@@ -1151,7 +1151,7 @@ const PlanificadorSemanal = () => {
                     </button>
                   )}
                 </div>
-                <button onClick={() => setMostrarModal(false)} style={{ background: 'var(--panel)', border: '1px solid #444', color: 'var(--text)', width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: esMovil ? 'absolute' : 'relative', top: esMovil ? '0' : 'auto', right: esMovil ? '0' : 'auto' }}>✖</button>
+                <button onClick={() => setMostrarModal(false)} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: esMovil ? 'absolute' : 'relative', top: esMovil ? '0' : 'auto', right: esMovil ? '0' : 'auto' }}>✖</button>
               </div>
             </div>
 
@@ -1169,9 +1169,9 @@ const PlanificadorSemanal = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
                       <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: 'var(--text-dim)'}}>Categoría:</span> <strong style={{color: 'var(--text)'}}>{nuevaSesion.categoria_equipo}</strong></div>
                       <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: 'var(--text-dim)'}}>Tipo:</span> <strong style={{color: 'var(--text)'}}>{nuevaSesion.tipo_sesion}</strong></div>
-                      <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: 'var(--text-dim)'}}>Carga General:</span> <strong style={{color: nivelesCarga[nuevaSesion.nivel_carga]?.color || '#fff'}}>{nuevaSesion.nivel_carga}</strong></div>
+                      <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: 'var(--text-dim)'}}>Carga General:</span> <strong style={{color: nivelesCarga[nuevaSesion.nivel_carga]?.color || 'var(--text)'}}>{nuevaSesion.nivel_carga}</strong></div>
                     </div>
-                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #222' }}>
+                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
                       <span style={{color: 'var(--text-dim)', display: 'block', marginBottom: '5px', fontSize: '0.75rem'}}>Objetivo Principal:</span>
                       <strong style={{color: 'var(--text)', fontSize: '0.95rem'}}>{nuevaSesion.objetivo || 'Sin definir'}</strong>
                     </div>
@@ -1200,7 +1200,7 @@ const PlanificadorSemanal = () => {
                                 {item.peso && <span style={pillStyle}>🏋️ {item.peso}</span>}
                                 {item.pausa && <span style={pillStyle}>⏸️ {item.pausa}</span>}
                               </div>
-                              {item.notas && <div style={{ fontSize: '0.78rem', color: '#bbb', marginTop: '6px', fontStyle: 'italic' }}>📌 {item.notas}</div>}
+                              {item.notas && <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '6px', fontStyle: 'italic' }}>📌 {item.notas}</div>}
                             </div>
                           ))}
                         </div>
@@ -1209,16 +1209,16 @@ const PlanificadorSemanal = () => {
                   )}
 
                   {nuevaSesion.comentarios && (
-                    <div style={{ background: '#0a0a0a', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                      <h4 style={{ color: '#aaa', margin: '0 0 10px 0', fontSize: '0.8rem', textTransform: 'uppercase' }}>Comentarios / Novedades</h4>
-                      <p style={{ color: '#ccc', fontSize: '0.9rem', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap' }}>{nuevaSesion.comentarios}</p>
+                    <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                      <h4 style={{ color: 'var(--text-dim)', margin: '0 0 10px 0', fontSize: '0.8rem', textTransform: 'uppercase' }}>Comentarios / Novedades</h4>
+                      <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap' }}>{nuevaSesion.comentarios}</p>
                     </div>
                   )}
                 </div>
 
                 {/* COLUMNA DERECHA: TAREAS (VISOR) */}
                 <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '10px', minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0a0a0a', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                     <div>
                       <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 'bold', display: 'block' }}>TAREAS ASIGNADAS</span>
                       <span style={{ fontSize: '1.4rem', color: 'var(--accent)', fontWeight: '900' }}>{nuevaSesion.tareas_ids?.length || 0}</span>
@@ -1231,7 +1231,7 @@ const PlanificadorSemanal = () => {
 
                   <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', flex: 1, padding: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {(!nuevaSesion.tareas_ids || nuevaSesion.tareas_ids.length === 0) && (
-                      <span style={{ color: '#555', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>No hay tareas asignadas.</span>
+                      <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>No hay tareas asignadas.</span>
                     )}
                     
                     {nuevaSesion.tareas_ids?.map(id => {
@@ -1244,13 +1244,13 @@ const PlanificadorSemanal = () => {
                           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: 'var(--panel)', border: '1px solid var(--border)' }}
                         >
                           <div style={{ width: '55px', height: '42px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: '#444' }}>{getIconoTarea(t)}</span>}
+                            {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: 'var(--text-dim)' }}>{getIconoTarea(t)}</span>}
                           </div>
                           <div style={{ flex: 1, overflow: 'hidden' }}>
                             <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
                               <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 'bold', textTransform: 'uppercase' }}>{t.categoria_ejercicio}</span>
-                              <span style={{ fontSize: '0.65rem', color: '#aaa' }}>• ⏱️ {t.duracion_estimada}'</span>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>• ⏱️ {t.duracion_estimada}'</span>
                             </div>
                           </div>
                           <div style={{ color: 'var(--accent)', fontSize: '1.2rem', paddingRight: '5px' }}>👁️</div>
@@ -1312,8 +1312,8 @@ const PlanificadorSemanal = () => {
                             onClick={() => setNuevaSesion({...nuevaSesion, nivel_carga: key})}
                             style={{
                               flex: '1 1 auto', padding: '10px 5px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '900', textTransform: 'uppercase', minHeight: '40px',
-                              background: nuevaSesion.nivel_carga === key ? val.color : '#222',
-                              color: nuevaSesion.nivel_carga === key ? '#000' : '#888',
+                              background: nuevaSesion.nivel_carga === key ? val.color : 'var(--panel)',
+                              color: nuevaSesion.nivel_carga === key ? '#000' : 'var(--text-dim)',
                               transition: '0.2s'
                             }}
                           >
@@ -1369,7 +1369,7 @@ const PlanificadorSemanal = () => {
                             )}
 
                             {(nuevaSesion.detalle_fisico || []).map((item, idx) => (
-                              <div key={item.id} style={{ background: '#0a0a0a', border: '1px solid #f59e0b40', borderRadius: '8px', padding: '12px', borderLeft: '3px solid #f59e0b' }}>
+                              <div key={item.id} style={{ background: 'var(--panel)', border: '1px solid #f59e0b40', borderRadius: '8px', padding: '12px', borderLeft: '3px solid #f59e0b' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                                   <span style={{ background: '#f59e0b', color: '#000', fontWeight: '900', fontSize: '0.75rem', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{idx + 1}</span>
                                   <input
@@ -1441,7 +1441,7 @@ const PlanificadorSemanal = () => {
 
                   {/* COLUMNA DERECHA: TAREAS EN CANCHA */}
                   <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: '15px', minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0a0a0a', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                       <div>
                         <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 'bold', display: 'block' }}>TAREAS SELECCIONADAS</span>
                         <span style={{ fontSize: '1.4rem', color: 'var(--accent)', fontWeight: '900' }}>{nuevaSesion.tareas_ids?.length || 0}</span>
@@ -1468,7 +1468,7 @@ const PlanificadorSemanal = () => {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                           <button
                             onClick={() => setFiltroFaseTarea('Todas')}
-                            style={{ ...chipStyle, background: filtroFaseTarea === 'Todas' ? 'var(--accent)' : '#1a1a1a', color: filtroFaseTarea === 'Todas' ? '#000' : '#aaa', borderColor: filtroFaseTarea === 'Todas' ? 'var(--accent)' : '#333' }}
+                            style={{ ...chipStyle, background: filtroFaseTarea === 'Todas' ? 'var(--accent)' : 'var(--panel)', color: filtroFaseTarea === 'Todas' ? '#000' : 'var(--text-dim)', borderColor: filtroFaseTarea === 'Todas' ? 'var(--accent)' : 'var(--border)' }}
                           >
                             Todas
                           </button>
@@ -1476,7 +1476,7 @@ const PlanificadorSemanal = () => {
                             <button
                               key={cat}
                               onClick={() => setFiltroFaseTarea(filtroFaseTarea === cat ? 'Todas' : cat)}
-                              style={{ ...chipStyle, background: filtroFaseTarea === cat ? 'var(--accent)' : '#1a1a1a', color: filtroFaseTarea === cat ? '#000' : '#aaa', borderColor: filtroFaseTarea === cat ? 'var(--accent)' : '#333' }}
+                              style={{ ...chipStyle, background: filtroFaseTarea === cat ? 'var(--accent)' : 'var(--panel)', color: filtroFaseTarea === cat ? '#000' : 'var(--text-dim)', borderColor: filtroFaseTarea === cat ? 'var(--accent)' : 'var(--border)' }}
                             >
                               {cat}
                             </button>
@@ -1492,7 +1492,7 @@ const PlanificadorSemanal = () => {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                           <button
                             onClick={() => setFiltroFormatoTarea('Todas')}
-                            style={{ ...chipStyle, background: filtroFormatoTarea === 'Todas' ? '#22d3ee' : '#1a1a1a', color: filtroFormatoTarea === 'Todas' ? '#000' : '#aaa', borderColor: filtroFormatoTarea === 'Todas' ? '#22d3ee' : '#333' }}
+                            style={{ ...chipStyle, background: filtroFormatoTarea === 'Todas' ? '#22d3ee' : 'var(--panel)', color: filtroFormatoTarea === 'Todas' ? '#000' : 'var(--text-dim)', borderColor: filtroFormatoTarea === 'Todas' ? '#22d3ee' : 'var(--border)' }}
                           >
                             Todos
                           </button>
@@ -1500,7 +1500,7 @@ const PlanificadorSemanal = () => {
                             <button
                               key={fmt}
                               onClick={() => setFiltroFormatoTarea(filtroFormatoTarea === fmt ? 'Todas' : fmt)}
-                              style={{ ...chipStyle, background: filtroFormatoTarea === fmt ? '#22d3ee' : '#1a1a1a', color: filtroFormatoTarea === fmt ? '#000' : '#aaa', borderColor: filtroFormatoTarea === fmt ? '#22d3ee' : '#333' }}
+                              style={{ ...chipStyle, background: filtroFormatoTarea === fmt ? '#22d3ee' : 'var(--panel)', color: filtroFormatoTarea === fmt ? '#000' : 'var(--text-dim)', borderColor: filtroFormatoTarea === fmt ? '#22d3ee' : 'var(--border)' }}
                             >
                               {fmt}
                             </button>
@@ -1510,7 +1510,7 @@ const PlanificadorSemanal = () => {
                     )}
 
                     {/* TOGGLE: solo tareas recomendadas para la categoría de la sesión */}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.78rem', color: '#aaa', padding: '2px 0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-dim)', padding: '2px 0' }}>
                       <input
                         type="checkbox"
                         checked={soloRecomendadas}
@@ -1521,18 +1521,18 @@ const PlanificadorSemanal = () => {
                     </label>
 
                     <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', flex: 1, minHeight: esMovil ? '300px' : '400px', maxHeight: '500px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {tareasFiltradas.length === 0 && <span style={{ color: '#555', fontSize: '0.85rem', textAlign: 'center', marginTop: '30px' }}>No se encontraron tareas.</span>}
+                      {tareasFiltradas.length === 0 && <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', textAlign: 'center', marginTop: '30px' }}>No se encontraron tareas.</span>}
                       
                       {tareasFiltradas.map(t => {
                         const isSelected = nuevaSesion.tareas_ids?.includes(t.id);
                         const recomendadaExacta = t.categoria_recomendada && t.categoria_recomendada !== 'Todas' && t.categoria_recomendada === nuevaSesion.categoria_equipo;
                         return (
-                          <div key={t.id} onClick={() => toggleTarea(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: isSelected ? 'rgba(0, 255, 136, 0.1)' : '#111', border: isSelected ? '1px solid var(--accent)' : '1px solid #222' }}>
+                          <div key={t.id} onClick={() => toggleTarea(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: isSelected ? 'rgba(0, 255, 136, 0.1)' : 'var(--panel)', border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)' }}>
                             <div style={{ width: '50px', height: '38px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: '#444' }}>{getIconoTarea(t)}</span>}
+                              {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: 'var(--text-dim)' }}>{getIconoTarea(t)}</span>}
                             </div>
                             <div style={{ flex: 1, overflow: 'hidden' }}>
-                              <span style={{ display: 'block', fontSize: '0.85rem', color: isSelected ? '#fff' : '#ccc', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
+                              <span style={{ display: 'block', fontSize: '0.85rem', color: isSelected ? 'var(--text)' : 'var(--text-dim)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
                                 {t.fase_juego && <span style={{ ...pillStyle, color: 'var(--accent)', borderColor: '#2a4a3a' }}>{t.fase_juego}</span>}
                                 {t.formato_tarea && <span style={{ ...pillStyle, color: '#22d3ee', borderColor: '#0e7490' }}>{t.formato_tarea}</span>}
@@ -1541,7 +1541,7 @@ const PlanificadorSemanal = () => {
                                 {recomendadaExacta && <span style={{ ...pillStyle, color: '#facc15', borderColor: '#ca8a0455', background: '#facc1515' }}>🎯 {t.categoria_recomendada}</span>}
                               </div>
                             </div>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid', borderColor: isSelected ? 'var(--accent)' : '#555', background: isSelected ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid', borderColor: isSelected ? 'var(--accent)' : 'var(--border)', background: isSelected ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {isSelected && <span style={{ color: '#000', fontSize: '0.9rem', fontWeight: '900' }}>✓</span>}
                             </div>
                           </div>
@@ -1551,7 +1551,7 @@ const PlanificadorSemanal = () => {
                   </div>
                 </div>
 
-                <div style={{ marginTop: '20px', borderTop: '1px solid #333', paddingTop: '20px' }}>
+                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
                   <button onClick={guardarSesion} className="btn-action" style={{ width: '100%', padding: '15px', fontSize: '1rem', fontWeight: '900' }}>
                     {nuevaSesion.id ? '💾 GUARDAR CAMBIOS' : '💾 PLANIFICAR SESIÓN'}
                   </button>
@@ -1572,7 +1572,7 @@ const PlanificadorSemanal = () => {
           <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '950px', height: esMovil ? '100%' : 'auto', maxHeight: esMovil ? '100%' : '95vh', border: esMovil ? 'none' : '2px solid var(--accent)', display: 'flex', flexDirection: 'column', overflowY: 'auto', WebkitOverflowScrolling: 'touch', animation: 'fadeIn 0.2s', borderRadius: esMovil ? '0' : '12px', position: 'relative' }}>
             
             {/* HEADER DE LA TAREA */}
-            <div style={{ padding: esMovil ? '15px' : '20px', background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #333', position: 'relative', flexShrink: 0 }}>
+            <div style={{ padding: esMovil ? '15px' : '20px', background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
               <div style={{ flex: 1, paddingRight: '40px' }}>
                 <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: 'var(--text)', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
                   {tareaSeleccionadaDetalle.categoria_ejercicio} • {tareaSeleccionadaDetalle.fase_juego}{tareaSeleccionadaDetalle.formato_tarea ? ` • ${tareaSeleccionadaDetalle.formato_tarea}` : ''}
@@ -1588,7 +1588,7 @@ const PlanificadorSemanal = () => {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: esMovil ? '15px' : '20px' }}>
               {/* VISUAL Y MULTIMEDIA */}
-              <div style={{ flex: '1 1 100%', padding: esMovil ? '0 0 15px 0' : '10px', borderRight: esMovil ? 'none' : '1px solid #222', borderBottom: esMovil ? '1px solid #222' : 'none', minWidth: '0' }}>
+              <div style={{ flex: '1 1 100%', padding: esMovil ? '0 0 15px 0' : '10px', borderRight: esMovil ? 'none' : '1px solid var(--border)', borderBottom: esMovil ? '1px solid var(--border)' : 'none', minWidth: '0' }}>
                 
                 {/* 🛡️ CONTENEDOR RELATIVO PARA ENCAPSULAR AL CANVAS ABSOLUTO (LÓGICA BANCOTAREAS) */}
                 <div style={{ background: 'var(--bg)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -1600,7 +1600,7 @@ const PlanificadorSemanal = () => {
                   ) : tareaSeleccionadaDetalle.url_grafico ? (
                     <img src={tareaSeleccionadaDetalle.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : (
-                    <span style={{ color: '#444', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionadaDetalle)}</span>
+                    <span style={{ color: 'var(--text-dim)', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionadaDetalle)}</span>
                   )}
 
                 </div>
@@ -1617,19 +1617,19 @@ const PlanificadorSemanal = () => {
               {/* BLOQUE DE DATOS Y REGLAS */}
               <div style={{ flex: '1 1 100%', padding: esMovil ? '15px 0 0 0' : '10px', display: 'flex', flexDirection: 'column', gap: '15px', minWidth: '0' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--panel)', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>DURACIÓN</span>
                     <span style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--text)' }}>{tareaSeleccionadaDetalle.duracion_estimada}'</span>
                   </div>
-                  <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--panel)', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>RPE (INTENSIDAD)</span>
                     <span style={{ fontSize: '1.3rem', fontWeight: '900', color: tareaSeleccionadaDetalle.intensidad_rpe > 7 ? '#ef4444' : '#eab308' }}>{tareaSeleccionadaDetalle.intensidad_rpe}/10</span>
                   </div>
-                  <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--panel)', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>CARGA (UC)</span>
                     <span style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--accent)' }}>{(tareaSeleccionadaDetalle.duracion_estimada || 0) * (tareaSeleccionadaDetalle.intensidad_rpe || 0)}</span>
                   </div>
-                  <div style={{ background: '#1a1a1a', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--panel)', padding: '12px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>JUGADORES</span>
                     <span style={{ fontSize: '1.1rem', fontWeight: '900', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tareaSeleccionadaDetalle.jugadores_involucrados}</span>
                   </div>
@@ -1637,7 +1637,7 @@ const PlanificadorSemanal = () => {
 
                 <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                   <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)', textTransform: 'uppercase', fontSize: '0.8rem' }}>Reglas y Desarrollo:</h4>
-                  <div style={{ background: 'var(--bg)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', color: '#ccc', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <div style={{ background: 'var(--bg)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                     {tareaSeleccionadaDetalle.descripcion || "Sin descripción detallada."}
                   </div>
                 </div>
@@ -1655,7 +1655,7 @@ const toggleBtn = { padding: '10px 15px', border: 'none', borderRadius: '4px', c
 const navBtn = { background: 'var(--panel)', border: 'none', color: 'var(--text)', width: '40px', height: '40px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
 const labelStyle = { display: 'block', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' };
 const inputStyle = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.95rem', outline: 'none', minHeight: '44px' };
-const pillStyle = { fontSize: '0.65rem', background: 'var(--panel)', color: '#aaa', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)' };
+const pillStyle = { fontSize: '0.65rem', background: 'var(--panel)', color: 'var(--text-dim)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)' };
 const chipStyle = { fontSize: '0.7rem', fontWeight: 'bold', padding: '6px 10px', borderRadius: '20px', border: '1px solid var(--border)', cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.15s' };
 
 export default PlanificadorSemanal;

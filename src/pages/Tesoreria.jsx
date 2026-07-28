@@ -473,7 +473,7 @@ function Tesoreria() {
   const COLS_DEUDA = [
     { k: 'asistencia', t: 'ASISTENCIA', g: 'part', r: j => j.porcAsistencia !== null ? (
       <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', background: j.porcAsistencia < 50 ? '#7f1d1d' : 'transparent', color: j.porcAsistencia < 50 ? '#fff' : j.porcAsistencia < 75 ? '#f59e0b' : '#00ff88' }}>{j.porcAsistencia}%</span>
-    ) : <span style={{ color: '#555', fontSize: '0.7rem' }}>Muestra insuf.</span> },
+    ) : <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>Muestra insuf.</span> },
     { k: 'deuda', t: 'DEUDA', g: 'eco', r: j => j.esBecado ? (
       <span style={{ background: '#3b82f6', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO</span>
     ) : j.deudaTotal > 0 ? (
@@ -487,7 +487,7 @@ function Tesoreria() {
       const misDeudasSeguras = j.misDeudas || [];
       const pendientes = misDeudasSeguras.filter(d => ['Pendiente', 'Parcial'].includes(d.estado));
       const deudaACobrar = pendientes[0];
-      if (!(j.deudaTotal > 0) || j.esBecado) return <span style={{ color: '#555', fontSize: '0.75rem' }}>—</span>;
+      if (!(j.deudaTotal > 0) || j.esBecado) return <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>—</span>;
       return (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button onClick={() => setModalDetalleDeuda({ visible: true, jugador: j, deudas: pendientes })} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>📋 DETALLE</button>
@@ -505,9 +505,9 @@ function Tesoreria() {
   const GRUPOS_STAFF_LABEL = { gen: 'LIQUIDACIÓN', eco: 'MONTO', acc: 'ACCIONES' };
   const colEmpAcciones = (color) => ({ k: 'acciones', t: 'ACCIONES', g: 'acc', r: emp => (
     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-      <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid #555', padding: '8px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>✏️ EDITAR</button>
+      <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>✏️ EDITAR</button>
       {emp.pagoEsteMes ? (
-        <button disabled style={{ background: 'var(--panel)', color: '#555', border: '1px solid var(--border)', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem', minHeight: '38px' }}>✅ LIQUIDADO</button>
+        <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem', minHeight: '38px' }}>✅ LIQUIDADO</button>
       ) : (
         <button onClick={() => { setFormSueldo({ ...formSueldo, monto: emp.sueldo_base, descripcion: `${color === '#f59e0b' ? 'Sueldo' : 'Viático'} de ${nombreMesVencido}`, cajaOrigen: 'Efectivo' }); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: color, color: color === '#f59e0b' ? '#000' : '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💳 PAGAR</button>
       )}
@@ -538,7 +538,7 @@ function Tesoreria() {
     ) },
     { k: 'acciones', t: 'ACCIONES', g: 'gen', r: mov => (mov.id.startsWith('eg-') || mov.id.startsWith('ext-')) ? (
       <button onClick={() => eliminarMovimientoLibroMayor(mov.id)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', padding: '8px 10px', borderRadius: '4px', minHeight: '38px' }}>🗑️ Eliminar</button>
-    ) : <span style={{ fontSize: '0.7rem', color: '#555' }}>Automático</span> },
+    ) : <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Automático</span> },
   ];
 
   return (
@@ -559,7 +559,7 @@ function Tesoreria() {
             >
               ⚙️ CONFIG. BANCARIA
             </button>
-            <div style={{ background: '#0a0a0a', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+            <div style={{ background: 'var(--panel)', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>PERÍODO ACTIVO</span>
               <input 
                 type="month" 
@@ -572,11 +572,11 @@ function Tesoreria() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '20px' }}>
-             <button onClick={() => setVista('cobros')} style={{ ...tabBtn, background: vista === 'cobros' ? '#3b82f6' : 'transparent', color: vista === 'cobros' ? '#fff' : '#888' }}>💰 COBROS DE CUOTAS</button>
-             <button onClick={() => setVista('staff')} style={{ ...tabBtn, background: vista === 'staff' ? '#f59e0b' : 'transparent', color: vista === 'staff' ? '#000' : '#888' }}>👥 STAFF / EMPLEADOS</button>
-             <button onClick={() => setVista('viaticos')} style={{ ...tabBtn, background: vista === 'viaticos' ? '#a855f7' : 'transparent', color: vista === 'viaticos' ? '#fff' : '#888' }}>🏃‍♂️ JUGADORES (VIÁTICOS)</button>
-             <button onClick={() => setVista('egresos')} style={{ ...tabBtn, background: vista === 'egresos' ? '#00ff88' : 'transparent', color: vista === 'egresos' ? '#000' : '#888' }}>🏦 CAJA Y MAYOR</button>
-             <button onClick={() => setVista('reportes')} style={{ ...tabBtn, background: vista === 'reportes' ? '#ef4444' : 'transparent', color: vista === 'reportes' ? '#fff' : '#888' }}>📊 REPORTES</button>
+             <button onClick={() => setVista('cobros')} style={{ ...tabBtn, background: vista === 'cobros' ? '#3b82f6' : 'transparent', color: vista === 'cobros' ? '#fff' : 'var(--text-dim)' }}>💰 COBROS DE CUOTAS</button>
+             <button onClick={() => setVista('staff')} style={{ ...tabBtn, background: vista === 'staff' ? '#f59e0b' : 'transparent', color: vista === 'staff' ? '#000' : 'var(--text-dim)' }}>👥 STAFF / EMPLEADOS</button>
+             <button onClick={() => setVista('viaticos')} style={{ ...tabBtn, background: vista === 'viaticos' ? '#a855f7' : 'transparent', color: vista === 'viaticos' ? '#fff' : 'var(--text-dim)' }}>🏃‍♂️ JUGADORES (VIÁTICOS)</button>
+             <button onClick={() => setVista('egresos')} style={{ ...tabBtn, background: vista === 'egresos' ? '#00ff88' : 'transparent', color: vista === 'egresos' ? '#000' : 'var(--text-dim)' }}>🏦 CAJA Y MAYOR</button>
+             <button onClick={() => setVista('reportes')} style={{ ...tabBtn, background: vista === 'reportes' ? '#ef4444' : 'transparent', color: vista === 'reportes' ? '#fff' : 'var(--text-dim)' }}>📊 REPORTES</button>
         </div>
       </div>
 
@@ -615,7 +615,7 @@ function Tesoreria() {
               <div className="table-wrapper">
                 <table style={{ width: '100%', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
+                    <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: 'var(--panel)' }}>
                       <th style={{ padding: '12px' }}>JUGADOR</th>
                       <th style={{ padding: '12px', textAlign: 'center' }}>COMPROMISO (30D)</th>
                       <th style={{ padding: '12px' }}>DEUDA PENDIENTE</th>
@@ -629,7 +629,7 @@ function Tesoreria() {
                       const deudaACobrar = pendientes[0];
 
                       return (
-                        <tr key={j.id} style={{ borderBottom: '1px solid #222' }}>
+                        <tr key={j.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '15px 12px', fontWeight: 'bold' }}>{j.apellido}, {j.nombre}</td>
                           <td style={{ textAlign: 'center' }}>
                             {j.porcAsistencia !== null ? (
@@ -637,7 +637,7 @@ function Tesoreria() {
                                 {j.porcAsistencia}% {j.porcAsistencia < 50 && '⚠️ Riesgo'}
                               </span>
                             ) : (
-                              <span style={{ color: '#555', fontSize: '0.7rem' }} title={`Sesiones registradas: ${j.sesionesValidas || 0}`}>Muestra insuficiente</span>
+                              <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }} title={`Sesiones registradas: ${j.sesionesValidas || 0}`}>Muestra insuficiente</span>
                             )}
                           </td>
                           <td style={{ padding: '12px' }}>
@@ -681,7 +681,7 @@ function Tesoreria() {
                         </tr>
                       );
                     })}
-                    {jugadoresInfo.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No hay jugadores en esta categoría.</td></tr>}
+                    {jugadoresInfo.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-dim)' }}>No hay jugadores en esta categoría.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -716,7 +716,7 @@ function Tesoreria() {
               <div className="table-wrapper">
                 <table style={{ width: '100%', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
+                    <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: 'var(--panel)' }}>
                       <th style={{ padding: '12px' }}>NOMBRE / ROL</th>
                       <th style={{ padding: '12px', textAlign: 'center' }}>LIQUIDACIÓN {nombreMesVencido}</th>
                       <th style={{ padding: '12px', textAlign: 'right' }}>SUELDO BASE</th>
@@ -725,7 +725,7 @@ function Tesoreria() {
                   </thead>
                   <tbody>
                     {empleados.filter(e => !e.jugador_id).map(emp => (
-                      <tr key={emp.id} style={{ borderBottom: '1px solid #222' }}>
+                      <tr key={emp.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '15px 12px' }}>
                           <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{emp.nombre_completo}</div>
                           <div style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 'bold' }}>{emp.rol.toUpperCase()}</div>
@@ -734,7 +734,7 @@ function Tesoreria() {
                           {emp.pagoEsteMes ? (
                             <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '6px', borderRadius: '6px', display: 'inline-block' }}>
                               <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ LIQUIDADO</span>
-                              <div style={{ color: '#aaa', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
+                              <div style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                             </div>
                           ) : (
                             <span style={{ background: '#7f1d1d', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
@@ -749,9 +749,9 @@ function Tesoreria() {
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid #555', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
+                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
                           {emp.pagoEsteMes ? (
-                             <button disabled style={{ background: 'var(--panel)', color: '#555', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
+                             <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
                           ) : (
                              <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Sueldo de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#ef4444', color: 'var(--text)', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR BASE</button>
                           )}
@@ -759,7 +759,7 @@ function Tesoreria() {
                       </tr>
                     ))}
                     {empleados.filter(e => !e.jugador_id).length === 0 && (
-                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No hay miembros del staff registrados.</td></tr>
+                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-dim)' }}>No hay miembros del staff registrados.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -795,7 +795,7 @@ function Tesoreria() {
               <div className="table-wrapper">
                 <table style={{ width: '100%', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
+                    <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: 'var(--panel)' }}>
                       <th style={{ padding: '12px' }}>NOMBRE DEL JUGADOR</th>
                       <th style={{ padding: '12px', textAlign: 'center' }}>LIQUIDACIÓN {nombreMesVencido}</th>
                       <th style={{ padding: '12px', textAlign: 'right' }}>MONTO VIÁTICO</th>
@@ -804,7 +804,7 @@ function Tesoreria() {
                   </thead>
                   <tbody>
                     {empleados.filter(e => e.jugador_id).map(emp => (
-                      <tr key={emp.id} style={{ borderBottom: '1px solid #222' }}>
+                      <tr key={emp.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '15px 12px' }}>
                           <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{emp.nombre_completo}</div>
                           <span style={{ fontSize: '0.65rem', color: '#a855f7', border: '1px solid #a855f7', padding: '2px 6px', borderRadius: '10px' }}>Plantel Activo</span>
@@ -813,7 +813,7 @@ function Tesoreria() {
                           {emp.pagoEsteMes ? (
                              <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '6px', borderRadius: '6px', display: 'inline-block' }}>
                                <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ VIÁTICO PAGADO</span>
-                               <div style={{ color: '#aaa', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
+                               <div style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                              </div>
                           ) : (
                             <span style={{ background: '#7f1d1d', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
@@ -828,9 +828,9 @@ function Tesoreria() {
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid #555', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
+                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
                           {emp.pagoEsteMes ? (
-                             <button disabled style={{ background: 'var(--panel)', color: '#555', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
+                             <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
                           ) : (
                              <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Viático de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#a855f7', color: 'var(--text)', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR VIÁTICO</button>
                           )}
@@ -838,7 +838,7 @@ function Tesoreria() {
                       </tr>
                     ))}
                     {empleados.filter(e => e.jugador_id).length === 0 && (
-                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No hay jugadores con viáticos asignados.</td></tr>
+                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-dim)' }}>No hay jugadores con viáticos asignados.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -861,7 +861,7 @@ function Tesoreria() {
                   <div className="stat-label">SALIDAS DEL MES</div>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#ef4444' }}>- ${balance.egresos.toLocaleString()}</div>
                 </div>
-                <div style={{ background: '#0a0a0a', padding: '20px', borderRadius: '12px', border: `2px solid ${(balance.ingresos - balance.egresos) >= 0 ? '#3b82f6' : '#ef4444'}`, textAlign: 'center' }}>
+                <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: `2px solid ${(balance.ingresos - balance.egresos) >= 0 ? '#3b82f6' : '#ef4444'}`, textAlign: 'center' }}>
                   <div className="stat-label" style={{ color: 'var(--text)' }}>BALANCE FINAL</div>
                   <div style={{ fontSize: '2.5rem', fontWeight: 900, color: (balance.ingresos - balance.egresos) >= 0 ? '#3b82f6' : '#ef4444' }}>
                     ${(balance.ingresos - balance.egresos).toLocaleString()}
@@ -897,7 +897,7 @@ function Tesoreria() {
                 <div className="table-wrapper">
                   <table style={{ width: '100%', textAlign: 'left' }}>
                     <thead>
-                      <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: '#0a0a0a' }}>
+                      <tr style={{ color: 'var(--text-dim)', fontSize: '0.75rem', background: 'var(--panel)' }}>
                         <th style={{ padding: '12px' }}>FECHA</th>
                         <th style={{ padding: '12px' }}>TIPO / CATEGORÍA</th>
                         <th style={{ padding: '12px' }}>DESCRIPCIÓN</th>
@@ -907,8 +907,8 @@ function Tesoreria() {
                     </thead>
                     <tbody>
                       {cajaCompleta.map(mov => (
-                        <tr key={mov.id} style={{ borderBottom: '1px solid #222' }}>
-                          <td style={{ padding: '15px 12px', color: '#aaa', fontSize: '0.85rem' }}>{mov.fecha.split('-').reverse().join('/')}</td>
+                        <tr key={mov.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '15px 12px', color: 'var(--text-dim)', fontSize: '0.85rem' }}>{mov.fecha.split('-').reverse().join('/')}</td>
                           <td style={{ padding: '12px' }}>
                             <span style={{ background: mov.tipo === 'entrada' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: mov.tipo === 'entrada' ? '#00ff88' : '#ef4444', border: `1px solid ${mov.tipo === 'entrada' ? '#00ff88' : '#ef4444'}`, padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
                               {mov.tipo === 'entrada' ? '⬇️' : '⬆️'} {mov.categoria}
@@ -925,13 +925,13 @@ function Tesoreria() {
                                 🗑️
                               </button>
                             ) : (
-                              <span style={{ fontSize: '0.7rem', color: '#555' }} title="Origen de sistema">Auto</span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }} title="Origen de sistema">Auto</span>
                             )}
                           </td>
                         </tr>
                       ))}
                       {cajaCompleta.length === 0 && (
-                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#666' }}>No hay movimientos registrados este mes.</td></tr>
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-dim)' }}>No hay movimientos registrados este mes.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -951,15 +951,15 @@ function Tesoreria() {
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#00ff88' }}>${datosReporte.ingresosTotal.toLocaleString()}</div>
                   <div className="stat-label">RECAUDACIÓN YTD ({añoSeleccionado})</div>
                 </div>
-                <div style={{ flex: 1, minWidth: '150px', borderLeft: '1px solid #333', paddingLeft: '10px' }}>
+                <div style={{ flex: 1, minWidth: '150px', borderLeft: '1px solid var(--border)', paddingLeft: '10px' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#ef4444' }}>${datosReporte.egresosTotal.toLocaleString()}</div>
                   <div className="stat-label">GASTOS YTD ({añoSeleccionado})</div>
                 </div>
-                <div style={{ flex: 1, minWidth: '150px', borderLeft: '1px solid #333', paddingLeft: '10px' }}>
+                <div style={{ flex: 1, minWidth: '150px', borderLeft: '1px solid var(--border)', paddingLeft: '10px' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: datosReporte.cajaReal >= 0 ? '#3b82f6' : '#ef4444' }}>${datosReporte.cajaReal.toLocaleString()}</div>
                   <div className="stat-label">CAJA FUERTE DISPONIBLE</div>
                 </div>
-                <div style={{ flex: 1, minWidth: '150px', borderLeft: '1px solid #333', paddingLeft: '10px' }}>
+                <div style={{ flex: 1, minWidth: '150px', borderLeft: '1px solid var(--border)', paddingLeft: '10px' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: datosReporte.tasaCobrabilidad > 75 ? '#00ff88' : '#f59e0b' }}>{datosReporte.tasaCobrabilidad}%</div>
                   <div className="stat-label">TASA DE COBRABILIDAD</div>
                 </div>
@@ -969,10 +969,10 @@ function Tesoreria() {
                  <div className="stat-label" style={{ marginBottom: '15px' }}>FLUJO DE CAJA MENSUAL</div>
                  <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={datosReporte.dataMeses}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false}/>
-                      <XAxis dataKey="name" stroke="#555" fontSize={10}/>
-                      <YAxis stroke="#555" fontSize={10} width={60} tickFormatter={(val) => `$${val/1000}k`} />
-                      <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} labelStyle={{ color: '#aaa', marginBottom: '5px' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false}/>
+                      <XAxis dataKey="name" stroke="var(--border)" fontSize={10}/>
+                      <YAxis stroke="var(--border)" fontSize={10} width={60} tickFormatter={(val) => `$${val/1000}k`} />
+                      <Tooltip contentStyle={{background:'var(--panel)', border:'1px solid var(--border)', borderRadius:'8px'}} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} labelStyle={{ color: 'var(--text-dim)', marginBottom: '5px' }} />
                       <Line type="monotone" name="Ingresos" dataKey="ingresos" stroke="#00ff88" strokeWidth={3} dot={{fill: '#00ff88'}} />
                       <Line type="monotone" name="Egresos" dataKey="egresos" stroke="#ef4444" strokeWidth={3} dot={{fill: '#ef4444'}} />
                     </LineChart>
@@ -987,7 +987,7 @@ function Tesoreria() {
                         <Pie data={datosReporte.dataTortaIngresos} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" stroke="none">
                           {datosReporte.dataTortaIngresos.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                         </Pie>
-                        <Tooltip contentStyle={{background:'#111', border:'1px solid #333', borderRadius:'8px'}} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} formatter={(val) => `$${val.toLocaleString()}`} />
+                        <Tooltip contentStyle={{background:'var(--panel)', border:'1px solid var(--border)', borderRadius:'8px'}} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} formatter={(val) => `$${val.toLocaleString()}`} />
                       </PieChart>
                    </ResponsiveContainer>
                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
@@ -1001,14 +1001,14 @@ function Tesoreria() {
                 <div style={{ flex: 1, minWidth: '300px', background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                     <div className="stat-label" style={{ color: '#ef4444' }}>🔴 TOP 5 DEUDORES (HISTÓRICO)</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ef4444' }}>${datosReporte.deudaTotal.toLocaleString()} <span style={{fontSize: '0.7rem', color:'#666'}}>en la calle</span></div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ef4444' }}>${datosReporte.deudaTotal.toLocaleString()} <span style={{fontSize: '0.7rem', color:'var(--text-dim)'}}>en la calle</span></div>
                   </div>
                   {datosReporte.topMorosos.length === 0 ? (
-                    <div style={{ color: '#555', textAlign: 'center', padding: '20px 0' }}>No hay deudas registradas. ¡Excelente!</div>
+                    <div style={{ color: 'var(--text-dim)', textAlign: 'center', padding: '20px 0' }}>No hay deudas registradas. ¡Excelente!</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {datosReporte.topMorosos.map((m, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: '#1a1a1a', borderRadius: '6px' }}>
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--panel)', borderRadius: '6px' }}>
                           <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{idx + 1}. {m.nombre}</span>
                           <span style={{ color: '#ef4444', fontWeight: 900 }}>${m.deuda.toLocaleString()}</span>
                         </div>
@@ -1023,10 +1023,10 @@ function Tesoreria() {
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={datosReporte.dataCat} layout="vertical" margin={{ left: 30, right: 20 }}>
                           <XAxis type="number" hide />
-                          <YAxis dataKey="nombre" type="category" stroke="#888" fontSize={10} width={90} />
-                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius:'8px' }} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} labelStyle={{ color: '#aaa' }} formatter={(val) => `$${val.toLocaleString()}`} />
+                          <YAxis dataKey="nombre" type="category" stroke="var(--border)" fontSize={10} width={90} />
+                          <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius:'8px' }} itemStyle={{ color: 'var(--text)', fontWeight: 'bold' }} labelStyle={{ color: 'var(--text-dim)' }} formatter={(val) => `$${val.toLocaleString()}`} />
                           <Bar dataKey="monto" radius={[0, 4, 4, 0]} barSize={15}>
-                            {datosReporte.dataCat.map((entry, index) => <Cell key={index} fill={entry.nombre === 'Sueldos y Viáticos' ? '#f59e0b' : '#333'} />)}
+                            {datosReporte.dataCat.map((entry, index) => <Cell key={index} fill={entry.nombre === 'Sueldos y Viáticos' ? '#f59e0b' : 'var(--text-dim)'} />)}
                           </Bar>
                         </BarChart>
                     </ResponsiveContainer>
@@ -1055,22 +1055,22 @@ function Tesoreria() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '5px' }}>
               {modalDetalleDeuda.deudas.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#666', padding: '20px' }}>No hay deudas pendientes detectadas.</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay deudas pendientes detectadas.</div>
               ) : (
                 modalDetalleDeuda.deudas.map(d => (
                   <div key={d.id} style={{ background: 'var(--panel)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text)' }}>{d.concepto}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                        Original: ${Number(d.monto_original).toLocaleString()} | Pagado: <span style={{ color: d.monto_pagado > 0 ? '#00ff88' : '#888' }}>${Number(d.monto_pagado).toLocaleString()}</span>
+                        Original: ${Number(d.monto_original).toLocaleString()} | Pagado: <span style={{ color: d.monto_pagado > 0 ? '#00ff88' : 'var(--text-dim)' }}>${Number(d.monto_pagado).toLocaleString()}</span>
                       </div>
                     </div>
                     <button 
                       onClick={() => eliminarDeuda(d)}
                       disabled={Number(d.monto_pagado) > 0 || cargando}
                       style={{ 
-                        background: 'transparent', border: '1px solid', borderColor: Number(d.monto_pagado) > 0 ? '#333' : '#ef4444', 
-                        color: Number(d.monto_pagado) > 0 ? '#555' : '#ef4444', padding: '8px', borderRadius: '6px', cursor: Number(d.monto_pagado) > 0 ? 'not-allowed' : 'pointer' 
+                        background: 'transparent', border: '1px solid', borderColor: Number(d.monto_pagado) > 0 ? 'var(--border)' : '#ef4444', 
+                        color: Number(d.monto_pagado) > 0 ? 'var(--text-dim)' : '#ef4444', padding: '8px', borderRadius: '6px', cursor: Number(d.monto_pagado) > 0 ? 'not-allowed' : 'pointer' 
                       }}
                       title={Number(d.monto_pagado) > 0 ? 'No se puede borrar porque tiene pagos' : 'Eliminar concepto'}
                     >
@@ -1098,10 +1098,10 @@ function Tesoreria() {
                 <div style={{ flex: 1 }}><label style={lblStyle}>CBU</label><input type="text" value={formConfig.cbu} onChange={(e) => setFormConfig({...formConfig, cbu: e.target.value})} style={inputFormStyle} /></div>
                 <div style={{ flex: 1 }}><label style={lblStyle}>CVU</label><input type="text" value={formConfig.cvu} onChange={(e) => setFormConfig({...formConfig, cvu: e.target.value})} style={inputFormStyle} /></div>
               </div>
-              <div><label style={lblStyle}>WhatsApp Tesorería (para comprobantes)</label><input type="text" value={formConfig.whatsapp_tesoreria} onChange={(e) => setFormConfig({...formConfig, whatsapp_tesoreria: e.target.value})} style={inputFormStyle} /><span style={{fontSize: '0.7rem', color: '#555'}}>Ej: 5491144445555</span></div>
+              <div><label style={lblStyle}>WhatsApp Tesorería (para comprobantes)</label><input type="text" value={formConfig.whatsapp_tesoreria} onChange={(e) => setFormConfig({...formConfig, whatsapp_tesoreria: e.target.value})} style={inputFormStyle} /><span style={{fontSize: '0.7rem', color: 'var(--text-dim)'}}>Ej: 5491144445555</span></div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalConfig(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalConfig(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={guardarConfigBancaria} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GUARDAR</button>
             </div>
           </div>
@@ -1122,7 +1122,7 @@ function Tesoreria() {
               <div><label style={lblStyle}>Fecha Límite</label><input type="date" value={formCuota.vencimiento} onChange={(e) => setFormCuota({...formCuota, vencimiento: e.target.value})} style={inputFormStyle} /></div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalGenerar(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalGenerar(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={generarCuotasMasivas} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#a855f7', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GENERAR</button>
             </div>
           </div>
@@ -1149,7 +1149,7 @@ function Tesoreria() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => {setModalPago({visible: false, deuda: null, jugador: null}); setMontoPagar(''); setMetodoPago('Efectivo');}} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>CANCELAR</button>
+              <button onClick={() => {setModalPago({visible: false, deuda: null, jugador: null}); setMontoPagar(''); setMetodoPago('Efectivo');}} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>CANCELAR</button>
               <button onClick={procesarPago} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#00ff88', border: 'none', color: '#000', fontWeight: '900', borderRadius: '6px', cursor: 'pointer' }}>COBRAR</button>
             </div>
           </div>
@@ -1174,7 +1174,7 @@ function Tesoreria() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalEmpleado(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalEmpleado(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={guardarEmpleado} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#f59e0b', border: 'none', color: '#000', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GUARDAR</button>
             </div>
           </div>
@@ -1193,7 +1193,7 @@ function Tesoreria() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalSueldo({visible: false, empleado: null})} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalSueldo({visible: false, empleado: null})} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={registrarPagoSueldo} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#ef4444', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>PAGAR</button>
             </div>
           </div>
@@ -1218,7 +1218,7 @@ function Tesoreria() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalGasto(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalGasto(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={registrarGastoGeneral} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#ef4444', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>REGISTRAR</button>
             </div>
           </div>
@@ -1246,7 +1246,7 @@ function Tesoreria() {
               <div><label style={lblStyle}>Descripción</label><input type="text" value={formIngresoExtra.descripcion} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, descripcion: e.target.value})} style={inputFormStyle} /></div>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalIngresoExtra(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid #555', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
+              <button onClick={() => setModalIngresoExtra(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
               <button onClick={registrarIngresoExtraordinario} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#00ff88', border: 'none', color: '#000', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>SUMAR</button>
             </div>
           </div>

@@ -185,7 +185,7 @@ const CreadorFisico = () => {
         {/* COLUMNA IZQUIERDA: DATOS GENERALES */}
         <div style={{ flex: '1 1 350px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px' }}>
-            <h3 style={{ color: '#f59e0b', margin: '0 0 15px 0', textTransform: 'uppercase', fontSize: '1.1rem', borderBottom: '1px solid #333', paddingBottom: '10px' }}>Ficha de la Rutina</h3>
+            <h3 style={{ color: '#f59e0b', margin: '0 0 15px 0', textTransform: 'uppercase', fontSize: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Ficha de la Rutina</h3>
             
             <div style={{ marginBottom: '15px' }}>
               <label style={labelStyle}>Nombre de la Sesión/Rutina *</label>
@@ -249,20 +249,20 @@ const CreadorFisico = () => {
           <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '10px', display: 'flex', gap: '10px' }}>
             <button 
               onClick={() => setModoFisico('gimnasio')} 
-              style={{ ...toggleBtnMode, background: modoFisico === 'gimnasio' ? '#f59e0b' : '#222', color: modoFisico === 'gimnasio' ? '#000' : '#888' }}
+              style={{ ...toggleBtnMode, background: modoFisico === 'gimnasio' ? '#f59e0b' : 'var(--panel)', color: modoFisico === 'gimnasio' ? '#000' : 'var(--text-dim)' }}
             >
               🏋️‍♂️ GIMNASIO / FUERZA
             </button>
             <button 
               onClick={() => setModoFisico('cancha')} 
-              style={{ ...toggleBtnMode, background: modoFisico === 'cancha' ? '#f59e0b' : '#222', color: modoFisico === 'cancha' ? '#000' : '#888' }}
+              style={{ ...toggleBtnMode, background: modoFisico === 'cancha' ? '#f59e0b' : 'var(--panel)', color: modoFisico === 'cancha' ? '#000' : 'var(--text-dim)' }}
             >
               🏃‍♂️ CANCHA / METABÓLICO
             </button>
           </div>
 
           {/* ÁREA DE CONSTRUCCIÓN */}
-          <div className="bento-card" style={{ background: '#0a0a0a', border: '1px solid var(--border)', padding: esMovil ? '15px' : '25px', minHeight: '400px' }}>
+          <div className="bento-card" style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: esMovil ? '15px' : '25px', minHeight: '400px' }}>
             
             {/* ==================================================== */}
             {/* MODO GIMNASIO */}
@@ -306,7 +306,7 @@ const CreadorFisico = () => {
                       </div>
                       
                       <div style={{ marginTop: '10px' }}>
-                        <input type="text" placeholder="Notas (Ej: Carga excéntrica lenta...)" style={{ ...miniInput, width: '100%', background: '#0a0a0a' }} value={ej.notas} onChange={e => actualizarEjercicio(ej.id, 'notas', e.target.value)} />
+                        <input type="text" placeholder="Notas (Ej: Carga excéntrica lenta...)" style={{ ...miniInput, width: '100%', background: 'var(--panel)' }} value={ej.notas} onChange={e => actualizarEjercicio(ej.id, 'notas', e.target.value)} />
                       </div>
                     </div>
                   ))}
@@ -336,7 +336,7 @@ const CreadorFisico = () => {
                         type="text" 
                         value={bloque.nombreBloque} 
                         onChange={e => actualizarBloqueCancha(bloque.id, 'nombreBloque', e.target.value)}
-                        style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed #555', color: '#f59e0b', fontSize: '1.2rem', fontWeight: '900', marginBottom: '15px', outline: 'none', width: '80%' }}
+                        style={{ background: 'transparent', border: 'none', borderBottom: '1px dashed var(--border)', color: '#f59e0b', fontSize: '1.2rem', fontWeight: '900', marginBottom: '15px', outline: 'none', width: '80%' }}
                       />
 
                       <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr 1fr' : 'repeat(6, 1fr)', gap: '12px' }}>
@@ -398,7 +398,7 @@ const inputStyle = { width: '100%', padding: '12px', background: 'var(--bg)', bo
 const miniLabel = { display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '4px' };
 const miniInput = { width: '100%', padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' };
 
-const btnSecundario = { background: 'var(--panel)', border: '1px solid #444', color: 'var(--text)', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
+const btnSecundario = { background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
 const toggleBtnMode = { flex: 1, padding: '12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '900', fontSize: '0.85rem', transition: '0.2s' };
 
 export default CreadorFisico;

@@ -17,8 +17,8 @@ const RenderRutinaFisica = ({ data }) => {
   if (!data || !data.bloques) return <div style={{padding: '20px', color: 'var(--text-dim)'}}>Sin detalles físicos cargados.</div>;
 
   return (
-    <div style={{ padding: '15px', width: '100%', height: '100%', overflowY: 'auto', background: '#0a0a0a', boxSizing: 'border-box', textAlign: 'left' }}>
-      <h4 style={{ color: '#f59e0b', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
+    <div style={{ padding: '15px', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--panel)', boxSizing: 'border-box', textAlign: 'left' }}>
+      <h4 style={{ color: '#f59e0b', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
         {data.sub_modo === 'gimnasio' ? '🏋️‍♂️ Circuito de Gimnasio / Fuerza' : '🏃‍♂️ Bloques de Acondicionamiento en Cancha'}
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -33,7 +33,7 @@ const RenderRutinaFisica = ({ data }) => {
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>INTENSIDAD</span><strong style={{ color: 'var(--text)' }}>{b.rir || '-'}</strong></div>
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>PAUSA</span><strong style={{ color: 'var(--text)' }}>{b.pausa || '-'}</strong></div>
                 </div>
-                {b.notas && <div style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '10px', fontStyle: 'italic' }}>📌 {b.notas}</div>}
+                {b.notas && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '10px', fontStyle: 'italic' }}>📌 {b.notas}</div>}
               </>
             ) : (
               <>
@@ -571,7 +571,7 @@ const BancoTareas = () => {
           {tarea.url_grafico ? (
             <img src={tarea.url_grafico} alt="Gráfico Tarea" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
-            <span style={{ color: '#555', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
+            <span style={{ color: 'var(--text-dim)', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
           )}
           {tarea.formato_tarea && (
             <div style={{ position: 'absolute', top: '5px', left: '5px', background: 'rgba(8,145,178,0.85)', border: '1px solid #22d3ee', color: 'var(--text)', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
@@ -658,7 +658,7 @@ const BancoTareas = () => {
       {cargando ? (
         <div style={{ textAlign: 'center', padding: '50px', color: 'var(--accent)' }}>Cargando el playbook... ⚽</div>
       ) : tareasFiltradas.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '50px', background: 'rgba(255,255,255,0.02)', borderRadius: '15px', border: '1px dashed #333' }}>
+        <div style={{ textAlign: 'center', padding: '50px', background: 'var(--hover)', borderRadius: '15px', border: '1px dashed var(--border)' }}>
           <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📋</div>
           <h3 style={{ color: 'var(--text)', margin: 0 }}>No hay tareas aún.</h3>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Creá tu primer ejercicio en el Creador para empezar a llenar tu biblioteca.</p>
@@ -676,7 +676,7 @@ const BancoTareas = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
           <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '900px', border: `2px solid ${getColoresCategoria(tareaSeleccionada.categoria_ejercicio).border}`, padding: '0', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             
-            <div style={{ padding: '20px', background: getColoresCategoria(tareaSeleccionada.categoria_ejercicio).bg, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333' }}>
+            <div style={{ padding: '20px', background: getColoresCategoria(tareaSeleccionada.categoria_ejercicio).bg, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
               <div>
                 <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text)', background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
                   {tareaSeleccionada.categoria_ejercicio} • {tareaSeleccionada.fase_juego}{tareaSeleccionada.formato_tarea ? ` • ${tareaSeleccionada.formato_tarea}` : ''}
@@ -690,7 +690,7 @@ const BancoTareas = () => {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: '20px' }}>
-              <div style={{ flex: '1 1 500px', padding: '20px', borderRight: '1px solid #222' }}>
+              <div style={{ flex: '1 1 500px', padding: '20px', borderRight: '1px solid var(--border)' }}>
                 
                 {/* 🛡️ CONTENEDOR RELATIVO PARA ENCAPSULAR AL CANVAS ABSOLUTO */}
                 <div style={{ background: 'var(--bg)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -702,7 +702,7 @@ const BancoTareas = () => {
                   ) : tareaSeleccionada.url_grafico ? (
                     <img src={tareaSeleccionada.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : (
-                    <span style={{ color: '#444', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionada)}</span>
+                    <span style={{ color: 'var(--text-dim)', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionada)}</span>
                   )}
 
                 </div>
@@ -718,19 +718,19 @@ const BancoTareas = () => {
               <div style={{ flex: '1 1 300px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
-                  <div style={{ background: '#1a1a1a', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>DURACIÓN</span>
                     <span style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--text)' }}>{tareaSeleccionada.duracion_estimada}'</span>
                   </div>
-                  <div style={{ background: '#1a1a1a', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>RPE (INTENSIDAD)</span>
                     <span style={{ fontSize: '1.5rem', fontWeight: '900', color: tareaSeleccionada.intensidad_rpe > 7 ? '#ef4444' : '#eab308' }}>{tareaSeleccionada.intensidad_rpe}/10</span>
                   </div>
-                  <div style={{ background: '#1a1a1a', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>CARGA (UC)</span>
                     <span style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--accent)' }}>{(tareaSeleccionada.duracion_estimada || 0) * (tareaSeleccionada.intensidad_rpe || 0)}</span>
                   </div>
-                  <div style={{ background: '#1a1a1a', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>JUGADORES</span>
                     <span style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--text)' }}>{tareaSeleccionada.jugadores_involucrados}</span>
                   </div>
@@ -738,7 +738,7 @@ const BancoTareas = () => {
 
                 <div>
                   <h4 style={{ margin: '0 0 10px 0', color: 'var(--accent)', textTransform: 'uppercase', fontSize: '0.85rem' }}>Reglas y Desarrollo:</h4>
-                  <div style={{ background: 'var(--bg)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', color: '#ccc', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '200px', overflowY: 'auto' }}>
+                  <div style={{ background: 'var(--bg)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '200px', overflowY: 'auto' }}>
                     {tareaSeleccionada.descripcion || "Sin descripción detallada."}
                   </div>
                 </div>

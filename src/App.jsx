@@ -281,6 +281,7 @@ useEffect(() => {
           <Route path="/kiosco/jugador-perfil" element={<JugadorPerfil />} />
           <Route path="/kiosco/perfil-jugador" element={<JugadorPerfil />} />
           <Route path="/kiosco/libro-tactico" element={<LibroTactico />} />
+          <Route path="/kiosco/videoanalisis" element={<Videoanalisis />} />
           <Route path="/kiosco/*" element={<Navigate to="/kiosco/home" replace />} />
         </Routes>
       </main>

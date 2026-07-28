@@ -239,7 +239,7 @@ export default function LibroTactico() {
           fontSize: '0.9rem', 
           transition: 'color 0.2s' 
         }}
-        onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text)'}
         onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
       >
         ⬅ Volver atrás
@@ -276,9 +276,9 @@ export default function LibroTactico() {
                 fontWeight: 'bold', 
                 fontSize: '0.8rem', 
                 transition: '0.2s',
-                background: activo ? '#3b82f6' : '#111', 
+                background: activo ? '#3b82f6' : 'var(--panel)', 
                 color: activo ? '#fff' : 'var(--text-dim)',
-                border: activo ? '1px solid #60a5fa' : '1px solid #333',
+                border: activo ? '1px solid #60a5fa' : '1px solid var(--border)',
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '6px',
@@ -286,7 +286,7 @@ export default function LibroTactico() {
               }}
             >
               {sit}
-              <span style={{ background: activo ? 'rgba(0,0,0,0.3)' : '#222', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem' }}>{count}</span>
+              <span style={{ background: activo ? 'rgba(0,0,0,0.3)' : 'var(--panel)', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem' }}>{count}</span>
             </button>
           );
         })}
@@ -309,7 +309,7 @@ export default function LibroTactico() {
               className="bento-card" 
               style={{ padding: '0', overflow: 'hidden', cursor: 'pointer', border: '1px solid var(--border)', transition: '0.2s' }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
               <div style={{ height: '180px', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 {jugada.url_grafico ? (
@@ -335,7 +335,7 @@ export default function LibroTactico() {
       {/* MODAL DETALLE DE LA JUGADA (PLAYBOOK) MEJORADO PARA MÓVILES */}
       {jugadaSeleccionada && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px', boxSizing: 'border-box' }}>
-          <div className="bento-card" style={{ background: '#0a0a0a', width: '100%', maxWidth: '900px', border: '2px solid #3b82f6', padding: '0', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '900px', border: '2px solid #3b82f6', padding: '0', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             
             <div style={{ padding: '20px', background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, paddingRight: '15px' }}>
@@ -360,7 +360,7 @@ export default function LibroTactico() {
                   ) : jugadaSeleccionada.url_grafico ? (
                     <img src={jugadaSeleccionada.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : (
-                    <span style={{ color: '#444' }}>Sin gráfico</span>
+                    <span style={{ color: 'var(--text-dim)' }}>Sin gráfico</span>
                   )}
                 </div>
               </div>
@@ -369,7 +369,7 @@ export default function LibroTactico() {
               <div style={{ flex: '1 1 100%', minWidth: '250px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div>
                   <h4 style={{ margin: '0 0 10px 0', color: '#3b82f6', textTransform: 'uppercase', fontSize: '0.85rem' }}>Desarrollo / Movimientos:</h4>
-                  <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', color: '#ccc', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '250px', overflowY: 'auto' }}>
+                  <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.9rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '250px', overflowY: 'auto' }}>
                     {jugadaSeleccionada.descripcion || "El CT no agregó detalles escritos para esta jugada."}
                   </div>
                 </div>

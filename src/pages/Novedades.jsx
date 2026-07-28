@@ -205,7 +205,7 @@ export default function Novedades() {
             <label className="stat-label">
               CATEGORÍAS DESTINO
               {esCT && (
-                <span style={{ color: '#666', fontWeight: 400, fontSize: '0.65rem', marginLeft: '8px' }}>
+                <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: '0.65rem', marginLeft: '8px' }}>
                   (según tus permisos)
                 </span>
               )}
@@ -217,12 +217,12 @@ export default function Novedades() {
             ) : (
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '5px' }}>
                 <button type="button" onClick={seleccionarTodas}
-                  style={{ ...btnFiltro, background: todasSeleccionadas ? 'var(--accent)' : '#111', color: todasSeleccionadas ? '#000' : 'var(--text-dim)' }}>
+                  style={{ ...btnFiltro, background: todasSeleccionadas ? 'var(--accent)' : 'var(--panel)', color: todasSeleccionadas ? '#000' : 'var(--text-dim)' }}>
                   TODAS
                 </button>
                 {categoriasDisponibles.map(cat => (
                   <button key={cat} type="button" onClick={() => toggleCategoria(cat)}
-                    style={{ ...btnFiltro, background: categoriasDestino.includes(cat) ? 'var(--accent)' : '#111', color: categoriasDestino.includes(cat) ? '#000' : 'var(--text-dim)' }}>
+                    style={{ ...btnFiltro, background: categoriasDestino.includes(cat) ? 'var(--accent)' : 'var(--panel)', color: categoriasDestino.includes(cat) ? '#000' : 'var(--text-dim)' }}>
                     {cat.toUpperCase()}
                   </button>
                 ))}
@@ -278,7 +278,7 @@ export default function Novedades() {
                 <div key={h.id} style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '15px', borderRadius: '6px', position: 'relative' }}>
 
                   {/* Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px dashed #333', paddingBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px dashed var(--border)', paddingBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>
                       {h.perfiles?.nombre_completo || 'Desconocido'}
                       {' '}({h.perfiles?.rol?.toUpperCase() || 'N/A'})
@@ -291,8 +291,8 @@ export default function Novedades() {
                         <span style={{
                           fontSize: '0.6rem', fontWeight: 900, padding: '2px 7px', borderRadius: '20px',
                           background: labelVenc === 'Vence mañana' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)',
-                          color: labelVenc === 'Vence mañana' ? '#ef4444' : '#888',
-                          border: `1px solid ${labelVenc === 'Vence mañana' ? '#ef4444' : '#333'}`
+                          color: labelVenc === 'Vence mañana' ? '#ef4444' : 'var(--text-dim)',
+                          border: `1px solid ${labelVenc === 'Vence mañana' ? '#ef4444' : 'var(--border)'}`
                         }}>
                           ⏱ {labelVenc}
                         </span>
@@ -329,11 +329,11 @@ export default function Novedades() {
                       style={{
                         position: 'absolute', top: '12px', right: '12px',
                         background: 'transparent', border: 'none', cursor: 'pointer',
-                        color: '#555', fontSize: '1rem', lineHeight: 1, padding: '2px',
+                        color: 'var(--text-dim)', fontSize: '1rem', lineHeight: 1, padding: '2px',
                         transition: 'color 0.2s',
                       }}
                       onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                      onMouseLeave={e => e.currentTarget.style.color = '#555'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--text-dim)'}
                     >
                       {eliminando === h.id ? '...' : '✕'}
                     </button>

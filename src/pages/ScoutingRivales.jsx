@@ -207,7 +207,7 @@ function ScoutingRivales() {
           <div className="stat-label" style={{ color: 'var(--text-dim)' }}>DEPARTAMENTO DE ANÁLISIS</div>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)' }}>SCOUTING RIVALES</div>
         </div>
-        <button onClick={abrirNuevoRival} className="btn-action" style={{ background: '#00ff88', color: '#000', fontSize: '0.8rem' }}>+ NUEVO RIVAL</button>
+        <button onClick={abrirNuevoRival} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem' }}>+ NUEVO RIVAL</button>
       </div>
 
       {/* --- CARDS DE RIVALES --- */}
@@ -218,18 +218,18 @@ function ScoutingRivales() {
           return (
             <div key={rival.id} onClick={() => abrirPerfilRival(rival)} className="bento-card" style={{ cursor: 'pointer', transition: '0.2s', position: 'relative', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
-                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid #444', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-                  {rival.escudo ? <img src={rival.escudo} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: '#555', fontWeight: 800 }}>ESCUDO</span>}
+                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                  {rival.escudo ? <img src={rival.escudo} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>ESCUDO</span>}
                 </div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>{rival.nombre.toUpperCase()}</div>
               </div>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #333', paddingTop: '10px', fontSize: '0.8rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed var(--border)', paddingTop: '10px', fontSize: '0.8rem' }}>
                 <div><span style={{ color: 'var(--text-dim)' }}>Sistema ({categoriaInicial}):</span> <strong style={{ color: 'var(--accent)' }}>{tacticoResumen.sistema_tactico || 'N/A'}</strong></div>
               </div>
               
               {tacticoResumen.jugadores_claves && (
-                <div style={{ marginTop: '10px', fontSize: '0.75rem', color: '#ccc', background: 'var(--panel)', padding: '8px', borderRadius: '4px', borderLeft: '2px solid #ef4444' }}>
+                <div style={{ marginTop: '10px', fontSize: '0.75rem', color: 'var(--text-dim)', background: 'var(--panel)', padding: '8px', borderRadius: '4px', borderLeft: '2px solid #ef4444' }}>
                   <strong style={{ color: '#ef4444' }}>CLAVES:</strong> {tacticoResumen.jugadores_claves}
                 </div>
               )}
@@ -251,7 +251,7 @@ function ScoutingRivales() {
             {/* SECCIÓN CLUB (GLOBAL) */}
             <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px', background: 'var(--panel)', padding: '15px', borderRadius: '4px', border: '1px solid var(--border)' }}>
               <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
-                {formData.escudo ? <img src={formData.escudo} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'#555', fontWeight:800}}>ESCUDO</span>}
+                {formData.escudo ? <img src={formData.escudo} alt="Preview" style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <span style={{fontSize:'0.7rem', color:'var(--text-dim)', fontWeight:800}}>ESCUDO</span>}
               </div>
               <div style={{ flex: 1, display: 'flex', gap: '15px' }}>
                 <div style={{ flex: 1 }}>
@@ -276,8 +276,8 @@ function ScoutingRivales() {
                     onClick={() => setCategoriaScouting(cat)}
                     style={{ 
                       padding: '8px 15px', borderRadius: '4px', border: 'none', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', flexShrink: 0,
-                      background: categoriaScouting === cat ? 'var(--accent)' : '#222',
-                      color: categoriaScouting === cat ? '#000' : '#fff'
+                      background: categoriaScouting === cat ? 'var(--accent)' : 'var(--panel)',
+                      color: categoriaScouting === cat ? '#000' : 'var(--text)'
                     }}
                   >
                     SCOUTING {cat.toUpperCase()}
@@ -331,7 +331,7 @@ function ScoutingRivales() {
 
             {/* SECCIÓN H2H (FILTRADA POR LA CATEGORÍA ACTIVA) */}
             {formData.id && (
-              <div style={{ marginTop: '30px', borderTop: '1px solid #333', paddingTop: '20px' }}>
+              <div style={{ marginTop: '30px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                   <div className="stat-label" style={{ color: 'var(--accent)' }}>HISTORIAL DE ENFRENTAMIENTOS ({categoriaScouting})</div>
                 </div>
@@ -386,7 +386,7 @@ function ScoutingRivales() {
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 99999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
         .modal-content { width: 100%; border: 1px solid var(--accent); max-height: 90vh; overflow-y: auto; }
         .section-title { color: var(--text-dim); font-size: 0.8rem; font-weight: 800; margin-bottom: 5px; text-transform: uppercase; }
-        .close-btn { background: transparent; border: none; color: #fff; font-size: 1.8rem; cursor: pointer; line-height: 1; }
+        .close-btn { background: transparent; border: none; color: var(--text); font-size: 1.8rem; cursor: pointer; line-height: 1; }
       `}</style>
     </div>
   );

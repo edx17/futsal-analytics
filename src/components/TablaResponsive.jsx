@@ -59,7 +59,7 @@ export function TablaResponsive({
 
   const claves = colsClave.length ? colsClave : columnas.slice(0, 3).map((c) => c.k);
   const colDe = (k) => columnas.find((c) => c.k === k);
-  const colorDe = (fila, col) => (colorCelda ? colorCelda(fila, col) : (grupos[col?.g] || '#fff'));
+  const colorDe = (fila, col) => (colorCelda ? colorCelda(fila, col) : (grupos[col?.g] || 'var(--text)'));
 
   return (
     <div>
@@ -76,7 +76,7 @@ export function TablaResponsive({
               onChange={(e) => onSort(e.target.value)}
               aria-label="Ordenar por"
               style={{
-                background: '#111', color: '#fff', border: '1px solid #333', borderRadius: '6px',
+                background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '6px',
                 padding: '7px 10px', fontSize: '0.72rem', fontWeight: 800, outline: 'none', maxWidth: '55%',
               }}
             >
@@ -88,7 +88,7 @@ export function TablaResponsive({
               onClick={() => sortKey && onSort(sortKey)}
               aria-label={sortDir === 'desc' ? 'Descendente' : 'Ascendente'}
               style={{
-                background: '#111', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '6px',
+                background: 'var(--panel)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '6px',
                 width: '38px', height: '34px', fontSize: '0.9rem', fontWeight: 900, cursor: 'pointer', flexShrink: 0,
               }}
             >
@@ -114,7 +114,7 @@ export function TablaResponsive({
                     style={{ flex: 1, minWidth: 0, cursor: onRowClick ? 'pointer' : 'default' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: 900, fontSize: '0.95rem', color: onRowClick ? '#3b82f6' : '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <span style={{ fontWeight: 900, fontSize: '0.95rem', color: onRowClick ? '#3b82f6' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {getTitulo(fila)}
                       </span>
                       {renderBadges && renderBadges(fila)}
@@ -144,7 +144,7 @@ export function TablaResponsive({
                     const col = colDe(k);
                     if (!col) return null;
                     return (
-                      <div key={k} style={{ flex: 1, minWidth: '70px', textAlign: 'center', background: '#0a0a0a', border: '1px solid #1c1c1c', borderRadius: '6px', padding: '8px 4px' }}>
+                      <div key={k} style={{ flex: 1, minWidth: '70px', textAlign: 'center', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px 4px' }}>
                         <div style={{ fontSize: '0.55rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '0.4px', textTransform: 'uppercase' }}>{col.t}</div>
                         <div style={{ fontSize: '1.05rem', fontWeight: 900, fontFamily: MONO, color: colorDe(fila, col), marginTop: '3px' }}>{col.r(fila)}</div>
                       </div>
@@ -154,7 +154,7 @@ export function TablaResponsive({
 
                 {/* Detalle completo, agrupado */}
                 {abierta && (
-                  <div style={{ borderTop: '1px solid #1c1c1c', padding: '10px 14px 14px', background: '#080808' }}>
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px 14px', background: 'var(--bg)' }}>
                     {agruparPorGrupo(columnas, claves).map(({ g, cols }) => (
                       <div key={g} style={{ marginBottom: '12px' }}>
                         <div style={{ fontSize: '0.6rem', fontWeight: 900, color: grupos[g] || 'var(--text-dim)', letterSpacing: '0.5px', marginBottom: '6px' }}>
@@ -162,7 +162,7 @@ export function TablaResponsive({
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '6px 10px' }}>
                           {cols.map((col) => (
-                            <div key={col.k} style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', fontSize: '0.72rem', borderBottom: '1px solid #141414', paddingBottom: '3px' }}>
+                            <div key={col.k} style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', fontSize: '0.72rem', borderBottom: '1px solid var(--border)', paddingBottom: '3px' }}>
                               <span style={{ color: 'var(--text-dim)' }}>{col.t}</span>
                               <span style={{ fontFamily: MONO, fontWeight: 700, color: colorDe(fila, col) }}>{col.r(fila)}</span>
                             </div>

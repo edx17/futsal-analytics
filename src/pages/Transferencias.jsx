@@ -255,7 +255,7 @@ function Transferencias() {
       Activo: { col: 'var(--accent)' }, Retornado: { col: 'var(--text-dim)' },
       Comprado: { col: '#00ff88' }, Cerrada: { col: '#3b82f6' }, Cancelada: { col: '#ef4444' }
     };
-    const c = map[estado] || { col: '#fff' };
+    const c = map[estado] || { col: 'var(--text)' };
     return <span style={{ ...chipBase, background: 'rgba(255,255,255,0.06)', color: c.col }}>{(estado || '').toUpperCase()}</span>;
   };
 
@@ -268,7 +268,7 @@ function Transferencias() {
     return (
       <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
         <svg width="72" height="72" viewBox="0 0 72 72">
-          <circle cx="36" cy="36" r={r} fill="none" stroke="#222" strokeWidth="6" />
+          <circle cx="36" cy="36" r={r} fill="none" stroke="var(--border)" strokeWidth="6" />
           <circle cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
             strokeDasharray={`${(overdue ? 1 : frac) * C} ${C}`} transform="rotate(-90 36 36)" />
         </svg>
@@ -286,7 +286,7 @@ function Transferencias() {
     foto ? (
       <img src={foto} alt={nombre} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)', flexShrink: 0 }} />
     ) : (
-      <div style={{ width: size, height: size, borderRadius: '50%', background: '#1a1a1a', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: size * 0.32, color: 'var(--accent)', flexShrink: 0 }}>
+      <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: size * 0.32, color: 'var(--accent)', flexShrink: 0 }}>
         {iniciales(nombre)}
       </div>
     )
@@ -350,18 +350,18 @@ function Transferencias() {
           <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#a855f7', fontFamily: MONO }}>{dashboard.derechos}</div>
           <div className="stat-label" style={{ fontSize: '0.62rem' }}>DERECHOS A FUTURO {dashboard.pctProm > 0 ? `· ${dashboard.pctProm}%` : ''}</div>
         </div>
-        <div style={{ borderLeft: '1px solid #333' }}>
+        <div style={{ borderLeft: '1px solid var(--border)' }}>
           <div style={{ fontSize: '1.7rem', fontWeight: 900, color: '#fbbf24', fontFamily: MONO }}>{dashboard.opciones}</div>
           <div className="stat-label" style={{ fontSize: '0.62rem' }}>OPCIONES POR VENCER</div>
         </div>
       </div>
 
       {/* TABS */}
-      <div style={{ display: 'flex', gap: '5px', background: '#0a0a0a', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '20px', width: 'fit-content' }}>
-        <button onClick={() => setTab('activos')} style={{ ...tabBtn, background: tab === 'activos' ? '#222' : 'transparent', color: tab === 'activos' ? 'var(--accent)' : 'var(--text-dim)' }}>
+      <div style={{ display: 'flex', gap: '5px', background: 'var(--panel)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '20px', width: 'fit-content' }}>
+        <button onClick={() => setTab('activos')} style={{ ...tabBtn, background: tab === 'activos' ? 'var(--hover)' : 'transparent', color: tab === 'activos' ? 'var(--accent)' : 'var(--text-dim)' }}>
           PRÉSTAMOS ACTIVOS
         </button>
-        <button onClick={() => setTab('historial')} style={{ ...tabBtn, background: tab === 'historial' ? '#222' : 'transparent', color: tab === 'historial' ? 'var(--accent)' : 'var(--text-dim)' }}>
+        <button onClick={() => setTab('historial')} style={{ ...tabBtn, background: tab === 'historial' ? 'var(--hover)' : 'transparent', color: tab === 'historial' ? 'var(--accent)' : 'var(--text-dim)' }}>
           HISTORIAL
         </button>
       </div>
@@ -444,7 +444,7 @@ function Transferencias() {
             <div className="bento-card">
               <div style={{ display: 'flex', gap: '5px', marginBottom: '15px', flexWrap: 'wrap' }}>
                 {['Todos', 'Prestamo', 'Venta', 'Libre'].map(tp => (
-                  <button key={tp} onClick={() => setFiltroTipo(tp)} style={{ ...tabBtn, fontSize: '0.7rem', padding: '7px 14px', background: filtroTipo === tp ? '#222' : 'transparent', color: filtroTipo === tp ? 'var(--accent)' : 'var(--text-dim)', border: '1px solid var(--border)' }}>
+                  <button key={tp} onClick={() => setFiltroTipo(tp)} style={{ ...tabBtn, fontSize: '0.7rem', padding: '7px 14px', background: filtroTipo === tp ? 'var(--hover)' : 'transparent', color: filtroTipo === tp ? 'var(--accent)' : 'var(--text-dim)', border: '1px solid var(--border)' }}>
                     {tp === 'Prestamo' ? 'PRÉSTAMOS' : tp.toUpperCase()}
                   </button>
                 ))}
@@ -463,12 +463,12 @@ function Transferencias() {
                   getId={(t) => t.id}
                   getTitulo={(t) => infoJugador(t).nombre}
                   getSubtitulo={(t) => t.categoria || ''}
-                  colorCelda={(t, col) => col.k === 'monto' ? '#00ff88' : (col.k === 'pct' ? '#a855f7' : '#fff')}
+                  colorCelda={(t, col) => col.k === 'monto' ? '#00ff88' : (col.k === 'pct' ? '#a855f7' : 'var(--text)')}
                 >
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', minWidth: '720px' }}>
                     <thead>
-                      <tr style={{ borderBottom: '2px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem', background: '#0a0a0a' }}>
+                      <tr style={{ borderBottom: '2px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.7rem', background: 'var(--panel)' }}>
                         <th style={{ padding: '12px' }}>JUGADOR</th>
                         <th style={{ padding: '12px' }}>TIPO</th>
                         <th style={{ padding: '12px' }}>DESTINO / ORIGEN</th>
@@ -483,7 +483,7 @@ function Transferencias() {
                       {historial.map(t => {
                         const info = infoJugador(t);
                         return (
-                          <tr key={t.id} style={{ borderBottom: '1px solid #222' }}>
+                          <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '12px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <Avatar foto={info.foto} nombre={info.nombre} size={30} />
@@ -533,7 +533,7 @@ function Transferencias() {
               <div className="section-title">TIPO DE MOVIMIENTO</div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {['Prestamo', 'Venta', 'Libre'].map(tp => (
-                  <button key={tp} onClick={() => setForm({ ...form, tipo_movimiento: tp })} style={{ flex: 1, padding: '10px', background: form.tipo_movimiento === tp ? 'rgba(0,230,118,0.1)' : 'transparent', border: `1px solid ${form.tipo_movimiento === tp ? 'var(--accent)' : '#333'}`, color: form.tipo_movimiento === tp ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                  <button key={tp} onClick={() => setForm({ ...form, tipo_movimiento: tp })} style={{ flex: 1, padding: '10px', background: form.tipo_movimiento === tp ? 'rgba(0,230,118,0.1)' : 'transparent', border: `1px solid ${form.tipo_movimiento === tp ? 'var(--accent)' : 'var(--border)'}`, color: form.tipo_movimiento === tp ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
                     {tp === 'Prestamo' ? 'PRÉSTAMO' : tp.toUpperCase()}
                   </button>
                 ))}
@@ -546,7 +546,7 @@ function Transferencias() {
                 <div className="section-title">DIRECCIÓN</div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {[['Saliente', 'CEDO UN JUGADOR'], ['Entrante', 'RECIBO UN JUGADOR']].map(([val, lbl]) => (
-                    <button key={val} onClick={() => setForm({ ...form, direccion: val })} style={{ flex: 1, padding: '10px', background: form.direccion === val ? '#222' : 'transparent', border: `1px solid ${form.direccion === val ? '#3b82f6' : '#333'}`, color: form.direccion === val ? '#3b82f6' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>
+                    <button key={val} onClick={() => setForm({ ...form, direccion: val })} style={{ flex: 1, padding: '10px', background: form.direccion === val ? 'var(--hover)' : 'transparent', border: `1px solid ${form.direccion === val ? '#3b82f6' : 'var(--border)'}`, color: form.direccion === val ? '#3b82f6' : 'var(--text-dim)', fontWeight: 800, borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>
                       {lbl}
                     </button>
                   ))}

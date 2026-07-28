@@ -92,13 +92,13 @@ const StatBar = ({ label, valPropio, valRival, colorPropio = 'var(--accent)', co
   return (
     <div style={{ marginBottom: '15px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 800, marginBottom: '5px' }}>
-        <span style={{ width: '40px', textAlign: 'left', color: vP >= vR && total > 0 ? '#fff' : 'var(--text-dim)' }}>{mostrarValorPropio}</span>
+        <span style={{ width: '40px', textAlign: 'left', color: vP >= vR && total > 0 ? 'var(--text)' : 'var(--text-dim)' }}>{mostrarValorPropio}</span>
         <span style={{ flex: 1, textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{label}</span>
-        <span style={{ width: '40px', textAlign: 'right', color: vR >= vP && total > 0 ? '#fff' : 'var(--text-dim)' }}>{mostrarValorRival}</span>
+        <span style={{ width: '40px', textAlign: 'right', color: vR >= vP && total > 0 ? 'var(--text)' : 'var(--text-dim)' }}>{mostrarValorRival}</span>
       </div>
-      <div style={{ display: 'flex', height: '6px', background: '#1a1a1a', borderRadius: '3px', overflow: 'hidden' }}>
-        <div style={{ width: `${pctPropio}%`, background: total === 0 ? '#333' : colorPropio, transition: 'width 1s ease' }}></div>
-        <div style={{ width: `${pctRival}%`, background: total === 0 ? '#333' : colorRival, transition: 'width 1s ease' }}></div>
+      <div style={{ display: 'flex', height: '6px', background: 'var(--panel)', borderRadius: '3px', overflow: 'hidden' }}>
+        <div style={{ width: `${pctPropio}%`, background: total === 0 ? 'var(--border)' : colorPropio, transition: 'width 1s ease' }}></div>
+        <div style={{ width: `${pctRival}%`, background: total === 0 ? 'var(--border)' : colorRival, transition: 'width 1s ease' }}></div>
       </div>
     </div>
   );
@@ -277,12 +277,12 @@ const GraficoMomentumPartido = ({ eventos }) => {
                 <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-            <XAxis dataKey="label" stroke="#888" tick={{ fill: '#aaa', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={15} />
-            <YAxis stroke="#888" tick={false} tickLine={false} axisLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="label" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={15} />
+            <YAxis stroke="var(--border)" tick={false} tickLine={false} axisLine={false} />
             <RechartsTooltip 
-              contentStyle={{ backgroundColor: '#111', borderColor: '#333', color: 'var(--text)', borderRadius: '8px' }}
-              labelStyle={{ color: '#aaa', fontWeight: 'bold' }}
+              contentStyle={{ backgroundColor: 'var(--panel)', borderColor: 'var(--border)', color: 'var(--text)', borderRadius: '8px' }}
+              labelStyle={{ color: 'var(--text-dim)', fontWeight: 'bold' }}
               itemStyle={{ fontWeight: 'bold' }}
               formatter={(value) => [value.toFixed(1), 'Índice de Presión']}
             />
@@ -1034,7 +1034,7 @@ function Resumen() {
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>MOSTRAR</div>
               <button 
                 onClick={() => setSoloAnalizados(!soloAnalizados)}
-                style={{ width: '100%', padding: '8px 12px', background: soloAnalizados ? 'rgba(0,255,136,0.1)' : '#111', color: soloAnalizados ? 'var(--accent)' : '#fff', border: `1px solid ${soloAnalizados ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '4px', cursor: 'pointer', outline: 'none', transition: '0.2s' }}
+                style={{ width: '100%', padding: '8px 12px', background: soloAnalizados ? 'rgba(0,255,136,0.1)' : 'var(--panel)', color: soloAnalizados ? 'var(--accent)' : 'var(--text)', border: `1px solid ${soloAnalizados ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '4px', cursor: 'pointer', outline: 'none', transition: '0.2s' }}
               >
                 {soloAnalizados ? 'SOLO ANALIZADOS ✓' : 'TODOS LOS PARTIDOS'}
               </button>
@@ -1062,7 +1062,7 @@ function Resumen() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
           {partidosGrid.map(p => (
             <div key={p.id} className="bento-card match-card" onClick={() => cargarPartido(p.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{p.fecha}</span>
                 <span style={{ background: 'var(--panel)', color: 'var(--accent)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>{p.categoria || 'S/C'} | {p.competicion || 'Amistoso'}</span>
               </div>
@@ -1073,9 +1073,9 @@ function Resumen() {
                     {p.nombre_propio || miClubGlobal}
                   </span>
                 </div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#333', fontStyle: 'italic', width: '20%', textAlign: 'center' }}>VS</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-dim)', fontStyle: 'italic', width: '20%', textAlign: 'center' }}>VS</div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', width: '40%' }}>
-                  {p.escudo_rival ? <img src={p.escudo_rival} alt="Rival" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid #555', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', fontWeight: 800, fontSize: '1.2rem' }}>{p.rival?.substring(0, 2).toUpperCase() || 'R'}</div>}
+                  {p.escudo_rival ? <img src={p.escudo_rival} alt="Rival" style={{ height: '50px', objectFit: 'contain' }} /> : <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)', fontWeight: 800, fontSize: '1.2rem' }}>{p.rival?.substring(0, 2).toUpperCase() || 'R'}</div>}
                   <span style={{ fontSize: '0.8rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>{p.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</span>
                 </div>
               </div>
@@ -1095,12 +1095,12 @@ const COLORS_ORIGEN = {
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       <style>{`
-        .mci-bar { height: 6px; border-radius: 3px; background: #333; overflow: hidden; margin-top: 8px; display: flex; }
+        .mci-bar { height: 6px; border-radius: 3px; background: var(--panel); overflow: hidden; margin-top: 8px; display: flex; }
         .bento-card { overflow: visible !important; }
         .table-wrapper { overflow-x: auto; overflow-y: visible; padding-bottom: 20px; -webkit-overflow-scrolling: touch; }
         .table-wrapper::-webkit-scrollbar { height: 6px; }
         .table-wrapper::-webkit-scrollbar-track { background: transparent; }
-        .table-wrapper::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
         .table-wrapper::-webkit-scrollbar-thumb:hover { background: var(--accent); }
         .pill-filtro { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: #000; color: var(--text-dim); transition: 0.2s; }
         .pill-filtro.active { border-color: var(--accent); color: var(--accent); background: rgba(0,255,136,0.1); }
@@ -1159,7 +1159,7 @@ const COLORS_ORIGEN = {
                 </div>
 
                 {/* GOLEADORES */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', borderTop: '1px solid #333', paddingTop: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
                     <div style={{ flex: 1, textAlign: 'left', color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: '1.8' }}>
                         {goleadores.propio.map((g, i) => <div key={i}>⚽ {g}</div>)}
                     </div>
@@ -1174,17 +1174,17 @@ const COLORS_ORIGEN = {
                 <div style={{ textAlign: 'center', color: 'var(--text)', fontWeight: 900, marginBottom: '25px', fontSize: '1.1rem', letterSpacing: '1px' }}>RESUMEN DEL PARTIDO</div>
                 
                 <StatBar label="POSESIÓN" valPropio={analitica.stats.propio.totalAcciones} valRival={analitica.stats.rival.totalAcciones} />
-                <div style={{ margin: '25px 0', borderBottom: '1px solid #222' }}></div>
+                <div style={{ margin: '25px 0', borderBottom: '1px solid var(--border)' }}></div>
                 
                 <StatBar label="REMATES TOTALES" valPropio={analitica.stats.propio.remates} valRival={analitica.stats.rival.remates} />
                 <StatBar label="REMATES AL ARCO" valPropio={analitica.stats.propio.goles + analitica.stats.propio.atajados} valRival={analitica.stats.rival.goles + analitica.stats.rival.atajados} />
                 <StatBar label="REMATES DESVIADOS / BLOQ." valPropio={analitica.stats.propio.desviados + analitica.stats.propio.rebatidos} valRival={analitica.stats.rival.desviados + analitica.stats.rival.rebatidos} />
-                <div style={{ margin: '25px 0', borderBottom: '1px solid #222' }}></div>
+                <div style={{ margin: '25px 0', borderBottom: '1px solid var(--border)' }}></div>
                 
                 <StatBar label="CÓRNERS" valPropio={analitica.abp.corners.favor} valRival={analitica.abp.corners.contra} />
-                <StatBar label="RECUPERACIONES" valPropio={analitica.stats.propio.rec} valRival={0} colorRival="#333" />
+                <StatBar label="RECUPERACIONES" valPropio={analitica.stats.propio.rec} valRival={0} colorRival="var(--border)" />
                 <StatBar label="PÉRDIDAS" valPropio={analitica.stats.propio.perdidas} valRival={analitica.stats.rival.perdidas} />
-                <div style={{ margin: '25px 0', borderBottom: '1px solid #222' }}></div>
+                <div style={{ margin: '25px 0', borderBottom: '1px solid var(--border)' }}></div>
                 
                 <StatBar label="FALTAS COMETIDAS" valPropio={analitica.stats.propio.faltas} valRival={analitica.stats.rival.faltas} colorPropio="#f59e0b" colorRival="#f59e0b" />
                 <StatBar label="TARJETAS AMARILLAS" valPropio={analitica.stats.propio.amarillas} valRival={analitica.stats.rival.amarillas} colorPropio="#fbbf24" colorRival="#fbbf24" />
@@ -1288,7 +1288,7 @@ const COLORS_ORIGEN = {
               </div>
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={{ height: esMovil ? '40px' : '60px', objectFit: 'contain' }} /> : <div style={{...escudoFallback, borderColor: '#555', color: 'var(--text)', width: esMovil ? '40px' : '60px', height: esMovil ? '40px' : '60px', fontSize: esMovil ? '1rem' : '1.5rem', marginBottom: 0}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
+                {partidoSeleccionado.escudo_rival ? <img src={partidoSeleccionado.escudo_rival} alt="rival" style={{ height: esMovil ? '40px' : '60px', objectFit: 'contain' }} /> : <div style={{...escudoFallback, borderColor: 'var(--border)', color: 'var(--text)', width: esMovil ? '40px' : '60px', height: esMovil ? '40px' : '60px', fontSize: esMovil ? '1rem' : '1.5rem', marginBottom: 0}}>{partidoSeleccionado.rival?.substring(0,2).toUpperCase() || 'R'}</div>}
                 <div className="stat-label" style={{ fontSize: esMovil ? '0.65rem' : '0.8rem', lineHeight: 1.2 }}>{partidoSeleccionado.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}</div>
               </div>
               
@@ -1387,7 +1387,7 @@ const COLORS_ORIGEN = {
                             <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
                           ))}
                         </Pie>
-                      <RechartsTooltip contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff', color: '#ffffff' }} itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#ffffff' }}/>
+                      <RechartsTooltip contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)' }} itemStyle={{ color: 'var(--text)' }} labelStyle={{ color: 'var(--text)' }}/>
                         <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
@@ -1414,7 +1414,7 @@ const COLORS_ORIGEN = {
                             <Cell key={`cell-${index}`} fill={COLORS_ORIGEN[entry.name] || '#8884d8'} />
                           ))}
                         </Pie>
-                        <RechartsTooltip  contentStyle={{ backgroundColor: '#111', border: '1px solid #ffffff', color: '#ffffff' }}  itemStyle={{ color: '#ffffff' }} labelStyle={{ color: '#ffffff' }}/>
+                        <RechartsTooltip  contentStyle={{ backgroundColor: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)' }}  itemStyle={{ color: 'var(--text)' }} labelStyle={{ color: 'var(--text)' }}/>
                         <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '0.7rem' }} iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
@@ -1540,7 +1540,7 @@ const COLORS_ORIGEN = {
               <div className="stat-label" style={{ marginBottom: '5px', color: '#c084fc' }}>PERFIL DE REMATE</div>
               <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center', marginBottom: '15px' }}>
                  <div style={{...zonePill, background: 'rgba(192, 132, 252, 0.1)'}}>CENTRO<br/><strong style={{color:'#c084fc', fontSize:'1rem'}}>{analitica.perfilRemate.centro}</strong></div>
-                 <div style={{...zonePill, background: 'rgba(255,255,255,0.05)'}}>BANDA<br/><strong style={{color:'#fff', fontSize:'1rem'}}>{analitica.perfilRemate.banda}</strong></div>
+                 <div style={{...zonePill, background: 'rgba(255,255,255,0.05)'}}>BANDA<br/><strong style={{color:'var(--text)', fontSize:'1rem'}}>{analitica.perfilRemate.banda}</strong></div>
               </div>
               <div style={{ display: 'flex', gap: '5px', justifyContent: 'space-between', textAlign: 'center' }}>
                  <div style={{...zonePill, background: 'rgba(0, 255, 136, 0.1)'}}>CERCANOS<br/><strong style={{color:'#00ff88', fontSize:'1rem'}}>{analitica.perfilRemate.cerca}</strong></div>
@@ -1567,9 +1567,9 @@ const COLORS_ORIGEN = {
               
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
                 <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
-                  <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Ambos' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
-                  <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Propio' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
-                  <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Rival' ? '#333' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
+                  <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Ambos' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
+                  <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Propio' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
+                  <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Rival' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
                 </div>
 
                 <select value={filtroAccionMapa} onChange={(e) => setFiltroAccionMapa(e.target.value)} disabled={tipoMapa === 'transiciones' || tipoMapa === 'abp' || tipoMapa === 'tiros'} style={{ padding: '8px', flex: esMovil ? '1 1 100%' : 'auto', fontSize: '0.8rem', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', opacity: (tipoMapa === 'transiciones' || tipoMapa === 'abp' || tipoMapa === 'tiros') ? 0.3 : 1, outline: 'none', borderRadius: '4px' }}>
@@ -1585,10 +1585,10 @@ const COLORS_ORIGEN = {
                 </select>
 
                 <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
-                  <button onClick={() => setTipoMapa('tiros')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'tiros' ? '#333' : 'transparent', color: tipoMapa === 'tiros' ? 'var(--accent)' : 'var(--text-dim)' }}>TIROS (xG)</button>
-                  <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? '#333' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
-                  <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? '#333' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
-                  <button onClick={() => setTipoMapa('zonas')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'zonas' ? '#333' : 'transparent', color: tipoMapa === 'zonas' ? 'var(--accent)' : 'var(--text-dim)' }}>ZONAS</button>
+                  <button onClick={() => setTipoMapa('tiros')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'tiros' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'tiros' ? 'var(--accent)' : 'var(--text-dim)' }}>TIROS (xG)</button>
+                  <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
+                  <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>
+                  <button onClick={() => setTipoMapa('zonas')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'zonas' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'zonas' ? 'var(--accent)' : 'var(--text-dim)' }}>ZONAS</button>
                   <button onClick={() => setTipoMapa('transiciones')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'transiciones' ? 'var(--accent)' : 'transparent', color: tipoMapa === 'transiciones' ? '#000' : 'var(--text-dim)' }}>TRANSIC.</button>
                   <button onClick={() => setTipoMapa('abp')} style={{ ...btnTab, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: tipoMapa === 'abp' ? '#06b6d4' : 'transparent', color: tipoMapa === 'abp' ? '#000' : 'var(--text-dim)' }}>ABP</button>
                 </div>
@@ -1718,7 +1718,7 @@ const COLORS_ORIGEN = {
                 if (col.g === 'of') return '#00ff88';
                 if (col.g === 'lu') return '#0ea5e9';
                 if (col.g === 'dis') return '#fbbf24';
-                return '#fff';
+                return 'var(--text)';
               }}
             >
             <div className="bento-card">
@@ -1804,7 +1804,7 @@ const COLORS_ORIGEN = {
         </td>
         <td style={{ fontSize: '0.8rem' }}>
           <span style={{ color: '#fbbf24', fontWeight: 800 }}>{j.amarillas || 0}</span>
-          <span style={{ color: '#555', margin: '0 4px' }}>-</span>
+          <span style={{ color: 'var(--text-dim)', margin: '0 4px' }}>-</span>
           <span style={{ color: '#ef4444', fontWeight: 800 }}>{j.rojas || 0}</span>
         </td>
 
@@ -1887,7 +1887,7 @@ const COLORS_ORIGEN = {
                           </td>
                           <td style={{ fontSize: '0.8rem' }}>
                             <span style={{ color: '#fbbf24', fontWeight: 800 }}>{j.amarillas || 0}</span>
-                            <span style={{ color: '#555', margin: '0 4px' }}>-</span>
+                            <span style={{ color: 'var(--text-dim)', margin: '0 4px' }}>-</span>
                             <span style={{ color: '#ef4444', fontWeight: 800 }}>{j.rojas || 0}</span>
                           </td>
                         </tr>
@@ -1911,7 +1911,7 @@ const COLORS_ORIGEN = {
             <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #333', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                  <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
                     <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETO</th>
                     <th title="Minutos Jugados">MIN</th>
                     <th style={{ color: '#00ff88' }} title="Goles a Favor / En Contra">GOL</th>
@@ -1958,7 +1958,7 @@ const COLORS_ORIGEN = {
                     }).join(' - ');
 
                     return (
-                      <tr key={idx} style={{ borderBottom: '1px solid #222' }}>
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: 'var(--text)', fontSize: '0.75rem' }}>
                           [{nombresQuinteto}]
                         </td>
@@ -1973,7 +1973,7 @@ const COLORS_ORIGEN = {
                         <td>
                           <div style={{ 
                             display: 'inline-block', padding: '4px 8px', borderRadius: '4px', fontWeight: 800,
-                            color: diffGoles > 0 ? 'var(--accent)' : (diffGoles < 0 ? '#ef4444' : '#888') 
+                            color: diffGoles > 0 ? 'var(--accent)' : (diffGoles < 0 ? '#ef4444' : 'var(--text-dim)') 
                           }}>
                             {diffGoles > 0 ? '+' : ''}{diffGoles}
                           </div>
@@ -2122,7 +2122,7 @@ const COLORS_ORIGEN = {
                             >
                               <div style={{ pointerEvents: 'none' }}>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: color }}>{ev.accion.toUpperCase()}</div>
-                                <div style={{ fontSize: '0.65rem', color: '#aaa' }}>{getNombreJugador(ev.id_jugador)}</div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>{getNombreJugador(ev.id_jugador)}</div>
                               </div>
                               <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 800 }}>
                                 {ev.periodo} {ev.minuto}'
@@ -2165,7 +2165,7 @@ const COLORS_ORIGEN = {
 }
 
 const escudoFallback = { borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, margin: '0 auto' };
-const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #222', fontSize: '0.9rem', alignItems: 'center' };
+const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)', fontSize: '0.9rem', alignItems: 'center' };
 const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
 
