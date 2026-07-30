@@ -443,6 +443,110 @@ export default function ResumenPlantel() {
   const nombreCompleto = (p) => `${p.apellido ? p.apellido.toUpperCase() : ''} ${p.nombre || ''}`.trim();
   const colorRating = (v) => v >= 7 ? '#00ff88' : v >= 6 ? 'var(--accent)' : v > 0 ? '#ef4444' : 'var(--text-dim)';
 
+  /* ---------- EXPORTAR A CSV PARA CANVA ---------- */
+  const exportarCSV = () => {
+    // Tomamos exactamente lo que se está mostrando en pantalla (respeta los filtros)
+    const dataAExportar = [...filasCampo, ...filasArqueros];
+    
+    if (dataAExportar.length === 0) {
+      alert('No hay datos para exportar con los filtros actuales.');
+      return;
+    }
+
+    // Mapeo exhaustivo de tooooodas las columnas de la interfaz
+    const columnasCSV = [
+      // IDENTIDAD
+      { header: 'Dorsal', fn: p => p.dorsal ?? '' },
+      { header: 'NombreCompleto', fn: p => nombreCompleto(p) },
+      { header: 'Nombre', fn: p => p.nombre || '' },
+      { header: 'Apellido', fn: p => p.apellido || '' },
+      { header: 'Posicion', fn: p => p.posicion || '' },
+      { header: 'Categoria', fn: p => p.categoria || '' },
+      
+      // PARTICIPACIÓN
+      { header: 'Citados', fn: p => p.citados },
+      { header: 'PJ', fn: p => p.jugados },
+      { header: 'Titular', fn: p => p.titularidades },
+      { header: 'Ingresos', fn: p => p.ingresos },
+      { header: 'Minutos', fn: p => p.minutos },
+      { header: 'PctMinutos', fn: p => p.citados ? p.pctMin : 0 },
+
+      // OFENSIVA
+      { header: 'Goles', fn: p => p.goles },
+      { header: 'GolesPorPJ', fn: p => p.jugados ? p.gPorPJ : 0 },
+      { header: 'xG', fn: p => p.xg },
+      { header: 'GolesMenosxG', fn: p => p.goles - p.xg },
+      { header: 'Remates', fn: p => p.remates },
+      { header: 'PctArco', fn: p => p.remates ? p.pctArco : 0 },
+      { header: 'OcasionesFalladas', fn: p => p.ocasionesFalladas },
+      { header: 'Asistencias', fn: p => p.asistencias },
+      { header: 'AsistenciasPorPJ', fn: p => p.jugados ? p.aPorPJ : 0 },
+      { header: 'PasesClave', fn: p => p.pasesClave },
+
+      // DUELOS
+      { header: 'Recuperaciones', fn: p => p.rec },
+      { header: 'Perdidas', fn: p => p.perd },
+      { header: 'OfePct', fn: p => p.duelOfeTot > 0 ? p.ofePct : 0 },
+      { header: 'DefPct', fn: p => p.duelDefTot > 0 ? p.defPct : 0 },
+      { header: 'OfeIndPct', fn: p => p.duelOfeIndTot > 0 ? p.ofeIndPct : 0 },
+      { header: 'DefIndPct', fn: p => p.duelDefIndTot > 0 ? p.defIndPct : 0 },
+
+      // DISCIPLINA
+      { header: 'FaltasCometidas', fn: p => p.faltasCom },
+      { header: 'FaltasRecibidas', fn: p => p.faltasRec },
+      { header: 'Amarillas', fn: p => p.amarillas },
+      { header: 'Rojas', fn: p => p.rojas },
+      { header: 'SancionesPendientes', fn: p => p.sancPend || 0 },
+
+      // IMPACTO
+      { header: 'Rating', fn: p => p.ratingCount ? p.ratingProm : '' },
+      { header: 'PlusMinus', fn: p => p.pmPartidos > 0 ? p.pmProm : '' },
+
+      // ARQUEROS (Se llena con 0/vacío para jugadores de campo)
+      { header: 'GolesRecibidos', fn: p => esArquero(p.posicion) ? p.golesRecibidos : '' },
+      { header: 'Atajadas', fn: p => esArquero(p.posicion) ? p.atajadas : '' },
+      { header: 'PctAtajadas', fn: p => esArquero(p.posicion) && (p.atajadas + p.golesRecibidos) > 0 ? p.pctAtajadas : '' },
+      { header: 'xGRecibido', fn: p => esArquero(p.posicion) ? p.xgRecibido : '' },
+      { header: 'GolesEvitados', fn: p => esArquero(p.posicion) ? p.golesEvitables : '' },
+    ];
+
+    const filasCSV = [];
+    
+    // 1. Cabeceras
+    filasCSV.push(columnasCSV.map(c => c.header).join(','));
+
+    // 2. Datos
+    dataAExportar.forEach(p => {
+      const fila = columnasCSV.map(c => {
+        let valor = c.fn(p);
+        if (valor === undefined || valor === null) valor = '';
+        else if (typeof valor === 'number') {
+          // Si tiene decimales, lo dejamos a 2 (salvo que sea un int limpio)
+          valor = Number.isInteger(valor) ? valor : valor.toFixed(2);
+        }
+        // Escapamos por si hay comas o caracteres raros en los textos
+        return `"${String(valor).replace(/"/g, '""')}"`;
+      });
+      filasCSV.push(fila.join(','));
+    });
+
+    const contenidoCSV = filasCSV.join('\n');
+    // Le clavamos el BOM para que Excel/Canva lean bien los tildes y eñes
+    const blob = new Blob(['\ufeff' + contenidoCSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Nombre del archivo dinámico según la categoría y el torneo elegido
+    const nombreCat = filtroCategoria === 'Todas' ? 'Todas' : filtroCategoria;
+    link.setAttribute('download', `Plantel_Stats_${nombreCat}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#ef4444' }}>Elegí un club para ver el resumen del plantel.</div>;
 
   return (
@@ -479,6 +583,9 @@ export default function ResumenPlantel() {
         </div>
         <button onClick={() => setSoloConMinutos(v => !v)} className="btn-secondary" style={{ padding: '12px 16px', fontWeight: 800, fontSize: '0.8rem', borderColor: 'var(--border)', color: soloConMinutos ? 'var(--accent)' : 'var(--text-dim)' }}>
           {soloConMinutos ? '✓ ' : ''}SOLO CON MINUTOS
+        </button>
+        <button onClick={exportarCSV} style={{ padding: '12px 16px', fontWeight: 800, fontSize: '0.8rem', backgroundColor: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+          📥 EXPORTAR CSV
         </button>
       </div>
 
