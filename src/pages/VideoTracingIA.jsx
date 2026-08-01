@@ -8,11 +8,11 @@ const VideoTracingIA = () => {
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
   const [selectedCategoria, setSelectedCategoria] = useState('Todas');
-  const [selectedPartido, setSelectedPartido] = useState(');
+  const [selectedPartido, setSelectedPartido] = useState('');
 
   const [videoFile, setVideoFile] = useState(null);
-  const [videoUrl, setVideoUrl] = useState(');
-  const [publicStorageUrl, setPublicStorageUrl] = useState(');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [publicStorageUrl, setPublicStorageUrl] = useState('');
   const [points, setPoints] = useState([]); 
   const [renderPoints, setRenderPoints] = useState([]); 
 
@@ -237,7 +237,7 @@ const VideoTracingIA = () => {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <select 
               value={selectedCategoria} 
-              onChange={(e) => { setSelectedCategoria(e.target.value); setSelectedPartido('); }} 
+              onChange={(e) => { setSelectedCategoria(e.target.value); setSelectedPartido(''); }} 
               disabled={mappingMode}
               style={{ flex: 1, minWidth: '150px', background: 'var(--bg)', border: '1px solid var(--border)', padding: '10px', color: 'var(--text)' }}
             >
@@ -301,7 +301,7 @@ const VideoTracingIA = () => {
                 >
                   <span style={{ fontSize: '0.85rem', fontWeight: 800, color: idMapping[tId] ? '#00ff88' : '#facc15' }}>IA #{tId}</span>
                   <select 
-                    value={idMapping[tId] || '}
+                    value={idMapping[tId] || ''}
                     onChange={(e) => setIdMapping(prev => ({ ...prev, [tId]: parseInt(e.target.value) }))}
                     style={{ background: 'var(--bg)', border: '1px solid #444', padding: '6px', color: 'var(--text)', fontSize: '0.8rem', width: '140px', borderRadius: '4px' }}
                   >

@@ -351,10 +351,12 @@ function Resumen() {
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroEquipoMapa, setFiltroEquipoMapa] = useState('Propio');
 
-  const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState(() => {
-    if (esCT && misCategorias.length > 0) return misCategorias[0];
-    return 'Todas';
-  });
+const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState(() => {
+  const kioscoCat = localStorage.getItem('kiosco_categoria');
+  if (kioscoCat) return kioscoCat;
+if (esCT && misCategorias.length > 0) return misCategorias[0];
+return 'Todas';
+});
   
   const [filtroCompeticionGrid, setFiltroCompeticionGrid] = useState('Todas');
 
@@ -391,14 +393,30 @@ function Resumen() {
         }
 
         const { data: p } = await queryPartidos;
-        // Filtramos solo MIS partidos reales (igual criterio que Torneos: esMiPartido),
-        // en vez de excluir por condicion==='Neutral' (eso también tapaba mis propios
-        // cruces de Copa jugados en cancha neutral, aunque tuvieran eventos trackeados).
-        const misPartidos = (p || []).filter(partido =>
-          (!partido.nombre_propio || partido.nombre_propio === miClubGlobal) || (partido.rival === miClubGlobal)
-        );
-        setPartidos(misPartidos);
         
+        // --- INICIO DE CORRECCIÓN ---
+        // Implementamos la misma lógica robusta que en Inicio.js para evitar ver partidos de otros equipos
+        const _norm = (s) => String(s || '').trim().toLowerCase();
+        const _nombresMios = new Set([_norm(miClubGlobal), _norm(localStorage.getItem('mi_club') || '')].filter(Boolean));
+
+        const esCruceAjeno = (partido) => partido.condicion === 'Neutral' && _nombresMios.size > 0 && partido.nombre_propio
+          && !_nombresMios.has(_norm(partido.nombre_propio)) && !_nombresMios.has(_norm(partido.rival));
+
+        const misPartidos = (p || []).filter(partido => {
+          if (esCruceAjeno(partido)) return false;
+          
+          // Prevención por si el club_id es null (ej. superuser global), evitamos traer toda la DB
+          if (!club_id && partido.nombre_propio) {
+            const nPropio = _norm(partido.nombre_propio);
+            const nRival = _norm(partido.rival);
+            return Array.from(_nombresMios).some(n => nPropio.includes(n) || nRival.includes(n) || n.includes(nPropio));
+          }
+          return true;
+        });
+
+        setPartidos(misPartidos);
+        // --- FIN DE CORRECCIÓN ---
+
         const { data: j } = await queryJugadores;
         setJugadores(j || []);
         
@@ -430,7 +448,7 @@ function Resumen() {
       } catch (error) { console.error("Error cargando el resumen general:", error); }
     }
     obtenerDatos();
-  }, [id, perfil]);
+  }, [id, perfil, miClubGlobal]);
 
   const cargarPartidoDirecto = async (partido) => {
     setPartidoSeleccionado(partido);

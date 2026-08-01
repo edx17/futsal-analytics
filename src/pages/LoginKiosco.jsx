@@ -138,8 +138,13 @@ export default function LoginKiosco() {
     if (!idClub || !idJugador) return;
     
     try {
-      const { data: cData } = await supabase.from('clubes').select('alias_cobro, cbu, cvu, whatsapp_tesoreria').eq('id', idClub).single();
-      if (cData) setClubConfig(cData);
+      // Modificación: Traemos el nombre y escudo para sincronizar variables globales en modo Kiosco
+      const { data: cData } = await supabase.from('clubes').select('nombre, escudo_url, alias_cobro, cbu, cvu, whatsapp_tesoreria').eq('id', idClub).single();
+      if (cData) {
+        setClubConfig(cData);
+        if (cData.nombre) localStorage.setItem('mi_club', cData.nombre);
+        if (cData.escudo_url) localStorage.setItem('escudo_url', cData.escudo_url);
+      }
 
       // Sumamos 'concepto' al select para darle transparencia al usuario
       const { data: dData } = await supabase.from('tesoreria_deudas')

@@ -21,17 +21,26 @@ function hoyISO() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// CORRECCIÓN: Armar la fecha desde enteros locales para evitar desfasajes UTC-3
 function sumarDias(fechaISO, n) {
-  const d = new Date(fechaISO);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  if (!fechaISO) return null;
+  const [y, m, d] = fechaISO.split('T')[0].split('-');
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + n);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-// Mismo criterio que en Torneos.jsx / Transferencias.jsx: Math.ceil sobre medianoche local
+// CORRECCIÓN: Se fuerza a horario local (00:00hs) extrayendo el año, mes y día manualmente
 function diasHasta(fechaISO) {
   if (!fechaISO) return null;
-  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const f = new Date(fechaISO); f.setHours(0, 0, 0, 0);
+  const [y, m, d] = fechaISO.split('T')[0].split('-');
+  const f = new Date(y, m - 1, d); 
+  const hoy = new Date(); 
+  hoy.setHours(0, 0, 0, 0);
+  
   if (isNaN(f.getTime())) return null;
   return Math.ceil((f - hoy) / 86400000);
 }
@@ -149,16 +158,6 @@ async function alertasCalendario(clubId, jugadoresMap, misCategorias) {
 }
 
 // ------------------------------------------------------------
-// DISCIPLINA: NO se calcula acá a propósito.
-// Inicio.jsx (bloque que alimenta el módulo `m_triage` / "REQUIERE TU ATENCIÓN")
-// ya recorre `eventos` + `disciplina_sanciones` y cubre tanto suspendidos
-// (roja transversal + acumulación de amarillas) como "a una del corte".
-// Duplicarlo acá implicaría 2 queries pesadas más y mostrarle al DT la misma
-// alerta en dos lugares distintos. Si en algún momento querés que la campanita
-// también la incluya, lo prolijo es extraer ese bloque de Inicio.jsx a un util
-// compartido (ej. `calcularAlertasDisciplina(clubId, categoria)`) y llamarlo
-// desde los dos lados en vez de reescribirlo acá.
-// ------------------------------------------------------------
 // TRANSFERENCIAS: préstamos por vencer + opciones de compra por vencer
 // ------------------------------------------------------------
 async function alertasTransferencias(clubId, jugadoresMap, misCategorias) {
@@ -221,10 +220,16 @@ async function alertasPersonal(clubId, jugadoresMap, misCategorias) {
 
   universo.forEach((j) => {
     if (!j.fechanac) return;
-    const nacimiento = new Date(j.fechanac);
-    if (isNaN(nacimiento.getTime())) return;
-    const cumpleEsteAno = new Date(hoy.getFullYear(), nacimiento.getMonth(), nacimiento.getDate());
-    const dias = diasHasta(cumpleEsteAno.toISOString().slice(0, 10));
+    
+    // CORRECCIÓN: Evitar parseos erráticos con new Date().
+    // Agarramos directamente el texto puro (ej: "1988-11-20") de Supabase.
+    const partes = j.fechanac.split('T')[0].split('-');
+    if (partes.length < 3) return;
+    const [, mes, dia] = partes; 
+
+    // Armamos la fecha del cumple para el año actual manteniendo el formato string limpio.
+    const cumpleEsteAnoISO = `${hoy.getFullYear()}-${mes}-${dia}`;
+    const dias = diasHasta(cumpleEsteAnoISO);
 
     if (dias !== null && dias >= 0 && dias <= VENTANA_CUMPLEANOS_DIAS) {
       alertas.push({
@@ -239,16 +244,11 @@ async function alertasPersonal(clubId, jugadoresMap, misCategorias) {
     }
   });
 
-  // TODO: conversaciones agendadas con un jugador. No existe todavía una tabla para esto.
-  // Si la querés, la más simple sería:
-  // seguimientos_jugador (id, club_id, jugador_id, fecha_recordatorio, motivo, resuelto)
-
   return alertas;
 }
 
 // ------------------------------------------------------------
-// TESORERÍA: deudas vencidas (usa montos, no el string de `estado`, para no
-// depender de un valor exacto que no pude confirmar en los archivos que me pasaste)
+// TESORERÍA: deudas vencidas 
 // ------------------------------------------------------------
 async function alertasTesoreria(clubId, jugadoresMap) {
   const alertas = [];
@@ -277,8 +277,7 @@ async function alertasTesoreria(clubId, jugadoresMap) {
 }
 
 // ------------------------------------------------------------
-// PLANTEL: necesidad de refuerzos (TODO — necesita Plantel.jsx/Resumenplantel.jsx
-// para saber cómo definís "mínimo de jugadores por puesto")
+// PLANTEL: necesidad de refuerzos 
 // ------------------------------------------------------------
 async function alertasPlantel(_clubId, _jugadoresMap) {
   return [];
@@ -305,8 +304,6 @@ export function useTablon(clubId, misCategorias = []) {
     setError(null);
 
     try {
-      // Roster una sola vez, compartido entre todos los generadores (join en JS vía Map,
-      // igual que en Transferencias.jsx / Disciplina.jsx).
       let queryJug = supabase.from('jugadores').select('id, nombre, apellido, categoria, fechanac').eq('club_id', clubId);
       if (misCategorias?.length > 0) queryJug = queryJug.in('categoria', misCategorias);
       const { data: jugadoresData } = await queryJug;
@@ -322,7 +319,6 @@ export function useTablon(clubId, misCategorias = []) {
         console.warn('Algunos generadores del tablón fallaron:', fallidas.map((f) => f.reason));
       }
 
-      // Filtrar descartadas (tabla tablon_dismissed, ver tablon_dismissed.sql adjunto)
       const { data: descartadas } = await supabase
         .from('tablon_dismissed')
         .select('alerta_id')
