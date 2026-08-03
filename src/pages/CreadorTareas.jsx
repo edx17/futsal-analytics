@@ -1,8 +1,6 @@
 /**
- * CreadorTareas.jsx — v3.4 Pro (Categorías Recomendadas)
+ * CreadorTareas.jsx — v3.5 Pro (Categorías Recomendadas + Carga MP4 Nativa)
  * Motor táctico: FutsalBoard canvas (nativo, sin react-konva)
- * Lógica preservada: frames + animación interpolada, Supabase, Ficha Técnica,
- * modo edición, export PNG, mobile responsive, ToastContext, navigate
  */
 
 import { useState, useRef, useEffect, useReducer, useCallback } from 'react'
@@ -10,12 +8,8 @@ import { useEsMovil } from '../utils/useEsMovil'
 import { supabase } from '../supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/ToastContext'
-// IMPORTAMOS AUTH para sacar las categorías del usuario
 import { useAuth } from '../context/AuthContext' 
 
-// ─────────────────────────────────────────────────────────────────
-//  CONSTANTES DE PIZARRA Y SISTEMA VIRTUAL
-// ─────────────────────────────────────────────────────────────────
 const PITCH_VARIANTS = {
   '40x20':         { label: '40×20 · Reglamentaria', mW: 40, mH: 20 },
   '28x20':         { label: '28×20 · Reducida',      mW: 28, mH: 20 },
@@ -61,16 +55,12 @@ const MATERIALS = {
 }
 const MATERIAL_LABELS = { azul:'Azul TV', verde:'Verde', naranja:'Naranja', gris:'Gris', parquet:'Parquet', negro:'Oscuro' }
 
-// Sistema Virtual: Todos los elementos guardan coordenadas sobre un ancho base fijo.
 const BASE_W = 800;
 function getBaseH(variant) {
   const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20']
   return BASE_W / (vrt.mW / vrt.mH)
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  GEOMETRÍA
-// ─────────────────────────────────────────────────────────────────
 function getPitchLayout(cW, cH) {
   const p = Math.min(cW, cH) * 0.045
   return { px: p, py: p, ppw: cW-2*p, pph: cH-2*p }
@@ -78,9 +68,6 @@ function getPitchLayout(cW, cH) {
 function mX(m, mW, L) { return L.px + (m/mW)*L.ppw }
 function mY(m, mH, L) { return L.py + (m/mH)*L.pph }
 
-// ─────────────────────────────────────────────────────────────────
-//  RENDER PISTA
-// ─────────────────────────────────────────────────────────────────
 function renderPitch(ctx, cW, cH, pitchCfg) {
   const { variant, material, lineColor, showZones, showGrid, showDims, goals } = pitchCfg
   const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20']
@@ -224,9 +211,6 @@ function renderPitch(ctx, cW, cH, pitchCfg) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  RENDER ELEMENTOS TÁCTICOS MEJORADOS
-// ─────────────────────────────────────────────────────────────────
 function playerRadius(cW) { return cW * 0.021 }
 
 function lighten(hex, amt) {
@@ -280,11 +264,9 @@ function drawEl(ctx, el, selected, cW, isMobile) {
       ctx.beginPath(); ctx.arc(x,y,r+3,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1
     }
     
-    // Resetear rotación para que el label siempre quede legible
     ctx.restore(); ctx.save()
     ctx.shadowBlur = 0
     const labelText = t==='staff' ? (el.label&&el.label!==''?el.label:'E') : (el.label||'')
-    // En móvil la cancha está rotada 90°, contra-rotamos el texto para que quede derecho
     if (isMobile) {
       ctx.translate(x, y)
       ctx.rotate(-Math.PI / 2)
@@ -424,14 +406,12 @@ function drawArrow(ctx, a, selected) {
   ctx.closePath(); ctx.fill()
 }
 
-// Dibujo temporal de flecha
 function drawTempArrow(ctx, ta) {
   const st=ARROW_STYLES[ta.style]||ARROW_STYLES['arrow-pase']
   ctx.strokeStyle=st.color+'88'; ctx.lineWidth=st.width; ctx.setLineDash([6,4])
   ctx.beginPath(); ctx.moveTo(ta.x1,ta.y1); ctx.lineTo(ta.cx,ta.cy); ctx.stroke(); ctx.setLineDash([])
 }
 
-// Dibujo temporal de zona
 function drawTempZone(ctx, tz) {
   ctx.globalAlpha=.12; ctx.fillStyle=tz.type==='zone-ellipse'?'#ff3860':'#00e5ff'
   ctx.strokeStyle=tz.type==='zone-ellipse'?'#ff3860':'#00e5ff'; ctx.lineWidth=1.5; ctx.setLineDash([5,3])
@@ -440,9 +420,6 @@ function drawTempZone(ctx, tz) {
   ctx.setLineDash([]); ctx.globalAlpha=1
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  HIT TEST 
-// ─────────────────────────────────────────────────────────────────
 function hitEl(elements, px, py, cW) {
   for (let i=elements.length-1;i>=0;i--) {
     const el=elements[i]; const r=playerRadius(cW)*1.2
@@ -473,9 +450,6 @@ function distSeg(px,py,x1,y1,x2,y2) {
 let _uid=0
 function uid() { return 'e'+(++_uid)+'_'+Date.now() }
 
-// ─────────────────────────────────────────────────────────────────
-//  ESTADO BOARD (useReducer)
-// ─────────────────────────────────────────────────────────────────
 const INIT_BOARD = { elements:[], arrows:[], selected:null, history:[] }
 
 function boardReducer(state, action) {
@@ -500,9 +474,6 @@ function boardReducer(state, action) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  ESTILOS CSS (inyectados una vez)
-// ─────────────────────────────────────────────────────────────────
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
 .ct-root *,ct-root *::before,.ct-root *::after{box-sizing:border-box;margin:0;padding:0}
@@ -567,7 +538,6 @@ const CSS = `
 .ct-save-btn{padding:7px 18px;border:none;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0}
 .ct-input{padding:7px 10px;background:#000;border:1px solid #333;border-radius:6px;color:#fff;font-family:'Syne',sans-serif;font-size:.85rem;outline:none}
 .ct-status{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-left:auto;white-space:nowrap}
-/* Mobile */
 .ct-mob-bottom-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(14,15,20,.98);border-top:1px solid #2e3245;z-index:9000;display:flex;align-items:flex-start;justify-content:space-around;padding:6px 4px env(safe-area-inset-bottom,12px);min-height:62px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .ct-mob-tab{flex:1;height:52px;border:none;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border-radius:10px;transition:all .15s;padding:0 2px}
 .ct-mob-tab .tab-icon{font-size:1.35rem;line-height:1}
@@ -609,7 +579,6 @@ const CSS = `
 .ct-mob-config-toggles{display:flex;gap:8px;margin-top:6px}
 .ct-mob-toggle{flex:1;padding:8px 4px;background:var(--s2);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--muted);cursor:pointer;text-align:center;font-family:'Syne',sans-serif;font-weight:600;transition:all .12s}
 .ct-mob-toggle.on{background:rgba(0,229,255,.08);border-color:var(--accentb);color:var(--accentb)}
-/* Modal */
 .ct-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
 .ct-modal{background:#111;width:100%;max-width:800px;border:2px solid var(--accent);border-radius:12px;padding:28px;max-height:95vh;overflow-y:auto}
 .ct-modal.blue-border{border-color:var(--blue)}
@@ -626,26 +595,17 @@ const CSS = `
 .ct-mob-overlay-panel{animation:slideUp .2s ease-out}
 `
 
-// ─────────────────────────────────────────────────────────────────
-//  COMPONENTE PRINCIPAL
-// ─────────────────────────────────────────────────────────────────
 const CreadorTareas = () => {
   const location  = useLocation()
   const navigate  = useNavigate()
   const { showToast } = useToast()
   
-  // EXTRAEMOS CATEGORÍAS DEL PERFIL
   const { perfil } = useAuth()
   const misCategorias = perfil?.categorias_asignadas || []
 
   const tareaAEditar = location.state?.editando
   const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null)
 
-  // ── CATEGORÍAS DEL CLUB (para "Categoría de la Tarea") ──
-  // Antes el dropdown solo leía las categorías del perfil (misCategorias),
-  // por lo que para superuser/CT sin asignaciones quedaba vacío.
-  // Ahora extraemos las categorías reales desde la tabla jugadores y las
-  // combinamos con las del perfil.
   const [categoriasClub, setCategoriasClub] = useState([])
   useEffect(() => {
     const fetchCategorias = async () => {
@@ -660,63 +620,58 @@ const CreadorTareas = () => {
     fetchCategorias()
   }, [])
 
-  // Unión sin duplicados: lo que tiene asignado el perfil + lo que existe en el club
   const categoriasDisponibles = [...new Set([...misCategorias, ...categoriasClub])].sort()
 
-  // ¿Llegamos acá desde el Planificador armando una sesión?
   const [veniaDePlanificar, setVeniaDePlanificar] = useState(false)
   useEffect(() => {
     setVeniaDePlanificar(!!sessionStorage.getItem('borradorSesion'))
   }, [])
 
-  // ── Board state ──
   const [board, dispatchBoard] = useReducer(boardReducer, INIT_BOARD)
   const [tool, setTool] = useState('select')
 
-  // ── Pista config (Azul por defecto) ──
   const [pitchCfg, setPitchCfg] = useState({
     variant:   'selected' in (tareaAEditar?.editor_data?.cancha || {}) ? tareaAEditar.editor_data.cancha.tamaño : '40x20',
     material:  'azul',
     lineColor: '#ffffff',
     showZones: true,
-    showGrid:  false, // MicroZonas
+    showGrid:  false,
     showDims:  true,
     goals:     'both',
   })
 
-  // ── Frames (animación) ──
   const [frames, setFrames] = useState([{ id:'frame-0', elements:[], arrows:[] }])
   const [frameIdx, setFrameIdx] = useState(0)
   const isPlayingRef = useRef(false)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [animSnapshot, setAnimSnapshot] = useState(null) // {elements, arrows} durante anim
+  const [animSnapshot, setAnimSnapshot] = useState(null)
 
-  // ── Flecha/zona dibujando ──
   const tempRef = useRef({ arrow:null, zone:null })
   const ixRef   = useRef({ dragging:false, dOffX:0, dOffY:0, drawingArrow:null, drawingZone:null, tempTextPos:null })
 
-  // ── Canvas / resize ──
   const canvasRef  = useRef(null)
   const areaRef    = useRef(null)
   const [cvSize, setCvSize] = useState({ w:800, h:500 })
   const [,forceUpdate] = useReducer(x=>x+1,0)
 
-  // ── UI state ──
   const [showModal, setShowModal]   = useState(false)
   const esMovil = useEsMovil()
   const [rotarCancha, setRotarCancha] = useState(false)
-  // ── Zoom / Pan (pinch de 2 dedos) ──
   const [view, setView] = useState({ zoom:1, panX:0, panY:0 })
   const viewRef = useRef({ zoom:1, panX:0, panY:0 })
   const pointersRef = useRef(new Map())
   const gestureRef = useRef(null)
   const resetVista = () => { const v={zoom:1,panX:0,panY:0}; viewRef.current=v; setView(v) }
-  const [panelMovil, setPanelMovil] = useState(null) // 'elementos'|'trazos'|'anim'|'config'
+  const [panelMovil, setPanelMovil] = useState(null)
   const [nombreTarea, setNombreTarea] = useState(tareaAEditar?.titulo||'')
   const [textModal, setTextModal]   = useState(false)
   const [textValue, setTextValue]   = useState('')
 
-  // ── AGREGAMOS categoria_recomendada A LA FICHA ──
+  // ESTADO NUEVO: SUBIDA DE VIDEO DIRECTA DESDE EL CREADOR
+  const [isUploading, setIsUploading] = useState(false)
+  const [videoFile, setVideoFile] = useState(null)
+  const [videoPreview, setVideoPreview] = useState(tareaAEditar?.video_mp4_url || null)
+
   const [fichaTecnica, setFichaTecnica] = useState({
     categoria_recomendada: tareaAEditar?.categoria_recomendada || 'Todas',
     categoria_ejercicio: tareaAEditar?.categoria_ejercicio || 'Táctico',
@@ -730,18 +685,12 @@ const CreadorTareas = () => {
     video_url:           tareaAEditar?.video_url           || '',
   })
 
-  // ── NATURALEZA / CONTENIDO (antes "Enfoque Teórico") ──
-  // ABP salió de acá: ahora es una FASE, no una naturaleza (se evita la duplicación).
-  // Si una tarea vieja tiene un valor legacy (ej: 'ABP'), lo preservamos como opción
-  // para no mutarlo silenciosamente al editar.
   const NATURALEZAS = ['Táctico', 'Técnico', 'Físico', 'Cognitivo', 'Libro Táctico']
   const naturalezasOpts = NATURALEZAS.includes(fichaTecnica.categoria_ejercicio)
     ? NATURALEZAS
     : [fichaTecnica.categoria_ejercicio, ...NATURALEZAS]
 
-  // ── CSS + viewport inject ──
   useEffect(() => {
-    // viewport-fit=cover para safe areas en iOS
     let vp = document.querySelector('meta[name=viewport]')
     if (vp && !vp.content.includes('viewport-fit')) {
       vp.content += ', viewport-fit=cover'
@@ -751,7 +700,6 @@ const CreadorTareas = () => {
     document.head.appendChild(s)
   }, [])
 
-  // ── Load tarea a editar ──
   useEffect(() => {
     if (!tareaAEditar?.editor_data) return
     const ed = tareaAEditar.editor_data
@@ -775,7 +723,6 @@ const CreadorTareas = () => {
     if (ed.cancha) setPitchCfg(p=>({...p, variant: ed.cancha.tamaño||'40x20', material: ed.cancha.material||'azul' }))
   }, [])
 
-  // ── Resize ──
   useEffect(() => {
     function measure() {
       const mob = esMovil
@@ -784,7 +731,6 @@ const CreadorTareas = () => {
       const mW = areaRef.current.clientWidth - (mob ? 8 : 40)
       const mH = areaRef.current.clientHeight - (mob ? 80 + safeBottom : 40)
       const vrt = PITCH_VARIANTS[pitchCfg.variant]||PITCH_VARIANTS['40x20']
-      // En móvil usamos ratio invertido (portrait: alto > ancho)
       const rotar = mH > mW
       setRotarCancha(rotar)
       const ratio = rotar ? (vrt.mH / vrt.mW) : (vrt.mW / vrt.mH)
@@ -799,10 +745,8 @@ const CreadorTareas = () => {
     return () => { window.removeEventListener('resize', measure); window.removeEventListener('orientationchange', measure); clearTimeout(t) }
   }, [pitchCfg.variant, panelMovil, esMovil])
 
-  // Reset de zoom/pan al cambiar tamaño del canvas o la rotación
   useEffect(() => { resetVista() }, [cvSize.w, cvSize.h, rotarCancha])
 
-  // ── Render loop (SISTEMA DE COORDENADAS VIRTUAL) ──
   useEffect(() => {
     const cv = canvasRef.current; if(!cv)return
     const ctx = cv.getContext('2d')
@@ -818,9 +762,6 @@ const CreadorTareas = () => {
     ctx.scale(view.zoom, view.zoom)
 
     if (rotarCancha) {
-      // Portrait: rotamos 90° — canvas físico es w×h donde h>w
-      // Virtual space sigue siendo BASE_W × baseH pero lo dibujamos rotado
-      // Trasladamos al centro, rotamos, escalamos
       ctx.translate(cvSize.w / 2, cvSize.h / 2)
       ctx.rotate(Math.PI / 2)
       ctx.translate(-cvSize.h / 2, -cvSize.w / 2)
@@ -835,7 +776,6 @@ const CreadorTareas = () => {
     ctx.setTransform(1, 0, 0, 1, 0, 0)
   }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil, rotarCancha, view])
 
-  // ── FRAME MANAGEMENT ──
   function syncCurrentFrame(overrideIdx) {
     const idx = overrideIdx ?? frameIdx
     setFrames(prev => {
@@ -886,7 +826,6 @@ const CreadorTareas = () => {
     setFrameIdx(newIdx)
   }
 
-  // ── ANIMACIÓN INTERPOLADA ──
   const togglePlay = async () => {
     if (isPlayingRef.current) {
       isPlayingRef.current=false; setIsPlaying(false); setAnimSnapshot(null); return
@@ -943,7 +882,6 @@ const CreadorTareas = () => {
     setFrameIdx(lastIdx)
   }
 
-  // ── POINTER EVENTS (Adaptado a Coordenadas Virtuales) ──
   const rawFromEvent = (e) => {
     const r = canvasRef.current.getBoundingClientRect()
     return { x: e.clientX - r.left, y: e.clientY - r.top }
@@ -951,18 +889,14 @@ const CreadorTareas = () => {
 
   const getPos = useCallback((e) => {
     const r = canvasRef.current.getBoundingClientRect()
-    // Si es un evento táctil tradicional o pointer event unificado
     const src = (e.touches && e.touches.length > 0) ? e.touches[0] : (e.changedTouches && e.changedTouches.length > 0) ? e.changedTouches[0] : e
     const rawXraw = src.clientX - r.left
     const rawYraw = src.clientY - r.top
-    // Deshacemos la capa de vista (zoom/pan) antes de mapear a coords virtuales
     const _v = viewRef.current
     const rawX = (rawXraw - _v.panX) / _v.zoom
     const rawY = (rawYraw - _v.panY) / _v.zoom
 
     if (rotarCancha) {
-      // Canvas físico: w×h (portrait). Virtual space: BASE_W × baseH (landscape).
-      // La rotación es 90° CW: virtual_x = rawY * BASE_W/r.height, virtual_y = (r.width - rawX) * baseH/r.width
       const baseH = getBaseH(pitchCfg.variant)
       const vx = (rawY / r.height) * BASE_W
       const vy = ((r.width - rawX) / r.width) * baseH
@@ -980,7 +914,6 @@ const CreadorTareas = () => {
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch(_){}
     pointersRef.current.set(e.pointerId, rawFromEvent(e))
     if (pointersRef.current.size >= 2) {
-      // Segundo dedo: modo gesto (pinch/pan). Cancelamos interacción de 1 dedo.
       const ixg=ixRef.current
       ixg.dragging=false; ixg.hasDragged=false
       if (ixg.drawingArrow){ ixg.drawingArrow=null; tempRef.current.arrow=null; forceUpdate() }
@@ -1001,7 +934,6 @@ const CreadorTareas = () => {
       if(el){
         dispatchBoard({type:'SELECT',sel:{id:el.id,isArrow:false}})
         ix.dragging=true; ix.dOffX=p.x-el.x; ix.dOffY=p.y-el.y
-        // Guardar posición inicial para detectar tap vs drag en móvil
         ix.pointerDownX=p.x; ix.pointerDownY=p.y; ix.hasDragged=false
       }
       else dispatchBoard({type:'SELECT',sel:null})
@@ -1046,12 +978,10 @@ const CreadorTareas = () => {
     }
     const p=getPos(e); const ix=ixRef.current
     if(ix.dragging&&board.selected){
-      // Detectar si ya se movió suficiente para considerarlo drag
       if(!ix.hasDragged){
         const dist=Math.hypot(p.x-(ix.pointerDownX||p.x), p.y-(ix.pointerDownY||p.y))
         if(dist>5){
           ix.hasDragged=true
-          // Es drag: ocultar sheet de propiedades en móvil inmediatamente
           if(esMovil){ setPanelMovil(null); dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow,hideProps:true}}) }
         }
       }
@@ -1067,7 +997,6 @@ const CreadorTareas = () => {
     if (pointersRef.current.size < 2) gestureRef.current=null
     if (pointersRef.current.size >= 1) return
     const p=getPos(e); const ix=ixRef.current
-    // Si soltó sin mover = tap = mostrar propiedades
     if(ix.dragging && !ix.hasDragged && board.selected){
       dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow}})
     }
@@ -1089,7 +1018,6 @@ const CreadorTareas = () => {
     }
   },[getPos])
 
-  // ── KEYBOARD ROBUSTO (Fix Bug Desaparición) ──
   useEffect(()=>{
     function onKey(e){
       const tag = e.target.tagName.toUpperCase()
@@ -1111,7 +1039,6 @@ const CreadorTareas = () => {
     return () => window.removeEventListener('keydown', onKey)
   },[])
 
-  // ── TEXT ──
   function confirmText(){
     const ix=ixRef.current
     if(textValue.trim()&&ix.tempTextPos){
@@ -1120,9 +1047,24 @@ const CreadorTareas = () => {
     setTextModal(false);setTextValue('');ix.tempTextPos=null
   }
 
-  // ── GUARDAR ──
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type !== 'video/mp4' && file.type !== 'video/webm') {
+        showToast("Solo MP4 o WebM cortos mostro.", "warning"); return;
+      }
+      if (file.size > 20 * 1024 * 1024) { 
+        showToast("El video es muy pesado. Máximo 20MB.", "warning"); return;
+      }
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const confirmarGuardado = async () => {
     if (!nombreTarea.trim()) { showToast("Poné un nombre a la tarea antes de guardar.","warning"); return }
+
+    setIsUploading(true);
 
     const finalFrames=[...frames]
     finalFrames[frameIdx]={...finalFrames[frameIdx],elements:JSON.parse(JSON.stringify(board.elements)),arrows:JSON.parse(JSON.stringify(board.arrows))}
@@ -1130,45 +1072,53 @@ const CreadorTareas = () => {
     const dataURL = canvasRef.current.toDataURL('image/png')
     const club_id = localStorage.getItem('club_id')||'club_default'
 
-    const payload = {
-      club_id, titulo:nombreTarea,
-      espacio: pitchCfg.variant,
-      url_grafico: dataURL,
-      editor_data: { frames:finalFrames, cancha:{ tamaño:pitchCfg.variant, material:pitchCfg.material } },
-      categoria_recomendada: fichaTecnica.categoria_recomendada, // <--- NUEVO DATO
-      categoria_ejercicio:   fichaTecnica.categoria_ejercicio,
-      fase_juego:            fichaTecnica.fase_juego,
-      formato_tarea:         fichaTecnica.formato_tarea,
-      duracion_estimada:     parseInt(fichaTecnica.duracion_estimada)||0,
-      intensidad_rpe:        parseInt(fichaTecnica.intensidad_rpe)||0,
-      jugadores_involucrados:fichaTecnica.jugadores_involucrados,
-      objetivo_principal:    fichaTecnica.objetivo_principal,
-      descripcion:           fichaTecnica.descripcion,
-      video_url:             fichaTecnica.video_url,
-    }
+    let url_video_mp4 = tareaAEditar?.video_mp4_url || null;
 
     try {
+      if (videoFile) {
+        const fileExt = videoFile.name.split('.').pop();
+        const fileName = `ct_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from('videos_tareas').upload(fileName, videoFile);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('videos_tareas').getPublicUrl(fileName);
+        url_video_mp4 = publicUrl;
+      }
+
+      const payload = {
+        club_id, titulo:nombreTarea,
+        espacio: pitchCfg.variant,
+        url_grafico: dataURL,
+        editor_data: { frames:finalFrames, cancha:{ tamaño:pitchCfg.variant, material:pitchCfg.material } },
+        categoria_recomendada: fichaTecnica.categoria_recomendada,
+        categoria_ejercicio:   fichaTecnica.categoria_ejercicio,
+        fase_juego:            fichaTecnica.fase_juego,
+        formato_tarea:         fichaTecnica.formato_tarea,
+        duracion_estimada:     parseInt(fichaTecnica.duracion_estimada)||0,
+        intensidad_rpe:        parseInt(fichaTecnica.intensidad_rpe)||0,
+        jugadores_involucrados:fichaTecnica.jugadores_involucrados,
+        objetivo_principal:    fichaTecnica.objetivo_principal,
+        descripcion:           fichaTecnica.descripcion,
+        video_url:             fichaTecnica.video_url,
+        video_mp4_url:         url_video_mp4,
+      }
+
       if (tareaIdEditando) {
         const {error}=await supabase.from('tareas').update(payload).eq('id',tareaIdEditando)
         if(error)throw error
         showToast("¡Tarea ACTUALIZADA con éxito!","success")
         navigate('/banco-tareas')
       } else {
-        // Insertamos y recuperamos el ID nuevo (.select().single())
         const {data:tareaNueva,error}=await supabase.from('tareas').insert([payload]).select('id').single()
         if(error)throw error
 
-        // ¿Veníamos del Planificador armando una sesión?
         const borradorStr = sessionStorage.getItem('borradorSesion')
         if (borradorStr && tareaNueva?.id) {
           try {
             const borrador = JSON.parse(borradorStr)
             const idsPrev = Array.isArray(borrador.tareas_ids) ? borrador.tareas_ids : []
-            // Enganchamos la tarea recién creada a la sesión en borrador
             borrador.tareas_ids = [...new Set([...idsPrev, tareaNueva.id])]
             sessionStorage.setItem('borradorSesion', JSON.stringify(borrador))
             showToast("¡Tarea creada y agregada a la sesión!","success")
-            // Volvemos exactamente a donde estábamos planificando
             navigate(borrador.returnTo || '/planificador-semanal')
             return
           } catch(e) {
@@ -1176,19 +1126,21 @@ const CreadorTareas = () => {
           }
         }
 
-        // Flujo normal (no veníamos del planificador): limpiamos para crear otra
         showToast("¡Nueva Ficha Táctica guardada!","success")
         setShowModal(false)
         setFrames([{id:'frame-0',elements:[],arrows:[]}])
         dispatchBoard({type:'LOAD',elements:[],arrows:[]})
-        setFrameIdx(0); setNombreTarea('')
+        setFrameIdx(0); setNombreTarea(''); setVideoFile(null); setVideoPreview(null);
       }
-    } catch(err) { showToast("Error al guardar: "+err.message,"error") }
+    } catch(err) { 
+      showToast("Error al guardar: "+err.message,"error") 
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   const upPitch = (patch) => setPitchCfg(p=>({...p,...patch}))
 
-  // ── HERRAMIENTAS ──
   const TOOLS_PLAYERS = [
     {id:'home',    icon:'🔵', label:'Local'},
     {id:'away',    icon:'🔴', label:'Visit.'},
@@ -1216,7 +1168,6 @@ const CreadorTareas = () => {
     {id:'text',             icon:'T',  label:'Texto'},
   ]
 
-  // ── PROPS PANEL ──
   const selData = board.selected
     ? (board.selected.isArrow ? board.arrows.find(a=>a.id===board.selected.id) : board.elements.find(e=>e.id===board.selected.id))
     : null
@@ -1246,7 +1197,6 @@ const CreadorTareas = () => {
   return (
     <div className="ct-root">
 
-      {/* ══ HEADER PC ══ */}
       {!esMovil && (
         <div className={`ct-header${tareaIdEditando?' edit-mode':''}`}>
           {tareaIdEditando && <div style={{background:'var(--blue)',color:'#fff',padding:'4px 10px',borderRadius:'6px',fontSize:'0.75rem',fontWeight:'bold',flexShrink:0}}>MODO EDICIÓN</div>}
@@ -1272,10 +1222,8 @@ const CreadorTareas = () => {
         </div>
       )}
 
-      {/* ══ WORKSPACE ══ */}
       <div className="ct-workspace">
 
-        {/* LEFT SIDEBAR */}
         {!esMovil && (
           <aside className="ct-sidebar">
             <div className="ct-sbl">Jugadores</div>
@@ -1323,9 +1271,7 @@ const CreadorTareas = () => {
           </aside>
         )}
 
-        {/* CANVAS AREA */}
         <div className="ct-canvas-area" ref={areaRef}>
-          {/* Mobile: top bar */}
           {esMovil && (
             <>
               <div style={{position:'absolute',top:0,left:0,right:0,height:'calc(env(safe-area-inset-top, 0px) + 60px)',background:'linear-gradient(to bottom,rgba(0,0,0,.85),transparent)',zIndex:10,pointerEvents:'none'}}/>
@@ -1356,13 +1302,11 @@ const CreadorTareas = () => {
 
         </div>
 
-        {/* ══ RIGHT: SIDEBAR UNIFICADO PROPIEDADES/PISTA (PC only) ══ */}
         {!esMovil && (
           <aside className="ct-propbar">
             <div className="ct-prop-title">{!selData ? 'Ajustes de Pista' : 'Propiedades'}</div>
             
             {!selData ? (
-              /* PROPIEDADES DE LA PISTA */
               <>
                 <div className="ct-psec"><div className="ct-psec-title">Dimensiones</div></div>
                 <div className="ct-prop-row">
@@ -1406,7 +1350,6 @@ const CreadorTareas = () => {
                 </div>
               </>
             ) : (
-              /* PROPIEDADES DEL ELEMENTO SELECCIONADO */
               <>
                 <div className="ct-psec"><div className="ct-psec-title">Tipo</div></div>
                 <div className="ct-prop-row"><span className="ct-prop-lbl">Elemento</span><span style={{fontSize:10,color:'var(--accentb)',fontWeight:'bold'}}>{isArrow?(ARROW_STYLES[selData.style]?.label||selData.style):selData.type.toUpperCase()}</span></div>
@@ -1469,7 +1412,6 @@ const CreadorTareas = () => {
         )}
       </div>
 
-      {/* ══ BOTTOM: TIMELINE (PC) ══ */}
       {!esMovil && (
         <div className="ct-bottombar">
           <TimelineBar
@@ -1481,7 +1423,6 @@ const CreadorTareas = () => {
         </div>
       )}
 
-      {/* ══ MOBILE SHEETS (fuera del canvas-area para no quedar recortados) ══ */}
       {esMovil && panelMovil==='elementos' && (
         <div className="ct-mob-sheet">
           <div className="ct-mob-sheet-handle"/>
@@ -1661,7 +1602,6 @@ const CreadorTareas = () => {
         </div>
       )}
 
-      {/* ══ MOBILE TAB BAR FIJA ══ */}
       {esMovil && (
         <div className="ct-mob-bottom-bar">
           <button className={`ct-mob-tab${tool==='select'&&!panelMovil?' on':''}`} onClick={()=>{setTool('select');setPanelMovil(null);dispatchBoard({type:'SELECT',sel:null})}}>
@@ -1687,7 +1627,6 @@ const CreadorTareas = () => {
         </div>
       )}
 
-      {/* ══ TEXT MODAL ══ */}
       {textModal && (
         <div className="ct-overlay">
           <div style={{background:'var(--s2)',border:'1px solid var(--border2)',borderRadius:10,padding:20,width:280,boxShadow:'0 24px 60px rgba(0,0,0,.7)'}}>
@@ -1704,7 +1643,6 @@ const CreadorTareas = () => {
         </div>
       )}
 
-      {/* ══ MODAL FICHA TÉCNICA ══ */}
       {showModal && (
         <div className="ct-overlay">
           <div className={`ct-modal${tareaIdEditando?' blue-border':''}`}>
@@ -1713,7 +1651,7 @@ const CreadorTareas = () => {
                 <h2 className={tareaIdEditando?'blue':''}>{tareaIdEditando?'Actualizar Ficha Técnica':'Ficha Técnica de la Tarea'}</h2>
                 <span style={{color:'var(--muted)',fontSize:'0.8rem'}}>{vrtLabel}</span>
               </div>
-              <button onClick={()=>setShowModal(false)} style={{background:'transparent',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer'}}>✖</button>
+              <button onClick={() => {setShowModal(false); setVideoFile(null); setVideoPreview(tareaAEditar?.video_mp4_url || null)}} style={{background:'transparent',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer'}}>✖</button>
             </div>
 
             <div style={{marginBottom:20}}>
@@ -1728,9 +1666,27 @@ const CreadorTareas = () => {
               </div>
             )}
 
+            <div style={{ marginBottom: 20, padding: '15px', border: '1px dashed #333', borderRadius: '8px', background: 'rgba(255,255,255,0.02)' }}>
+              <label className="ct-modal-lbl" style={{ color: '#60a5fa' }}>Subir Video (Opcional - Reemplaza animación en el visor)</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <label style={{ padding: '8px 15px', background: '#1e3a8a', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                  {videoFile || videoPreview ? 'Cambiar MP4' : 'Seleccionar MP4'}
+                  <input type="file" accept="video/mp4,video/webm" style={{ display: 'none' }} onChange={handleVideoChange} />
+                </label>
+                {(videoFile || videoPreview) && (
+                  <button onClick={() => {setVideoFile(null); setVideoPreview(null);}} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                    Quitar
+                  </button>
+                )}
+              </div>
+              {videoPreview && (
+                <div style={{ marginTop: '10px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #333', width: '200px' }}>
+                  <video src={videoPreview} controls style={{ width: '100%', display: 'block' }} />
+                </div>
+              )}
+            </div>
+
             <div style={{display:'grid',gridTemplateColumns:esMovil?'1fr':'1fr 1fr',gap:15,marginBottom:15}}>
-              
-              {/* NUEVO CAMPO: CATEGORÍA RECOMENDADA */}
               <div>
                 <label className="ct-modal-lbl" style={{color: '#facc15'}}>Categoría de la Tarea</label>
                 <select className="ct-modal-input" style={{borderColor: '#ca8a04'}} value={fichaTecnica.categoria_recomendada} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_recomendada:e.target.value})}>
@@ -1738,7 +1694,6 @@ const CreadorTareas = () => {
                   {categoriasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="ct-modal-lbl">Naturaleza · Contenido</label>
                 <select className="ct-modal-input" value={fichaTecnica.categoria_ejercicio} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_ejercicio:e.target.value})}>
@@ -1759,8 +1714,6 @@ const CreadorTareas = () => {
                 )}
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Qué momento del juego</span>
               </div>
-
-              {/* NUEVO EJE: FORMATO DE LA TAREA (El Cómo) */}
               <div>
                 <label className="ct-modal-lbl" style={{color:'#22d3ee'}}>Formato · El Cómo</label>
                 <select className="ct-modal-input" style={{borderColor:'#0e7490'}} value={fichaTecnica.formato_tarea} onChange={e=>setFichaTecnica({...fichaTecnica,formato_tarea:e.target.value})}>
@@ -1795,12 +1748,12 @@ const CreadorTareas = () => {
               <textarea rows={4} className="ct-modal-input" style={{height:'auto',resize:'vertical'}} placeholder="Describí paso a paso el desarrollo de la tarea..." value={fichaTecnica.descripcion} onChange={e=>setFichaTecnica({...fichaTecnica,descripcion:e.target.value})}/>
             </div>
             <div style={{marginBottom:25}}>
-              <label className="ct-modal-lbl">URL del Video (Opcional)</label>
+              <label className="ct-modal-lbl">URL Externa (YouTube etc.) Opcional</label>
               <input type="text" placeholder="https://youtube.com/..." className="ct-modal-input" value={fichaTecnica.video_url} onChange={e=>setFichaTecnica({...fichaTecnica,video_url:e.target.value})} />
             </div>
 
-            <button onClick={confirmarGuardado} className="ct-btn-primary" style={{width:'100%',padding:15,fontSize:'1.1rem',borderRadius:8}}>
-              {tareaIdEditando ? '💾 ACTUALIZAR TAREA' : (veniaDePlanificar ? '💾 GUARDAR Y VOLVER A LA SESIÓN' : '💾 GUARDAR EN EL BANCO')}
+            <button onClick={confirmarGuardado} disabled={isUploading} className="ct-btn-primary" style={{width:'100%',padding:15,fontSize:'1.1rem',borderRadius:8, opacity: isUploading ? 0.7 : 1, cursor: isUploading ? 'not-allowed' : 'pointer'}}>
+              {isUploading ? '⏳ SUBIENDO VIDEO...' : (tareaIdEditando ? '💾 ACTUALIZAR TAREA' : (veniaDePlanificar ? '💾 GUARDAR Y VOLVER A LA SESIÓN' : '💾 GUARDAR EN EL BANCO'))}
             </button>
           </div>
         </div>
@@ -1810,9 +1763,6 @@ const CreadorTareas = () => {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  SUB-COMPONENTES
-// ─────────────────────────────────────────────────────────────────
 function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, onDel }) {
   return (
     <>
@@ -1839,9 +1789,6 @@ function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, 
   )
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  CONVERSORES (compatibilidad con datos viejos de Konva)
-// ─────────────────────────────────────────────────────────────────
 function convertOldEl(el) {
   const typeMap = {
     jugador: el.color==='#ef4444'?'away':el.color==='#3b82f6'?'home':el.color==='#22c55e'?'verde':'blanco',

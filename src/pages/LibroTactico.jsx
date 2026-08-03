@@ -71,7 +71,7 @@ const ReproductorLoop = ({ editorData }) => {
                   ...elA,
                   x: elA.x + (elB.x - elA.x) * ease,
                   y: elA.y + (elB.y - elA.y) * ease,
-                  rotation: elA.rotation + (elB.rotation - elA.rotation) * ease,
+                  rotation: (elA.rotation||0) + ((elB.rotation||0) - (elA.rotation||0)) * ease,
                 };
               });
 
@@ -100,7 +100,7 @@ const ReproductorLoop = ({ editorData }) => {
   }, [frames]);
 
   const RenderElemento = ({ el }) => {
-    const scaleFactor = el.radio / 35; 
+    const scaleFactor = (el.radio || 15) / 35; 
     switch(el.tipo) {
       case 'jugador': case 'arquero': case 'staff':
         return (
@@ -108,7 +108,7 @@ const ReproductorLoop = ({ editorData }) => {
             <Group x={-67} y={-40}>
                 <Path data="M 80 10 A 40 40 0 0 0 80 70 L 65 65 A 25 25 0 0 1 65 15 Z M 84 40 A 10 10 0 1 1 50 40 A 10 10 0 1 1 84 40" fill={el.color} stroke="black" strokeWidth={2} />
             </Group>
-            <Text text={el.texto} fontSize={22} fontStyle="bold" fill={el.color === '#fff' || el.color === '#eab308' ? '#000' : '#fff'} x={-15} y={-11} width={30} align="center" />
+            <Text text={el.texto||''} fontSize={22} fontStyle="bold" fill={el.color === '#fff' || el.color === '#eab308' ? '#000' : '#fff'} x={-15} y={-11} width={30} align="center" />
           </Group>
         );
       case 'pelota': return (<Group><Circle radius={el.radio} fill="#fff" stroke="#000" strokeWidth={1.5} /><Circle radius={el.radio * 0.4} fill="#000" /></Group>);
@@ -253,14 +253,14 @@ export default function LibroTactico() {
             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Playbook oficial del equipo: ABP, presiones y situaciones especiales.</p>
           </div>
           {esStaff && (
-            <button onClick={() => navigate('/creador-tareas')} className="btn-action" style={{ background: '#3b82f6', color: 'var(--text)', fontSize: '0.85rem' }}>
-              + NUEVA JUGADA
+            <button onClick={() => navigate('/banco-tareas')} className="btn-action" style={{ background: '#3b82f6', color: 'var(--text)', fontSize: '0.85rem' }}>
+              + AGREGAR DESDE BANCO
             </button>
           )}
         </div>
       </div>
 
-      {/* PESTAÑAS DE NAVEGACIÓN TÁCTICA MEJORADAS (CHIPS ENVOLVENTES) */}
+      {/* PESTAÑAS DE NAVEGACIÓN TÁCTICA */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '30px', justifyContent: 'flex-start' }}>
         {SITUACIONES.map(sit => {
           const count = tacticas.filter(t => t.fase_juego === sit).length;
@@ -270,8 +270,8 @@ export default function LibroTactico() {
               key={sit} 
               onClick={() => setTabActivo(sit)}
               style={{
-                padding: '8px 14px', // Padding más compacto
-                borderRadius: '20px', // Estilo píldora
+                padding: '8px 14px', 
+                borderRadius: '20px', 
                 cursor: 'pointer', 
                 fontWeight: 'bold', 
                 fontSize: '0.8rem', 
@@ -282,7 +282,7 @@ export default function LibroTactico() {
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '6px',
-                flexGrow: 0 // Evita que se estiren de más
+                flexGrow: 0 
               }}
             >
               {sit}
@@ -311,13 +311,15 @@ export default function LibroTactico() {
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              <div style={{ height: '180px', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                {jugada.url_grafico ? (
+              <div style={{ height: '180px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                {jugada.video_mp4_url ? (
+                  <video src={jugada.video_mp4_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline autoPlay />
+                ) : jugada.url_grafico ? (
                   <img src={jugada.url_grafico} alt="Táctica" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (
                   <span style={{ fontSize: '3rem' }}>📋</span>
                 )}
-                {jugada.editor_data?.frames?.length > 1 && (
+                {jugada.editor_data?.frames?.length > 1 && !jugada.video_mp4_url && (
                   <span style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: 'var(--text)', fontSize: '0.6rem', padding: '3px 6px', borderRadius: '4px', fontWeight: 'bold' }}>ANIMACIÓN</span>
                 )}
               </div>
@@ -332,7 +334,7 @@ export default function LibroTactico() {
         </div>
       )}
 
-      {/* MODAL DETALLE DE LA JUGADA (PLAYBOOK) MEJORADO PARA MÓVILES */}
+      {/* MODAL DETALLE DE LA JUGADA (PLAYBOOK) */}
       {jugadaSeleccionada && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.95)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px', boxSizing: 'border-box' }}>
           <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '900px', border: '2px solid #3b82f6', padding: '0', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -352,10 +354,11 @@ export default function LibroTactico() {
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: '15px', gap: '20px' }}>
               
-              {/* CANVAS ADAPTATIVO AL 100% EN MÓVILES */}
               <div style={{ flex: '1 1 100%', minWidth: '0' }}>
-                <div style={{ background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                  {jugadaSeleccionada.editor_data?.frames?.length > 1 ? (
+                <div style={{ background: '#000', borderRadius: '8px', border: '1px solid var(--border)', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  {jugadaSeleccionada.video_mp4_url ? (
+                    <video src={jugadaSeleccionada.video_mp4_url} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : jugadaSeleccionada.editor_data?.frames?.length > 1 ? (
                     <ReproductorLoop editorData={jugadaSeleccionada.editor_data} />
                   ) : jugadaSeleccionada.url_grafico ? (
                     <img src={jugadaSeleccionada.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -365,7 +368,6 @@ export default function LibroTactico() {
                 </div>
               </div>
 
-              {/* TEXTO Y BOTONES ADAPTATIVOS */}
               <div style={{ flex: '1 1 100%', minWidth: '250px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div>
                   <h4 style={{ margin: '0 0 10px 0', color: '#3b82f6', textTransform: 'uppercase', fontSize: '0.85rem' }}>Desarrollo / Movimientos:</h4>
@@ -376,7 +378,7 @@ export default function LibroTactico() {
 
                 {jugadaSeleccionada.video_url && (
                   <a href={jugadaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#ef4444', color: 'var(--text)', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.85rem' }}>
-                    ▶️ Video de Ejemplo
+                    ▶️ Video de Ejemplo Externo
                   </a>
                 )}
 

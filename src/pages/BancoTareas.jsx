@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
@@ -64,7 +65,6 @@ const ReproductorLoop = ({ editorData }) => {
   const [cvSize, setCvSize] = useState({ w: 0, h: 0 });
   const isMountedRef = useRef(true);
 
-  // Configuraciones y Constantes del Motor Nativo
   const frames = editorData?.frames || [];
   const pitchCfg = editorData?.cancha || { variant: '40x20', material: 'azul' };
 
@@ -75,7 +75,6 @@ const ReproductorLoop = ({ editorData }) => {
     '20x20_central': { mW: 20, mH: 20 },
   };
 
-  // RESTAURADO: Lógica original de coordenadas y escalas para mantener fidelidad
   const BASE_W = 800;
   function getBaseH(variant) {
     const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20'];
@@ -119,7 +118,6 @@ const ReproductorLoop = ({ editorData }) => {
     },
   };
 
-  // 🛡️ REDIMENSIONAMIENTO BLINDADO CONTRA EL "INFINITE ZOOM"
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -156,10 +154,9 @@ const ReproductorLoop = ({ editorData }) => {
     return () => observer.disconnect();
   }, [pitchCfg.variant, pitchCfg.tamaño]);
 
-  // Funciones de Renderizado Geométrico
   function mX(m, mW, L) { return L.px + (m/mW)*L.ppw; }
   function mY(m, mH, L) { return L.py + (m/mH)*L.pph; }
-  function playerRadius(cW) { return cW * 0.021; } // Restablecido a usar BASE_W
+  function playerRadius(cW) { return cW * 0.021; } 
   function lighten(hex, amt) {
     if (!hex || !hex.startsWith('#')) return hex||'#fff';
     let c = hex.slice(1); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
@@ -351,7 +348,6 @@ const ReproductorLoop = ({ editorData }) => {
     ctx.restore();
   }
 
-  // Motor de Bucle y Render
   useEffect(() => {
     isMountedRef.current = true;
     const cv = canvasRef.current;
@@ -371,7 +367,6 @@ const ReproductorLoop = ({ editorData }) => {
           const f0 = frames[0] || {};
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           ctx.clearRect(0, 0, cvSize.w, cvSize.h);
-          // Restablecido a BASE_W y baseH original
           ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
           
           drawPitch(ctx, BASE_W, baseH, pitchCfg);
@@ -408,7 +403,6 @@ const ReproductorLoop = ({ editorData }) => {
               
               ctx.setTransform(1, 0, 0, 1, 0, 0);
               ctx.clearRect(0, 0, cvSize.w, cvSize.h);
-              // Restablecido a BASE_W y baseH original
               ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
               
               drawPitch(ctx, BASE_W, baseH, pitchCfg);
@@ -447,8 +441,10 @@ const ReproductorLoop = ({ editorData }) => {
     </div>
   );
 };
-// =======================================================
 
+// =======================================================
+// COMPONENTE PRINCIPAL BANCO DE TAREAS
+// =======================================================
 const BancoTareas = () => {
   const [tareas, setTareas] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -459,11 +455,36 @@ const BancoTareas = () => {
   const [filtroFormato, setFiltroFormato] = useState('Todas');
   
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
+  
+  // MODAL CREAR TAREA
+  const [showCrearModal, setShowCrearModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoPreview, setVideoPreview] = useState(null);
+  
+  const [categoriasClub, setCategoriasClub] = useState([]);
+  const { perfil } = useAuth();
+  
+  const [nuevaTarea, setNuevaTarea] = useState({
+    titulo: '',
+    categoria_recomendada: 'Todas',
+    categoria_ejercicio: 'Táctico',
+    fase_juego: 'Ataque Posicional',
+    formato_tarea: 'Reducido',
+    duracion_estimada: 15,
+    intensidad_rpe: 6,
+    jugadores_involucrados: '',
+    objetivo_principal: '',
+    descripcion: '',
+    video_url: '',
+  });
+
   const navigate = useNavigate();
   const { showToast } = useToast();
 
   useEffect(() => {
     cargarTareas();
+    cargarCategoriasClub();
   }, []);
 
   const cargarTareas = async () => {
@@ -485,6 +506,23 @@ const BancoTareas = () => {
     }
   };
 
+  const cargarCategoriasClub = async () => {
+    try {
+      const club_id = localStorage.getItem('club_id') || 'club_default';
+      if (club_id === 'club_default') return;
+      const { data } = await supabase.from('jugadores').select('categoria').eq('club_id', club_id);
+      if (data) {
+        const unicas = [...new Set(data.map(j => j.categoria).filter(Boolean))].sort();
+        setCategoriasClub(unicas);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const misCategorias = perfil?.categorias_asignadas || [];
+  const categoriasDisponibles = [...new Set([...misCategorias, ...categoriasClub])].sort();
+
   const eliminarTarea = async (id) => {
     const confirmar = window.confirm("⚠️ ¿Estás seguro de que querés eliminar esta tarea definitivamente? Esta acción no se puede deshacer.");
     if (!confirmar) return;
@@ -501,6 +539,75 @@ const BancoTareas = () => {
     }
   };
 
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type !== 'video/mp4' && file.type !== 'video/webm') {
+        showToast("Solo se permiten archivos MP4 o WebM cortos.", "warning");
+        return;
+      }
+      if (file.size > 20 * 1024 * 1024) { // 20 MB max
+        showToast("El video es muy pesado. Máximo 20MB.", "warning");
+        return;
+      }
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const guardarNuevaTarea = async () => {
+    if (!nuevaTarea.titulo.trim()) { showToast("Poné un nombre a la tarea antes de guardar.", "warning"); return; }
+    
+    setIsUploading(true);
+    const club_id = localStorage.getItem('club_id') || 'club_default';
+    let url_video_mp4 = null;
+
+    try {
+      if (videoFile) {
+        const fileExt = videoFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+        
+        // Asume que tenés un bucket público llamado 'videos_tareas'
+        const { error: uploadError } = await supabase.storage.from('videos_tareas').upload(fileName, videoFile);
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage.from('videos_tareas').getPublicUrl(fileName);
+        url_video_mp4 = publicUrl;
+      }
+
+      const payload = {
+        club_id,
+        titulo: nuevaTarea.titulo,
+        categoria_recomendada: nuevaTarea.categoria_recomendada,
+        categoria_ejercicio: nuevaTarea.categoria_ejercicio,
+        fase_juego: nuevaTarea.fase_juego,
+        formato_tarea: nuevaTarea.formato_tarea,
+        duracion_estimada: parseInt(nuevaTarea.duracion_estimada) || 0,
+        intensidad_rpe: parseInt(nuevaTarea.intensidad_rpe) || 0,
+        jugadores_involucrados: nuevaTarea.jugadores_involucrados,
+        objetivo_principal: nuevaTarea.objetivo_principal,
+        descripcion: nuevaTarea.descripcion,
+        video_url: nuevaTarea.video_url, // Link externo de Youtube
+        video_mp4_url: url_video_mp4, // El video nativo subido
+      };
+
+      const { data, error } = await supabase.from('tareas').insert([payload]).select().single();
+      if (error) throw error;
+
+      showToast("¡Tarea guardada exitosamente!", "success");
+      setTareas([data, ...tareas]);
+      setShowCrearModal(false);
+      setVideoFile(null);
+      setVideoPreview(null);
+      setNuevaTarea({ ...nuevaTarea, titulo: '', descripcion: '', objetivo_principal: '' });
+      
+    } catch (err) {
+      showToast("Error al guardar: " + err.message, "error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const getColoresCategoria = (categoria) => {
     switch (categoria) {
       case 'Táctico': return { bg: 'linear-gradient(135deg, #1e3a8a 0%, #172554 100%)', border: '#3b82f6', text: '#bfdbfe' };
@@ -512,13 +619,11 @@ const BancoTareas = () => {
     }
   };
 
-  // Normalizador para búsquedas sin tildes ni mayúsculas (tolera null/undefined)
   const normalizar = (str) =>
     (str ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
   const tareasFiltradas = tareas.filter(t => {
     const termino = normalizar(busqueda);
-    // Busca por nombre + objetivo + naturaleza + fase (Qué) + formato (Cómo)
     const coincideBusqueda = !termino ||
       normalizar(t.titulo).includes(termino) ||
       normalizar(t.objetivo_principal).includes(termino) ||
@@ -567,8 +672,10 @@ const BancoTareas = () => {
           </div>
         </div>
 
-        <div style={{ flex: 1, background: 'var(--bg)', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${colores.border}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          {tarea.url_grafico ? (
+        <div style={{ flex: 1, background: '#0a0b0f', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${colores.border}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          {tarea.video_mp4_url ? (
+            <video src={tarea.video_mp4_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline autoPlay />
+          ) : tarea.url_grafico ? (
             <img src={tarea.url_grafico} alt="Gráfico Tarea" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
             <span style={{ color: 'var(--text-dim)', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
@@ -643,14 +750,9 @@ const BancoTareas = () => {
               <option value="Situaciones Especiales">Situaciones Especiales</option>
               <option value="ABP / Pelota Parada">ABP / Pelota Parada</option>
             </select>
-            <select value={filtroFormato} onChange={e => setFiltroFormato(e.target.value)} style={{...selectFiltro, color: '#22d3ee'}}>
-              <option value="Todas">Formato · El Cómo</option>
-              <option value="Analítico">Analítico</option>
-              <option value="Drill">Drill</option>
-              <option value="Reducido">Reducido / SSG</option>
-              <option value="Juego Condicionado">Juego Condicionado</option>
-              <option value="Juego Real">Juego Real</option>
-            </select>
+            <button onClick={() => setShowCrearModal(true)} style={{ background: 'var(--accent)', color: '#000', padding: '12px 20px', borderRadius: '8px', border: 'none', fontWeight: '900', cursor: 'pointer', fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(0,255,136,0.3)' }}>
+              + NUEVA TAREA
+            </button>
           </div>
         </div>
       </div>
@@ -661,13 +763,98 @@ const BancoTareas = () => {
         <div style={{ textAlign: 'center', padding: '50px', background: 'var(--hover)', borderRadius: '15px', border: '1px dashed var(--border)' }}>
           <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📋</div>
           <h3 style={{ color: 'var(--text)', margin: 0 }}>No hay tareas aún.</h3>
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Creá tu primer ejercicio en el Creador para empezar a llenar tu biblioteca.</p>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Creá tu primer ejercicio en el Creador o subí un video para empezar.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '25px', justifyContent: 'center' }}>
           {tareasFiltradas.map(tarea => (
             <CartaFUT key={tarea.id} tarea={tarea} />
           ))}
+        </div>
+      )}
+
+      {/* MODAL: CREAR TAREA (VIDEO O CREADOR) */}
+      {showCrearModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#111', width: '100%', maxWidth: '800px', border: '2px solid var(--accent)', borderRadius: '12px', padding: '28px', maxHeight: '95vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+              <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.4rem', textTransform: 'uppercase' }}>Subir Nueva Tarea Rápida</h2>
+              <button onClick={() => {setShowCrearModal(false); setVideoFile(null); setVideoPreview(null);}} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
+              <button onClick={() => navigate('/creador-tareas')} style={{ flex: 1, padding: '15px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', borderRadius: '8px', color: '#60a5fa', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '5px' }}>🎨</span>
+                Abrir Creador Táctico
+              </button>
+              
+              <label style={{ flex: 1, padding: '15px', background: 'rgba(0, 255, 136, 0.1)', border: '1px dashed var(--accent)', borderRadius: '8px', color: 'var(--accent)', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}>
+                <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '5px' }}>📁</span>
+                {videoFile ? 'Cambiar Video MP4' : 'Subir Video MP4 (Corto)'}
+                <input type="file" accept="video/mp4,video/webm" style={{ display: 'none' }} onChange={handleVideoChange} />
+              </label>
+            </div>
+
+            {videoPreview && (
+              <div style={{ marginBottom: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #333', width: '100%', aspectRatio: '16/9', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
+                <video src={videoPreview} controls style={{ maxWidth: '100%', maxHeight: '100%' }} />
+              </div>
+            )}
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 5 }}>Nombre de la Tarea *</label>
+              <input type="text" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid var(--accent)', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} placeholder="Ej: Rondo 4v2 con finalización..." value={nuevaTarea.titulo} onChange={e => setNuevaTarea({...nuevaTarea, titulo: e.target.value})} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 15 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#facc15', textTransform: 'uppercase', marginBottom: 5 }}>Categoría Recomendada</label>
+                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #ca8a04', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.categoria_recomendada} onChange={e => setNuevaTarea({...nuevaTarea, categoria_recomendada: e.target.value})}>
+                  <option value="Todas">Todas las Categorías</option>
+                  {categoriasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Naturaleza · Contenido</label>
+                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.categoria_ejercicio} onChange={e => setNuevaTarea({...nuevaTarea, categoria_ejercicio: e.target.value})}>
+                  {['Táctico', 'Técnico', 'Físico', 'Cognitivo', 'Libro Táctico'].map(v=><option key={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Fase del Juego</label>
+                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.fase_juego} onChange={e => setNuevaTarea({...nuevaTarea, fase_juego: e.target.value})}>
+                  {['Ataque Posicional','Defensa Posicional','Transición Ofensiva','Transición Defensiva','Situaciones Especiales','ABP / Pelota Parada'].map(v=><option key={v}>{v}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#22d3ee', textTransform: 'uppercase', marginBottom: 5 }}>Formato de Tarea</label>
+                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #0e7490', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.formato_tarea} onChange={e => setNuevaTarea({...nuevaTarea, formato_tarea: e.target.value})}>
+                  <option value="Analítico">Analítico</option><option value="Drill">Drill</option><option value="Reducido">Reducido / SSG</option><option value="Juego Condicionado">Juego Condicionado</option><option value="Juego Real">Juego Real</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Duración (min)</label>
+                <input type="number" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.duracion_estimada} onChange={e => setNuevaTarea({...nuevaTarea, duracion_estimada: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Intensidad RPE</label>
+                <input type="number" min="1" max="10" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.intensidad_rpe} onChange={e => setNuevaTarea({...nuevaTarea, intensidad_rpe: e.target.value})} />
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Objetivo Principal</label>
+                <input type="text" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.objetivo_principal} onChange={e => setNuevaTarea({...nuevaTarea, objetivo_principal: e.target.value})} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 15 }}>
+              <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Reglas y Desarrollo</label>
+              <textarea rows={3} style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} value={nuevaTarea.descripcion} onChange={e => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}/>
+            </div>
+
+            <button onClick={guardarNuevaTarea} disabled={isUploading} style={{ width: '100%', padding: 15, background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: '1.1rem', fontWeight: 700, cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.7 : 1 }}>
+              {isUploading ? '⏳ SUBIENDO VIDEO Y GUARDANDO...' : '💾 GUARDAR EN EL BANCO'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -692,10 +879,10 @@ const BancoTareas = () => {
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: '20px' }}>
               <div style={{ flex: '1 1 500px', padding: '20px', borderRight: '1px solid var(--border)' }}>
                 
-                {/* 🛡️ CONTENEDOR RELATIVO PARA ENCAPSULAR AL CANVAS ABSOLUTO */}
-                <div style={{ background: 'var(--bg)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                  
-                  {tareaSeleccionada.categoria_ejercicio === 'Físico' && tareaSeleccionada.editor_data?.tipo === 'rutina_fisica' ? (
+                <div style={{ background: '#000', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden', width: '100%', aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  {tareaSeleccionada.video_mp4_url ? (
+                    <video src={tareaSeleccionada.video_mp4_url} controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : tareaSeleccionada.categoria_ejercicio === 'Físico' && tareaSeleccionada.editor_data?.tipo === 'rutina_fisica' ? (
                     <RenderRutinaFisica data={tareaSeleccionada.editor_data} />
                   ) : tareaSeleccionada.editor_data?.frames?.length > 0 ? (
                     <ReproductorLoop editorData={tareaSeleccionada.editor_data} />
@@ -704,7 +891,6 @@ const BancoTareas = () => {
                   ) : (
                     <span style={{ color: 'var(--text-dim)', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionada)}</span>
                   )}
-
                 </div>
                 {tareaSeleccionada.video_url && (
                   <div style={{ marginTop: '15px' }}>

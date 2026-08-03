@@ -611,9 +611,6 @@ const PlanificadorSemanal = () => {
       if (errSesiones) throw errSesiones;
 
       // 🛡️ SOLO PARTIDOS DE MI EQUIPO:
-      // Antes se excluía por condicion==='Neutral', pero eso también tapaba mis propios
-      // cruces de Copa jugados en cancha neutral. Ahora usamos el mismo criterio que
-      // Torneos.jsx (esMiPartido): comparamos nombre_propio/rival contra mi club.
       const miClubGlobal = localStorage.getItem('mi_club') || 'MI EQUIPO';
       let queryPartidos = supabase
         .from('partidos')
@@ -636,7 +633,7 @@ const PlanificadorSemanal = () => {
       
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
-        .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, fase_juego, objetivo_principal, categoria_recomendada, formato_tarea')
+        .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, video_mp4_url, fase_juego, objetivo_principal, categoria_recomendada, formato_tarea')
         .eq('club_id', club_id)
         .order('created_at', { ascending: false });
         
@@ -1244,7 +1241,13 @@ const PlanificadorSemanal = () => {
                           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: 'var(--panel)', border: '1px solid var(--border)' }}
                         >
                           <div style={{ width: '55px', height: '42px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: 'var(--text-dim)' }}>{getIconoTarea(t)}</span>}
+                            {t.video_mp4_url ? (
+                              <video src={t.video_mp4_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : t.url_grafico ? (
+                              <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <span style={{ fontSize: '1.2rem', color: 'var(--text-dim)' }}>{getIconoTarea(t)}</span>
+                            )}
                           </div>
                           <div style={{ flex: 1, overflow: 'hidden' }}>
                             <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
@@ -1529,7 +1532,13 @@ const PlanificadorSemanal = () => {
                         return (
                           <div key={t.id} onClick={() => toggleTarea(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: isSelected ? 'rgba(0, 255, 136, 0.1)' : 'var(--panel)', border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)' }}>
                             <div style={{ width: '50px', height: '38px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              {t.url_grafico ? <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem', color: 'var(--text-dim)' }}>{getIconoTarea(t)}</span>}
+                              {t.video_mp4_url ? (
+                                <video src={t.video_mp4_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : t.url_grafico ? (
+                                <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <span style={{ fontSize: '1.2rem', color: 'var(--text-dim)' }}>{getIconoTarea(t)}</span>
+                              )}
                             </div>
                             <div style={{ flex: 1, overflow: 'hidden' }}>
                               <span style={{ display: 'block', fontSize: '0.85rem', color: isSelected ? 'var(--text)' : 'var(--text-dim)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
@@ -1595,6 +1604,8 @@ const PlanificadorSemanal = () => {
                   
                   {tareaSeleccionadaDetalle.categoria_ejercicio === 'Físico' && tareaSeleccionadaDetalle.editor_data?.tipo === 'rutina_fisica' ? (
                     <RenderRutinaFisica data={tareaSeleccionadaDetalle.editor_data} />
+                  ) : tareaSeleccionadaDetalle.video_mp4_url ? (
+                    <video src={tareaSeleccionadaDetalle.video_mp4_url} autoPlay loop muted playsInline controls style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : tareaSeleccionadaDetalle.editor_data?.frames?.length > 0 ? (
                     <ReproductorLoop editorData={tareaSeleccionadaDetalle.editor_data} />
                   ) : tareaSeleccionadaDetalle.url_grafico ? (
