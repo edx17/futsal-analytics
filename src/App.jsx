@@ -43,6 +43,7 @@ import Disciplina from './pages/Disciplina';
 import Transferencias from './pages/Transferencias';
 import ResumenPlantel from './pages/Resumenplantel';
 import Videoanalisis from './pages/Videoanalisis';
+import GeneradorReportes from './pages/GeneradorReportes';
 
 import './App.css';
 
@@ -138,6 +139,8 @@ function AppRoutes() {
       <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
       <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
       <Route path="/aceptar-terminos" element={<ProtectedRoute><AceptarTerminos /></ProtectedRoute>} />
+      
+      <Route path="/reportes" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><GeneradorReportes /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/inicio" replace />} />
     </Routes>
@@ -336,7 +339,7 @@ useEffect(() => {
         {permisos.puedeVerDeportivo && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('analisis')} title={isCollapsed ? "Análisis" : ""}>
-               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>📊</span> : <><span>ANÁLISIS</span> <span>{menusAbiertos.analisis ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>📊</span> : <><span>ANÁLISIS</span> <span>{menusAbiertos.analisis ? '▼' : '▶'}</span></>}
             </div>
             {menusAbiertos.analisis && !isCollapsed && (
               <>
@@ -345,6 +348,7 @@ useEffect(() => {
                 <NavLink to="/jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👁️ <span>{permisos.esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
                 {!permisos.esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚽ <span>ORIGEN DE GOLES</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/disciplina" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🟨 <span>DISCIPLINA</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/reportes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📸 <span>EXPORTAR GRÁFICAS</span></NavLink>}
               </>
             )}
           </>
@@ -353,7 +357,7 @@ useEffect(() => {
         {permisos.puedeVerDeportivo && !permisos.esJugador && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('planificacion')} title={isCollapsed ? "Planificación" : ""}>
-               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>🗓️</span> : <><span>PLANIFICACIÓN</span> <span>{menusAbiertos.planificacion ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>🗓️</span> : <><span>PLANIFICACIÓN</span> <span>{menusAbiertos.planificacion ? '▼' : '▶'}</span></>}
             </div>
             {menusAbiertos.planificacion && !isCollapsed && (
               <>
@@ -375,7 +379,7 @@ useEffect(() => {
         {permisos.puedeVerDeportivo && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('plantel')} title={isCollapsed ? "Plantel" : ""}>
-               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>👥</span> : <><span>PLANTEL</span> <span>{menusAbiertos.plantel ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>👥</span> : <><span>PLANTEL</span> <span>{menusAbiertos.plantel ? '▼' : '▶'}</span></>}
             </div>
             {menusAbiertos.plantel && !isCollapsed && (
               <>
@@ -394,7 +398,7 @@ useEffect(() => {
         {!permisos.esJugador && permisos.puedeControlarAdmin && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('administracion')} title={isCollapsed ? "Administración" : ""}>
-               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>💰</span> : <><span>ADMINISTRACIÓN</span> <span>{menusAbiertos.administracion ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>💰</span> : <><span>ADMINISTRACIÓN</span> <span>{menusAbiertos.administracion ? '▼' : '▶'}</span></>}
             </div>
             {menusAbiertos.administracion && !isCollapsed && (
               <>
@@ -415,7 +419,7 @@ useEffect(() => {
         {permisos.esSuperUser && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('sistema')} title={isCollapsed ? "Sistema" : ""}>
-               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>👑</span> : <><span>SISTEMA</span> <span>{menusAbiertos.sistema ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>👑</span> : <><span>SISTEMA</span> <span>{menusAbiertos.sistema ? '▼' : '▶'}</span></>}
             </div>
             {menusAbiertos.sistema && !isCollapsed && (
               <>
@@ -471,7 +475,7 @@ useEffect(() => {
             </button>
           </div>
           <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 0 0', gap: '2px', overflowY: 'auto', overflowX: 'hidden', flex: 1 }}>
-             {renderNavLinks(!sidebarAbierta)}
+            {renderNavLinks(!sidebarAbierta)}
           </nav>
         </aside>
       )}
@@ -499,12 +503,12 @@ useEffect(() => {
           )}
 
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
-             <button 
-               onClick={() => { setFabAbierto(!fabAbierto); setDrawerAbierto(false); setModoEdicionFab(false); }}
-               style={fabStyle}
-             >
-               {fabAbierto ? '×' : '+'}
-             </button>
+            <button 
+              onClick={() => { setFabAbierto(!fabAbierto); setDrawerAbierto(false); setModoEdicionFab(false); }}
+              style={fabStyle}
+            >
+              {fabAbierto ? '×' : '+'}
+            </button>
           </div>
 
           <NavLink to="/resumen" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>

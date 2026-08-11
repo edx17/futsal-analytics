@@ -44,7 +44,8 @@ export const AuthProvider = ({ children }) => {
         .maybeSingle(); // Usamos maybeSingle para evitar errores si no existe la fila
 
       if (data) {
-        if (data.rol === 'kiosco') {
+        const esSesionKiosco = data.rol === 'kiosco' || localStorage.getItem('kiosco_mode') === 'true';
+        if (esSesionKiosco) {
           const jugadorIdLocal = localStorage.getItem('kiosco_jugador_id');
           setPerfil({
             ...data,

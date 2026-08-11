@@ -946,7 +946,7 @@ export default function Videoanalisis() {
 
         {modalNuevo && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: esMovil ? 'flex-end' : 'center', padding: esMovil ? 0 : '20px' }}>
-            <div className="bento-card" style={{ width: '100%', maxWidth: '480px', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '92dvh', overflowY: 'auto' }}>
+            <div className="bento-card" style={{ width: '100%', maxWidth: '480px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '92dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>NUEVO ANÁLISIS DE VIDEO</div>
                 <button onClick={cerrarModalNuevo} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
@@ -1044,7 +1044,7 @@ export default function Videoanalisis() {
 
         {modalConfig && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: esMovil ? 'flex-end' : 'center', padding: esMovil ? 0 : '20px' }}>
-            <div className="bento-card" style={{ width: '100%', maxWidth: '520px', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
+            <div className="bento-card" style={{ width: '100%', maxWidth: '520px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>CONFIGURAR BOTONERA</div>
                 <button onClick={() => setModalConfig(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
@@ -1128,7 +1128,7 @@ export default function Videoanalisis() {
 
         {modalCompartir && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: esMovil ? 'flex-end' : 'center', padding: esMovil ? 0 : '20px' }}>
-            <div className="bento-card" style={{ width: '100%', maxWidth: '480px', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
+            <div className="bento-card" style={{ width: '100%', maxWidth: '480px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <div style={{ fontSize: '1.05rem', fontWeight: 900 }}>COMPARTIR CON JUGADORES</div>
                 <button onClick={() => setModalCompartir(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
@@ -1626,14 +1626,20 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
 
   useEffect(() => {
     if (!clubId) return;
+    // CORRECCIÓN: flag para descartar el resultado si este efecto quedó obsoleto
+    // (por ej. se disparó una vez con jugadorId todavía sin resolver del perfil del
+    // kiosco, y esa corrida vieja tardó más en volver que la corrida nueva ya con el
+    // jugadorId correcto — sin este guard, la respuesta vieja pisaba a la buena y
+    // el jugador veía la lista vacía aunque la playlist sí estuviera compartida).
+    let cancelado = false;
+
     (async () => {
       setCargando(true);
 
-      // Necesitamos SU categoría para poder filtrar por "categorías completas".
-      // El id de jugador viene de localStorage (mismo criterio que el resto del
-      // kiosco: wellness, rendimiento, etc.), no hay sesión propia por jugador.
-      let miCategoria = null;
-      if (jugadorId) {
+      // Obtenemos su categoría directo de la sesión del kiosco para más seguridad y rapidez,
+      // y hacemos un fallback a la base de datos por las dudas.
+      let miCategoria = localStorage.getItem('kiosco_categoria');
+      if (!miCategoria && jugadorId) {
         const { data: yo } = await supabase.from('jugadores').select('categoria').eq('id', jugadorId).maybeSingle();
         miCategoria = yo?.categoria || null;
       }
@@ -1646,15 +1652,24 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
         .eq('club_id', clubId)
         .order('created_at', { ascending: false });
 
+      if (cancelado) return;
+
       const visibles = (data || []).filter((pl) => {
         const cats = pl.compartida_categorias || [];
         const jugs = pl.compartida_jugadores || [];
-        return (miCategoria && cats.includes(miCategoria)) || (jugadorId && jugs.includes(Number(jugadorId)));
+        
+        const matcheaCat = miCategoria && cats.includes(miCategoria);
+        // SOLUCIÓN: pasamos ambos a String para comparar sin importar si el ID es INT o UUID.
+        const matcheaJug = jugadorId && jugs.some(id => String(id) === String(jugadorId));
+        
+        return matcheaCat || matcheaJug;
       });
 
       setPlaylists(visibles);
       setCargando(false);
     })();
+
+    return () => { cancelado = true; };
   }, [clubId, jugadorId]);
 
   // Carga la API de YouTube una sola vez (versión mínima, sin todo lo del editor)

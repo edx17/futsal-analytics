@@ -195,6 +195,10 @@ export default function LoginKiosco() {
         if (jugador) {
           setJugadorSeleccionado(jugador);
           const categoria = localStorage.getItem('kiosco_categoria') || jugador.categoria;
+          // CORRECCIÓN: antes esto se calculaba pero nunca se persistía, así que en una
+          // reconexión automática (reload) kiosco_categoria quedaba en null aunque el
+          // jugador sí tuviera categoría cargada — rompía el matching de playlists compartidas.
+          if (categoria) localStorage.setItem('kiosco_categoria', categoria);
           fetchNovedadesKiosco(id, categoria);
           cargarDatosFinancieros(id, jugador.id);
           setMostrarMenu(true);

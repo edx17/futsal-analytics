@@ -1,0 +1,60 @@
+{
+  "width": 1080,
+  "height": 1350,
+
+  "background": "#09931b",
+
+  "elements": [
+
+    {
+      "type":"text",
+
+      "text":"{jugador.apellido}",
+
+      "x":120,
+
+      "y":120,
+
+      "fontFamily":"Anton",
+
+      "fontSize":220,
+
+      "fontWeight":900,
+
+      "color":"#c4eeb2"
+    },
+
+    {
+      "type":"text",
+
+      "text":"{jugador.nombre}",
+
+      "x":720,
+
+      "y":300,
+
+      "fontFamily":"Anton",
+
+      "fontSize":70,
+
+      "color":"#000"
+    },
+
+    {
+      "type":"image",
+
+      "src":"{jugador.foto}",
+
+      "x":180,
+
+      "y":260,
+
+      "width":720,
+
+      "height":980,
+
+      "objectFit":"contain"
+    }
+
+  ]
+}
