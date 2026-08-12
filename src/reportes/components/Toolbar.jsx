@@ -2,19 +2,20 @@
 import React, { useRef, useState } from "react";
 import { exportarComoPNG } from "../engine/ExportPNG";
 import TemplateRenderer from "../engine/TemplateRenderer";
-import { templates } from "../templates";
 
-const PLANTILLAS_DISPONIBLES = [
-  { valor: "verde", etiqueta: "Verde" },
-  { valor: "vintage", etiqueta: "Vintage" },
-];
-
+/**
+ * Barra superior: qué se está viendo y las dos acciones principales.
+ * Todo lo que es edición vive en BarraEdicion y en los paneles laterales.
+ */
 export default function Toolbar({
   jugadores,
   jugadorSeleccionadoId,
   setJugadorSeleccionadoId,
+  catalogo,
   templateSeleccionado,
   setTemplateSeleccionado,
+  onNuevaPlantilla,
+  onBorrarPlantilla,
   torneos,
   torneoSeleccionado,
   setTorneoSeleccionado,
@@ -24,26 +25,20 @@ export default function Toolbar({
   onCambiarFoto,
   modoEdicion,
   setModoEdicion,
-  capaEdicion,
-  setCapaEdicion,
-  grupo,
-  onGuardarPosiciones,
-  guardandoPosiciones,
-  errorPosiciones,
-  overridesPosicionActuales,
-  onToggleVisibilidad,
 }) {
   const [exportando, setExportando] = useState(false);
   const [errorExport, setErrorExport] = useState(null);
   const inputFotoRef = useRef(null);
+
+  const entradas = Object.values(catalogo || {});
+  const activa = catalogo?.[templateSeleccionado];
 
   const handleExportar = async () => {
     setErrorExport(null);
     setExportando(true);
     try {
       const apellido = (jugadorActual?.apellido || "reporte").toLowerCase();
-      const nombreArchivo = `${apellido}_${templateSeleccionado}`;
-      await exportarComoPNG(canvasRef, nombreArchivo);
+      await exportarComoPNG(canvasRef, `${apellido}_${templateSeleccionado}`);
     } catch (err) {
       console.error("Error exportando reporte:", err);
       setErrorExport("No se pudo exportar la imagen. Probá de nuevo.");
@@ -55,64 +50,53 @@ export default function Toolbar({
   const handleCambiarFoto = (e) => {
     const archivo = e.target.files?.[0];
     if (!archivo || !onCambiarFoto) return;
-
     const lector = new FileReader();
     lector.onload = () => onCambiarFoto(lector.result);
     lector.readAsDataURL(archivo);
-
     e.target.value = "";
   };
 
   return (
     <div style={estilos.panel}>
-      {/* Selector visual de plantillas: miniatura en vivo con los datos reales del jugador */}
-      <div style={estilos.grupo}>
+      <div style={estilos.campoPlantillas}>
         <label style={estilos.label}>Plantilla</label>
-        <div style={estilos.filaPlantillas}>
-          {PLANTILLAS_DISPONIBLES.map((p) => {
-            const activa = templateSeleccionado === p.valor;
+        <div style={estilos.tira}>
+          {entradas.map((p) => {
+            const seleccionada = templateSeleccionado === p.slug;
             return (
               <button
                 type="button"
-                key={p.valor}
-                onClick={() => setTemplateSeleccionado(p.valor)}
-                style={{
-                  ...estilos.miniatura,
-                  borderColor: activa ? "#00e676" : "rgba(255,255,255,0.12)",
-                }}
-                title={p.etiqueta}
+                key={p.slug}
+                onClick={() => setTemplateSeleccionado(p.slug)}
+                style={{ ...estilos.miniatura, borderColor: seleccionada ? "#00e676" : "rgba(255,255,255,0.12)" }}
+                title={p.esBase ? p.nombre : `${p.nombre} (del club)`}
               >
                 <div style={estilos.miniaturaViewport}>
                   <div style={estilos.miniaturaEscala}>
-                    {dataReporte && (
-                      <TemplateRenderer templateName={p.valor} data={dataReporte} />
-                    )}
+                    {dataReporte && <TemplateRenderer template={p} data={dataReporte} />}
                   </div>
                 </div>
-                <span style={estilos.miniaturaEtiqueta}>{p.etiqueta}</span>
+                <span style={estilos.miniaturaEtiqueta}>
+                  {p.nombre.length > 9 ? `${p.nombre.slice(0, 9)}…` : p.nombre}
+                </span>
+                {!p.esBase && <span style={estilos.puntoClub} title="Plantilla del club" />}
               </button>
             );
           })}
+
+          <button
+            type="button"
+            onClick={onNuevaPlantilla}
+            style={{ ...estilos.miniatura, ...estilos.miniaturaNueva }}
+            title="Crear una plantilla desde cero"
+          >
+            <span style={estilos.mas}>+</span>
+            <span style={estilos.miniaturaEtiqueta}>Nueva</span>
+          </button>
         </div>
       </div>
 
-      <div style={estilos.grupo}>
-        <label style={estilos.label}>Torneo</label>
-        <select
-          style={estilos.select}
-          value={torneoSeleccionado}
-          onChange={(e) => setTorneoSeleccionado(e.target.value)}
-        >
-          <option value="">Todos</option>
-          {torneos.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.nombre}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div style={estilos.grupo}>
+      <div style={estilos.campo}>
         <label style={estilos.label}>Jugador</label>
         <select
           style={estilos.select}
@@ -121,153 +105,63 @@ export default function Toolbar({
           disabled={jugadores.length === 0}
         >
           {jugadores.map((j) => (
-            <option key={j.id} value={j.id}>
-              #{j.dorsal ?? "--"} {j.nombre} {j.apellido}
-            </option>
+            <option key={j.id} value={j.id}>#{j.dorsal ?? "--"} {j.nombre} {j.apellido}</option>
           ))}
         </select>
       </div>
 
-      <div style={estilos.grupo}>
-        <label style={estilos.label}>Foto del jugador</label>
+      <div style={estilos.campo}>
+        <label style={estilos.label}>Torneo</label>
+        <select style={estilos.select} value={torneoSeleccionado} onChange={(e) => setTorneoSeleccionado(e.target.value)}>
+          <option value="">Todos</option>
+          {torneos.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+        </select>
+      </div>
+
+      <div style={estilos.campo}>
+        <label style={estilos.label}>Foto</label>
         <button type="button" style={estilos.botonSecundario} onClick={() => inputFotoRef.current?.click()}>
           Cambiar foto
         </button>
-        <input
-          ref={inputFotoRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={handleCambiarFoto}
-        />
+        <input ref={inputFotoRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCambiarFoto} />
       </div>
 
-      <div style={estilos.grupo}>
-        <label style={estilos.label}>Diseño de la plantilla</label>
-        <div style={estilos.filaBotones}>
+      <div style={estilos.acciones}>
+        {activa && !activa.esBase && (
           <button
             type="button"
-            style={{
-              ...estilos.botonSecundario,
-              background: modoEdicion ? "#00e676" : "#111",
-              color: modoEdicion ? "#000" : "#fff",
-            }}
-            onClick={() => setModoEdicion(!modoEdicion)}
+            style={estilos.botonPeligro}
+            onClick={() => onBorrarPlantilla(activa.slug, activa.nombre)}
+            title="Borrar esta plantilla del club"
           >
-            {modoEdicion ? "Salir de edición" : "Mover elementos"}
+            Borrar plantilla
           </button>
-        </div>
-
-        {modoEdicion && (
-          <>
-            <div style={{ ...estilos.filaBotones, marginTop: 8 }}>
-              <button
-                type="button"
-                style={{
-                  ...estilos.botonSecundario,
-                  background: capaEdicion === "grupo" ? "#00e676" : "#111",
-                  color: capaEdicion === "grupo" ? "#000" : "#fff",
-                }}
-                onClick={() => setCapaEdicion("grupo")}
-                title={`Afecta a todos los jugadores del grupo "${grupo}" con esta plantilla`}
-              >
-                Diseño: {grupo === "arquero" ? "Arqueros" : "Jugadores de campo"}
-              </button>
-              <button
-                type="button"
-                style={{
-                  ...estilos.botonSecundario,
-                  background: capaEdicion === "jugador" ? "#00e676" : "#111",
-                  color: capaEdicion === "jugador" ? "#000" : "#fff",
-                }}
-                onClick={() => setCapaEdicion("jugador")}
-                title="Afecta solo a este jugador puntual"
-              >
-                Solo este jugador
-              </button>
-            </div>
-
-            <div style={{ ...estilos.filaBotones, marginTop: 8 }}>
-              <button
-                type="button"
-                style={{ ...estilos.botonSecundario, opacity: guardandoPosiciones ? 0.6 : 1 }}
-                onClick={onGuardarPosiciones}
-                disabled={guardandoPosiciones}
-              >
-                {guardandoPosiciones ? "Guardando..." : "Guardar"}
-              </button>
-            </div>
-          </>
         )}
 
-        {errorPosiciones && <p style={estilos.error}>{errorPosiciones}</p>}
+        <button
+          type="button"
+          style={{
+            ...estilos.botonSecundario,
+            background: modoEdicion ? "#00e676" : "#111",
+            color: modoEdicion ? "#000" : "#fff",
+            fontWeight: modoEdicion ? 800 : 400,
+          }}
+          onClick={() => setModoEdicion(!modoEdicion)}
+        >
+          {modoEdicion ? "Terminar de editar" : "Editar diseño"}
+        </button>
+
+        <button
+          type="button"
+          style={{ ...estilos.boton, opacity: exportando ? 0.6 : 1, cursor: exportando ? "wait" : "pointer" }}
+          onClick={handleExportar}
+          disabled={exportando || jugadores.length === 0}
+        >
+          {exportando ? "Exportando..." : "Descargar PNG"}
+        </button>
       </div>
-
-      {modoEdicion && (
-        <PanelElementos
-          templateName={templateSeleccionado}
-          overridesPosicion={overridesPosicionActuales}
-          onToggleVisibilidad={onToggleVisibilidad}
-        />
-      )}
-
-      <button
-        type="button"
-        style={{
-          ...estilos.boton,
-          opacity: exportando ? 0.6 : 1,
-          cursor: exportando ? "wait" : "pointer",
-        }}
-        onClick={handleExportar}
-        disabled={exportando || jugadores.length === 0}
-      >
-        {exportando ? "Exportando..." : "Descargar PNG"}
-      </button>
 
       {errorExport && <p style={estilos.error}>{errorExport}</p>}
-    </div>
-  );
-}
-
-// Lista de TODOS los elementos de la plantilla activa con un checkbox para
-// mostrar/ocultar cada uno — la misma acción que el doble-click en el
-// canvas, pero como lista completa (más fácil de repasar que ir elemento
-// por elemento sobre el dibujo).
-function PanelElementos({ templateName, overridesPosicion, onToggleVisibilidad }) {
-  const template = templates[templateName];
-  const elementos = (template?.elements || []).filter((el) => el.id);
-  if (elementos.length === 0) return null;
-
-  const datos = elementos.filter((el) => !el.id.startsWith("deco-"));
-  const decorativos = elementos.filter((el) => el.id.startsWith("deco-"));
-
-  const renderFila = (el) => {
-    const oculto = !!overridesPosicion?.[el.id]?.oculto;
-    return (
-      <label key={el.id} style={estilos.filaCheckbox}>
-        <input
-          type="checkbox"
-          checked={!oculto}
-          onChange={() => onToggleVisibilidad && onToggleVisibilidad(el.id, !oculto)}
-        />
-        <span style={{ opacity: oculto ? 0.5 : 1 }}>{el.id}</span>
-      </label>
-    );
-  };
-
-  return (
-    <div style={{ ...estilos.grupo, minWidth: "100%" }}>
-      <label style={estilos.label}>Elementos visibles</label>
-      <div style={estilos.panelElementos}>
-        <div>
-          <div style={estilos.subtitulo}>Datos</div>
-          {datos.map(renderFila)}
-        </div>
-        <div>
-          <div style={estilos.subtitulo}>Decorativos</div>
-          {decorativos.map(renderFila)}
-        </div>
-      </div>
     </div>
   );
 }
@@ -276,125 +170,63 @@ const estilos = {
   panel: {
     display: "flex",
     flexWrap: "wrap",
-    gap: 20,
+    gap: 16,
     alignItems: "flex-end",
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     background: "rgba(255,255,255,0.03)",
     border: "1px solid rgba(255,255,255,0.08)",
   },
-  grupo: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-    minWidth: 180,
-    flex: "1 1 180px",
-  },
+  campoPlantillas: { display: "flex", flexDirection: "column", gap: 6 },
+  tira: { display: "flex", gap: 8, maxWidth: 380, overflowX: "auto", paddingBottom: 2 },
+  campo: { display: "flex", flexDirection: "column", gap: 6, minWidth: 160, flex: "0 1 200px" },
+  acciones: { display: "flex", gap: 10, marginLeft: "auto", alignItems: "flex-end" },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 700,
-    color: "rgba(255,255,255,0.6)",
+    color: "rgba(255,255,255,0.55)",
     textTransform: "uppercase",
     letterSpacing: "0.05em",
   },
   select: {
-    padding: "10px 12px",
+    padding: "9px 11px",
     borderRadius: 10,
     background: "#111",
     color: "#fff",
     border: "1px solid rgba(255,255,255,0.12)",
-    fontSize: 14,
-    fontFamily: "'JetBrains Mono', monospace",
-  },
-  filaPlantillas: {
-    display: "flex",
-    gap: 10,
-  },
-  filaBotones: {
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
+    fontSize: 13,
   },
   miniatura: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-    alignItems: "center",
-    background: "transparent",
-    border: "2px solid rgba(255,255,255,0.12)",
-    borderRadius: 10,
-    padding: 4,
-    cursor: "pointer",
+    position: "relative",
+    display: "flex", flexDirection: "column", gap: 4, alignItems: "center",
+    background: "transparent", border: "2px solid rgba(255,255,255,0.12)",
+    borderRadius: 10, padding: 4, cursor: "pointer", flexShrink: 0,
   },
-  miniaturaViewport: {
-    width: 64,
-    height: 80,
-    overflow: "hidden",
-    borderRadius: 6,
-    background: "#000",
+  miniaturaNueva: {
+    justifyContent: "center",
+    width: 60,
+    borderStyle: "dashed",
+    color: "rgba(255,255,255,0.6)",
   },
-  miniaturaEscala: {
-    width: 1080,
-    height: 1350,
-    transform: "scale(0.0593)",
-    transformOrigin: "top left",
-    pointerEvents: "none",
-  },
-  miniaturaEtiqueta: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.7)",
+  mas: { fontSize: 24, color: "rgba(255,255,255,0.5)", lineHeight: 1, marginTop: 14 },
+  miniaturaViewport: { width: 52, height: 65, overflow: "hidden", borderRadius: 5, background: "#000" },
+  miniaturaEscala: { width: 1080, height: 1350, transform: "scale(0.0482)", transformOrigin: "top left", pointerEvents: "none" },
+  miniaturaEtiqueta: { fontSize: 10, color: "rgba(255,255,255,0.7)" },
+  puntoClub: {
+    position: "absolute", top: 6, right: 6, width: 6, height: 6,
+    borderRadius: "50%", background: "#00e676",
   },
   botonSecundario: {
-    padding: "10px 16px",
-    borderRadius: 10,
-    background: "#111",
-    color: "#fff",
-    border: "1px solid rgba(255,255,255,0.12)",
-    fontSize: 13,
-    cursor: "pointer",
+    padding: "10px 16px", borderRadius: 10, background: "#111", color: "#fff",
+    border: "1px solid rgba(255,255,255,0.12)", fontSize: 13, cursor: "pointer",
+  },
+  botonPeligro: {
+    padding: "10px 14px", borderRadius: 10, background: "rgba(255,107,107,0.12)",
+    color: "#ff8f8f", border: "1px solid rgba(255,107,107,0.35)", fontSize: 13, cursor: "pointer",
   },
   boton: {
-    padding: "12px 24px",
-    borderRadius: 10,
-    background: "#00e676",
-    color: "#000",
-    fontWeight: 800,
-    border: "none",
-    fontSize: 14,
+    padding: "10px 20px", borderRadius: 10, background: "#00e676", color: "#000",
+    fontWeight: 800, border: "none", fontSize: 13, cursor: "pointer",
   },
-  error: {
-    color: "#ff6b6b",
-    fontSize: 13,
-    width: "100%",
-    margin: 0,
-  },
-  panelElementos: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: 16,
-    padding: 12,
-    borderRadius: 10,
-    background: "rgba(255,255,255,0.02)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    maxHeight: 220,
-    overflowY: "auto",
-  },
-  subtitulo: {
-    fontSize: 11,
-    fontWeight: 800,
-    color: "rgba(255,255,255,0.5)",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    marginBottom: 6,
-  },
-  filaCheckbox: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    fontSize: 13,
-    color: "#fff",
-    padding: "4px 0",
-    cursor: "pointer",
-    fontFamily: "'JetBrains Mono', monospace",
-  },
+  error: { color: "#ff6b6b", fontSize: 13, width: "100%", margin: 0 },
 };

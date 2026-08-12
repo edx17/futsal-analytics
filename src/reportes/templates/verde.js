@@ -76,9 +76,11 @@ const verde = {
     // HEADER (Club y Torneo)
     // ==========================================
     {
+      // Antes era el nombre del club escrito a mano: en multi-club eso hacía
+      // que todos exportaran el nombre del mismo club.
       type: "text",
-      id: "deco-2",
-      text: "LIBERTADORES\nSAN CRISTOBAL",
+      id: "club-nombre",
+      text: "{club.nombre}",
       x: 60,
       y: 50,
       fontFamily: "Anton",
@@ -99,9 +101,10 @@ const verde = {
       zIndex: 10
     },
     {
+      // Ídem: la división salía fija para cualquier categoría.
       type: "text",
-      id: "deco-3",
-      text: "TERCERA\nDIVISIÓN",
+      id: "jugador-categoria",
+      text: "{jugador.categoria}",
       x: 770,
       y: 50,
       width: 250,

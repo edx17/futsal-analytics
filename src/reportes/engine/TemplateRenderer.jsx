@@ -5,7 +5,8 @@ import RenderImage from "../components/RenderImage";
 import RenderRectangle from "../components/RenderRectangle";
 import RenderCircle from "../components/RenderCircle";
 import { resolve, cumpleCondicion } from "./FieldResolver";
-import { templates } from "../templates";
+import { componer } from "./documento";
+import { PLANTILLAS_BASE } from "../templates";
 
 const RENDERERS = {
   text: RenderText,
@@ -14,61 +15,59 @@ const RENDERERS = {
   circle: RenderCircle,
 };
 
-/**
- * @param {string} templateName
- * @param {object} data - dataReporte (jugador, stats, club)
- * @param {object} [overridesPosicion] - { [elementoId]: { x, y } }, posiciones
- *   guardadas a mano por el usuario para ESTE jugador+plantilla (ver
- *   usePosicionesReporte). Solo aplica a elementos que declaran `id` en la
- *   plantilla; el resto se ignora.
- */
-function TemplateRenderer({ templateName, data, overridesPosicion }) {
-  const template = templates[templateName];
+// Props del modelo que no deben resolverse ni llegar al DOM.
+const PROPS_INTERNAS = new Set(["condicion", "oculto", "eliminado", "__orden", "__origen"]);
 
-  if (!template || !template.elements) return null;
+/**
+ * @param {object} [template] - la plantilla a renderizar. Puede venir del
+ *   código (verde/vintage) o de `reporte_plantillas` — por eso se pasa como
+ *   objeto y no por nombre: las del club no existen en el bundle.
+ * @param {string} [templateName] - compatibilidad: si no se pasa `template`,
+ *   se busca entre las base.
+ * @param {object} data - dataReporte (jugador, stats, club)
+ * @param {object} [documento] - capa editable ya combinada (engine/documento.js).
+ *   Acepta el formato viejo `{ [id]: {x, y, oculto} }`; componer() lo normaliza.
+ */
+function TemplateRenderer({ template, templateName, data, documento }) {
+  const plantilla = template || PLANTILLAS_BASE[templateName];
+
+  if (!plantilla || !plantilla.elements) return null;
+
+  const elementos = componer(plantilla, documento);
 
   return (
     <div
       style={{
-        width: template.width || 1080,
-        height: template.height || 1350,
-        backgroundColor: template.background || "#ffffff",
+        width: plantilla.width || 1080,
+        height: plantilla.height || 1350,
+        backgroundColor: plantilla.background || "#ffffff",
         position: "relative",
         overflow: "hidden",
       }}
     >
-      {template.elements.map((element, index) => {
-        // Elementos condicionales (ej: bloque de arquero) se filtran ANTES
-        // de resolver sus campos, para no gastar trabajo en algo que no se ve.
+      {elementos.map((element, index) => {
+        // Condición automática de la plantilla (ej: bloque de arquero).
         if (!cumpleCondicion(element.condicion, data)) return null;
 
-        // Ocultado a mano por el usuario (independiente de `condicion`,
-        // que es automático según el jugador; esto es una decisión manual).
-        if (element.id && overridesPosicion?.[element.id]?.oculto) return null;
+        // Ocultado a mano por el usuario: distinto de `condicion`, que
+        // depende del jugador.
+        if (element.oculto) return null;
 
-        // Clonamos y resolvemos cada propiedad del elemento.
-        // Si un campo puntual falla al resolver (ej: dato inesperado en {a.b.c}),
-        // no tiramos abajo todo el reporte: ese campo queda vacío y seguimos.
         const resolvedElement = {};
         Object.keys(element).forEach((key) => {
-          if (key === "condicion") return; // no es una prop visual, no hace falta resolverla
+          if (PROPS_INTERNAS.has(key)) return;
           try {
             resolvedElement[key] = resolve(element[key], data);
           } catch (err) {
-            console.warn(`No se pudo resolver "${key}" en el elemento ${index}:`, err);
+            console.warn(`No se pudo resolver "${key}" en el elemento ${element.id || index}:`, err);
             resolvedElement[key] = "";
           }
         });
 
-        // Si el usuario movió este elemento a mano, la posición guardada
-        // pisa la de la plantilla.
-        if (element.id && overridesPosicion?.[element.id]) {
-          resolvedElement.x = overridesPosicion[element.id].x;
-          resolvedElement.y = overridesPosicion[element.id].y;
-        }
-
         const Renderer = RENDERERS[resolvedElement.type];
-        return Renderer ? <Renderer key={index} element={resolvedElement} /> : null;
+        return Renderer ? (
+          <Renderer key={element.id || `el-${index}`} element={resolvedElement} />
+        ) : null;
       })}
     </div>
   );
