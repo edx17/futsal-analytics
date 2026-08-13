@@ -7,6 +7,7 @@ import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import InfoBox from '../components/InfoBox';
 import { TablaResponsive } from '../components/TablaResponsive';
+import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
@@ -33,6 +34,15 @@ function Torneos() {
   // FILTROS DE FIXTURE
   const [filtroJornada, setFiltroJornada] = useState('');
   const [filtroEquipo, setFiltroEquipo] = useState('');
+  const [soloMiEquipo, setSoloMiEquipo] = useState(false);
+
+  // VENTANA DE RACHA (últimos N partidos)
+  const [ventanaRacha, setVentanaRacha] = useState(5); // 5 | 10
+
+  // RUEDAS (Primera / Segunda)
+  const [filtroRueda, setFiltroRueda] = useState('Todas'); // 'Todas' | 1 | 2
+  const [mostrarModalRuedas, setMostrarModalRuedas] = useState(false);
+  const [formRuedas, setFormRuedas] = useState({ fechas_primera_rueda: '' });
 
   const [mostrarModalTorneo, setMostrarModalTorneo] = useState(false);
   const [mostrarModalFixture, setMostrarModalFixture] = useState(false);
@@ -258,6 +268,31 @@ function Torneos() {
     }
   };
 
+  const abrirModalRuedas = () => {
+    setFormRuedas({ fechas_primera_rueda: torneoActivo?.fechas_primera_rueda ?? '' });
+    setMostrarModalRuedas(true);
+  };
+
+  const handleGuardarRuedas = async () => {
+    if (!torneoActivo) return;
+    const raw = String(formRuedas.fechas_primera_rueda).trim();
+    const valor = raw === '' ? null : parseInt(raw, 10);
+
+    if (valor !== null && (Number.isNaN(valor) || valor < 1)) {
+      return showToast('Ingresá un número de fechas válido (o dejalo vacío para desactivar).', 'warning');
+    }
+
+    const { error } = await supabase.from('torneos').update({ fechas_primera_rueda: valor }).eq('id', torneoActivo.id);
+    if (error) return showToast('Error al guardar la configuración: ' + error.message, 'error');
+
+    const actualizado = { ...torneoActivo, fechas_primera_rueda: valor };
+    setTorneoActivo(actualizado);
+    setTorneos(prev => prev.map(t => (t.id === actualizado.id ? actualizado : t)));
+    setFiltroRueda('Todas');
+    setMostrarModalRuedas(false);
+    showToast(valor ? `Primera Rueda: fechas 1 a ${valor}` : 'Ruedas desactivadas para este torneo', 'success');
+  };
+
   const cerrarModalYRefrescar = () => {
     setMostrarModalFixture(false);
     fetchFixture(torneoActivo.id, torneoActivo.categoria);
@@ -318,8 +353,30 @@ function Torneos() {
 
   const irATrackear = (partido) => navigate('/toma-datos', { state: { partido } });
 
-  const { stats, local, visitante, racha, vallasInvictas, chartDataEvolucion, chartDataLocalia, ptsTotales, eficacia } = useMemo(() => {
-    const partidosMios = fixture.filter(f => (f.nombre_propio === miClubGlobal || !f.nombre_propio) && (f.estado === 'Finalizado' || f.estado === 'Jugado')).sort((a,b) => {
+  /* ── RUEDAS ── */
+  const jornadasOrdenadas = useMemo(() => ordenarJornadas(fixture.map(f => f.jornada)), [fixture]);
+
+  const hayRuedas = tieneRuedasConfiguradas(torneoActivo);
+
+  const ruedaDe = useMemo(
+    () => (f) => ruedaDePartido(f, torneoActivo, jornadasOrdenadas),
+    [torneoActivo, jornadasOrdenadas]
+  );
+
+  /* Todo el análisis (stats, tabla, reporte, fixture) trabaja sobre esta lista,
+     así el filtro de rueda es coherente en toda la pantalla. */
+  const fixtureRueda = useMemo(() => {
+    if (!hayRuedas || filtroRueda === 'Todas') return fixture;
+    return fixture.filter(f => ruedaDe(f) === filtroRueda);
+  }, [fixture, hayRuedas, filtroRueda, ruedaDe]);
+
+  /* Si cambio de torneo y el nuevo no tiene ruedas, reseteo el filtro */
+  useEffect(() => {
+    if (!hayRuedas && filtroRueda !== 'Todas') setFiltroRueda('Todas');
+  }, [hayRuedas, filtroRueda]);
+
+  const { stats, local, visitante, racha, historial, vallasInvictas, chartDataEvolucion, chartDataLocalia, ptsTotales, eficacia } = useMemo(() => {
+    const partidosMios = fixtureRueda.filter(f => (f.nombre_propio === miClubGlobal || !f.nombre_propio) && (f.estado === 'Finalizado' || f.estado === 'Jugado')).sort((a,b) => {
       if(a.fecha && b.fecha) return new Date(a.fecha) - new Date(b.fecha);
       return a.id - b.id;
     });
@@ -328,6 +385,7 @@ function Torneos() {
     const l = { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
     const v = { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
     let rList = [];
+    let hList = []; // historial detallado para la ventana de racha
     let vIn = 0;
     let chartEvol = [];
 
@@ -344,6 +402,13 @@ function Torneos() {
         else { s.pe++; }
         
         rList.push(res);
+        hList.push({
+          res, gf: gp, gc: gr,
+          jornada: f.jornada || '',
+          rival: f.rival || 'Rival',
+          condicion: f.condicion || '',
+          fecha: f.fecha || ''
+        });
         if (gr === 0) vIn++;
 
         if (f.condicion === 'Local') {
@@ -374,13 +439,28 @@ function Torneos() {
         { name: 'Visitante', Eficacia: v.pj > 0 ? Number(((v.pts / (v.pj * 3)) * 100).toFixed(0)) : 0, GF: v.gf, GC: v.gc }
     ];
 
-    return { stats: s, local: l, visitante: v, racha: rList, vallasInvictas: vIn, chartDataEvolucion: chartEvol, chartDataLocalia: cLocalia, ptsTotales: ptsTot, eficacia: efi };
-  }, [fixture, miClubGlobal]);
+    return { stats: s, local: l, visitante: v, racha: rList, historial: hList, vallasInvictas: vIn, chartDataEvolucion: chartEvol, chartDataLocalia: cLocalia, ptsTotales: ptsTot, eficacia: efi };
+  }, [fixtureRueda, miClubGlobal]);
+
+  /* Resumen de los últimos N partidos (5 o 10) */
+  const resumenRacha = useMemo(() => {
+    const ventana = historial.slice(-ventanaRacha);
+    const r = { pj: ventana.length, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0, ventana };
+    ventana.forEach(h => {
+      r.gf += h.gf; r.gc += h.gc;
+      if (h.res === 'V') { r.pg++; r.pts += 3; }
+      else if (h.res === 'E') { r.pe++; r.pts += 1; }
+      else r.pp++;
+    });
+    r.ptsPosibles = r.pj * 3;
+    r.efectividad = r.ptsPosibles > 0 ? ((r.pts / r.ptsPosibles) * 100).toFixed(0) : 0;
+    return r;
+  }, [historial, ventanaRacha]);
 
   const tablaPosiciones = useMemo(() => {
     const tabla = {};
 
-    fixture.forEach(f => {
+    fixtureRueda.forEach(f => {
       const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
       
       let equipoLocal = '';
@@ -471,10 +551,10 @@ function Torneos() {
         return b.gf - a.gf;
       }
     });
-  }, [fixture, miClubGlobal, modoTabla]);
+  }, [fixtureRueda, miClubGlobal, modoTabla]);
 
   const reporteLiga = useMemo(() => {
-    if (!fixture || fixture.length === 0) return null;
+    if (!fixtureRueda || fixtureRueda.length === 0) return null;
     
     let mayorGoleada = { dif: -1, text: '', equipoLocal: '', equipoVisita: '' };
     let partidosJugadosTotales = 0;
@@ -482,7 +562,7 @@ function Torneos() {
     let partidosOver3 = 0;
     let partidosOver5 = 0;
 
-    fixture.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado').forEach(f => {
+    fixtureRueda.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado').forEach(f => {
       const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
       
       let equipoLocal = ''; let equipoVisita = '';
@@ -657,15 +737,21 @@ function Torneos() {
   }, [equiposUnicos, miClubGlobal]);
 
   const fixtureFiltrado = useMemo(() => {
-    return fixture.filter(f => {
+    return fixtureRueda.filter(f => {
       const jMatch = filtroJornada === '' || f.jornada === filtroJornada;
       const eMatch = filtroEquipo === '' || (
         (f.nombre_propio || miClubGlobal) === filtroEquipo || 
         (f.rival || 'Rival Desconocido') === filtroEquipo
       );
-      return jMatch && eMatch;
+      const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
+      const mMatch = !soloMiEquipo || esMiPartido;
+      return jMatch && eMatch && mMatch;
     });
-  }, [fixture, filtroJornada, filtroEquipo, miClubGlobal]);
+  }, [fixtureRueda, filtroJornada, filtroEquipo, miClubGlobal, soloMiEquipo]);
+
+  const cantidadMisPartidos = useMemo(() => {
+    return fixture.filter(f => (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal)).length;
+  }, [fixture, miClubGlobal]);
 
   // MOTOR COMPARADOR FECHA A FECHA
   const chartDataComparativa = useMemo(() => {
@@ -751,6 +837,35 @@ function Torneos() {
              {torneosFiltrados.map(t => <option key={t.id} value={t.id}>{t.nombre.toUpperCase()}</option>)}
           </select>
         </div>
+        {torneoActivo && (
+          <div>
+            <div className="stat-label" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              RUEDA
+              <button
+                onClick={abrirModalRuedas}
+                title="Configurar cuántas fechas tiene la Primera Rueda"
+                style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}
+              >
+                ⚙️
+              </button>
+            </div>
+            {hayRuedas ? (
+              <select
+                value={filtroRueda}
+                onChange={e => setFiltroRueda(e.target.value === 'Todas' ? 'Todas' : Number(e.target.value))}
+                style={selectStyle}
+              >
+                <option value="Todas">TODA LA TEMPORADA</option>
+                <option value="1">PRIMERA RUEDA</option>
+                <option value="2">SEGUNDA RUEDA</option>
+              </select>
+            ) : (
+              <button onClick={abrirModalRuedas} className="btn-secondary" style={{ padding: '10px 16px', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-dim)' }}>
+                SIN CONFIGURAR
+              </button>
+            )}
+          </div>
+        )}
         <div style={{ marginLeft: 'auto' }}>
           <button onClick={() => setMostrarModalTorneo(true)} className="btn-secondary" style={{ padding: '10px 20px', fontSize: '0.8rem', fontWeight: 800 }}>+ NUEVO TORNEO</button>
         </div>
@@ -758,6 +873,16 @@ function Torneos() {
 
       {torneoActivo ? (
         <>
+          {hayRuedas && filtroRueda !== 'Todas' && (
+            <div style={{ marginBottom: '15px', padding: '10px 14px', borderRadius: '6px', background: 'var(--panel)', border: `1px solid ${colorRueda(filtroRueda)}`, fontSize: '0.75rem', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ color: colorRueda(filtroRueda), fontWeight: 900, letterSpacing: '0.05em' }}>{etiquetaRueda(filtroRueda)}</span>
+              <span>Métricas, tabla de posiciones, racha y fixture reflejan solo esta rueda.</span>
+              <button onClick={() => setFiltroRueda('Todas')} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '4px', padding: '4px 10px', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer' }}>
+                VER TODA LA TEMPORADA
+              </button>
+            </div>
+          )}
+
           <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '15px', marginBottom: '20px', textAlign: 'center' }}>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{ptsTotales}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>PUNTOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text)' }}>{stats.pj}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>JUGADOS</div></div>
@@ -778,18 +903,58 @@ function Torneos() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '30px' }}>
             <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', borderTop: '2px solid var(--accent)' }}>
-               <div className="stat-label">ESTADO DE FORMA <InfoBox texto="Últimos 5 partidos (de izquierda a derecha)."/></div>
-               <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
-                  {racha.slice(-5).map((r, i) => {
-                     let bg = 'var(--border)'; let color = 'var(--text)';
-                     if(r === 'V') { bg = 'var(--accent)'; color = '#000'; }
-                     else if(r === 'D') { bg = '#ef4444'; color = 'var(--text)'; }
-                     return <div key={i} style={{ width: '35px', height: '35px', borderRadius: '4px', background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.2rem' }}>{r}</div>
-                  })}
-                  {racha.length === 0 && <span style={{ color: 'var(--text-dim)' }}>Aún sin partidos finalizados</span>}
+               <div className="stat-label">ESTADO DE FORMA <InfoBox texto="Resultados de los últimos partidos finalizados, del más viejo (izquierda) al más reciente (derecha)."/></div>
+
+               <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', marginTop: '12px' }}>
+                  {[5, 10].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setVentanaRacha(n)}
+                      style={{
+                        padding: '5px 14px', borderRadius: '3px', border: 'none', cursor: 'pointer',
+                        fontWeight: 800, fontSize: '0.7rem', letterSpacing: '0.05em',
+                        background: ventanaRacha === n ? 'var(--border)' : 'transparent',
+                        color: ventanaRacha === n ? 'var(--accent)' : 'var(--text-dim)'
+                      }}
+                    >
+                      ÚLT. {n}
+                    </button>
+                  ))}
                </div>
-               <div style={{ marginTop: '15px', fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center' }}>
-                 Mejor Racha Invicta: <strong>{calcularMejorRacha(racha)} partidos</strong>
+
+               <div style={{ display: 'flex', gap: '6px', marginTop: '15px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {resumenRacha.ventana.map((h, i) => {
+                     let bg = 'var(--border)'; let color = 'var(--text)';
+                     if(h.res === 'V') { bg = 'var(--accent)'; color = '#000'; }
+                     else if(h.res === 'D') { bg = '#ef4444'; color = 'var(--text)'; }
+                     const tam = ventanaRacha === 10 ? '28px' : '35px';
+                     return (
+                       <div
+                         key={i}
+                         title={`${h.jornada ? h.jornada.toUpperCase() + ' · ' : ''}vs ${h.rival} (${h.condicion}) ${h.gf}-${h.gc}`}
+                         style={{ width: tam, height: tam, borderRadius: '4px', background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: ventanaRacha === 10 ? '0.95rem' : '1.2rem', cursor: 'help' }}
+                       >
+                         {h.res}
+                       </div>
+                     );
+                  })}
+                  {resumenRacha.ventana.length === 0 && <span style={{ color: 'var(--text-dim)' }}>Aún sin partidos finalizados</span>}
+               </div>
+
+               {resumenRacha.pj > 0 && (
+                 <div style={{ display: 'flex', gap: '14px', marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <span style={{ color: '#00ff88', fontWeight: 800 }}>{resumenRacha.pg}G</span>
+                    <span style={{ color: '#fbbf24', fontWeight: 800 }}>{resumenRacha.pe}E</span>
+                    <span style={{ color: '#ef4444', fontWeight: 800 }}>{resumenRacha.pp}P</span>
+                    <span style={{ color: 'var(--text-dim)' }}>|</span>
+                    <span style={{ color: 'var(--text)', fontWeight: 800 }}>{resumenRacha.gf}:{resumenRacha.gc}</span>
+                    <span style={{ color: 'var(--text-dim)' }}>|</span>
+                    <span style={{ color: '#0ea5e9', fontWeight: 800 }}>{resumenRacha.pts}/{resumenRacha.ptsPosibles} pts ({resumenRacha.efectividad}%)</span>
+                 </div>
+               )}
+
+               <div style={{ marginTop: '12px', fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center' }}>
+                 Mejor Racha Invicta (histórica): <strong>{calcularMejorRacha(racha)} partidos</strong>
                </div>
             </div>
 
@@ -1035,15 +1200,31 @@ function Torneos() {
             {/* 📅 TAB: FIXTURE */}
             {tabMisTorneos === 'fixture' && (
               <>
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                  <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div style={{ flex: '0 0 auto' }}>
+                    <div className="stat-label" style={{ marginBottom: '5px' }}>VISTA RÁPIDA</div>
+                    <button
+                      onClick={() => setSoloMiEquipo(v => !v)}
+                      style={{
+                        padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 800, fontSize: '0.75rem',
+                        letterSpacing: '0.04em', whiteSpace: 'nowrap',
+                        background: soloMiEquipo ? 'var(--accent)' : 'transparent',
+                        color: soloMiEquipo ? '#000' : 'var(--text-dim)',
+                        border: `1px solid ${soloMiEquipo ? 'var(--accent)' : 'var(--border)'}`
+                      }}
+                      title="Mostrar solo los partidos de mi equipo en este fixture"
+                    >
+                      ⚡ SOLO MI EQUIPO ({cantidadMisPartidos})
+                    </button>
+                  </div>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
                     <div className="stat-label" style={{ marginBottom: '5px' }}>FILTRAR POR FECHA</div>
                     <select value={filtroJornada} onChange={e => setFiltroJornada(e.target.value)} style={{ ...inputIndustrial, padding: '8px' }}>
                       <option value="">TODAS LAS FECHAS...</option>
                       {jornadasUnicas.map(j => <option key={j} value={j}>{j.toUpperCase()}</option>)}
                     </select>
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
                     <div className="stat-label" style={{ marginBottom: '5px' }}>FILTRAR POR EQUIPO</div>
                     <select value={filtroEquipo} onChange={e => setFiltroEquipo(e.target.value)} style={{ ...inputIndustrial, padding: '8px' }}>
                       <option value="">TODOS LOS EQUIPOS...</option>
@@ -1064,7 +1245,14 @@ function Torneos() {
                         <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: estaCompletado ? 'rgba(0, 255, 136, 0.05)' : 'var(--panel)', padding: '15px', borderRadius: '6px', border: estaCompletado ? '1px solid var(--accent)' : '1px solid var(--border)', flexWrap: 'wrap', gap: '10px' }}>
                           
                           <div style={{ minWidth: '150px' }}>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>{f.jornada?.toUpperCase()} {esMiPartido ? `// ${f.condicion}` : '// EXTERNO'}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span>{f.jornada?.toUpperCase()} {esMiPartido ? `// ${f.condicion}` : '// EXTERNO'}</span>
+                              {hayRuedas && ruedaDe(f) && (
+                                <span style={{ padding: '2px 6px', borderRadius: '3px', border: `1px solid ${colorRueda(ruedaDe(f))}`, color: colorRueda(ruedaDe(f)), fontSize: '0.55rem', letterSpacing: '0.05em' }}>
+                                  {ruedaDe(f) === 1 ? '1ª RUEDA' : '2ª RUEDA'}
+                                </span>
+                              )}
+                            </div>
                             
                             <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                               {esMiPartido ? (
@@ -1419,6 +1607,53 @@ function Torneos() {
       )}
 
       {/* --- MODALES --- */}
+      {mostrarModalRuedas && (
+        <div className="modal-overlay" onClick={() => setMostrarModalRuedas(false)}>
+          <div className="bento-card modal-content" style={{ maxWidth: '460px' }} onClick={e => e.stopPropagation()}>
+            <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '6px' }}>CONFIGURACIÓN DE RUEDAS</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '20px' }}>
+              {torneoActivo?.nombre?.toUpperCase()} · {jornadasOrdenadas.length} fecha(s) cargada(s) en el fixture
+            </div>
+
+            <div className="section-title">¿CUÁNTAS FECHAS TIENE LA PRIMERA RUEDA?</div>
+            <input
+              type="number"
+              min="1"
+              value={formRuedas.fechas_primera_rueda}
+              onChange={e => setFormRuedas({ fechas_primera_rueda: e.target.value })}
+              placeholder="Ej: 11"
+              style={inputIndustrial}
+            />
+
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '12px', lineHeight: 1.6, background: 'var(--panel)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+              {(() => {
+                const n = parseInt(formRuedas.fechas_primera_rueda, 10);
+                if (!n || n < 1) return 'Dejalo vacío para desactivar las ruedas en este torneo.';
+                const total = jornadasOrdenadas.length;
+                return (
+                  <>
+                    <div><strong style={{ color: '#0ea5e9' }}>Primera Rueda:</strong> fechas 1 a {n}</div>
+                    <div><strong style={{ color: '#a855f7' }}>Segunda Rueda:</strong> fecha {n + 1} en adelante{total > n ? ` (hasta la ${total})` : ''}</div>
+                    {total > 0 && n >= total && (
+                      <div style={{ color: '#fbbf24', marginTop: '6px' }}>⚠️ El corte iguala o supera las fechas cargadas: la Segunda Rueda va a quedar vacía por ahora.</div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '10px', lineHeight: 1.5 }}>
+              La rueda se deduce del número escrito en la jornada ("Fecha 7" → 7). Si una jornada no tiene número, se usa su posición en el orden del fixture.
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '22px' }}>
+              <button onClick={() => setMostrarModalRuedas(false)} className="btn-secondary" style={{ flex: 1, padding: '12px', fontWeight: 800 }}>CANCELAR</button>
+              <button onClick={handleGuardarRuedas} className="btn-action" style={{ flex: 1, padding: '12px', fontWeight: 800 }}>GUARDAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {mostrarModalTorneo && (
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '400px' }}>

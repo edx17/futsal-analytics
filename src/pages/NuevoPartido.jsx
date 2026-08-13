@@ -2,16 +2,29 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 
+/* Comparación de nombres de equipo tolerante a mayúsculas, espacios y acentos.
+   Distintas pantallas resuelven el nombre del club por caminos distintos
+   (localStorage, tabla clubes, nombre_propio del fixture), así que nunca
+   comparamos strings crudos. */
+const normalizarNombre = (v) => String(v || '')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .trim().toLowerCase().replace(/\s+/g, ' ');
+
 function NuevoPartido() {
   const navigate = useNavigate();
   const clubId = localStorage.getItem('club_id');
-  const miClubGlobal = localStorage.getItem('mi_club') || 'MI EQUIPO';
+
+  // Nombre de MI club: se resuelve en runtime (localStorage -> tabla clubes -> fixture).
+  // No usamos un default tipo 'MI EQUIPO' porque nunca matchea contra lo que
+  // guarda Torneos.jsx en nombre_propio y hacía desaparecer todo el fixture.
+  const [miClub, setMiClub] = useState(localStorage.getItem('mi_club') || '');
+  const [verTodosPendientes, setVerTodosPendientes] = useState(false);
 
   // DATOS RELACIONALES
   const [rivalesBD, setRivalesBD] = useState([]);
   const [torneosBD, setTorneosBD] = useState([]);
   const [jugadoresBD, setJugadoresBD] = useState([]);
-  const [partidosTorneo, setPartidosTorneo] = useState([]); 
+  const [partidosPendientes, setPartidosPendientes] = useState([]); // todos los pendientes del torneo
   
   const [rivalSeleccionado, setRivalSeleccionado] = useState(null);
 
@@ -49,9 +62,52 @@ function NuevoPartido() {
 
       const { data: jugadores } = await supabase.from('jugadores').select('*').eq('club_id', clubId);
       if (jugadores) setJugadoresBD(jugadores);
+
+      // Resolver el nombre real del club si no está en localStorage
+      if (!localStorage.getItem('mi_club')) {
+        try {
+          const { data: club } = await supabase.from('clubes').select('nombre').eq('id', clubId).maybeSingle();
+          if (club?.nombre) {
+            setMiClub(club.nombre);
+            localStorage.setItem('mi_club', club.nombre);
+          }
+        } catch (e) {
+          console.warn('No se pudo resolver el nombre del club:', e);
+        }
+      }
     }
     fetchDatosRelacionales();
   }, [clubId]);
+
+  /* ── ¿Este partido del fixture es MÍO o es un cruce entre otros dos equipos? ──
+     Torneos.jsx guarda los cruces ajenos con nombre_propio = nombre de un equipo
+     de la tabla `rivales`. Ese es el criterio fuerte y no depende de localStorage. */
+  const nombresRivales = useMemo(
+    () => new Set(rivalesBD.map(r => normalizarNombre(r.nombre)).filter(Boolean)),
+    [rivalesBD]
+  );
+
+  const esMiPartido = useMemo(() => (p) => {
+    const propio = normalizarNombre(p.nombre_propio);
+    const mio = normalizarNombre(miClub);
+
+    if (!propio) return true;                       // partidos viejos sin nombre_propio
+    if (mio && propio === mio) return true;         // coincide con mi club
+    if (mio && normalizarNombre(p.rival) === mio) return true; // yo figuro como visitante
+
+    // Si el "local" es un equipo cargado en `rivales`, es un cruce ajeno.
+    if (nombresRivales.has(propio)) return false;
+
+    // No lo pudimos identificar como ajeno: lo mostramos (mejor de más que de menos).
+    return true;
+  }, [miClub, nombresRivales]);
+
+  const partidosTorneo = useMemo(
+    () => (verTodosPendientes ? partidosPendientes : partidosPendientes.filter(esMiPartido)),
+    [partidosPendientes, verTodosPendientes, esMiPartido]
+  );
+
+  const ocultosPorFiltro = partidosPendientes.length - partidosPendientes.filter(esMiPartido).length;
 
   // CARGAR PARTIDOS PENDIENTES AL ELEGIR TORNEO
   const handleSeleccionarTorneo = async (e) => {
@@ -84,15 +140,13 @@ function NuevoPartido() {
         .eq('torneo_id', idTorneo)
         .eq('estado', 'Pendiente')
         .order('jornada', { ascending: true });
-      // Solo MIS partidos pendientes (mismo criterio que Torneos.jsx: esMiPartido).
-      // Antes se excluía por condicion==='Neutral', pero eso también tapaba mis propios
-      // cruces de Copa a jugarse en cancha neutral.
-      const misPendientes = (data || []).filter(p =>
-        (!p.nombre_propio || p.nombre_propio === miClubGlobal) || (p.rival === miClubGlobal)
-      );
-      setPartidosTorneo(misPendientes);
+      // Guardamos TODOS los pendientes; el filtrado de "mis partidos" se hace
+      // en un useMemo para poder desactivarlo desde la UI si algo no matchea.
+      setPartidosPendientes(data || []);
+      setVerTodosPendientes(false);
     } else {
-      setPartidosTorneo([]);
+      setPartidosPendientes([]);
+      setVerTodosPendientes(false);
     }
   };
 
@@ -220,7 +274,8 @@ function NuevoPartido() {
       alert("Error al crear/actualizar el partido: " + errorOp.message);
       setIsSubmitting(false);
     } else {
-      const partidoParaTracker = { ...partidoData, rivales: { nombre: rivalSeleccionado.nombre } };
+      const nombreRival = rivalSeleccionado?.nombre || partidoData?.rival || 'Rival';
+      const partidoParaTracker = { ...partidoData, rivales: { nombre: nombreRival } };
       navigate('/toma-datos', { state: { partido: partidoParaTracker } });
     }
   };
@@ -291,6 +346,12 @@ function NuevoPartido() {
             </select>
           </div>
 
+          {formData.torneo_id && partidosPendientes.length === 0 && (
+            <div style={{ animation: 'fadeIn 0.3s', fontSize: '0.8rem', color: 'var(--text-dim)', background: 'var(--panel)', padding: '12px', borderRadius: '6px', border: '1px dashed var(--border)' }}>
+              Este torneo no tiene partidos <strong>pendientes</strong> cargados en el fixture. Podés crear uno suelto acá abajo.
+            </div>
+          )}
+
           {partidosTorneo.length > 0 && (
             <div style={{ animation: 'fadeIn 0.3s' }}>
               <div className="section-title" style={{ color: 'var(--accent)' }}>✅ PARTIDO PROGRAMADO EN EL FIXTURE</div>
@@ -309,6 +370,18 @@ function NuevoPartido() {
                    )
                 })}
               </select>
+
+              {ocultosPorFiltro > 0 && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.72rem', color: 'var(--text-dim)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={verTodosPendientes}
+                    onChange={e => setVerTodosPendientes(e.target.checked)}
+                    style={{ accentColor: 'var(--accent)' }}
+                  />
+                  ¿No encontrás tu partido? Mostrar también los {ocultosPorFiltro} cruces de otros equipos
+                </label>
+              )}
             </div>
           )}
         </div>

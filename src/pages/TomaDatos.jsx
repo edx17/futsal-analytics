@@ -4,6 +4,10 @@ import { supabase } from '../supabase';
 import { getColorAccion } from '../utils/helpers';
 import { useToast } from '../components/ToastContext';
 
+/* Máximo hueco que el cronómetro recupera automáticamente tras volver de
+   segundo plano o de una recarga. Más que esto, restaura en pausa. */
+const CRONO_MAX_RECUPERACION_MS = 15 * 60 * 1000;
+
 function TomaDatos() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -18,6 +22,20 @@ function TomaDatos() {
   const [minuto, setMinuto] = useState(0);
   const [segundos, setSegundos] = useState(0);
   const [relojCorriendo, setRelojCorriendo] = useState(false);
+
+  /* ── CRONÓMETRO POR ANCLAJE ──────────────────────────────────────────
+     No contamos ticks (setInterval se estrangula en segundo plano y pierde
+     tiempo real). Guardamos milisegundos ACUMULADOS por período y, mientras
+     corre, un ancla con Date.now(). El transcurrido se CALCULA:
+        acumulado + (corriendo ? Date.now() - ancla : 0)
+     El intervalo pasa a ser sólo de repintado. Cero deriva.
+     Todo se persiste en localStorage por partido, así una recarga o un
+     cierre de la app en el entretiempo no borra el reloj.
+     ─────────────────────────────────────────────────────────────────── */
+  const [acumPeriodo, setAcumPeriodo] = useState({ PT: 0, ST: 0 });
+  const anclaRef = useRef(null);
+  const cronoRestauradoRef = useRef(false);
+  const cronoKey = partido?.id ? `vc_crono_${partido.id}` : null;
 
   const [direccionAtaque, setDireccionAtaque] = useState('derecha');
   const [contextoJuego, setContextoJuego] = useState('5v5');
@@ -35,6 +53,7 @@ function TomaDatos() {
   const [autorAsistencia, setAutorAsistencia] = useState(null);
   
   const [modificadoresRemate, setModificadoresRemate] = useState([]);
+  const [origenRemate, setOrigenRemate] = useState(null); // se elige, no guarda al toque
 
   const [eventoEditando, setEventoEditando] = useState(null); 
   const [modalFinalizar, setModalFinalizar] = useState(false); 
@@ -68,21 +87,107 @@ function TomaDatos() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  /* Restauración del reloj al montar (recarga, crash, cambio de app) */
   useEffect(() => {
-    let intervalo;
-    if (relojCorriendo) {
-      intervalo = setInterval(() => {
-        setSegundos(s => {
-          if (s === 59) {
-            setMinuto(m => m + 1);
-            return 0;
-          }
-          return s + 1;
-        });
-      }, 1000);
+    if (!cronoKey || cronoRestauradoRef.current) return;
+    cronoRestauradoRef.current = true;
+    try {
+      const crudo = localStorage.getItem(cronoKey);
+      if (!crudo) return;
+      const g = JSON.parse(crudo);
+      const acum = { PT: Number(g?.acum?.PT) || 0, ST: Number(g?.acum?.ST) || 0 };
+      const per = g?.periodo === 'ST' ? 'ST' : 'PT';
+      let corriendo = false;
+
+      if (g?.corriendo && g?.ancla) {
+        const hueco = Date.now() - g.ancla;
+        // Si el hueco es razonable lo recuperamos; si es enorme (cerró la app
+        // y volvió al otro día) restauramos en pausa para no inventar tiempo.
+        if (hueco > 0 && hueco <= CRONO_MAX_RECUPERACION_MS) {
+          acum[per] += hueco;
+          anclaRef.current = Date.now();
+          corriendo = true;
+        } else {
+          showToast('Reloj restaurado EN PAUSA: pasó demasiado tiempo desde el último registro. Revisá el minuto.', 'warning');
+        }
+      }
+
+      setAcumPeriodo(acum);
+      setPeriodo(per);
+      setRelojCorriendo(corriendo);
+      if (per === 'ST') setDireccionAtaque('izquierda');
+    } catch (e) {
+      console.warn('No se pudo restaurar el cronómetro:', e);
     }
-    return () => clearInterval(intervalo);
-  }, [relojCorriendo]);
+  }, [cronoKey, showToast]);
+
+  /* Repintado: NO acumula, sólo lee el tiempo real transcurrido */
+  useEffect(() => {
+    const pintar = () => {
+      const ms = (acumPeriodo[periodo] || 0) + (relojCorriendo && anclaRef.current ? Date.now() - anclaRef.current : 0);
+      const totalSeg = Math.max(0, Math.floor(ms / 1000));
+      setMinuto(Math.floor(totalSeg / 60));
+      setSegundos(totalSeg % 60);
+    };
+    pintar();
+    if (!relojCorriendo) return;
+    const id = setInterval(pintar, 250);
+    return () => clearInterval(id);
+  }, [relojCorriendo, acumPeriodo, periodo]);
+
+  /* Persistencia */
+  useEffect(() => {
+    if (!cronoKey) return;
+    try {
+      localStorage.setItem(cronoKey, JSON.stringify({
+        acum: acumPeriodo, periodo, corriendo: relojCorriendo, ancla: anclaRef.current
+      }));
+    } catch (e) { /* cuota llena: el reloj sigue funcionando en memoria */ }
+  }, [cronoKey, acumPeriodo, periodo, relojCorriendo, minuto]);
+
+  /* Vuelve del segundo plano -> repintamos ya, sin esperar el próximo tick */
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible' || !relojCorriendo || !anclaRef.current) return;
+      const ms = (acumPeriodo[periodo] || 0) + (Date.now() - anclaRef.current);
+      const totalSeg = Math.max(0, Math.floor(ms / 1000));
+      setMinuto(Math.floor(totalSeg / 60));
+      setSegundos(totalSeg % 60);
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => document.removeEventListener('visibilitychange', alVolver);
+  }, [relojCorriendo, acumPeriodo, periodo]);
+
+  /* Congela lo corrido hasta ahora dentro del acumulado del período */
+  const congelarCrono = () => {
+    const extra = anclaRef.current ? Date.now() - anclaRef.current : 0;
+    anclaRef.current = null;
+    if (extra > 0) setAcumPeriodo(prev => ({ ...prev, [periodo]: (prev[periodo] || 0) + extra }));
+  };
+
+  const toggleReloj = () => {
+    if (relojCorriendo) {
+      congelarCrono();
+      setRelojCorriendo(false);
+    } else {
+      anclaRef.current = Date.now();
+      setRelojCorriendo(true);
+    }
+  };
+
+  /* Corrección manual: reescribe el acumulado del período actual */
+  const fijarTiempo = (m, sg) => {
+    const mm = Math.max(0, Number.isFinite(m) ? m : 0);
+    const ss = Math.max(0, Math.min(59, Number.isFinite(sg) ? sg : 0));
+    setAcumPeriodo(prev => ({ ...prev, [periodo]: (mm * 60 + ss) * 1000 }));
+    if (relojCorriendo) anclaRef.current = Date.now();
+  };
+
+  const reiniciarPeriodo = () => {
+    anclaRef.current = relojCorriendo ? Date.now() : null;
+    setAcumPeriodo(prev => ({ ...prev, [periodo]: 0 }));
+    showToast(`Reloj del ${periodo} puesto en 0:00`, 'info');
+  };
 
   useEffect(() => {
     async function cargarDatos() {
@@ -128,6 +233,10 @@ function TomaDatos() {
 
   const manejarCambioPeriodo = (e) => {
     const nuevo = e.target.value;
+    if (nuevo === periodo) return;
+    // Cada período tiene su propio acumulado: al cambiar, congelamos el actual
+    // y el reloj queda en pausa mostrando lo que llevaba el período destino.
+    if (relojCorriendo) { congelarCrono(); setRelojCorriendo(false); }
     setPeriodo(nuevo);
     if (nuevo === 'ST' && periodo === 'PT') setDireccionAtaque('izquierda');
     if (nuevo === 'PT' && periodo === 'ST') setDireccionAtaque('derecha');
@@ -188,6 +297,7 @@ function TomaDatos() {
     setAutorGol(null);
     setAutorAsistencia(null);
     setModificadoresRemate([]); 
+    setOrigenRemate(null);
     setMenuActivo(null);
     setTabActiva('registro'); 
   };
@@ -200,6 +310,7 @@ function TomaDatos() {
     setAutorGol(null);
     setAutorAsistencia(null);
     setModificadoresRemate([]); 
+    setOrigenRemate(null);
     setMenuActivo(null);
     setTabActiva('registro');
   };
@@ -242,6 +353,14 @@ function TomaDatos() {
     setAccion(finalAcc);
     setPasoRegistro(2);
     setMenuActivo(null);
+  };
+
+  /* Un toque selecciona el origen (sin guardar, para poder sumar modificadores).
+     Un segundo toque sobre el MISMO origen confirma y guarda: 2 taps, igual de
+     rápido que antes para el que no usa modificadores. */
+  const elegirOrigen = (org) => {
+    if (origenRemate === org) finalizarRegistroRemate(org);
+    else setOrigenRemate(org);
   };
 
   const toggleModificador = (mod) => {
@@ -497,6 +616,7 @@ function TomaDatos() {
     setAutorGol(null);
     setAutorAsistencia(null);
     setModificadoresRemate([]);
+    setOrigenRemate(null);
 
     const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
     if (!error && eventosGuardados) {
@@ -514,6 +634,7 @@ function TomaDatos() {
     setAutorGol(null);
     setAutorAsistencia(null);
     setModificadoresRemate([]); 
+    setOrigenRemate(null);
   };
 
   const eliminarEvento = async (idEvento) => {
@@ -702,6 +823,28 @@ function TomaDatos() {
     </button>
   );
 
+  /* Botón de origen: resalta el elegido; el segundo toque confirma y guarda. */
+  const BotonOrigen = ({ label, valor, color }) => {
+    const activo = origenRemate === valor;
+    return (
+      <button
+        onClick={() => elegirOrigen(valor)}
+        className="btn-action"
+        title={activo ? 'Tocá de nuevo para guardar' : 'Tocá para elegir'}
+        style={{
+          background: activo ? color : 'rgba(255,255,255,0.03)',
+          border: `2px solid ${color}`,
+          color: activo ? '#000' : color,
+          fontWeight: activo ? 900 : 500,
+          padding: '12px 5px', fontSize: '0.75rem', cursor: 'pointer',
+          boxShadow: activo ? `0 0 10px ${color}` : 'none'
+        }}
+      >
+        {activo ? '✓ ' : ''}{label}
+      </button>
+    );
+  };
+
   const containerStyle = esMovil
     ? { display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)' }
     : { display: 'flex', height: '100dvh', background: 'var(--bg)' };
@@ -834,14 +977,14 @@ function TomaDatos() {
             )}
             
             <div style={relojContainer}>
-              <button onClick={() => setRelojCorriendo(!relojCorriendo)} style={btnPlay}>{relojCorriendo ? '⏸' : '▶'}</button>
+              <button onClick={toggleReloj} style={btnPlay} title={relojCorriendo ? 'Pausar' : 'Iniciar'}>{relojCorriendo ? '⏸' : '▶'}</button>
               
               <div style={{ display: 'flex', alignItems: 'center', padding: '0 5px', color: '#ffffff', fontWeight: 800 }}>
                 <input 
                   type="number"
                   value={minuto}
-                  onChange={(e) => setMinuto(Math.max(0, parseInt(e.target.value) || 0))}
-                  onFocus={() => setRelojCorriendo(false)} 
+                  onChange={(e) => fijarTiempo(parseInt(e.target.value) || 0, segundos)}
+                  onFocus={() => { if (relojCorriendo) { congelarCrono(); setRelojCorriendo(false); } }} 
                   style={{ 
                     background: 'transparent', border: 'none', color: '#ffffff', 
                     width: '35px', textAlign: 'right', fontSize: '1.2rem', 
@@ -853,8 +996,8 @@ function TomaDatos() {
                 <input 
                   type="number"
                   value={segundos}
-                  onChange={(e) => setSegundos(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
-                  onFocus={() => setRelojCorriendo(false)} 
+                  onChange={(e) => fijarTiempo(minuto, parseInt(e.target.value) || 0)}
+                  onFocus={() => { if (relojCorriendo) { congelarCrono(); setRelojCorriendo(false); } }} 
                   style={{ 
                     background: 'transparent', border: 'none', color: '#ffffff', 
                     width: '35px', textAlign: 'left', fontSize: '1.2rem', 
@@ -867,6 +1010,14 @@ function TomaDatos() {
               <select value={periodo} onChange={manejarCambioPeriodo} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)' }}>
                 <option value="PT">PT</option><option value="ST">ST</option>
               </select>
+
+              <button
+                onClick={reiniciarPeriodo}
+                title={`Poner el reloj del ${periodo} en 0:00`}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', padding: '0 8px', fontSize: '0.9rem' }}
+              >
+                ⟲
+              </button>
             </div>
           </div>
         </div>
@@ -1143,24 +1294,28 @@ function TomaDatos() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
                       <div className="stat-label" style={{ color: '#00ff88', marginBottom: '5px' }}>¿CÓMO SE GESTÓ EL TIRO?</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <BotonAccion label="A. POSICIONAL" color="#fff" onClick={() => finalizarRegistroRemate('Ataque Posicional')} />
-                        <BotonAccion label="CONTRAATAQUE" color="#fff" onClick={() => finalizarRegistroRemate('Contraataque')} />
-                        <BotonAccion label="RECUP. ALTA" color="#fff" onClick={() => finalizarRegistroRemate('Recuperación Alta')} />
-                        <BotonAccion label="ERROR RIVAL" color="#fff" onClick={() => finalizarRegistroRemate('Error No Forzado')} />
+                        {[['A. POSICIONAL', 'Ataque Posicional', '#fff'],
+                          ['CONTRAATAQUE', 'Contraataque', '#fff'],
+                          ['RECUP. ALTA', 'Recuperación Alta', '#fff'],
+                          ['ERROR RIVAL', 'Error No Forzado', '#fff']].map(([lbl, val, col]) => (
+                          <BotonOrigen key={val} label={lbl} valor={val} color={col} />
+                        ))}
                       </div>
                       
                       <div className="stat-label" style={{ color: 'var(--text-dim)', marginTop: '10px', marginBottom: '5px' }}>PELOTA PARADA (ABP)</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                        <BotonAccion label="CÓRNER" color="#f97316" onClick={() => finalizarRegistroRemate('Córner')} />
-                        <BotonAccion label="LATERAL" color="#06b6d4" onClick={() => finalizarRegistroRemate('Lateral')} />
-                        <BotonAccion label="TIRO LIBRE" color="#a855f7" onClick={() => finalizarRegistroRemate('Tiro Libre')} />
-                        <BotonAccion label="PENAL" color="#ef4444" onClick={() => finalizarRegistroRemate('Penal / Sexta Falta')} />
-                        <BotonAccion label="5v4 / 4v3" color="#0a7fec" onClick={() => finalizarRegistroRemate('5v4 / 4v3')} />
-                        <BotonAccion label="4v5 / 3v4" color="#b6df03" onClick={() => finalizarRegistroRemate('4v5 / 3v4')} />
+                        {[['CÓRNER', 'Córner', '#f97316'],
+                          ['LATERAL', 'Lateral', '#06b6d4'],
+                          ['TIRO LIBRE', 'Tiro Libre', '#a855f7'],
+                          ['PENAL', 'Penal / Sexta Falta', '#ef4444'],
+                          ['5v4 / 4v3', '5v4 / 4v3', '#0a7fec'],
+                          ['4v5 / 3v4', '4v5 / 3v4', '#b6df03']].map(([lbl, val, col]) => (
+                          <BotonOrigen key={val} label={lbl} valor={val} color={col} />
+                        ))}
                       </div>
 
                       <div style={{ marginTop: '20px', borderTop: '1px dashed #444', paddingTop: '15px' }}>
-                        <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '10px' }}>MODIFICADORES TÁCTICOS (OPCIONAL)</div>
+                        <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '10px' }}>MODIFICADORES TÁCTICOS (OPCIONAL · SE COMBINAN)</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           <BotonAccion label="2DO PALO" color={modificadoresRemate.includes('2do Palo') ? '#00ff88' : '#555'} onClick={() => toggleModificador('2do Palo')} />
                           <BotonAccion label="MANO A MANO" color={modificadoresRemate.includes('Mano a Mano') ? '#00ff88' : '#555'} onClick={() => toggleModificador('Mano a Mano')} />
@@ -1169,6 +1324,28 @@ function TomaDatos() {
                           <BotonAccion label="👤 DE ESPALDAS" color={modificadoresRemate.includes('De Espaldas') ? '#f59e0b' : '#555'} onClick={() => toggleModificador('De Espaldas')} />
                           <BotonAccion label="🛡️ BAJO PRESIÓN" color={modificadoresRemate.includes('Bajo Presión') ? '#ef4444' : '#555'} onClick={() => toggleModificador('Bajo Presión')} />
                         </div>
+                      </div>
+
+                      {/* Resumen + confirmación */}
+                      <div style={{ position: 'sticky', bottom: 0, background: 'var(--bg)', paddingTop: '12px', marginTop: '4px', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '8px', minHeight: '16px' }}>
+                          {origenRemate
+                            ? <span><strong style={{ color: 'var(--accent)' }}>{origenRemate}</strong>{modificadoresRemate.length > 0 ? ` | ${modificadoresRemate.join(' | ')}` : ''}</span>
+                            : 'Elegí cómo se gestó el tiro para poder guardar.'}
+                        </div>
+                        <button
+                          onClick={() => origenRemate && finalizarRegistroRemate(origenRemate)}
+                          disabled={!origenRemate}
+                          style={{
+                            width: '100%', padding: '16px', fontSize: '0.95rem', fontWeight: 900, borderRadius: '4px',
+                            cursor: origenRemate ? 'pointer' : 'not-allowed',
+                            background: origenRemate ? 'var(--accent)' : 'transparent',
+                            color: origenRemate ? '#000' : '#555',
+                            border: `1px solid ${origenRemate ? 'var(--accent)' : '#333'}`
+                          }}
+                        >
+                          ✓ GUARDAR REMATE
+                        </button>
                       </div>
                     </div>
                   )}

@@ -908,6 +908,22 @@ return 'Todas';
     return { pre: calcAvg(prePartido), post: calcAvg(postPartido), debug: { inicio: formatStr(inicioSemana), partido: formatStr(fp), post: formatStr(finPost) } };
   }, [partidoSeleccionado, wellness, jugadores, eventosPartido]);
 
+  /* Subdivisiones exactas de duelos en el mapa (directos + indirectos).
+     Las claves con prefijo DUELO_ se resuelven por lista, el resto por 'includes'. */
+  const ACCIONES_DUELO_MAPA = {
+    DUELO_OFE_GAN: ['Duelo OFE Ganado', 'Duelo OFE Indirecto Ganado'],
+    DUELO_OFE_PER: ['Duelo OFE Perdido', 'Duelo OFE Indirecto Perdido'],
+    DUELO_DEF_GAN: ['Duelo DEF Ganado', 'Duelo DEF Indirecto Ganado'],
+    DUELO_DEF_PER: ['Duelo DEF Perdido', 'Duelo DEF Indirecto Perdido'],
+  };
+
+  const coincideAccionMapa = (accion, filtro) => {
+    if (!accion) return false;
+    const lista = ACCIONES_DUELO_MAPA[filtro];
+    if (lista) return lista.includes(accion);
+    return accion.includes(filtro);
+  };
+
   const rematesDetalle = useMemo(() => {
     if (!analitica) return [];
     return analitica.evFiltrados.filter(ev => ev.accion?.includes('Remate') || ev.accion === 'Gol').map(ev => {
@@ -929,7 +945,7 @@ return 'Todas';
   }, [analitica, jugadores]);
 
   const evMapa = analitica?.evFiltrados.filter(ev => {
-    const pasaAccion = filtroAccionMapa === 'Todas' ? true : ev.accion?.includes(filtroAccionMapa);
+    const pasaAccion = filtroAccionMapa === 'Todas' ? true : coincideAccionMapa(ev.accion, filtroAccionMapa);
     const pasaEquipo = filtroEquipoMapa === 'Ambos' ? true : ev.equipo === filtroEquipoMapa;
     return pasaAccion && pasaEquipo;
   }) || [];
@@ -1599,7 +1615,10 @@ const COLORS_ORIGEN = {
                   <option value="Pérdida" style={{ background: 'var(--panel)', color: 'var(--text)' }}>PÉRDIDAS</option>
                   <option value="Pase Incompleto" style={{ background: 'var(--panel)', color: 'var(--text)' }}>PASES INCOMPLETOS</option>
                   <option value="Ocasión Fallada" style={{ background: 'var(--panel)', color: 'var(--text)' }}>OCASIONES FALLADAS</option>
-                  <option value="Duelo" style={{ background: 'var(--panel)', color: 'var(--text)' }}>DUELOS</option>
+                  <option value="DUELO_OFE_GAN" style={{ background: 'var(--panel)', color: 'var(--text)' }}>DUELOS OFE. GANADOS</option>
+                  <option value="DUELO_OFE_PER" style={{ background: 'var(--panel)', color: 'var(--text)' }}>DUELOS OFE. PERDIDOS</option>
+                  <option value="DUELO_DEF_GAN" style={{ background: 'var(--panel)', color: 'var(--text)' }}>DUELOS DEF. GANADOS</option>
+                  <option value="DUELO_DEF_PER" style={{ background: 'var(--panel)', color: 'var(--text)' }}>DUELOS DEF. PERDIDOS</option>
                   <option value="Falta" style={{ background: 'var(--panel)', color: 'var(--text)' }}>FALTAS</option>
                 </select>
 

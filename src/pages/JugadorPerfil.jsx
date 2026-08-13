@@ -61,6 +61,100 @@ const calcularRatingQuintetoAvanzado = (q) => {
 // 🎨 COMPONENTES VISUALES
 // ==========================================
 
+/* ══════════════════════════════════════════════════════════════════════
+   MOTOR DE PLAYSTYLES
+   Cada estilo define un umbral. score = valor / umbral (califica si >= 1).
+   Se muestran los 3 de mayor score.
+
+   IMPORTANTE: la base de normalización es POR PARTIDO JUGADO, no por 40'.
+   El cronómetro de TomaDatos no es confiable (no se pausa en vivo), así que
+   los minutos acumulados sub/sobre-estiman y distorsionaban los umbrales.
+   El PJ es un dato duro y no depende del reloj.
+   ══════════════════════════════════════════════════════════════════════ */
+const MIN_PJ_PLAYSTYLE = 3;
+
+const calcularPlaystyles = (ctx) => {
+  const { stats, plusMinus, xgBuildup, record, esArquero, pctAtajadas, golesPrevenidos, transiciones } = ctx;
+
+  if (stats.jugados < MIN_PJ_PLAYSTYLE) return [];
+
+  const pj = stats.jugados;
+  const r = (v) => (v || 0) / pj; // promedio por partido jugado
+
+  const duelosTot = stats.duelosOfeTotales + stats.duelosDefTotales;
+  const volumen = stats.remates + stats.asistencias + stats.pasesClave + stats.recuperaciones + duelosTot;
+  const segPelota = (stats.recuperaciones + stats.perdidas) > 0
+    ? (stats.recuperaciones / (stats.recuperaciones + stats.perdidas)) * 100 : 0;
+  const pctVict = record.pj > 0 ? (record.pg / record.pj) * 100 : 0;
+
+  const candidatos = esArquero ? [
+    { id: 'muralla', label: 'MURALLA', icon: '🧱', color: '#fbbf24',
+      valor: Number(pctAtajadas) || 0, umbral: 70, req: 'Más del 70% de remates al arco atajados',
+      detalle: `${Number(pctAtajadas).toFixed(0)}% de atajadas` },
+    { id: 'salvador', label: 'SALVADOR', icon: '🦸', color: '#00ff88',
+      valor: Math.max(0, Number(golesPrevenidos) || 0), umbral: 0.8, req: 'Recibe menos goles de los que dice el xG enfrentado',
+      detalle: `${Number(golesPrevenidos).toFixed(2)} goles prevenidos` },
+    { id: 'arquero_jugador', label: 'ARQUERO-JUGADOR', icon: '🎮', color: '#c084fc',
+      valor: r(stats.asistencias * 2 + stats.pasesClave + xgBuildup * 3), umbral: 0.7, req: 'Participación real en la salida y la creación (por partido)',
+      detalle: `${stats.pasesClave} pases clave · ${stats.asistencias} asist.` },
+    { id: 'libero', label: 'LÍBERO', icon: '🚀', color: '#0ea5e9',
+      valor: r(stats.recuperaciones), umbral: 0.9, req: 'Sale a cortar fuera del área',
+      detalle: `${r(stats.recuperaciones).toFixed(1)} recuperaciones por partido` },
+    { id: 'amuleto', label: 'AMULETO', icon: '🍀', color: '#22d3ee',
+      valor: record.pj >= 4 ? pctVict : 0, umbral: 60, req: 'El equipo gana mucho más cuando él juega',
+      detalle: `${pctVict.toFixed(0)}% de victorias (${record.pg}G-${record.pe}E-${record.pp}P)` },
+  ] : [
+    { id: 'goleador', label: 'GOLEADOR', icon: '⚽', color: '#00ff88',
+      valor: r(stats.goles), umbral: 0.45, req: '0.45+ goles por partido jugado',
+      detalle: `${r(stats.goles).toFixed(2)} goles por partido (${stats.goles} en total)` },
+    { id: 'finalizador', label: 'FINALIZADOR', icon: '🎯', color: '#facc15',
+      valor: (stats.goles - stats.xG) >= 0 && stats.remates >= 5 ? (stats.goles - stats.xG) : 0, umbral: 0.8,
+      req: 'Convierte por encima de lo que dice el xG',
+      detalle: `G-xG: +${(stats.goles - stats.xG).toFixed(2)} · ${stats.pctArco.toFixed(0)}% al arco` },
+    { id: 'asistidor', label: 'ASISTIDOR', icon: '🅰️', color: '#c084fc',
+      valor: r(stats.asistencias), umbral: 0.3, req: '0.30+ asistencias por partido jugado',
+      detalle: `${stats.asistencias} asistencias · ${r(stats.asistencias).toFixed(2)} por partido` },
+    { id: 'creador', label: 'CREADOR', icon: '🧠', color: '#a855f7',
+      valor: r(stats.pasesClave + xgBuildup * 4), umbral: 0.8, req: 'Genera ocasiones sin necesidad de definirlas',
+      detalle: `${stats.pasesClave} pases clave · xG buildup ${xgBuildup.toFixed(2)}` },
+    { id: 'recuperador', label: 'RECUPERADOR', icon: '🛡️', color: '#3b82f6',
+      valor: r(stats.recuperaciones), umbral: 1.8, req: '1.8+ recuperaciones por partido jugado',
+      detalle: `${stats.recuperaciones} recuperaciones · ${r(stats.recuperaciones).toFixed(1)} por partido` },
+    { id: 'presion', label: 'PRESIÓN ALTA', icon: '🔥', color: '#f97316',
+      valor: r(stats.recAltas), umbral: 0.6, req: 'Roba en campo rival de forma sistemática',
+      detalle: `${stats.recAltas} robos en zona alta` },
+    { id: 'motor', label: 'MOTOR', icon: '⚙️', color: '#0ea5e9',
+      valor: r(volumen), umbral: 7, req: 'Volumen total de acciones muy por encima de la media',
+      detalle: `${r(volumen).toFixed(1)} acciones por partido` },
+    { id: 'muro', label: 'MURO', icon: '🚧', color: '#10b981',
+      valor: stats.duelosDefTotales >= 8 ? stats.defPct : 0, umbral: 60, req: '60%+ de duelos defensivos ganados (mín. 8)',
+      detalle: `${stats.duelosDefGanados}/${stats.duelosDefTotales} duelos def. (${stats.defPct.toFixed(0)}%)` },
+    { id: 'duelista', label: 'DUELISTA', icon: '⚔️', color: '#e879f9',
+      valor: stats.duelosOfeTotales >= 8 ? stats.ofePct : 0, umbral: 60, req: '60%+ de duelos ofensivos ganados (mín. 8)',
+      detalle: `${stats.duelosOfeGanados}/${stats.duelosOfeTotales} duelos ofe. (${stats.ofePct.toFixed(0)}%)` },
+    { id: 'seguro', label: 'CUIDA-PELOTA', icon: '🔒', color: '#2dd4bf',
+      valor: (stats.recuperaciones + stats.perdidas) >= 10 ? segPelota : 0, umbral: 65,
+      req: 'Recupera mucho más de lo que pierde',
+      detalle: `${segPelota.toFixed(0)}% de saldo positivo · ${stats.perdidas} pérdidas` },
+    { id: 'transicion', label: 'VÉRTIGO', icon: '⚡', color: '#eab308',
+      valor: r(transiciones), umbral: 0.6, req: 'Protagonista en transiciones rápidas',
+      detalle: `${transiciones} transiciones con participación` },
+    { id: 'desequilibrio', label: 'DESEQUILIBRIO', icon: '🌀', color: '#f472b6',
+      valor: r(stats.faltasRecibidas), umbral: 0.9, req: 'Lo tienen que frenar con falta',
+      detalle: `${stats.faltasRecibidas} faltas recibidas · ${r(stats.faltasRecibidas).toFixed(1)} por partido` },
+    { id: 'amuleto', label: 'AMULETO', icon: '🍀', color: '#22d3ee',
+      valor: (record.pj >= 4 && plusMinus >= 0) ? pctVict : 0, umbral: 60,
+      req: 'El equipo gana mucho más cuando él juega (y con +/- no negativo)',
+      detalle: `${pctVict.toFixed(0)}% de victorias (${record.pg}G-${record.pe}E-${record.pp}P)` },
+  ];
+
+  return candidatos
+    .map(c => ({ ...c, score: c.umbral > 0 ? c.valor / c.umbral : 0 }))
+    .filter(c => c.score >= 1)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+};
+
 const RingMeter = ({ value, max = 100, color = '#00ff88', size = 120, label, subLabel }) => {
   const pct = Math.min(100, Math.max(0, (value / max) * 100));
   const r = 44;
@@ -685,6 +779,21 @@ function JugadorPerfil() {
     
     stats.ingresos = Math.max(0, stats.jugados - stats.titularidades);
 
+    /* ── RESULTADOS DEL EQUIPO EN LOS PARTIDOS QUE ESTE JUGADOR JUGÓ ── */
+    const record = { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
+    partidosScope.forEach(p => {
+      if (!partidosJugadosSet.has(p.id)) return;
+      if (p.estado !== 'Finalizado' && p.estado !== 'Jugado') return;
+      const gp = Number(p.goles_propios) || 0;
+      const gr = Number(p.goles_rival) || 0;
+      record.pj++; record.gf += gp; record.gc += gr;
+      if (gp > gr) { record.pg++; record.pts += 3; }
+      else if (gp < gr) { record.pp++; }
+      else { record.pe++; record.pts += 1; }
+    });
+    record.pctVictorias = record.pj > 0 ? (record.pg / record.pj) * 100 : 0;
+    record.ptsPorPartido = record.pj > 0 ? record.pts / record.pj : 0;
+
     minutos = Math.round(minutos);
     if (minutos === 0 && evFiltrados.length > 0) {
        minutos = Math.round(Math.max(1, evFiltrados.length * 0.8));
@@ -742,6 +851,13 @@ function JugadorPerfil() {
     const pctAtajadas = rematesAlArcoRival > 0 ? ((totalAtajadas / rematesAlArcoRival) * 100).toFixed(1) : 0;
     const golesPrevenidos = (xgEnContraFinal - totalGolesRecibidos).toFixed(2);
 
+    const playstyles = calcularPlaystyles({
+      stats, plusMinus, xgBuildup, record,
+      esArquero: esArqueroFijo,
+      pctAtajadas, golesPrevenidos,
+      transiciones: transicionesInvolucrado
+    });
+
     const norm = (val, max) => Math.min(100, Math.max(0, (val / max) * 100));
     const p40 = minutos > 0 ? (40 / minutos) : 0;
 
@@ -781,6 +897,7 @@ function JugadorPerfil() {
       mejorQuinteto, rivalStats, pctAtajadas, esArqueroFijo, eventosRivalEnCancha,
       xgEnContra: xgEnContraFinal, golesPrevenidos, totalAtajadas, totalGolesRecibidos,
       contextoGoles, contextoRecuperaciones, impactoTimeline,
+      record, playstyles,
       vacio: false 
     };
   }, [eventos, eventosCompletos, eventosPartidoExtra, partidoFiltro, torneoFiltro, jugadorId, jugadorSeleccionado, partidosDelTorneo, jugadores, sanciones]);
@@ -1217,6 +1334,81 @@ function JugadorPerfil() {
                   </div>
                 </div>
               )}
+
+              {/* ────────── RESULTADOS DEL EQUIPO CON ESTE JUGADOR ────────── */}
+              <div className="bento-card jp-section">
+                <div className="stat-label" style={{ color: '#22d3ee', marginBottom: '14px' }}>
+                  🏆 RESULTADOS CON ÉL EN CANCHA
+                  <span style={{ marginLeft: '10px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
+                    (sobre {perfil.record.pj} partidos finalizados que jugó)
+                  </span>
+                </div>
+
+                {perfil.record.pj === 0 ? (
+                  <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>
+                    Todavía no hay partidos finalizados con resultado cargado.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)', gap: '12px' }}>
+                    {[
+                      { label: 'PG', val: perfil.record.pg, color: '#00ff88' },
+                      { label: 'PE', val: perfil.record.pe, color: '#fbbf24' },
+                      { label: 'PP', val: perfil.record.pp, color: '#ef4444' },
+                      { label: '% VICTORIAS', val: `${perfil.record.pctVictorias.toFixed(0)}%`, color: perfil.record.pctVictorias >= 50 ? '#00ff88' : '#ef4444' },
+                      { label: 'PTS/PARTIDO', val: perfil.record.ptsPorPartido.toFixed(2), color: '#0ea5e9' },
+                      { label: 'GF:GC', val: `${perfil.record.gf}:${perfil.record.gc}`, color: 'rgba(255,255,255,0.75)' },
+                    ].map((m, i) => (
+                      <div key={i} style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', fontWeight: 700 }}>{m.label}</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 900, color: m.color, fontFamily: 'monospace' }}>{m.val}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* PLAYSTYLES */}
+                <div style={{ marginTop: '22px', paddingTop: '18px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="stat-label" style={{ color: '#a855f7', marginBottom: '14px' }}>
+                    🎭 ESTILO DE JUEGO
+                    <span style={{ marginLeft: '10px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
+                      (rasgos detectados sobre sus promedios por partido jugado)
+                    </span>
+                  </div>
+
+                  {perfil.playstyles.length === 0 ? (
+                    <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>
+                      {perfil.partidosJugados < 3
+                        ? `Muestra insuficiente: se necesitan al menos 3 partidos jugados (lleva ${perfil.partidosJugados}).`
+                        : 'Sin rasgos dominantes todavía: su rendimiento está repartido y no supera ningún umbral.'}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                      {perfil.playstyles.map(ps => (
+                        <div
+                          key={ps.id}
+                          title={ps.req}
+                          style={{
+                            flex: esMovil ? '1 1 100%' : '1 1 200px',
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(0,0,0,0))',
+                            border: `1px solid ${ps.color}55`,
+                            borderLeft: `3px solid ${ps.color}`,
+                            borderRadius: '8px', padding: '12px 14px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '1.1rem' }}>{ps.icon}</span>
+                            <span style={{ fontWeight: 900, letterSpacing: '0.05em', fontSize: '0.8rem', color: ps.color }}>{ps.label}</span>
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>{ps.detalle}</div>
+                          <div style={{ marginTop: '8px', height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ width: `${Math.min(100, ps.score * 50)}%`, height: '100%', background: ps.color }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* ────────── NUEVA TARJETA DE PARTICIPACIÓN GLOBAL ────────── */}
               <div className="bento-card jp-section">

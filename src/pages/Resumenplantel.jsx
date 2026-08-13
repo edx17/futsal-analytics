@@ -6,6 +6,7 @@ import { calcularMinutosPorJugador } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
 import { TablaResponsive } from '../components/TablaResponsive';
+import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas } from '../utils/ruedas';
 
 const MONO = 'JetBrains Mono, monospace';
 const DUR_PARTIDO = 40; // minutos de un partido de futsal
@@ -72,10 +73,11 @@ export default function ResumenPlantel() {
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
   const [loading, setLoading] = useState(true);
-  const [raw, setRaw] = useState({ partidos: [], jugadores: [], eventos: [], sanciones: [] });
+  const [raw, setRaw] = useState({ partidos: [], jugadores: [], eventos: [], sanciones: [], torneos: [] });
 
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [filtroTorneo, setFiltroTorneo] = useState('Todos');
+  const [filtroRueda, setFiltroRueda] = useState('Todas'); // 'Todas' | 1 | 2
   const [busqueda, setBusqueda] = useState('');
   const [soloConMinutos, setSoloConMinutos] = useState(false);
   const [mostrarGlosario, setMostrarGlosario] = useState(false);
@@ -104,6 +106,10 @@ export default function ResumenPlantel() {
         const { data: sanciones } = await supabase
           .from('disciplina_sanciones').select('*').eq('club_id', clubId);
 
+        // Necesarios para saber dónde corta la Primera Rueda de cada torneo
+        const { data: torneos } = await supabase
+          .from('torneos').select('*').eq('club_id', clubId);
+
         const idsPartidos = (partidos || []).map(p => p.id);
         let eventos = [];
         if (idsPartidos.length > 0) {
@@ -123,7 +129,7 @@ export default function ResumenPlantel() {
           }
         }
 
-        if (!cancelado) setRaw({ partidos: partidos || [], jugadores: jugadores || [], eventos, sanciones: sanciones || [] });
+        if (!cancelado) setRaw({ partidos: partidos || [], jugadores: jugadores || [], eventos, sanciones: sanciones || [], torneos: torneos || [] });
       } catch (err) {
         console.error('Error cargando resumen de plantel:', err);
       } finally {
@@ -162,6 +168,25 @@ export default function ResumenPlantel() {
     if (filtroTorneo !== 'Todos' && !torneosDisponibles.some(t => t.id === filtroTorneo)) setFiltroTorneo('Todos');
   }, [torneosDisponibles, filtroTorneo]);
 
+  /* ── RUEDAS: sólo aplica con un torneo puntual elegido y configurado ── */
+  const torneoElegido = useMemo(
+    () => (filtroTorneo === 'Todos' ? null : raw.torneos.find(t => t.id === filtroTorneo) || null),
+    [raw.torneos, filtroTorneo]
+  );
+
+  const hayRuedas = tieneRuedasConfiguradas(torneoElegido);
+
+  const jornadasOrdenadas = useMemo(
+    () => ordenarJornadas(raw.partidos.filter(p => p.torneo_id === filtroTorneo).map(p => p.jornada)),
+    [raw.partidos, filtroTorneo]
+  );
+
+  /* Al cambiar de torneo (o si el torneo no tiene ruedas) reseteamos el filtro */
+  useEffect(() => {
+    if (!hayRuedas && filtroRueda !== 'Todas') setFiltroRueda('Todas');
+  }, [hayRuedas, filtroRueda]);
+  useEffect(() => { setFiltroRueda('Todas'); }, [filtroTorneo]);
+
   /* ---------- cómputo pesado: agrega todo por jugador ---------- */
   const { jugadoresProc, arquerosProc } = useMemo(() => {
     if (raw.jugadores.length === 0) return { jugadoresProc: [], arquerosProc: [] };
@@ -176,6 +201,9 @@ export default function ResumenPlantel() {
     let partidos = partidosScopeCat;
     if (filtroTorneo !== 'Todos') {
       partidos = partidos.filter(p => p.torneo_id === filtroTorneo);
+      if (hayRuedas && filtroRueda !== 'Todas') {
+        partidos = partidos.filter(p => ruedaDePartido(p, torneoElegido, jornadasOrdenadas) === filtroRueda);
+      }
     }
 
     const idsPartidos = new Set(partidos.map(p => p.id));
@@ -198,6 +226,9 @@ export default function ResumenPlantel() {
 
     const acc = {};
     jugadores.forEach(j => { acc[String(j.id)] = nuevoAcc(j); });
+
+    // Arqueros del plantel (para atribuir goles recibidos SOLO a quien estaba en cancha)
+    const setArqueros = new Set(jugadores.filter(j => esArquero(j.posicion)).map(j => String(j.id)));
 
     partidos.forEach(p => {
       const evMatch = (evPorPartido.get(p.id) || []).slice().sort(ordenEv);
@@ -222,10 +253,48 @@ export default function ResumenPlantel() {
 
       const citadosSet = new Set(plantillaIds(p));
 
-      // rival shots del partido (para arqueros)
-      const rivalGoles = evRival.filter(e => e.accion === 'Remate - Gol').length;
-      const rivalAtajados = evRival.filter(e => e.accion === 'Remate - Atajado').length;
-      const xgRivalPartido = evRival.filter(e => (e.accion || '').includes('Remate')).reduce((s, e) => s + (calcularXGEvento(e) || 0), 0);
+      /* ── ARQUEROS: atribución remate a remate según quién estaba EN CANCHA ──
+         Antes se sumaba todo lo recibido del partido a cada arquero que hubiera
+         pisado la cancha, por eso el total entre arqueros superaba el real. */
+      const arqPartido = {}; // sid -> { goles, atajadas, xg }
+      const bumpArq = (sid, campo, val) => {
+        if (!sid) return;
+        if (!arqPartido[sid]) arqPartido[sid] = { goles: 0, atajadas: 0, xg: 0 };
+        arqPartido[sid][campo] += val;
+      };
+
+      // arquero de referencia: el de más minutos del partido (si un remate rival no trae quinteto)
+      const arqFallback = [...setArqueros]
+        .filter(sid => (minsMap[sid] || 0) > 0)
+        .sort((x, y) => (minsMap[y] || 0) - (minsMap[x] || 0))[0] || null;
+
+      // Reconstruimos el quinteto propio a lo largo del partido.
+      let enCancha = new Set(titulares);
+      evMatch.forEach(ev => {
+        if (ev.quinteto_activo) {
+          const q = parseQuinteto(ev.quinteto_activo);
+          if (q.length) enCancha = new Set(q);
+        } else if (ev.accion === 'Cambio Entra' && ev.id_jugador != null) {
+          enCancha.add(String(ev.id_jugador));
+        } else if (ev.accion === 'Cambio Sale' && ev.id_jugador != null) {
+          enCancha.delete(String(ev.id_jugador));
+        }
+
+        if (ev.equipo !== 'Rival') return;
+        const acRival = ev.accion || '';
+        if (!acRival.includes('Remate')) return;
+
+        const candidatos = [...enCancha].filter(sid => setArqueros.has(sid));
+        let destino = null;
+        if (candidatos.length === 1) destino = candidatos[0];
+        else if (candidatos.length > 1) destino = candidatos.sort((x, y) => (minsMap[y] || 0) - (minsMap[x] || 0))[0];
+        else destino = arqFallback; // portero-jugador / evento sin quinteto
+        if (!destino) return;
+
+        if (acRival === 'Remate - Gol') bumpArq(destino, 'goles', 1);
+        if (acRival === 'Remate - Atajado') bumpArq(destino, 'atajadas', 1);
+        bumpArq(destino, 'xg', calcularXGEvento(ev) || 0);
+      });
 
       jugadores.forEach(j => {
         const a = acc[String(j.id)];
@@ -270,11 +339,14 @@ export default function ResumenPlantel() {
         // asistencias = fue el asistidor de un gol
         a.asistencias += evPropio.filter(e => mismoId(e.id_asistencia, j.id) && (e.accion === 'Gol' || e.accion === 'Remate - Gol')).length;
 
-        // arquero: acumula lo recibido en los partidos que jugó
+        // arquero: acumula SOLO lo recibido mientras estuvo dentro de la cancha
         if (esArquero(j.posicion)) {
-          a.golesRecibidos += rivalGoles;
-          a.atajadas += rivalAtajados;
-          a.xgRecibido += xgRivalPartido;
+          const b = arqPartido[sid];
+          if (b) {
+            a.golesRecibidos += b.goles;
+            a.atajadas += b.atajadas;
+            a.xgRecibido += b.xg;
+          }
         }
 
         // rating del partido (con asistencias virtuales)
@@ -327,7 +399,7 @@ export default function ResumenPlantel() {
       jugadoresProc: todos.filter(j => !esArquero(j.posicion)),
       arquerosProc: todos.filter(j => esArquero(j.posicion)),
     };
-  }, [raw, partidosScopeCat, filtroTorneo, filtroCategoria, misCategorias]);
+  }, [raw, partidosScopeCat, filtroTorneo, filtroCategoria, misCategorias, hayRuedas, filtroRueda, torneoElegido, jornadasOrdenadas]);
 
   /* ---------- columnas de la tabla de campo ---------- */
   const GRUPOS = { id: 'var(--text-dim)', part: '#3b82f6', of: '#00ff88', lu: '#0ea5e9', dis: '#fbbf24', imp: '#a855f7', arq: '#a855f7' };
@@ -577,6 +649,20 @@ export default function ResumenPlantel() {
             {torneosDisponibles.map(t => <option key={t.id} value={t.id}>{(t.nombre || 'TORNEO').toUpperCase()}</option>)}
           </select>
         </div>
+        {hayRuedas && (
+          <div>
+            <div className="stat-label" style={{ marginBottom: '8px' }}>RUEDA</div>
+            <select
+              value={filtroRueda}
+              onChange={e => setFiltroRueda(e.target.value === 'Todas' ? 'Todas' : Number(e.target.value))}
+              style={selectStyle}
+            >
+              <option value="Todas">TODO EL TORNEO</option>
+              <option value="1">PRIMERA RUEDA</option>
+              <option value="2">SEGUNDA RUEDA</option>
+            </select>
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: '180px' }}>
           <div className="stat-label" style={{ marginBottom: '8px' }}>BUSCAR JUGADOR</div>
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Apellido o nombre..." style={inputIndustrial} />
