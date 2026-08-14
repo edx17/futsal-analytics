@@ -44,6 +44,7 @@ import Transferencias from './pages/Transferencias';
 import ResumenPlantel from './pages/Resumenplantel';
 import Videoanalisis from './pages/Videoanalisis';
 import GeneradorReportes from './pages/GeneradorReportes';
+import CalibracionRating from './pages/CalibracionRating';
 
 import './App.css';
 
@@ -141,6 +142,8 @@ function AppRoutes() {
       <Route path="/aceptar-terminos" element={<ProtectedRoute><AceptarTerminos /></ProtectedRoute>} />
       
       <Route path="/reportes" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><GeneradorReportes /></ProtectedRoute>} />
+
+      <Route path="/calibracion" element={<ProtectedRoute allowedRoles={['superuser']}><CalibracionRating /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/inicio" replace />} />
     </Routes>
@@ -425,6 +428,7 @@ useEffect(() => {
               <>
                 <NavLink to="/usuarios" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👑 <span>GESTIÓN MASTER</span></NavLink>
                 <NavLink to="/admin/suscripciones" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💳 <span>SUSCRIPCIONES</span></NavLink>
+                <NavLink to="/calibracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎯 <span>CALIBRAR RATING</span></NavLink>
               </>
             )}
           </>

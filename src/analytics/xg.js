@@ -1,11 +1,39 @@
 // src/analytics/xg.js
 
+/* ── CALIBRACIÓN DEL MODELO ─────────────────────────────────────────────────
+   Verificado contra 30 partidos reales (623 actuaciones):
+     Propio: 133 goles vs 110.6 xG → ratio 1.20
+     Rival : 130 goles vs 101.5 xG → ratio 1.28
+   El modelo subestimaba las ocasiones ~22%: la penalización por ángulo
+   (sin²) y las mesetas de distancia estaban calibradas para fútbol 11, no
+   para futsal, donde el arco es más chico pero se remata mucho más cerca.
+
+   Este factor escala la curva del modelo para que la suma de xG se parezca a
+   los goles reales. NO se aplica a las sobreescrituras absolutas (2do palo,
+   mano a mano, arquero adelantado): esos ya son valores fijos y observados.
+
+   Para recalibrar: corré la pantalla de calibración y ajustá este número
+   hasta que ambos ratios queden cerca de 1.00.                              */
+const CALIBRACION_FUTSAL = 1.24;
+
 export function calcularXGEvento(ev, esTransicion = false) {
   // Usamos la coordenada normalizada
-  const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
-  const y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
+  let x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+  let y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
 
   if (x == null || y == null) return 0;
+
+  /* ── ESPEJO PARA EVENTOS DEL RIVAL ──────────────────────────────────────
+     TomaDatos guarda TODO en el mismo marco absoluto: x=0 es nuestro arco y
+     x=100 es el arco rival. Pero este modelo asume que el arco atacado está
+     en x=100. Sin espejar, un remate rival pegado a nuestro arco (x~8) se
+     calculaba como un tiro desde 37 metros: daba xG 0.01 SIEMPRE.
+     Consecuencia: el xG rival era basura y todo arquero aparecía regalando
+     goles (goles evitados ~= -goles recibidos). */
+  if (ev.equipo === 'Rival') {
+    x = 100 - x;
+    y = 100 - y;
+  }
 
   // Analizamos los modificadores guardados en TomaDatos
   const origen = ev.origen_gol || ev.contexto_juego || '';
@@ -52,6 +80,9 @@ export function calcularXGEvento(ev, esTransicion = false) {
   if (bajoPresion) {
     xgFinal *= 0.75; // Penalización media: defensor incomodando el remate
   }
+
+  // 3.5 Calibración global del modelo contra goles reales
+  xgFinal *= CALIBRACION_FUTSAL;
 
   // 4. Sobreescrituras Letales (Modificadores Absolutos)
   if (asistenciaSegundoPalo) {
