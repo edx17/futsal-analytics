@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { calcularMinutosPorJugador } from '../analytics/engine';
+import { calcularMinutosPorJugador, calcularParticipacion } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
 import { TablaResponsive } from '../components/TablaResponsive';
@@ -54,7 +54,7 @@ const nuevoAcc = (j) => ({
   categoria: j.categoria, foto: j.foto, edad: edadDe(j.fechanac), pierna: j.pierna,
   estadoFicha: j.estado_ficha || 'Activo',
   aptoVencido: j.vencimiento_apto ? new Date(j.vencimiento_apto) < new Date() : false,
-  citados: 0, jugados: 0, titularidades: 0, minutos: 0,
+  citados: 0, jugados: 0, titularidades: 0, minutos: 0, partPctAcum: 0,
   goles: 0, asistencias: 0, remates: 0, rematesArco: 0, ocasionesFalladas: 0, pasesClave: 0, xg: 0,
   rec: 0, perd: 0,
   duelOfeGan: 0, duelOfeTot: 0, duelDefGan: 0, duelDefTot: 0,
@@ -237,6 +237,11 @@ export default function ResumenPlantel() {
 
       const minsMap = evMatch.length ? calcularMinutosPorJugador(evMatch) : {};
 
+      /* Participación relativa: % de eventos del partido con el jugador en
+         cancha. Es el criterio de "jugó", porque no depende del cronómetro
+         (que en vivo no se pausa bien) sino del quinteto_activo registrado. */
+      const { participacion: partMap } = evMatch.length ? calcularParticipacion(evMatch) : { participacion: {} };
+
       // plus/minus del partido
       const pmMap = {};
       evMatch.forEach(ev => {
@@ -299,15 +304,19 @@ export default function ResumenPlantel() {
       jugadores.forEach(j => {
         const a = acc[String(j.id)];
         const sid = String(j.id);
-        const mins = minsMap[sid] || 0;
+        const part = partMap[sid];
         const citado = citadosSet.has(sid);
-        const jugo = mins > 0;
+        const jugo = !!part?.presente;
+        // Si el reloj falló pero el jugador estuvo en cancha, usamos el
+        // equivalente en minutos derivado de su participación.
+        const mins = (minsMap[sid] || 0) > 0 ? minsMap[sid] : (jugo ? (part?.minutosEquivalentes || 0) : 0);
 
         if (citado) a.citados++;
         if (!jugo) return; // no jugó este partido: no suma jugados/min/stats
 
         a.jugados++;
         a.minutos += mins;
+        a.partPctAcum += (part?.pct || 0);
         if (titulares.has(sid)) a.titularidades++;
         a.pmAcum += (pmMap[sid] || 0);
         a.pmPartidos++;
@@ -366,6 +375,9 @@ export default function ResumenPlantel() {
       const baseMin = Math.max(a.citados, a.jugados) * DUR_PARTIDO;
       a.pctMin = baseMin > 0 ? (a.minutos / baseMin) * 100 : 0;
       a.ingresos = Math.max(0, a.jugados - a.titularidades);
+      // Participación promedio: % de eventos del partido con él en cancha.
+      // Independiente del cronómetro.
+      a.partPct = a.jugados > 0 ? a.partPctAcum / a.jugados : 0;
       a.gPorPJ = a.jugados > 0 ? a.goles / a.jugados : 0;
       a.aPorPJ = a.jugados > 0 ? a.asistencias / a.jugados : 0;
       a.pctArco = a.remates > 0 ? (a.rematesArco / a.remates) * 100 : 0;
@@ -414,6 +426,7 @@ export default function ResumenPlantel() {
     { k: 'ing', t: 'ING', g: 'part', num: p => p.ingresos, r: p => p.ingresos },
     { k: 'min', t: 'MIN', g: 'part', num: p => p.minutos, r: p => p.minutos },
     { k: 'pmin', t: '%MIN', g: 'part', num: p => p.pctMin, r: p => p.citados ? p.pctMin.toFixed(0) + '%' : '-' },
+    { k: 'part', t: 'PART%', g: 'part', num: p => p.partPct, r: p => p.jugados ? p.partPct.toFixed(0) + '%' : '-' },
     { k: 'g', t: 'G', g: 'of', num: p => p.goles, r: p => p.goles },
     { k: 'gpj', t: 'G/PJ', g: 'of', num: p => p.gPorPJ, r: p => p.jugados ? p.gPorPJ.toFixed(2) : '-' },
     { k: 'xg', t: 'xG', g: 'of', num: p => p.xg, r: p => p.xg.toFixed(1) },
@@ -541,6 +554,7 @@ export default function ResumenPlantel() {
       { header: 'Titular', fn: p => p.titularidades },
       { header: 'Ingresos', fn: p => p.ingresos },
       { header: 'Minutos', fn: p => p.minutos },
+      { header: 'Participacion %', fn: p => p.partPct.toFixed(1) },
       { header: 'PctMinutos', fn: p => p.citados ? p.pctMin : 0 },
 
       // OFENSIVA
@@ -872,7 +886,7 @@ export default function ResumenPlantel() {
 /* ---------- glosario de columnas (para el botón !) ---------- */
 const GLOSARIO = [
   { g: 'id', items: [['#', 'Dorsal'], ['POS', 'Posición'], ['CAT', 'Categoría a la que pertenece']] },
-  { g: 'part', items: [['CIT', 'Partidos en los que fue citado (está en la planilla)'], ['PJ', 'Partidos jugados (tuvo minutos)'], ['TIT', 'Veces que arrancó de titular'], ['ING', 'Veces que ingresó de cambio'], ['MIN', 'Minutos totales jugados'], ['%MIN', '% de minutos sobre los partidos disponibles (citados × 40′)']] },
+  { g: 'part', items: [['CIT', 'Partidos en los que fue citado (está en la planilla)'], ['PJ', 'Partidos jugados (tuvo minutos)'], ['TIT', 'Veces que arrancó de titular'], ['ING', 'Veces que ingresó de cambio'], ['MIN', 'Minutos totales jugados'], ['%MIN', '% de minutos sobre los partidos disponibles (citados × 40′)'], ['PART%', 'Participación: % promedio de las acciones del partido que ocurrieron con el jugador en cancha. No depende del cronómetro.']] },
   { g: 'of', items: [['G', 'Goles'], ['G/PJ', 'Goles por partido jugado'], ['xG', 'Goles esperados: la calidad de sus remates'], ['G-xG', 'Goles menos xG (+ define de más, − de menos)'], ['REM', 'Remates totales'], ['%ARCO', '% de remates que fueron al arco'], ['OC.F', 'Ocasiones falladas'], ['A', 'Asistencias'], ['A/PJ', 'Asistencias por partido jugado'], ['PC', 'Pases clave']] },
   { g: 'lu', items: [['REC', 'Recuperaciones'], ['PERD', 'Pérdidas'], ['OFE%', '% de duelos ofensivos ganados (con pelota)'], ['DEF%', '% de duelos defensivos ganados (con pelota)'], ['OFE-i%', '% de duelos ofensivos indirectos ganados (sin pelota)'], ['DEF-i%', '% de duelos defensivos indirectos ganados (sin pelota)']] },
   { g: 'dis', items: [['FC', 'Faltas cometidas'], ['FR', 'Faltas recibidas'], ['🟨', 'Tarjetas amarillas'], ['🟥', 'Tarjetas rojas'], ['SANC', 'Fechas de sanción pendientes']] },

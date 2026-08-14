@@ -14,6 +14,71 @@ import { calcularCadenasValor } from '../analytics/posesiones';
    Escala wellness 1-5 (real, sale de CargaWellness): sueño alto = bueno;
    estrés/fatiga/dolor altos = malo. Tarjetas viven en `eventos`.
 ============================================================================ */
+/* ============================================================================
+   VERSIÓN Y NOVEDADES
+   El popup se muestra una sola vez por versión: al aceptar se guarda
+   VERSION_ACTUAL en localStorage y no vuelve hasta el próximo release.
+   Para publicar novedades: subí VERSION_ACTUAL y editá NOVEDADES_VERSION.
+============================================================================ */
+const VERSION_ACTUAL = 'v0.00202608141258';
+const LS_VERSION_VISTA = 'vc_version_novedades_vista';
+
+const NOVEDADES_TITULO = 'Integridad de Datos en Vivo';
+const NOVEDADES_BAJADA = 'Cronómetro reescrito, registro a prueba de cortes de señal, playstyles por jugador y análisis por rueda.';
+
+const NOVEDADES_VERSION = [
+  {
+    grupo: 'Toma de Datos en Vivo',
+    color: '#00ff88',
+    items: [
+      { t: 'Nada se pierde sin señal', d: 'Si se corta internet, el evento queda guardado en el dispositivo y se sube solo cuando vuelve la conexión.' },
+      { t: 'Cronómetro que no se atrasa', d: 'Mide tiempo real en vez de contar ticks: ya no pierde minutos con la pantalla apagada o la app en segundo plano.' },
+      { t: 'El reloj sobrevive a un cierre', d: 'Si recargás o se cierra la app en el entretiempo, el cronómetro vuelve donde lo dejaste.' },
+      { t: 'Reloj independiente por tiempo', d: 'El PT y el ST llevan su propio acumulado; ya no se arrastra el minuto de un período al otro.' },
+      { t: 'Origen del tiro + modificadores juntos', d: 'Ahora podés marcar cómo se gestó el remate Y sumarle 2do palo, mano a mano, bajo presión, etc. en el mismo registro.' },
+      { t: 'Aviso de pausa automático', d: 'Después de un gol, falta o tarjeta te ofrece pausar el reloj con un toque.' },
+      { t: 'Confirmación al salir', d: 'Avisa antes de cerrar la pestaña si el reloj está corriendo o quedan eventos sin subir.' },
+    ],
+  },
+  {
+    grupo: 'Correcciones de Datos',
+    color: '#ef4444',
+    items: [
+      { t: 'Goles recibidos por arquero', d: 'Se atribuyen remate a remate según quién estaba en cancha. Antes cada arquero cargaba con todos los goles del partido y los totales no cerraban.' },
+      { t: 'Partidos jugados más precisos', d: 'Se eliminó el mínimo artificial de 1 minuto que sumaba PJ a jugadores que no habían entrado.' },
+      { t: 'Fixture y Nuevo Partido conectados', d: 'Los partidos creados desde el fixture de un torneo ya aparecen en la pantalla de Nuevo Partido.' },
+      { t: 'Coordenadas sin contaminación', d: 'El motor de análisis ya no pisa los datos entre pantallas cuando hubo cambio de lado en el segundo tiempo.' },
+    ],
+  },
+  {
+    grupo: 'Perfil del Jugador',
+    color: '#a855f7',
+    items: [
+      { t: 'Playstyles', d: 'Detecta rasgos dominantes de cada jugador: Goleador, Finalizador, Asistidor, Creador, Recuperador, Motor, Muro, Amuleto y más.' },
+      { t: 'Resultados con él en cancha', d: 'PG/PE/PP, porcentaje de victorias, puntos por partido y goles a favor/en contra en los partidos que jugó.' },
+      { t: 'Participación', d: 'Nueva métrica: qué porcentaje de las acciones del partido ocurrieron con el jugador adentro. No depende del cronómetro.' },
+    ],
+  },
+  {
+    grupo: 'Torneos y Plantel',
+    color: '#0ea5e9',
+    items: [
+      { t: 'Primera y Segunda Rueda', d: 'Configurá dónde corta cada rueda y filtrá la tabla de posiciones, las métricas, la racha y el fixture por rueda.' },
+      { t: 'Racha de 5 o 10 partidos', d: 'El Estado de Forma ahora se puede ver en ventana de 5 o 10, con puntos sacados, efectividad y goles del tramo.' },
+      { t: 'Solo Mi Equipo en el fixture', d: 'Un botón para filtrar de una tus partidos entre todos los cruces del torneo.' },
+      { t: 'Ruedas en Resumen del Plantel', d: 'Las estadísticas del plantel también se pueden dividir por Primera o Segunda Rueda.' },
+      { t: 'Columna PART%', d: 'Participación promedio de cada jugador, disponible en la tabla y en la exportación a CSV.' },
+    ],
+  },
+  {
+    grupo: 'Análisis de Partido',
+    color: '#fbbf24',
+    items: [
+      { t: 'Duelos separados en el Mapa de Calor', d: 'Se reemplazó el filtro genérico por cuatro: duelos ofensivos y defensivos, ganados y perdidos.' },
+    ],
+  },
+];
+
 const UMBRAL_AMARILLAS = 5;                                   // 5,10,15... => 1 fecha
 const WELL = { suenoRojo: 2, fatigaRoja: 4, estresRojo: 4, dolorRojo: 4 };
 
@@ -239,6 +304,19 @@ export default function Inicio() {
 
   const [categoriaActiva, setCategoriaActiva] = useState(localStorage.getItem('dash_categoria') || '');
   const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
+
+  /* ---- POPUP DE NOVEDADES DE VERSIÓN ---- */
+  const [mostrarNovedadesVersion, setMostrarNovedadesVersion] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(LS_VERSION_VISTA) !== VERSION_ACTUAL) setMostrarNovedadesVersion(true);
+    } catch (e) { /* modo privado / storage bloqueado: no molestamos */ }
+  }, []);
+
+  const aceptarNovedadesVersion = () => {
+    try { localStorage.setItem(LS_VERSION_VISTA, VERSION_ACTUAL); } catch (e) { /* ignorado */ }
+    setMostrarNovedadesVersion(false);
+  };
 
   const [cargando, setCargando] = useState(true);
   const [modoEdicion, setModoEdicion] = useState(false);
@@ -864,6 +942,61 @@ export default function Inicio() {
           </div>
           {layout.length === 0 && <div style={{ textAlign: 'center', padding: 40 }}><p style={{ color: 'var(--text-dim)' }}>No hay módulos activos. Tocá <strong>⚙️ Editar</strong> y prendé los que quieras.</p></div>}
         </>
+      )}
+
+      {/* MODAL NOVEDADES DE VERSIÓN */}
+      {mostrarNovedadesVersion && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.92)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3500, padding: esMovil ? 12 : 20 }}>
+          <div style={{ background: '#0d0d0d', border: '1px solid var(--accent)', borderRadius: 10, maxWidth: 640, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.3s', boxShadow: '0 10px 50px rgba(0,0,0,0.9)' }}>
+
+            {/* Encabezado */}
+            <div style={{ padding: esMovil ? '22px 20px 16px' : '30px 30px 20px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', padding: '6px 12px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 900, letterSpacing: '1px', border: '1px solid rgba(0,255,136,0.3)', fontFamily: 'JetBrains Mono, monospace' }}>
+                {VERSION_ACTUAL.toUpperCase()}
+              </span>
+              <h2 style={{ color: '#fff', marginTop: 18, marginBottom: 6, fontSize: esMovil ? '1.25rem' : '1.6rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                {NOVEDADES_TITULO}
+              </h2>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.82rem', margin: 0, lineHeight: 1.5 }}>
+                {NOVEDADES_BAJADA}
+              </p>
+            </div>
+
+            {/* Listado */}
+            <div style={{ padding: esMovil ? '18px 18px 6px' : '22px 30px 10px', overflowY: 'auto', flex: 1 }}>
+              {NOVEDADES_VERSION.map((bloque) => (
+                <div key={bloque.grupo} style={{ marginBottom: 22 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <span style={{ width: 3, height: 14, background: bloque.color, borderRadius: 2 }} />
+                    <span style={{ color: bloque.color, fontSize: '0.68rem', fontWeight: 900, letterSpacing: '0.09em', textTransform: 'uppercase' }}>
+                      {bloque.grupo}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {bloque.items.map((it) => (
+                      <div key={it.t} style={{ paddingLeft: 11, borderLeft: `1px solid ${bloque.color}33` }}>
+                        <div style={{ color: 'var(--text)', fontSize: '0.85rem', fontWeight: 700, marginBottom: 2 }}>{it.t}</div>
+                        <div style={{ color: 'var(--text-dim)', fontSize: '0.76rem', lineHeight: 1.5 }}>{it.d}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pie */}
+            <div style={{ padding: esMovil ? '12px 18px 18px' : '16px 30px 24px', borderTop: '1px solid var(--border)' }}>
+              <button
+                onClick={aceptarNovedadesVersion}
+                className="btn-action"
+                style={{ width: '100%', background: 'var(--accent)', color: '#000', fontWeight: 900, padding: 14, border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.9rem', letterSpacing: '0.04em' }}
+              >
+                ENTENDIDO, A LA CANCHA
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
 
       {/* MODAL QR */}

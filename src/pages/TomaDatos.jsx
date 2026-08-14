@@ -33,6 +33,17 @@ function TomaDatos() {
      cierre de la app en el entretiempo no borra el reloj.
      ─────────────────────────────────────────────────────────────────── */
   const [acumPeriodo, setAcumPeriodo] = useState({ PT: 0, ST: 0 });
+
+  /* ── COLA OFFLINE ────────────────────────────────────────────────────
+     Todo evento se pinta en pantalla al instante y se intenta subir. Si la
+     red falla, queda en una cola en localStorage y se reintenta solo (cada
+     15s, al volver la conexión y al reabrir el partido). Nada se pierde. */
+  const [pendientes, setPendientes] = useState([]);
+  const [sincronizando, setSincronizando] = useState(false);
+  const colaKey = partido?.id ? `vc_cola_eventos_${partido.id}` : null;
+
+  /* Sugerencia de pausa tras acciones que detienen el juego */
+  const [sugerirPausa, setSugerirPausa] = useState(false);
   const anclaRef = useRef(null);
   const cronoRestauradoRef = useRef(false);
   const cronoKey = partido?.id ? `vc_crono_${partido.id}` : null;
@@ -223,6 +234,125 @@ function TomaDatos() {
     cargarDatos();
   }, [partido]);
 
+  /* ── Helpers de la cola ── */
+  const leerCola = () => {
+    if (!colaKey) return [];
+    try { return JSON.parse(localStorage.getItem(colaKey) || '[]'); } catch { return []; }
+  };
+  const escribirCola = (arr) => {
+    if (!colaKey) return;
+    try { localStorage.setItem(colaKey, JSON.stringify(arr)); } catch (e) { console.warn('Cola llena', e); }
+    setPendientes(arr);
+  };
+  const limpiarPayload = (ev) => {
+    const { _localId, _pendiente, ...limpio } = ev;
+    return limpio;
+  };
+
+  /* Al abrir el partido, recuperamos lo que haya quedado sin subir */
+  useEffect(() => {
+    if (!colaKey) return;
+    const cola = leerCola();
+    if (cola.length === 0) return;
+    setPendientes(cola);
+    setEventos(prev => {
+      const yaEstan = new Set(prev.map(e => e.id));
+      const faltantes = cola.filter(e => !yaEstan.has(e._localId));
+      return [...prev, ...faltantes.map(e => ({ ...e, id: e._localId, _pendiente: true }))];
+    });
+    showToast(`${cola.length} evento(s) sin sincronizar recuperados. Reintentando...`, 'warning');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colaKey]);
+
+  /* Sincronizador: sube todo lo pendiente en un solo insert */
+  const sincronizarCola = async (silencioso = true) => {
+    if (!colaKey || sincronizando) return;
+    const cola = leerCola();
+    if (cola.length === 0) return;
+
+    setSincronizando(true);
+    try {
+      const { data, error } = await supabase.from('eventos').insert(cola.map(limpiarPayload)).select();
+      if (error || !data) throw error || new Error('sin datos');
+
+      const localIds = new Set(cola.map(e => e._localId));
+      setEventos(prev => [...prev.filter(e => !localIds.has(e.id)), ...data]);
+      escribirCola([]);
+      showToast(`${data.length} evento(s) sincronizado(s).`, 'success');
+    } catch (e) {
+      if (!silencioso) showToast('Todavía no hay conexión. Los eventos siguen guardados.', 'warning');
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  /* Reintento automático: cada 15s y cuando vuelve la conexión */
+  useEffect(() => {
+    if (pendientes.length === 0) return;
+    const id = setInterval(() => sincronizarCola(true), 15000);
+    const alVolverRed = () => sincronizarCola(true);
+    window.addEventListener('online', alVolverRed);
+    return () => { clearInterval(id); window.removeEventListener('online', alVolverRed); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendientes.length, colaKey, sincronizando]);
+
+  /* ── PUNTO ÚNICO DE GUARDADO ──
+     Pinta primero, sube después. Si falla, encola. Nunca tira el evento. */
+  const guardarEventos = async (payloads, mensajeOk = null) => {
+    const lista = (Array.isArray(payloads) ? payloads : [payloads]).filter(Boolean);
+    if (lista.length === 0) return { ok: true, encolados: false };
+
+    const marcados = lista.map((ev, i) => ({
+      ...ev,
+      _localId: `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${i}`
+    }));
+
+    // 1) Optimista: se ve en pantalla ya mismo
+    setEventos(prev => [...prev, ...marcados.map(e => ({ ...e, id: e._localId, _pendiente: true }))]);
+
+    // 2) Intento de subida
+    try {
+      const { data, error } = await supabase.from('eventos').insert(marcados.map(limpiarPayload)).select();
+      if (error || !data) throw error || new Error('sin datos');
+
+      const localIds = new Set(marcados.map(e => e._localId));
+      setEventos(prev => [...prev.filter(e => !localIds.has(e.id)), ...data]);
+      if (mensajeOk) showToast(mensajeOk, 'success');
+      return { ok: true, encolados: false };
+    } catch (e) {
+      // 3) Falló: a la cola. El evento YA está en pantalla, no se pierde.
+      escribirCola([...leerCola(), ...marcados]);
+      showToast('Sin conexión: el evento quedó guardado y se sube solo.', 'warning');
+      return { ok: false, encolados: true };
+    }
+  };
+
+  /* Acciones que detienen el juego: ofrecemos pausar el reloj */
+  const proponerPausa = (accionRegistrada = '') => {
+    const detiene = /Gol|Falta|Tarjeta|Penal/i.test(accionRegistrada);
+    if (detiene && relojCorriendo) setSugerirPausa(true);
+  };
+
+  /* La sugerencia de pausa se apaga sola a los 10s o si ya pausaste */
+  useEffect(() => {
+    if (!sugerirPausa) return;
+    if (!relojCorriendo) { setSugerirPausa(false); return; }
+    const id = setTimeout(() => setSugerirPausa(false), 10000);
+    return () => clearTimeout(id);
+  }, [sugerirPausa, relojCorriendo]);
+
+  /* Aviso al cerrar/recargar con el reloj andando o con eventos sin subir */
+  useEffect(() => {
+    const alSalir = (e) => {
+      if (!relojCorriendo && pendientes.length === 0) return;
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', alSalir);
+    return () => window.removeEventListener('beforeunload', alSalir);
+  }, [relojCorriendo, pendientes.length]);
+
   const deshacerUltimaAccion = async () => {
     if (eventos.length === 0) return;
     const ultimoEvento = eventos[eventos.length - 1];
@@ -370,7 +500,7 @@ function TomaDatos() {
   };
 
   const sumarFaltaVentaja = async (equipoInfractor) => {
-    const quintetoActual = jugadoresEnCancha.map(j => j.id);
+    const quintetoActual = jugadoresEnCancha.map(j => String(j.id));
     const evento = {
       club_id: clubId, 
       id_partido: partido.id,
@@ -383,13 +513,8 @@ function TomaDatos() {
       contexto_juego: contextoJuego
     };
     
-    const { data: eventosGuardados, error } = await supabase.from('eventos').insert([evento]).select();
-    if (!error && eventosGuardados) {
-      setEventos(prev => [...prev, ...eventosGuardados]);
-      showToast(`Ley de ventaja registrada (${equipoInfractor})`, "info");
-    } else {
-      showToast("Error al registrar falta", "error");
-    }
+    await guardarEventos([evento], `Ley de ventaja registrada (${equipoInfractor})`);
+    proponerPausa('Falta');
   };
 
   const guardarEventoRapido = async (equipoSeleccionado) => {
@@ -399,7 +524,7 @@ function TomaDatos() {
       dbX = 100 - dbX;
       dbY = 100 - dbY;
     }
-    const quintetoActual = jugadoresEnCancha.map(j => j.id);
+    const quintetoActual = jugadoresEnCancha.map(j => String(j.id));
     const evento = {
       club_id: clubId, 
       id_partido: partido.id,
@@ -414,16 +539,11 @@ function TomaDatos() {
     };
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
-    const { data: eventosGuardados, error } = await supabase.from('eventos').insert([evento]).select();
-    if (!error && eventosGuardados) {
-      setEventos(prev => [...prev, ...eventosGuardados]);
-    } else {
-      showToast("Error de red al guardar el evento rápido.", "error");
-    }
+    await guardarEventos([evento]);
   };
 
   const guardarEventoFinal = async (jugadorId) => {
-    const quintetoActual = jugadoresEnCancha.map(j => j.id);
+    const quintetoActual = jugadoresEnCancha.map(j => String(j.id));
     
     const esRemate = accion.includes('Remate') || accion === 'Gol' || accion === 'Ocasión Fallada';
 
@@ -481,13 +601,9 @@ function TomaDatos() {
         setPanelLateral({ activo: false, x: 0, y: 0 });
         setPasoRegistro(1);
 
-        const { data: guardados, error: errRoja } = await supabase.from('eventos').insert([rojaDobleAmarilla]).select();
-        if (!errRoja && guardados) {
-          setEventos(prev => [...prev, ...guardados]);
-          showToast("🟥 Doble amarilla → ROJA. Jugador expulsado, jugás con 4.", "warning");
-        } else {
-          showToast("Error al registrar la doble amarilla.", "error");
-        }
+        await guardarEventos([rojaDobleAmarilla]);
+        showToast("🟥 Doble amarilla → ROJA. Jugador expulsado, jugás con 4.", "warning");
+        proponerPausa('Tarjeta');
         return; // corta el flujo normal: no se inserta una 2da amarilla
       }
     }
@@ -549,13 +665,8 @@ function TomaDatos() {
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
     
-    const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
-    
-    if (!error && eventosGuardados) {
-      setEventos(prev => [...prev, ...eventosGuardados]);
-    } else {
-      showToast("Error de red al guardar el evento.", "error");
-    }
+    await guardarEventos(eventosAInsertar);
+    proponerPausa(accion);
   };
 
   const finalizarRegistroRemate = async (origenContexto) => {
@@ -565,7 +676,7 @@ function TomaDatos() {
       dbX = 100 - dbX;
       dbY = 100 - dbY;
     }
-    const quintetoActual = jugadoresEnCancha.map(j => j.id);
+    const quintetoActual = jugadoresEnCancha.map(j => String(j.id));
     const eventosAInsertar = [];
     
     const origenFinal = [origenContexto, ...modificadoresRemate].filter(Boolean).join(' | ');
@@ -618,13 +729,8 @@ function TomaDatos() {
     setModificadoresRemate([]);
     setOrigenRemate(null);
 
-    const { data: eventosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
-    if (!error && eventosGuardados) {
-      setEventos(prev => [...prev, ...eventosGuardados]);
-      showToast(esGol ? "¡Gol registrado en la base de datos!" : "Acción registrada", "success");
-    } else {
-      showToast("Error de red al guardar el evento.", "error");
-    }
+    await guardarEventos(eventosAInsertar, esGol ? "¡Gol registrado!" : "Acción registrada");
+    proponerPausa(accion);
   };
 
   const cancelarRegistro = () => {
@@ -640,6 +746,13 @@ function TomaDatos() {
   const eliminarEvento = async (idEvento) => {
     const eventoBackup = eventos.find(e => e.id === idEvento);
     if (!eventoBackup) return;
+
+    // Evento que todavía no llegó a la base: se borra sólo de la cola local
+    if (typeof idEvento === 'string' && idEvento.startsWith('tmp_')) {
+      setEventos(prev => prev.filter(e => e.id !== idEvento));
+      escribirCola(leerCola().filter(e => e._localId !== idEvento));
+      return;
+    }
     setEventos(prev => prev.filter(e => e.id !== idEvento));
     try {
       setIsDeleting(true);
@@ -708,7 +821,7 @@ function TomaDatos() {
       minuto: minuto, 
       segundos: segundos,
       id_receptor: jEntran[index]?.id || null, 
-      quinteto_activo: nuevosEnCancha.map(j => j.id),
+      quinteto_activo: nuevosEnCancha.map(j => String(j.id)),
       contexto_juego: contextoJuego
     }));
     
@@ -716,13 +829,7 @@ function TomaDatos() {
     setJugadoresEnBanco(nuevosEnBanco);
     
     if (eventosAInsertar.length > 0) {
-        const { data: cambiosGuardados, error } = await supabase.from('eventos').insert(eventosAInsertar).select();
-        if (cambiosGuardados && !error) {
-          setEventos(prev => [...prev, ...cambiosGuardados]);
-          showToast("Cambios registrados", "success");
-        } else {
-           showToast("Error al guardar el cambio", "error");
-        }
+        await guardarEventos(eventosAInsertar, "Cambios registrados");
     } else {
         showToast("Equipo completado (Sanción cumplida)", "success");
     }
@@ -976,6 +1083,38 @@ function TomaDatos() {
               </button>
             )}
             
+            {pendientes.length > 0 && (
+              <button
+                onClick={() => sincronizarCola(false)}
+                title="Reintentar la subida ahora"
+                style={{
+                  background: 'rgba(245,158,11,0.15)', border: '1px solid #f59e0b', color: '#f59e0b',
+                  borderRadius: '4px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 800,
+                  cursor: 'pointer', whiteSpace: 'nowrap'
+                }}
+              >
+                {sincronizando ? '⟳ SUBIENDO...' : `⚠ ${pendientes.length} SIN SUBIR`}
+              </button>
+            )}
+
+            {sugerirPausa && relojCorriendo && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(14,165,233,0.15)', border: '1px solid #0ea5e9', borderRadius: '4px', padding: '4px 6px' }}>
+                <button
+                  onClick={() => { toggleReloj(); setSugerirPausa(false); }}
+                  style={{ background: '#0ea5e9', border: 'none', color: '#000', borderRadius: '3px', padding: '5px 9px', fontSize: '0.65rem', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  ⏸ ¿PAUSAR?
+                </button>
+                <button
+                  onClick={() => setSugerirPausa(false)}
+                  title="Seguir sin pausar"
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 2px' }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <div style={relojContainer}>
               <button onClick={toggleReloj} style={btnPlay} title={relojCorriendo ? 'Pausar' : 'Iniciar'}>{relojCorriendo ? '⏸' : '▶'}</button>
               
@@ -1139,7 +1278,10 @@ function TomaDatos() {
                   return (
                     <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', padding: '10px', borderRadius: '4px' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold' }}>{ev.periodo} {ev.minuto}' <span style={{color: '#666'}}>({ev.contexto_juego || '5v5'})</span></div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 'bold' }}>
+                          {ev.periodo} {ev.minuto}' <span style={{color: '#666'}}>({ev.contexto_juego || '5v5'})</span>
+                          {ev._pendiente && <span title="Todavía no subido: se sincroniza solo" style={{ color: '#f59e0b', marginLeft: '6px' }}>⚠</span>}
+                        </div>
                         <div style={{ fontSize: '0.85rem', color: getColorAccion(ev.accion), fontWeight: 'bold' }}>{labelAccion}</div>
                         <div style={{ fontSize: '0.75rem', color: '#ccc' }}>{nombreJugador} ({ev.equipo})</div>
                       </div>

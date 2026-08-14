@@ -777,7 +777,11 @@ return 'Todas';
       .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
       .map(j => {
         const pm = datosProcesados.plusMinusJugador ? (datosProcesados.plusMinusJugador[j.id] || 0) : 0;
-        const mins = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
+        // Los minutos ya no tienen piso artificial de 1'. Si el reloj no aportó
+        // nada, caemos al equivalente derivado de la participación en cancha.
+        const minsReloj = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
+        const partJ = datosProcesados.participacion ? datosProcesados.participacion[String(j.id)] : null;
+        const mins = minsReloj > 0 ? minsReloj : (partJ?.minutosEquivalentes || 0);
         const eventosParaRating = [...j.eventos];
         evFiltrados.forEach(ev => {
           if (ev.id_asistencia == j.id && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {

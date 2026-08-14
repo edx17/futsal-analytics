@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { analizarPartido, calcularMinutosPorJugador } from '../analytics/engine'; 
+import { analizarPartido, calcularMinutosPorJugador, calcularParticipacion } from '../analytics/engine'; 
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
 import { calcularCadenasValor } from '../analytics/posesiones';
@@ -633,6 +633,8 @@ function JugadorPerfil() {
     let xgBuildup = 0;
     let plusMinus = 0;
     let minutos = 0;
+    let participacionAcum = 0;
+    let partidosConParticipacion = 0;
     let transicionesInvolucrado = 0;
     
     let rivalStats = { Gol: 0, Atajado: 0, Desviado: 0, Rebatido: 0, Palo: 0 };
@@ -672,7 +674,17 @@ function JugadorPerfil() {
 
         const analisis = analizarPartido(evsPartido, 'Propio', false);
         const minsPorJugador = calcularMinutosPorJugador(evsPartido);
+        const { participacion: partPartido } = calcularParticipacion(evsPartido);
+        const partJugador = partPartido[String(jugadorId)] || null;
         let minsPartido = minsPorJugador[jugadorId] || minsPorJugador[Number(jugadorId)] || 0;
+
+        // Participación relativa: % de acciones del partido con él en cancha.
+        // No depende del cronómetro, así que es el respaldo cuando el reloj falla.
+        if (partJugador?.presente) {
+          participacionAcum += partJugador.pct;
+          partidosConParticipacion++;
+          if (minsPartido === 0) minsPartido = partJugador.minutosEquivalentes || 0;
+        }
 
         if (analisis) {
           posesionesTotales = [...posesionesTotales, ...analisis.posesiones];
@@ -898,6 +910,7 @@ function JugadorPerfil() {
       xgEnContra: xgEnContraFinal, golesPrevenidos, totalAtajadas, totalGolesRecibidos,
       contextoGoles, contextoRecuperaciones, impactoTimeline,
       record, playstyles,
+      participacionPromedio: partidosConParticipacion > 0 ? (participacionAcum / partidosConParticipacion) : 0,
       vacio: false 
     };
   }, [eventos, eventosCompletos, eventosPartidoExtra, partidoFiltro, torneoFiltro, jugadorId, jugadorSeleccionado, partidosDelTorneo, jugadores, sanciones]);
@@ -1349,7 +1362,7 @@ function JugadorPerfil() {
                     Todavía no hay partidos finalizados con resultado cargado.
                   </div>
                 ) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(7, 1fr)', gap: '12px' }}>
                     {[
                       { label: 'PG', val: perfil.record.pg, color: '#00ff88' },
                       { label: 'PE', val: perfil.record.pe, color: '#fbbf24' },
@@ -1357,6 +1370,7 @@ function JugadorPerfil() {
                       { label: '% VICTORIAS', val: `${perfil.record.pctVictorias.toFixed(0)}%`, color: perfil.record.pctVictorias >= 50 ? '#00ff88' : '#ef4444' },
                       { label: 'PTS/PARTIDO', val: perfil.record.ptsPorPartido.toFixed(2), color: '#0ea5e9' },
                       { label: 'GF:GC', val: `${perfil.record.gf}:${perfil.record.gc}`, color: 'rgba(255,255,255,0.75)' },
+                      { label: 'PARTICIPACIÓN', val: `${perfil.participacionPromedio.toFixed(0)}%`, color: '#a855f7' },
                     ].map((m, i) => (
                       <div key={i} style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
                         <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', fontWeight: 700 }}>{m.label}</div>

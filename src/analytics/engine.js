@@ -12,7 +12,12 @@ const obtenerMicroZona = (x, y) => {
 };
 
 export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = false) {
-  const evSeguros = Array.isArray(eventos) ? eventos : [];
+  /* IMPORTANTE: trabajamos sobre COPIAS.
+     Antes escribíamos zona_x_norm / zona_y_norm sobre los objetos recibidos,
+     que son los mismos que viven en el estado de React y que comparten varias
+     pantallas. Si una llamada usaba huboCambioDeLado=true y otra false, la
+     segunda leía coordenadas ya invertidas por la primera. */
+  const evSeguros = (Array.isArray(eventos) ? eventos : []).map(ev => ({ ...ev }));
 
   const diccionarios = {
     porEquipo: { propio: [], rival: [] },
@@ -24,7 +29,7 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
   const abpMicroZonas = {};
 
   evSeguros.forEach((ev, index) => {
-    // Normalización de coordenadas
+    // Normalización de coordenadas (sobre la copia, no sobre el evento original)
     if (huboCambioDeLado && ev.periodo === 'ST' && ev.zona_x !== undefined) {
       ev.zona_x_norm = 100 - ev.zona_x;
       ev.zona_y_norm = 100 - ev.zona_y;
@@ -222,6 +227,7 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
   });
 
   const minutosJugados = calcularMinutosPorJugador(evSeguros);
+  const { participacion, totalEventos } = calcularParticipacion(evSeguros);
 
   const quintetos = Object.values(trackingQuintetos)
     .map(q => {
@@ -241,7 +247,8 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
 
   return {
     posesiones, xgPropio, xgRival, transiciones, gridPropio, gridRival, 
-    duelos, insights, quintetos, plusMinusJugador, minutosJugados, diccionarios, abpMicroZonas
+    duelos, insights, quintetos, plusMinusJugador, minutosJugados, diccionarios, abpMicroZonas,
+    participacion, totalEventos
   };
 }
 
@@ -330,12 +337,80 @@ export function calcularMinutosPorJugador(eventos = []) {
     minJugados[id] = (minJugados[id] || 0) + Math.max(0, finPartido - entradas[id]);
   });
   
+  /* Antes se forzaba un mínimo de 1' a todo el que apareciera en el mapa, y
+     como aguas abajo `jugó = minutos > 0`, eso inflaba los PJ. Ahora el 0 se
+     respeta: si querés saber si pisó la cancha, usá calcularParticipacion(),
+     que no depende del reloj. */
   Object.keys(minJugados).forEach(id => {
     minJugados[id] = Math.round(minJugados[id]);
-    if (minJugados[id] === 0) {
-       minJugados[id] = 1; 
-    }
   });
   
   return minJugados;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PARTICIPACIÓN RELATIVA
+
+   Alternativa a los minutos que NO depende del cronómetro: qué porcentaje
+   de los eventos del partido ocurrieron con el jugador dentro de la cancha.
+   Se reconstruye desde `quinteto_activo` (fuente principal) y desde los
+   eventos de cambio (respaldo), que son datos duros del registro.
+
+   Devuelve por jugador:
+     - eventos:  cantidad de eventos del partido con él en cancha
+     - pct:      ese número sobre el total de eventos (0-100)
+     - presente: si pisó la cancha en algún momento
+     - minutosEquivalentes: pct proyectado sobre `duracionPartido` (default 40')
+   ══════════════════════════════════════════════════════════════════════ */
+export function calcularParticipacion(eventos = [], duracionPartido = 40) {
+  const evs = Array.isArray(eventos) ? eventos : [];
+
+  const parseQuinteto = (qa) => {
+    if (!qa) return [];
+    if (Array.isArray(qa)) return qa.map(String);
+    if (typeof qa === 'string') {
+      try {
+        const j = JSON.parse(qa);
+        return Array.isArray(j) ? j.map(String) : [];
+      } catch (e) {
+        return qa.split(',').map(id => String(id).trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
+
+  const primero = evs.find(e => e.quinteto_activo && e.quinteto_activo.length > 0);
+  let enCancha = new Set(primero ? parseQuinteto(primero.quinteto_activo) : []);
+
+  const conteo = {};
+  let total = 0;
+
+  evs.forEach(ev => {
+    const q = parseQuinteto(ev.quinteto_activo);
+    if (q.length) {
+      enCancha = new Set(q);
+    } else {
+      const acc = ev.accion || '';
+      if (acc === 'Cambio Entra' && ev.id_jugador != null) enCancha.add(String(ev.id_jugador));
+      if ((acc === 'Cambio' || acc === 'Cambio Sale') && ev.id_jugador != null) enCancha.delete(String(ev.id_jugador));
+      if (acc === 'Cambio' && ev.id_receptor != null) enCancha.add(String(ev.id_receptor));
+      if (acc === 'Tarjeta Roja' && ev.id_jugador != null) enCancha.delete(String(ev.id_jugador));
+    }
+
+    total++;
+    enCancha.forEach(id => { conteo[id] = (conteo[id] || 0) + 1; });
+  });
+
+  const participacion = {};
+  Object.keys(conteo).forEach(id => {
+    const pct = total > 0 ? (conteo[id] / total) * 100 : 0;
+    participacion[id] = {
+      eventos: conteo[id],
+      pct: Number(pct.toFixed(1)),
+      presente: conteo[id] > 0,
+      minutosEquivalentes: Number(((pct / 100) * duracionPartido).toFixed(1))
+    };
+  });
+
+  return { participacion, totalEventos: total };
 }
