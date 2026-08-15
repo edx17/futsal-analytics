@@ -394,13 +394,29 @@ function JugadorPerfil() {
       const misPartidos = partidos.filter(p => plantillaIds(p).includes(String(jugadorId)));
       const idsMisPartidos = misPartidos.map(p => p.id);
 
-      // 2. Traer eventos directos del jugador
-      const { data: evsJugador } = await supabase
+      /* 2. Traer eventos directos del jugador.
+         OJO: Supabase/PostgREST corta en 1000 filas por defecto sin importar el
+         .limit() que se pida. Antes se pedía .limit(10000) y llegaban 1000, así
+         que remates, titularidades y todo el resto quedaban recortados sin aviso.
+         Hay que paginar con .range(), como ya hacen ResumenPlantel y Temporada. */
+      const traerPaginado = async (armarQuery) => {
+        const PAGINA = 1000;
+        let acumulado = [];
+        for (let p = 0; ; p++) {
+          const { data, error } = await armarQuery().range(p * PAGINA, p * PAGINA + PAGINA - 1);
+          if (error) { console.error('Error paginando eventos:', error.message); break; }
+          acumulado = acumulado.concat(data || []);
+          if (!data || data.length < PAGINA) break;
+          if (p > 200) break; // corte de seguridad
+        }
+        return acumulado;
+      };
+
+      const evsJugador = await traerPaginado(() => supabase
         .from('eventos').select('*')
         .or(`id_jugador.eq.${jugadorId},id_asistencia.eq.${jugadorId}`)
-        .order('id_partido', { ascending: false })
-        .limit(10000);
-        
+        .order('id_partido', { ascending: false }));
+
       setEventos(evsJugador || []);
 
       const idsEventos = (evsJugador || []).map(e => e.id_partido);
@@ -408,12 +424,18 @@ function JugadorPerfil() {
       const partidosIdsFinales = [...new Set([...idsMisPartidos, ...idsEventos])];
 
       if (partidosIdsFinales.length > 0) {
-        const { data: evsFull } = await supabase.from('eventos').select('*')
-          .in('id_partido', partidosIdsFinales)
-          .order('id_partido', { ascending: false })
-          .order('created_at', { ascending: true })
-          .limit(50000);
-        setEventosCompletos(evsFull || []);
+        // Mismo problema acá: sin paginar llegaban 1000 eventos de ~30 partidos.
+        // Además paginamos por lotes de partidos para no armar un IN gigante.
+        let evsFull = [];
+        for (let i = 0; i < partidosIdsFinales.length; i += 40) {
+          const lote = partidosIdsFinales.slice(i, i + 40);
+          const parcial = await traerPaginado(() => supabase.from('eventos').select('*')
+            .in('id_partido', lote)
+            .order('id_partido', { ascending: false })
+            .order('created_at', { ascending: true }));
+          evsFull = evsFull.concat(parcial);
+        }
+        setEventosCompletos(evsFull);
       } else {
         setEventosCompletos([]);
       }
@@ -816,6 +838,13 @@ function JugadorPerfil() {
     stats.pctMin = baseMin > 0 ? (minutos / baseMin) * 100 : 0;
     stats.gPorPJ = stats.jugados > 0 ? stats.goles / stats.jugados : 0;
     stats.aPorPJ = stats.jugados > 0 ? stats.asistencias / stats.jugados : 0;
+    /* Promedios por partido jugado: base estable, no depende del cronómetro */
+    const pjSeguro = Math.max(1, stats.jugados);
+    stats.pcPorPJ = stats.pasesClave / pjSeguro;
+    stats.remPorPJ = stats.remates / pjSeguro;
+    stats.gaPorPJ = (stats.goles + stats.asistencias) / pjSeguro;
+    stats.xgPorRemate = stats.remates > 0 ? stats.xG / stats.remates : 0;
+    stats.accionesPorPJ = accionesDirectas.length / pjSeguro;
     stats.pctArco = stats.remates > 0 ? ((stats.goles + stats.atajados) / stats.remates) * 100 : 0;
     stats.ofePct = stats.duelosOfeTotales > 0 ? (stats.duelosOfeGanados / stats.duelosOfeTotales) * 100 : 0;
     stats.defPct = stats.duelosDefTotales > 0 ? (stats.duelosDefGanados / stats.duelosDefTotales) * 100 : 0;
@@ -1427,14 +1456,15 @@ function JugadorPerfil() {
               {/* ────────── NUEVA TARJETA DE PARTICIPACIÓN GLOBAL ────────── */}
               <div className="bento-card jp-section">
                 <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '14px' }}>⏱️ PARTICIPACIÓN Y TIEMPO</div>
-                <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, 1fr)' : 'repeat(7, 1fr)', gap: '12px' }}>
                   {[
                     { label: 'CITADOS', val: perfil.stats.citados },
                     { label: 'PJ', val: perfil.partidosJugados },
                     { label: 'TITULAR', val: perfil.stats.titularidades },
                     { label: 'INGRESOS', val: perfil.stats.ingresos },
                     { label: 'MINUTOS', val: perfil.minutos, color: '#3b82f6' },
-                    { label: '% MINUTOS', val: `${perfil.stats.pctMin.toFixed(0)}%`, color: '#0ea5e9' }
+                    { label: '% MINUTOS', val: `${perfil.stats.pctMin.toFixed(0)}%`, color: '#0ea5e9' },
+                    { label: 'PART%', val: `${perfil.participacionPromedio.toFixed(0)}%`, color: '#a855f7' }
                   ].map((m, i) => (
                     <div key={i} style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
                       <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', fontWeight: 700 }}>{m.label}</div>
@@ -1563,7 +1593,9 @@ function JugadorPerfil() {
                       <StatRow label="% Remates al arco" value={`${perfil.stats.pctArco.toFixed(0)}%`} color="#0ea5e9" sub={`${perfil.stats.goles + perfil.stats.atajados} al arco`} />
                       <StatRow label="Ocasiones falladas" value={perfil.stats.ocasionesFalladas} color={perfil.stats.ocasionesFalladas > 2 ? '#ef4444' : 'var(--text-dim)'} />
                       <StatRow label="Asistencias a gol" value={perfil.stats.asistencias} color="#c084fc" sub={`A/PJ: ${perfil.stats.aPorPJ.toFixed(2)}`} />
-                      <StatRow label="Pases clave" value={perfil.stats.pasesClave} color="#c084fc" />
+                      <StatRow label="Pases clave" value={perfil.stats.pasesClave} color="#c084fc" sub={`${perfil.stats.pcPorPJ.toFixed(2)} por partido`} />
+                      <StatRow label="Remates por partido" value={perfil.stats.remPorPJ.toFixed(2)} sub={`${perfil.stats.xgPorRemate.toFixed(3)} xG por remate`} />
+                      <StatRow label="Participación en goles (G+A)" value={perfil.stats.goles + perfil.stats.asistencias} color="#00ff88" sub={`${perfil.stats.gaPorPJ.toFixed(2)} por partido`} />
                       
                       <div style={{ marginTop: '14px', padding: '12px', background: '#0a0a0a', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px', letterSpacing: '0.05em' }}>PERFIL DE REMATE</div>
@@ -1605,6 +1637,26 @@ function JugadorPerfil() {
                       <StatRow label="% Duelos OFE. Ganados (Con pelota)" value={`${perfil.stats.ofePct.toFixed(0)}%`} color="#c084fc" sub={`${perfil.stats.duelosOfeGanados}/${perfil.stats.duelosOfeTotales}`} />
                       <StatRow label="% Duelos DEF. Ganados (Con pelota)" value={`${perfil.stats.defPct.toFixed(0)}%`} color="#00ff88" sub={`${perfil.stats.duelosDefGanados}/${perfil.stats.duelosDefTotales}`} />
                       <StatRow label="% Duelos OFE. Indir. (Sin pelota)" value={`${perfil.stats.ofeIndPct.toFixed(0)}%`} color="#c084fc" sub={`${perfil.stats.duelOfeIndGan}/${perfil.stats.duelOfeIndTot}`} />
+
+                      <div style={{ marginTop: '14px', padding: '12px', background: '#0a0a0a', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', marginBottom: '10px', letterSpacing: '0.05em' }}>DISCIPLINA Y VOLUMEN</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', textAlign: 'center' }}>
+                          {[
+                            { label: 'F. COM', val: perfil.stats.faltasCometidas, color: '#f97316' },
+                            { label: 'F. REC', val: perfil.stats.faltasRecibidas, color: '#0ea5e9' },
+                            { label: '\u{1F7E8}', val: perfil.stats.amarillas, color: '#fbbf24' },
+                            { label: '\u{1F7E5}', val: perfil.stats.rojas, color: '#ef4444' },
+                          ].map(z => (
+                            <div key={z.label} style={{ padding: '8px 4px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
+                              <div style={{ color: z.color, fontWeight: 900, fontSize: '1.1rem', fontFamily: 'monospace' }}>{z.val}</div>
+                              <div style={{ color: 'rgba(255,255,255,0.3)', marginTop: '2px', fontSize: '0.6rem' }}>{z.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ marginTop: '10px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+                          {perfil.stats.accionesPorPJ.toFixed(1)} acciones registradas por partido
+                        </div>
+                      </div>
                       <StatRow label="% Duelos DEF. Indir. (Sin pelota)" value={`${perfil.stats.defIndPct.toFixed(0)}%`} color="#00ff88" sub={`${perfil.stats.duelDefIndGan}/${perfil.stats.duelDefIndTot}`} border={false} />
                     </div>
                   </div>
