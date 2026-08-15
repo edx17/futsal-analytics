@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 // IMPORTAMOS NOTIFICACIONES Y AUTH
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import ModalVideoRival from '../components/ModalVideoRival';
+import { fetchPaginado } from '../utils/supaPaginado';
 
 function ScoutingRivales() {
   const clubId = localStorage.getItem('club_id');
@@ -34,6 +36,16 @@ function ScoutingRivales() {
   const [historialRival, setHistorialRival] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
 
+  // Rival cuyo dossier de video esta abierto (null = cerrado) + la categoria
+  // con la que se abrio. Nunca se abre "para todas": el video de Primera y el de
+  // Tercera son material distinto y mezclarlos no sirve para nada.
+  const [rivalVideo, setRivalVideo] = useState(null);
+  const [categoriaVideo, setCategoriaVideo] = useState(categoriaInicial);
+
+  // Categoría activa en la GRILLA (fuera del modal de edición). Manda sobre el
+  // resumen de cada card y sobre el dossier de video que se abre desde ahí.
+  const [categoriaVista, setCategoriaVista] = useState(categoriaInicial);
+
   useEffect(() => {
     if (clubId) fetchRivales();
   }, [clubId]);
@@ -59,21 +71,37 @@ function ScoutingRivales() {
 
   const fetchHistorial = async (idRival) => {
     setCargandoHistorial(true);
-    let query = supabase
-      .from('partidos')
-      .select('*')
-      .eq('club_id', clubId)
-      .eq('rival_id', idRival)
-      .in('estado', ['Jugado', 'Finalizado']) 
-      .order('fecha', { ascending: false });
-    
-    // Si el usuario tiene categorías asignadas, solo traemos el historial de SUS categorías
-    if (misCategorias.length > 0) {
-      query = query.in('categoria', misCategorias);
-    }
+    // Paginado: el historial contra un rival puede pasar las 1000 filas que
+    // PostgREST devuelve como maximo (recorta sin avisar).
+    // El .order('id') secundario es el desempate que .range() necesita para no
+    // repetir ni saltear filas cuando hay fechas iguales.
+    const data = await fetchPaginado(() => {
+      let query = supabase
+        .from('partidos')
+        .select('*')
+        .eq('club_id', clubId)
+        .eq('rival_id', idRival)
+        .in('estado', ['Jugado', 'Finalizado'])
+        .order('fecha', { ascending: false })
+        .order('id', { ascending: false });
 
-    const { data } = await query;
-    if (data) setHistorialRival(data);
+      // Si el usuario tiene categorías asignadas, solo traemos el historial de SUS categorías
+      if (misCategorias.length > 0) {
+        query = query.in('categoria', misCategorias);
+      }
+      return query;
+    }).catch(() => []);
+
+    // Los cruces entre terceros del fixture tambien se guardan bajo tu club_id
+    // y con rival_id apuntando a uno de los dos equipos, asi que sin este filtro
+    // el H2H contaba partidos que nunca jugaste. Criterio: un partido es ajeno
+    // si el equipo de `nombre_propio` figura en tu tabla de rivales.
+    const nombresRivales = new Set(rivales.map(r => r.nombre).filter(Boolean));
+    const soloMios = (data || []).filter(p =>
+      !p.local_rival_id && (!p.nombre_propio || !nombresRivales.has(p.nombre_propio))
+    );
+
+    setHistorialRival(soloMios);
     setCargandoHistorial(false);
   };
 
@@ -165,7 +193,7 @@ function ScoutingRivales() {
   const abrirPerfilRival = (rival) => {
     setFormData(rival);
     setHistorialRival([]);
-    setCategoriaScouting(categoriaInicial);
+    setCategoriaScouting(categoriaVista);
     fetchHistorial(rival.id);
     setMostrarModal(true);
   };
@@ -210,10 +238,35 @@ function ScoutingRivales() {
         <button onClick={abrirNuevoRival} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem' }}>+ NUEVO RIVAL</button>
       </div>
 
+      {/* SELECTOR DE CATEGORÍA (manda sobre las cards Y sobre el dossier de video).
+          Antes esto sólo existía adentro del modal de edición, así que desde la
+          grilla no había forma de mirar el scouting de otra división. */}
+      {misCategorias.length > 1 && (
+        <div className="bento-card" style={{ marginBottom: '20px', padding: '15px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="stat-label" style={{ margin: 0, color: 'var(--text-dim)' }}>CATEGORÍA</div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {misCategorias.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoriaVista(cat)}
+                style={{
+                  padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 900,
+                  border: `1px solid ${categoriaVista === cat ? 'var(--accent)' : 'var(--border)'}`,
+                  background: categoriaVista === cat ? 'var(--accent)' : 'transparent',
+                  color: categoriaVista === cat ? '#000' : 'var(--text-dim)'
+                }}
+              >
+                {cat.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* --- CARDS DE RIVALES --- */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
         {rivales.map(rival => {
-          const tacticoResumen = rival.datos_tacticos?.[categoriaInicial] || {};
+          const tacticoResumen = rival.datos_tacticos?.[categoriaVista] || {};
           
           return (
             <div key={rival.id} onClick={() => abrirPerfilRival(rival)} className="bento-card" style={{ cursor: 'pointer', transition: '0.2s', position: 'relative', overflow: 'hidden' }}>
@@ -225,7 +278,7 @@ function ScoutingRivales() {
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed var(--border)', paddingTop: '10px', fontSize: '0.8rem' }}>
-                <div><span style={{ color: 'var(--text-dim)' }}>Sistema ({categoriaInicial}):</span> <strong style={{ color: 'var(--accent)' }}>{tacticoResumen.sistema_tactico || 'N/A'}</strong></div>
+                <div><span style={{ color: 'var(--text-dim)' }}>Sistema ({categoriaVista}):</span> <strong style={{ color: 'var(--accent)' }}>{tacticoResumen.sistema_tactico || 'N/A'}</strong></div>
               </div>
               
               {tacticoResumen.jugadores_claves && (
@@ -233,6 +286,15 @@ function ScoutingRivales() {
                   <strong style={{ color: '#ef4444' }}>CLAVES:</strong> {tacticoResumen.jugadores_claves}
                 </div>
               )}
+
+              {/* Atajo directo al dossier de video, sin pasar por el modal de edición */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setCategoriaVideo(categoriaVista); setRivalVideo(rival); }}
+                className="btn-secondary"
+                style={{ marginTop: '12px', width: '100%', fontSize: '0.7rem', padding: '8px', fontWeight: 800 }}
+              >
+                🎬 VER VIDEO ({categoriaVista.toUpperCase()})
+              </button>
             </div>
           );
         })}
@@ -332,8 +394,15 @@ function ScoutingRivales() {
             {/* SECCIÓN H2H (FILTRADA POR LA CATEGORÍA ACTIVA) */}
             {formData.id && (
               <div style={{ marginTop: '30px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', gap: '10px', flexWrap: 'wrap' }}>
                   <div className="stat-label" style={{ color: 'var(--accent)' }}>HISTORIAL DE ENFRENTAMIENTOS ({categoriaScouting})</div>
+                  <button
+                    onClick={() => { setCategoriaVideo(categoriaScouting); setRivalVideo(formData); }}
+                    className="btn-action"
+                    style={{ background: 'var(--accent)', color: '#000', fontSize: '0.7rem', padding: '8px 14px', fontWeight: 900 }}
+                  >
+                    🎬 DOSSIER DE VIDEO ({categoriaScouting})
+                  </button>
                 </div>
                 
                 {cargandoHistorial ? (
@@ -380,6 +449,16 @@ function ScoutingRivales() {
             )}
           </div>
         </div>
+      )}
+
+      {/* DOSSIER DE VIDEO DEL RIVAL */}
+      {rivalVideo && (
+        <ModalVideoRival
+          rival={rivalVideo}
+          clubId={clubId}
+          categoria={categoriaVideo}
+          onCerrar={() => setRivalVideo(null)}
+        />
       )}
 
       <style>{`

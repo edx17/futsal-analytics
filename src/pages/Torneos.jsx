@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import InfoBox from '../components/InfoBox';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
+import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
@@ -56,6 +57,12 @@ function Torneos() {
     rival_id: '', condicion: 'Local', estado: 'Pendiente', goles_propios: 0, goles_rival: 0,
     partidos_multiples: [{ local_id: '', visitante_id: '', estado: 'Pendiente', goles_local: '', goles_visitante: '' }]
   });
+
+  // CARGA DE VIDEO EN EL FIXTURE (sirve para cruces ajenos: son la materia prima
+  // del scouting en video, y no pasan por el Resumen porque no los trackeás)
+  const [videoEditando, setVideoEditando] = useState(null); // id del partido
+  const [videoUrlTemp, setVideoUrlTemp] = useState('');
+  const [guardandoVideo, setGuardandoVideo] = useState(false);
 
   // ESTADOS DEL COMPARADOR DE EVOLUCIÓN
   const [compEq1, setCompEq1] = useState('');
@@ -126,13 +133,40 @@ function Torneos() {
   }, [torneosFiltrados]);
 
   const fetchFixture = async (idTorneo, categoriaTorneo) => {
-    const { data: partidosData } = await supabase
-      .from('partidos')
-      .select('*, rivales(nombre, escudo)')
-      .eq('torneo_id', idTorneo)
-      .eq('categoria', categoriaTorneo);
-      
-    if (!partidosData || partidosData.length === 0) {
+    // Paginado: un torneo largo con muchos cruces ajenos pasa las 1000 filas
+    // que PostgREST devuelve como maximo, y las recorta sin avisar.
+    // SIN EMBED de `rivales`: desde que `partidos` tiene DOS claves foraneas
+    // hacia esa tabla (`rival_id` y `local_rival_id`), PostgREST ya no puede
+    // adivinar por cual embeber y devuelve
+    //   "Could not embed because more than one relationship was found".
+    // El nombre y el escudo se resuelven en JS contra `rivales`, que esta
+    // pantalla ya tiene cargado en memoria. Es ademas la convencion del
+    // proyecto: los joins van con Maps, no con la sintaxis de embed.
+    const partidosData = await fetchPaginado(() =>
+      supabase
+        .from('partidos')
+        .select('*')
+        .eq('torneo_id', idTorneo)
+        .eq('categoria', categoriaTorneo)
+        .order('id')
+    ).catch((e) => {
+      // Antes esto se tragaba el error y el fixture aparecia vacio como si no
+      // hubiera partidos cargados. Si falla, que se vea en la consola.
+      console.error('[Torneos] fetchFixture fallo:', e?.message || e, { idTorneo, categoriaTorneo });
+      return null;
+    });
+
+    if (!partidosData) {
+      showToast("No se pudo cargar el fixture. Mirá la consola para el detalle.", "error");
+      setFixture([]);
+      return;
+    }
+
+    if (partidosData.length === 0) {
+      // Caso normal: el torneo existe pero todavia no tiene fechas cargadas en
+      // esta categoria. Ojo que el fixture filtra por la categoria DEL TORNEO,
+      // no por la del selector de arriba: si no aparece nada, revisa que el
+      // torneo elegido sea de la categoria que estas mirando.
       setFixture([]);
       return;
     }
@@ -143,24 +177,47 @@ function Torneos() {
       return jA.localeCompare(jB, undefined, { numeric: true, sensitivity: 'base' });
     });
 
-    const partidosConStatus = await Promise.all(partidosData.map(async (p) => {
-      const { count } = await supabase
-        .from('eventos')
-        .select('id', { count: 'exact', head: true })
-        .eq('id_partido', p.id);
+    // Antes esto disparaba UNA consulta de count POR PARTIDO: un torneo de 200
+    // cruces eran 200 requests en paralelo, y era lo que mas tardaba en abrir la
+    // pantalla. Ahora es una sola lectura de la columna id_partido, y solo sobre
+    // los partidos que podrian estar trackeados: un cruce entre terceros nunca
+    // tiene eventos cargados, asi que ni se pregunta por ellos.
+    const nombresRivales = new Set(rivales.map(r => r.nombre).filter(Boolean));
+    const mapaRivales = new Map(rivales.map(r => [r.id, r]));
+    const esAjeno = (p) => !!p.local_rival_id || (!!p.nombre_propio && nombresRivales.has(p.nombre_propio));
+    const idsPropios = partidosData.filter(p => !esAjeno(p)).map(p => p.id);
 
+    let trackeados = new Set();
+    if (idsPropios.length > 0) {
+      const filas = await fetchPorLotes(idsPropios, (lote) =>
+        supabase.from('eventos').select('id_partido').in('id_partido', lote).order('id_partido')
+      ).catch((e) => {
+        console.error('[Torneos] no se pudo resolver que partidos estan trackeados:', e?.message || e);
+        return [];
+      });
+      trackeados = new Set(filas.map(f => f.id_partido));
+    }
+
+    const partidosConStatus = partidosData.map(p => {
+      // Reemplaza lo que antes traia el embed: se mantiene la forma
+      // `p.rivales` para no tocar el resto de la pantalla.
+      const r = p.rival_id ? mapaRivales.get(p.rival_id) : null;
       return {
         ...p,
-        esTrackeado: count > 0 
+        rivales: r ? { nombre: r.nombre, escudo: r.escudo } : null,
+        esTrackeado: trackeados.has(p.id)
       };
-    }));
+    });
 
     setFixture(partidosConStatus);
   };
 
   useEffect(() => {
+    // Depende tambien de `rivales`: fetchFixture los necesita para saber que
+    // cruces son entre terceros. Si el fixture cargara antes que la lista de
+    // rivales, la clasificacion caeria solo en la FK local_rival_id.
     if (torneoActivo) fetchFixture(torneoActivo.id, torneoActivo.categoria);
-  }, [torneoActivo]);
+  }, [torneoActivo, rivales]);
 
   const handleGuardarTorneo = async () => {
     if (!formTorneo.nombre) return showToast("El nombre del torneo es obligatorio", "warning");
@@ -247,6 +304,10 @@ function Torneos() {
           rival: eqVisita.nombre,
           escudo_rival: eqVisita.escudo,
           nombre_propio: eqLocal.nombre, 
+          // FK del local: antes el equipo local de un cruce ajeno quedaba
+          // guardado SOLO por nombre, asi que no se lo podia encontrar por id
+          // y renombrar un rival le rompia el historial en silencio.
+          local_rival_id: eqLocal.id,
           escudo_propio: eqLocal.escudo,
           jornada: formFixture.jornada,
           fecha: formFixture.fecha_partido, 
@@ -266,6 +327,26 @@ function Torneos() {
         showToast(`¡Se agregaron ${arrayPartidosAInsertar.length} partidos al fixture!`, "success");
       } else showToast("Error al agregar cruces: " + error.message, "error");
     }
+  };
+
+  // Vincula un video de YouTube a cualquier partido del fixture, incluidos los
+  // cruces entre terceros. Para esos cruces esta es la unica puerta de entrada:
+  // no pasan por el Resumen porque no se trackean.
+  const abrirEdicionVideo = (partido) => {
+    setVideoEditando(partido.id);
+    setVideoUrlTemp(partido.video_url || '');
+  };
+
+  const guardarVideoFixture = async (idPartido) => {
+    setGuardandoVideo(true);
+    const url = videoUrlTemp.trim() || null;
+    const { error } = await supabase.from('partidos').update({ video_url: url }).eq('id', idPartido);
+    setGuardandoVideo(false);
+    if (error) return showToast("Error al guardar el video: " + error.message, "error");
+    setFixture(prev => prev.map(f => f.id === idPartido ? { ...f, video_url: url } : f));
+    setVideoEditando(null);
+    setVideoUrlTemp('');
+    showToast(url ? "Video vinculado. Ya lo podés cortar desde Videoanálisis." : "Video desvinculado.", "success");
   };
 
   const abrirModalRuedas = () => {
@@ -1272,7 +1353,45 @@ function Torneos() {
                               }}>
                                 {f.esTrackeado ? 'TRACKEADO' : f.estado.toUpperCase()}
                               </span>
+                              <button
+                                onClick={() => abrirEdicionVideo(f)}
+                                title={f.video_url ? 'Video vinculado — click para editar' : 'Vincular video de YouTube'}
+                                style={{
+                                  padding: '3px 7px', borderRadius: '4px', cursor: 'pointer',
+                                  background: f.video_url ? 'rgba(168, 85, 247, 0.12)' : 'transparent',
+                                  border: `1px solid ${f.video_url ? '#a855f7' : 'var(--border)'}`,
+                                  color: f.video_url ? '#a855f7' : 'var(--text-dim)',
+                                  fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.5px'
+                                }}
+                              >
+                                {f.video_url ? '🎬 CON VIDEO' : '🎬 + VIDEO'}
+                              </button>
                             </div>
+
+                            {videoEditando === f.id && (
+                              <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={videoUrlTemp}
+                                  onChange={(e) => setVideoUrlTemp(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') guardarVideoFixture(f.id); if (e.key === 'Escape') setVideoEditando(null); }}
+                                  placeholder="https://www.youtube.com/watch?v=..."
+                                  style={{ flex: '1 1 220px', minWidth: 0, padding: '7px 9px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '0.7rem' }}
+                                />
+                                <button onClick={() => guardarVideoFixture(f.id)} disabled={guardandoVideo} className="btn-action" style={{ fontSize: '0.65rem', padding: '7px 12px', background: 'var(--accent)', color: '#000', fontWeight: 800 }}>
+                                  {guardandoVideo ? '...' : 'GUARDAR'}
+                                </button>
+                                <button onClick={() => setVideoEditando(null)} className="btn-secondary" style={{ fontSize: '0.65rem', padding: '7px 10px' }}>
+                                  CANCELAR
+                                </button>
+                                {!esMiPartido && (
+                                  <div style={{ flex: '1 1 100%', fontSize: '0.6rem', color: 'var(--text-dim)' }}>
+                                    Cruce entre terceros: acá no hay eventos, así que los cortes se marcan a mano con la botonera en Videoanálisis.
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           {!estaCompletado ? (

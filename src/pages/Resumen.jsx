@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import ReportGenerator from '../components/ReportGenerator';
 import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
+import { fetchPaginado } from '../utils/supaPaginado';
 import { TablaResponsive } from '../components/TablaResponsive';
 
 // Componente para la Malla de Microzonas Tácticas (Filtro ZONAS)
@@ -366,6 +367,7 @@ return 'Todas';
   const [tiempoVideo, setTiempoVideo] = useState(0); 
   const [offsetPT, setOffsetPT] = useState(0); 
   const [offsetST, setOffsetST] = useState(0); 
+  const [offsetsGuardados, setOffsetsGuardados] = useState(false); 
   const [filtroVideoAcciones, setFiltroVideoAcciones] = useState([]);
   
   const [mostrarReporte, setMostrarReporte] = useState(false);
@@ -457,7 +459,19 @@ return 'Todas';
     setFiltroAsimetria('Todos');
     setVideoUrl(partido.video_url || ''); 
     setTiempoVideo(0);
-    const { data } = await supabase.from('eventos').select('*').eq('id_partido', partido.id).order('minuto', { ascending: true });
+    // Los offsets de video ahora viven en el partido: se calibran una sola vez
+    // y quedan disponibles para el dossier de video del rival en Scouting.
+    setOffsetPT(Number(partido.video_offset_pt) || 0);
+    setOffsetST(Number(partido.video_offset_st) || 0);
+    setOffsetsGuardados(false);
+    // Paginado: un partido cargado a fondo puede pasar las 1000 filas que
+    // PostgREST devuelve como maximo, y las recorta sin devolver error.
+    // El .order('id') secundario da el orden estable que .range() necesita.
+    const data = await fetchPaginado(() =>
+      supabase.from('eventos').select('*').eq('id_partido', partido.id)
+        .order('minuto', { ascending: true })
+        .order('id', { ascending: true })
+    ).catch(() => []);
     setEventosPartido(data || []);
   };
 
@@ -492,6 +506,22 @@ return 'Todas';
     const tiempoEvento = (ev.minuto * 60) + (ev.segundos || 0) + offset;
     const tiempoPrevio = Math.max(0, tiempoEvento - 5);
     setTiempoVideo(tiempoPrevio);
+  };
+
+  // Persiste los segundos de inicio de cada periodo en el partido.
+  // Sin esto los offsets se perdian en cada recarga (eran solo useState) y habia
+  // que recalibrarlos a mano cada vez que se abria el Resumen.
+  const guardarOffsets = async () => {
+    if (!partidoSeleccionado) return;
+    const { error } = await supabase
+      .from('partidos')
+      .update({ video_offset_pt: offsetPT, video_offset_st: offsetST })
+      .eq('id', partidoSeleccionado.id);
+    if (!error) {
+      setPartidoSeleccionado(prev => ({ ...prev, video_offset_pt: offsetPT, video_offset_st: offsetST }));
+      setOffsetsGuardados(true);
+      setTimeout(() => setOffsetsGuardados(false), 2500);
+    }
   };
 
   const guardarUrlVideo = async () => {
@@ -2136,14 +2166,23 @@ const COLORS_ORIGEN = {
                       ></iframe>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '20px', padding: '15px', background: 'var(--panel)', borderRadius: '4px' }}>
-                        <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', gap: '20px', padding: '15px', background: 'var(--panel)', borderRadius: '4px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        <div style={{ flex: '1 1 120px' }}>
                           <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO PT</label>
-                          <input type="number" value={offsetPT} onChange={(e) => setOffsetPT(Number(e.target.value))} style={{ width: '100%', padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }} />
+                          <input type="number" value={offsetPT} onChange={(e) => setOffsetPT(Number(e.target.value))} onBlur={guardarOffsets} style={{ width: '100%', padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }} />
                         </div>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: '1 1 120px' }}>
                           <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO ST</label>
-                          <input type="number" value={offsetST} onChange={(e) => setOffsetST(Number(e.target.value))} style={{ width: '100%', padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }} />
+                          <input type="number" value={offsetST} onChange={(e) => setOffsetST(Number(e.target.value))} onBlur={guardarOffsets} style={{ width: '100%', padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }} />
+                        </div>
+                        <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '8px' }}>
+                          <button onClick={guardarOffsets} className="btn-secondary" style={{ fontSize: '0.65rem', padding: '8px 12px', fontWeight: 800 }}>
+                            GUARDAR SINCRO
+                          </button>
+                          {offsetsGuardados && <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 800 }}>✓ GUARDADO</span>}
+                        </div>
+                        <div style={{ flex: '1 1 100%', fontSize: '0.62rem', color: 'var(--text-dim)' }}>
+                          Estos dos números son los que alimentan los cortes automáticos del dossier de video del rival en Scouting.
                         </div>
                     </div>
                   </div>

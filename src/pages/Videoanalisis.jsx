@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
+import { fetchPaginado } from '../utils/supaPaginado';
 
 const MONO = 'JetBrains Mono, monospace';
 const PREROLL_DEFAULT = 8; // segundos de colchón hacia atrás al marcar un clip
@@ -72,6 +73,7 @@ export default function Videoanalisis() {
   const [formUrl, setFormUrl] = useState('');
   const [formTitulo, setFormTitulo] = useState('');
   const [formPartido, setFormPartido] = useState('');
+  const [formCategoria, setFormCategoria] = useState('');
   const [archivoElegido, setArchivoElegido] = useState(null);
   const [guardandoVideo, setGuardandoVideo] = useState(false);
   const [progresoSubida, setProgresoSubida] = useState(0);
@@ -102,6 +104,7 @@ export default function Videoanalisis() {
   const [filtroEtiquetasExplor, setFiltroEtiquetasExplor] = useState(() => new Set());
   const [filtroVideoExplor, setFiltroVideoExplor] = useState('');
   const [filtroPartidoExplor, setFiltroPartidoExplor] = useState('');
+  const [filtroCategoriaExplor, setFiltroCategoriaExplor] = useState('');
   const [seleccionExplor, setSeleccionExplor] = useState([]); // array ORDENADO de clip ids
   const [playlistsGuardadas, setPlaylistsGuardadas] = useState([]);
   const [jugadoresClub, setJugadoresClub] = useState([]);
@@ -168,13 +171,35 @@ export default function Videoanalisis() {
     if (!clubId) return;
     (async () => {
       setCargando(true);
-      const [{ data: v }, { data: p }, { data: cfg }] = await Promise.all([
-        supabase.from('video_analisis').select('*, video_clips(count)').eq('club_id', clubId).order('created_at', { ascending: false }),
-        supabase.from('partidos').select('id, rival, fecha, categoria, video_url').eq('club_id', clubId).order('fecha', { ascending: false }).limit(100),
+      // Todo paginado: PostgREST corta en 1000 filas sin avisar. El .order('id')
+      // secundario es el desempate que .range() necesita para no repetir filas.
+      const [v, p, rivalesClub, { data: cfg }] = await Promise.all([
+        fetchPaginado(() =>
+          supabase.from('video_analisis').select('*, video_clips(count)').eq('club_id', clubId)
+            .order('created_at', { ascending: false }).order('id', { ascending: false })
+        ).catch(() => []),
+        fetchPaginado(() =>
+          supabase.from('partidos')
+            // Sin `local_rival_id`: si la migracion v2 todavia no se corrio,
+            // pedir esa columna hace fallar la query ENTERA con un 400 y la
+            // pantalla queda sin partidos. El nombre alcanza para clasificar.
+            .select('id, rival, fecha, categoria, video_url, nombre_propio')
+            .eq('club_id', clubId)
+            .order('fecha', { ascending: false }).order('id', { ascending: false })
+        ).catch(() => []),
+        fetchPaginado(() =>
+          supabase.from('rivales').select('id, nombre').eq('club_id', clubId).order('id')
+        ).catch(() => []),
         supabase.from('video_config').select('*').eq('club_id', clubId).maybeSingle(),
       ]);
       setVideos(v || []);
-      setPartidos(p || []);
+      // Marcamos cuales son cruces entre terceros: en esos no hay eventos, asi
+      // que no va a haber cortes automaticos y conviene que se note al elegir.
+      const nombresRivales = new Set((rivalesClub || []).map(r => r.nombre).filter(Boolean));
+      setPartidos((p || []).map(pt => ({
+        ...pt,
+        esAjeno: !!pt.nombre_propio && nombresRivales.has(pt.nombre_propio)
+      })));
       if (cfg) {
         setConfigId(cfg.id);
         let lista = Array.isArray(cfg.presets) && cfg.presets.length > 0 ? cfg.presets : null;
@@ -199,12 +224,15 @@ export default function Videoanalisis() {
   }, [clubId]);
 
   const fetchClips = useCallback(async (videoId) => {
-    const { data } = await supabase
-      .from('video_clips')
-      .select('*')
-      .eq('video_id', videoId)
-      .order('orden', { ascending: true, nullsFirst: false })
-      .order('inicio', { ascending: true });
+    const data = await fetchPaginado(() =>
+      supabase
+        .from('video_clips')
+        .select('*')
+        .eq('video_id', videoId)
+        .order('orden', { ascending: true, nullsFirst: false })
+        .order('inicio', { ascending: true })
+        .order('id', { ascending: true })
+    ).catch(() => []);
     setClips(data || []);
   }, []);
 
@@ -237,8 +265,10 @@ export default function Videoanalisis() {
     setVideoActivo(null);
     setVista('lista');
     if (clubId) {
-      supabase.from('video_analisis').select('*, video_clips(count)').eq('club_id', clubId).order('created_at', { ascending: false })
-        .then(({ data }) => setVideos(data || []));
+      fetchPaginado(() =>
+        supabase.from('video_analisis').select('*, video_clips(count)').eq('club_id', clubId)
+          .order('created_at', { ascending: false }).order('id', { ascending: false })
+      ).then(data => setVideos(data || [])).catch(() => {});
     }
   };
 
@@ -263,6 +293,7 @@ export default function Videoanalisis() {
       video_url: formUrl.trim(),
       video_id: videoId,
       titulo: formTitulo.trim() || null,
+      categoria: categoriaDelAlta(),
     }]).select().single();
     setGuardandoVideo(false);
     if (error) { setErrorForm('Error al guardar: ' + error.message); return; }
@@ -308,6 +339,7 @@ export default function Videoanalisis() {
         fuente: 'upload',
         video_url: path, // guardamos el path, no una URL pública (bucket privado)
         titulo: formTitulo.trim() || archivoElegido.name,
+        categoria: categoriaDelAlta(),
       }]).select().single();
       if (error) throw error;
 
@@ -338,6 +370,7 @@ export default function Videoanalisis() {
       video_url: formUrl.trim(),
       video_id: driveId,
       titulo: formTitulo.trim() || null,
+      categoria: categoriaDelAlta(),
     }]).select().single();
     setGuardandoVideo(false);
     if (error) { setErrorForm('Error al guardar: ' + error.message); return; }
@@ -346,9 +379,20 @@ export default function Videoanalisis() {
     abrirVideo(data);
   };
 
+  // La categoria de un video sale del partido si esta asociado; si es un video
+  // suelto (scouting de un rival contra terceros) se elige a mano. Sin esto el
+  // dossier no puede separar el material de Primera del de Tercera.
+  const categoriaDelAlta = () => {
+    if (formPartido) {
+      const pt = partidos.find(x => x.id === formPartido);
+      if (pt?.categoria) return pt.categoria;
+    }
+    return formCategoria || null;
+  };
+
   const cerrarModalNuevo = () => {
     setModalNuevo(false);
-    setFormUrl(''); setFormTitulo(''); setFormPartido(''); setArchivoElegido(null); setErrorForm('');
+    setFormUrl(''); setFormTitulo(''); setFormPartido(''); setFormCategoria(''); setArchivoElegido(null); setErrorForm('');
   };
 
   // ── Configuración de botonera (presets + colchón) ──
@@ -519,6 +563,9 @@ export default function Videoanalisis() {
       video_id: videoActivo.id,
       club_id: clubId,
       inicio, fin, etiqueta,
+      // La columna existia pero nunca se guardaba: sin esto los clips no se
+      // pueden separar por categoria en el explorador ni en el dossier.
+      categoria: videoActivo.categoria || null,
     }]).select().single();
     if (!error && data) {
       setClips(prev => [...prev, data].sort((a, b) => a.inicio - b.inicio));
@@ -702,11 +749,16 @@ export default function Videoanalisis() {
   const fetchTodosLosClips = useCallback(async () => {
     if (!clubId) return;
     setCargandoExplorador(true);
-    const { data } = await supabase
-      .from('video_clips')
-      .select('*, video_analisis(id, titulo, fuente, video_id, partido_id, partidos(rival, fecha))')
-      .eq('club_id', clubId)
-      .order('created_at', { ascending: false });
+    // Este era el que primero iba a chocar contra el techo: ~30 clips por partido
+    // por 30 partidos ya son 900, y a las 1000 se recortaba en silencio.
+    const data = await fetchPaginado(() =>
+      supabase
+        .from('video_clips')
+        .select('*, video_analisis(id, titulo, fuente, video_id, partido_id, rival_id, categoria, partidos(rival, rival_id, fecha, categoria))')
+        .eq('club_id', clubId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+    ).catch(() => []);
     const conVideo = (data || [])
       .filter(c => c.video_analisis) // por si algún clip quedó huérfano de un video borrado
       .map(c => ({ ...c, video: c.video_analisis }));
@@ -716,17 +768,30 @@ export default function Videoanalisis() {
 
   const fetchPlaylists = useCallback(async () => {
     if (!clubId) return;
-    const { data } = await supabase.from('video_playlists').select('*').eq('club_id', clubId).order('created_at', { ascending: false });
+    const data = await fetchPaginado(() =>
+      supabase.from('video_playlists').select('*').eq('club_id', clubId)
+        .order('created_at', { ascending: false }).order('id', { ascending: false })
+    ).catch(() => []);
     setPlaylistsGuardadas(data || []);
   }, [clubId]);
 
   const fetchJugadoresClub = useCallback(async () => {
     if (!clubId) return;
-    const { data } = await supabase.from('jugadores').select('id, nombre, apellido, categoria').eq('club_id', clubId).order('apellido');
+    const data = await fetchPaginado(() =>
+      supabase.from('jugadores').select('id, nombre, apellido, categoria').eq('club_id', clubId)
+        .order('apellido').order('id')
+    ).catch(() => []);
     setJugadoresClub(data || []);
   }, [clubId]);
 
   const categoriasClub = useMemo(() => [...new Set(jugadoresClub.map(j => j.categoria).filter(Boolean))].sort(), [jugadoresClub]);
+
+  // Categorias que aparecen en el fixture: es la lista que se ofrece al cargar
+  // un video suelto de scouting, que no hereda categoria de ningun partido.
+  const categoriasPartidos = useMemo(
+    () => [...new Set(partidos.map(p => p.categoria).filter(Boolean))].sort(),
+    [partidos]
+  );
 
   // ── Modal "compartir con jugadores" ──
   const abrirModalCompartir = (playlist, e) => {
@@ -853,9 +918,20 @@ export default function Videoanalisis() {
       const pasaEtiqueta = filtroEtiquetasExplor.size === 0 || filtroEtiquetasExplor.has(c.etiqueta);
       const pasaVideo = !filtroVideoExplor || c.video.id === filtroVideoExplor;
       const pasaPartido = !filtroPartidoExplor || c.video.partido_id === filtroPartidoExplor;
-      return pasaEtiqueta && pasaVideo && pasaPartido;
+      const catClip = c.categoria || c.video?.categoria || c.video?.partidos?.categoria || null;
+      const pasaCategoria = !filtroCategoriaExplor || catClip === filtroCategoriaExplor;
+      return pasaEtiqueta && pasaVideo && pasaPartido && pasaCategoria;
     });
-  }, [todosLosClips, filtroEtiquetasExplor, filtroVideoExplor, filtroPartidoExplor]);
+  }, [todosLosClips, filtroEtiquetasExplor, filtroVideoExplor, filtroPartidoExplor, filtroCategoriaExplor]);
+
+  const categoriasExplor = useMemo(() => {
+    const s = new Set();
+    todosLosClips.forEach(c => {
+      const cat = c.categoria || c.video?.categoria || c.video?.partidos?.categoria;
+      if (cat) s.add(cat);
+    });
+    return [...s].sort();
+  }, [todosLosClips]);
 
   const categorias = useMemo(() => ['TODAS', ...new Set(clips.map(c => c.etiqueta))], [clips]);
   const clipsFiltrados = useMemo(() => filtroCategoria === 'TODAS' ? clips : clips.filter(c => c.etiqueta === filtroCategoria), [clips, filtroCategoria]);
@@ -1016,9 +1092,30 @@ export default function Videoanalisis() {
               >
                 <option value="">— Sin asociar —</option>
                 {partidos.map(p => (
-                  <option key={p.id} value={p.id}>vs {p.rival} · {p.fecha} · {p.categoria} {p.video_url ? '🎬' : ''}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.esAjeno ? `[SCOUTING] ${p.nombre_propio} vs ${p.rival}` : `vs ${p.rival}`} · {p.fecha} · {p.categoria} {p.video_url ? '🎬' : ''}
+                  </option>
                 ))}
               </select>
+
+              {/* Sin partido asociado el video no hereda categoria de ningun lado,
+                  asi que hay que elegirla: es lo que evita que el material de
+                  Tercera aparezca mezclado con el de Primera. */}
+              {!formPartido && (
+                <>
+                  <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, display: 'block', marginBottom: '6px' }}>CATEGORÍA</label>
+                  <select
+                    value={formCategoria} onChange={(e) => setFormCategoria(e.target.value)}
+                    style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: `1px solid ${formCategoria ? 'var(--border)' : '#f59e0b'}`, color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '6px', boxSizing: 'border-box' }}
+                  >
+                    <option value="">— Sin categoría —</option>
+                    {categoriasPartidos.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  </select>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginBottom: '18px' }}>
+                    Sin categoría el video queda visible en todas, y se mezcla con el material del resto de las divisiones.
+                  </div>
+                </>
+              )}
 
               {partidoConVideo && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: 'rgba(0,255,136,0.06)', border: '1px solid var(--accent)', borderRadius: '6px', padding: '10px 12px', marginBottom: '18px' }}>
@@ -1250,6 +1347,10 @@ export default function Videoanalisis() {
                 <select value={filtroVideoExplor} onChange={(e) => setFiltroVideoExplor(e.target.value)} style={{ padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.8rem' }}>
                   <option value="">— Todos los videos —</option>
                   {videosDisponiblesExplor.map(v => <option key={v.id} value={v.id}>{v.titulo || 'Video sin título'}</option>)}
+                </select>
+                <select value={filtroCategoriaExplor} onChange={(e) => setFiltroCategoriaExplor(e.target.value)} style={{ padding: '10px', background: 'var(--bg)', border: `1px solid ${filtroCategoriaExplor ? 'var(--accent)' : 'var(--border)'}`, color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.8rem', fontWeight: filtroCategoriaExplor ? 800 : 400 }}>
+                  <option value="">— Todas las categorías —</option>
+                  {categoriasExplor.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
                 <select value={filtroPartidoExplor} onChange={(e) => setFiltroPartidoExplor(e.target.value)} style={{ padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.8rem' }}>
                   <option value="">— Todos los partidos —</option>

@@ -20,61 +20,69 @@ import { calcularCadenasValor } from '../analytics/posesiones';
    VERSION_ACTUAL en localStorage y no vuelve hasta el próximo release.
    Para publicar novedades: subí VERSION_ACTUAL y editá NOVEDADES_VERSION.
 ============================================================================ */
-const VERSION_ACTUAL = 'v0.00202608141258';
+const VERSION_ACTUAL = 'v0.00202608151531';
 const LS_VERSION_VISTA = 'vc_version_novedades_vista';
 
-const NOVEDADES_TITULO = 'Integridad de Datos en Vivo';
-const NOVEDADES_BAJADA = 'Cronómetro reescrito, registro a prueba de cortes de señal, playstyles por jugador y análisis por rueda.';
+const NOVEDADES_TITULO = 'El Video Entra al Sistema';
+const NOVEDADES_BAJADA = 'Los partidos que ya jugaste se convierten en scouting del rival, los cortes salen solos de los eventos, y todo queda separado por categoría.';
 
 const NOVEDADES_VERSION = [
   {
-    grupo: 'Toma de Datos en Vivo',
+    grupo: 'Dossier de Video del Rival',
     color: '#00ff88',
     items: [
-      { t: 'Nada se pierde sin señal', d: 'Si se corta internet, el evento queda guardado en el dispositivo y se sube solo cuando vuelve la conexión.' },
-      { t: 'Cronómetro que no se atrasa', d: 'Mide tiempo real en vez de contar ticks: ya no pierde minutos con la pantalla apagada o la app en segundo plano.' },
-      { t: 'El reloj sobrevive a un cierre', d: 'Si recargás o se cierra la app en el entretiempo, el cronómetro vuelve donde lo dejaste.' },
-      { t: 'Reloj independiente por tiempo', d: 'El PT y el ST llevan su propio acumulado; ya no se arrastra el minuto de un período al otro.' },
-      { t: 'Origen del tiro + modificadores juntos', d: 'Ahora podés marcar cómo se gestó el remate Y sumarle 2do palo, mano a mano, bajo presión, etc. en el mismo registro.' },
-      { t: 'Aviso de pausa automático', d: 'Después de un gol, falta o tarjeta te ofrece pausar el reloj con un toque.' },
-      { t: 'Confirmación al salir', d: 'Avisa antes de cerrar la pestaña si el reloj está corriendo o quedan eventos sin subir.' },
+      { t: 'El video del rival, dentro de Scouting', d: 'Cada rival tiene ahora su propio dossier de video: entrás desde su ficha y ves todos los cortes que existen de él, sin pasar por Videoanálisis.' },
+      { t: 'Enfrentamientos y Scouting separados', d: 'Dos solapas. ENFRENTAMIENTOS son los partidos que jugaste contra él. SCOUTING son sus cruces contra terceros que están en el fixture. Nunca se mezclan.' },
+      { t: 'Nosotros / Ellos', d: 'En los enfrentamientos podés filtrar los cortes por lado: lo que hicieron ellos o lo que hicimos nosotros.' },
+      { t: 'Ver todo de corrido', d: 'Un botón encadena todos los cortes filtrados, uno atrás del otro, para la charla previa.' },
+      { t: 'Recorte sin editar nada', d: 'El reproductor arranca y corta en el segundo exacto de cada jugada. No hay que recortar el video.' },
     ],
   },
   {
-    grupo: 'Correcciones de Datos',
-    color: '#ef4444',
-    items: [
-      { t: 'Goles recibidos por arquero', d: 'Se atribuyen remate a remate según quién estaba en cancha. Antes cada arquero cargaba con todos los goles del partido y los totales no cerraban.' },
-      { t: 'Partidos jugados más precisos', d: 'Se eliminó el mínimo artificial de 1 minuto que sumaba PJ a jugadores que no habían entrado.' },
-      { t: 'Fixture y Nuevo Partido conectados', d: 'Los partidos creados desde el fixture de un torneo ya aparecen en la pantalla de Nuevo Partido.' },
-      { t: 'Coordenadas sin contaminación', d: 'El motor de análisis ya no pisa los datos entre pantallas cuando hubo cambio de lado en el segundo tiempo.' },
-    ],
-  },
-  {
-    grupo: 'Perfil del Jugador',
-    color: '#a855f7',
-    items: [
-      { t: 'Playstyles', d: 'Detecta rasgos dominantes de cada jugador: Goleador, Finalizador, Asistidor, Creador, Recuperador, Motor, Muro, Amuleto y más.' },
-      { t: 'Resultados con él en cancha', d: 'PG/PE/PP, porcentaje de victorias, puntos por partido y goles a favor/en contra en los partidos que jugó.' },
-      { t: 'Participación', d: 'Nueva métrica: qué porcentaje de las acciones del partido ocurrieron con el jugador adentro. No depende del cronómetro.' },
-    ],
-  },
-  {
-    grupo: 'Torneos y Plantel',
+    grupo: 'Cortes Automáticos',
     color: '#0ea5e9',
     items: [
-      { t: 'Primera y Segunda Rueda', d: 'Configurá dónde corta cada rueda y filtrá la tabla de posiciones, las métricas, la racha y el fixture por rueda.' },
-      { t: 'Racha de 5 o 10 partidos', d: 'El Estado de Forma ahora se puede ver en ventana de 5 o 10, con puntos sacados, efectividad y goles del tramo.' },
-      { t: 'Solo Mi Equipo en el fixture', d: 'Un botón para filtrar de una tus partidos entre todos los cruces del torneo.' },
-      { t: 'Ruedas en Resumen del Plantel', d: 'Las estadísticas del plantel también se pueden dividir por Primera o Segunda Rueda.' },
-      { t: 'Columna PART%', d: 'Participación promedio de cada jugador, disponible en la tabla y en la exportación a CSV.' },
+      { t: 'Los cortes salen de los eventos', d: 'Cada gol, remate, falta, pérdida y recuperación que cargaste en vivo se convierte solo en un corte de video. No hay que volver a mirar el partido.' },
+      { t: 'Sincronización que se guarda', d: 'El segundo de inicio del PT y del ST ahora queda guardado en el partido. Antes se perdía en cada recarga y había que cargarlo de nuevo.' },
+      { t: 'Los goles arrancan antes', d: 'El corte de un gol empieza más atrás que el resto, para que se vea la construcción y no solo la definición.' },
+      { t: 'Avisos claros', d: 'El dossier te dice qué partidos no tienen video vinculado y cuáles tienen video pero les falta la sincronización.' },
     ],
   },
   {
-    grupo: 'Análisis de Partido',
+    grupo: 'Video en el Fixture',
+    color: '#a855f7',
+    items: [
+      { t: 'Cargar video de cualquier cruce', d: 'Ahora se puede pegar el link de YouTube en cualquier partido del fixture, incluidos los que juegan dos rivales entre sí.' },
+      { t: 'Un video, dos scoutings', d: 'Si cargás Rival A contra Rival B, los cortes que marques aparecen en el dossier de los dos.' },
+      { t: 'Marcados como SCOUTING', d: 'Esos cruces aparecen identificados en Videoanálisis, para que sepas de entrada que ahí los cortes van a mano: no hay eventos cargados de partidos que no jugaste.' },
+    ],
+  },
+  {
+    grupo: 'Todo por Categoría',
     color: '#fbbf24',
     items: [
-      { t: 'Duelos separados en el Mapa de Calor', d: 'Se reemplazó el filtro genérico por cuatro: duelos ofensivos y defensivos, ganados y perdidos.' },
+      { t: 'Selector de categoría en Scouting', d: 'Nuevo selector arriba de la lista de rivales. Manda sobre el sistema táctico de cada ficha y sobre el dossier de video.' },
+      { t: 'El video sabe de qué división es', d: 'Cada video y cada corte quedan asociados a su categoría. El material de Primera ya no aparece mezclado con el de Tercera.' },
+      { t: 'Filtro en el explorador', d: 'El buscador de clips de Videoanálisis se puede filtrar por categoría.' },
+      { t: 'Categoría al cargar un video', d: 'Si el video se asocia a un partido, hereda la categoría solo. Si es un video suelto, se elige al cargarlo.' },
+    ],
+  },
+  {
+    grupo: 'Velocidad y Capacidad',
+    color: '#22d3ee',
+    items: [
+      { t: 'Se acabó el techo de 1000 filas', d: 'Todas las pantallas ahora leen la base por tramos. Antes, pasadas las mil filas, los datos se recortaban sin avisar y los números salían mal.' },
+      { t: 'El fixture abre mucho más rápido', d: 'Un torneo grande hacía cientos de consultas para saber qué partidos estaban trackeados. Ahora hace una sola.' },
+      { t: 'Base de datos indexada', d: 'Se agregaron índices en partidos, eventos, videos y clips. Baja a la mitad el tiempo de las pantallas de análisis.' },
+    ],
+  },
+  {
+    grupo: 'Correcciones',
+    color: '#ef4444',
+    items: [
+      { t: 'Historial contra el rival, corregido', d: 'El H2H de Scouting contaba también los cruces entre dos rivales del fixture. Ahora solo cuenta partidos que jugaste vos, así que los números pueden bajar: los nuevos son los correctos.' },
+      { t: 'Fixture y tabla de posiciones', d: 'Se corrigió una falla que dejaba el fixture, la tabla y los gráficos completamente vacíos.' },
+      { t: 'Los errores dejan de esconderse', d: 'Cuando una consulta falla, ahora se avisa en vez de mostrar la pantalla vacía como si no hubiera datos cargados.' },
     ],
   },
 ];
