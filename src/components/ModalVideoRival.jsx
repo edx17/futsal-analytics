@@ -460,12 +460,7 @@ export default function ModalVideoRival({ rival, clubId, categoria = null, onCer
                 >
                   <option value="">Todos los partidos</option>
                   {partidosDelContexto.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {contexto === 'scouting'
-                        ? `${p.fecha} · ${p.nombre_propio} ${p.goles_propios}-${p.goles_rival} ${p.rival}`
-                        : `${p.fecha} · ${p.goles_propios}-${p.goles_rival}`}
-                      {p.video_url ? ' 🎬' : ''}
-                    </option>
+                    <option key={p.id} value={p.id}>{etiquetaOpcionPartido(p, contexto)}</option>
                   ))}
                 </select>
               </div>
@@ -665,6 +660,40 @@ export default function ModalVideoRival({ rival, clubId, categoria = null, onCer
 }
 
 // ── Piezas chicas ────────────────────────────────────────────────────────────
+
+/**
+ * Etiqueta de un partido en el desplegable: fecha (jornada), local vs visitante,
+ * resultado y si tiene video. Nada mas.
+ *
+ * El orden local/visitante no se puede leer de `goles_propios` a secas:
+ *   - En un ENFRENTAMIENTO, `goles_propios` sos vos y `condicion` dice si
+ *     jugaste de local o de visitante, asi que a veces hay que dar vuelta el par.
+ *   - En un CRUCE AJENO, `nombre_propio` es el equipo LOCAL (otro rival) y
+ *     `goles_propios` son sus goles, asi que el orden ya viene bien.
+ */
+function etiquetaOpcionPartido(p, contexto) {
+  const gp = p.goles_propios ?? '-';
+  const gr = p.goles_rival ?? '-';
+  const propio = p.nombre_propio || 'NOSOTROS';
+  const rival = p.rival || 'RIVAL';
+
+  let local, visitante, golesLocal, golesVisitante;
+  if (contexto !== 'scouting' && p.condicion === 'Visitante') {
+    local = rival;   golesLocal = gr;
+    visitante = propio; golesVisitante = gp;
+  } else {
+    local = propio;  golesLocal = gp;
+    visitante = rival;  golesVisitante = gr;
+  }
+
+  const partes = [];
+  // La fecha del partido ya trae el dia; la jornada va al lado entre parentesis.
+  partes.push(p.jornada ? `${p.fecha} (${p.jornada})` : `${p.fecha}`);
+  partes.push(`${local} vs ${visitante}`);
+  partes.push(`${golesLocal}-${golesVisitante}`);
+
+  return `${partes.join(' · ')}${p.video_url ? ' 🎬' : ''}`;
+}
 
 function Kpi({ valor, label, destacado = false }) {
   return (

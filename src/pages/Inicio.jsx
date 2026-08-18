@@ -8,6 +8,7 @@ import Campanita from '../components/Campanita';
 import { analizarPartido } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
+import { fetchPaginado } from '../utils/supaPaginado';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -479,10 +480,50 @@ export default function Inicio() {
         setAnual({ v, e, d, gf, gc });
         setForma(partidosJug.slice(0, 5).reverse().map((p) => ({ id: p.id, res: resultadoDe(p), rival: p.rival, gf: parseInt(p.goles_propios) || 0, gc: parseInt(p.goles_rival) || 0 })));
 
+        /* Las cuatro lecturas que siguen no dependen entre si, asi que van
+           juntas en un solo Promise.all: antes eran cuatro viajes en serie
+           antes de que el dashboard pudiera pintarse.
+
+           Las dos de `eventos` van por fetchPaginado porque PostgREST corta
+           en 1000 filas SIN avisar (200 OK con data recortada). La de tarjetas
+           acumula historico completo, asi que es la que revienta primero: al
+           pasar el techo dejarian de contarse amarillas y habria suspendidos
+           que no salen en el triage, en silencio.
+
+           .range() es un OFFSET, asi que el .order() tiene que ser determinista:
+           por eso `id` como criterio de desempate. */
+        const idUltimo = partidosJug[0] ? partidosJug[0].id : null;
+
+        const [evsUltimo, tarjetas, sanciones, wellnessHoy] = await Promise.all([
+          idUltimo
+            ? fetchPaginado(() => supabase.from('eventos').select('*')
+                .eq('id_partido', idUltimo)
+                .order('minuto', { ascending: true })
+                .order('id', { ascending: true }))
+            : Promise.resolve([]),
+
+          club
+            ? fetchPaginado(() => supabase.from('eventos')
+                .select('id_jugador, accion, id_partido')
+                .eq('club_id', club).eq('equipo', 'Propio')
+                .in('accion', ['Tarjeta Amarilla', 'Tarjeta Roja'])
+                .order('id', { ascending: true }))
+            : Promise.resolve([]),
+
+          club
+            ? supabase.from('disciplina_sanciones').select('*').eq('club_id', club)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
+
+          club
+            ? supabase.from('wellness').select('*').eq('club_id', club).eq('fecha', hoyStr)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
+        ]);
+
         // Engine sobre el último partido (xG + figuras)
         if (partidosJug[0]) {
-          const { data: evs } = await supabase.from('eventos').select('*').eq('id_partido', partidosJug[0].id).order('minuto', { ascending: true });
-          setUltAnalisis(analizarUltimo(evs || [], jugadores));
+          setUltAnalisis(analizarUltimo(evsUltimo, jugadores));
         } else setUltAnalisis({ xgPropio: 0, xgRival: 0, ranking: [] });
 
       if (club) {
@@ -492,10 +533,6 @@ export default function Inicio() {
         const partidosTemporada = new Set((rMapPar.data || []).filter((p) => { const f = parseFecha(p.fecha); return f && f.getFullYear() === Number(anio); }).map((p) => p.id));
         const nombreJug = (id) => { const j = jugadores.find((x) => String(x.id) === String(id)); return j ? (j.apellido || j.nombre) : 'Jugador'; };
         const jugIdsCat = new Set(jugadores.map((j) => j.id));
-
-        const { data: tarjetas } = await supabase.from('eventos')
-          .select('id_jugador, accion, id_partido').eq('club_id', club).eq('equipo', 'Propio')
-          .in('accion', ['Tarjeta Amarilla', 'Tarjeta Roja']);
 
         // Amarillas por jugador + categoría (la acumulación corre por categoría)
         const amarillasCat = {}; // key `${jid}|${cat}` => n
@@ -508,7 +545,7 @@ export default function Inicio() {
           amarillasCat[key] = (amarillasCat[key] || 0) + 1;
         });
 
-        const { data: sanc } = await supabase.from('disciplina_sanciones').select('*').eq('club_id', club);
+        const sanc = sanciones;
         // Bajas de acumulación ya cumplidas (tipo='acumulacion'), por jugador + categoría
         const bajasAcum = {}; // key `${jid}|${cat}` => n
         // Fechas de roja pendientes, TRANSVERSALES (NO incluye las de acumulación)
@@ -542,11 +579,7 @@ export default function Inicio() {
         Object.entries(fechasRoja).forEach(([jid, f]) => { if (f > 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: '⛔', titulo: `${nombreJug(jid)}: ${f} fecha${f > 1 ? 's' : ''} de sanción`, sub: 'Tribunal de disciplina', ruta: '/disciplina' }); } });
 
         /* ===== WELLNESS HOY ===== */
-        let wHoy = [];
-        if (club) {
-          const { data: w } = await supabase.from('wellness').select('*').eq('club_id', club).eq('fecha', hoyStr);
-          wHoy = (w || []).filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
-        }
+        const wHoy = wellnessHoy.filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
         const enRojo = wHoy.filter(enRojoWell);
         if (enRojo.length > 0) alertas.unshift({ nivel: 'warning', ico: '🔋', titulo: `${enRojo.length} ${enRojo.length === 1 ? 'jugador' : 'jugadores'} en rojo hoy`, sub: 'Fatiga, dolor o sueño en zona de alerta', ruta: '/wellness' });
         setTriage(alertas.slice(0, 6));

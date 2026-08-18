@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useEsMovil } from './utils/useEsMovil';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -6,45 +6,59 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ToastProvider } from './components/ToastContext';
 
-// --- Pages ---
+// ==========================================
+// PAGES
+//
+// Landing, Login e Inicio quedan con import estatico.
+//
+// Landing y Login son la primera pantalla de alguien sin sesion.
+// Inicio es la primera de toda sesion con login: mandarla a un chunk
+// aparte obliga a una segunda ida y vuelta de red despues de resolver
+// la sesion, y con datos moviles esa espera se nota. Se paga el peso
+// una vez en el bundle en lugar de una latencia en cada arranque.
+//
+// Todo el resto va por React.lazy, asi el bundle inicial deja de
+// arrastrar el canvas tactico, konva, recharts y html2canvas.
+// ==========================================
 import Landing from './pages/Landing';
-import Inicio from './pages/Inicio';
-import NuevoPartido from './pages/NuevoPartido';
-import ContinuarPartido from './pages/ContinuarPartido';
-import TomaDatos from './pages/TomaDatos';
-import Resumen from './pages/Resumen';
-import JugadorPerfil from './pages/JugadorPerfil';
-import Temporada from './pages/Temporada';
-import Configuracion from './pages/Configuracion';
-import MiSuscripcion from './pages/MiSuscripcion';
-import Rendimiento from './pages/Rendimiento';
 import Login from './pages/Login';
-import Registro from './pages/Registro';
-import Plantel from './pages/Plantel';
-import Torneos from './pages/Torneos';
-import ScoutingRivales from './pages/ScoutingRivales';
-import OrigenGoles from './pages/OrigenGoles'; 
-import CreadorTareas from './pages/CreadorTareas';
-import CreadorFisico from './pages/CreadorFisico';
-import BancoTareas from './pages/BancoTareas';
-import CargaWellness from './pages/CargaWellness';
-import PlanificadorSemanal from './pages/PlanificadorSemanal';
-import Presentismo from './pages/Presentismo';
-import Tesoreria from './pages/Tesoreria';
-import Sponsors from './pages/Sponsors';
-import Usuarios from './pages/Usuarios';
-import AdmSuscripciones from './pages/AdmSuscripciones';
-import LibroTactico from './pages/LibroTactico';
-import LoginKiosco from './pages/LoginKiosco';
-import Novedades from './pages/Novedades';
-import MiStaff from './pages/MiStaff'; 
-import AceptarTerminos from './pages/AceptarTerminos';
-import Disciplina from './pages/Disciplina';
-import Transferencias from './pages/Transferencias';
-import ResumenPlantel from './pages/Resumenplantel';
-import Videoanalisis from './pages/Videoanalisis';
-import GeneradorReportes from './pages/GeneradorReportes';
-import CalibracionRating from './pages/CalibracionRating';
+import Inicio from './pages/Inicio';
+
+const NuevoPartido        = lazy(() => import('./pages/NuevoPartido'));
+const ContinuarPartido    = lazy(() => import('./pages/ContinuarPartido'));
+const TomaDatos           = lazy(() => import('./pages/TomaDatos'));
+const Resumen             = lazy(() => import('./pages/Resumen'));
+const JugadorPerfil       = lazy(() => import('./pages/JugadorPerfil'));
+const Temporada           = lazy(() => import('./pages/Temporada'));
+const Configuracion       = lazy(() => import('./pages/Configuracion'));
+const MiSuscripcion       = lazy(() => import('./pages/MiSuscripcion'));
+const Rendimiento         = lazy(() => import('./pages/Rendimiento'));
+const Registro            = lazy(() => import('./pages/Registro'));
+const Plantel             = lazy(() => import('./pages/Plantel'));
+const Torneos             = lazy(() => import('./pages/Torneos'));
+const ScoutingRivales     = lazy(() => import('./pages/ScoutingRivales'));
+const OrigenGoles         = lazy(() => import('./pages/OrigenGoles'));
+const CreadorTareas       = lazy(() => import('./pages/CreadorTareas'));
+const CreadorFisico       = lazy(() => import('./pages/CreadorFisico'));
+const BancoTareas         = lazy(() => import('./pages/BancoTareas'));
+const CargaWellness       = lazy(() => import('./pages/CargaWellness'));
+const PlanificadorSemanal = lazy(() => import('./pages/PlanificadorSemanal'));
+const Presentismo         = lazy(() => import('./pages/Presentismo'));
+const Tesoreria           = lazy(() => import('./pages/Tesoreria'));
+const Sponsors            = lazy(() => import('./pages/Sponsors'));
+const Usuarios            = lazy(() => import('./pages/Usuarios'));
+const AdmSuscripciones    = lazy(() => import('./pages/AdmSuscripciones'));
+const LibroTactico        = lazy(() => import('./pages/LibroTactico'));
+const LoginKiosco         = lazy(() => import('./pages/LoginKiosco'));
+const Novedades           = lazy(() => import('./pages/Novedades'));
+const MiStaff             = lazy(() => import('./pages/MiStaff'));
+const Empleados           = lazy(() => import('./pages/Empleados'));
+const AceptarTerminos     = lazy(() => import('./pages/AceptarTerminos'));
+const Disciplina          = lazy(() => import('./pages/Disciplina'));
+const Transferencias      = lazy(() => import('./pages/Transferencias'));
+const ResumenPlantel      = lazy(() => import('./pages/Resumenplantel'));
+const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
+const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 
 import './App.css';
 
@@ -98,6 +112,21 @@ const fabStyle = { position: 'absolute', top: '0px', left: '50%', transform: 'tr
 // COMPONENTES DE ENRUTAMIENTO Y LAYOUT
 // ==========================================
 
+/* Fallback mientras baja el chunk de la pantalla. Deliberadamente sobrio:
+   en conexion buena se ve unos pocos ms y un spinner que aparece y
+   desaparece de golpe molesta mas de lo que ayuda. */
+function CargandoPantalla() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '50vh', color: 'var(--text-dim)',
+      fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1.5px'
+    }}>
+      Cargando
+    </div>
+  );
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -118,6 +147,7 @@ function AppRoutes() {
       <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
       <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
       <Route path="/mi-staff" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiStaff /></ProtectedRoute>} />
+      <Route path="/empleados" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Empleados /></ProtectedRoute>} />
       
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
       <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
@@ -142,8 +172,6 @@ function AppRoutes() {
       <Route path="/aceptar-terminos" element={<ProtectedRoute><AceptarTerminos /></ProtectedRoute>} />
       
       <Route path="/reportes" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><GeneradorReportes /></ProtectedRoute>} />
-
-      <Route path="/calibracion" element={<ProtectedRoute allowedRoles={['superuser']}><CalibracionRating /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/inicio" replace />} />
     </Routes>
@@ -262,13 +290,15 @@ useEffect(() => {
   if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
-        <Routes>
-          <Route path="/" element={perfil ? <Navigate to="/inicio" replace /> : <Landing />} />
-          <Route path="/login" element={perfil ? <Navigate to="/inicio" replace /> : <Login />} />
-          <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
-          <Route path="/kiosco" element={<LoginKiosco />} />
-          <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
-        </Routes>
+        <Suspense fallback={<CargandoPantalla />}>
+          <Routes>
+            <Route path="/" element={perfil ? <Navigate to="/inicio" replace /> : <Landing />} />
+            <Route path="/login" element={perfil ? <Navigate to="/inicio" replace /> : <Login />} />
+            <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
+            <Route path="/kiosco" element={<LoginKiosco />} />
+            <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
+          </Routes>
+        </Suspense>
       </main>
     );
   }
@@ -277,19 +307,21 @@ useEffect(() => {
   if (isKioscoMode && isKioscoPath) {
     return (
       <main className="app-content-fullscreen">
-        <Routes>
-          <Route path="/kiosco/home" element={<Inicio />} />
-          <Route path="/kiosco/wellness" element={<CargaWellness />} />
-          <Route path="/kiosco/rendimiento" element={<Rendimiento />} />
-          <Route path="/kiosco/resumen" element={<Resumen />} />
-          <Route path="/kiosco/resumen/:id" element={<Resumen />} />
-          <Route path="/kiosco/temporada" element={<Temporada />} />
-          <Route path="/kiosco/jugador-perfil" element={<JugadorPerfil />} />
-          <Route path="/kiosco/perfil-jugador" element={<JugadorPerfil />} />
-          <Route path="/kiosco/libro-tactico" element={<LibroTactico />} />
-          <Route path="/kiosco/videoanalisis" element={<Videoanalisis />} />
-          <Route path="/kiosco/*" element={<Navigate to="/kiosco/home" replace />} />
-        </Routes>
+        <Suspense fallback={<CargandoPantalla />}>
+          <Routes>
+            <Route path="/kiosco/home" element={<Inicio />} />
+            <Route path="/kiosco/wellness" element={<CargaWellness />} />
+            <Route path="/kiosco/rendimiento" element={<Rendimiento />} />
+            <Route path="/kiosco/resumen" element={<Resumen />} />
+            <Route path="/kiosco/resumen/:id" element={<Resumen />} />
+            <Route path="/kiosco/temporada" element={<Temporada />} />
+            <Route path="/kiosco/jugador-perfil" element={<JugadorPerfil />} />
+            <Route path="/kiosco/perfil-jugador" element={<JugadorPerfil />} />
+            <Route path="/kiosco/libro-tactico" element={<LibroTactico />} />
+            <Route path="/kiosco/videoanalisis" element={<Videoanalisis />} />
+            <Route path="/kiosco/*" element={<Navigate to="/kiosco/home" replace />} />
+          </Routes>
+        </Suspense>
       </main>
     );
   }
@@ -406,6 +438,7 @@ useEffect(() => {
             {menusAbiertos.administracion && !isCollapsed && (
               <>
                 <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👥 <span>MI STAFF</span></NavLink>
+                <NavLink to="/empleados" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🧾 <span>EMPLEADOS</span></NavLink>
                 <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💰 <span>TESORERÍA</span></NavLink>
                 <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🤝 <span>SPONSORS</span></NavLink>
                 {permisos.puedeConfigurar && (
@@ -428,7 +461,6 @@ useEffect(() => {
               <>
                 <NavLink to="/usuarios" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👑 <span>GESTIÓN MASTER</span></NavLink>
                 <NavLink to="/admin/suscripciones" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💳 <span>SUSCRIPCIONES</span></NavLink>
-                <NavLink to="/calibracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎯 <span>CALIBRAR RATING</span></NavLink>
               </>
             )}
           </>
@@ -487,7 +519,9 @@ useEffect(() => {
       {/* ÁREA PRINCIPAL DE CONTENIDO */}
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '0px 0px 85px 0px' : '40px', position: 'relative' }}>
         <div style={{ padding: esMovil ? '20px 15px' : '0' }}>
-          <AppRoutes />
+          <Suspense fallback={<CargandoPantalla />}>
+            <AppRoutes />
+          </Suspense>
         </div>
       </main>
 

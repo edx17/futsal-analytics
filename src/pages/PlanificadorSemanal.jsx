@@ -610,8 +610,23 @@ const PlanificadorSemanal = () => {
       const { data: dataSesiones, error: errSesiones } = await querySesiones;
       if (errSesiones) throw errSesiones;
 
-      // 🛡️ SOLO PARTIDOS DE MI EQUIPO:
-      const miClubGlobal = localStorage.getItem('mi_club') || 'MI EQUIPO';
+      // 🛡️ SOLO PARTIDOS DE MI EQUIPO
+      //
+      // Torneos.jsx mete en `partidos` DOS cosas bajo el mismo club_id:
+      //   1. Mis partidos (condicion Local/Visitante, nombre_propio = mi club)
+      //   2. Cruces entre OTROS equipos del torneo (condicion 'Neutral',
+      //      nombre_propio = el equipo local de ese cruce, mas local_rival_id)
+      // Los segundos no van al microciclo: el equipo no juega ese dia.
+      //
+      // Antes se filtraba comparando nombre_propio contra
+      // `localStorage.mi_club || 'MI EQUIPO'`, pero Torneos resuelve ese nombre
+      // por otro camino (fixture -> mi_club -> perfil.clubes.nombre -> 'TU CLUB').
+      // Si mi_club no estaba seteado, no coincidia NADA y el fixture desaparecia
+      // entero del planificador.
+      //
+      // Criterio actual, el mismo que usa Torneos.jsx: un cruce es AJENO solo si
+      // tiene local_rival_id, o si su nombre_propio figura en la tabla `rivales`.
+      // No depende de localStorage.
       let queryPartidos = supabase
         .from('partidos')
         .select('*')
@@ -625,11 +640,23 @@ const PlanificadorSemanal = () => {
         queryPartidos = queryPartidos.in('categoria', misCategorias);
       }
 
+      // rivales.club_id es TEXT (partidos.club_id es UUID): se compara como string.
+      const { data: dataRivales } = await supabase
+        .from('rivales')
+        .select('nombre')
+        .eq('club_id', club_id);
+
+      const norm = (s) => String(s || '').trim().toLowerCase();
+      const nombresRivales = new Set((dataRivales || []).map(r => norm(r.nombre)).filter(Boolean));
+
       const { data: dataPartidosRaw, error: errPartidos } = await queryPartidos;
       if (errPartidos) throw errPartidos;
-      const dataPartidos = (dataPartidosRaw || []).filter(p =>
-        (!p.nombre_propio || p.nombre_propio === miClubGlobal) || (p.rival === miClubGlobal)
-      );
+
+      const esCruceAjeno = (p) =>
+        !!p.local_rival_id ||
+        (!!p.nombre_propio && nombresRivales.has(norm(p.nombre_propio)));
+
+      const dataPartidos = (dataPartidosRaw || []).filter(p => !esCruceAjeno(p));
       
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')

@@ -219,6 +219,24 @@ function lighten(hex, amt) {
   return '#'+c.match(/../g).map(h => Math.min(255,parseInt(h,16)+amt).toString(16).padStart(2,'0')).join('')
 }
 
+/* DPR: los celulares reportan 2 o 3. Sin esto el canvas se dibuja a
+   resolucion CSS y se ve borroso. Tope en 3 para no crear un backing
+   store gigante en pantallas 4x. */
+const MAX_DPR = 3
+function getDPR() {
+  if (typeof window === 'undefined') return 1
+  return Math.min(window.devicePixelRatio || 1, MAX_DPR)
+}
+
+/* Pinta cancha + elementos en coordenadas logicas (BASE_W x baseH).
+   La usan tanto el canvas en pantalla como el export a PNG. */
+function renderBoard(ctx, opts) {
+  const { elements, arrows, selected, pitchCfg, tempArrow, tempZone, isMobile } = opts
+  const baseH = getBaseH(pitchCfg.variant)
+  renderPitch(ctx, BASE_W, baseH, pitchCfg)
+  renderElements(ctx, elements, arrows, selected, BASE_W, tempArrow, tempZone, isMobile)
+}
+
 function renderElements(ctx, elements, arrows, selected, cW, tempArrow, tempZone, isMobile) {
   elements.filter(e => e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, selected, cW, isMobile))
   arrows.forEach(a => drawArrow(ctx, a, selected))
@@ -652,6 +670,7 @@ const CreadorTareas = () => {
   const canvasRef  = useRef(null)
   const areaRef    = useRef(null)
   const [cvSize, setCvSize] = useState({ w:800, h:500 })
+  const [dpr, setDpr] = useState(() => getDPR())
   const [,forceUpdate] = useReducer(x=>x+1,0)
 
   const [showModal, setShowModal]   = useState(false)
@@ -747,6 +766,21 @@ const CreadorTareas = () => {
 
   useEffect(() => { resetVista() }, [cvSize.w, cvSize.h, rotarCancha])
 
+  /* El DPR puede cambiar en caliente: zoom del navegador, o mover la
+     ventana de un monitor comun a uno retina. */
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    let mq = null
+    const onChange = () => { setDpr(getDPR()); escuchar() }
+    function escuchar() {
+      if (mq) mq.removeEventListener('change', onChange)
+      mq = window.matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)')
+      mq.addEventListener('change', onChange)
+    }
+    escuchar()
+    return () => { if (mq) mq.removeEventListener('change', onChange) }
+  }, [])
+
   useEffect(() => {
     const cv = canvasRef.current; if(!cv)return
     const ctx = cv.getContext('2d')
@@ -755,7 +789,10 @@ const CreadorTareas = () => {
 
     const baseH = getBaseH(pitchCfg.variant)
 
-    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    /* El backing store mide cvSize * dpr, pero todo el dibujo de abajo
+       sigue razonando en px CSS: la escala por dpr va primero y el resto
+       del pipeline queda igual que antes. */
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, cvSize.w, cvSize.h)
 
     ctx.translate(view.panX, view.panY)
@@ -770,11 +807,18 @@ const CreadorTareas = () => {
       ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH)
     }
 
-    renderPitch(ctx, BASE_W, baseH, pitchCfg)
-    renderElements(ctx, displayEls, displayArrs, board.selected, BASE_W, tempRef.current.arrow, tempRef.current.zone, esMovil)
-    
+    renderBoard(ctx, {
+      elements: displayEls,
+      arrows: displayArrs,
+      selected: board.selected,
+      pitchCfg,
+      tempArrow: tempRef.current.arrow,
+      tempZone: tempRef.current.zone,
+      isMobile: esMovil,
+    })
+
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil, rotarCancha, view])
+  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil, rotarCancha, view, dpr])
 
   function syncCurrentFrame(overrideIdx) {
     const idx = overrideIdx ?? frameIdx
@@ -1061,6 +1105,28 @@ const CreadorTareas = () => {
     }
   };
 
+  function exportarPNG(escala) {
+    const s = escala || 2
+    const baseH = getBaseH(pitchCfg.variant)
+    const off = document.createElement('canvas')
+    off.width = Math.round(BASE_W * s)
+    off.height = Math.round(baseH * s)
+    const octx = off.getContext('2d')
+    octx.setTransform(s, 0, 0, s, 0, 0)
+    /* selected en null y sin temp: el PNG no se lleva el halo de seleccion
+       ni la flecha a medio dibujar. */
+    renderBoard(octx, {
+      elements: board.elements,
+      arrows: board.arrows,
+      selected: null,
+      pitchCfg,
+      tempArrow: null,
+      tempZone: null,
+      isMobile: false,
+    })
+    return off.toDataURL('image/png')
+  }
+
   const confirmarGuardado = async () => {
     if (!nombreTarea.trim()) { showToast("Poné un nombre a la tarea antes de guardar.","warning"); return }
 
@@ -1069,7 +1135,11 @@ const CreadorTareas = () => {
     const finalFrames=[...frames]
     finalFrames[frameIdx]={...finalFrames[frameIdx],elements:JSON.parse(JSON.stringify(board.elements)),arrows:JSON.parse(JSON.stringify(board.arrows))}
 
-    const dataURL = canvasRef.current.toDataURL('image/png')
+    /* Antes se exportaba canvasRef.toDataURL(): salia con la resolucion,
+       el zoom, el pan y la rotacion de la pantalla del que guardaba. Ahora
+       se pinta en un canvas aparte, siempre apaisado y a 2x, para que el
+       grafico de la tarea sea igual en cualquier dispositivo. */
+    const dataURL = exportarPNG(2)
     const club_id = localStorage.getItem('club_id')||'club_default'
 
     let url_video_mp4 = tareaAEditar?.video_mp4_url || null;
@@ -1286,8 +1356,8 @@ const CreadorTareas = () => {
           <canvas
             ref={canvasRef}
             className="ct-canvas"
-            width={cvSize.w} height={cvSize.h}
-            style={{touchAction:'none'}}
+            width={Math.round(cvSize.w * dpr)} height={Math.round(cvSize.h * dpr)}
+            style={{touchAction:'none', width: cvSize.w + 'px', height: cvSize.h + 'px'}}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
