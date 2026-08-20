@@ -9,6 +9,7 @@ import InfoBox from '../components/InfoBox';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
 import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
+import { parseFixturePegado, matchearRivales, calcularAliasNuevos, ID_MI_CLUB } from '../utils/parseFixturePegado';
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
@@ -21,6 +22,14 @@ function Torneos() {
 
   const [torneos, setTorneos] = useState([]);
   const [rivales, setRivales] = useState([]);
+
+  // IMPORTADOR DE FECHAS (pegado manual del fixture de la liga).
+  // `aliasRivales` es la memoria de como se llama cada rival en la web de donde
+  // copias el fixture, para no volver a resolver los mismos nombres cada jornada.
+  const [aliasRivales, setAliasRivales] = useState([]);
+  const [mostrarModalImportar, setMostrarModalImportar] = useState(false);
+  const [textoPegado, setTextoPegado] = useState('');
+  const [avisosImport, setAvisosImport] = useState([]);
   
   const [filtroCategoria, setFiltroCategoria] = useState(categoriaInicial);
   const [torneoActivo, setTorneoActivo] = useState(null);
@@ -83,6 +92,7 @@ function Torneos() {
     if (clubId) {
       fetchTorneos();
       fetchRivales();
+      fetchAliasRivales();
     }
   }, [clubId]);
 
@@ -105,6 +115,18 @@ function Torneos() {
   const fetchRivales = async () => {
     const { data } = await supabase.from('rivales').select('*').eq('club_id', clubId).order('nombre', { ascending: true });
     if (data) setRivales(data);
+  };
+
+  // Tabla chica (un punado de filas por club): no necesita paginado.
+  const fetchAliasRivales = async () => {
+    const { data, error } = await supabase
+      .from('rivales_alias')
+      .select('rival_id, alias, alias_norm')
+      .eq('club_id', clubId);
+    // Que falle la memoria de alias no puede romper la pantalla: el importador
+    // simplemente vuelve a preguntarte los nombres que no matchean solos.
+    if (error) console.error('[Torneos] fetchAliasRivales fallo:', error.message);
+    setAliasRivales(data || []);
   };
 
   const categoriasUnicas = useMemo(() => {
@@ -244,13 +266,61 @@ function Torneos() {
   };
 
   const actualizarPartidoMultiple = (index, campo, valor) => {
-    const nuevos = [...formFixture.partidos_multiples];
-    nuevos[index][campo] = valor;
-    if (campo === 'estado' && valor === 'Pendiente') {
-      nuevos[index].goles_local = '';
-      nuevos[index].goles_visitante = '';
+    // Update inmutable y con la forma funcional de setState. Antes hacia
+    // `nuevos[index][campo] = valor` sobre el MISMO objeto que ya estaba en el
+    // estado: React veia un array nuevo pero el item mutado, y si dos cambios
+    // caian en el mismo lote el segundo podia leer un formFixture viejo.
+    setFormFixture(f => {
+      const nuevos = f.partidos_multiples.map((p, i) => {
+        if (i !== index) return p;
+        const actualizado = { ...p, [campo]: valor };
+        if (campo === 'estado' && valor === 'Pendiente') {
+          actualizado.goles_local = '';
+          actualizado.goles_visitante = '';
+        }
+        // Tu club no puede estar de los dos lados: si lo marcas en un lado y ya
+        // estaba en el otro, se libera el otro en vez de dejar un cruce invalido.
+        if (valor === ID_MI_CLUB) {
+          if (campo === 'local_id' && p.visitante_id === ID_MI_CLUB) actualizado.visitante_id = '';
+          if (campo === 'visitante_id' && p.local_id === ID_MI_CLUB) actualizado.local_id = '';
+        }
+        return actualizado;
+      });
+      return { ...f, partidos_multiples: nuevos };
+    });
+  };
+
+  // Toma el fixture que copiaste a mano desde la web de la liga y precarga los
+  // cruces del modo bloque. NO escribe en `partidos`: el guardado sigue pasando
+  // por handleGuardarFixture(), asi que no hay un segundo camino de escritura.
+  const importarFechasPegadas = () => {
+    const anio = new Date().getFullYear();
+    const { cruces, jornadas, avisos } = parseFixturePegado(textoPegado, anio);
+
+    if (!cruces.length) {
+      setAvisosImport(avisos.length ? avisos : ['No encontré ningún cruce en el texto pegado.']);
+      return;
     }
-    setFormFixture({ ...formFixture, partidos_multiples: nuevos });
+
+    const partidos = matchearRivales(cruces, rivales, aliasRivales, miClubGlobal);
+    const sinResolver = [...new Set(partidos.flatMap(p => p._sinResolver))];
+
+    setFormFixture(f => ({
+      ...f,
+      tipo_partido: 'multiple',
+      jornada: jornadas[0] || f.jornada,
+      partidos_multiples: partidos,
+    }));
+
+    setAvisosImport([
+      ...avisos,
+      `${partidos.length} cruce(s) cargados${jornadas.length > 1 ? ` de ${jornadas.length} jornadas` : ''}.`,
+      ...(sinResolver.length
+        ? [`No pude identificar: ${sinResolver.join(', ')}. Elegilos a mano abajo y los recuerdo para la próxima.`]
+        : []),
+    ]);
+    setMostrarModalImportar(false);
+    setTextoPegado('');
   };
 
   const handleGuardarFixture = async () => {
@@ -286,7 +356,13 @@ function Torneos() {
       } else showToast("Error al agregar: " + error.message, "error");
 
     } else {
-      if (!formFixture.jornada) return showToast("La Jornada es obligatoria para el bloque", "warning");
+      // Con el importador, cada cruce puede traer su propia jornada (un solo
+      // pegado puede abarcar varias fechas), asi que el campo global de arriba
+      // solo es obligatorio cuando algun cruce no la trae.
+      const faltaJornada = formFixture.partidos_multiples.some(p => !p.jornada);
+      if (faltaJornada && !formFixture.jornada) {
+        return showToast("La Jornada es obligatoria para el bloque", "warning");
+      }
       
       const crucesValidos = formFixture.partidos_multiples.filter(p => p.local_id && p.visitante_id);
       
@@ -294,35 +370,92 @@ function Torneos() {
       if (crucesValidos.some(p => p.local_id === p.visitante_id)) return showToast("Un equipo no puede jugar contra sí mismo", "warning");
 
       const arrayPartidosAInsertar = crucesValidos.map(p => {
-        const eqLocal = rivales.find(r => r.id === p.local_id);
-        const eqVisita = rivales.find(r => r.id === p.visitante_id);
+        const esMiLocal = p.local_id === ID_MI_CLUB;
+        const esMiVisitante = p.visitante_id === ID_MI_CLUB;
 
-        return {
+        const base = {
           club_id: clubId,
           torneo_id: torneoActivo.id,
-          rival_id: eqVisita.id, 
+          jornada: p.jornada || formFixture.jornada,
+          // La fecha del cruce gana sobre el campo DIA del modal: el importador
+          // la deduce de las cabeceras ("Sabado, 22 de agosto") y cada cruce de
+          // una misma jornada puede jugarse un dia distinto.
+          // `|| null` porque una cadena vacia revienta contra una columna date.
+          fecha: (p._crudo?.fecha || formFixture.fecha_partido) || null,
+          estado: p.estado,
+          categoria: torneoActivo.categoria,
+          competicion: torneoActivo.nombre
+        };
+
+        // TU CLUB EN LA CARGA MULTIPLE: si marcaste MI CLUB de un lado, el cruce
+        // se guarda igual que si lo hubieras cargado de a uno (condicion
+        // Local/Visitante, tu nombre en `nombre_propio`, sin `local_rival_id`).
+        // Asi cargas la fecha entera de una sola vez, incluido tu partido, y
+        // `esMiPartido` lo sigue reconociendo como propio.
+        if (esMiLocal || esMiVisitante) {
+          const eqRival = rivales.find(r => r.id === (esMiLocal ? p.visitante_id : p.local_id));
+          if (!eqRival) return null;
+
+          const golesMios = esMiLocal ? p.goles_local : p.goles_visitante;
+          const golesSuyos = esMiLocal ? p.goles_visitante : p.goles_local;
+
+          return {
+            ...base,
+            rival_id: eqRival.id,
+            rival: eqRival.nombre,
+            escudo_rival: eqRival.escudo,
+            nombre_propio: miClubGlobal,
+            escudo_propio: miEscudoGlobal,
+            condicion: esMiLocal ? 'Local' : 'Visitante',
+            goles_propios: p.estado === 'Finalizado' ? (Number(golesMios) || 0) : 0,
+            goles_rival: p.estado === 'Finalizado' ? (Number(golesSuyos) || 0) : 0
+          };
+        }
+
+        const eqLocal = rivales.find(r => r.id === p.local_id);
+        const eqVisita = rivales.find(r => r.id === p.visitante_id);
+        if (!eqLocal || !eqVisita) return null;
+
+        return {
+          ...base,
+          rival_id: eqVisita.id,
           rival: eqVisita.nombre,
           escudo_rival: eqVisita.escudo,
-          nombre_propio: eqLocal.nombre, 
+          nombre_propio: eqLocal.nombre,
           // FK del local: antes el equipo local de un cruce ajeno quedaba
           // guardado SOLO por nombre, asi que no se lo podia encontrar por id
           // y renombrar un rival le rompia el historial en silencio.
           local_rival_id: eqLocal.id,
           escudo_propio: eqLocal.escudo,
-          jornada: formFixture.jornada,
-          fecha: formFixture.fecha_partido, 
           condicion: 'Neutral',
-          estado: p.estado,
           goles_propios: p.estado === 'Finalizado' ? (Number(p.goles_local) || 0) : 0,
-          goles_rival: p.estado === 'Finalizado' ? (Number(p.goles_visitante) || 0) : 0,
-          categoria: torneoActivo.categoria, 
-          competicion: torneoActivo.nombre 
+          goles_rival: p.estado === 'Finalizado' ? (Number(p.goles_visitante) || 0) : 0
         };
-      });
+      }).filter(Boolean);
+
+      if (arrayPartidosAInsertar.length === 0) {
+        return showToast("No quedó ningún cruce válido para guardar", "warning");
+      }
 
       const { error } = await supabase.from('partidos').insert(arrayPartidosAInsertar); 
       
       if (!error) {
+        // Persistimos los nombres que resolviste a mano para no volver a
+        // preguntarlos. El error se traga a proposito: que falle la memoria de
+        // alias no puede tirar abajo un fixture que ya se guardo bien.
+        const aliasNuevos = calcularAliasNuevos(formFixture.partidos_multiples, rivales, aliasRivales);
+        if (aliasNuevos.length) {
+          const { data: guardados, error: errAlias } = await supabase
+            .from('rivales_alias')
+            .upsert(
+              aliasNuevos.map(a => ({ ...a, club_id: clubId })),
+              { onConflict: 'club_id, alias_norm', ignoreDuplicates: true }
+            )
+            .select('rival_id, alias, alias_norm');
+          if (errAlias) console.error('[Torneos] no pude guardar alias:', errAlias.message);
+          if (guardados?.length) setAliasRivales(prev => [...prev, ...guardados]);
+        }
+
         cerrarModalYRefrescar();
         showToast(`¡Se agregaron ${arrayPartidosAInsertar.length} partidos al fixture!`, "success");
       } else showToast("Error al agregar cruces: " + error.message, "error");
@@ -381,6 +514,8 @@ function Torneos() {
       tipo_partido: 'propio', jornada: '', fecha_partido: '', rival_id: '', condicion: 'Local', estado: 'Pendiente', goles_propios: 0, goles_rival: 0,
       partidos_multiples: [{ local_id: '', visitante_id: '', estado: 'Pendiente', goles_local: '', goles_visitante: '' }]
     });
+    setAvisosImport([]);
+    setTextoPegado('');
   };
 
   const actualizarResultado = async (id, goles_propios, goles_rival, estado) => {
@@ -1863,24 +1998,49 @@ function Torneos() {
                   </div>
                 </div>
 
+                <button
+                  onClick={() => { setAvisosImport([]); setMostrarModalImportar(true); }}
+                  className="btn-secondary"
+                  style={{ width: '100%', padding: '10px', fontSize: '0.8rem', borderStyle: 'dashed', marginBottom: '12px' }}
+                >
+                  📋 IMPORTAR FECHAS
+                </button>
+
+                {avisosImport.length > 0 && (
+                  <div style={{ marginBottom: '12px', padding: '10px', borderRadius: '6px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.45)' }}>
+                    {avisosImport.map((a, i) => (
+                      <div key={i} style={{ fontSize: '0.72rem', color: '#fbbf24', lineHeight: 1.5 }}>• {a}</div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="section-title" style={{ marginBottom: '10px' }}>CRUCES DE LA FECHA</div>
                 <div style={{ maxHeight: '35vh', overflowY: 'auto', paddingRight: '5px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {formFixture.partidos_multiples.map((p, index) => (
                     <div key={index} style={{ background: 'var(--panel)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                         <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800 }}>PARTIDO #{index + 1}</span>
+                         <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800 }}>
+                           PARTIDO #{index + 1}
+                           {(p.local_id === ID_MI_CLUB || p.visitante_id === ID_MI_CLUB) && (
+                             <span style={{ color: 'var(--accent)', fontWeight: 900 }}> · ⭐ TU PARTIDO ({p.local_id === ID_MI_CLUB ? 'LOCAL' : 'VISITANTE'})</span>
+                           )}
+                           {p.jornada && <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}> · {p.jornada.toUpperCase()}</span>}
+                           {p._crudo?.fecha && <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}> · {p._crudo.fecha}</span>}
+                         </span>
                          {formFixture.partidos_multiples.length > 1 && (
                            <button onClick={() => removerPartidoMultiple(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900 }}>ELIMINAR 🗑️</button>
                          )}
                       </div>
                       
                       <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                        <select value={p.local_id} onChange={e => actualizarPartidoMultiple(index, 'local_id', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1}}>
-                          <option value="">LOCAL...</option>
+                        <select value={p.local_id} onChange={e => actualizarPartidoMultiple(index, 'local_id', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1, borderColor: (!p.local_id && p._crudo) ? '#ef4444' : 'var(--border)'}}>
+                          <option value="">{p._crudo && !p.local_id ? `¿QUIÉN ES "${p._crudo.local.toUpperCase()}"?` : 'LOCAL...'}</option>
+                          <option value={ID_MI_CLUB}>⭐ {miClubGlobal.toUpperCase()} (MI CLUB)</option>
                           {rivales.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
                         </select>
-                        <select value={p.visitante_id} onChange={e => actualizarPartidoMultiple(index, 'visitante_id', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1}}>
-                          <option value="">VISITANTE...</option>
+                        <select value={p.visitante_id} onChange={e => actualizarPartidoMultiple(index, 'visitante_id', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1, borderColor: (!p.visitante_id && p._crudo) ? '#ef4444' : 'var(--border)'}}>
+                          <option value="">{p._crudo && !p.visitante_id ? `¿QUIÉN ES "${p._crudo.visitante.toUpperCase()}"?` : 'VISITANTE...'}</option>
+                          <option value={ID_MI_CLUB}>⭐ {miClubGlobal.toUpperCase()} (MI CLUB)</option>
                           {rivales.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
                         </select>
                       </div>
@@ -1914,6 +2074,34 @@ function Torneos() {
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button onClick={() => setMostrarModalFixture(false)} className="btn-secondary" style={{ flex: 1 }}>CANCELAR</button>
               <button onClick={handleGuardarFixture} className="btn-action" style={{ flex: 1 }}>{formFixture.tipo_partido === 'multiple' ? 'GUARDAR FECHA COMPLETA' : 'AGREGAR FECHA'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: pegado del fixture copiado a mano desde la web de la liga */}
+      {mostrarModalImportar && (
+        <div className="modal-overlay" style={{ zIndex: 100000 }}>
+          <div className="modal-content" style={{ maxWidth: '600px', padding: '25px', borderRadius: '8px' }}>
+            <div className="section-title" style={{ color: 'var(--accent)', fontSize: '1rem', marginBottom: '8px' }}>
+              IMPORTAR FECHAS
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.6, marginTop: 0, marginBottom: '12px' }}>
+              Copiá la jornada desde la web de la liga y pegala acá tal cual, sin acomodar nada.
+              Podés pegar varias jornadas de una: cada cruce se guarda con su propia fecha.
+            </p>
+
+            <textarea
+              value={textoPegado}
+              onChange={e => setTextoPegado(e.target.value)}
+              rows={12}
+              placeholder={"Jornada 22\nViernes, 21 de agosto\nVilla Heredia\n20:00\nExcursionistas\n..."}
+              style={{ ...inputIndustrial, fontFamily: 'monospace', fontSize: '0.78rem', resize: 'vertical', lineHeight: 1.5 }}
+            />
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+              <button onClick={() => { setMostrarModalImportar(false); setTextoPegado(''); }} className="btn-secondary" style={{ flex: 1 }}>CANCELAR</button>
+              <button onClick={importarFechasPegadas} className="btn-action" style={{ flex: 1 }}>PROCESAR</button>
             </div>
           </div>
         </div>
