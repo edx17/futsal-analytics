@@ -27,6 +27,7 @@ import Inicio from './pages/Inicio';
 const NuevoPartido        = lazy(() => import('./pages/NuevoPartido'));
 const ContinuarPartido    = lazy(() => import('./pages/ContinuarPartido'));
 const TomaDatos           = lazy(() => import('./pages/TomaDatos'));
+const TomaDatosOffline    = lazy(() => import('./pages/TomaDatosOffline'));
 const Resumen             = lazy(() => import('./pages/Resumen'));
 const JugadorPerfil       = lazy(() => import('./pages/JugadorPerfil'));
 const Temporada           = lazy(() => import('./pages/Temporada'));
@@ -133,6 +134,7 @@ function AppRoutes() {
       <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
       <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
       <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
+      <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
       <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
       <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
       <Route path="/transferencias" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Transferencias /></ProtectedRoute>} />
@@ -352,6 +354,7 @@ useEffect(() => {
               <>
                 <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚡ <span>NUEVO PARTIDO</span></NavLink>
                 <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⏯️ <span>CONTINUAR PARTIDO</span></NavLink>
+                <NavLink to="/analisis-offline" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🧭 <span>ANÁLISIS OFFLINE</span></NavLink>
               </>
             )}
           </>
