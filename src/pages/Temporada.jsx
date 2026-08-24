@@ -14,6 +14,40 @@ import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import SeasonReport from '../components/SeasonReport';
 import { TablaResponsive } from '../components/TablaResponsive';
+
+/* Analiza la secuencia completa de resultados (más viejo -> más reciente).
+   Devuelve la racha actual y los récords históricos del período filtrado. */
+const analizarRachas = (historial = []) => {
+  const r = {
+    actualTipo: null, actualLargo: 0,
+    mejorGanando: 0, mejorInvicto: 0, peorSinGanar: 0, peorPerdiendo: 0,
+    inicioRachaActual: historial.length,
+  };
+  if (historial.length === 0) return r;
+
+  let gan = 0, inv = 0, sinGanar = 0, perd = 0;
+  historial.forEach(h => {
+    if (h.resultado === 'V') { gan++; inv++; sinGanar = 0; perd = 0; }
+    else if (h.resultado === 'E') { gan = 0; inv++; sinGanar++; perd = 0; }
+    else { gan = 0; inv = 0; sinGanar++; perd++; }
+    if (gan > r.mejorGanando) r.mejorGanando = gan;
+    if (inv > r.mejorInvicto) r.mejorInvicto = inv;
+    if (sinGanar > r.peorSinGanar) r.peorSinGanar = sinGanar;
+    if (perd > r.peorPerdiendo) r.peorPerdiendo = perd;
+  });
+
+  // Racha actual: cuántos partidos seguidos al final comparten resultado
+  const ultimo = historial[historial.length - 1].resultado;
+  let largo = 0;
+  for (let i = historial.length - 1; i >= 0; i--) {
+    if (historial[i].resultado === ultimo) largo++;
+    else break;
+  }
+  r.actualTipo = ultimo;
+  r.actualLargo = largo;
+  r.inicioRachaActual = historial.length - largo;
+  return r;
+};
 import { useAuth } from '../context/AuthContext'; 
 
 const GRUPOS_QUINT = { q: 'var(--accent)' };
@@ -950,6 +984,81 @@ function Temporada() {
               </div>
           </div>
 
+          {/* ═══ ESTADO DE FORMA — sección propia, a todo el ancho ═══ */}
+          <div className="bento-card" style={{ marginBottom: '20px' }}>
+            <div className="stat-label" style={{ marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
+              ESTADO DE FORMA
+              <InfoBox texto="Un cuadro por partido del período filtrado, del más viejo (izquierda) al más reciente (derecha). El halo marca la racha en curso. Pasá el mouse por cada cuadro para ver rival y resultado." />
+            </div>
+          {/* ─── ESTADO DE FORMA: TODOS los partidos del filtro, en fila ───
+              Antes esto tomaba .slice(0, 10) sobre un historial ordenado de
+              más viejo a más reciente: mostraba los 10 partidos MÁS VIEJOS
+              (y encima invertidos), no la racha reciente. */}
+          {(() => {
+            const hist = analiticaGlobal.historialPartidos;
+            const rachas = analizarRachas(hist);
+            const colorDe = (res) => res === 'V' ? 'var(--accent)' : res === 'D' ? '#ef4444' : '#71717a';
+            const letraDe = (res) => res === 'V' ? 'G' : res === 'D' ? 'P' : 'E';
+            const tam = esMovil ? 30 : 38;
+
+            return (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '0.08em' }}>
+                    {hist.length} PARTIDO{hist.length === 1 ? '' : 'S'} EN EL FILTRO ACTUAL
+                  </span>
+                  {rachas.actualLargo > 1 && (
+                    <span style={{ fontSize: '0.65rem', fontWeight: 900, color: colorDe(rachas.actualTipo), letterSpacing: '0.05em' }}>
+                      {rachas.actualLargo} {rachas.actualTipo === 'V' ? 'VICTORIAS' : rachas.actualTipo === 'D' ? 'DERROTAS' : 'EMPATES'} AL HILO
+                    </span>
+                  )}
+                </div>
+
+                {hist.length === 0 ? (
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Sin partidos finalizados para este filtro.</span>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center' }}>
+                      {hist.map((p, idx) => {
+                        const c = colorDe(p.resultado);
+                        const esRachaActual = idx >= rachas.inicioRachaActual && rachas.actualLargo > 1;
+                        return (
+                          <React.Fragment key={p.id || idx}>
+                            <div
+                              title={`${idx + 1}. ${p.fechaCorta || ''} vs ${p.rival} — ${p.golesPropio}-${p.golesRival}${p.jornada ? ' (' + p.jornada + ')' : ''}`}
+                              style={{
+                                width: tam, height: tam, display: 'flex', justifyContent: 'center', alignItems: 'center',
+                                background: c, color: p.resultado === 'E' ? '#fff' : '#000',
+                                fontSize: esMovil ? '0.85rem' : '1rem', fontWeight: 900, borderRadius: '4px', cursor: 'help',
+                                boxShadow: esRachaActual ? `0 0 0 2px var(--panel), 0 0 0 3px ${c}` : 'none',
+                                flexShrink: 0
+                              }}
+                            >
+                              {letraDe(p.resultado)}
+                            </div>
+                            {/* separador visual cada 5 para poder contar de un vistazo */}
+                            {(idx + 1) % 5 === 0 && idx !== hist.length - 1 && (
+                              <div style={{ width: '1px', height: tam * 0.6, background: 'var(--border)', flexShrink: 0, margin: '0 3px' }} />
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '0.68rem', fontFamily: 'JetBrains Mono, monospace' }}>
+                      <span style={{ color: 'var(--text-dim)' }}>← más viejo · más reciente →</span>
+                      <span style={{ color: 'var(--accent)' }}>Mejor racha ganando: <strong>{rachas.mejorGanando}</strong></span>
+                      <span style={{ color: '#0ea5e9' }}>Mejor invicto: <strong>{rachas.mejorInvicto}</strong></span>
+                      <span style={{ color: '#fbbf24' }}>Más sin ganar: <strong>{rachas.peorSinGanar}</strong></span>
+                      <span style={{ color: '#ef4444' }}>Más perdiendo: <strong>{rachas.peorPerdiendo}</strong></span>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+          </div>
+
           <GraficoMomentumTemporada partidos={partidosFiltrados} eventos={eventosFiltrados} />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '20px' }}>
@@ -1451,33 +1560,12 @@ function Temporada() {
             <div className="bento-card" style={{ flex: 1, order: esMovil ? 2 : 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                <div className="stat-label" style={{ marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
                  HISTORIAL DE PARTIDOS 
-                 <InfoBox texto="Registro de los últimos encuentros filtrados. Arriba podés ver la racha de forma (últimos 10 partidos, el de más a la derecha es el más reciente)." />
+                 <InfoBox texto="Detalle de cada encuentro del período filtrado, del más reciente al más viejo." />
                </div>
 
-               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, marginRight: '5px' }}>RACHA (ÚLT. 10):</span>
-                  {analiticaGlobal.historialPartidos.slice(0, 10).reverse().map((p, idx) => {
-                     let color = '#333';
-                     let textColor = '#fff';
-                     let text = 'E';
-                     if (p.resultado === 'V') { color = 'var(--accent)'; textColor = '#000'; text = 'G'; }
-                     if (p.resultado === 'D') { color = '#ef4444'; textColor = '#fff'; text = 'P'; }
-                     
-                     return (
-                       <div 
-                         key={idx} 
-                         title={`vs ${p.rival} (${p.golesPropio}-${p.golesRival})`}
-                         style={{ width: '24px', height: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', background: color, color: textColor, fontSize: '0.75rem', fontWeight: 900, borderRadius: '3px', cursor: 'help' }} 
-                       >
-                         {text}
-                       </div>
-                     )
-                  })}
-                  {analiticaGlobal.historialPartidos.length === 0 && <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>S/D</span>}
-               </div>
 
                <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', maxHeight: esMovil ? '400px' : 'auto', paddingRight: '5px' }}>
-                  {analiticaGlobal.historialPartidos.map(p => {
+                  {[...analiticaGlobal.historialPartidos].reverse().map(p => {
                     let badgeColor = 'var(--border)'; 
                     let textColor = 'var(--text-dim)';
                     let text = 'E';
