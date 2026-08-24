@@ -27,6 +27,7 @@ import Inicio from './pages/Inicio';
 const NuevoPartido        = lazy(() => import('./pages/NuevoPartido'));
 const ContinuarPartido    = lazy(() => import('./pages/ContinuarPartido'));
 const TomaDatos           = lazy(() => import('./pages/TomaDatos'));
+const TomaDatosOffline    = lazy(() => import('./pages/TomaDatosOffline'));
 const Resumen             = lazy(() => import('./pages/Resumen'));
 const JugadorPerfil       = lazy(() => import('./pages/JugadorPerfil'));
 const Temporada           = lazy(() => import('./pages/Temporada'));
@@ -269,7 +270,7 @@ useEffect(() => {
   const isLanding = location.pathname === '/'; 
   const isLogin = location.pathname === '/login';
   const isRegistro = location.pathname === '/registro'; 
-  const isTomaDatos = location.pathname === '/toma-datos'; 
+  const isTomaDatos = location.pathname === '/toma-datos' || location.pathname === '/analisis-offline'; 
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
@@ -297,6 +298,7 @@ useEffect(() => {
             <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
             <Route path="/kiosco" element={<LoginKiosco />} />
             <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
+            <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </main>
@@ -352,6 +354,7 @@ useEffect(() => {
               <>
                 <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚡ <span>NUEVO PARTIDO</span></NavLink>
                 <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⏯️ <span>CONTINUAR PARTIDO</span></NavLink>
+                <NavLink to="/analisis-offline" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🧭 <span>ANÁLISIS OFFLINE</span></NavLink>
               </>
             )}
           </>
