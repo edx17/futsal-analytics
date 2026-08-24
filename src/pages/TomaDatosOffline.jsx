@@ -106,8 +106,88 @@ function useCronometro(claveGuardado) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   FASE 1: elegir partido. Los descargados se listan siempre, con o sin red.
+   FASE 1: elegir partido
+
+   La lista del club entero es larga, así que lo primero es poder achicarla:
+   torneo, categoría, condición y búsqueda por rival. Y cada fila tiene que
+   decir de un vistazo cuándo se jugó, dónde y si tiene datos cargados —
+   sin eso no se sabe cuál sirve para analizar.
+
+   Los descargados se listan siempre, con o sin red.
    ══════════════════════════════════════════════════════════════════════════ */
+
+const CONDICIONES = { Local: '#00ff88', Visitante: '#f59e0b', Neutral: '#94a3b8' };
+
+/* La fecha viene como texto y no siempre en el mismo formato. */
+function fechaLegible(fecha) {
+  if (!fecha) return null;
+  const iso = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  return String(fecha);
+}
+
+/* Para ordenar: lo que no tiene fecha va al final. */
+const claveFecha = (p) => {
+  const iso = String(p?.fecha || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return iso ? `${iso[1]}${iso[2]}${iso[3]}` : '00000000';
+};
+
+const nombreRival = (p) => p?.rivales?.nombre || p?.rival || 'Rival';
+const cuentaEventos = (p) => (Array.isArray(p?.eventos) ? (p.eventos[0]?.count ?? 0) : null);
+
+function FichaPartido({ partido, eventos, children }) {
+  const cond = partido?.condicion || null;
+  const colorCond = CONDICIONES[cond] || 'var(--text-dim)';
+  const fecha = fechaLegible(partido?.fecha);
+
+  return (
+    <div style={{ ...tarjeta, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>vs {nombreRival(partido).toUpperCase()}</span>
+          {cond && (
+            <span style={{
+              fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.5px', padding: '2px 7px',
+              borderRadius: '3px', color: colorCond,
+              borderWidth: '1px', borderStyle: 'solid', borderColor: colorCond,
+            }}>
+              {cond.toUpperCase()}
+            </span>
+          )}
+          {partido?.estado && (
+            <span style={{ fontSize: '0.55rem', fontWeight: 900, color: 'var(--text-dim)' }}>
+              {partido.estado.toUpperCase()}
+            </span>
+          )}
+        </div>
+
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '3px' }}>
+          {[
+            fecha || 'sin fecha',
+            partido?.horario,
+            partido?.categoria,
+            partido?.competicion,
+            partido?.jornada,
+          ].filter(Boolean).join(' · ')}
+        </div>
+
+        {(partido?.lugar || eventos != null) && (
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px' }}>
+            {partido?.lugar ? `📍 ${partido.lugar}` : ''}
+            {partido?.lugar && eventos != null ? ' · ' : ''}
+            {eventos != null && (
+              <span style={{ color: eventos > 0 ? 'var(--accent)' : '#f59e0b' }}>
+                {eventos > 0 ? `${eventos} evento(s) cargados` : 'sin eventos cargados'}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: '8px' }}>{children}</div>
+    </div>
+  );
+}
+
 function SelectorPartido({ clubId, onAbrir, showToast }) {
   const [descargados, setDescargados] = useState([]);
   const [remotos, setRemotos] = useState([]);
@@ -115,6 +195,12 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
   const [bajando, setBajando] = useState(null);
   const [espacio, setEspacio] = useState(null);
   const enLinea = useEnLinea();
+
+  const [fTorneo, setFTorneo] = useState('TODOS');
+  const [fCategoria, setFCategoria] = useState('TODAS');
+  const [fCondicion, setFCondicion] = useState('TODAS');
+  const [soloConEventos, setSoloConEventos] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
 
   const refrescarLocales = useCallback(async () => {
     setDescargados(await listarPartidosDescargados());
@@ -128,10 +214,11 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
       if (navigator.onLine && clubId) {
         const traer = (select) => supabase
           .from('partidos').select(select).eq('club_id', clubId)
-          .order('created_at', { ascending: false }).limit(40);
-        /* El nombre del rival viene de una relación; si el join no resuelve,
-           igual queremos la lista de partidos. */
-        let { data, error } = await traer('*, rivales(nombre)');
+          .order('created_at', { ascending: false }).limit(400);
+        /* La cuenta de eventos y el nombre del rival salen de relaciones; si
+           alguna no resuelve, igual queremos la lista de partidos. */
+        let { data, error } = await traer('*, rivales(nombre), eventos(count)');
+        if (error) ({ data, error } = await traer('*, rivales(nombre)'));
         if (error) ({ data } = await traer('*'));
         setRemotos(data || []);
       }
@@ -158,7 +245,30 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
     showToast('Partido borrado del dispositivo.', 'info');
   };
 
-  const idsDescargados = new Set(descargados.map(d => d.id));
+  const idsDescargados = useMemo(() => new Set(descargados.map(d => d.id)), [descargados]);
+
+  const torneos = useMemo(
+    () => [...new Set(remotos.map(p => p.competicion).filter(Boolean))].sort(),
+    [remotos]
+  );
+  const categorias = useMemo(
+    () => [...new Set(remotos.map(p => p.categoria).filter(Boolean))].sort(),
+    [remotos]
+  );
+
+  const filtrados = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+    return remotos
+      .filter(p => !idsDescargados.has(p.id))
+      .filter(p => fTorneo === 'TODOS' || p.competicion === fTorneo)
+      .filter(p => fCategoria === 'TODAS' || p.categoria === fCategoria)
+      .filter(p => fCondicion === 'TODAS' || (p.condicion || 'Local') === fCondicion)
+      .filter(p => !soloConEventos || (cuentaEventos(p) ?? 0) > 0)
+      .filter(p => !texto || nombreRival(p).toLowerCase().includes(texto))
+      .sort((a, b) => claveFecha(b).localeCompare(claveFecha(a)));
+  }, [remotos, idsDescargados, fTorneo, fCategoria, fCondicion, soloConEventos, busqueda]);
+
+  const hayFiltro = fTorneo !== 'TODOS' || fCategoria !== 'TODAS' || fCondicion !== 'TODAS' || soloConEventos || busqueda.trim();
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
@@ -187,41 +297,87 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
           </div>
         )}
         {descargados.map(d => (
-          <div key={d.id} style={{ ...tarjeta, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontWeight: 800 }}>vs {d.partido?.rivales?.nombre || d.partido?.rival || 'Rival'}</div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
-                {d.partido?.fecha || ''} · {d.jugadores?.length || 0} jugadores · descargado {new Date(d.descargado_en).toLocaleString()}
+          <FichaPartido key={d.id} partido={d.partido} eventos={null}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => onAbrir(d.id)} style={botonActivo('var(--accent)')}>ABRIR</button>
+                <button onClick={() => borrarLocal(d.id)} style={{ ...boton, borderColor: '#ef4444', color: '#ef4444' }}>BORRAR</button>
               </div>
+              <span style={{ fontSize: '0.58rem', color: 'var(--text-dim)' }}>
+                {(d.jugadores?.length || 0)} jugadores · bajado {new Date(d.descargado_en).toLocaleDateString()}
+              </span>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => onAbrir(d.id)} style={botonActivo('var(--accent)')}>ABRIR</button>
-              <button onClick={() => borrarLocal(d.id)} style={{ ...boton, borderColor: '#ef4444', color: '#ef4444' }}>BORRAR</button>
-            </div>
-          </div>
+          </FichaPartido>
         ))}
       </div>
 
-      <div style={etiqueta}>DESCARGAR DEL SERVIDOR</div>
-      <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={etiqueta}>DESCARGAR DEL SERVIDOR</div>
+        <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)' }}>
+          {filtrados.length} de {remotos.length} partidos de tu club
+        </div>
+      </div>
+
+      {/* FILTROS */}
+      <div style={{ ...tarjeta, margin: '10px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', alignItems: 'end' }}>
+        <label>
+          <div style={{ ...etiqueta, marginBottom: '4px' }}>TORNEO</div>
+          <select value={fTorneo} onChange={e => setFTorneo(e.target.value)} style={inputStyle}>
+            <option value="TODOS">Todos los torneos</option>
+            {torneos.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </label>
+        <label>
+          <div style={{ ...etiqueta, marginBottom: '4px' }}>CATEGORÍA</div>
+          <select value={fCategoria} onChange={e => setFCategoria(e.target.value)} style={inputStyle}>
+            <option value="TODAS">Todas las categorías</option>
+            {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+        <label>
+          <div style={{ ...etiqueta, marginBottom: '4px' }}>CANCHA</div>
+          <select value={fCondicion} onChange={e => setFCondicion(e.target.value)} style={inputStyle}>
+            <option value="TODAS">Local, visitante y neutral</option>
+            {Object.keys(CONDICIONES).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+        <label>
+          <div style={{ ...etiqueta, marginBottom: '4px' }}>RIVAL</div>
+          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar…" style={inputStyle} />
+        </label>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => setSoloConEventos(v => !v)}
+                  style={{ ...(soloConEventos ? botonActivo('var(--accent)') : boton), padding: '8px 10px' }}
+                  title="Los partidos sin eventos no tienen nada para analizar todavía">
+            {soloConEventos ? '✓ ' : ''}CON DATOS
+          </button>
+          {hayFiltro && (
+            <button onClick={() => { setFTorneo('TODOS'); setFCategoria('TODAS'); setFCondicion('TODAS'); setSoloConEventos(false); setBusqueda(''); }}
+                    style={{ ...boton, padding: '8px 10px' }}>
+              LIMPIAR
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: '8px' }}>
         {cargando && <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Cargando…</div>}
         {!cargando && !enLinea && (
           <div style={{ ...tarjeta, color: '#f59e0b', fontSize: '0.8rem' }}>
             Sin conexión: sólo podés abrir lo que ya está descargado.
           </div>
         )}
-        {remotos.filter(p => !idsDescargados.has(p.id)).map(p => (
-          <div key={p.id} style={{ ...tarjeta, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontWeight: 800 }}>vs {p.rivales?.nombre || p.rival || 'Rival'}</div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
-                {p.fecha || ''} · {p.competicion || ''} · {p.estado || ''}
-              </div>
-            </div>
+        {!cargando && enLinea && filtrados.length === 0 && (
+          <div style={{ ...tarjeta, color: 'var(--text-dim)', fontSize: '0.8rem' }}>
+            {remotos.length === 0 ? 'No hay partidos cargados para tu club.' : 'Ningún partido coincide con los filtros.'}
+          </div>
+        )}
+        {filtrados.map(p => (
+          <FichaPartido key={p.id} partido={p} eventos={cuentaEventos(p)}>
             <button onClick={() => bajar(p)} disabled={bajando === p.id} style={botonActivo('var(--accent)')}>
               {bajando === p.id ? 'BAJANDO…' : '↓ DESCARGAR'}
             </button>
-          </div>
+          </FichaPartido>
         ))}
       </div>
     </div>
