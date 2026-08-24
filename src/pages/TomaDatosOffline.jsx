@@ -5,6 +5,8 @@ import { useToast } from '../components/ToastContext';
 import CanchaTactica from '../components/CanchaTactica';
 import { FORMACIONES, FORMACION_POR_DEFECTO, fichaBalon, fichasPropias, tableroInicial } from '../offline/formaciones';
 import * as db from '../offline/db';
+import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
+import { esPartidoPropio, nombreDelRival } from '../utils/partidosPropios';
 import { descargarPartido, listarPartidosDescargados, sincronizarPartido, contarPendientes } from '../offline/sync';
 import {
   ACCIONES, ACCIONES_POR_ID, BALON_ID, DURACION_PERIODO_MS, ETIQUETAS_TACTICAS, PERIODOS,
@@ -133,7 +135,6 @@ const claveFecha = (p) => {
 };
 
 const nombreRival = (p) => p?.rivales?.nombre || p?.rival || 'Rival';
-const cuentaEventos = (p) => (Array.isArray(p?.eventos) ? (p.eventos[0]?.count ?? 0) : null);
 
 function FichaPartido({ partido, eventos, children }) {
   const cond = partido?.condicion || null;
@@ -196,11 +197,15 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
   const [espacio, setEspacio] = useState(null);
   const enLinea = useEnLinea();
 
+  const [torneos, setTorneos] = useState([]);
   const [fTorneo, setFTorneo] = useState('TODOS');
   const [fCategoria, setFCategoria] = useState('TODAS');
   const [fCondicion, setFCondicion] = useState('TODAS');
   const [soloConEventos, setSoloConEventos] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  /* Arranca prendido: lo normal es querer ver los partidos de tu equipo, no
+     los cruces entre terceros que trae el fixture del torneo. */
+  const [soloMiEquipo, setSoloMiEquipo] = useState(true);
 
   const refrescarLocales = useCallback(async () => {
     setDescargados(await listarPartidosDescargados());
@@ -211,19 +216,56 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
     (async () => {
       await db.pedirPersistencia();
       await refrescarLocales();
-      if (navigator.onLine && clubId) {
-        const traer = (select) => supabase
-          .from('partidos').select(select).eq('club_id', clubId)
-          .order('created_at', { ascending: false }).limit(400);
-        /* La cuenta de eventos y el nombre del rival salen de relaciones; si
-           alguna no resuelve, igual queremos la lista de partidos. */
-        let { data, error } = await traer('*, rivales(nombre), eventos(count)');
-        if (error) ({ data, error } = await traer('*, rivales(nombre)'));
-        if (error) ({ data } = await traer('*'));
-        setRemotos(data || []);
+
+      if (!navigator.onLine || !clubId) { setCargando(false); return; }
+
+      try {
+        /* Nada de embeds: `partidos` tiene dos claves foráneas hacia
+           `rivales` y PostgREST no puede resolver cuál usar. Los nombres se
+           cruzan en JS, como en el resto del proyecto. Y va paginado porque
+           un torneo largo pasa las 1000 filas que devuelve PostgREST. */
+        const [partidos, rivalesData, torneosData] = await Promise.all([
+          fetchPaginado(() => supabase
+            .from('partidos').select('*').eq('club_id', clubId)
+            .order('created_at', { ascending: false }).order('id', { ascending: false })),
+          supabase.from('rivales').select('id, nombre').eq('club_id', clubId)
+            .then(r => r.data || []),
+          supabase.from('torneos').select('id, nombre, categoria').eq('club_id', clubId)
+            .order('nombre').then(r => r.data || []),
+        ]);
+
+        const mapaRivales = new Map(rivalesData.map(r => [r.id, r]));
+        const nombresRivales = new Set(rivalesData.map(r => r.nombre).filter(Boolean));
+        const miClub = localStorage.getItem('mi_club') || null;
+
+        const marcados = partidos.map(p => ({
+          ...p,
+          rivales: { nombre: nombreDelRival(p, mapaRivales) },
+          _propio: esPartidoPropio(p, { miClub, nombresRivales }),
+        }));
+
+        /* La cuenta de eventos se pide sólo para los partidos propios: un
+           cruce entre terceros nunca tiene nada trackeado. Una lectura de
+           id_partido por lotes, no un count por partido. */
+        const idsPropios = marcados.filter(p => p._propio).map(p => p.id);
+        let porPartido = new Map();
+        if (idsPropios.length > 0) {
+          const filas = await fetchPorLotes(idsPropios, (lote) =>
+            supabase.from('eventos').select('id_partido').in('id_partido', lote).order('id_partido')
+          ).catch(e => { console.error('[Offline] no se pudieron contar los eventos:', e?.message || e); return []; });
+          filas.forEach(f => porPartido.set(f.id_partido, (porPartido.get(f.id_partido) || 0) + 1));
+        }
+
+        setTorneos(torneosData);
+        setRemotos(marcados.map(p => ({ ...p, _eventos: p._propio ? (porPartido.get(p.id) || 0) : null })));
+      } catch (e) {
+        console.error('[Offline] no se pudo cargar la lista de partidos:', e?.message || e);
+        showToast('No se pudo cargar la lista de partidos. Mirá la consola.', 'error');
+      } finally {
+        setCargando(false);
       }
-      setCargando(false);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clubId, refrescarLocales]);
 
   const bajar = async (partido) => {
@@ -247,28 +289,32 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
 
   const idsDescargados = useMemo(() => new Set(descargados.map(d => d.id)), [descargados]);
 
-  const torneos = useMemo(
-    () => [...new Set(remotos.map(p => p.competicion).filter(Boolean))].sort(),
-    [remotos]
-  );
+  /* Los torneos salen de la tabla `torneos`, no del texto libre de
+     `competicion`, así el filtro coincide con lo que ves en Torneos.
+     `Sin torneo` sólo aparece si de verdad hay partidos sueltos. */
+  const haySueltos = useMemo(() => remotos.some(p => !p.torneo_id), [remotos]);
   const categorias = useMemo(
     () => [...new Set(remotos.map(p => p.categoria).filter(Boolean))].sort(),
     [remotos]
   );
+  const cantidadPropios = useMemo(() => remotos.filter(p => p._propio).length, [remotos]);
 
   const filtrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
     return remotos
       .filter(p => !idsDescargados.has(p.id))
-      .filter(p => fTorneo === 'TODOS' || p.competicion === fTorneo)
+      .filter(p => !soloMiEquipo || p._propio)
+      .filter(p => fTorneo === 'TODOS'
+                || (fTorneo === 'SUELTOS' ? !p.torneo_id : p.torneo_id === fTorneo))
       .filter(p => fCategoria === 'TODAS' || p.categoria === fCategoria)
       .filter(p => fCondicion === 'TODAS' || (p.condicion || 'Local') === fCondicion)
-      .filter(p => !soloConEventos || (cuentaEventos(p) ?? 0) > 0)
+      .filter(p => !soloConEventos || (p._eventos ?? 0) > 0)
       .filter(p => !texto || nombreRival(p).toLowerCase().includes(texto))
       .sort((a, b) => claveFecha(b).localeCompare(claveFecha(a)));
-  }, [remotos, idsDescargados, fTorneo, fCategoria, fCondicion, soloConEventos, busqueda]);
+  }, [remotos, idsDescargados, soloMiEquipo, fTorneo, fCategoria, fCondicion, soloConEventos, busqueda]);
 
-  const hayFiltro = fTorneo !== 'TODOS' || fCategoria !== 'TODAS' || fCondicion !== 'TODAS' || soloConEventos || busqueda.trim();
+  const hayFiltro = fTorneo !== 'TODOS' || fCategoria !== 'TODAS' || fCondicion !== 'TODAS'
+                 || soloConEventos || !soloMiEquipo || busqueda.trim();
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
@@ -324,7 +370,12 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
           <div style={{ ...etiqueta, marginBottom: '4px' }}>TORNEO</div>
           <select value={fTorneo} onChange={e => setFTorneo(e.target.value)} style={inputStyle}>
             <option value="TODOS">Todos los torneos</option>
-            {torneos.map(t => <option key={t} value={t}>{t}</option>)}
+            {torneos.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}{t.categoria ? ` · ${t.categoria}` : ''}
+              </option>
+            ))}
+            {haySueltos && <option value="SUELTOS">Sin torneo (amistosos)</option>}
           </select>
         </label>
         <label>
@@ -346,13 +397,18 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar…" style={inputStyle} />
         </label>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => setSoloMiEquipo(v => !v)}
+                  style={{ ...(soloMiEquipo ? botonActivo('var(--accent)') : boton), padding: '8px 10px' }}
+                  title="El fixture de un torneo trae también los cruces entre otros equipos. Con esto ves sólo los tuyos.">
+            {soloMiEquipo ? '✓ ' : ''}MI EQUIPO ({cantidadPropios})
+          </button>
           <button onClick={() => setSoloConEventos(v => !v)}
                   style={{ ...(soloConEventos ? botonActivo('var(--accent)') : boton), padding: '8px 10px' }}
                   title="Los partidos sin eventos no tienen nada para analizar todavía">
             {soloConEventos ? '✓ ' : ''}CON DATOS
           </button>
           {hayFiltro && (
-            <button onClick={() => { setFTorneo('TODOS'); setFCategoria('TODAS'); setFCondicion('TODAS'); setSoloConEventos(false); setBusqueda(''); }}
+            <button onClick={() => { setFTorneo('TODOS'); setFCategoria('TODAS'); setFCondicion('TODAS'); setSoloConEventos(false); setSoloMiEquipo(true); setBusqueda(''); }}
                     style={{ ...boton, padding: '8px 10px' }}>
               LIMPIAR
             </button>
@@ -369,11 +425,15 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
         )}
         {!cargando && enLinea && filtrados.length === 0 && (
           <div style={{ ...tarjeta, color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-            {remotos.length === 0 ? 'No hay partidos cargados para tu club.' : 'Ningún partido coincide con los filtros.'}
+            {remotos.length === 0
+              ? 'No hay partidos cargados para tu club.'
+              : soloMiEquipo && cantidadPropios === 0
+                ? 'Ninguno de los partidos cargados es de tu equipo. Si esperabas verlos, apagá MI EQUIPO para ver el fixture completo.'
+                : 'Ningún partido coincide con los filtros.'}
           </div>
         )}
         {filtrados.map(p => (
-          <FichaPartido key={p.id} partido={p} eventos={cuentaEventos(p)}>
+          <FichaPartido key={p.id} partido={p} eventos={p._eventos}>
             <button onClick={() => bajar(p)} disabled={bajando === p.id} style={botonActivo('var(--accent)')}>
               {bajando === p.id ? 'BAJANDO…' : '↓ DESCARGAR'}
             </button>
