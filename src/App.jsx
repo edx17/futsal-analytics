@@ -134,7 +134,6 @@ function AppRoutes() {
       <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
       <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
       <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
-      <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
       <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
       <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
       <Route path="/transferencias" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Transferencias /></ProtectedRoute>} />
@@ -271,7 +270,7 @@ useEffect(() => {
   const isLanding = location.pathname === '/'; 
   const isLogin = location.pathname === '/login';
   const isRegistro = location.pathname === '/registro'; 
-  const isTomaDatos = location.pathname === '/toma-datos'; 
+  const isTomaDatos = location.pathname === '/toma-datos' || location.pathname === '/analisis-offline'; 
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
@@ -299,6 +298,7 @@ useEffect(() => {
             <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
             <Route path="/kiosco" element={<LoginKiosco />} />
             <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
+            <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </main>

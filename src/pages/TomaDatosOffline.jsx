@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import simpleheat from 'simpleheat';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
@@ -18,7 +19,7 @@ import {
   rastrosPorFicha, rangoGrabado, posicionesEn, exportarVideo, descargarBlob, soportaExportar,
 } from '../offline/video';
 import {
-  sembrarStints, minutosPorJugador, puntosDespliegue, grillaDespliegue, centroDespliegue,
+  sembrarStints, dedupStints, minutosPorJugador, puntosDespliegue, grillaDespliegue, centroDespliegue,
   balanceLineaPelota, balonDe, contextoLineaGol, cadenaDeSecuencia, resumenCadena,
   enCanchaEn, stintActivo, resumenPases, indicePerdidas,
 } from '../analytics/despliegue';
@@ -46,6 +47,19 @@ const boton = { padding: '8px 10px', borderRadius: '4px', cursor: 'pointer', fon
 const botonActivo = (color) => ({ ...boton, borderColor: color, color, background: `${color}18` });
 
 const nombreCorto = (j) => (j ? `${j.dorsal != null ? j.dorsal + ' · ' : ''}${j.apellido || j.nombre || 'Jugador'}` : '—');
+
+/* Debajo de este ancho las dos columnas se apilan y la pantalla necesita
+   scroll propio: forzar altura fija ahí esconde media pantalla. */
+function useAnchoChico(limite = 1000) {
+  const [chico, setChico] = useState(typeof window === 'undefined' ? false : window.innerWidth < limite);
+  useEffect(() => {
+    let t;
+    const medir = () => { clearTimeout(t); t = setTimeout(() => setChico(window.innerWidth < limite), 150); };
+    window.addEventListener('resize', medir);
+    return () => { clearTimeout(t); window.removeEventListener('resize', medir); };
+  }, [limite]);
+  return chico;
+}
 
 function useEnLinea() {
   const [enLinea, setEnLinea] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
@@ -189,7 +203,7 @@ function FichaPartido({ partido, eventos, children }) {
   );
 }
 
-function SelectorPartido({ clubId, onAbrir, showToast }) {
+function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
   const [descargados, setDescargados] = useState([]);
   const [remotos, setRemotos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -317,9 +331,13 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
                  || soloConEventos || !soloMiEquipo || busqueda.trim();
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
+    <div style={{ height: '100dvh', overflowY: 'auto', background: 'var(--bg)' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', paddingBottom: '60px', animation: 'fadeIn 0.3s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
-        <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>ANÁLISIS OFFLINE</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={onVolver} style={boton}>⬅ VOLVER</button>
+          <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>ANÁLISIS OFFLINE</div>
+        </div>
         <div style={{ ...etiqueta, color: enLinea ? 'var(--accent)' : '#f59e0b' }}>
           {enLinea ? '● CONECTADO' : '○ SIN CONEXIÓN'}
           {espacio && ` · ${espacio.usadoMB.toFixed(1)} MB usados`}
@@ -441,6 +459,7 @@ function SelectorPartido({ clubId, onAbrir, showToast }) {
         ))}
       </div>
     </div>
+    </div>
   );
 }
 
@@ -524,8 +543,10 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
   const [sincronizando, setSincronizando] = useState(false);
 
   const enLinea = useEnLinea();
+  const anchoChico = useAnchoChico();
   const clubId = cabecera?.club_id || localStorage.getItem('club_id');
   const recorridosRef = useRef({});   // clave ficha → local_id del rastro abierto
+  const sembradoRef = useRef(false);  // freno al doble montaje en modo estricto
 
   /* ── Carga ─────────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -539,18 +560,35 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
       setSecuencias(datos.secuencias);
 
       /* Sin stints guardados, los sembramos de los cambios del tracker. Es
-         una propuesta: el analista después la corrige. */
+         una propuesta: el analista después la corrige.
+
+         El ref frena el doble montaje: React en modo estricto corre este
+         efecto dos veces en desarrollo, y sin el freno sembraba los tramos
+         dos veces (cada jugador terminaba repetido en la botonera). */
       let stintsIniciales = datos.stints;
-      if (stintsIniciales.length === 0) {
-        stintsIniciales = sembrarStints({
-          eventos: datos.eventos,
-          titulares: datos.cabecera.titulares || [],
-          clubId: datos.cabecera.club_id,
-          idPartido,
-        });
-        await db.guardarVarios('stints', stintsIniciales);
+      if (stintsIniciales.length === 0 && !sembradoRef.current) {
+        sembradoRef.current = true;
+        const recheck = await db.leerPorPartido('stints', idPartido);
+        if (recheck.length === 0) {
+          stintsIniciales = sembrarStints({
+            eventos: datos.eventos,
+            titulares: datos.cabecera.titulares || [],
+            clubId: datos.cabecera.club_id,
+            idPartido,
+          });
+          await db.guardarVarios('stints', stintsIniciales);
+        } else {
+          stintsIniciales = recheck;
+        }
       }
-      setStints(stintsIniciales);
+
+      /* Y si ya quedaron duplicados de antes, se limpian al abrir. */
+      const { stints: limpios, descartados } = dedupStints(stintsIniciales);
+      if (descartados.length > 0) {
+        for (const s of descartados) await db.borrar('stints', s.local_id);
+        showToast(`Se limpiaron ${descartados.length} tramo(s) duplicado(s).`, 'info');
+      }
+      setStints(limpios);
 
       const enCancha = (datos.cabecera.jugadores || []).filter(j =>
         (datos.cabecera.titulares || []).includes(String(j.id)));
@@ -841,6 +879,35 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
     setPuntoOrigen(null);
   };
 
+  /* EL ARRANQUE DEL PERÍODO. Poner el reloj en cero no alcanza: queda
+     registrado como evento, así después se sabe en qué momento del video o
+     del partido empezó cada tiempo. Marcarlo de nuevo pisa el anterior. */
+  const marcarInicioPeriodo = async () => {
+    const accion = `Inicio ${periodo}`;
+    const previos = eventos.filter(e => e.accion === accion && e.periodo === periodo);
+    for (const viejo of previos) {
+      if (viejo._estado !== 'sincronizado') {
+        await db.borrar('eventos', viejo.local_id);
+        setEventos(prev => prev.filter(e => e.local_id !== viejo.local_id));
+      }
+    }
+
+    const marca = crearEvento({
+      clubId, idPartido, accion, equipo: 'Propio', periodo, tMs: 0,
+      quinteto: quintetoActual, contextoJuego,
+    });
+    await guardarEvento(marca);
+
+    crono.fijar(0);
+    if (!crono.corriendo) crono.alternar();
+    showToast(`${periodo} arrancado. Reloj en 0:00 y corriendo.`, 'success');
+  };
+
+  const inicioMarcado = useMemo(
+    () => eventos.some(e => e.accion === `Inicio ${periodo}` && e.periodo === periodo),
+    [eventos, periodo]
+  );
+
   const fijarSnapshot = async (eventoVinculado = null) => {
     const snap = crearSnapshot({
       clubId, idPartido, periodo, tMs,
@@ -1027,7 +1094,13 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)' }}>
+    /* Altura fija y sin scroll: lo único que se desliza es la caja de la
+       derecha. En pantallas angostas se permite scroll, porque las dos
+       columnas se apilan y no entran. */
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--bg)',
+      overflowY: anchoChico ? 'auto' : 'hidden', overflowX: 'hidden',
+    }}>
 
       {/* ══ BARRA SUPERIOR: cronómetro y sincronización ══ */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '8px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
@@ -1063,6 +1136,12 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
                onChange={e => crono.fijar(Number(e.target.value))}
                style={{ flex: '1 1 140px', minWidth: '110px', accentColor: 'var(--accent)' }} />
 
+        <button onClick={marcarInicioPeriodo}
+                title={`Pone el reloj en 0:00, lo arranca y deja registrado el comienzo del ${periodo}`}
+                style={inicioMarcado ? botonActivo('#22d3ee') : { ...boton, borderColor: '#22d3ee', color: '#22d3ee' }}>
+          ⚑ {inicioMarcado ? `${periodo} MARCADO` : `INICIO ${periodo}`}
+        </button>
+
         <button onClick={() => setInvertida(v => !v)} style={boton} title="Invertir la cancha">⇄</button>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1076,10 +1155,16 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'flex', flex: 1, minHeight: 0, flexWrap: 'wrap',
+        overflow: anchoChico ? 'visible' : 'hidden',
+      }}>
 
         {/* ══ COLUMNA IZQUIERDA: la cancha ══ */}
-        <div style={{ flex: '1 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{
+          flex: '1 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column',
+          minHeight: anchoChico ? '70vh' : 0, overflow: 'hidden',
+        }}>
 
           {/* Modo del tablero + estado de lo que se va a marcar */}
           <div style={{ display: 'flex', gap: '8px', padding: '8px 10px', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
@@ -1304,9 +1389,18 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
         </div>
 
         {/* ══ PANEL DERECHO ══ */}
-        <div style={{ flex: '0 1 370px', minWidth: '300px', borderLeft: '1px solid var(--border)', background: 'var(--panel)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{
+          flex: '0 1 370px', minWidth: '300px', borderLeft: '1px solid var(--border)',
+          background: 'var(--panel)', display: 'flex', flexDirection: 'column',
+          minHeight: 0, overflow: 'hidden',
+        }}>
 
-          <div style={{ padding: '10px', borderBottom: '1px solid var(--border)' }}>
+          {/* La botonera no puede comerse toda la altura: se le pone techo y,
+              si no entra, scrollea ella sola. */}
+          <div style={{
+            padding: '10px', borderBottom: '1px solid var(--border)',
+            flexShrink: 0, maxHeight: anchoChico ? 'none' : '58%', overflowY: 'auto',
+          }}>
             {/* DE QUIÉN ES LO QUE MARCO */}
             <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
               {['Propio', 'Rival'].map(eq => {
@@ -1349,13 +1443,22 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
             </div>
 
             <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
-              <select value={etiquetaTactica} onChange={e => setEtiquetaTactica(e.target.value)} style={{ ...inputStyle, fontSize: '0.68rem' }}>
-                {ETIQUETAS_TACTICAS.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <select value={contextoJuego} onChange={e => setContextoJuego(e.target.value)} style={{ ...inputStyle, width: '80px', fontSize: '0.68rem' }}
-                      title="Contexto del partido: expulsados, portero-jugador">
-                {CONTEXTOS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <label style={{ flex: 1 }}>
+                <div style={{ ...etiqueta, marginBottom: '3px' }}>TIPO DE JUGADA (opcional)</div>
+                <select value={etiquetaTactica} onChange={e => setEtiquetaTactica(e.target.value)}
+                        title="Cómo nació la jugada. Queda pegado a todo lo que marques hasta que lo cambies."
+                        style={{ ...inputStyle, fontSize: '0.68rem' }}>
+                  {ETIQUETAS_TACTICAS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label style={{ width: '92px' }}>
+                <div style={{ ...etiqueta, marginBottom: '3px' }}>EN CANCHA</div>
+                <select value={contextoJuego} onChange={e => setContextoJuego(e.target.value)}
+                        title="Cuántos somos contra cuántos son, por expulsados o portero-jugador"
+                        style={{ ...inputStyle, fontSize: '0.68rem' }}>
+                  {CONTEXTOS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
             </div>
 
             {/* Cadena en curso */}
@@ -1383,7 +1486,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             {[
               { id: 'eventos', label: 'EVENTOS' },
               { id: 'goles', label: 'GOLES' },
@@ -1398,7 +1501,12 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
             ))}
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '10px', minHeight: '180px' }}>
+          {/* LA CAJA. Todo lo de las pestañas vive acá adentro y se desliza
+              acá adentro, nunca la pantalla entera. */}
+          <div style={{
+            flex: '1 1 0', minHeight: anchoChico ? '260px' : '150px',
+            overflowY: 'auto', overflowX: 'hidden', padding: '10px',
+          }}>
             {tab === 'eventos' && (
               <ListaEventos
                 eventos={eventosOrdenados} jugadorPorId={jugadorPorId} secuencias={secuencias}
@@ -1742,6 +1850,7 @@ function TabCalor({ jugadores, jugadorFoco, setJugadorFoco, puntos, centro, gril
 
 /* ══════════════════════════════════════════════════════════════════════════ */
 export default function TomaDatosOffline() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const clubId = localStorage.getItem('club_id');
   const [idPartido, setIdPartido] = useState(null);
@@ -1750,7 +1859,10 @@ export default function TomaDatosOffline() {
     return <div style={{ color: '#ef4444', textAlign: 'center', marginTop: '50px' }}>Configurá tu club primero.</div>;
   }
   if (idPartido == null) {
-    return <SelectorPartido clubId={clubId} onAbrir={setIdPartido} showToast={showToast} />;
+    return (
+      <SelectorPartido clubId={clubId} onAbrir={setIdPartido}
+                       onVolver={() => navigate('/inicio')} showToast={showToast} />
+    );
   }
   return <MesaTrabajo idPartido={idPartido} onSalir={() => setIdPartido(null)} showToast={showToast} />;
 }

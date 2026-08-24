@@ -101,11 +101,32 @@ export const stintsDeJugador = (stints = [], idJugador) =>
 /* ¿Quién estaba en cancha en tal momento? Lo usamos para saber contra qué
    quinteto pasó cada cosa sin depender de que el evento traiga quinteto. */
 export function enCanchaEn(stints = [], periodo, tMs) {
-  return stints
-    .filter(s => (s.periodo || 'PT') === periodo &&
-                 s.entrada_ms <= tMs &&
-                 (s.salida_ms == null || s.salida_ms >= tMs))
-    .map(s => String(s.id_jugador));
+  /* Sin el Set, dos tramos solapados del mismo jugador lo devuelven repetido
+     y aparece dos veces en la botonera. */
+  return [...new Set(
+    stints
+      .filter(s => (s.periodo || 'PT') === periodo &&
+                   s.entrada_ms <= tMs &&
+                   (s.salida_ms == null || s.salida_ms >= tMs))
+      .map(s => String(s.id_jugador))
+  )];
+}
+
+/* Deja un solo tramo por jugador, período y minuto de entrada. Hace falta
+   porque un doble montaje del componente (React en modo estricto lo hace en
+   desarrollo) llegó a sembrar los tramos dos veces, y a partir de ahí cada
+   jugador aparecía repetido en la botonera. */
+export function dedupStints(stints = []) {
+  const vistos = new Set();
+  const salida = [];
+  const descartados = [];
+  stints.forEach(s => {
+    const clave = `${s.periodo || 'PT'}|${s.id_jugador}|${s.entrada_ms}`;
+    if (vistos.has(clave)) { descartados.push(s); return; }
+    vistos.add(clave);
+    salida.push(s);
+  });
+  return { stints: salida, descartados };
 }
 
 /* El tramo abierto de un jugador en este momento. El seguimiento posicional
