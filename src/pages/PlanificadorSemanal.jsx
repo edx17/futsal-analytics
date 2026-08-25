@@ -999,6 +999,28 @@ const PlanificadorSemanal = () => {
     });
   };
 
+  // En la vista "Todas mis categorías" el tema se elige desde el propio modal.
+  // Si esa categoría ya tiene tema esa semana, se abre el existente en vez de
+  // arrancar uno nuevo que después lo pisaría.
+  const cambiarCategoriaTema = (categoria) => {
+    const existente = temasSemana.find(t => t.fecha_inicio === modalTema.fecha_inicio && t.categoria_equipo === categoria);
+    setModalTema(existente ? { ...existente } : {
+      id: null,
+      fecha_inicio: modalTema.fecha_inicio,
+      categoria_equipo: categoria,
+      titulo: '',
+      detalle: '',
+      color: modalTema.color || COLORES_TEMA[0],
+    });
+  };
+
+  // La tabla `temas_semana` viene de una migración aparte: si todavía no se
+  // corrió, conviene decirlo con todas las letras en vez del error crudo.
+  const mensajeErrorTema = (error) =>
+    /does not exist|schema cache|Could not find the table/i.test(error.message || '')
+      ? 'Falta correr la migración `temas_semana` en Supabase (supabase/migrations/20260825140000_temas_semana.sql).'
+      : error.message;
+
   const guardarTema = async () => {
     if (!modalTema?.titulo?.trim()) {
       showToast('Poné un título para el tema de la semana.', 'warning');
@@ -1028,7 +1050,7 @@ const PlanificadorSemanal = () => {
       showToast('Tema de la semana guardado', 'success');
       cargarDatos();
     } catch (error) {
-      showToast('Error al guardar el tema: ' + error.message, 'error');
+      showToast('Error al guardar el tema: ' + mensajeErrorTema(error), 'error');
     }
   };
 
@@ -1042,7 +1064,7 @@ const PlanificadorSemanal = () => {
       showToast('Tema eliminado', 'info');
       cargarDatos();
     } catch (error) {
-      showToast('Error al eliminar el tema: ' + error.message, 'error');
+      showToast('Error al eliminar el tema: ' + mensajeErrorTema(error), 'error');
     }
   };
 
@@ -1253,9 +1275,7 @@ const PlanificadorSemanal = () => {
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px' }}>
                   <span style={{ fontSize: '0.6rem', letterSpacing: '0.5px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-dim)' }}>🧵 Tema de la semana</span>
-                  {temasDeLaSemana.length === 0 && (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>Elegí una categoría para definir el tema de la semana.</span>
-                  )}
+
                   {temasDeLaSemana.map(t => (
                     <button
                       key={t.id}
@@ -1265,6 +1285,15 @@ const PlanificadorSemanal = () => {
                       {t.categoria_equipo}: {t.titulo}
                     </button>
                   ))}
+
+                  {/* Con el filtro en "Todas" la categoría se elige adentro del modal. */}
+                  <button
+                    onClick={() => abrirModalTema(null, lunesVisible, categoriasMostrar[0] || 'Primera')}
+                    disabled={categoriasMostrar.length === 0}
+                    style={{ ...chipStyle, background: 'transparent', color: 'var(--accent)', borderColor: 'var(--accent)', borderStyle: 'dashed', opacity: categoriasMostrar.length === 0 ? 0.4 : 1 }}
+                  >
+                    ➕ {temasDeLaSemana.length === 0 ? 'Definir tema de la semana' : 'Agregar otra categoría'}
+                  </button>
                 </div>
               )}
 
@@ -1570,6 +1599,19 @@ const PlanificadorSemanal = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {categoriasMostrar.length > 1 && (
+                <div>
+                  <label style={labelStyle}>Categoría</label>
+                  <select
+                    value={modalTema.categoria_equipo}
+                    onChange={e => cambiarCategoriaTema(e.target.value)}
+                    style={inputStyle}
+                  >
+                    {categoriasMostrar.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label style={labelStyle}>Patrón / temática</label>
                 <input
