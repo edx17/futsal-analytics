@@ -492,6 +492,7 @@ const PlanificadorSemanal = () => {
   const [filtroFaseTarea, setFiltroFaseTarea] = useState('Todas');
   const [filtroFormatoTarea, setFiltroFormatoTarea] = useState('Todas');
   const [soloRecomendadas, setSoloRecomendadas] = useState(false);
+  const [tareaArrastrada, setTareaArrastrada] = useState(null);
   
   const { showToast } = useToast(); 
 
@@ -739,6 +740,41 @@ const PlanificadorSemanal = () => {
     });
   };
 
+  // --- ORDEN MANUAL DE LAS TAREAS DE LA SESIÓN ---
+  // El orden vive en el propio array `tareas_ids` (jsonb), así que se guarda tal cual.
+  const reubicarTarea = (desde, hasta) => {
+    setNuevaSesion(prev => {
+      const ids = [...(prev.tareas_ids || [])];
+      if (desde < 0 || hasta < 0 || desde >= ids.length || hasta >= ids.length || desde === hasta) return prev;
+      const [movida] = ids.splice(desde, 1);
+      ids.splice(hasta, 0, movida);
+      return { ...prev, tareas_ids: ids };
+    });
+  };
+
+  const moverTarea = (tareaId, direccion) => {
+    const ids = nuevaSesion.tareas_ids || [];
+    const desde = ids.indexOf(tareaId);
+    if (desde === -1) return;
+    reubicarTarea(desde, desde + direccion);
+  };
+
+  const cambiarPosicionTarea = (tareaId, valor) => {
+    const ids = nuevaSesion.tareas_ids || [];
+    const desde = ids.indexOf(tareaId);
+    const posicion = parseInt(valor, 10);
+    if (desde === -1 || Number.isNaN(posicion)) return;
+    const hasta = Math.min(Math.max(posicion - 1, 0), ids.length - 1);
+    reubicarTarea(desde, hasta);
+  };
+
+  const soltarSobreTarea = (tareaIdDestino) => {
+    const ids = nuevaSesion.tareas_ids || [];
+    if (!tareaArrastrada || tareaArrastrada === tareaIdDestino) { setTareaArrastrada(null); return; }
+    reubicarTarea(ids.indexOf(tareaArrastrada), ids.indexOf(tareaIdDestino));
+    setTareaArrastrada(null);
+  };
+
   const ENFOQUES_FISICOS = [
     'Activación / Core / Prevención',
     'Fuerza Máxima / Estructural',
@@ -896,11 +932,17 @@ const PlanificadorSemanal = () => {
     const aSel = nuevaSesion.tareas_ids?.includes(a.id);
     const bSel = nuevaSesion.tareas_ids?.includes(b.id);
     if (aSel !== bSel) return aSel ? -1 : 1;
+    if (aSel && bSel) return nuevaSesion.tareas_ids.indexOf(a.id) - nuevaSesion.tareas_ids.indexOf(b.id);
     const aRec = esRecomendadaParaSesion(a) && a.categoria_recomendada === nuevaSesion.categoria_equipo;
     const bRec = esRecomendadaParaSesion(b) && b.categoria_recomendada === nuevaSesion.categoria_equipo;
     if (aRec !== bRec) return aRec ? -1 : 1;
     return 0;
   });
+
+  // Tareas de la sesión, en el orden elegido por el cuerpo técnico (no alfabético).
+  const tareasOrdenadas = (nuevaSesion.tareas_ids || [])
+    .map(id => tareasBanco.find(tb => tb.id === id))
+    .filter(Boolean);
 
   const tiempoEstimadoTotal = (nuevaSesion.tareas_ids || []).reduce((acc, id) => {
     const t = tareasBanco.find(tb => tb.id === id);
@@ -1026,12 +1068,12 @@ const PlanificadorSemanal = () => {
                             {tareasIds.length > 0 && !esMovil && (
                               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '8px' }}>
                                 <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>TAREAS:</span>
-                                <ul style={{ margin: 0, paddingLeft: '15px', color: 'var(--text)', fontSize: '0.7rem', lineHeight: '1.4' }}>
+                                <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--text)', fontSize: '0.7rem', lineHeight: '1.4' }}>
                                   {tareasIds.map(id => {
                                     const t = tareasBanco.find(tb => tb.id === id);
                                     return t ? <li key={id}>{getIconoTarea(t)} {t.titulo}</li> : null;
                                   })}
-                                </ul>
+                                </ol>
                               </div>
                             )}
                             {tareasIds.length > 0 && esMovil && (
@@ -1258,15 +1300,14 @@ const PlanificadorSemanal = () => {
                       <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>No hay tareas asignadas.</span>
                     )}
                     
-                    {nuevaSesion.tareas_ids?.map(id => {
-                      const t = tareasBanco.find(tb => tb.id === id);
-                      if (!t) return null;
+                    {tareasOrdenadas.map((t, idx) => {
                       return (
                         <div 
                           key={t.id} 
                           onClick={() => setTareaSeleccionadaDetalle(t)} 
                           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: 'var(--panel)', border: '1px solid var(--border)' }}
                         >
+                          <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '0.75rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{idx + 1}</span>
                           <div style={{ width: '55px', height: '42px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             {t.video_mp4_url ? (
                               <video src={t.video_mp4_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1482,6 +1523,46 @@ const PlanificadorSemanal = () => {
                       </div>
                     </div>
                     
+                    {/* ORDEN MANUAL DE LAS TAREAS DE LA SESIÓN */}
+                    {tareasOrdenadas.length > 0 && (
+                      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <span style={{ fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Orden de la sesión · {esMovil ? 'usá ▲▼ o escribí el número' : 'arrastrá, usá ▲▼ o escribí el número'}
+                        </span>
+
+                        {tareasOrdenadas.map((t, idx) => (
+                          <div
+                            key={t.id}
+                            draggable={!esMovil}
+                            onDragStart={() => setTareaArrastrada(t.id)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={() => soltarSobreTarea(t.id)}
+                            onDragEnd={() => setTareaArrastrada(null)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', background: 'var(--panel)', border: tareaArrastrada === t.id ? '1px dashed var(--accent)' : '1px solid var(--border)', opacity: tareaArrastrada === t.id ? 0.5 : 1, cursor: esMovil ? 'default' : 'grab' }}
+                          >
+                            <input
+                              type="number"
+                              min="1"
+                              max={tareasOrdenadas.length}
+                              value={idx + 1}
+                              onChange={(e) => cambiarPosicionTarea(t.id, e.target.value)}
+                              title="Posición dentro de la sesión"
+                              style={{ width: '46px', textAlign: 'center', padding: '6px 4px', background: 'var(--bg)', border: '1px solid var(--accent)', borderRadius: '6px', color: 'var(--accent)', fontWeight: 900, fontSize: '0.85rem', minHeight: '36px', outline: 'none', flexShrink: 0 }}
+                            />
+                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                              <span style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getIconoTarea(t)} {t.titulo}</span>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>⏱️ {t.duracion_estimada}'{t.fase_juego ? ` • ${t.fase_juego}` : ''}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                              <button onClick={() => moverTarea(t.id, -1)} disabled={idx === 0} title="Subir" style={{ ...btnOrdenStyle, opacity: idx === 0 ? 0.25 : 1, cursor: idx === 0 ? 'default' : 'pointer' }}>▲</button>
+                              <button onClick={() => moverTarea(t.id, 1)} disabled={idx === tareasOrdenadas.length - 1} title="Bajar" style={{ ...btnOrdenStyle, opacity: idx === tareasOrdenadas.length - 1 ? 0.25 : 1, cursor: idx === tareasOrdenadas.length - 1 ? 'default' : 'pointer' }}>▼</button>
+                              <button onClick={() => toggleTarea(t.id)} title="Quitar de la sesión" style={{ ...btnOrdenStyle, color: '#ef4444', borderColor: '#ef444455' }}>✖</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <button 
                       onClick={irACreadorYGuardarBorrador} 
                       style={{ background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)', padding: '15px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
@@ -1694,6 +1775,7 @@ const navBtn = { background: 'var(--panel)', border: 'none', color: 'var(--text)
 const labelStyle = { display: 'block', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' };
 const inputStyle = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.95rem', outline: 'none', minHeight: '44px' };
 const pillStyle = { fontSize: '0.65rem', background: 'var(--panel)', color: 'var(--text-dim)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)' };
+const btnOrdenStyle = { width: '30px', height: '30px', borderRadius: '6px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 };
 const chipStyle = { fontSize: '0.7rem', fontWeight: 'bold', padding: '6px 10px', borderRadius: '20px', border: '1px solid var(--border)', cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.15s' };
 
 export default PlanificadorSemanal;
