@@ -24,6 +24,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
   const { alertas, loading, descartar } = useTablon(clubId, misCategorias);
   const [abierto, setAbierto] = useState(false);
   const [pushEstado, setPushEstado] = useState('desconocido'); // desconocido | activando | activo | error | no-soportado
+  const [pushMotivo, setPushMotivo] = useState(null);
 
   useEffect(() => {
     if (!pushSoportado()) { setPushEstado('no-soportado'); return; }
@@ -32,8 +33,13 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
 
   const handleActivarPush = async () => {
     setPushEstado('activando');
+    setPushMotivo(null);
     const res = await activarNotificaciones(clubId, perfilId);
     setPushEstado(res.ok ? 'activo' : 'error');
+    /* El motivo se muestra: "no se pudo activar" a secas no le sirve a nadie
+       para saber si falta la clave, si el navegador está bloqueado o si es un
+       permiso de la base. */
+    if (!res.ok) setPushMotivo(res.mensaje + (res.detalle ? ` (${res.detalle})` : ''));
   };
 
   const bloqueantes = alertas.filter((a) => a.prioridad === 'bloqueante').length;
@@ -208,6 +214,21 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                   >
                     {pushEstado === 'activando' ? 'Activando...' : pushEstado === 'error' ? '⚠️ No se pudo activar — reintentar' : '🔔 Activar notificaciones en este dispositivo'}
                   </button>
+                )}
+
+                {pushEstado === 'error' && pushMotivo && (
+                  <div style={{
+                    marginTop: 8,
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    background: 'rgba(255,82,82,0.08)',
+                    border: '1px solid rgba(255,82,82,0.35)',
+                    color: 'var(--text-dim)',
+                    fontSize: '0.7rem',
+                    lineHeight: 1.5,
+                  }}>
+                    {pushMotivo}
+                  </div>
                 )}
               </div>
             )}
