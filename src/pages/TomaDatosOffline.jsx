@@ -7,7 +7,7 @@ import CanchaTactica from '../components/CanchaTactica';
 import { FORMACIONES, FORMACION_POR_DEFECTO, fichaBalon, fichasPropias, tableroInicial } from '../offline/formaciones';
 import * as db from '../offline/db';
 import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
-import { esPartidoPropio, nombreDelRival } from '../utils/partidosPropios';
+import { esPartidoPropio, nombreDelRival, deducirMiClub } from '../utils/partidosPropios';
 import { descargarPartido, listarPartidosDescargados, sincronizarPartido, contarPendientes } from '../offline/sync';
 import {
   ACCIONES, ACCIONES_POR_ID, BALON_ID, DURACION_PERIODO_MS, ETIQUETAS_TACTICAS, PERIODOS,
@@ -220,6 +220,7 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
   /* Arranca prendido: lo normal es querer ver los partidos de tu equipo, no
      los cruces entre terceros que trae el fixture del torneo. */
   const [soloMiEquipo, setSoloMiEquipo] = useState(true);
+  const [diagnostico, setDiagnostico] = useState(null);
 
   const refrescarLocales = useCallback(async () => {
     setDescargados(await listarPartidosDescargados());
@@ -250,13 +251,30 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
 
         const mapaRivales = new Map(rivalesData.map(r => [r.id, r]));
         const nombresRivales = new Set(rivalesData.map(r => r.nombre).filter(Boolean));
-        const miClub = localStorage.getItem('mi_club') || null;
+
+        /* Cómo se llama nuestro club. El navegador puede tenerlo viejo, vacío
+           o escrito distinto de como figura en los partidos, así que primero
+           preguntamos a la base y después dejamos que se deduzca de los
+           propios partidos si igual no matchea. */
+        const { data: clubData } = await supabase
+          .from('clubes').select('nombre').eq('id', clubId).maybeSingle();
+        const candidato = clubData?.nombre || localStorage.getItem('mi_club') || null;
+        const club = deducirMiClub(partidos, candidato);
+        const miClub = club.nombre;
 
         const marcados = partidos.map(p => ({
           ...p,
           rivales: { nombre: nombreDelRival(p, mapaRivales) },
           _propio: esPartidoPropio(p, { miClub, nombresRivales }),
         }));
+
+        setDiagnostico({
+          club: miClub,
+          deducido: club.deducido,
+          candidato,
+          total: partidos.length,
+          propios: marcados.filter(p => p._propio).length,
+        });
 
         /* La cuenta de eventos se pide sólo para los partidos propios: un
            cruce entre terceros nunca tiene nada trackeado. Una lectura de
@@ -433,6 +451,21 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
           )}
         </div>
       </div>
+
+      {diagnostico && soloMiEquipo && (
+        <div style={{
+          fontSize: '0.68rem', color: diagnostico.propios === 0 ? '#f59e0b' : 'var(--text-dim)',
+          margin: '0 0 10px', lineHeight: 1.6,
+        }}>
+          Tu club figura como <b style={{ color: 'var(--accent)' }}>{diagnostico.club || '(sin nombre)'}</b>
+          {diagnostico.deducido && ' (deducido de los propios partidos)'}
+          {' · '}{diagnostico.propios} de {diagnostico.total} partidos son de tu equipo.
+          {diagnostico.propios === 0 && (
+            <> Si eso no es correcto, revisá cómo está escrito el nombre del club en los partidos:
+               tiene que coincidir con el equipo propio o con el rival de cada cruce.</>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gap: '8px' }}>
         {cargando && <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Cargando…</div>}
