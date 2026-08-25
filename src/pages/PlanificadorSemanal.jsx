@@ -10,6 +10,15 @@ import { useAuth } from '../context/AuthContext';
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
 // =======================================================
+// --- HELPERS DE FECHA (strings 'YYYY-MM-DD', siempre en hora local) ---
+const aFechaStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const parseFechaStr = (str) => { const [y, m, d] = String(str).split('-').map(Number); return new Date(y, m - 1, d); };
+const sumarDiasStr = (str, n) => { const d = parseFechaStr(str); d.setDate(d.getDate() + n); return aFechaStr(d); };
+// Lunes de la semana a la que pertenece esa fecha (la grilla arranca en lunes).
+const lunesDe = (str) => { const d = parseFechaStr(str); const dia = d.getDay(); d.setDate(d.getDate() + (dia === 0 ? -6 : 1 - dia)); return aFechaStr(d); };
+const diffDias = (desde, hasta) => Math.round((parseFechaStr(hasta) - parseFechaStr(desde)) / 86400000);
+const COLORES_TEMA = ['#00ff88', '#22d3ee', '#f59e0b', '#a855f7', '#ef4444'];
+
 const getIconoTarea = (tarea) => {
   if (tarea.categoria_ejercicio === 'Físico') {
     return tarea.espacio === 'Gimnasio' ? '🏋️‍♂️' : '🏃‍♂️';
@@ -493,6 +502,17 @@ const PlanificadorSemanal = () => {
   const [filtroFormatoTarea, setFiltroFormatoTarea] = useState('Todas');
   const [soloRecomendadas, setSoloRecomendadas] = useState(false);
   const [tareaArrastrada, setTareaArrastrada] = useState(null);
+
+  // Tema/hilo conductor de la semana + copia de microciclos
+  const [temasSemana, setTemasSemana] = useState([]);
+  const [modalTema, setModalTema] = useState(null);
+  const [mostrarModalCopiar, setMostrarModalCopiar] = useState(false);
+  const [copiaDestino, setCopiaDestino] = useState('');
+  const [copiaIncluirTareas, setCopiaIncluirTareas] = useState(true);
+  const [copiaIncluirFisico, setCopiaIncluirFisico] = useState(true);
+  const [copiaIncluirTema, setCopiaIncluirTema] = useState(true);
+  const [copiaModo, setCopiaModo] = useState('agregar');
+  const [copiando, setCopiando] = useState(false);
   
   const { showToast } = useToast(); 
 
@@ -671,6 +691,31 @@ const PlanificadorSemanal = () => {
       setPartidosOficiales(dataPartidos || []); 
       setTareasBanco(dataTareas || []);
 
+      // Temas de las semanas visibles. Va en su propio try: si todavía no se
+      // corrió la migración de `temas_semana`, el planificador tiene que
+      // seguir funcionando igual, solo que sin la barra de tema.
+      try {
+        let queryTemas = supabase
+          .from('temas_semana')
+          .select('*')
+          .eq('club_id', club_id)
+          .gte('fecha_inicio', lunesDe(inicio))
+          .lte('fecha_inicio', fin);
+
+        if (filtroCategoria !== 'Todas') {
+          queryTemas = queryTemas.eq('categoria_equipo', filtroCategoria);
+        } else if (misCategorias.length > 0) {
+          queryTemas = queryTemas.in('categoria_equipo', misCategorias);
+        }
+
+        const { data: dataTemas, error: errTemas } = await queryTemas;
+        if (errTemas) throw errTemas;
+        setTemasSemana(dataTemas || []);
+      } catch (errTemas) {
+        console.warn('Temas de la semana no disponibles:', errTemas.message);
+        setTemasSemana([]);
+      }
+
     } catch (error) {
       console.error("Error cargando datos:", error.message);
     } finally {
@@ -837,6 +882,170 @@ const PlanificadorSemanal = () => {
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════════════
+  //  COPIAR UNA SEMANA COMPLETA A OTRA
+  //  Duplica la estructura del microciclo (tipo, objetivo, carga, físico y,
+  //  si se quiere, las tareas) corriendo cada sesión los días que separan
+  //  un lunes del otro. Los comentarios/novedades NO se copian: son el
+  //  registro de lo que pasó ese día puntual.
+  // ═══════════════════════════════════════════════════════════════════════
+  const abrirModalCopiar = () => {
+    if (diasCalendario.length === 0) return;
+    setCopiaDestino(sumarDiasStr(diasCalendario[0].fechaStr, 7));
+    setCopiaIncluirTareas(true);
+    setCopiaIncluirFisico(true);
+    setCopiaIncluirTema(true);
+    setCopiaModo('agregar');
+    setMostrarModalCopiar(true);
+  };
+
+  const copiarSemana = async () => {
+    const origenLunes = diasCalendario[0]?.fechaStr;
+    if (!origenLunes || !copiaDestino) return;
+
+    const destinoLunes = lunesDe(copiaDestino);
+    if (destinoLunes === origenLunes) {
+      showToast('Elegí una semana distinta a la actual.', 'warning');
+      return;
+    }
+    if (sesiones.length === 0) {
+      showToast('Esta semana no tiene sesiones para copiar.', 'warning');
+      return;
+    }
+    if (copiaModo === 'reemplazar' &&
+        !window.confirm('Se van a BORRAR las sesiones que ya existan en la semana destino antes de copiar. ¿Seguir?')) {
+      return;
+    }
+
+    setCopiando(true);
+    try {
+      const club_id = localStorage.getItem('club_id') || 'club_default';
+      const delta = diffDias(origenLunes, destinoLunes);
+      const destinoFin = sumarDiasStr(destinoLunes, 6);
+
+      if (copiaModo === 'reemplazar') {
+        let borrado = supabase.from('sesiones').delete()
+          .eq('club_id', club_id).gte('fecha', destinoLunes).lte('fecha', destinoFin);
+        if (filtroCategoria !== 'Todas') {
+          borrado = borrado.eq('categoria_equipo', filtroCategoria);
+        } else if (misCategorias.length > 0) {
+          borrado = borrado.in('categoria_equipo', misCategorias);
+        }
+        const { error: errBorrar } = await borrado;
+        if (errBorrar) throw errBorrar;
+      }
+
+      const nuevas = sesiones.map(s => ({
+        club_id,
+        fecha: sumarDiasStr(s.fecha, delta),
+        tipo_sesion: s.tipo_sesion,
+        objetivo: s.objetivo,
+        categoria_equipo: s.categoria_equipo,
+        nivel_carga: s.nivel_carga,
+        tareas_ids: copiaIncluirTareas ? (s.tareas_ids || []) : [],
+        comentarios: null,
+        bloque_fisico: copiaIncluirFisico ? s.bloque_fisico : false,
+        enfoque_fisico: copiaIncluirFisico ? s.enfoque_fisico : null,
+        duracion_fisico: copiaIncluirFisico ? s.duracion_fisico : null,
+        detalle_fisico: copiaIncluirFisico ? s.detalle_fisico : null,
+      }));
+
+      const { error } = await supabase.from('sesiones').insert(nuevas);
+      if (error) throw error;
+
+      // El tema de la semana también se arrastra, si hay uno cargado.
+      const temasOrigen = temasSemana.filter(t => t.fecha_inicio === origenLunes);
+      if (copiaIncluirTema && temasOrigen.length > 0) {
+        try {
+          const { error: errTema } = await supabase.from('temas_semana').upsert(
+            temasOrigen.map(t => ({
+              club_id,
+              categoria_equipo: t.categoria_equipo,
+              fecha_inicio: destinoLunes,
+              titulo: t.titulo,
+              detalle: t.detalle,
+              color: t.color,
+            })),
+            { onConflict: 'club_id,categoria_equipo,fecha_inicio' }
+          );
+          if (errTema) throw errTema;
+        } catch (errTema) {
+          console.warn('No se pudo copiar el tema de la semana:', errTema.message);
+        }
+      }
+
+      setMostrarModalCopiar(false);
+      showToast(`Se copiaron ${nuevas.length} sesión/es a la semana del ${destinoLunes.split('-').reverse().slice(0, 2).join('/')}`, 'success');
+      // Saltamos a la semana destino para que el CT vea el resultado y edite las tareas.
+      setFechaReferencia(parseFechaStr(destinoLunes));
+    } catch (error) {
+      showToast('Error al copiar la semana: ' + error.message, 'error');
+    } finally {
+      setCopiando(false);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  TEMA DE LA SEMANA (hilo conductor que cruza todo el microciclo)
+  // ═══════════════════════════════════════════════════════════════════════
+  const abrirModalTema = (temaExistente, lunes, categoria) => {
+    setModalTema(temaExistente ? { ...temaExistente } : {
+      id: null,
+      fecha_inicio: lunes,
+      categoria_equipo: categoria,
+      titulo: '',
+      detalle: '',
+      color: COLORES_TEMA[0],
+    });
+  };
+
+  const guardarTema = async () => {
+    if (!modalTema?.titulo?.trim()) {
+      showToast('Poné un título para el tema de la semana.', 'warning');
+      return;
+    }
+    try {
+      const club_id = localStorage.getItem('club_id') || 'club_default';
+      const payload = {
+        club_id,
+        categoria_equipo: modalTema.categoria_equipo,
+        fecha_inicio: modalTema.fecha_inicio,
+        titulo: modalTema.titulo.trim(),
+        detalle: modalTema.detalle?.trim() || null,
+        color: modalTema.color || COLORES_TEMA[0],
+      };
+
+      if (modalTema.id) {
+        const { error } = await supabase.from('temas_semana').update(payload).eq('id', modalTema.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('temas_semana')
+          .upsert([payload], { onConflict: 'club_id,categoria_equipo,fecha_inicio' });
+        if (error) throw error;
+      }
+
+      setModalTema(null);
+      showToast('Tema de la semana guardado', 'success');
+      cargarDatos();
+    } catch (error) {
+      showToast('Error al guardar el tema: ' + error.message, 'error');
+    }
+  };
+
+  const eliminarTema = async () => {
+    if (!modalTema?.id) return;
+    if (!window.confirm('¿Borrar el tema de esta semana?')) return;
+    try {
+      const { error } = await supabase.from('temas_semana').delete().eq('id', modalTema.id);
+      if (error) throw error;
+      setModalTema(null);
+      showToast('Tema eliminado', 'info');
+      cargarDatos();
+    } catch (error) {
+      showToast('Error al eliminar el tema: ' + error.message, 'error');
+    }
+  };
+
   const guardarSesion = async () => {
     if (!nuevaSesion.categoria_equipo) {
         showToast("Por favor, ingresá una categoría.", "warning");
@@ -939,6 +1148,13 @@ const PlanificadorSemanal = () => {
     return 0;
   });
 
+  // Semana visible (en modo semanal diasCalendario[0] siempre es lunes).
+  const lunesVisible = modoVista === 'semanal' && diasCalendario.length > 0 ? diasCalendario[0].fechaStr : null;
+  const temasDeLaSemana = lunesVisible ? temasSemana.filter(t => t.fecha_inicio === lunesVisible) : [];
+  const temaDeLaSemana = filtroCategoria !== 'Todas'
+    ? temasDeLaSemana.find(t => t.categoria_equipo === filtroCategoria)
+    : (temasDeLaSemana.length === 1 ? temasDeLaSemana[0] : null);
+
   // Tareas de la sesión, en el orden elegido por el cuerpo técnico (no alfabético).
   const tareasOrdenadas = (nuevaSesion.tareas_ids || [])
     .map(id => tareasBanco.find(tb => tb.id === id))
@@ -986,6 +1202,16 @@ const PlanificadorSemanal = () => {
             <button onClick={() => navegarTiempo(1)} style={navBtn}>➡</button>
             <button onClick={() => setFechaReferencia(new Date())} style={{...navBtn, fontSize: '0.7rem', width: 'auto', padding: '0 10px', background: 'var(--border)'}}>HOY</button>
           </div>
+
+          {modoVista === 'semanal' && (
+            <button
+              onClick={abrirModalCopiar}
+              title="Copiar la planificación de esta semana a otra"
+              style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', minHeight: '40px' }}
+            >
+              📋 COPIAR SEMANA
+            </button>
+          )}
         </div>
       </div>
 
@@ -994,6 +1220,64 @@ const PlanificadorSemanal = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           
+          {/* HILO CONDUCTOR DE LA SEMANA: cruza todo el microciclo */}
+          {modoVista === 'semanal' && lunesVisible && (
+            <div style={{ marginBottom: '4px' }}>
+              {filtroCategoria !== 'Todas' ? (
+                <button
+                  onClick={() => abrirModalTema(temaDeLaSemana, lunesVisible, filtroCategoria)}
+                  style={{
+                    width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px',
+                    background: temaDeLaSemana ? `linear-gradient(90deg, ${temaDeLaSemana.color || 'var(--accent)'}22, transparent 70%)` : 'var(--panel)',
+                    border: `1px solid ${temaDeLaSemana ? `${temaDeLaSemana.color || '#00ff88'}55` : 'var(--border)'}`,
+                    borderLeft: `5px solid ${temaDeLaSemana ? (temaDeLaSemana.color || '#00ff88') : 'var(--border)'}`,
+                    borderRadius: '8px', padding: '10px 14px', color: 'var(--text)', minHeight: '48px'
+                  }}
+                >
+                  <span style={{ fontSize: '1.1rem' }}>🧵</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.5px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
+                      Tema de la semana · {filtroCategoria}
+                    </span>
+                    {temaDeLaSemana ? (
+                      <>
+                        <span style={{ display: 'block', fontWeight: 900, fontSize: esMovil ? '0.9rem' : '1rem', color: temaDeLaSemana.color || 'var(--accent)' }}>{temaDeLaSemana.titulo}</span>
+                        {temaDeLaSemana.detalle && <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{temaDeLaSemana.detalle}</span>}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>Definí el patrón o la temática que atraviesa toda la semana…</span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--accent)', fontWeight: 'bold' }}>{temaDeLaSemana ? '✏️' : '➕'}</span>
+                </button>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px' }}>
+                  <span style={{ fontSize: '0.6rem', letterSpacing: '0.5px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-dim)' }}>🧵 Tema de la semana</span>
+                  {temasDeLaSemana.length === 0 && (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>Elegí una categoría para definir el tema de la semana.</span>
+                  )}
+                  {temasDeLaSemana.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => abrirModalTema(t, lunesVisible, t.categoria_equipo)}
+                      style={{ ...chipStyle, background: 'var(--bg)', color: t.color || 'var(--accent)', borderColor: `${t.color || '#00ff88'}55` }}
+                    >
+                      {t.categoria_equipo}: {t.titulo}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* la línea que efectivamente cruza los 7 días */}
+              <div style={{
+                height: '3px', borderRadius: '2px', margin: '6px 2px 0',
+                background: (temaDeLaSemana || temasDeLaSemana.length > 0)
+                  ? `linear-gradient(90deg, ${(temaDeLaSemana || temasDeLaSemana[0]).color || '#00ff88'}, transparent)`
+                  : 'var(--border)'
+              }} />
+            </div>
+          )}
+
           {/* HEADER DÍAS (Solo en modo mensual) */}
           {modoVista === 'mensual' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: esMovil ? '2px' : '10px', textAlign: 'center' }}>
@@ -1187,6 +1471,148 @@ const PlanificadorSemanal = () => {
               style={{ width: '100%', marginTop: '8px', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)', padding: '14px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 900, cursor: 'pointer', minHeight: '48px' }}>
               + AGREGAR SESIÓN
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════ MODAL: COPIAR SEMANA ═══════════ */}
+      {mostrarModalCopiar && diasCalendario.length > 0 && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
+          <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '520px', border: '2px solid var(--accent)', maxHeight: '90vh', overflowY: 'auto', padding: esMovil ? '18px' : '25px' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, color: 'var(--accent)', textTransform: 'uppercase', fontSize: '1.1rem' }}>
+                📋 Copiar semana<br />
+                <span style={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 'normal' }}>
+                  {sesiones.length} sesión/es · semana del {diasCalendario[0].fechaStr.split('-').reverse().slice(0, 2).join('/')}
+                </span>
+              </h3>
+              <button onClick={() => setMostrarModalCopiar(false)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '1rem' }}>✖</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={labelStyle}>Semana destino</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                  {[1, 2, 3, 4].map(n => {
+                    const destino = sumarDiasStr(diasCalendario[0].fechaStr, n * 7);
+                    const activo = copiaDestino && lunesDe(copiaDestino) === destino;
+                    return (
+                      <button
+                        key={n}
+                        onClick={() => setCopiaDestino(destino)}
+                        style={{ ...chipStyle, background: activo ? 'var(--accent)' : 'var(--bg)', color: activo ? '#000' : 'var(--text-dim)', borderColor: activo ? 'var(--accent)' : 'var(--border)' }}
+                      >
+                        +{n} sem
+                      </button>
+                    );
+                  })}
+                </div>
+                <input type="date" value={copiaDestino} onChange={e => setCopiaDestino(e.target.value)} style={inputStyle} />
+                {copiaDestino && (
+                  <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '6px' }}>
+                    Se copia a la semana del {lunesDe(copiaDestino).split('-').reverse().slice(0, 2).join('/')} al {sumarDiasStr(lunesDe(copiaDestino), 6).split('-').reverse().slice(0, 2).join('/')}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text)' }}>
+                  <input type="checkbox" checked={copiaIncluirTareas} onChange={e => setCopiaIncluirTareas(e.target.checked)} style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }} />
+                  Copiar también las tareas de cada sesión
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text)' }}>
+                  <input type="checkbox" checked={copiaIncluirFisico} onChange={e => setCopiaIncluirFisico(e.target.checked)} style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }} />
+                  Copiar el bloque físico
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text)' }}>
+                  <input type="checkbox" checked={copiaIncluirTema} onChange={e => setCopiaIncluirTema(e.target.checked)} style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }} />
+                  Copiar el tema de la semana
+                </label>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                  Los comentarios / novedades no se copian: son de ese día puntual.
+                </span>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Si la semana destino ya tiene sesiones</label>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <button onClick={() => setCopiaModo('agregar')} style={{ ...chipStyle, background: copiaModo === 'agregar' ? 'var(--accent)' : 'var(--bg)', color: copiaModo === 'agregar' ? '#000' : 'var(--text-dim)', borderColor: copiaModo === 'agregar' ? 'var(--accent)' : 'var(--border)' }}>
+                    Agregar a lo que ya hay
+                  </button>
+                  <button onClick={() => setCopiaModo('reemplazar')} style={{ ...chipStyle, background: copiaModo === 'reemplazar' ? '#ef4444' : 'var(--bg)', color: copiaModo === 'reemplazar' ? '#fff' : 'var(--text-dim)', borderColor: copiaModo === 'reemplazar' ? '#ef4444' : 'var(--border)' }}>
+                    Reemplazar la semana
+                  </button>
+                </div>
+              </div>
+
+              <button onClick={copiarSemana} disabled={copiando} className="btn-action" style={{ width: '100%', padding: '14px', fontSize: '0.95rem', fontWeight: 900, opacity: copiando ? 0.6 : 1 }}>
+                {copiando ? 'COPIANDO…' : '📋 COPIAR PLANIFICACIÓN'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════ MODAL: TEMA DE LA SEMANA ═══════════ */}
+      {modalTema && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
+          <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '480px', border: `2px solid ${modalTema.color || 'var(--accent)'}`, maxHeight: '90vh', overflowY: 'auto', padding: esMovil ? '18px' : '25px' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, color: modalTema.color || 'var(--accent)', textTransform: 'uppercase', fontSize: '1.1rem' }}>
+                🧵 Tema de la semana<br />
+                <span style={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 'normal' }}>
+                  {modalTema.categoria_equipo} · semana del {String(modalTema.fecha_inicio).split('-').reverse().slice(0, 2).join('/')}
+                </span>
+              </h3>
+              <button onClick={() => setModalTema(null)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '1rem' }}>✖</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div>
+                <label style={labelStyle}>Patrón / temática</label>
+                <input
+                  type="text"
+                  value={modalTema.titulo}
+                  onChange={e => setModalTema({ ...modalTema, titulo: e.target.value })}
+                  placeholder="Ej: Presión alta tras pérdida"
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Detalle (opcional)</label>
+                <textarea
+                  value={modalTema.detalle || ''}
+                  onChange={e => setModalTema({ ...modalTema, detalle: e.target.value })}
+                  placeholder="Qué se busca, contra qué rival, qué se mide…"
+                  style={{ ...inputStyle, minHeight: '70px', resize: 'vertical', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Color del hilo</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {COLORES_TEMA.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setModalTema({ ...modalTema, color: c })}
+                      style={{ width: '34px', height: '34px', borderRadius: '50%', background: c, border: modalTema.color === c ? '3px solid var(--text)' : '1px solid var(--border)', cursor: 'pointer' }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {modalTema.id && (
+                  <button onClick={eliminarTema} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>🗑️</button>
+                )}
+                <button onClick={guardarTema} className="btn-action" style={{ flex: 1, padding: '14px', fontSize: '0.95rem', fontWeight: 900 }}>
+                  💾 GUARDAR TEMA
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
