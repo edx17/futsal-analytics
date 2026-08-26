@@ -233,3 +233,103 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORMULARIOS Y MODALES — estilos compartidos
+
+   El mismo campo estaba escrito de tres formas distintas: una clase en el
+   Creador, un objeto inline copiado a mano en el Banco, y una constante en
+   el Planificador. Sólo la del Planificador respetaba los 44 px de área
+   táctil; las otras dos quedaban chicas para un dedo, justo en las pantallas
+   que los profes usan en cancha.
+
+   Todo lo de acá usa las variables del tema, así que el día que exista el
+   modo claro no hay que volver a tocar cada pantalla.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 44 px es el mínimo recomendado de área táctil. No es capricho: por debajo
+   de eso el dedo falla el toque en un celular. */
+.campo,
+.campo:is(input, select, textarea) {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.campo:focus { border-color: var(--accent); }
+.campo:disabled { opacity: 0.45; cursor: not-allowed; }
+textarea.campo { min-height: 90px; resize: vertical; }
+
+/* Variante acentuada, para el campo que define el resto del formulario. */
+.campo.campo-frio { border-color: #0e7490; }
+.campo.campo-frio:focus { border-color: #22d3ee; }
+
+.campo-rotulo {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.campo-ayuda {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-top: 5px;
+}
+
+/* Rejilla de formulario que se apila sola. Reemplaza los
+   gridTemplateColumns escritos a mano en cada modal. */
+.campos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 14px;
+}
+
+/* Botones de acción de un modal. */
+.btn-primario {
+  min-height: 44px;
+  padding: 11px 20px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-primario:disabled { opacity: 0.5; cursor: default; }
+
+.btn-fantasma {
+  min-height: 44px;
+  padding: 11px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-fantasma:hover { border-color: var(--text-dim); color: var(--text); }
+
+/* En pantallas chicas los botones de un modal ocupan el ancho completo:
+   apilados y grandes se aciertan; en fila y chicos, no. */
+@media (max-width: 560px) {
+  .campos-grid { grid-template-columns: 1fr; }
+  .modal-acciones { flex-direction: column-reverse; align-items: stretch; }
+  .modal-acciones > button { width: 100%; }
+}

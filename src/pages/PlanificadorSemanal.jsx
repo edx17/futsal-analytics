@@ -1617,7 +1617,9 @@ const PlanificadorSemanal = () => {
 const toggleBtn = { padding: '10px 15px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', transition: '0.2s', flex: 1 };
 const navBtn = { background: 'var(--panel)', border: 'none', color: 'var(--text)', width: '40px', height: '40px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
 const labelStyle = { display: 'block', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' };
-const inputStyle = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.95rem', outline: 'none', minHeight: '44px' };
+/* Mismos valores que la clase .campo de App.css. Se mantiene como objeto
+   porque hay treinta usos que le agregan cosas con spread. */
+const inputStyle = { width: '100%', minHeight: '44px', padding: '11px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
 const pillStyle = { fontSize: '0.65rem', background: 'var(--panel)', color: 'var(--text-dim)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)' };
 
 export default PlanificadorSemanal;

@@ -599,15 +599,12 @@ const CSS = `
 .ct-mob-toggle{flex:1;padding:8px 4px;background:var(--s2);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--muted);cursor:pointer;text-align:center;font-family:'Syne',sans-serif;font-weight:600;transition:all .12s}
 .ct-mob-toggle.on{background:rgba(0,229,255,.08);border-color:var(--accentb);color:var(--accentb)}
 .ct-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px}
-.ct-modal{background:#111;width:100%;max-width:800px;border:2px solid var(--accent);border-radius:12px;padding:28px;max-height:95vh;overflow-y:auto}
+.ct-modal{background:var(--panel);width:100%;max-width:800px;border:2px solid var(--accent);border-radius:12px;padding:28px;max-height:95vh;overflow-y:auto}
 .ct-modal.blue-border{border-color:var(--blue)}
 .ct-modal h2{margin:0;color:var(--accent);font-size:1.4rem;text-transform:uppercase}
 .ct-modal h2.blue{color:var(--blue)}
-.ct-modal-lbl{display:block;font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
-.ct-modal-input{width:100%;padding:10px;background:#000;border:1px solid #333;border-radius:6px;color:#fff;font-family:'Syne',sans-serif;font-size:.9rem;outline:none;box-sizing:border-box}
-.ct-modal-input:focus{border-color:var(--accentb)}
-.ct-btn-primary{padding:8px 18px;background:var(--accent);color:#000;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
-.ct-btn-sec{padding:8px 14px;background:#1a1a1a;border:1px solid #333;border-radius:7px;color:#fff;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif}
+.ct-btn-primary{min-height:44px;padding:11px 20px;background:var(--accent);color:#000;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
+.ct-btn-sec{min-height:44px;padding:11px 16px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif}
 @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 .ct-modal{animation:fadeIn .2s}
@@ -1706,7 +1703,7 @@ const CreadorTareas = () => {
         <div className="ct-overlay">
           <div style={{background:'var(--s2)',border:'1px solid var(--border2)',borderRadius:10,padding:20,width:280,boxShadow:'0 24px 60px rgba(0,0,0,.7)'}}>
             <h3 style={{fontSize:13,marginBottom:12,fontWeight:700}}>Agregar texto</h3>
-            <input className="ct-modal-input" value={textValue} placeholder="Ej: Zona de presión alta" maxLength={60} autoFocus
+            <input className="campo" value={textValue} placeholder="Ej: Zona de presión alta" maxLength={60} autoFocus
               onChange={e=>setTextValue(e.target.value)}
               onKeyDown={e=>{if(e.key==='Enter')confirmText();if(e.key==='Escape'){setTextModal(false);setTextValue('')}}}
             />
@@ -1730,8 +1727,8 @@ const CreadorTareas = () => {
             </div>
 
             <div style={{marginBottom:20}}>
-              <label className="ct-modal-lbl" style={{color:'var(--accent)'}}>Nombre de la Tarea *</label>
-              <input type="text" className="ct-modal-input" style={{borderColor:'var(--accent)'}} placeholder="Ej: Rondo 4v2 con finalización..." value={nombreTarea} onChange={e=>setNombreTarea(e.target.value)} />
+              <label className="campo-rotulo" style={{color:'var(--accent)'}}>Nombre de la Tarea *</label>
+              <input type="text" className="campo" style={{borderColor:'var(--accent)'}} placeholder="Ej: Rondo 4v2 con finalización..." value={nombreTarea} onChange={e=>setNombreTarea(e.target.value)} />
             </div>
 
             {veniaDePlanificar && !tareaIdEditando && (
@@ -1742,7 +1739,7 @@ const CreadorTareas = () => {
             )}
 
             <div style={{ marginBottom: 20, padding: '15px', border: '1px dashed #333', borderRadius: '8px', background: 'rgba(255,255,255,0.02)' }}>
-              <label className="ct-modal-lbl" style={{ color: '#60a5fa' }}>Subir Video (Opcional - Reemplaza animación en el visor)</label>
+              <label className="campo-rotulo" style={{ color: '#60a5fa' }}>Subir Video (Opcional - Reemplaza animación en el visor)</label>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <label style={{ padding: '8px 15px', background: '#1e3a8a', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                   {videoFile || videoPreview ? 'Cambiar MP4' : 'Seleccionar MP4'}
@@ -1763,30 +1760,30 @@ const CreadorTareas = () => {
 
             <div style={{display:'grid',gridTemplateColumns:esMovil?'1fr':'1fr 1fr',gap:15,marginBottom:15}}>
               <div>
-                <label className="ct-modal-lbl" style={{color: '#facc15'}}>Categoría de la Tarea</label>
-                <select className="ct-modal-input" style={{borderColor: '#ca8a04'}} value={fichaTecnica.categoria_recomendada} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_recomendada:e.target.value})}>
+                <label className="campo-rotulo" style={{color: '#facc15'}}>Categoría de la Tarea</label>
+                <select className="campo" style={{borderColor: '#ca8a04'}} value={fichaTecnica.categoria_recomendada} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_recomendada:e.target.value})}>
                   <option value="Todas">Todas las Categorías</option>
                   {categoriasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label className="ct-modal-lbl">Naturaleza · Contenido</label>
-                <select className="ct-modal-input" value={fichaTecnica.categoria_ejercicio} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_ejercicio:e.target.value})}>
+                <label className="campo-rotulo">Naturaleza · Contenido</label>
+                <select className="campo" value={fichaTecnica.categoria_ejercicio} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_ejercicio:e.target.value})}>
                   {naturalezasOpts.map(n=><option key={n.id} value={n.id}>{n.label}</option>)}
                 </select>
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Qué capacidad entrena</span>
               </div>
               <div>
-                <label className="ct-modal-lbl">Fase del Juego · El Qué</label>
-                <select className="ct-modal-input" value={fichaTecnica.fase_juego}
+                <label className="campo-rotulo">Fase del Juego · El Qué</label>
+                <select className="campo" value={fichaTecnica.fase_juego}
                         onChange={e=>setFichaTecnica({...fichaTecnica,fase_juego:e.target.value,subfase_juego:''})}>
                   {FASES.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
                 </select>
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Qué momento del juego</span>
               </div>
               <div>
-                <label className="ct-modal-lbl">Situación</label>
-                <select className="ct-modal-input" value={fichaTecnica.subfase_juego}
+                <label className="campo-rotulo">Situación</label>
+                <select className="campo" value={fichaTecnica.subfase_juego}
                         onChange={e=>setFichaTecnica({...fichaTecnica,subfase_juego:e.target.value})}>
                   <option value="">— sin especificar —</option>
                   {subfasesDe(fichaTecnica.fase_juego).map(v=><option key={v}>{v}</option>)}
@@ -1794,37 +1791,37 @@ const CreadorTareas = () => {
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Dentro de esa fase</span>
               </div>
               <div>
-                <label className="ct-modal-lbl" style={{color:'#22d3ee'}}>Formato · El Cómo</label>
-                <select className="ct-modal-input" style={{borderColor:'#0e7490'}} value={fichaTecnica.formato_tarea} onChange={e=>setFichaTecnica({...fichaTecnica,formato_tarea:e.target.value})}>
+                <label className="campo-rotulo" style={{color:'#22d3ee'}}>Formato · El Cómo</label>
+                <select className="campo campo-frio" value={fichaTecnica.formato_tarea} onChange={e=>setFichaTecnica({...fichaTecnica,formato_tarea:e.target.value})}>
                   {FORMATOS.map(f=><option key={f.id} value={f.id}>{f.label}{f.ayuda ? ` — ${f.ayuda}` : ''}</option>)}
                 </select>
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Cómo se estructura la práctica</span>
               </div>
               <div>
-                <label className="ct-modal-lbl">Duración (min)</label>
-                <input type="number" className="ct-modal-input" value={fichaTecnica.duracion_estimada} onChange={e=>setFichaTecnica({...fichaTecnica,duracion_estimada:e.target.value})} />
+                <label className="campo-rotulo">Duración (min)</label>
+                <input type="number" className="campo" value={fichaTecnica.duracion_estimada} onChange={e=>setFichaTecnica({...fichaTecnica,duracion_estimada:e.target.value})} />
               </div>
               <div>
-                <label className="ct-modal-lbl">Intensidad RPE (1-10)</label>
-                <input type="number" min="1" max="10" className="ct-modal-input" value={fichaTecnica.intensidad_rpe} onChange={e=>setFichaTecnica({...fichaTecnica,intensidad_rpe:e.target.value})} />
+                <label className="campo-rotulo">Intensidad RPE (1-10)</label>
+                <input type="number" min="1" max="10" className="campo" value={fichaTecnica.intensidad_rpe} onChange={e=>setFichaTecnica({...fichaTecnica,intensidad_rpe:e.target.value})} />
               </div>
               <div>
-                <label className="ct-modal-lbl">Jugadores Involucrados</label>
-                <input type="text" placeholder="Ej: 4v4 + 2 Comodines" className="ct-modal-input" value={fichaTecnica.jugadores_involucrados} onChange={e=>setFichaTecnica({...fichaTecnica,jugadores_involucrados:e.target.value})} />
+                <label className="campo-rotulo">Jugadores Involucrados</label>
+                <input type="text" placeholder="Ej: 4v4 + 2 Comodines" className="campo" value={fichaTecnica.jugadores_involucrados} onChange={e=>setFichaTecnica({...fichaTecnica,jugadores_involucrados:e.target.value})} />
               </div>
               <div style={{gridColumn: esMovil ? 'span 1' : 'span 2'}}>
-                <label className="ct-modal-lbl">Objetivo Específico</label>
-                <input type="text" placeholder="Ej: Mantener posesión bajo presión" className="ct-modal-input" value={fichaTecnica.objetivo_principal} onChange={e=>setFichaTecnica({...fichaTecnica,objetivo_principal:e.target.value})} />
+                <label className="campo-rotulo">Objetivo Específico</label>
+                <input type="text" placeholder="Ej: Mantener posesión bajo presión" className="campo" value={fichaTecnica.objetivo_principal} onChange={e=>setFichaTecnica({...fichaTecnica,objetivo_principal:e.target.value})} />
               </div>
             </div>
 
             <div style={{marginBottom:15}}>
-              <label className="ct-modal-lbl">Reglas y Desarrollo</label>
-              <textarea rows={4} className="ct-modal-input" style={{height:'auto',resize:'vertical'}} placeholder="Describí paso a paso el desarrollo de la tarea..." value={fichaTecnica.descripcion} onChange={e=>setFichaTecnica({...fichaTecnica,descripcion:e.target.value})}/>
+              <label className="campo-rotulo">Reglas y Desarrollo</label>
+              <textarea rows={4} className="campo" style={{height:'auto',resize:'vertical'}} placeholder="Describí paso a paso el desarrollo de la tarea..." value={fichaTecnica.descripcion} onChange={e=>setFichaTecnica({...fichaTecnica,descripcion:e.target.value})}/>
             </div>
             <div style={{marginBottom:25}}>
-              <label className="ct-modal-lbl">URL Externa (YouTube etc.) Opcional</label>
-              <input type="text" placeholder="https://youtube.com/..." className="ct-modal-input" value={fichaTecnica.video_url} onChange={e=>setFichaTecnica({...fichaTecnica,video_url:e.target.value})} />
+              <label className="campo-rotulo">URL Externa (YouTube etc.) Opcional</label>
+              <input type="text" placeholder="https://youtube.com/..." className="campo" value={fichaTecnica.video_url} onChange={e=>setFichaTecnica({...fichaTecnica,video_url:e.target.value})} />
             </div>
 
             <button onClick={confirmarGuardado} disabled={isUploading} className="ct-btn-primary" style={{width:'100%',padding:15,fontSize:'1.1rem',borderRadius:8, opacity: isUploading ? 0.7 : 1, cursor: isUploading ? 'not-allowed' : 'pointer'}}>

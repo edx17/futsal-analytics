@@ -757,10 +757,10 @@ const BancoTareas = () => {
       {/* MODAL: CREAR TAREA (VIDEO O CREADOR) */}
       {showCrearModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: '#111', width: '100%', maxWidth: '800px', border: '2px solid var(--accent)', borderRadius: '12px', padding: '28px', maxHeight: '95vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+          <div style={{ background: 'var(--panel)', width: '100%', maxWidth: '800px', borderWidth: '2px', borderStyle: 'solid', borderColor: 'var(--accent)', borderRadius: '12px', padding: esMovil ? '18px' : '28px', maxHeight: '95vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.4rem', textTransform: 'uppercase' }}>Subir Nueva Tarea Rápida</h2>
-              <button onClick={() => {setShowCrearModal(false); setVideoFile(null); setVideoPreview(null);}} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+              <button onClick={() => {setShowCrearModal(false); setVideoFile(null); setVideoPreview(null);}} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', minWidth: '44px', minHeight: '44px' }}>✖</button>
             </div>
 
             <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
@@ -777,39 +777,39 @@ const BancoTareas = () => {
             </div>
 
             {videoPreview && (
-              <div style={{ marginBottom: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #333', width: '100%', aspectRatio: '16/9', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
+              <div style={{ marginBottom: '20px', borderRadius: '8px', overflow: 'hidden', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--border)', width: '100%', aspectRatio: '16/9', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
                 <video src={videoPreview} controls style={{ maxWidth: '100%', maxHeight: '100%' }} />
               </div>
             )}
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 5 }}>Nombre de la Tarea *</label>
-              <input type="text" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid var(--accent)', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} placeholder="Ej: Rondo 4v2 con finalización..." value={nuevaTarea.titulo} onChange={e => setNuevaTarea({...nuevaTarea, titulo: e.target.value})} />
+              <label className="campo-rotulo" style={{ color: 'var(--accent)' }}>Nombre de la Tarea *</label>
+              <input type="text" className="campo" style={{ borderColor: 'var(--accent)' }} placeholder="Ej: Rondo 4v2 con finalización..." value={nuevaTarea.titulo} onChange={e => setNuevaTarea({...nuevaTarea, titulo: e.target.value})} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 15 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#facc15', textTransform: 'uppercase', marginBottom: 5 }}>Categoría Recomendada</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #ca8a04', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.categoria_recomendada} onChange={e => setNuevaTarea({...nuevaTarea, categoria_recomendada: e.target.value})}>
+                <label className="campo-rotulo" style={{ color: '#facc15' }}>Categoría Recomendada</label>
+                <select className="campo" style={{ borderColor: '#ca8a04' }} value={nuevaTarea.categoria_recomendada} onChange={e => setNuevaTarea({...nuevaTarea, categoria_recomendada: e.target.value})}>
                   <option value="Todas">Todas las Categorías</option>
                   {categoriasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Naturaleza · Contenido</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.categoria_ejercicio} onChange={e => setNuevaTarea({...nuevaTarea, categoria_ejercicio: e.target.value})}>
+                <label className="campo-rotulo">Naturaleza · Contenido</label>
+                <select className="campo" value={nuevaTarea.categoria_ejercicio} onChange={e => setNuevaTarea({...nuevaTarea, categoria_ejercicio: e.target.value})}>
                   {NATURALEZAS.map(n=><option key={n.id} value={n.id}>{n.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Fase del Juego</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.fase_juego} onChange={e => setNuevaTarea({...nuevaTarea, fase_juego: e.target.value, subfase_juego: ''})}>
+                <label className="campo-rotulo">Fase del Juego</label>
+                <select className="campo" value={nuevaTarea.fase_juego} onChange={e => setNuevaTarea({...nuevaTarea, fase_juego: e.target.value, subfase_juego: ''})}>
                   {FASES.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Situación</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                <label className="campo-rotulo">Situación</label>
+                <select className="campo"
                         value={nuevaTarea.subfase_juego}
                         onChange={e => setNuevaTarea({...nuevaTarea, subfase_juego: e.target.value})}>
                   <option value="">— sin especificar —</option>
@@ -817,28 +817,28 @@ const BancoTareas = () => {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#22d3ee', textTransform: 'uppercase', marginBottom: 5 }}>Formato de Tarea</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #0e7490', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.formato_tarea} onChange={e => setNuevaTarea({...nuevaTarea, formato_tarea: e.target.value})}>
+                <label className="campo-rotulo" style={{ color: '#22d3ee' }}>Formato de Tarea</label>
+                <select className="campo campo-frio" value={nuevaTarea.formato_tarea} onChange={e => setNuevaTarea({...nuevaTarea, formato_tarea: e.target.value})}>
                   {FORMATOS.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Duración (min)</label>
-                <input type="number" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.duracion_estimada} onChange={e => setNuevaTarea({...nuevaTarea, duracion_estimada: e.target.value})} />
+                <label className="campo-rotulo">Duración (min)</label>
+                <input type="number" className="campo" value={nuevaTarea.duracion_estimada} onChange={e => setNuevaTarea({...nuevaTarea, duracion_estimada: e.target.value})} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Intensidad RPE</label>
-                <input type="number" min="1" max="10" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.intensidad_rpe} onChange={e => setNuevaTarea({...nuevaTarea, intensidad_rpe: e.target.value})} />
+                <label className="campo-rotulo">Intensidad RPE</label>
+                <input type="number" min="1" max="10" className="campo" value={nuevaTarea.intensidad_rpe} onChange={e => setNuevaTarea({...nuevaTarea, intensidad_rpe: e.target.value})} />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Objetivo Principal</label>
-                <input type="text" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.objetivo_principal} onChange={e => setNuevaTarea({...nuevaTarea, objetivo_principal: e.target.value})} />
+                <label className="campo-rotulo">Objetivo Principal</label>
+                <input type="text" className="campo" value={nuevaTarea.objetivo_principal} onChange={e => setNuevaTarea({...nuevaTarea, objetivo_principal: e.target.value})} />
               </div>
             </div>
 
             <div style={{ marginBottom: 15 }}>
-              <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Reglas y Desarrollo</label>
-              <textarea rows={3} style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} value={nuevaTarea.descripcion} onChange={e => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}/>
+              <label className="campo-rotulo">Reglas y Desarrollo</label>
+              <textarea rows={3} className="campo" value={nuevaTarea.descripcion} onChange={e => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}/>
             </div>
 
             <button onClick={guardarNuevaTarea} disabled={isUploading} style={{ width: '100%', padding: 15, background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: '1.1rem', fontWeight: 700, cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.7 : 1 }}>
