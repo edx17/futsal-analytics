@@ -1570,7 +1570,7 @@ const PlanificadorSemanal = () => {
                 
                 {tareaSeleccionadaDetalle.video_url && (
                   <div style={{ marginTop: '15px' }}>
-                    <a href={tareaSeleccionadaDetalle.video_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563eb', color: 'var(--text)', textAlign: 'center', padding: '15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                    <a href={tareaSeleccionadaDetalle.video_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563eb', color: '#ffffff', textAlign: 'center', padding: '15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.95rem' }}>
                       ▶️ VER VIDEO DE REFERENCIA
                     </a>
                   </div>

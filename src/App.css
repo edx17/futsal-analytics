@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;500;800&display=swap');
 
+/* Los tokens oscuros viven en index.css; acá sólo se repiten para que este
+   archivo se pueda leer solo. --hover incluido, que faltaba y dejaba 30
+   lugares en gris casi negro cuando se prendía el modo claro. */
 :root {
   --bg: #000000;
   --panel: #111111;
@@ -7,18 +10,38 @@
   --accent: #00ff88;
   --text: #ffffff;
   --text-dim: #888888;
+  --hover: #151515;
 }
 
 /* ==========================================
    MODO CLARO (LIGHT MODE)
+
+   En oscuro la jerarquía sale sola: la página es negra y la tarjeta gris,
+   así que la tarjeta "se prende". En claro eso se invierte y hay que
+   construirla a mano, si no queda todo blanco sobre blanco.
+
+   Los valores están elegidos por contraste medido, no a ojo:
+     panel sobre bg     1.20  (antes 1.10: la tarjeta no se despegaba)
+     borde sobre panel  1.50  (antes 1.24: no se veía)
+     text-dim / blanco  6.69  y 5.69 sobre la página
+     accent como texto  4.44  (antes 2.76, ilegible)
    ========================================== */
 :root[data-theme='light'] {
-  --bg: #f3f4f6;
+  --bg: #e6ebf1;
   --panel: #ffffff;
-  --border: #e5e7eb;
-  --accent: #00b35e;
-  --text: #111827;
-  --text-dim: #6b7280;
+  --border: #cbd4df;
+  --accent: #008a4a;
+  --text: #0f172a;
+  --text-dim: #525d6b;
+  --hover: #dde5ee;
+}
+
+/* Sin el relieve, en claro las tarjetas siguen siendo rectángulos blancos
+   pegados a un fondo casi blanco. La sombra es lo que hace el trabajo que
+   en oscuro hace la diferencia de brillo. */
+:root[data-theme='light'] .bento-card,
+:root[data-theme='light'] .pitch-container {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px -4px rgba(15, 23, 42, 0.10);
 }
 
 /* BASE GLOBAL (obligatorio) */

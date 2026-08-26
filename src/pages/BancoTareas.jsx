@@ -618,6 +618,7 @@ const BancoTareas = () => {
       case 'Físico': return { bg: 'linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%)', border: '#ef4444', text: '#fecaca' };
       case 'Técnico': return { bg: 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)', border: '#10b981', text: '#a7f3d0' };
       case 'Cognitivo': return { bg: 'linear-gradient(135deg, #4c1d95 0%, #2e1065 100%)', border: '#8b5cf6', text: '#ddd6fe' };
+      case 'Libro Táctico': return { bg: 'linear-gradient(135deg, #164e63 0%, #083344 100%)', border: '#22d3ee', text: '#a5f3fc' };
       case 'ABP': return { bg: 'linear-gradient(135deg, #78350f 0%, #451a03 100%)', border: '#f59e0b', text: '#fde68a' };
       default: return { bg: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', border: '#4b5563', text: '#d1d5db' };
     }
@@ -655,7 +656,7 @@ const BancoTareas = () => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--text)', lineHeight: '1' }}>{carga}</span>
+            <span style={{ fontSize: '1.8rem', fontWeight: '900', color: '#ffffff', lineHeight: '1' }}>{carga}</span>
             <span style={{ fontSize: '0.6rem', fontWeight: 'bold', color: colores.text, textTransform: 'uppercase', letterSpacing: '1px' }}>Carga UC</span>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -670,35 +671,35 @@ const BancoTareas = () => {
           ) : tarea.url_grafico ? (
             <img src={tarea.url_grafico} alt="Gráfico Tarea" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
-            <span style={{ color: 'var(--text-dim)', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
+            <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
           )}
           {tarea.formato_tarea && (
-            <div style={{ position: 'absolute', top: '5px', left: '5px', background: 'rgba(8,145,178,0.85)', border: '1px solid #22d3ee', color: 'var(--text)', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
+            <div style={{ position: 'absolute', top: '5px', left: '5px', background: 'rgba(8,145,178,0.85)', border: '1px solid #22d3ee', color: '#ffffff', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
               {etiquetaFormato(tarea.formato_tarea)}
             </div>
           )}
-          <div style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.8)', border: `1px solid ${colores.border}`, color: 'var(--text)', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px' }}>
+          <div style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.8)', border: `1px solid ${colores.border}`, color: '#ffffff', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px' }}>
             {tarea.jugadores_involucrados || 'Grupal'}
           </div>
         </div>
 
         <div style={{ textAlign: 'center', margin: '12px 0', borderBottom: `1px solid ${colores.border}40`, paddingBottom: '8px' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: 'var(--text)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: '#ffffff', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {tarea.titulo}
           </h3>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '5px', textAlign: 'center' }}>
           <div>
-            <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: '900', color: 'var(--text)' }}>{tarea.duracion_estimada}'</span>
+            <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: '900', color: '#ffffff' }}>{tarea.duracion_estimada}'</span>
             <span style={{ fontSize: '0.6rem', color: colores.text, fontWeight: 'bold' }}>MINS</span>
           </div>
           <div style={{ borderLeft: `1px solid ${colores.border}40`, borderRight: `1px solid ${colores.border}40` }}>
-            <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: '900', color: 'var(--text)' }}>{tarea.intensidad_rpe}</span>
+            <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: '900', color: '#ffffff' }}>{tarea.intensidad_rpe}</span>
             <span style={{ fontSize: '0.6rem', color: colores.text, fontWeight: 'bold' }}>RPE</span>
           </div>
           <div>
-            <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: '900', color: 'var(--text)', marginTop: '3px' }}>{tarea.espacio?.replace('_', ' ')}</span>
+            <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: '900', color: '#ffffff', marginTop: '3px' }}>{tarea.espacio?.replace('_', ' ')}</span>
             <span style={{ fontSize: '0.6rem', color: colores.text, fontWeight: 'bold' }}>ZONA</span>
           </div>
         </div>
@@ -884,7 +885,7 @@ const BancoTareas = () => {
                 </div>
                 {tareaSeleccionada.video_url && (
                   <div style={{ marginTop: '15px' }}>
-                    <a href={tareaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#2563eb', color: 'var(--text)', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}>
+                    <a href={tareaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#2563eb', color: '#ffffff', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}>
                       ▶️ VER VIDEO DE REFERENCIA
                     </a>
                   </div>
