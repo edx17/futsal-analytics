@@ -3,6 +3,10 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { useEsMovil } from '../utils/useEsMovil';
+import FiltrosTareas from '../components/FiltrosTareas';
+import { etiquetaFase, etiquetaFormato, pasaFiltros, colorFase, leerFase, FILTROS_VACIOS,
+         NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
 
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
@@ -449,10 +453,8 @@ const BancoTareas = () => {
   const [tareas, setTareas] = useState([]);
   const [cargando, setCargando] = useState(true);
   
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
-  const [filtroFase, setFiltroFase] = useState('Todas');
-  const [filtroFormato, setFiltroFormato] = useState('Todas');
+  const esMovil = useEsMovil();
+  const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   
@@ -469,7 +471,8 @@ const BancoTareas = () => {
     titulo: '',
     categoria_recomendada: 'Todas',
     categoria_ejercicio: 'Táctico',
-    fase_juego: 'Ataque Posicional',
+    fase_juego: 'Ataque',
+    subfase_juego: '',
     formato_tarea: 'Reducido',
     duracion_estimada: 15,
     intensidad_rpe: 6,
@@ -581,6 +584,7 @@ const BancoTareas = () => {
         categoria_recomendada: nuevaTarea.categoria_recomendada,
         categoria_ejercicio: nuevaTarea.categoria_ejercicio,
         fase_juego: nuevaTarea.fase_juego,
+        subfase_juego: nuevaTarea.subfase_juego || null,
         formato_tarea: nuevaTarea.formato_tarea,
         duracion_estimada: parseInt(nuevaTarea.duracion_estimada) || 0,
         intensidad_rpe: parseInt(nuevaTarea.intensidad_rpe) || 0,
@@ -619,22 +623,7 @@ const BancoTareas = () => {
     }
   };
 
-  const normalizar = (str) =>
-    (str ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  const tareasFiltradas = tareas.filter(t => {
-    const termino = normalizar(busqueda);
-    const coincideBusqueda = !termino ||
-      normalizar(t.titulo).includes(termino) ||
-      normalizar(t.objetivo_principal).includes(termino) ||
-      normalizar(t.categoria_ejercicio).includes(termino) ||
-      normalizar(t.fase_juego).includes(termino) ||
-      normalizar(t.formato_tarea).includes(termino);
-    const coincideCategoria = filtroCategoria === 'Todas' || t.categoria_ejercicio === filtroCategoria;
-    const coincideFase = filtroFase === 'Todas' || t.fase_juego === filtroFase;
-    const coincideFormato = filtroFormato === 'Todas' || t.formato_tarea === filtroFormato;
-    return coincideBusqueda && coincideCategoria && coincideFase && coincideFormato;
-  });
+  const tareasFiltradas = tareas.filter(t => pasaFiltros(t, filtros));
 
   const CartaFUT = ({ tarea }) => {
     const colores = getColoresCategoria(tarea.categoria_ejercicio);
@@ -647,9 +636,12 @@ const BancoTareas = () => {
           background: colores.bg,
           border: `2px solid ${colores.border}`,
           borderRadius: '16px',
-          width: '260px',
-          height: '380px',
-          padding: '15px',
+          /* Antes eran 260px clavados y en el celular quedaban cortadas.
+             Ahora la carta se estira hasta el ancho disponible. */
+          width: '100%',
+          maxWidth: '280px',
+          height: esMovil ? '340px' : '380px',
+          padding: esMovil ? '12px' : '15px',
           display: 'flex',
           flexDirection: 'column',
           cursor: 'pointer',
@@ -668,7 +660,7 @@ const BancoTareas = () => {
           </div>
           <div style={{ textAlign: 'right' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: '900', color: colores.border, textTransform: 'uppercase', display: 'block' }}>{tarea.categoria_ejercicio}</span>
-            <span style={{ fontSize: '0.6rem', color: colores.text }}>{tarea.fase_juego}</span>
+            <span style={{ fontSize: '0.6rem', color: colorFase(leerFase(tarea).fase) }}>{etiquetaFase(tarea) || '—'}</span>
           </div>
         </div>
 
@@ -682,7 +674,7 @@ const BancoTareas = () => {
           )}
           {tarea.formato_tarea && (
             <div style={{ position: 'absolute', top: '5px', left: '5px', background: 'rgba(8,145,178,0.85)', border: '1px solid #22d3ee', color: 'var(--text)', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
-              {tarea.formato_tarea}
+              {etiquetaFormato(tarea.formato_tarea)}
             </div>
           )}
           <div style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.8)', border: `1px solid ${colores.border}`, color: 'var(--text)', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px' }}>
@@ -715,46 +707,30 @@ const BancoTareas = () => {
   };
 
   return (
-    <div style={{ paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.3s' }}>
+    <div style={{ paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto', padding: esMovil ? '0 10px 80px' : undefined, animation: 'fadeIn 0.3s' }}>
       
-      <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px', background: 'var(--panel)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+      <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px', background: 'var(--panel)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <div style={{ fontSize: '2.5rem' }}>🗃️</div>
-            <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.5rem', margin: 0 }}>BANCO DE TAREAS</h1>
-            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Biblioteca de ejercicios y rutinas</p>
+            <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: esMovil ? '1.15rem' : '1.5rem', margin: 0 }}>
+              🗃️ BANCO DE TAREAS
+            </h1>
+            <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+              {tareasFiltradas.length} de {tareas.length} ejercicios
+            </p>
           </div>
-          
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <input
-              type="text"
-              placeholder="🔍 Buscar tarea..."
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              style={inputFiltro}
-            />
-            <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={selectFiltro}>
-              <option value="Todas">Naturaleza · Contenido</option>
-              <option value="Táctico">Táctico</option>
-              <option value="Técnico">Técnico</option>
-              <option value="Físico">Físico / Gimnasio</option>
-              <option value="Cognitivo">Cognitivo</option>
-              <option value="ABP">ABP (tareas viejas)</option>
-            </select>
-            <select value={filtroFase} onChange={e => setFiltroFase(e.target.value)} style={selectFiltro}>
-              <option value="Todas">Fase · El Qué</option>
-              <option value="Ataque Posicional">Ataque Posicional</option>
-              <option value="Defensa Posicional">Defensa Posicional</option>
-              <option value="Transición Ofensiva">Transición Ofensiva</option>
-              <option value="Transición Defensiva">Transición Defensiva</option>
-              <option value="Situaciones Especiales">Situaciones Especiales</option>
-              <option value="ABP / Pelota Parada">ABP / Pelota Parada</option>
-            </select>
-            <button onClick={() => setShowCrearModal(true)} style={{ background: 'var(--accent)', color: '#000', padding: '12px 20px', borderRadius: '8px', border: 'none', fontWeight: '900', cursor: 'pointer', fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(0,255,136,0.3)' }}>
-              + NUEVA TAREA
-            </button>
-          </div>
+
+          <button onClick={() => setShowCrearModal(true)} style={{
+            background: 'var(--accent)', color: '#000', padding: esMovil ? '12px 16px' : '12px 20px',
+            borderRadius: '8px', border: 'none', fontWeight: '900', cursor: 'pointer',
+            fontSize: '0.85rem', boxShadow: '0 4px 15px rgba(0,255,136,0.3)',
+            flex: esMovil ? '1 1 100%' : '0 0 auto',
+          }}>
+            + NUEVA TAREA
+          </button>
         </div>
+
+        <FiltrosTareas valores={filtros} onCambiar={setFiltros} compacto={esMovil} />
       </div>
 
       {cargando ? (
@@ -766,7 +742,12 @@ const BancoTareas = () => {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Creá tu primer ejercicio en el Creador o subí un video para empezar.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '25px', justifyContent: 'center' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))',
+          gap: esMovil ? '14px' : '25px',
+          justifyItems: 'center',
+        }}>
           {tareasFiltradas.map(tarea => (
             <CartaFUT key={tarea.id} tarea={tarea} />
           ))}
@@ -817,19 +798,28 @@ const BancoTareas = () => {
               <div>
                 <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Naturaleza · Contenido</label>
                 <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.categoria_ejercicio} onChange={e => setNuevaTarea({...nuevaTarea, categoria_ejercicio: e.target.value})}>
-                  {['Táctico', 'Técnico', 'Físico', 'Cognitivo', 'Libro Táctico'].map(v=><option key={v}>{v}</option>)}
+                  {NATURALEZAS.map(n=><option key={n.id} value={n.id}>{n.label}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Fase del Juego</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.fase_juego} onChange={e => setNuevaTarea({...nuevaTarea, fase_juego: e.target.value})}>
-                  {['Ataque Posicional','Defensa Posicional','Transición Ofensiva','Transición Defensiva','Situaciones Especiales','ABP / Pelota Parada'].map(v=><option key={v}>{v}</option>)}
+                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.fase_juego} onChange={e => setNuevaTarea({...nuevaTarea, fase_juego: e.target.value, subfase_juego: ''})}>
+                  {FASES.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Situación</label>
+                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                        value={nuevaTarea.subfase_juego}
+                        onChange={e => setNuevaTarea({...nuevaTarea, subfase_juego: e.target.value})}>
+                  <option value="">— sin especificar —</option>
+                  {subfasesDe(nuevaTarea.fase_juego).map(v=><option key={v}>{v}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#22d3ee', textTransform: 'uppercase', marginBottom: 5 }}>Formato de Tarea</label>
                 <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #0e7490', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.formato_tarea} onChange={e => setNuevaTarea({...nuevaTarea, formato_tarea: e.target.value})}>
-                  <option value="Analítico">Analítico</option><option value="Drill">Drill</option><option value="Reducido">Reducido / SSG</option><option value="Juego Condicionado">Juego Condicionado</option><option value="Juego Real">Juego Real</option>
+                  {FORMATOS.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
                 </select>
               </div>
               <div>
@@ -954,8 +944,5 @@ const BancoTareas = () => {
     </div>
   );
 };
-
-const inputFiltro = { padding: '12px 15px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '16px', minWidth: '250px', outline: 'none' };
-const selectFiltro = { padding: '12px 15px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--accent)', fontSize: '0.9rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer' };
 
 export default BancoTareas;

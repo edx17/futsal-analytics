@@ -6,6 +6,8 @@ import { useToast } from '../components/ToastContext';
 
 // IMPORTAMOS AUTH PARA EL GRAN FILTRO
 import { useAuth } from '../context/AuthContext';
+import FiltrosTareas from '../components/FiltrosTareas';
+import { pasaFiltros, etiquetaFase, etiquetaFormato, colorFase, leerFase, FILTROS_VACIOS } from '../utils/taxonomiaTareas';
 
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
@@ -488,9 +490,7 @@ const PlanificadorSemanal = () => {
   const [tareaSeleccionadaDetalle, setTareaSeleccionadaDetalle] = useState(null); 
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [diaSheet, setDiaSheet] = useState(null); // vista mensual mobile: hoja de sesiones del día
-  const [busquedaTarea, setBusquedaTarea] = useState('');
-  const [filtroFaseTarea, setFiltroFaseTarea] = useState('Todas');
-  const [filtroFormatoTarea, setFiltroFormatoTarea] = useState('Todas');
+  const [filtrosTarea, setFiltrosTarea] = useState(FILTROS_VACIOS);
   const [soloRecomendadas, setSoloRecomendadas] = useState(false);
   
   const { showToast } = useToast(); 
@@ -660,7 +660,7 @@ const PlanificadorSemanal = () => {
       
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
-        .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, video_mp4_url, fase_juego, objetivo_principal, categoria_recomendada, formato_tarea')
+        .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, video_mp4_url, fase_juego, subfase_juego, objetivo_principal, categoria_recomendada, formato_tarea')
         .eq('club_id', club_id)
         .order('created_at', { ascending: false });
         
@@ -689,9 +689,7 @@ const PlanificadorSemanal = () => {
 
   const abrirModal = (dia, sesionExistente = null, forzarEdicion = false) => {
     setDiaSeleccionado(dia);
-    setBusquedaTarea(''); 
-    setFiltroFaseTarea('Todas');
-    setFiltroFormatoTarea('Todas');
+    setFiltrosTarea(FILTROS_VACIOS);
     setSoloRecomendadas(false);
     setTareaSeleccionadaDetalle(null);
     
@@ -858,20 +856,6 @@ const PlanificadorSemanal = () => {
     }
   };
 
-  const normalizar = (str) =>
-    (str ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  const fasesEnBanco = React.useMemo(() => {
-    const set = new Set();
-    tareasBanco.forEach(t => { if (t.fase_juego) set.add(t.fase_juego); });
-    return [...set].sort();
-  }, [tareasBanco]);
-
-  const formatosEnBanco = React.useMemo(() => {
-    const set = new Set();
-    tareasBanco.forEach(t => { if (t.formato_tarea) set.add(t.formato_tarea); });
-    return [...set].sort();
-  }, [tareasBanco]);
 
   const esRecomendadaParaSesion = (t) =>
     !t.categoria_recomendada ||
@@ -879,19 +863,8 @@ const PlanificadorSemanal = () => {
     t.categoria_recomendada === nuevaSesion.categoria_equipo;
 
   const tareasFiltradas = tareasBanco.filter(t => {
-    const termino = normalizar(busquedaTarea);
-    const coincideBusqueda = !termino ||
-      normalizar(t.titulo).includes(termino) ||
-      normalizar(t.categoria_ejercicio).includes(termino) ||
-      normalizar(t.fase_juego).includes(termino) ||
-      normalizar(t.formato_tarea).includes(termino) ||
-      normalizar(t.objetivo_principal).includes(termino);
-
-    const coincideFase = filtroFaseTarea === 'Todas' || t.fase_juego === filtroFaseTarea;
-    const coincideFormato = filtroFormatoTarea === 'Todas' || t.formato_tarea === filtroFormatoTarea;
     const coincideEdad = !soloRecomendadas || esRecomendadaParaSesion(t);
-
-    return coincideBusqueda && coincideFase && coincideFormato && coincideEdad;
+    return coincideEdad && pasaFiltros(t, filtrosTarea);
   }).sort((a, b) => {
     const aSel = nuevaSesion.tareas_ids?.includes(a.id);
     const bSel = nuevaSesion.tareas_ids?.includes(b.id);
@@ -1489,55 +1462,7 @@ const PlanificadorSemanal = () => {
                       <span style={{fontSize: '1.2rem'}}>➕</span> Crear Nueva Tarea y Volver
                     </button>
 
-                    <input type="text" placeholder="🔍 Buscar por nombre, fase o formato (ej: transiciones, reducido)..." value={busquedaTarea} onChange={(e) => setBusquedaTarea(e.target.value)} style={{...inputStyle, padding: '12px', background: 'var(--panel)', fontSize: '0.9rem'}} />
-
-                    {/* CHIPS DINÁMICOS — FASE (El Qué) */}
-                    {fasesEnBanco.length > 0 && (
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>Fase · El Qué</span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          <button
-                            onClick={() => setFiltroFaseTarea('Todas')}
-                            style={{ ...chipStyle, background: filtroFaseTarea === 'Todas' ? 'var(--accent)' : 'var(--panel)', color: filtroFaseTarea === 'Todas' ? '#000' : 'var(--text-dim)', borderColor: filtroFaseTarea === 'Todas' ? 'var(--accent)' : 'var(--border)' }}
-                          >
-                            Todas
-                          </button>
-                          {fasesEnBanco.map(cat => (
-                            <button
-                              key={cat}
-                              onClick={() => setFiltroFaseTarea(filtroFaseTarea === cat ? 'Todas' : cat)}
-                              style={{ ...chipStyle, background: filtroFaseTarea === cat ? 'var(--accent)' : 'var(--panel)', color: filtroFaseTarea === cat ? '#000' : 'var(--text-dim)', borderColor: filtroFaseTarea === cat ? 'var(--accent)' : 'var(--border)' }}
-                            >
-                              {cat}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* CHIPS DINÁMICOS — FORMATO (El Cómo) */}
-                    {formatosEnBanco.length > 0 && (
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: '#22d3ee', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>Formato · El Cómo</span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          <button
-                            onClick={() => setFiltroFormatoTarea('Todas')}
-                            style={{ ...chipStyle, background: filtroFormatoTarea === 'Todas' ? '#22d3ee' : 'var(--panel)', color: filtroFormatoTarea === 'Todas' ? '#000' : 'var(--text-dim)', borderColor: filtroFormatoTarea === 'Todas' ? '#22d3ee' : 'var(--border)' }}
-                          >
-                            Todos
-                          </button>
-                          {formatosEnBanco.map(fmt => (
-                            <button
-                              key={fmt}
-                              onClick={() => setFiltroFormatoTarea(filtroFormatoTarea === fmt ? 'Todas' : fmt)}
-                              style={{ ...chipStyle, background: filtroFormatoTarea === fmt ? '#22d3ee' : 'var(--panel)', color: filtroFormatoTarea === fmt ? '#000' : 'var(--text-dim)', borderColor: filtroFormatoTarea === fmt ? '#22d3ee' : 'var(--border)' }}
-                            >
-                              {fmt}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <FiltrosTareas valores={filtrosTarea} onCambiar={setFiltrosTarea} compacto={esMovil} />
 
                     {/* TOGGLE: solo tareas recomendadas para la categoría de la sesión */}
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-dim)', padding: '2px 0' }}>
@@ -1570,8 +1495,8 @@ const PlanificadorSemanal = () => {
                             <div style={{ flex: 1, overflow: 'hidden' }}>
                               <span style={{ display: 'block', fontSize: '0.85rem', color: isSelected ? 'var(--text)' : 'var(--text-dim)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
-                                {t.fase_juego && <span style={{ ...pillStyle, color: 'var(--accent)', borderColor: '#2a4a3a' }}>{t.fase_juego}</span>}
-                                {t.formato_tarea && <span style={{ ...pillStyle, color: '#22d3ee', borderColor: '#0e7490' }}>{t.formato_tarea}</span>}
+                                {etiquetaFase(t) && <span style={{ ...pillStyle, color: colorFase(leerFase(t).fase), borderColor: '#2a4a3a' }}>{etiquetaFase(t)}</span>}
+                                {t.formato_tarea && <span style={{ ...pillStyle, color: '#22d3ee', borderColor: '#0e7490' }}>{etiquetaFormato(t.formato_tarea)}</span>}
                                 <span style={pillStyle}>⏱️ {t.duracion_estimada}'</span>
                                 <span style={pillStyle}>⚡ {t.intensidad_rpe}/10</span>
                                 {recomendadaExacta && <span style={{ ...pillStyle, color: '#facc15', borderColor: '#ca8a0455', background: '#facc1515' }}>🎯 {t.categoria_recomendada}</span>}
@@ -1611,7 +1536,7 @@ const PlanificadorSemanal = () => {
             <div style={{ padding: esMovil ? '15px' : '20px', background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
               <div style={{ flex: 1, paddingRight: '40px' }}>
                 <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: 'var(--text)', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
-                  {tareaSeleccionadaDetalle.categoria_ejercicio} • {tareaSeleccionadaDetalle.fase_juego}{tareaSeleccionadaDetalle.formato_tarea ? ` • ${tareaSeleccionadaDetalle.formato_tarea}` : ''}
+                  {tareaSeleccionadaDetalle.categoria_ejercicio}{etiquetaFase(tareaSeleccionadaDetalle) ? ` • ${etiquetaFase(tareaSeleccionadaDetalle)}` : ''}{tareaSeleccionadaDetalle.formato_tarea ? ` • ${etiquetaFormato(tareaSeleccionadaDetalle.formato_tarea)}` : ''}
                 </span>
                 <h2 style={{ margin: '0 0 5px 0', color: 'var(--text)', fontSize: esMovil ? '1.2rem' : '1.8rem', textTransform: 'uppercase', fontWeight: '900', lineHeight: 1.2 }}>
                   {tareaSeleccionadaDetalle.titulo}
@@ -1694,6 +1619,5 @@ const navBtn = { background: 'var(--panel)', border: 'none', color: 'var(--text)
 const labelStyle = { display: 'block', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' };
 const inputStyle = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.95rem', outline: 'none', minHeight: '44px' };
 const pillStyle = { fontSize: '0.65rem', background: 'var(--panel)', color: 'var(--text-dim)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)' };
-const chipStyle = { fontSize: '0.7rem', fontWeight: 'bold', padding: '6px 10px', borderRadius: '20px', border: '1px solid var(--border)', cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.15s' };
 
 export default PlanificadorSemanal;

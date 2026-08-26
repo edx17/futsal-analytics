@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { Stage, Layer, Circle, Rect, Text, Group, Line, Path } from 'react-konva';
+import { leerFase, subfasesDe } from '../utils/taxonomiaTareas';
 
 // =======================================================
 // REPRODUCTOR AUTOMÁTICO DE JUGADAS (MODO GIF)
@@ -164,7 +165,14 @@ const ReproductorLoop = ({ editorData }) => {
 // =======================================================
 // COMPONENTE PRINCIPAL: LIBRO TÁCTICO
 // =======================================================
-const SITUACIONES = ['Salida de Presión', "Saque Inicial", 'Laterales Bajos', 'Laterales Medios', 'Laterales Altos', 'Corners', 'Tiros Libres', '5v4'];
+/* Las pestañas son SITUACIONES (subfases), no fases. Antes esta lista era el
+   vocabulario viejo que vivía en `fase_juego`; ahora sale de la taxonomía:
+   todo lo de balón parado, más la salida de presión y el power play, que
+   pertenecen a otras fases pero son jugadas de pizarrón igual. */
+const SITUACIONES = [...subfasesDe('Balón Parado'), 'Salida de presión', '5v4'];
+
+/* Qué situación tiene una jugada, esté migrada o no. */
+const situacionDe = (t) => leerFase(t).subfase;
 
 export default function LibroTactico() {
   const [tacticas, setTacticas] = useState([]);
@@ -217,7 +225,7 @@ export default function LibroTactico() {
     }
   };
 
-  const jugadasVisibles = tacticas.filter(t => t.fase_juego === tabActivo);
+  const jugadasVisibles = tacticas.filter(t => situacionDe(t) === tabActivo);
 
   return (
     <div className="fade-in" style={{ padding: '20px', paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box' }}>
@@ -263,7 +271,7 @@ export default function LibroTactico() {
       {/* PESTAÑAS DE NAVEGACIÓN TÁCTICA */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '30px', justifyContent: 'flex-start' }}>
         {SITUACIONES.map(sit => {
-          const count = tacticas.filter(t => t.fase_juego === sit).length;
+          const count = tacticas.filter(t => situacionDe(t) === sit).length;
           const activo = tabActivo === sit;
           return (
             <button 
@@ -342,7 +350,7 @@ export default function LibroTactico() {
             <div style={{ padding: '20px', background: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, paddingRight: '15px' }}>
                 <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text)', background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                  {jugadaSeleccionada.fase_juego}
+                  {situacionDe(jugadaSeleccionada) || jugadaSeleccionada.fase_juego}
                 </span>
                 <h2 style={{ margin: '10px 0 5px 0', color: 'var(--text)', fontSize: '1.5rem', textTransform: 'uppercase', fontWeight: '900', wordBreak: 'break-word' }}>
                   {jugadaSeleccionada.titulo}

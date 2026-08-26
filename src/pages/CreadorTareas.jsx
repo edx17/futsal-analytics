@@ -9,6 +9,7 @@ import { supabase } from '../supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/ToastContext'
 import { useAuth } from '../context/AuthContext' 
+import { NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
 
 const PITCH_VARIANTS = {
   '40x20':         { label: '40×20 · Reglamentaria', mW: 40, mH: 20 },
@@ -694,7 +695,8 @@ const CreadorTareas = () => {
   const [fichaTecnica, setFichaTecnica] = useState({
     categoria_recomendada: tareaAEditar?.categoria_recomendada || 'Todas',
     categoria_ejercicio: tareaAEditar?.categoria_ejercicio || 'Táctico',
-    fase_juego:          tareaAEditar?.fase_juego          || 'Ataque Posicional',
+    fase_juego:          tareaAEditar?.fase_juego          || 'Ataque',
+    subfase_juego:       tareaAEditar?.subfase_juego       || '',
     formato_tarea:       tareaAEditar?.formato_tarea       || 'Reducido',
     duracion_estimada:   tareaAEditar?.duracion_estimada   || 15,
     intensidad_rpe:      tareaAEditar?.intensidad_rpe      || 6,
@@ -704,10 +706,12 @@ const CreadorTareas = () => {
     video_url:           tareaAEditar?.video_url           || '',
   })
 
-  const NATURALEZAS = ['Táctico', 'Técnico', 'Físico', 'Cognitivo', 'Libro Táctico']
-  const naturalezasOpts = NATURALEZAS.includes(fichaTecnica.categoria_ejercicio)
+  /* Si la tarea que se está editando trae una naturaleza que ya no está en
+     la lista, la agregamos igual para no pisarla en silencio. */
+  const idsNaturaleza = NATURALEZAS.map(n => n.id)
+  const naturalezasOpts = idsNaturaleza.includes(fichaTecnica.categoria_ejercicio)
     ? NATURALEZAS
-    : [fichaTecnica.categoria_ejercicio, ...NATURALEZAS]
+    : [{ id: fichaTecnica.categoria_ejercicio, label: fichaTecnica.categoria_ejercicio }, ...NATURALEZAS]
 
   useEffect(() => {
     let vp = document.querySelector('meta[name=viewport]')
@@ -1162,6 +1166,7 @@ const CreadorTareas = () => {
         categoria_recomendada: fichaTecnica.categoria_recomendada,
         categoria_ejercicio:   fichaTecnica.categoria_ejercicio,
         fase_juego:            fichaTecnica.fase_juego,
+        subfase_juego:         fichaTecnica.subfase_juego || null,
         formato_tarea:         fichaTecnica.formato_tarea,
         duracion_estimada:     parseInt(fichaTecnica.duracion_estimada)||0,
         intensidad_rpe:        parseInt(fichaTecnica.intensidad_rpe)||0,
@@ -1767,31 +1772,31 @@ const CreadorTareas = () => {
               <div>
                 <label className="ct-modal-lbl">Naturaleza · Contenido</label>
                 <select className="ct-modal-input" value={fichaTecnica.categoria_ejercicio} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_ejercicio:e.target.value})}>
-                  {naturalezasOpts.map(v=><option key={v}>{v}</option>)}
+                  {naturalezasOpts.map(n=><option key={n.id} value={n.id}>{n.label}</option>)}
                 </select>
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Qué capacidad entrena</span>
               </div>
               <div>
                 <label className="ct-modal-lbl">Fase del Juego · El Qué</label>
-                {fichaTecnica.categoria_ejercicio==='Libro Táctico' ? (
-                  <select className="ct-modal-input" value={fichaTecnica.fase_juego} onChange={e=>setFichaTecnica({...fichaTecnica,fase_juego:e.target.value})}>
-                    {['Salida de Presión','Saque Inicial','Laterales Bajos','Laterales Medios','Laterales Altos','Corners','Tiros Libres','5v4'].map(v=><option key={v}>{v}</option>)}
-                  </select>
-                ) : (
-                  <select className="ct-modal-input" value={fichaTecnica.fase_juego} onChange={e=>setFichaTecnica({...fichaTecnica,fase_juego:e.target.value})}>
-                    {['Ataque Posicional','Defensa Posicional','Transición Ofensiva','Transición Defensiva','Situaciones Especiales','ABP / Pelota Parada'].map(v=><option key={v}>{v}</option>)}
-                  </select>
-                )}
+                <select className="ct-modal-input" value={fichaTecnica.fase_juego}
+                        onChange={e=>setFichaTecnica({...fichaTecnica,fase_juego:e.target.value,subfase_juego:''})}>
+                  {FASES.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Qué momento del juego</span>
+              </div>
+              <div>
+                <label className="ct-modal-lbl">Situación</label>
+                <select className="ct-modal-input" value={fichaTecnica.subfase_juego}
+                        onChange={e=>setFichaTecnica({...fichaTecnica,subfase_juego:e.target.value})}>
+                  <option value="">— sin especificar —</option>
+                  {subfasesDe(fichaTecnica.fase_juego).map(v=><option key={v}>{v}</option>)}
+                </select>
+                <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Dentro de esa fase</span>
               </div>
               <div>
                 <label className="ct-modal-lbl" style={{color:'#22d3ee'}}>Formato · El Cómo</label>
                 <select className="ct-modal-input" style={{borderColor:'#0e7490'}} value={fichaTecnica.formato_tarea} onChange={e=>setFichaTecnica({...fichaTecnica,formato_tarea:e.target.value})}>
-                  <option value="Analítico">Analítico (sin oposición)</option>
-                  <option value="Drill">Drill (mecanización)</option>
-                  <option value="Reducido">Reducido / SSG (2v2, 3v3)</option>
-                  <option value="Juego Condicionado">Juego Condicionado</option>
-                  <option value="Juego Real">Juego Real (5v5)</option>
+                  {FORMATOS.map(f=><option key={f.id} value={f.id}>{f.label}{f.ayuda ? ` — ${f.ayuda}` : ''}</option>)}
                 </select>
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Cómo se estructura la práctica</span>
               </div>
