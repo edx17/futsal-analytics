@@ -233,7 +233,7 @@ export default function Rendimiento() {
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '-1px', margin: 0 }}>Dpto. Rendimiento</h1>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: 4 }}>Rendimiento · Biomecánica · Antropometría · Nutrición</p>
         </div>
-        {esStaff && <button onClick={() => setModalOpen(true)} className="btn-action" style={{ padding: '10px 20px', background: '#3b82f6', color: 'var(--text)', fontWeight: 900 }}>+ NUEVA TOMA</button>}
+        {esStaff && <button onClick={() => setModalOpen(true)} className="btn-action" style={{ padding: '10px 20px', background: '#3b82f6', color: '#ffffff', fontWeight: 900 }}>+ NUEVA TOMA</button>}
       </div>
 
       {/* ── LAYOUT: SIDEBAR + CONTENT ──────────────────────────────────────── */}
@@ -1502,7 +1502,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
         )}
 
         <button onClick={handleGuardar} disabled={loading} className="btn-action"
-          style={{ width: '100%', padding: 13, marginTop: 18, background: '#3b82f6', color: 'var(--text)', fontWeight: 900, opacity: loading ? 0.5 : 1, fontSize: '0.86rem', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+          style={{ width: '100%', padding: 13, marginTop: 18, background: '#3b82f6', color: '#ffffff', fontWeight: 900, opacity: loading ? 0.5 : 1, fontSize: '0.86rem', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
           {loading ? 'GUARDANDO...' : '💾 GUARDAR EN HISTORIAL'}
         </button>
       </div>

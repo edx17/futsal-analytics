@@ -11,6 +11,12 @@
   --text: #ffffff;
   --text-dim: #888888;
   --hover: #151515;
+  --ok: #10b981;
+  --aviso: #f59e0b;
+  --peligro: #ef4444;
+  --info: #60a5fa;
+  --frio: #22d3ee;
+  --amarillo: #facc15;
 }
 
 /* ==========================================
@@ -34,6 +40,17 @@
   --text: #0f172a;
   --text-dim: #525d6b;
   --hover: #dde5ee;
+
+  /* Los mismos seis colores, bajados de tono hasta que se leen sobre
+     blanco. Contraste medido contra --panel:
+       ok 4.99 · aviso 5.02 · peligro 4.83 · info 6.70 · frío 5.36 · amarillo 4.92
+     Los de arriba, sobre blanco, van de 1.8 a 2.6: invisibles. */
+  --ok: #047857;
+  --aviso: #b45309;
+  --peligro: #dc2626;
+  --info: #1d4ed8;
+  --frio: #0e7490;
+  --amarillo: #a16207;
 }
 
 /* Sin el relieve, en claro las tarjetas siguen siendo rectángulos blancos

@@ -261,7 +261,7 @@ export default function LibroTactico() {
             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Playbook oficial del equipo: ABP, presiones y situaciones especiales.</p>
           </div>
           {esStaff && (
-            <button onClick={() => navigate('/banco-tareas')} className="btn-action" style={{ background: '#3b82f6', color: 'var(--text)', fontSize: '0.85rem' }}>
+            <button onClick={() => navigate('/banco-tareas')} className="btn-action" style={{ background: '#3b82f6', color: '#ffffff', fontSize: '0.85rem' }}>
               + AGREGAR DESDE BANCO
             </button>
           )}
@@ -328,7 +328,7 @@ export default function LibroTactico() {
                   <span style={{ fontSize: '3rem' }}>📋</span>
                 )}
                 {jugada.editor_data?.frames?.length > 1 && !jugada.video_mp4_url && (
-                  <span style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: 'var(--text)', fontSize: '0.6rem', padding: '3px 6px', borderRadius: '4px', fontWeight: 'bold' }}>ANIMACIÓN</span>
+                  <span style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: '#ffffff', fontSize: '0.6rem', padding: '3px 6px', borderRadius: '4px', fontWeight: 'bold' }}>ANIMACIÓN</span>
                 )}
               </div>
               <div style={{ padding: '15px', background: 'var(--panel)' }}>
@@ -385,7 +385,7 @@ export default function LibroTactico() {
                 </div>
 
                 {jugadaSeleccionada.video_url && (
-                  <a href={jugadaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#ef4444', color: 'var(--text)', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                  <a href={jugadaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#ef4444', color: '#ffffff', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.85rem' }}>
                     ▶️ Video de Ejemplo Externo
                   </a>
                 )}
@@ -395,7 +395,7 @@ export default function LibroTactico() {
                     <button onClick={() => eliminarJugada(jugadaSeleccionada.id)} style={{ flex: '1 1 100px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                       ELIMINAR
                     </button>
-                    <button onClick={() => navigate('/creador-tareas', { state: { editando: jugadaSeleccionada } })} style={{ flex: '2 1 150px', background: '#3b82f6', border: 'none', color: 'var(--text)', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                    <button onClick={() => navigate('/creador-tareas', { state: { editando: jugadaSeleccionada } })} style={{ flex: '2 1 150px', background: '#3b82f6', border: 'none', color: '#ffffff', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
                       EDITAR TÁCTICA
                     </button>
                   </div>

@@ -394,7 +394,7 @@ export default function LoginKiosco() {
               <>
                 <div style={{ display: 'flex', gap: '10px', flexDirection: esMovil ? 'column' : 'row' }}>
                   {clubConfig?.alias_cobro && (
-                    <button onClick={procesarPagoMP} style={{ flex: 1, padding: '10px', background: '#00b1ea', color: 'var(--text)', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <button onClick={procesarPagoMP} style={{ flex: 1, padding: '10px', background: '#00b1ea', color: '#000000', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                       🤝 PAGAR CON MP
                     </button>
                   )}

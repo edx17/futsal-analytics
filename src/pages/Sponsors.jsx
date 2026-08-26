@@ -123,7 +123,7 @@ function Sponsors() {
             <h2 style={{ margin: 0, fontSize: '1.8rem' }}>SPONSORS Y SUBSIDIOS</h2>
           </div>
           {puedeEditar && (
-            <button onClick={() => { setFormSponsor({ id: null, nombre: '', contacto_nombre: '', monto_aporte: '', periodicidad: 'mensual', estado: 'activo', fecha_vencimiento: '' }); setModalSponsor(true); }} style={{ background: '#a855f7', color: 'var(--text)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+            <button onClick={() => { setFormSponsor({ id: null, nombre: '', contacto_nombre: '', monto_aporte: '', periodicidad: 'mensual', estado: 'activo', fecha_vencimiento: '' }); setModalSponsor(true); }} style={{ background: '#a855f7', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
               + AGREGAR SPONSOR
             </button>
           )}
@@ -148,7 +148,7 @@ function Sponsors() {
                   <span style={{ color: estaVencido ? '#ef4444' : 'var(--text-dim)' }}>{s.fecha_vencimiento ? `Vence: ${s.fecha_vencimiento.split('-').reverse().join('/')}` : 'Sin vencimiento'}</span>
                 </div>
                 {puedeEditar && (
-                  <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], descripcion: '', aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
+                  <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], descripcion: '', aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: '#ffffff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
                     💸 REGISTRAR COBRO
                   </button>
                 )}
@@ -177,7 +177,7 @@ function Sponsors() {
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
               <button onClick={() => setModalSponsor(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={guardarSponsor} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#a855f7', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{cargando ? 'GUARDANDO...' : 'GUARDAR'}</button>
+              <button onClick={guardarSponsor} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#a855f7', border: 'none', color: '#ffffff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{cargando ? 'GUARDANDO...' : 'GUARDAR'}</button>
             </div>
           </div>
         </div>
@@ -258,7 +258,7 @@ function Sponsors() {
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
               <button onClick={() => setModalPago({visible: false, sponsor: null})} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={registrarPago} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{cargando ? 'REGISTRANDO...' : 'CONFIRMAR COBRO'}</button>
+              <button onClick={registrarPago} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: '#ffffff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{cargando ? 'REGISTRANDO...' : 'CONFIRMAR COBRO'}</button>
             </div>
           </div>
         </div>

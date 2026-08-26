@@ -23,12 +23,12 @@ const RenderRutinaFisica = ({ data }) => {
 
   return (
     <div style={{ padding: '15px', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--panel)', boxSizing: 'border-box', textAlign: 'left' }}>
-      <h4 style={{ color: '#f59e0b', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+      <h4 style={{ color: 'var(--aviso)', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
         {data.sub_modo === 'gimnasio' ? '🏋️‍♂️ Circuito de Gimnasio / Fuerza' : '🏃‍♂️ Bloques de Acondicionamiento en Cancha'}
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {data.bloques.map((b, i) => (
-          <div key={b.id || i} style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #f59e0b' }}>
+          <div key={b.id || i} style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid var(--aviso)' }}>
             {data.sub_modo === 'gimnasio' ? (
               <>
                 <div style={{ fontWeight: '900', color: 'var(--text)', fontSize: '1.1rem' }}>{i + 1}. {b.nombre}</div>
@@ -765,7 +765,7 @@ const BancoTareas = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
-              <button onClick={() => navigate('/creador-tareas')} style={{ flex: 1, padding: '15px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', borderRadius: '8px', color: '#60a5fa', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <button onClick={() => navigate('/creador-tareas')} style={{ flex: 1, padding: '15px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid var(--info)', borderRadius: '8px', color: 'var(--info)', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
                 <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '5px' }}>🎨</span>
                 Abrir Creador Táctico
               </button>
@@ -790,7 +790,7 @@ const BancoTareas = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 15 }}>
               <div>
-                <label className="campo-rotulo" style={{ color: '#facc15' }}>Categoría Recomendada</label>
+                <label className="campo-rotulo" style={{ color: 'var(--amarillo)' }}>Categoría Recomendada</label>
                 <select className="campo" style={{ borderColor: '#ca8a04' }} value={nuevaTarea.categoria_recomendada} onChange={e => setNuevaTarea({...nuevaTarea, categoria_recomendada: e.target.value})}>
                   <option value="Todas">Todas las Categorías</option>
                   {categoriasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
@@ -818,7 +818,7 @@ const BancoTareas = () => {
                 </select>
               </div>
               <div>
-                <label className="campo-rotulo" style={{ color: '#22d3ee' }}>Formato de Tarea</label>
+                <label className="campo-rotulo" style={{ color: 'var(--frio)' }}>Formato de Tarea</label>
                 <select className="campo campo-frio" value={nuevaTarea.formato_tarea} onChange={e => setNuevaTarea({...nuevaTarea, formato_tarea: e.target.value})}>
                   {FORMATOS.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
                 </select>
@@ -923,7 +923,7 @@ const BancoTareas = () => {
                 <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
                   <button
                     onClick={() => eliminarTarea(tareaSeleccionada.id)}
-                    style={{ flex: 1, background: '#ef4444', border: 'none', color: 'var(--text)', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
+                    style={{ flex: 1, background: 'var(--peligro)', border: 'none', color: '#ffffff', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
                   >
                     🗑️ ELIMINAR
                   </button>

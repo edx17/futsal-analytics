@@ -501,6 +501,14 @@ const CSS = `
   --border:#252836;--border2:#2e3245;
   --accent:#00ff88;--accentb:#00e5ff;--red:#ef4444;--blue:#3b82f6;
   --text:#dde1f0;--muted:#5a6080;--muted2:#3a3f55;
+  /* La pizarra es una herramienta oscura a propósito, como cualquier
+     editor sobre lienzo: el modo claro no la toca. Pero antes redefinía
+     sólo la mitad de los tokens, así que --panel y --text-dim se colaban
+     del tema global y en modo claro el modal salía blanco con letra gris
+     clara adentro de un editor negro. Se definen acá los que faltaban. */
+  --panel:#111318;--hover:#181b23;--text-dim:#9aa2c0;
+  --ok:#10b981;--aviso:#f59e0b;--peligro:#ef4444;--info:#60a5fa;
+  --frio:#22d3ee;--amarillo:#facc15;
   font-family:'Syne',sans-serif;color:var(--text);background:var(--bg);
   display:flex;flex-direction:column;overflow:hidden;user-select:none;
   position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
@@ -555,7 +563,7 @@ const CSS = `
 .ct-tbtn.blue{color:var(--blue)}
 .ct-tbtn.blue:hover{border-color:var(--blue);color:var(--blue)}
 .ct-save-btn{padding:7px 18px;border:none;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0}
-.ct-input{padding:7px 10px;background:#000;border:1px solid #333;border-radius:6px;color:#fff;font-family:'Syne',sans-serif;font-size:.85rem;outline:none}
+.ct-input{padding:7px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Syne',sans-serif;font-size:.85rem;outline:none}
 .ct-status{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-left:auto;white-space:nowrap}
 .ct-mob-bottom-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(14,15,20,.98);border-top:1px solid #2e3245;z-index:9000;display:flex;align-items:flex-start;justify-content:space-around;padding:6px 4px env(safe-area-inset-bottom,12px);min-height:62px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .ct-mob-tab{flex:1;height:52px;border:none;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border-radius:10px;transition:all .15s;padding:0 2px}
@@ -604,7 +612,7 @@ const CSS = `
 .ct-modal h2{margin:0;color:var(--accent);font-size:1.4rem;text-transform:uppercase}
 .ct-modal h2.blue{color:var(--blue)}
 .ct-btn-primary{min-height:44px;padding:11px 20px;background:var(--accent);color:#000;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
-.ct-btn-sec{min-height:44px;padding:11px 16px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif}
+.ct-btn-sec{min-height:44px;padding:11px 16px;background:transparent;border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:12px;cursor:pointer;font-family:'Syne',sans-serif}
 @keyframes fadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 .ct-modal{animation:fadeIn .2s}
@@ -1739,7 +1747,7 @@ const CreadorTareas = () => {
             )}
 
             <div style={{ marginBottom: 20, padding: '15px', border: '1px dashed #333', borderRadius: '8px', background: 'rgba(255,255,255,0.02)' }}>
-              <label className="campo-rotulo" style={{ color: '#60a5fa' }}>Subir Video (Opcional - Reemplaza animación en el visor)</label>
+              <label className="campo-rotulo" style={{ color: 'var(--info)' }}>Subir Video (Opcional - Reemplaza animación en el visor)</label>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <label style={{ padding: '8px 15px', background: '#1e3a8a', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                   {videoFile || videoPreview ? 'Cambiar MP4' : 'Seleccionar MP4'}
@@ -1760,8 +1768,8 @@ const CreadorTareas = () => {
 
             <div style={{display:'grid',gridTemplateColumns:esMovil?'1fr':'1fr 1fr',gap:15,marginBottom:15}}>
               <div>
-                <label className="campo-rotulo" style={{color: '#facc15'}}>Categoría de la Tarea</label>
-                <select className="campo" style={{borderColor: '#ca8a04'}} value={fichaTecnica.categoria_recomendada} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_recomendada:e.target.value})}>
+                <label className="campo-rotulo" style={{color: 'var(--amarillo)'}}>Categoría de la Tarea</label>
+                <select className="campo" style={{borderColor: 'var(--amarillo)'}} value={fichaTecnica.categoria_recomendada} onChange={e=>setFichaTecnica({...fichaTecnica,categoria_recomendada:e.target.value})}>
                   <option value="Todas">Todas las Categorías</option>
                   {categoriasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -1791,7 +1799,7 @@ const CreadorTareas = () => {
                 <span style={{display:'block',fontSize:'0.62rem',color:'var(--muted)',marginTop:4}}>Dentro de esa fase</span>
               </div>
               <div>
-                <label className="campo-rotulo" style={{color:'#22d3ee'}}>Formato · El Cómo</label>
+                <label className="campo-rotulo" style={{color:'var(--frio)'}}>Formato · El Cómo</label>
                 <select className="campo campo-frio" value={fichaTecnica.formato_tarea} onChange={e=>setFichaTecnica({...fichaTecnica,formato_tarea:e.target.value})}>
                   {FORMATOS.map(f=><option key={f.id} value={f.id}>{f.label}{f.ayuda ? ` — ${f.ayuda}` : ''}</option>)}
                 </select>

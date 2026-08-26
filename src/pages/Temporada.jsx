@@ -1777,7 +1777,7 @@ function Temporada() {
             <button
               onClick={() => setMostrarReporte(false)}
               style={{
-                background: '#ef4444', color: 'var(--text)', border: 'none',
+                background: '#ef4444', color: '#ffffff', border: 'none',
                 padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px'
               }}
             >

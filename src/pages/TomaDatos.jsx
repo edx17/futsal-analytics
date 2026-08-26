@@ -1683,7 +1683,7 @@ function TomaDatos() {
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setModalFinalizar(false)} disabled={isFinishing} className="btn-action" style={{ flex: 1, background: 'var(--panel)', padding: '10px', color: 'var(--text)', border: '1px solid #444', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={confirmarFinalizarPartido} disabled={isFinishing} className="btn-action" style={{ flex: 1, padding: '10px', background: '#dc2626', color: 'var(--text)', fontWeight: 'bold', border: '1px solid #991b1b', cursor: 'pointer' }}>
+              <button onClick={confirmarFinalizarPartido} disabled={isFinishing} className="btn-action" style={{ flex: 1, padding: '10px', background: '#dc2626', color: '#ffffff', fontWeight: 'bold', border: '1px solid #991b1b', cursor: 'pointer' }}>
                 {isFinishing ? 'PROCESANDO...' : 'SÍ, FINALIZAR'}
               </button>
             </div>
