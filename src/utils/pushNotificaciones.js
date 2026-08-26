@@ -32,8 +32,21 @@ export const MOTIVOS_PUSH = {
   'sin-perfil':        'No se pudo identificar tu usuario. Cerrá sesión y volvé a entrar.',
   'falta-indice':      'Falta un índice único en push_subscriptions.endpoint. Hay que crearlo en Supabase.',
   'sin-permiso-tabla': 'La base rechazó guardar la suscripción por permisos (RLS) en push_subscriptions.',
+  'tabla-inexistente': 'No existe la tabla push_subscriptions en la base. Hay que crearla en Supabase.',
+  'sin-https':         'La página no se está sirviendo por HTTPS. Los navegadores sólo permiten notificaciones en https:// (o en localhost).',
   'error':             'Error inesperado al activar.',
 };
+
+/* Un error de PostgREST puede significar tres cosas muy distintas y antes las
+   tres caían en el mismo cartel genérico. */
+function motivoDeError(error) {
+  const msg = error?.message || '';
+  if (error?.code === '42P01' || error?.code === 'PGRST205' || /does not exist|schema cache/i.test(msg))
+    return 'tabla-inexistente';
+  if (error?.code === '42501' || /row-level security/i.test(msg))
+    return 'sin-permiso-tabla';
+  return 'error';
+}
 
 /* `serviceWorker.ready` no rechaza nunca: si no hay service worker registrado
    se queda esperando para siempre y el botón gira sin fin. */
@@ -60,6 +73,9 @@ export async function activarNotificaciones(clubId, perfilId) {
     if (esIOS() && !window.navigator.standalone) return fallo('ios-sin-instalar');
     return fallo('no-soportado');
   }
+  /* Sin HTTPS el navegador no registra service workers y todo lo demás falla
+     después, con un error que no dice esto. Mejor cortarlo acá. */
+  if (!window.isSecureContext) return fallo('sin-https');
   if (!VAPID_PUBLIC_KEY) return fallo('falta-vapid-key');
   if (!perfilId) return fallo('sin-perfil');
 
@@ -104,12 +120,7 @@ export async function activarNotificaciones(clubId, perfilId) {
       if (!error) return { ok: true, aviso: 'falta-indice' };
     }
 
-    if (error) {
-      if (error.code === '42501' || /row-level security/i.test(error.message || '')) {
-        return fallo('sin-permiso-tabla', error.message);
-      }
-      return fallo('error', error.message);
-    }
+    if (error) return fallo(motivoDeError(error), error.message);
     return { ok: true };
   } catch (err) {
     console.error('Error activando notificaciones:', err);
@@ -122,7 +133,81 @@ export async function estaSuscripto() {
   const registro = await navigator.serviceWorker.getRegistration();
   if (!registro) return false;
   const suscripcion = await registro.pushManager.getSubscription();
-  return !!suscripcion;
+  if (!suscripcion) return false;
+
+  /* El navegador puede estar suscripto y la fila no haberse guardado nunca
+     (falló el insert la primera vez). En ese caso la campanita decía
+     "activadas" y no llegaba ningún push jamás, porque el Edge Function
+     manda a las filas de la tabla, no a lo que el navegador cree.
+     Si la consulta falla (RLS, sin red) no concluimos nada: damos por
+     buena la suscripción antes que mostrar un falso negativo. */
+  const { data, error } = await supabase
+    .from('push_subscriptions').select('endpoint').eq('endpoint', suscripcion.endpoint).limit(1);
+  if (error) return true;
+  return (data || []).length > 0;
+}
+
+/* Revisa una por una las condiciones que tienen que darse para que llegue un
+   push, y devuelve cuál falla. Existe porque "no se pudo activar" puede ser
+   cualquiera de siete cosas y desde el cartel no había forma de distinguirlas.
+   No pide permisos ni suscribe: sólo mira. */
+export async function diagnosticarPush(clubId, perfilId) {
+  const chequeos = [];
+  const anotar = (etiqueta, estado, detalle = null) => chequeos.push({ etiqueta, estado, detalle });
+
+  anotar('Navegador compatible', pushSoportado() ? 'ok' : 'falla',
+    pushSoportado() ? null
+      : (esIOS() && !window.navigator.standalone ? MOTIVOS_PUSH['ios-sin-instalar'] : MOTIVOS_PUSH['no-soportado']));
+
+  /* localhost cuenta como contexto seguro aunque sea http://, y verlo escrito
+     evita el susto de leer "HTTPS ✅ http://". */
+  anotar('Sitio en contexto seguro', window.isSecureContext ? 'ok' : 'falla',
+    window.isSecureContext
+      ? (location.protocol === 'https:' ? null : `${location.hostname} (localhost cuenta como seguro)`)
+      : MOTIVOS_PUSH['sin-https']);
+
+  anotar('Clave VAPID cargada', VAPID_PUBLIC_KEY ? 'ok' : 'falla',
+    VAPID_PUBLIC_KEY ? `…${String(VAPID_PUBLIC_KEY).slice(-6)}` : MOTIVOS_PUSH['falta-vapid-key']);
+
+  anotar('Usuario identificado', perfilId ? 'ok' : 'falla', perfilId ? null : MOTIVOS_PUSH['sin-perfil']);
+
+  const permiso = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+  anotar('Permiso del navegador',
+    permiso === 'granted' ? 'ok' : permiso === 'denied' ? 'falla' : 'aviso',
+    permiso === 'denied' ? MOTIVOS_PUSH['permiso-bloqueado']
+      : permiso === 'default' ? 'Todavía no se pidió. Lo pide el botón de activar.' : null);
+
+  let registro = null;
+  if (pushSoportado()) {
+    registro = await navigator.serviceWorker.getRegistration();
+    anotar('Service worker registrado', registro ? 'ok' : 'falla',
+      registro ? null : MOTIVOS_PUSH['sin-service-worker']);
+  }
+
+  if (registro) {
+    const sus = await registro.pushManager.getSubscription();
+    anotar('Dispositivo suscripto', sus ? 'ok' : 'aviso',
+      sus ? null : 'Todavía no. Se crea al activar.');
+
+    if (sus) {
+      const { data, error } = await supabase
+        .from('push_subscriptions').select('endpoint').eq('endpoint', sus.endpoint).limit(1);
+      anotar('Suscripción guardada en la base',
+        error ? 'falla' : (data || []).length > 0 ? 'ok' : 'falla',
+        error ? MOTIVOS_PUSH[motivoDeError(error)]
+          : (data || []).length > 0 ? null
+          : 'El navegador está suscripto pero la fila no está en push_subscriptions: por eso no llega nada. Tocá activar de nuevo.');
+    }
+  }
+
+  /* La tabla tiene que existir y dejarnos escribir; si no, el alta falla
+     siempre por más que el navegador diga que sí. */
+  const { error: errTabla } = await supabase
+    .from('push_subscriptions').select('endpoint', { head: true, count: 'exact' }).limit(1);
+  anotar('Tabla push_subscriptions', errTabla ? 'falla' : 'ok',
+    errTabla ? MOTIVOS_PUSH[motivoDeError(errTabla)] : null);
+
+  return { chequeos, todoOk: chequeos.every((c) => c.estado !== 'falla') };
 }
 
 export async function desactivarNotificaciones() {

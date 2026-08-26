@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTablon } from '../utils/useTablon'; // vive junto a useEsMovil.js
-import { activarNotificaciones, estaSuscripto, pushSoportado } from '../utils/pushNotificaciones';
+import { activarNotificaciones, estaSuscripto, pushSoportado, diagnosticarPush } from '../utils/pushNotificaciones';
 
 const COLOR_PRIORIDAD = {
   bloqueante: '#ff5252',
@@ -25,6 +25,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
   const [abierto, setAbierto] = useState(false);
   const [pushEstado, setPushEstado] = useState('desconocido'); // desconocido | activando | activo | error | no-soportado
   const [pushMotivo, setPushMotivo] = useState(null);
+  const [diagnostico, setDiagnostico] = useState(null);
 
   useEffect(() => {
     if (!pushSoportado()) { setPushEstado('no-soportado'); return; }
@@ -39,7 +40,16 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
     /* El motivo se muestra: "no se pudo activar" a secas no le sirve a nadie
        para saber si falta la clave, si el navegador está bloqueado o si es un
        permiso de la base. */
-    if (!res.ok) setPushMotivo(res.mensaje + (res.detalle ? ` (${res.detalle})` : ''));
+    if (!res.ok) {
+      setPushMotivo(res.mensaje + (res.detalle ? ` (${res.detalle})` : ''));
+      /* Si falló, el diagnóstico se abre solo: es el momento en que sirve. */
+      setDiagnostico(await diagnosticarPush(clubId, perfilId));
+    }
+  };
+
+  const handleDiagnosticar = async () => {
+    setDiagnostico({ cargando: true });
+    setDiagnostico(await diagnosticarPush(clubId, perfilId));
   };
 
   const bloqueantes = alertas.filter((a) => a.prioridad === 'bloqueante').length;
@@ -228,6 +238,44 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                     lineHeight: 1.5,
                   }}>
                     {pushMotivo}
+                  </div>
+                )}
+
+                {/* El diagnóstico convierte "no se pudo activar" en una lista
+                    de siete condiciones con una marcada en rojo. Sin esto no
+                    hay forma de saber si falta la clave VAPID, si el navegador
+                    está bloqueado o si la fila no se guardó en la base. */}
+                {pushEstado !== 'activo' && (
+                  <button
+                    onClick={handleDiagnosticar}
+                    style={{
+                      width: '100%', marginTop: 6, background: 'transparent', border: 'none',
+                      color: 'var(--text-dim)', fontSize: '0.68rem', textDecoration: 'underline',
+                      cursor: 'pointer', padding: '4px',
+                    }}
+                  >
+                    Ver diagnóstico
+                  </button>
+                )}
+
+                {diagnostico?.chequeos && (
+                  <div style={{
+                    marginTop: 6, padding: '8px 10px', borderRadius: 8,
+                    background: 'var(--bg)', border: '1px solid var(--border)', fontSize: '0.68rem',
+                  }}>
+                    {diagnostico.chequeos.map((c) => (
+                      <div key={c.etiqueta} style={{ padding: '3px 0' }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                          <span>{c.estado === 'ok' ? '✅' : c.estado === 'aviso' ? '🟡' : '❌'}</span>
+                          <span style={{ color: 'var(--text)' }}>{c.etiqueta}</span>
+                        </div>
+                        {c.detalle && (
+                          <div style={{ color: 'var(--text-dim)', paddingLeft: 20, lineHeight: 1.4 }}>
+                            {c.detalle}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
