@@ -65,11 +65,18 @@ begin
       ('tablon-push-tarde',    '0 21 * * *')
     ) as t(nombre, momento)
   loop
+    /* timeout_milliseconds es imprescindible: el default de pg_net son 5
+       segundos y el smart-service recorre todos los clubes calculando
+       alertas, así que no entra ni cerca. Cuando vence, la fila de
+       net._http_response queda con status_code NULL y timed_out = true, y
+       el job del cron IGUAL figura 'succeeded' — que es la combinación que
+       hace que esto parezca funcionar durante meses sin funcionar. */
     perform cron.schedule(horario.nombre, horario.momento, format($job$
       select net.http_post(
-        url     := %L,
-        headers := %L::jsonb,
-        body    := '{}'::jsonb
+        url                  := %L,
+        headers              := %L::jsonb,
+        body                 := '{}'::jsonb,
+        timeout_milliseconds := 120000
       );
     $job$, destino, encabezados::text));
   end loop;
@@ -87,6 +94,8 @@ $cron$;
 --    order by d.start_time desc limit 10;
 --
 -- Y para ver qué contestó el Edge Function de verdad (net.http_post es
--- asíncrono: devuelve un id de pedido, no la respuesta):
---   select id, status_code, content, created
+-- asíncrono: devuelve un id de pedido, no la respuesta). Mirar timed_out y
+-- error_msg, no sólo status_code: un status_code NULL casi siempre es un
+-- timeout, no una respuesta vacía:
+--   select id, status_code, timed_out, error_msg, content, created
 --     from net._http_response order by created desc limit 5;
