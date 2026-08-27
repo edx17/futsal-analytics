@@ -3,6 +3,8 @@ import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
+import CalendarioAsistencia from '../components/CalendarioAsistencia';
+import { resumirMesPorDia, claveMes } from '../utils/resumenMensual';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Cell 
@@ -209,6 +211,13 @@ function Presentismo() {
 
   }, [historial, jugadores, fecha]);
 
+  /* El mes visto por plantel. Va aparte de `stats`, que mira por jugador:
+     son dos preguntas distintas y se calculan distinto. */
+  const resumenMes = useMemo(
+    () => resumirMesPorDia(historial, claveMes(fecha)),
+    [historial, fecha]
+  );
+
   if (esJugador) return <div style={{ textAlign: 'center', padding: '50px' }}>🚫 ACCESO RESTRINGIDO</div>;
 
   // Lista de categorías dinámica (Si es CT, solo las suyas. Si es Manager/Admin, todas)
@@ -368,10 +377,23 @@ function Presentismo() {
             </div>
           )}
 
+          {vista === 'mensual' && (
+            <div style={{ marginBottom: 20 }}>
+              <CalendarioAsistencia
+                resumen={resumenMes}
+                mesISO={claveMes(fecha)}
+                fechaActiva={fecha}
+                onElegirDia={setFecha}
+                onCambiarMes={setFecha}
+                esMovil={esMovil}
+              />
+            </div>
+          )}
+
           {vista === 'mensual' && stats && (
             <div className="bento-card" style={{ borderTop: '3px solid #3b82f6' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0, color: '#3b82f6' }}>RESUMEN ({fecha.substring(5,7)}/{fecha.substring(0,4)})</h3>
+                <h3 style={{ margin: 0, color: '#3b82f6' }}>JUGADOR POR JUGADOR ({fecha.substring(5,7)}/{fecha.substring(0,4)})</h3>
                 {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
               </div>
               
