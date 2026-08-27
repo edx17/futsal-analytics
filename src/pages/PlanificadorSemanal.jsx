@@ -6,19 +6,12 @@ import { useToast } from '../components/ToastContext';
 
 // IMPORTAMOS AUTH PARA EL GRAN FILTRO
 import { useAuth } from '../context/AuthContext';
+import FiltrosTareas from '../components/FiltrosTareas';
+import { pasaFiltros, etiquetaFase, etiquetaFormato, colorFase, leerFase, FILTROS_VACIOS } from '../utils/taxonomiaTareas';
 
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
 // =======================================================
-// --- HELPERS DE FECHA (strings 'YYYY-MM-DD', siempre en hora local) ---
-const aFechaStr = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const parseFechaStr = (str) => { const [y, m, d] = String(str).split('-').map(Number); return new Date(y, m - 1, d); };
-const sumarDiasStr = (str, n) => { const d = parseFechaStr(str); d.setDate(d.getDate() + n); return aFechaStr(d); };
-// Lunes de la semana a la que pertenece esa fecha (la grilla arranca en lunes).
-const lunesDe = (str) => { const d = parseFechaStr(str); const dia = d.getDay(); d.setDate(d.getDate() + (dia === 0 ? -6 : 1 - dia)); return aFechaStr(d); };
-const diffDias = (desde, hasta) => Math.round((parseFechaStr(hasta) - parseFechaStr(desde)) / 86400000);
-const COLORES_TEMA = ['#00ff88', '#22d3ee', '#f59e0b', '#a855f7', '#ef4444'];
-
 const getIconoTarea = (tarea) => {
   if (tarea.categoria_ejercicio === 'Físico') {
     return tarea.espacio === 'Gimnasio' ? '🏋️‍♂️' : '🏃‍♂️';
@@ -497,22 +490,8 @@ const PlanificadorSemanal = () => {
   const [tareaSeleccionadaDetalle, setTareaSeleccionadaDetalle] = useState(null); 
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [diaSheet, setDiaSheet] = useState(null); // vista mensual mobile: hoja de sesiones del día
-  const [busquedaTarea, setBusquedaTarea] = useState('');
-  const [filtroFaseTarea, setFiltroFaseTarea] = useState('Todas');
-  const [filtroFormatoTarea, setFiltroFormatoTarea] = useState('Todas');
+  const [filtrosTarea, setFiltrosTarea] = useState(FILTROS_VACIOS);
   const [soloRecomendadas, setSoloRecomendadas] = useState(false);
-  const [tareaArrastrada, setTareaArrastrada] = useState(null);
-
-  // Tema/hilo conductor de la semana + copia de microciclos
-  const [temasSemana, setTemasSemana] = useState([]);
-  const [modalTema, setModalTema] = useState(null);
-  const [mostrarModalCopiar, setMostrarModalCopiar] = useState(false);
-  const [copiaDestino, setCopiaDestino] = useState('');
-  const [copiaIncluirTareas, setCopiaIncluirTareas] = useState(true);
-  const [copiaIncluirFisico, setCopiaIncluirFisico] = useState(true);
-  const [copiaIncluirTema, setCopiaIncluirTema] = useState(true);
-  const [copiaModo, setCopiaModo] = useState('agregar');
-  const [copiando, setCopiando] = useState(false);
   
   const { showToast } = useToast(); 
 
@@ -681,7 +660,7 @@ const PlanificadorSemanal = () => {
       
       const { data: dataTareas, error: errTareas } = await supabase
         .from('tareas')
-        .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, video_mp4_url, fase_juego, objetivo_principal, categoria_recomendada, formato_tarea')
+        .select('id, titulo, descripcion, categoria_ejercicio, duracion_estimada, intensidad_rpe, espacio, jugadores_involucrados, url_grafico, editor_data, video_url, video_mp4_url, fase_juego, subfase_juego, objetivo_principal, categoria_recomendada, formato_tarea')
         .eq('club_id', club_id)
         .order('created_at', { ascending: false });
         
@@ -690,31 +669,6 @@ const PlanificadorSemanal = () => {
       setSesiones(dataSesiones || []);
       setPartidosOficiales(dataPartidos || []); 
       setTareasBanco(dataTareas || []);
-
-      // Temas de las semanas visibles. Va en su propio try: si todavía no se
-      // corrió la migración de `temas_semana`, el planificador tiene que
-      // seguir funcionando igual, solo que sin la barra de tema.
-      try {
-        let queryTemas = supabase
-          .from('temas_semana')
-          .select('*')
-          .eq('club_id', club_id)
-          .gte('fecha_inicio', lunesDe(inicio))
-          .lte('fecha_inicio', fin);
-
-        if (filtroCategoria !== 'Todas') {
-          queryTemas = queryTemas.eq('categoria_equipo', filtroCategoria);
-        } else if (misCategorias.length > 0) {
-          queryTemas = queryTemas.in('categoria_equipo', misCategorias);
-        }
-
-        const { data: dataTemas, error: errTemas } = await queryTemas;
-        if (errTemas) throw errTemas;
-        setTemasSemana(dataTemas || []);
-      } catch (errTemas) {
-        console.warn('Temas de la semana no disponibles:', errTemas.message);
-        setTemasSemana([]);
-      }
 
     } catch (error) {
       console.error("Error cargando datos:", error.message);
@@ -735,9 +689,7 @@ const PlanificadorSemanal = () => {
 
   const abrirModal = (dia, sesionExistente = null, forzarEdicion = false) => {
     setDiaSeleccionado(dia);
-    setBusquedaTarea(''); 
-    setFiltroFaseTarea('Todas');
-    setFiltroFormatoTarea('Todas');
+    setFiltrosTarea(FILTROS_VACIOS);
     setSoloRecomendadas(false);
     setTareaSeleccionadaDetalle(null);
     
@@ -783,41 +735,6 @@ const PlanificadorSemanal = () => {
       const nuevasTareas = ids.includes(tareaId) ? ids.filter(id => id !== tareaId) : [...ids, tareaId];
       return { ...prev, tareas_ids: nuevasTareas };
     });
-  };
-
-  // --- ORDEN MANUAL DE LAS TAREAS DE LA SESIÓN ---
-  // El orden vive en el propio array `tareas_ids` (jsonb), así que se guarda tal cual.
-  const reubicarTarea = (desde, hasta) => {
-    setNuevaSesion(prev => {
-      const ids = [...(prev.tareas_ids || [])];
-      if (desde < 0 || hasta < 0 || desde >= ids.length || hasta >= ids.length || desde === hasta) return prev;
-      const [movida] = ids.splice(desde, 1);
-      ids.splice(hasta, 0, movida);
-      return { ...prev, tareas_ids: ids };
-    });
-  };
-
-  const moverTarea = (tareaId, direccion) => {
-    const ids = nuevaSesion.tareas_ids || [];
-    const desde = ids.indexOf(tareaId);
-    if (desde === -1) return;
-    reubicarTarea(desde, desde + direccion);
-  };
-
-  const cambiarPosicionTarea = (tareaId, valor) => {
-    const ids = nuevaSesion.tareas_ids || [];
-    const desde = ids.indexOf(tareaId);
-    const posicion = parseInt(valor, 10);
-    if (desde === -1 || Number.isNaN(posicion)) return;
-    const hasta = Math.min(Math.max(posicion - 1, 0), ids.length - 1);
-    reubicarTarea(desde, hasta);
-  };
-
-  const soltarSobreTarea = (tareaIdDestino) => {
-    const ids = nuevaSesion.tareas_ids || [];
-    if (!tareaArrastrada || tareaArrastrada === tareaIdDestino) { setTareaArrastrada(null); return; }
-    reubicarTarea(ids.indexOf(tareaArrastrada), ids.indexOf(tareaIdDestino));
-    setTareaArrastrada(null);
   };
 
   const ENFOQUES_FISICOS = [
@@ -882,192 +799,6 @@ const PlanificadorSemanal = () => {
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════════════
-  //  COPIAR UNA SEMANA COMPLETA A OTRA
-  //  Duplica la estructura del microciclo (tipo, objetivo, carga, físico y,
-  //  si se quiere, las tareas) corriendo cada sesión los días que separan
-  //  un lunes del otro. Los comentarios/novedades NO se copian: son el
-  //  registro de lo que pasó ese día puntual.
-  // ═══════════════════════════════════════════════════════════════════════
-  const abrirModalCopiar = () => {
-    if (diasCalendario.length === 0) return;
-    setCopiaDestino(sumarDiasStr(diasCalendario[0].fechaStr, 7));
-    setCopiaIncluirTareas(true);
-    setCopiaIncluirFisico(true);
-    setCopiaIncluirTema(true);
-    setCopiaModo('agregar');
-    setMostrarModalCopiar(true);
-  };
-
-  const copiarSemana = async () => {
-    const origenLunes = diasCalendario[0]?.fechaStr;
-    if (!origenLunes || !copiaDestino) return;
-
-    const destinoLunes = lunesDe(copiaDestino);
-    if (destinoLunes === origenLunes) {
-      showToast('Elegí una semana distinta a la actual.', 'warning');
-      return;
-    }
-    if (sesiones.length === 0) {
-      showToast('Esta semana no tiene sesiones para copiar.', 'warning');
-      return;
-    }
-    if (copiaModo === 'reemplazar' &&
-        !window.confirm('Se van a BORRAR las sesiones que ya existan en la semana destino antes de copiar. ¿Seguir?')) {
-      return;
-    }
-
-    setCopiando(true);
-    try {
-      const club_id = localStorage.getItem('club_id') || 'club_default';
-      const delta = diffDias(origenLunes, destinoLunes);
-      const destinoFin = sumarDiasStr(destinoLunes, 6);
-
-      if (copiaModo === 'reemplazar') {
-        let borrado = supabase.from('sesiones').delete()
-          .eq('club_id', club_id).gte('fecha', destinoLunes).lte('fecha', destinoFin);
-        if (filtroCategoria !== 'Todas') {
-          borrado = borrado.eq('categoria_equipo', filtroCategoria);
-        } else if (misCategorias.length > 0) {
-          borrado = borrado.in('categoria_equipo', misCategorias);
-        }
-        const { error: errBorrar } = await borrado;
-        if (errBorrar) throw errBorrar;
-      }
-
-      const nuevas = sesiones.map(s => ({
-        club_id,
-        fecha: sumarDiasStr(s.fecha, delta),
-        tipo_sesion: s.tipo_sesion,
-        objetivo: s.objetivo,
-        categoria_equipo: s.categoria_equipo,
-        nivel_carga: s.nivel_carga,
-        tareas_ids: copiaIncluirTareas ? (s.tareas_ids || []) : [],
-        comentarios: null,
-        bloque_fisico: copiaIncluirFisico ? s.bloque_fisico : false,
-        enfoque_fisico: copiaIncluirFisico ? s.enfoque_fisico : null,
-        duracion_fisico: copiaIncluirFisico ? s.duracion_fisico : null,
-        detalle_fisico: copiaIncluirFisico ? s.detalle_fisico : null,
-      }));
-
-      const { error } = await supabase.from('sesiones').insert(nuevas);
-      if (error) throw error;
-
-      // El tema de la semana también se arrastra, si hay uno cargado.
-      const temasOrigen = temasSemana.filter(t => t.fecha_inicio === origenLunes);
-      if (copiaIncluirTema && temasOrigen.length > 0) {
-        try {
-          const { error: errTema } = await supabase.from('temas_semana').upsert(
-            temasOrigen.map(t => ({
-              club_id,
-              categoria_equipo: t.categoria_equipo,
-              fecha_inicio: destinoLunes,
-              titulo: t.titulo,
-              detalle: t.detalle,
-              color: t.color,
-            })),
-            { onConflict: 'club_id,categoria_equipo,fecha_inicio' }
-          );
-          if (errTema) throw errTema;
-        } catch (errTema) {
-          console.warn('No se pudo copiar el tema de la semana:', errTema.message);
-        }
-      }
-
-      setMostrarModalCopiar(false);
-      showToast(`Se copiaron ${nuevas.length} sesión/es a la semana del ${destinoLunes.split('-').reverse().slice(0, 2).join('/')}`, 'success');
-      // Saltamos a la semana destino para que el CT vea el resultado y edite las tareas.
-      setFechaReferencia(parseFechaStr(destinoLunes));
-    } catch (error) {
-      showToast('Error al copiar la semana: ' + error.message, 'error');
-    } finally {
-      setCopiando(false);
-    }
-  };
-
-  // ═══════════════════════════════════════════════════════════════════════
-  //  TEMA DE LA SEMANA (hilo conductor que cruza todo el microciclo)
-  // ═══════════════════════════════════════════════════════════════════════
-  const abrirModalTema = (temaExistente, lunes, categoria) => {
-    setModalTema(temaExistente ? { ...temaExistente } : {
-      id: null,
-      fecha_inicio: lunes,
-      categoria_equipo: categoria,
-      titulo: '',
-      detalle: '',
-      color: COLORES_TEMA[0],
-    });
-  };
-
-  // En la vista "Todas mis categorías" el tema se elige desde el propio modal.
-  // Si esa categoría ya tiene tema esa semana, se abre el existente en vez de
-  // arrancar uno nuevo que después lo pisaría.
-  const cambiarCategoriaTema = (categoria) => {
-    const existente = temasSemana.find(t => t.fecha_inicio === modalTema.fecha_inicio && t.categoria_equipo === categoria);
-    setModalTema(existente ? { ...existente } : {
-      id: null,
-      fecha_inicio: modalTema.fecha_inicio,
-      categoria_equipo: categoria,
-      titulo: '',
-      detalle: '',
-      color: modalTema.color || COLORES_TEMA[0],
-    });
-  };
-
-  // La tabla `temas_semana` viene de una migración aparte: si todavía no se
-  // corrió, conviene decirlo con todas las letras en vez del error crudo.
-  const mensajeErrorTema = (error) =>
-    /does not exist|schema cache|Could not find the table/i.test(error.message || '')
-      ? 'Falta correr la migración `temas_semana` en Supabase (supabase/migrations/20260825140000_temas_semana.sql).'
-      : error.message;
-
-  const guardarTema = async () => {
-    if (!modalTema?.titulo?.trim()) {
-      showToast('Poné un título para el tema de la semana.', 'warning');
-      return;
-    }
-    try {
-      const club_id = localStorage.getItem('club_id') || 'club_default';
-      const payload = {
-        club_id,
-        categoria_equipo: modalTema.categoria_equipo,
-        fecha_inicio: modalTema.fecha_inicio,
-        titulo: modalTema.titulo.trim(),
-        detalle: modalTema.detalle?.trim() || null,
-        color: modalTema.color || COLORES_TEMA[0],
-      };
-
-      if (modalTema.id) {
-        const { error } = await supabase.from('temas_semana').update(payload).eq('id', modalTema.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('temas_semana')
-          .upsert([payload], { onConflict: 'club_id,categoria_equipo,fecha_inicio' });
-        if (error) throw error;
-      }
-
-      setModalTema(null);
-      showToast('Tema de la semana guardado', 'success');
-      cargarDatos();
-    } catch (error) {
-      showToast('Error al guardar el tema: ' + mensajeErrorTema(error), 'error');
-    }
-  };
-
-  const eliminarTema = async () => {
-    if (!modalTema?.id) return;
-    if (!window.confirm('¿Borrar el tema de esta semana?')) return;
-    try {
-      const { error } = await supabase.from('temas_semana').delete().eq('id', modalTema.id);
-      if (error) throw error;
-      setModalTema(null);
-      showToast('Tema eliminado', 'info');
-      cargarDatos();
-    } catch (error) {
-      showToast('Error al eliminar el tema: ' + mensajeErrorTema(error), 'error');
-    }
-  };
-
   const guardarSesion = async () => {
     if (!nuevaSesion.categoria_equipo) {
         showToast("Por favor, ingresá una categoría.", "warning");
@@ -1125,20 +856,6 @@ const PlanificadorSemanal = () => {
     }
   };
 
-  const normalizar = (str) =>
-    (str ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  const fasesEnBanco = React.useMemo(() => {
-    const set = new Set();
-    tareasBanco.forEach(t => { if (t.fase_juego) set.add(t.fase_juego); });
-    return [...set].sort();
-  }, [tareasBanco]);
-
-  const formatosEnBanco = React.useMemo(() => {
-    const set = new Set();
-    tareasBanco.forEach(t => { if (t.formato_tarea) set.add(t.formato_tarea); });
-    return [...set].sort();
-  }, [tareasBanco]);
 
   const esRecomendadaParaSesion = (t) =>
     !t.categoria_recomendada ||
@@ -1146,41 +863,17 @@ const PlanificadorSemanal = () => {
     t.categoria_recomendada === nuevaSesion.categoria_equipo;
 
   const tareasFiltradas = tareasBanco.filter(t => {
-    const termino = normalizar(busquedaTarea);
-    const coincideBusqueda = !termino ||
-      normalizar(t.titulo).includes(termino) ||
-      normalizar(t.categoria_ejercicio).includes(termino) ||
-      normalizar(t.fase_juego).includes(termino) ||
-      normalizar(t.formato_tarea).includes(termino) ||
-      normalizar(t.objetivo_principal).includes(termino);
-
-    const coincideFase = filtroFaseTarea === 'Todas' || t.fase_juego === filtroFaseTarea;
-    const coincideFormato = filtroFormatoTarea === 'Todas' || t.formato_tarea === filtroFormatoTarea;
     const coincideEdad = !soloRecomendadas || esRecomendadaParaSesion(t);
-
-    return coincideBusqueda && coincideFase && coincideFormato && coincideEdad;
+    return coincideEdad && pasaFiltros(t, filtrosTarea);
   }).sort((a, b) => {
     const aSel = nuevaSesion.tareas_ids?.includes(a.id);
     const bSel = nuevaSesion.tareas_ids?.includes(b.id);
     if (aSel !== bSel) return aSel ? -1 : 1;
-    if (aSel && bSel) return nuevaSesion.tareas_ids.indexOf(a.id) - nuevaSesion.tareas_ids.indexOf(b.id);
     const aRec = esRecomendadaParaSesion(a) && a.categoria_recomendada === nuevaSesion.categoria_equipo;
     const bRec = esRecomendadaParaSesion(b) && b.categoria_recomendada === nuevaSesion.categoria_equipo;
     if (aRec !== bRec) return aRec ? -1 : 1;
     return 0;
   });
-
-  // Semana visible (en modo semanal diasCalendario[0] siempre es lunes).
-  const lunesVisible = modoVista === 'semanal' && diasCalendario.length > 0 ? diasCalendario[0].fechaStr : null;
-  const temasDeLaSemana = lunesVisible ? temasSemana.filter(t => t.fecha_inicio === lunesVisible) : [];
-  const temaDeLaSemana = filtroCategoria !== 'Todas'
-    ? temasDeLaSemana.find(t => t.categoria_equipo === filtroCategoria)
-    : (temasDeLaSemana.length === 1 ? temasDeLaSemana[0] : null);
-
-  // Tareas de la sesión, en el orden elegido por el cuerpo técnico (no alfabético).
-  const tareasOrdenadas = (nuevaSesion.tareas_ids || [])
-    .map(id => tareasBanco.find(tb => tb.id === id))
-    .filter(Boolean);
 
   const tiempoEstimadoTotal = (nuevaSesion.tareas_ids || []).reduce((acc, id) => {
     const t = tareasBanco.find(tb => tb.id === id);
@@ -1224,16 +917,6 @@ const PlanificadorSemanal = () => {
             <button onClick={() => navegarTiempo(1)} style={navBtn}>➡</button>
             <button onClick={() => setFechaReferencia(new Date())} style={{...navBtn, fontSize: '0.7rem', width: 'auto', padding: '0 10px', background: 'var(--border)'}}>HOY</button>
           </div>
-
-          {modoVista === 'semanal' && (
-            <button
-              onClick={abrirModalCopiar}
-              title="Copiar la planificación de esta semana a otra"
-              style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', minHeight: '40px' }}
-            >
-              📋 COPIAR SEMANA
-            </button>
-          )}
         </div>
       </div>
 
@@ -1242,71 +925,6 @@ const PlanificadorSemanal = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           
-          {/* HILO CONDUCTOR DE LA SEMANA: cruza todo el microciclo */}
-          {modoVista === 'semanal' && lunesVisible && (
-            <div style={{ marginBottom: '4px' }}>
-              {filtroCategoria !== 'Todas' ? (
-                <button
-                  onClick={() => abrirModalTema(temaDeLaSemana, lunesVisible, filtroCategoria)}
-                  style={{
-                    width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px',
-                    background: temaDeLaSemana ? `linear-gradient(90deg, ${temaDeLaSemana.color || 'var(--accent)'}22, transparent 70%)` : 'var(--panel)',
-                    border: `1px solid ${temaDeLaSemana ? `${temaDeLaSemana.color || '#00ff88'}55` : 'var(--border)'}`,
-                    borderLeft: `5px solid ${temaDeLaSemana ? (temaDeLaSemana.color || '#00ff88') : 'var(--border)'}`,
-                    borderRadius: '8px', padding: '10px 14px', color: 'var(--text)', minHeight: '48px'
-                  }}
-                >
-                  <span style={{ fontSize: '1.1rem' }}>🧵</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.5px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
-                      Tema de la semana · {filtroCategoria}
-                    </span>
-                    {temaDeLaSemana ? (
-                      <>
-                        <span style={{ display: 'block', fontWeight: 900, fontSize: esMovil ? '0.9rem' : '1rem', color: temaDeLaSemana.color || 'var(--accent)' }}>{temaDeLaSemana.titulo}</span>
-                        {temaDeLaSemana.detalle && <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{temaDeLaSemana.detalle}</span>}
-                      </>
-                    ) : (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>Definí el patrón o la temática que atraviesa toda la semana…</span>
-                    )}
-                  </div>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--accent)', fontWeight: 'bold' }}>{temaDeLaSemana ? '✏️' : '➕'}</span>
-                </button>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px' }}>
-                  <span style={{ fontSize: '0.6rem', letterSpacing: '0.5px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-dim)' }}>🧵 Tema de la semana</span>
-
-                  {temasDeLaSemana.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => abrirModalTema(t, lunesVisible, t.categoria_equipo)}
-                      style={{ ...chipStyle, background: 'var(--bg)', color: t.color || 'var(--accent)', borderColor: `${t.color || '#00ff88'}55` }}
-                    >
-                      {t.categoria_equipo}: {t.titulo}
-                    </button>
-                  ))}
-
-                  {/* Con el filtro en "Todas" la categoría se elige adentro del modal. */}
-                  <button
-                    onClick={() => abrirModalTema(null, lunesVisible, categoriasMostrar[0] || 'Primera')}
-                    disabled={categoriasMostrar.length === 0}
-                    style={{ ...chipStyle, background: 'transparent', color: 'var(--accent)', borderColor: 'var(--accent)', borderStyle: 'dashed', opacity: categoriasMostrar.length === 0 ? 0.4 : 1 }}
-                  >
-                    ➕ {temasDeLaSemana.length === 0 ? 'Definir tema de la semana' : 'Agregar otra categoría'}
-                  </button>
-                </div>
-              )}
-
-              {/* la línea que efectivamente cruza los 7 días */}
-              <div style={{
-                height: '3px', borderRadius: '2px', margin: '6px 2px 0',
-                background: (temaDeLaSemana || temasDeLaSemana.length > 0)
-                  ? `linear-gradient(90deg, ${(temaDeLaSemana || temasDeLaSemana[0]).color || '#00ff88'}, transparent)`
-                  : 'var(--border)'
-              }} />
-            </div>
-          )}
-
           {/* HEADER DÍAS (Solo en modo mensual) */}
           {modoVista === 'mensual' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: esMovil ? '2px' : '10px', textAlign: 'center' }}>
@@ -1381,12 +999,12 @@ const PlanificadorSemanal = () => {
                             {tareasIds.length > 0 && !esMovil && (
                               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '8px' }}>
                                 <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>TAREAS:</span>
-                                <ol style={{ margin: 0, paddingLeft: '18px', color: 'var(--text)', fontSize: '0.7rem', lineHeight: '1.4' }}>
+                                <ul style={{ margin: 0, paddingLeft: '15px', color: 'var(--text)', fontSize: '0.7rem', lineHeight: '1.4' }}>
                                   {tareasIds.map(id => {
                                     const t = tareasBanco.find(tb => tb.id === id);
                                     return t ? <li key={id}>{getIconoTarea(t)} {t.titulo}</li> : null;
                                   })}
-                                </ol>
+                                </ul>
                               </div>
                             )}
                             {tareasIds.length > 0 && esMovil && (
@@ -1504,161 +1122,6 @@ const PlanificadorSemanal = () => {
         </div>
       )}
 
-      {/* ═══════════ MODAL: COPIAR SEMANA ═══════════ */}
-      {mostrarModalCopiar && diasCalendario.length > 0 && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
-          <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '520px', border: '2px solid var(--accent)', maxHeight: '90vh', overflowY: 'auto', padding: esMovil ? '18px' : '25px' }}>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-              <h3 style={{ margin: 0, color: 'var(--accent)', textTransform: 'uppercase', fontSize: '1.1rem' }}>
-                📋 Copiar semana<br />
-                <span style={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 'normal' }}>
-                  {sesiones.length} sesión/es · semana del {diasCalendario[0].fechaStr.split('-').reverse().slice(0, 2).join('/')}
-                </span>
-              </h3>
-              <button onClick={() => setMostrarModalCopiar(false)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '1rem' }}>✖</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={labelStyle}>Semana destino</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                  {[1, 2, 3, 4].map(n => {
-                    const destino = sumarDiasStr(diasCalendario[0].fechaStr, n * 7);
-                    const activo = copiaDestino && lunesDe(copiaDestino) === destino;
-                    return (
-                      <button
-                        key={n}
-                        onClick={() => setCopiaDestino(destino)}
-                        style={{ ...chipStyle, background: activo ? 'var(--accent)' : 'var(--bg)', color: activo ? '#000' : 'var(--text-dim)', borderColor: activo ? 'var(--accent)' : 'var(--border)' }}
-                      >
-                        +{n} sem
-                      </button>
-                    );
-                  })}
-                </div>
-                <input type="date" value={copiaDestino} onChange={e => setCopiaDestino(e.target.value)} style={inputStyle} />
-                {copiaDestino && (
-                  <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '6px' }}>
-                    Se copia a la semana del {lunesDe(copiaDestino).split('-').reverse().slice(0, 2).join('/')} al {sumarDiasStr(lunesDe(copiaDestino), 6).split('-').reverse().slice(0, 2).join('/')}
-                  </span>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text)' }}>
-                  <input type="checkbox" checked={copiaIncluirTareas} onChange={e => setCopiaIncluirTareas(e.target.checked)} style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }} />
-                  Copiar también las tareas de cada sesión
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text)' }}>
-                  <input type="checkbox" checked={copiaIncluirFisico} onChange={e => setCopiaIncluirFisico(e.target.checked)} style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }} />
-                  Copiar el bloque físico
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text)' }}>
-                  <input type="checkbox" checked={copiaIncluirTema} onChange={e => setCopiaIncluirTema(e.target.checked)} style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }} />
-                  Copiar el tema de la semana
-                </label>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                  Los comentarios / novedades no se copian: son de ese día puntual.
-                </span>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Si la semana destino ya tiene sesiones</label>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button onClick={() => setCopiaModo('agregar')} style={{ ...chipStyle, background: copiaModo === 'agregar' ? 'var(--accent)' : 'var(--bg)', color: copiaModo === 'agregar' ? '#000' : 'var(--text-dim)', borderColor: copiaModo === 'agregar' ? 'var(--accent)' : 'var(--border)' }}>
-                    Agregar a lo que ya hay
-                  </button>
-                  <button onClick={() => setCopiaModo('reemplazar')} style={{ ...chipStyle, background: copiaModo === 'reemplazar' ? '#ef4444' : 'var(--bg)', color: copiaModo === 'reemplazar' ? '#fff' : 'var(--text-dim)', borderColor: copiaModo === 'reemplazar' ? '#ef4444' : 'var(--border)' }}>
-                    Reemplazar la semana
-                  </button>
-                </div>
-              </div>
-
-              <button onClick={copiarSemana} disabled={copiando} className="btn-action" style={{ width: '100%', padding: '14px', fontSize: '0.95rem', fontWeight: 900, opacity: copiando ? 0.6 : 1 }}>
-                {copiando ? 'COPIANDO…' : '📋 COPIAR PLANIFICACIÓN'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════ MODAL: TEMA DE LA SEMANA ═══════════ */}
-      {modalTema && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px' }}>
-          <div className="bento-card" style={{ background: 'var(--panel)', width: '100%', maxWidth: '480px', border: `2px solid ${modalTema.color || 'var(--accent)'}`, maxHeight: '90vh', overflowY: 'auto', padding: esMovil ? '18px' : '25px' }}>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-              <h3 style={{ margin: 0, color: modalTema.color || 'var(--accent)', textTransform: 'uppercase', fontSize: '1.1rem' }}>
-                🧵 Tema de la semana<br />
-                <span style={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 'normal' }}>
-                  {modalTema.categoria_equipo} · semana del {String(modalTema.fecha_inicio).split('-').reverse().slice(0, 2).join('/')}
-                </span>
-              </h3>
-              <button onClick={() => setModalTema(null)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '1rem' }}>✖</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {categoriasMostrar.length > 1 && (
-                <div>
-                  <label style={labelStyle}>Categoría</label>
-                  <select
-                    value={modalTema.categoria_equipo}
-                    onChange={e => cambiarCategoriaTema(e.target.value)}
-                    style={inputStyle}
-                  >
-                    {categoriasMostrar.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label style={labelStyle}>Patrón / temática</label>
-                <input
-                  type="text"
-                  value={modalTema.titulo}
-                  onChange={e => setModalTema({ ...modalTema, titulo: e.target.value })}
-                  placeholder="Ej: Presión alta tras pérdida"
-                  style={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle}>Detalle (opcional)</label>
-                <textarea
-                  value={modalTema.detalle || ''}
-                  onChange={e => setModalTema({ ...modalTema, detalle: e.target.value })}
-                  placeholder="Qué se busca, contra qué rival, qué se mide…"
-                  style={{ ...inputStyle, minHeight: '70px', resize: 'vertical', fontSize: '0.9rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={labelStyle}>Color del hilo</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {COLORES_TEMA.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setModalTema({ ...modalTema, color: c })}
-                      style={{ width: '34px', height: '34px', borderRadius: '50%', background: c, border: modalTema.color === c ? '3px solid var(--text)' : '1px solid var(--border)', cursor: 'pointer' }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {modalTema.id && (
-                  <button onClick={eliminarTema} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>🗑️</button>
-                )}
-                <button onClick={guardarTema} className="btn-action" style={{ flex: 1, padding: '14px', fontSize: '0.95rem', fontWeight: 900 }}>
-                  💾 GUARDAR TEMA
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {mostrarModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: esMovil ? '10px' : '20px' }}>
           
@@ -1768,14 +1231,15 @@ const PlanificadorSemanal = () => {
                       <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', textAlign: 'center', padding: '20px 0' }}>No hay tareas asignadas.</span>
                     )}
                     
-                    {tareasOrdenadas.map((t, idx) => {
+                    {nuevaSesion.tareas_ids?.map(id => {
+                      const t = tareasBanco.find(tb => tb.id === id);
+                      if (!t) return null;
                       return (
                         <div 
                           key={t.id} 
                           onClick={() => setTareaSeleccionadaDetalle(t)} 
                           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: 'var(--panel)', border: '1px solid var(--border)' }}
                         >
-                          <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '0.75rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{idx + 1}</span>
                           <div style={{ width: '55px', height: '42px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             {t.video_mp4_url ? (
                               <video src={t.video_mp4_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1991,46 +1455,6 @@ const PlanificadorSemanal = () => {
                       </div>
                     </div>
                     
-                    {/* ORDEN MANUAL DE LAS TAREAS DE LA SESIÓN */}
-                    {tareasOrdenadas.length > 0 && (
-                      <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Orden de la sesión · {esMovil ? 'usá ▲▼ o escribí el número' : 'arrastrá, usá ▲▼ o escribí el número'}
-                        </span>
-
-                        {tareasOrdenadas.map((t, idx) => (
-                          <div
-                            key={t.id}
-                            draggable={!esMovil}
-                            onDragStart={() => setTareaArrastrada(t.id)}
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={() => soltarSobreTarea(t.id)}
-                            onDragEnd={() => setTareaArrastrada(null)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', background: 'var(--panel)', border: tareaArrastrada === t.id ? '1px dashed var(--accent)' : '1px solid var(--border)', opacity: tareaArrastrada === t.id ? 0.5 : 1, cursor: esMovil ? 'default' : 'grab' }}
-                          >
-                            <input
-                              type="number"
-                              min="1"
-                              max={tareasOrdenadas.length}
-                              value={idx + 1}
-                              onChange={(e) => cambiarPosicionTarea(t.id, e.target.value)}
-                              title="Posición dentro de la sesión"
-                              style={{ width: '46px', textAlign: 'center', padding: '6px 4px', background: 'var(--bg)', border: '1px solid var(--accent)', borderRadius: '6px', color: 'var(--accent)', fontWeight: 900, fontSize: '0.85rem', minHeight: '36px', outline: 'none', flexShrink: 0 }}
-                            />
-                            <div style={{ flex: 1, overflow: 'hidden' }}>
-                              <span style={{ display: 'block', fontSize: '0.82rem', fontWeight: 'bold', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getIconoTarea(t)} {t.titulo}</span>
-                              <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>⏱️ {t.duracion_estimada}'{t.fase_juego ? ` • ${t.fase_juego}` : ''}</span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                              <button onClick={() => moverTarea(t.id, -1)} disabled={idx === 0} title="Subir" style={{ ...btnOrdenStyle, opacity: idx === 0 ? 0.25 : 1, cursor: idx === 0 ? 'default' : 'pointer' }}>▲</button>
-                              <button onClick={() => moverTarea(t.id, 1)} disabled={idx === tareasOrdenadas.length - 1} title="Bajar" style={{ ...btnOrdenStyle, opacity: idx === tareasOrdenadas.length - 1 ? 0.25 : 1, cursor: idx === tareasOrdenadas.length - 1 ? 'default' : 'pointer' }}>▼</button>
-                              <button onClick={() => toggleTarea(t.id)} title="Quitar de la sesión" style={{ ...btnOrdenStyle, color: '#ef4444', borderColor: '#ef444455' }}>✖</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
                     <button 
                       onClick={irACreadorYGuardarBorrador} 
                       style={{ background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)', padding: '15px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
@@ -2038,55 +1462,7 @@ const PlanificadorSemanal = () => {
                       <span style={{fontSize: '1.2rem'}}>➕</span> Crear Nueva Tarea y Volver
                     </button>
 
-                    <input type="text" placeholder="🔍 Buscar por nombre, fase o formato (ej: transiciones, reducido)..." value={busquedaTarea} onChange={(e) => setBusquedaTarea(e.target.value)} style={{...inputStyle, padding: '12px', background: 'var(--panel)', fontSize: '0.9rem'}} />
-
-                    {/* CHIPS DINÁMICOS — FASE (El Qué) */}
-                    {fasesEnBanco.length > 0 && (
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>Fase · El Qué</span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          <button
-                            onClick={() => setFiltroFaseTarea('Todas')}
-                            style={{ ...chipStyle, background: filtroFaseTarea === 'Todas' ? 'var(--accent)' : 'var(--panel)', color: filtroFaseTarea === 'Todas' ? '#000' : 'var(--text-dim)', borderColor: filtroFaseTarea === 'Todas' ? 'var(--accent)' : 'var(--border)' }}
-                          >
-                            Todas
-                          </button>
-                          {fasesEnBanco.map(cat => (
-                            <button
-                              key={cat}
-                              onClick={() => setFiltroFaseTarea(filtroFaseTarea === cat ? 'Todas' : cat)}
-                              style={{ ...chipStyle, background: filtroFaseTarea === cat ? 'var(--accent)' : 'var(--panel)', color: filtroFaseTarea === cat ? '#000' : 'var(--text-dim)', borderColor: filtroFaseTarea === cat ? 'var(--accent)' : 'var(--border)' }}
-                            >
-                              {cat}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* CHIPS DINÁMICOS — FORMATO (El Cómo) */}
-                    {formatosEnBanco.length > 0 && (
-                      <div>
-                        <span style={{ fontSize: '0.6rem', color: '#22d3ee', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '5px' }}>Formato · El Cómo</span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                          <button
-                            onClick={() => setFiltroFormatoTarea('Todas')}
-                            style={{ ...chipStyle, background: filtroFormatoTarea === 'Todas' ? '#22d3ee' : 'var(--panel)', color: filtroFormatoTarea === 'Todas' ? '#000' : 'var(--text-dim)', borderColor: filtroFormatoTarea === 'Todas' ? '#22d3ee' : 'var(--border)' }}
-                          >
-                            Todos
-                          </button>
-                          {formatosEnBanco.map(fmt => (
-                            <button
-                              key={fmt}
-                              onClick={() => setFiltroFormatoTarea(filtroFormatoTarea === fmt ? 'Todas' : fmt)}
-                              style={{ ...chipStyle, background: filtroFormatoTarea === fmt ? '#22d3ee' : 'var(--panel)', color: filtroFormatoTarea === fmt ? '#000' : 'var(--text-dim)', borderColor: filtroFormatoTarea === fmt ? '#22d3ee' : 'var(--border)' }}
-                            >
-                              {fmt}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <FiltrosTareas valores={filtrosTarea} onCambiar={setFiltrosTarea} compacto={esMovil} />
 
                     {/* TOGGLE: solo tareas recomendadas para la categoría de la sesión */}
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.78rem', color: 'var(--text-dim)', padding: '2px 0' }}>
@@ -2119,8 +1495,8 @@ const PlanificadorSemanal = () => {
                             <div style={{ flex: 1, overflow: 'hidden' }}>
                               <span style={{ display: 'block', fontSize: '0.85rem', color: isSelected ? 'var(--text)' : 'var(--text-dim)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
-                                {t.fase_juego && <span style={{ ...pillStyle, color: 'var(--accent)', borderColor: '#2a4a3a' }}>{t.fase_juego}</span>}
-                                {t.formato_tarea && <span style={{ ...pillStyle, color: '#22d3ee', borderColor: '#0e7490' }}>{t.formato_tarea}</span>}
+                                {etiquetaFase(t) && <span style={{ ...pillStyle, color: colorFase(leerFase(t).fase), borderColor: '#2a4a3a' }}>{etiquetaFase(t)}</span>}
+                                {t.formato_tarea && <span style={{ ...pillStyle, color: '#22d3ee', borderColor: '#0e7490' }}>{etiquetaFormato(t.formato_tarea)}</span>}
                                 <span style={pillStyle}>⏱️ {t.duracion_estimada}'</span>
                                 <span style={pillStyle}>⚡ {t.intensidad_rpe}/10</span>
                                 {recomendadaExacta && <span style={{ ...pillStyle, color: '#facc15', borderColor: '#ca8a0455', background: '#facc1515' }}>🎯 {t.categoria_recomendada}</span>}
@@ -2160,7 +1536,7 @@ const PlanificadorSemanal = () => {
             <div style={{ padding: esMovil ? '15px' : '20px', background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
               <div style={{ flex: 1, paddingRight: '40px' }}>
                 <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: 'var(--text)', background: 'rgba(0,0,0,0.5)', padding: '4px 8px', borderRadius: '4px', textTransform: 'uppercase', display: 'inline-block', marginBottom: '8px' }}>
-                  {tareaSeleccionadaDetalle.categoria_ejercicio} • {tareaSeleccionadaDetalle.fase_juego}{tareaSeleccionadaDetalle.formato_tarea ? ` • ${tareaSeleccionadaDetalle.formato_tarea}` : ''}
+                  {tareaSeleccionadaDetalle.categoria_ejercicio}{etiquetaFase(tareaSeleccionadaDetalle) ? ` • ${etiquetaFase(tareaSeleccionadaDetalle)}` : ''}{tareaSeleccionadaDetalle.formato_tarea ? ` • ${etiquetaFormato(tareaSeleccionadaDetalle.formato_tarea)}` : ''}
                 </span>
                 <h2 style={{ margin: '0 0 5px 0', color: 'var(--text)', fontSize: esMovil ? '1.2rem' : '1.8rem', textTransform: 'uppercase', fontWeight: '900', lineHeight: 1.2 }}>
                   {tareaSeleccionadaDetalle.titulo}
@@ -2194,7 +1570,7 @@ const PlanificadorSemanal = () => {
                 
                 {tareaSeleccionadaDetalle.video_url && (
                   <div style={{ marginTop: '15px' }}>
-                    <a href={tareaSeleccionadaDetalle.video_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563eb', color: 'var(--text)', textAlign: 'center', padding: '15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                    <a href={tareaSeleccionadaDetalle.video_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563eb', color: '#ffffff', textAlign: 'center', padding: '15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.95rem' }}>
                       ▶️ VER VIDEO DE REFERENCIA
                     </a>
                   </div>
@@ -2241,9 +1617,9 @@ const PlanificadorSemanal = () => {
 const toggleBtn = { padding: '10px 15px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', transition: '0.2s', flex: 1 };
 const navBtn = { background: 'var(--panel)', border: 'none', color: 'var(--text)', width: '40px', height: '40px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
 const labelStyle = { display: 'block', fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' };
-const inputStyle = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.95rem', outline: 'none', minHeight: '44px' };
+/* Mismos valores que la clase .campo de App.css. Se mantiene como objeto
+   porque hay treinta usos que le agregan cosas con spread. */
+const inputStyle = { width: '100%', minHeight: '44px', padding: '11px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
 const pillStyle = { fontSize: '0.65rem', background: 'var(--panel)', color: 'var(--text-dim)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)' };
-const btnOrdenStyle = { width: '30px', height: '30px', borderRadius: '6px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 };
-const chipStyle = { fontSize: '0.7rem', fontWeight: 'bold', padding: '6px 10px', borderRadius: '20px', border: '1px solid var(--border)', cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.15s' };
 
 export default PlanificadorSemanal;

@@ -408,7 +408,7 @@ function Presentismo() {
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {j.estadoGral === 'desertor' ? (
-                            <span style={{ background: '#7f1d1d', color: 'var(--text)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>🚩 DESERCIÓN (+3 FALTAS)</span>
+                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>🚩 DESERCIÓN (+3 FALTAS)</span>
                           ) : j.porc === 100 && j.total > 0 ? (
                             <span style={{ background: 'rgba(0, 255, 136, 0.1)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, border: '1px solid rgba(0, 255, 136, 0.3)' }}>⭐ PERFECTA</span>
                           ) : (

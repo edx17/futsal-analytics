@@ -2231,7 +2231,7 @@ const COLORS_ORIGEN = {
           <div style={{ textAlign: 'right', maxWidth: '1000px', margin: '0 auto' }}>
             <button 
               onClick={() => setMostrarReporte(false)} 
-              style={{ background: '#ef4444', color: 'var(--text)', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
+              style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
             >
               CERRAR VISTA PREVIA ✖
             </button>

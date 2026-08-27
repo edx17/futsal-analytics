@@ -80,7 +80,7 @@ function Empleados() {
             <h2 style={{ margin: 0, fontSize: '1.8rem' }}>STAFF Y EMPLEADOS</h2>
           </div>
           {puedeEditar && (
-            <button onClick={() => { setForm({ id: null, nombre_completo: '', dni: '', telefono: '', direccion: '', cbu: '', alias: '', banco: '', rol: '', sueldo_base: '', fecha_ingreso: '', estado: 'Activo' }); setModalVisible(true); }} style={{ background: '#3b82f6', color: 'var(--text)', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+            <button onClick={() => { setForm({ id: null, nombre_completo: '', dni: '', telefono: '', direccion: '', cbu: '', alias: '', banco: '', rol: '', sueldo_base: '', fecha_ingreso: '', estado: 'Activo' }); setModalVisible(true); }} style={{ background: '#3b82f6', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
               + NUEVO EMPLEADO
             </button>
           )}
@@ -148,7 +148,7 @@ function Empleados() {
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
               <button onClick={() => setModalVisible(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={guardarEmpleado} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: 'var(--text)', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>
+              <button onClick={guardarEmpleado} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#3b82f6', border: 'none', color: '#ffffff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>
                 {cargando ? 'GUARDANDO...' : 'GUARDAR FICHA'}
               </button>
             </div>

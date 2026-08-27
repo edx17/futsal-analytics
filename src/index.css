@@ -75,6 +75,17 @@ button:focus-visible {
   --text: #ffffff;
   --text-dim: #888888;
   --hover: #151515;
+
+  /* Colores con significado. Estos seis venían escritos a mano en cada
+     pantalla (#f59e0b para lo físico, #ef4444 para lo grave, etc.). Los
+     valores acá son los mismos de siempre: sobre negro se leen bien.
+     El modo claro los redefine, porque sobre blanco no se leen. */
+  --ok: #10b981;
+  --aviso: #f59e0b;
+  --peligro: #ef4444;
+  --info: #60a5fa;
+  --frio: #22d3ee;
+  --amarillo: #facc15;
 }
 
 /* BASE GLOBAL (obligatorio) */

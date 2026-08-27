@@ -3,6 +3,10 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { useEsMovil } from '../utils/useEsMovil';
+import FiltrosTareas from '../components/FiltrosTareas';
+import { etiquetaFase, etiquetaFormato, pasaFiltros, colorFase, leerFase, FILTROS_VACIOS,
+         NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
 
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
@@ -19,12 +23,12 @@ const RenderRutinaFisica = ({ data }) => {
 
   return (
     <div style={{ padding: '15px', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--panel)', boxSizing: 'border-box', textAlign: 'left' }}>
-      <h4 style={{ color: '#f59e0b', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+      <h4 style={{ color: 'var(--aviso)', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
         {data.sub_modo === 'gimnasio' ? '🏋️‍♂️ Circuito de Gimnasio / Fuerza' : '🏃‍♂️ Bloques de Acondicionamiento en Cancha'}
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {data.bloques.map((b, i) => (
-          <div key={b.id || i} style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid #f59e0b' }}>
+          <div key={b.id || i} style={{ background: 'var(--panel)', border: '1px solid var(--border)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid var(--aviso)' }}>
             {data.sub_modo === 'gimnasio' ? (
               <>
                 <div style={{ fontWeight: '900', color: 'var(--text)', fontSize: '1.1rem' }}>{i + 1}. {b.nombre}</div>
@@ -449,10 +453,8 @@ const BancoTareas = () => {
   const [tareas, setTareas] = useState([]);
   const [cargando, setCargando] = useState(true);
   
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
-  const [filtroFase, setFiltroFase] = useState('Todas');
-  const [filtroFormato, setFiltroFormato] = useState('Todas');
+  const esMovil = useEsMovil();
+  const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   
   const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
   
@@ -469,7 +471,8 @@ const BancoTareas = () => {
     titulo: '',
     categoria_recomendada: 'Todas',
     categoria_ejercicio: 'Táctico',
-    fase_juego: 'Ataque Posicional',
+    fase_juego: 'Ataque',
+    subfase_juego: '',
     formato_tarea: 'Reducido',
     duracion_estimada: 15,
     intensidad_rpe: 6,
@@ -581,6 +584,7 @@ const BancoTareas = () => {
         categoria_recomendada: nuevaTarea.categoria_recomendada,
         categoria_ejercicio: nuevaTarea.categoria_ejercicio,
         fase_juego: nuevaTarea.fase_juego,
+        subfase_juego: nuevaTarea.subfase_juego || null,
         formato_tarea: nuevaTarea.formato_tarea,
         duracion_estimada: parseInt(nuevaTarea.duracion_estimada) || 0,
         intensidad_rpe: parseInt(nuevaTarea.intensidad_rpe) || 0,
@@ -614,27 +618,13 @@ const BancoTareas = () => {
       case 'Físico': return { bg: 'linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%)', border: '#ef4444', text: '#fecaca' };
       case 'Técnico': return { bg: 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)', border: '#10b981', text: '#a7f3d0' };
       case 'Cognitivo': return { bg: 'linear-gradient(135deg, #4c1d95 0%, #2e1065 100%)', border: '#8b5cf6', text: '#ddd6fe' };
+      case 'Libro Táctico': return { bg: 'linear-gradient(135deg, #164e63 0%, #083344 100%)', border: '#22d3ee', text: '#a5f3fc' };
       case 'ABP': return { bg: 'linear-gradient(135deg, #78350f 0%, #451a03 100%)', border: '#f59e0b', text: '#fde68a' };
       default: return { bg: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', border: '#4b5563', text: '#d1d5db' };
     }
   };
 
-  const normalizar = (str) =>
-    (str ?? '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  const tareasFiltradas = tareas.filter(t => {
-    const termino = normalizar(busqueda);
-    const coincideBusqueda = !termino ||
-      normalizar(t.titulo).includes(termino) ||
-      normalizar(t.objetivo_principal).includes(termino) ||
-      normalizar(t.categoria_ejercicio).includes(termino) ||
-      normalizar(t.fase_juego).includes(termino) ||
-      normalizar(t.formato_tarea).includes(termino);
-    const coincideCategoria = filtroCategoria === 'Todas' || t.categoria_ejercicio === filtroCategoria;
-    const coincideFase = filtroFase === 'Todas' || t.fase_juego === filtroFase;
-    const coincideFormato = filtroFormato === 'Todas' || t.formato_tarea === filtroFormato;
-    return coincideBusqueda && coincideCategoria && coincideFase && coincideFormato;
-  });
+  const tareasFiltradas = tareas.filter(t => pasaFiltros(t, filtros));
 
   const CartaFUT = ({ tarea }) => {
     const colores = getColoresCategoria(tarea.categoria_ejercicio);
@@ -647,9 +637,12 @@ const BancoTareas = () => {
           background: colores.bg,
           border: `2px solid ${colores.border}`,
           borderRadius: '16px',
-          width: '260px',
-          height: '380px',
-          padding: '15px',
+          /* Antes eran 260px clavados y en el celular quedaban cortadas.
+             Ahora la carta se estira hasta el ancho disponible. */
+          width: '100%',
+          maxWidth: '280px',
+          height: esMovil ? '340px' : '380px',
+          padding: esMovil ? '12px' : '15px',
           display: 'flex',
           flexDirection: 'column',
           cursor: 'pointer',
@@ -663,12 +656,12 @@ const BancoTareas = () => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span style={{ fontSize: '1.8rem', fontWeight: '900', color: 'var(--text)', lineHeight: '1' }}>{carga}</span>
+            <span style={{ fontSize: '1.8rem', fontWeight: '900', color: '#ffffff', lineHeight: '1' }}>{carga}</span>
             <span style={{ fontSize: '0.6rem', fontWeight: 'bold', color: colores.text, textTransform: 'uppercase', letterSpacing: '1px' }}>Carga UC</span>
           </div>
           <div style={{ textAlign: 'right' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: '900', color: colores.border, textTransform: 'uppercase', display: 'block' }}>{tarea.categoria_ejercicio}</span>
-            <span style={{ fontSize: '0.6rem', color: colores.text }}>{tarea.fase_juego}</span>
+            <span style={{ fontSize: '0.6rem', color: colorFase(leerFase(tarea).fase) }}>{etiquetaFase(tarea) || '—'}</span>
           </div>
         </div>
 
@@ -678,35 +671,35 @@ const BancoTareas = () => {
           ) : tarea.url_grafico ? (
             <img src={tarea.url_grafico} alt="Gráfico Tarea" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
-            <span style={{ color: 'var(--text-dim)', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
+            <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
           )}
           {tarea.formato_tarea && (
-            <div style={{ position: 'absolute', top: '5px', left: '5px', background: 'rgba(8,145,178,0.85)', border: '1px solid #22d3ee', color: 'var(--text)', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
-              {tarea.formato_tarea}
+            <div style={{ position: 'absolute', top: '5px', left: '5px', background: 'rgba(8,145,178,0.85)', border: '1px solid #22d3ee', color: '#ffffff', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
+              {etiquetaFormato(tarea.formato_tarea)}
             </div>
           )}
-          <div style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.8)', border: `1px solid ${colores.border}`, color: 'var(--text)', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px' }}>
+          <div style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.8)', border: `1px solid ${colores.border}`, color: '#ffffff', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px' }}>
             {tarea.jugadores_involucrados || 'Grupal'}
           </div>
         </div>
 
         <div style={{ textAlign: 'center', margin: '12px 0', borderBottom: `1px solid ${colores.border}40`, paddingBottom: '8px' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: 'var(--text)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '900', color: '#ffffff', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {tarea.titulo}
           </h3>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '5px', textAlign: 'center' }}>
           <div>
-            <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: '900', color: 'var(--text)' }}>{tarea.duracion_estimada}'</span>
+            <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: '900', color: '#ffffff' }}>{tarea.duracion_estimada}'</span>
             <span style={{ fontSize: '0.6rem', color: colores.text, fontWeight: 'bold' }}>MINS</span>
           </div>
           <div style={{ borderLeft: `1px solid ${colores.border}40`, borderRight: `1px solid ${colores.border}40` }}>
-            <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: '900', color: 'var(--text)' }}>{tarea.intensidad_rpe}</span>
+            <span style={{ display: 'block', fontSize: '1.1rem', fontWeight: '900', color: '#ffffff' }}>{tarea.intensidad_rpe}</span>
             <span style={{ fontSize: '0.6rem', color: colores.text, fontWeight: 'bold' }}>RPE</span>
           </div>
           <div>
-            <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: '900', color: 'var(--text)', marginTop: '3px' }}>{tarea.espacio?.replace('_', ' ')}</span>
+            <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: '900', color: '#ffffff', marginTop: '3px' }}>{tarea.espacio?.replace('_', ' ')}</span>
             <span style={{ fontSize: '0.6rem', color: colores.text, fontWeight: 'bold' }}>ZONA</span>
           </div>
         </div>
@@ -715,46 +708,30 @@ const BancoTareas = () => {
   };
 
   return (
-    <div style={{ paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto', animation: 'fadeIn 0.3s' }}>
+    <div style={{ paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto', padding: esMovil ? '0 10px 80px' : undefined, animation: 'fadeIn 0.3s' }}>
       
-      <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '30px', background: 'var(--panel)', border: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+      <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px', background: 'var(--panel)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <div style={{ fontSize: '2.5rem' }}>🗃️</div>
-            <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.5rem', margin: 0 }}>BANCO DE TAREAS</h1>
-            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Biblioteca de ejercicios y rutinas</p>
+            <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: esMovil ? '1.15rem' : '1.5rem', margin: 0 }}>
+              🗃️ BANCO DE TAREAS
+            </h1>
+            <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+              {tareasFiltradas.length} de {tareas.length} ejercicios
+            </p>
           </div>
-          
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <input
-              type="text"
-              placeholder="🔍 Buscar tarea..."
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              style={inputFiltro}
-            />
-            <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={selectFiltro}>
-              <option value="Todas">Naturaleza · Contenido</option>
-              <option value="Táctico">Táctico</option>
-              <option value="Técnico">Técnico</option>
-              <option value="Físico">Físico / Gimnasio</option>
-              <option value="Cognitivo">Cognitivo</option>
-              <option value="ABP">ABP (tareas viejas)</option>
-            </select>
-            <select value={filtroFase} onChange={e => setFiltroFase(e.target.value)} style={selectFiltro}>
-              <option value="Todas">Fase · El Qué</option>
-              <option value="Ataque Posicional">Ataque Posicional</option>
-              <option value="Defensa Posicional">Defensa Posicional</option>
-              <option value="Transición Ofensiva">Transición Ofensiva</option>
-              <option value="Transición Defensiva">Transición Defensiva</option>
-              <option value="Situaciones Especiales">Situaciones Especiales</option>
-              <option value="ABP / Pelota Parada">ABP / Pelota Parada</option>
-            </select>
-            <button onClick={() => setShowCrearModal(true)} style={{ background: 'var(--accent)', color: '#000', padding: '12px 20px', borderRadius: '8px', border: 'none', fontWeight: '900', cursor: 'pointer', fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(0,255,136,0.3)' }}>
-              + NUEVA TAREA
-            </button>
-          </div>
+
+          <button onClick={() => setShowCrearModal(true)} style={{
+            background: 'var(--accent)', color: '#000', padding: esMovil ? '12px 16px' : '12px 20px',
+            borderRadius: '8px', border: 'none', fontWeight: '900', cursor: 'pointer',
+            fontSize: '0.85rem', boxShadow: '0 4px 15px rgba(0,255,136,0.3)',
+            flex: esMovil ? '1 1 100%' : '0 0 auto',
+          }}>
+            + NUEVA TAREA
+          </button>
         </div>
+
+        <FiltrosTareas valores={filtros} onCambiar={setFiltros} compacto={esMovil} />
       </div>
 
       {cargando ? (
@@ -766,7 +743,12 @@ const BancoTareas = () => {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Creá tu primer ejercicio en el Creador o subí un video para empezar.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '25px', justifyContent: 'center' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 240px), 1fr))',
+          gap: esMovil ? '14px' : '25px',
+          justifyItems: 'center',
+        }}>
           {tareasFiltradas.map(tarea => (
             <CartaFUT key={tarea.id} tarea={tarea} />
           ))}
@@ -776,14 +758,14 @@ const BancoTareas = () => {
       {/* MODAL: CREAR TAREA (VIDEO O CREADOR) */}
       {showCrearModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: '#111', width: '100%', maxWidth: '800px', border: '2px solid var(--accent)', borderRadius: '12px', padding: '28px', maxHeight: '95vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+          <div style={{ background: 'var(--panel)', width: '100%', maxWidth: '800px', borderWidth: '2px', borderStyle: 'solid', borderColor: 'var(--accent)', borderRadius: '12px', padding: esMovil ? '18px' : '28px', maxHeight: '95vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.4rem', textTransform: 'uppercase' }}>Subir Nueva Tarea Rápida</h2>
-              <button onClick={() => {setShowCrearModal(false); setVideoFile(null); setVideoPreview(null);}} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+              <button onClick={() => {setShowCrearModal(false); setVideoFile(null); setVideoPreview(null);}} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', minWidth: '44px', minHeight: '44px' }}>✖</button>
             </div>
 
             <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
-              <button onClick={() => navigate('/creador-tareas')} style={{ flex: 1, padding: '15px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3b82f6', borderRadius: '8px', color: '#60a5fa', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <button onClick={() => navigate('/creador-tareas')} style={{ flex: 1, padding: '15px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid var(--info)', borderRadius: '8px', color: 'var(--info)', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
                 <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '5px' }}>🎨</span>
                 Abrir Creador Táctico
               </button>
@@ -796,59 +778,68 @@ const BancoTareas = () => {
             </div>
 
             {videoPreview && (
-              <div style={{ marginBottom: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #333', width: '100%', aspectRatio: '16/9', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
+              <div style={{ marginBottom: '20px', borderRadius: '8px', overflow: 'hidden', borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--border)', width: '100%', aspectRatio: '16/9', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
                 <video src={videoPreview} controls style={{ maxWidth: '100%', maxHeight: '100%' }} />
               </div>
             )}
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: 5 }}>Nombre de la Tarea *</label>
-              <input type="text" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid var(--accent)', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} placeholder="Ej: Rondo 4v2 con finalización..." value={nuevaTarea.titulo} onChange={e => setNuevaTarea({...nuevaTarea, titulo: e.target.value})} />
+              <label className="campo-rotulo" style={{ color: 'var(--accent)' }}>Nombre de la Tarea *</label>
+              <input type="text" className="campo" style={{ borderColor: 'var(--accent)' }} placeholder="Ej: Rondo 4v2 con finalización..." value={nuevaTarea.titulo} onChange={e => setNuevaTarea({...nuevaTarea, titulo: e.target.value})} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 15 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#facc15', textTransform: 'uppercase', marginBottom: 5 }}>Categoría Recomendada</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #ca8a04', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.categoria_recomendada} onChange={e => setNuevaTarea({...nuevaTarea, categoria_recomendada: e.target.value})}>
+                <label className="campo-rotulo" style={{ color: 'var(--amarillo)' }}>Categoría Recomendada</label>
+                <select className="campo" style={{ borderColor: '#ca8a04' }} value={nuevaTarea.categoria_recomendada} onChange={e => setNuevaTarea({...nuevaTarea, categoria_recomendada: e.target.value})}>
                   <option value="Todas">Todas las Categorías</option>
                   {categoriasDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Naturaleza · Contenido</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.categoria_ejercicio} onChange={e => setNuevaTarea({...nuevaTarea, categoria_ejercicio: e.target.value})}>
-                  {['Táctico', 'Técnico', 'Físico', 'Cognitivo', 'Libro Táctico'].map(v=><option key={v}>{v}</option>)}
+                <label className="campo-rotulo">Naturaleza · Contenido</label>
+                <select className="campo" value={nuevaTarea.categoria_ejercicio} onChange={e => setNuevaTarea({...nuevaTarea, categoria_ejercicio: e.target.value})}>
+                  {NATURALEZAS.map(n=><option key={n.id} value={n.id}>{n.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Fase del Juego</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.fase_juego} onChange={e => setNuevaTarea({...nuevaTarea, fase_juego: e.target.value})}>
-                  {['Ataque Posicional','Defensa Posicional','Transición Ofensiva','Transición Defensiva','Situaciones Especiales','ABP / Pelota Parada'].map(v=><option key={v}>{v}</option>)}
+                <label className="campo-rotulo">Fase del Juego</label>
+                <select className="campo" value={nuevaTarea.fase_juego} onChange={e => setNuevaTarea({...nuevaTarea, fase_juego: e.target.value, subfase_juego: ''})}>
+                  {FASES.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: '#22d3ee', textTransform: 'uppercase', marginBottom: 5 }}>Formato de Tarea</label>
-                <select style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #0e7490', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.formato_tarea} onChange={e => setNuevaTarea({...nuevaTarea, formato_tarea: e.target.value})}>
-                  <option value="Analítico">Analítico</option><option value="Drill">Drill</option><option value="Reducido">Reducido / SSG</option><option value="Juego Condicionado">Juego Condicionado</option><option value="Juego Real">Juego Real</option>
+                <label className="campo-rotulo">Situación</label>
+                <select className="campo"
+                        value={nuevaTarea.subfase_juego}
+                        onChange={e => setNuevaTarea({...nuevaTarea, subfase_juego: e.target.value})}>
+                  <option value="">— sin especificar —</option>
+                  {subfasesDe(nuevaTarea.fase_juego).map(v=><option key={v}>{v}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Duración (min)</label>
-                <input type="number" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.duracion_estimada} onChange={e => setNuevaTarea({...nuevaTarea, duracion_estimada: e.target.value})} />
+                <label className="campo-rotulo" style={{ color: 'var(--frio)' }}>Formato de Tarea</label>
+                <select className="campo campo-frio" value={nuevaTarea.formato_tarea} onChange={e => setNuevaTarea({...nuevaTarea, formato_tarea: e.target.value})}>
+                  {FORMATOS.map(f=><option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Intensidad RPE</label>
-                <input type="number" min="1" max="10" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.intensidad_rpe} onChange={e => setNuevaTarea({...nuevaTarea, intensidad_rpe: e.target.value})} />
+                <label className="campo-rotulo">Duración (min)</label>
+                <input type="number" className="campo" value={nuevaTarea.duracion_estimada} onChange={e => setNuevaTarea({...nuevaTarea, duracion_estimada: e.target.value})} />
+              </div>
+              <div>
+                <label className="campo-rotulo">Intensidad RPE</label>
+                <input type="number" min="1" max="10" className="campo" value={nuevaTarea.intensidad_rpe} onChange={e => setNuevaTarea({...nuevaTarea, intensidad_rpe: e.target.value})} />
               </div>
               <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Objetivo Principal</label>
-                <input type="text" style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box' }} value={nuevaTarea.objetivo_principal} onChange={e => setNuevaTarea({...nuevaTarea, objetivo_principal: e.target.value})} />
+                <label className="campo-rotulo">Objetivo Principal</label>
+                <input type="text" className="campo" value={nuevaTarea.objetivo_principal} onChange={e => setNuevaTarea({...nuevaTarea, objetivo_principal: e.target.value})} />
               </div>
             </div>
 
             <div style={{ marginBottom: 15 }}>
-              <label style={{ display: 'block', fontSize: '.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 5 }}>Reglas y Desarrollo</label>
-              <textarea rows={3} style={{ width: '100%', padding: 10, background: '#000', border: '1px solid #333', borderRadius: 6, color: '#fff', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }} value={nuevaTarea.descripcion} onChange={e => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}/>
+              <label className="campo-rotulo">Reglas y Desarrollo</label>
+              <textarea rows={3} className="campo" value={nuevaTarea.descripcion} onChange={e => setNuevaTarea({...nuevaTarea, descripcion: e.target.value})}/>
             </div>
 
             <button onClick={guardarNuevaTarea} disabled={isUploading} style={{ width: '100%', padding: 15, background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: '1.1rem', fontWeight: 700, cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.7 : 1 }}>
@@ -894,7 +885,7 @@ const BancoTareas = () => {
                 </div>
                 {tareaSeleccionada.video_url && (
                   <div style={{ marginTop: '15px' }}>
-                    <a href={tareaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#2563eb', color: 'var(--text)', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}>
+                    <a href={tareaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#2563eb', color: '#ffffff', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}>
                       ▶️ VER VIDEO DE REFERENCIA
                     </a>
                   </div>
@@ -932,7 +923,7 @@ const BancoTareas = () => {
                 <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
                   <button
                     onClick={() => eliminarTarea(tareaSeleccionada.id)}
-                    style={{ flex: 1, background: '#ef4444', border: 'none', color: 'var(--text)', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
+                    style={{ flex: 1, background: 'var(--peligro)', border: 'none', color: '#ffffff', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
                   >
                     🗑️ ELIMINAR
                   </button>
@@ -954,8 +945,5 @@ const BancoTareas = () => {
     </div>
   );
 };
-
-const inputFiltro = { padding: '12px 15px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '16px', minWidth: '250px', outline: 'none' };
-const selectFiltro = { padding: '12px 15px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--accent)', fontSize: '0.9rem', fontWeight: 'bold', outline: 'none', cursor: 'pointer' };
 
 export default BancoTareas;
