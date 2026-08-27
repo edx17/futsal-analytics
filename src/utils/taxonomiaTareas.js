@@ -44,7 +44,7 @@ export const FASES = [
   },
   {
     id: 'Situaciones Especiales', label: 'Situaciones Especiales', color: '#a78bfa',
-    subfases: ['5v4', '4v5', '4v3', '3v4', '5v3', '3v5'],
+    subfases: ['Incorp. Arq', '5v4', '4v5', '4v3', '3v4', '5v3', '3v5'],
   },
   {
     id: 'Balón Parado', label: 'Balón Parado', color: '#22d3ee',
