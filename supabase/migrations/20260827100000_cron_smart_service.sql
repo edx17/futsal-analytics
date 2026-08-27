@@ -13,10 +13,10 @@
 --  Antes de correrlo en cualquier lado, mirá qué hay:
 --      select jobname, schedule, active from cron.job order by jobname;
 --
---  ⚠️ ESTE ARCHIVO TIENE PLACEHOLDERS A PROPÓSITO.
---  Pegalo en el SQL Editor de Supabase reemplazando los dos valores, y NO
---  subas la versión completada a git: la service_role key es un secreto de
---  verdad (a diferencia de la anon key, que viaja en el navegador).
+--  ⚠️ ESTE ARCHIVO TIENE UN PLACEHOLDER A PROPÓSITO.
+--  Pegalo en el SQL Editor de Supabase reemplazando el CRON_SECRET, y NO
+--  subas la versión completada a git: ese sí es un secreto de verdad (a
+--  diferencia de la anon key, que viaja en el navegador).
 --
 --  Horarios en UTC. Argentina es UTC-3, así que:
 --     11:00 UTC = 08:00  · 16:00 UTC = 13:00 · 21:00 UTC = 18:00
@@ -37,24 +37,29 @@ select cron.unschedule(jobname)
 
 do $cron$
 declare
+  -- El nombre de la función tiene que coincidir con el de `supabase functions
+  -- list`. El cron viejo apuntaba a /tablon-push, que no existe, y encima a
+  -- un host al que le faltaban dos caracteres del ref del proyecto: por eso
+  -- las respuestas quedaban con status_code NULL, sin llegar a ningún lado.
   destino text := 'https://xwjskbhmwdeadgepsbns.supabase.co/functions/v1/smart-service';
+
   -- ↓↓↓ REEMPLAZAR ANTES DE CORRER ↓↓↓
-  clave_service_role text := 'REEMPLAZAR_SERVICE_ROLE_KEY';
-  secreto_cron       text := 'REEMPLAZAR_CRON_SECRET';  -- el mismo que pusiste en
-                                                        -- supabase secrets set CRON_SECRET=...
-                                                        -- Si no configuraste CRON_SECRET, dejalo
-                                                        -- como está: la función no lo mira.
+  secreto_cron text := 'REEMPLAZAR_CRON_SECRET';  -- el mismo valor que
+                                                  -- supabase secrets set CRON_SECRET=...
   -- ↑↑↑ REEMPLAZAR ANTES DE CORRER ↑↑↑
   encabezados jsonb;
   horario record;
 begin
-  if clave_service_role = 'REEMPLAZAR_SERVICE_ROLE_KEY' then
-    raise exception 'Falta reemplazar la service_role key antes de correr esto';
+  if secreto_cron = 'REEMPLAZAR_CRON_SECRET' then
+    raise exception 'Falta reemplazar el CRON_SECRET antes de correr esto';
   end if;
 
+  /* Sin Authorization a propósito: la función se despliega con
+     verify_jwt = false (ver supabase/config.toml), así que no hay JWT que
+     mandar. Mandarlo era lo que devolvía 401 UNAUTHORIZED_INVALID_JWT_FORMAT
+     antes de llegar al código. La autenticación es el x-cron-secret. */
   encabezados := jsonb_build_object(
     'Content-Type',  'application/json',
-    'Authorization', 'Bearer ' || clave_service_role,
     'x-cron-secret', secreto_cron
   );
 
