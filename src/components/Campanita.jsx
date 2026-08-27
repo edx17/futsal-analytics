@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTablon } from '../utils/useTablon'; // vive junto a useEsMovil.js
-import { activarNotificaciones, estaSuscripto, pushSoportado, diagnosticarPush } from '../utils/pushNotificaciones';
+import { activarNotificaciones, estaSuscripto, pushSoportado, diagnosticarPush, MOTIVOS_PUSH } from '../utils/pushNotificaciones';
 
 const COLOR_PRIORIDAD = {
   bloqueante: '#ff5252',
@@ -26,6 +26,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
   const [pushEstado, setPushEstado] = useState('desconocido'); // desconocido | activando | activo | error | no-soportado
   const [pushMotivo, setPushMotivo] = useState(null);
   const [diagnostico, setDiagnostico] = useState(null);
+  const [pushAviso, setPushAviso] = useState(null);
 
   useEffect(() => {
     if (!pushSoportado()) { setPushEstado('no-soportado'); return; }
@@ -45,6 +46,10 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
       /* Si falló, el diagnóstico se abre solo: es el momento en que sirve. */
       setDiagnostico(await diagnosticarPush(clubId, perfilId));
     }
+    /* Puede activarse igual y dejar algo a medias (el caso típico: no existe
+       el índice único y se guardó por el camino alternativo). Se avisa, si no
+       queda un problema latente que nadie ve hasta que rompe. */
+    setPushAviso(res.ok && res.aviso ? MOTIVOS_PUSH[res.aviso] : null);
   };
 
   const handleDiagnosticar = async () => {
@@ -204,9 +209,20 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
             {pushEstado !== 'no-soportado' && (
               <div style={{ borderTop: '1px solid var(--border)', marginTop: 6, paddingTop: 8 }}>
                 {pushEstado === 'activo' ? (
-                  <p style={{ margin: 0, padding: '4px 8px', fontSize: '0.75rem', color: 'var(--accent, #00e676)', textAlign: 'center' }}>
-                    🔔 Notificaciones activadas en este dispositivo
-                  </p>
+                  <>
+                    <p style={{ margin: 0, padding: '4px 8px', fontSize: '0.75rem', color: 'var(--accent, #00e676)', textAlign: 'center' }}>
+                      🔔 Notificaciones activadas en este dispositivo
+                    </p>
+                    {pushAviso && (
+                      <div style={{
+                        marginTop: 6, padding: '8px 10px', borderRadius: 8,
+                        background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)',
+                        color: 'var(--text-dim)', fontSize: '0.68rem', lineHeight: 1.5,
+                      }}>
+                        ⚠️ {pushAviso}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <button
                     onClick={handleActivarPush}
