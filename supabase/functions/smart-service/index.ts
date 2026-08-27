@@ -18,12 +18,42 @@ import webpush from "npm:web-push@3.6.7";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
-const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
+const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:soporte@virtualstats.com";
 const CRON_SECRET = Deno.env.get("CRON_SECRET"); // opcional pero recomendado
 
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+/* Si falta un secreto, setVapidDetails tira una excepción. Estando en el
+   cuerpo del módulo, esa excepción rompe la función ENTERA antes de atender
+   el primer pedido: cada invocación devuelve un 500 opaco, para siempre, y
+   desde afuera no hay manera de saber que el problema es un secreto que
+   nunca se cargó. El cron, además, sigue marcando sus corridas como
+   'succeeded', porque net.http_post encoló bien.
+
+   Guardado acá, el error se convierte en una respuesta que dice qué falta. */
+const faltantes: string[] = [];
+if (!VAPID_PUBLIC_KEY) faltantes.push("VAPID_PUBLIC_KEY");
+if (!VAPID_PRIVATE_KEY) faltantes.push("VAPID_PRIVATE_KEY");
+if (!SUPABASE_URL) faltantes.push("SUPABASE_URL");
+if (!SERVICE_ROLE_KEY) faltantes.push("SUPABASE_SERVICE_ROLE_KEY");
+
+let errorDeArranque: string | null =
+  faltantes.length > 0
+    ? `Faltan secretos del Edge Function: ${faltantes.join(", ")}. Se cargan con: supabase secrets set NOMBRE=valor`
+    : null;
+
+if (!errorDeArranque) {
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY!, VAPID_PRIVATE_KEY!);
+  } catch (err: any) {
+    /* El caso típico: la pública y la privada no son del mismo par, o están
+       pegadas con espacios o saltos de línea de más. */
+    errorDeArranque = `Las claves VAPID no son válidas: ${err?.message || err}. ` +
+      `Tienen que ser del mismo par (npx web-push generate-vapid-keys) y la pública ` +
+      `tiene que coincidir con la VITE_VAPID_PUBLIC_KEY del frontend.`;
+  }
+}
+
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 // ===== Mismas constantes que Inicio.jsx (no las inventé, están portadas) =====
@@ -372,7 +402,13 @@ async function marcarNotificado(clubId: string, runKey: string) {
   await supabase.from("tablon_notificado").insert({ club_id: clubId, run_key: runKey });
 }
 
+/* Devuelve qué pasó con cada envío en vez de tragárselo en un console.error.
+   Antes la función podía contestar 200 con digestsEnviados: 1 aunque los
+   push hubieran rebotado todos, y desde el SQL no había forma de notarlo. */
 async function enviarATodos(subs: any[], payload: object) {
+  const parte = { intentados: subs.length, entregados: 0, vencidos: 0, fallados: 0,
+                  errores: [] as string[] };
+
   await Promise.allSettled(
     subs.map(async (s) => {
       try {
@@ -380,16 +416,28 @@ async function enviarATodos(subs: any[], payload: object) {
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           JSON.stringify(payload)
         );
+        parte.entregados++;
       } catch (err: any) {
+        const corto = String(s.endpoint).slice(-12);
         if (err?.statusCode === 404 || err?.statusCode === 410) {
           // Suscripción muerta (usuario desinstaló / revocó el permiso) -> la limpiamos
           await supabase.from("push_subscriptions").delete().eq("endpoint", s.endpoint);
+          parte.vencidos++;
+          parte.errores.push(`…${corto}: vencida (${err.statusCode}), borrada`);
         } else {
+          parte.fallados++;
+          /* El 403 acá casi siempre es lo mismo: la suscripción se creó con
+             una clave VAPID distinta de la que firma ahora. */
+          const pista = err?.statusCode === 403
+            ? " — suele ser que la suscripción se creó con otra clave VAPID; hay que volver a activar en el dispositivo"
+            : "";
+          parte.errores.push(`…${corto}: ${err?.statusCode || "?"} ${err?.message || err}${pista}`);
           console.error(`Error enviando push a ${s.endpoint}:`, err?.message || err);
         }
       }
     })
   );
+  return parte;
 }
 
 // ============================================================================
@@ -409,6 +457,15 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: CORS_HEADERS });
   }
 
+  /* Antes que nada: si faltan secretos, decirlo. Es un 500, pero uno que se
+     puede leer desde `select content from net._http_response`. */
+  if (errorDeArranque) {
+    return new Response(JSON.stringify({ ok: false, error: errorDeArranque }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  }
+
   if (CRON_SECRET) {
     const header = req.headers.get("x-cron-secret");
     if (header !== CRON_SECRET) {
@@ -425,6 +482,14 @@ Deno.serve(async (req) => {
   let clubesConPush = 0;
   let digestsEnviados = 0;
   let previasEnviadas = 0;
+  const entregas = { intentados: 0, entregados: 0, vencidos: 0, fallados: 0, errores: [] as string[] };
+  const sumar = (p: Awaited<ReturnType<typeof enviarATodos>>) => {
+    entregas.intentados += p.intentados;
+    entregas.entregados += p.entregados;
+    entregas.vencidos   += p.vencidos;
+    entregas.fallados   += p.fallados;
+    entregas.errores.push(...p.errores);
+  };
 
   for (const club of clubes || []) {
     const clubId = club.id;
@@ -440,12 +505,12 @@ Deno.serve(async (req) => {
       if (alertas.length > 0) {
         const top = alertas.slice(0, 3).map((a) => a.titulo).join(" · ");
         const resto = alertas.length > 3 ? ` y ${alertas.length - 3} más` : "";
-        await enviarATodos(subs, {
+        sumar(await enviarATodos(subs, {
           title: `Virtual.Club — ${alertas.length} pendiente${alertas.length === 1 ? "" : "s"}`,
           body: top + resto,
           tag: "tablon-digest",
           data: { url: "/inicio" },
-        });
+        }));
         digestsEnviados++;
       }
       await marcarNotificado(clubId, runKeyDigest);
@@ -467,12 +532,12 @@ Deno.serve(async (req) => {
       const runKeyPrevia = `previa-partido-${partidoHoy.id}`;
       const horas = horasHasta(partidoHoy.fecha, partidoHoy.horario);
       if (horas !== null && horas >= 0 && horas <= VENTANA_PREVIA_PARTIDO_HORAS && !(await yaNotificado(clubId, runKeyPrevia))) {
-        await enviarATodos(subs, {
+        sumar(await enviarATodos(subs, {
           title: `⚽ Partido vs ${partidoHoy.rival || "rival"} en ${Math.max(1, Math.round(horas))}hs`,
           body: `${partidoHoy.condicion || ""}${partidoHoy.horario ? ` · ${partidoHoy.horario}` : ""}`,
           tag: `previa-${partidoHoy.id}`,
           data: { url: `/torneos?partido=${partidoHoy.id}` },
-        });
+        }));
         await marcarNotificado(clubId, runKeyPrevia);
         previasEnviadas++;
       }
@@ -480,7 +545,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ ok: true, clubesConPush, digestsEnviados, previasEnviadas }),
+    JSON.stringify({ ok: true, clubesConPush, digestsEnviados, previasEnviadas, entregas }),
     { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
   );
 });
