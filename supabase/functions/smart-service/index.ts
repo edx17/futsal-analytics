@@ -21,7 +21,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:soporte@virtualstats.com";
-const CRON_SECRET = Deno.env.get("CRON_SECRET"); // opcional pero recomendado
+const CRON_SECRET = Deno.env.get("CRON_SECRET"); // obligatorio, ver abajo
 
 /* Si falta un secreto, setVapidDetails tira una excepción. Estando en el
    cuerpo del módulo, esa excepción rompe la función ENTERA antes de atender
@@ -466,14 +466,26 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (CRON_SECRET) {
-    const header = req.headers.get("x-cron-secret");
-    if (header !== CRON_SECRET) {
-      return new Response(JSON.stringify({ error: "unauthorized" }), {
-        status: 401,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-      });
-    }
+  /* Esta función se despliega con verify_jwt = false, porque la invoca
+     pg_cron y no una persona: pedirle un JWT del proyecto no aporta nada y
+     era justamente lo que la dejaba afuera con 401. Su autenticación es el
+     x-cron-secret, así que acá se falla cerrado: si el secreto no está
+     configurado no se atiende a nadie. Antes era opcional, y esa
+     combinación (sin JWT y sin secreto) dejaría la función abierta. */
+  if (!CRON_SECRET) {
+    return new Response(JSON.stringify({
+      ok: false,
+      error: "Falta el secreto CRON_SECRET del Edge Function. Se carga con: " +
+             "supabase secrets set CRON_SECRET=<un valor largo al azar>, y tiene que " +
+             "ser el mismo que el cron manda en el header x-cron-secret.",
+    }), { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+  }
+
+  if (req.headers.get("x-cron-secret") !== CRON_SECRET) {
+    return new Response(JSON.stringify({
+      ok: false,
+      error: "El header x-cron-secret no coincide con el secreto CRON_SECRET.",
+    }), { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
   }
 
   const hoy = hoyISO();

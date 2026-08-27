@@ -1,0 +1,19 @@
+# Configuración del proyecto Supabase.
+#
+# smart-service la invoca pg_cron, no una persona. Con verify_jwt en true (el
+# default) el gateway pide un JWT del proyecto y rechaza el pedido ANTES de
+# llegar al código de la función, con un 401 UNAUTHORIZED_INVALID_JWT_FORMAT
+# que no dice nada útil. Su autenticación propia es el header x-cron-secret,
+# que la función ahora exige sí o sí (falla cerrado si el secreto no está
+# configurado), así que apagar la verificación de JWT no la deja abierta.
+
+project_id = "xwjskbhmwdeadgepsbns"
+
+[functions.smart-service]
+verify_jwt = false
+
+# El webhook de WhatsApp lo llama Meta, que tampoco puede mandar un JWT del
+# proyecto. Se deja como está para no cambiarle el comportamiento sin mirarlo:
+# si hoy funciona, es porque ya está desplegado con --no-verify-jwt.
+# [functions.whatsapp-webhook]
+# verify_jwt = false
