@@ -73,6 +73,14 @@ function Torneos() {
   const [videoUrlTemp, setVideoUrlTemp] = useState('');
   const [guardandoVideo, setGuardandoVideo] = useState(false);
 
+  // REPROGRAMAR UN PARTIDO YA CARGADO. Antes, si a la liga se le movía una
+  // fecha, la única salida era borrar el partido y volver a crearlo. Eso ya
+  // era molesto, pero además es IMPOSIBLE si el partido tiene eventos
+  // trackeados: eliminarPartido lo bloquea, y con razón.
+  const [partidoEditando, setPartidoEditando] = useState(null); // id del partido
+  const [formReprogramar, setFormReprogramar] = useState({ fecha: '', horario: '', jornada: '', condicion: 'Local' });
+  const [guardandoReprogramar, setGuardandoReprogramar] = useState(false);
+
   // ESTADOS DEL COMPARADOR DE EVOLUCIÓN
   const [compEq1, setCompEq1] = useState('');
   const [compEq2, setCompEq2] = useState('');
@@ -480,6 +488,44 @@ function Torneos() {
     setVideoEditando(null);
     setVideoUrlTemp('');
     showToast(url ? "Video vinculado. Ya lo podés cortar desde Videoanálisis." : "Video desvinculado.", "success");
+  };
+
+  const abrirReprogramar = (partido) => {
+    setVideoEditando(null); // que no queden dos formularios abiertos en la misma fila
+    setPartidoEditando(partido.id);
+    setFormReprogramar({
+      fecha: partido.fecha || '',
+      horario: partido.horario || '',
+      jornada: partido.jornada || '',
+      condicion: partido.condicion || 'Local',
+    });
+  };
+
+  const guardarReprogramar = async (idPartido) => {
+    const jornada = formReprogramar.jornada.trim();
+    if (!jornada) return showToast("La jornada no puede quedar vacía", "warning");
+
+    /* Fecha y horario se guardan como null cuando están vacíos, no como ''.
+       Una cadena vacía en una columna date rompe el insert, y además "sin
+       fecha" y "fecha vacía" tienen que ser lo mismo para el resto de la app
+       (el tablón y la previa de partido preguntan por null). */
+    const cambios = {
+      fecha: formReprogramar.fecha || null,
+      horario: formReprogramar.horario.trim() || null,
+      jornada,
+      condicion: formReprogramar.condicion,
+    };
+
+    setGuardandoReprogramar(true);
+    const { error } = await supabase.from('partidos').update(cambios).eq('id', idPartido);
+    setGuardandoReprogramar(false);
+    if (error) return showToast("Error al reprogramar: " + error.message, "error");
+
+    /* Se actualiza en memoria en vez de recargar todo el fixture: es más
+       rápido y no pierde los filtros ni la posición del scroll. */
+    setFixture(prev => prev.map(f => (f.id === idPartido ? { ...f, ...cambios } : f)));
+    setPartidoEditando(null);
+    showToast(cambios.fecha ? `Partido reprogramado para el ${cambios.fecha}.` : "Partido guardado sin fecha.", "success");
   };
 
   const abrirModalRuedas = () => {
@@ -1501,6 +1547,19 @@ function Torneos() {
                               >
                                 {f.video_url ? '🎬 CON VIDEO' : '🎬 + VIDEO'}
                               </button>
+                              <button
+                                onClick={() => (partidoEditando === f.id ? setPartidoEditando(null) : abrirReprogramar(f))}
+                                title="Cambiar fecha, horario, jornada o condición"
+                                style={{
+                                  padding: '3px 7px', borderRadius: '4px', cursor: 'pointer',
+                                  background: partidoEditando === f.id ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                                  border: `1px solid ${partidoEditando === f.id ? '#3b82f6' : 'var(--border)'}`,
+                                  color: partidoEditando === f.id ? '#3b82f6' : 'var(--text-dim)',
+                                  fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.5px'
+                                }}
+                              >
+                                📅 REPROGRAMAR
+                              </button>
                             </div>
 
                             {videoEditando === f.id && (
@@ -1525,6 +1584,53 @@ function Torneos() {
                                     Cruce entre terceros: acá no hay eventos, así que los cortes se marcan a mano con la botonera en Videoanálisis.
                                   </div>
                                 )}
+                              </div>
+                            )}
+
+                            {partidoEditando === f.id && (
+                              <div style={{ marginTop: '10px', padding: '10px', background: 'var(--bg)', border: '1px solid #3b82f6', borderRadius: '6px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-end' }}>
+                                <label style={{ flex: '1 1 130px', minWidth: 0 }}>
+                                  <span className="campo-rotulo">Nueva fecha</span>
+                                  <input type="date" className="campo" autoFocus
+                                    value={formReprogramar.fecha}
+                                    onChange={(e) => setFormReprogramar(v => ({ ...v, fecha: e.target.value }))} />
+                                </label>
+                                <label style={{ flex: '0 1 110px', minWidth: 0 }}>
+                                  <span className="campo-rotulo">Horario</span>
+                                  <input type="time" className="campo"
+                                    value={formReprogramar.horario}
+                                    onChange={(e) => setFormReprogramar(v => ({ ...v, horario: e.target.value }))} />
+                                </label>
+                                <label style={{ flex: '1 1 120px', minWidth: 0 }}>
+                                  <span className="campo-rotulo">Jornada</span>
+                                  <input type="text" className="campo" placeholder="Ej: Fecha 7"
+                                    value={formReprogramar.jornada}
+                                    onChange={(e) => setFormReprogramar(v => ({ ...v, jornada: e.target.value }))} />
+                                </label>
+                                {/* La condición es propia del partido de uno: en un cruce
+                                    entre terceros no hay local ni visitante que nos toque. */}
+                                {esMiPartido && (
+                                  <label style={{ flex: '0 1 130px', minWidth: 0 }}>
+                                    <span className="campo-rotulo">Condición</span>
+                                    <select className="campo" value={formReprogramar.condicion}
+                                      onChange={(e) => setFormReprogramar(v => ({ ...v, condicion: e.target.value }))}>
+                                      <option value="Local">Local</option>
+                                      <option value="Visitante">Visitante</option>
+                                      <option value="Neutral">Neutral</option>
+                                    </select>
+                                  </label>
+                                )}
+                                <button onClick={() => guardarReprogramar(f.id)} disabled={guardandoReprogramar}
+                                  className="btn-primario" style={{ minHeight: '44px', flex: '0 0 auto' }}>
+                                  {guardandoReprogramar ? '...' : 'GUARDAR'}
+                                </button>
+                                <button onClick={() => setPartidoEditando(null)} className="btn-fantasma" style={{ flex: '0 0 auto' }}>
+                                  CANCELAR
+                                </button>
+                                <div style={{ flex: '1 1 100%', fontSize: '0.6rem', color: 'var(--text-dim)' }}>
+                                  Se conservan los eventos, el resultado y el video que ya tenga cargados.
+                                  Dejá la fecha vacía si la liga todavía no la confirmó.
+                                </div>
                               </div>
                             )}
                           </div>
