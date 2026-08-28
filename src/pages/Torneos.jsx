@@ -73,6 +73,14 @@ function Torneos() {
   const [videoUrlTemp, setVideoUrlTemp] = useState('');
   const [guardandoVideo, setGuardandoVideo] = useState(false);
 
+  // REPROGRAMAR UN PARTIDO YA CARGADO. Antes, si a la liga se le movía una
+  // fecha, la única salida era borrar el partido y volver a crearlo. Eso ya
+  // era molesto, pero además es IMPOSIBLE si el partido tiene eventos
+  // trackeados: eliminarPartido lo bloquea, y con razón.
+  const [partidoEditando, setPartidoEditando] = useState(null); // id del partido
+  const [formReprogramar, setFormReprogramar] = useState({ fecha: '', horario: '', jornada: '', condicion: 'Local' });
+  const [guardandoReprogramar, setGuardandoReprogramar] = useState(false);
+
   // ESTADOS DEL COMPARADOR DE EVOLUCIÓN
   const [compEq1, setCompEq1] = useState('');
   const [compEq2, setCompEq2] = useState('');
@@ -482,6 +490,44 @@ function Torneos() {
     showToast(url ? "Video vinculado. Ya lo podés cortar desde Videoanálisis." : "Video desvinculado.", "success");
   };
 
+  const abrirReprogramar = (partido) => {
+    setVideoEditando(null); // que no queden dos formularios abiertos en la misma fila
+    setPartidoEditando(partido.id);
+    setFormReprogramar({
+      fecha: partido.fecha || '',
+      horario: partido.horario || '',
+      jornada: partido.jornada || '',
+      condicion: partido.condicion || 'Local',
+    });
+  };
+
+  const guardarReprogramar = async (idPartido) => {
+    const jornada = formReprogramar.jornada.trim();
+    if (!jornada) return showToast("La jornada no puede quedar vacía", "warning");
+
+    /* Fecha y horario se guardan como null cuando están vacíos, no como ''.
+       Una cadena vacía en una columna date rompe el insert, y además "sin
+       fecha" y "fecha vacía" tienen que ser lo mismo para el resto de la app
+       (el tablón y la previa de partido preguntan por null). */
+    const cambios = {
+      fecha: formReprogramar.fecha || null,
+      horario: formReprogramar.horario.trim() || null,
+      jornada,
+      condicion: formReprogramar.condicion,
+    };
+
+    setGuardandoReprogramar(true);
+    const { error } = await supabase.from('partidos').update(cambios).eq('id', idPartido);
+    setGuardandoReprogramar(false);
+    if (error) return showToast("Error al reprogramar: " + error.message, "error");
+
+    /* Se actualiza en memoria en vez de recargar todo el fixture: es más
+       rápido y no pierde los filtros ni la posición del scroll. */
+    setFixture(prev => prev.map(f => (f.id === idPartido ? { ...f, ...cambios } : f)));
+    setPartidoEditando(null);
+    showToast(cambios.fecha ? `Partido reprogramado para el ${cambios.fecha}.` : "Partido guardado sin fecha.", "success");
+  };
+
   const abrirModalRuedas = () => {
     setFormRuedas({ fechas_primera_rueda: torneoActivo?.fechas_primera_rueda ?? '' });
     setMostrarModalRuedas(true);
@@ -518,10 +564,110 @@ function Torneos() {
     setTextoPegado('');
   };
 
+  /* ══════════════════════════════════════════════════════════════════════
+     CARGA DE RESULTADOS
+
+     Antes, cada tecla del marcador disparaba un update Y un fetchFixture
+     entero, y como el input estaba controlado por el dato del servidor, el
+     número recién aparecía cuando esa ida y vuelta terminaba. Escribir "10"
+     eran dos escrituras y dos recargas completas del fixture, y entre medio
+     el segundo dígito leía el valor viejo y pisaba al primero.
+
+     Ahora lo que tipeás vive en `marcadores` y se ve al instante; la
+     escritura sale sola 700 ms después de que dejás de tipear (o al salir
+     del campo, o con Enter). Y en vez de recargar todo, se actualiza el
+     partido en memoria: la tabla de posiciones sale de un useMemo sobre
+     `fixture`, así que se recalcula igual.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  // Lo que el usuario está tipeando, por partido. Sale de acá recién cuando
+  // se confirma la escritura, para que el campo nunca "salte" al valor viejo.
+  const [marcadores, setMarcadores] = useState({});
+  const [guardadoGoles, setGuardadoGoles] = useState({}); // id -> 'guardando' | 'ok'
+  const temporizadores = React.useRef({});
+  /* El borrador vive TAMBIÉN en una ref, y esa es la que manda al guardar.
+     El setTimeout del debounce se crea en el render de una tecla y su closure
+     ve el estado de ese momento: leyendo de ahí, tipear "10" guardaba 1.
+     La ref siempre tiene lo último; el estado es sólo para pintar. */
+  const borradores = React.useRef({});
+  const versiones = React.useRef({});
+
+  const aNumero = (v) => {
+    const n = Number(v);
+    return v === '' || v == null || Number.isNaN(n) ? 0 : n;
+  };
+
+  // El valor que muestra el input: lo tipeado si hay borrador, si no lo guardado.
+  const golDe = (partido, campo) => {
+    const borrador = marcadores[partido.id];
+    if (borrador && borrador[campo] !== undefined) return borrador[campo];
+    return partido[campo] ?? 0;
+  };
+
+  /* Al enfocar se selecciona todo para que el primer dígito reemplace en vez
+     de agregarse: casi todos los marcadores arrancan en 0 y sin esto tipear
+     "3" deja "03" o "30". Va en un setTimeout porque el click coloca el
+     cursor DESPUÉS de que corre onFocus, y deshace la selección. */
+  const escribirGol = (partido, campo, valor) => {
+    /* El borrador guarda SIEMPRE los dos goles: el que se está tipeando y el
+       otro tal como está ahora. Así el guardado no necesita volver a mirar
+       `fixture`, que en el closure del debounce también estaría viejo. */
+    const previo = borradores.current[partido.id] || {
+      goles_propios: partido.goles_propios ?? 0,
+      goles_rival: partido.goles_rival ?? 0,
+    };
+    const borrador = { ...previo, [campo]: valor };
+    borradores.current[partido.id] = borrador;
+    versiones.current[partido.id] = (versiones.current[partido.id] || 0) + 1;
+
+    setMarcadores(prev => ({ ...prev, [partido.id]: borrador }));
+    setGuardadoGoles(prev => ({ ...prev, [partido.id]: 'guardando' }));
+    clearTimeout(temporizadores.current[partido.id]);
+    temporizadores.current[partido.id] = setTimeout(() => guardarGoles(partido.id), 700);
+  };
+
+  const guardarGoles = async (id) => {
+    clearTimeout(temporizadores.current[id]);
+    const borrador = borradores.current[id];
+    if (!borrador) return;
+    const version = versiones.current[id];
+
+    const cambios = {
+      goles_propios: aNumero(borrador.goles_propios),
+      goles_rival: aNumero(borrador.goles_rival),
+      estado: 'Finalizado',
+    };
+
+    const { error } = await supabase.from('partidos').update(cambios).eq('id', id);
+    if (error) {
+      setGuardadoGoles(prev => ({ ...prev, [id]: null }));
+      return showToast('No se pudo guardar el resultado: ' + error.message, 'error');
+    }
+
+    setFixture(prev => prev.map(f => (f.id === id ? { ...f, ...cambios } : f)));
+    /* El borrador se limpia sólo si nadie siguió tipeando mientras iba la
+       escritura. Si la versión cambió, el campo tiene algo más nuevo que lo
+       que acabamos de mandar y borrarlo se comería esas teclas. */
+    if (versiones.current[id] === version) {
+      delete borradores.current[id];
+      setMarcadores(prev => { const { [id]: _, ...resto } = prev; return resto; });
+    }
+    setGuardadoGoles(prev => ({ ...prev, [id]: 'ok' }));
+    setTimeout(() => setGuardadoGoles(prev => (prev[id] === 'ok' ? { ...prev, [id]: null } : prev)), 1600);
+  };
+
+  // Para los botones (carga manual, reset): son una acción puntual, van
+  // derecho y con aviso, sin pasar por el borrador.
   const actualizarResultado = async (id, goles_propios, goles_rival, estado) => {
-    await supabase.from('partidos').update({ goles_propios, goles_rival, estado }).eq('id', id);
-    fetchFixture(torneoActivo.id, torneoActivo.categoria);
-    if(estado === 'Finalizado') showToast("Resultado actualizado", "success");
+    const cambios = { goles_propios: aNumero(goles_propios), goles_rival: aNumero(goles_rival), estado };
+    const { error } = await supabase.from('partidos').update(cambios).eq('id', id);
+    if (error) return showToast('No se pudo actualizar: ' + error.message, 'error');
+    clearTimeout(temporizadores.current[id]);
+    delete borradores.current[id];
+    versiones.current[id] = (versiones.current[id] || 0) + 1;
+    setMarcadores(prev => { const { [id]: _, ...resto } = prev; return resto; });
+    setFixture(prev => prev.map(f => (f.id === id ? { ...f, ...cambios } : f)));
+    if (estado === 'Finalizado') showToast("Resultado actualizado", "success");
   };
 
   const actualizarPenales = async (id, penales_propios, penales_rival) => {
@@ -529,9 +675,31 @@ function Torneos() {
     const pr = (penales_rival === '' || penales_rival == null) ? null : Number(penales_rival);
     const { error } = await supabase.from('partidos').update({ penales_propios: pp, penales_rival: pr }).eq('id', id);
     if (error) { showToast('No se pudieron guardar los penales: ' + error.message, 'error'); return; }
-    fetchFixture(torneoActivo.id, torneoActivo.categoria);
+    setFixture(prev => prev.map(f => (f.id === id ? { ...f, penales_propios: pp, penales_rival: pr } : f)));
     showToast('Penales guardados', 'success');
   };
+
+  /* Si te vas de la pantalla con algo a medio tipear, que igual se guarde.
+     No se puede llamar a guardarGoles: toca estado de un componente que ya
+     no existe. Se manda la escritura pelada y listo; el resultado no importa
+     porque no hay nada que pintar. */
+  const refsParaSalir = React.useRef({ borradores, versiones, temporizadores });
+  useEffect(() => {
+    const refs = refsParaSalir.current;
+    return () => {
+      Object.values(refs.temporizadores.current).forEach(clearTimeout);
+      Object.entries(refs.borradores.current).forEach(([id, borrador]) => {
+        supabase.from('partidos').update({
+          goles_propios: Number(borrador.goles_propios) || 0,
+          goles_rival: Number(borrador.goles_rival) || 0,
+          estado: 'Finalizado',
+        }).eq('id', id).then(({ error }) => {
+          if (error) console.error('[Torneos] no se pudo guardar el resultado al salir:', error.message);
+        });
+      });
+      refs.borradores.current = {};
+    };
+  }, []);
 
   const esCopa = torneoActivo?.tipo === 'Copa';
   const ORDEN_RONDAS = ['64avos','32avos','treintaidosavos','16avos','dieciseisavos','octavos','cuartos','semi','final','definici'];
@@ -1288,9 +1456,9 @@ function Torneos() {
                                 )}
                                 {!fin && (
                                   <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                    <input type="number" min="0" value={cruce.goles_propios} onChange={(e) => actualizarResultado(cruce.id, e.target.value, cruce.goles_rival, 'Finalizado')} style={{ width: '46px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                    <input type="number" min="0" value={golDe(cruce, 'goles_propios')} onChange={(e) => escribirGol(cruce, 'goles_propios', e.target.value)} onBlur={() => guardarGoles(cruce.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }} onFocus={(e) => { const el = e.currentTarget; setTimeout(() => el.select(), 0); }} style={{ width: '46px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
                                     <span style={{ color: 'var(--text-dim)' }}>-</span>
-                                    <input type="number" min="0" value={cruce.goles_rival} onChange={(e) => actualizarResultado(cruce.id, cruce.goles_propios, e.target.value, 'Finalizado')} style={{ width: '46px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                    <input type="number" min="0" value={golDe(cruce, 'goles_rival')} onChange={(e) => escribirGol(cruce, 'goles_rival', e.target.value)} onBlur={() => guardarGoles(cruce.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }} onFocus={(e) => { const el = e.currentTarget; setTimeout(() => el.select(), 0); }} style={{ width: '46px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
                                   </div>
                                 )}
                               </div>
@@ -1501,6 +1669,19 @@ function Torneos() {
                               >
                                 {f.video_url ? '🎬 CON VIDEO' : '🎬 + VIDEO'}
                               </button>
+                              <button
+                                onClick={() => (partidoEditando === f.id ? setPartidoEditando(null) : abrirReprogramar(f))}
+                                title="Cambiar fecha, horario, jornada o condición"
+                                style={{
+                                  padding: '3px 7px', borderRadius: '4px', cursor: 'pointer',
+                                  background: partidoEditando === f.id ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                                  border: `1px solid ${partidoEditando === f.id ? '#3b82f6' : 'var(--border)'}`,
+                                  color: partidoEditando === f.id ? '#3b82f6' : 'var(--text-dim)',
+                                  fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.5px'
+                                }}
+                              >
+                                📅 REPROGRAMAR
+                              </button>
                             </div>
 
                             {videoEditando === f.id && (
@@ -1525,6 +1706,53 @@ function Torneos() {
                                     Cruce entre terceros: acá no hay eventos, así que los cortes se marcan a mano con la botonera en Videoanálisis.
                                   </div>
                                 )}
+                              </div>
+                            )}
+
+                            {partidoEditando === f.id && (
+                              <div style={{ marginTop: '10px', padding: '10px', background: 'var(--bg)', border: '1px solid #3b82f6', borderRadius: '6px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-end' }}>
+                                <label style={{ flex: '1 1 130px', minWidth: 0 }}>
+                                  <span className="campo-rotulo">Nueva fecha</span>
+                                  <input type="date" className="campo" autoFocus
+                                    value={formReprogramar.fecha}
+                                    onChange={(e) => setFormReprogramar(v => ({ ...v, fecha: e.target.value }))} />
+                                </label>
+                                <label style={{ flex: '0 1 110px', minWidth: 0 }}>
+                                  <span className="campo-rotulo">Horario</span>
+                                  <input type="time" className="campo"
+                                    value={formReprogramar.horario}
+                                    onChange={(e) => setFormReprogramar(v => ({ ...v, horario: e.target.value }))} />
+                                </label>
+                                <label style={{ flex: '1 1 120px', minWidth: 0 }}>
+                                  <span className="campo-rotulo">Jornada</span>
+                                  <input type="text" className="campo" placeholder="Ej: Fecha 7"
+                                    value={formReprogramar.jornada}
+                                    onChange={(e) => setFormReprogramar(v => ({ ...v, jornada: e.target.value }))} />
+                                </label>
+                                {/* La condición es propia del partido de uno: en un cruce
+                                    entre terceros no hay local ni visitante que nos toque. */}
+                                {esMiPartido && (
+                                  <label style={{ flex: '0 1 130px', minWidth: 0 }}>
+                                    <span className="campo-rotulo">Condición</span>
+                                    <select className="campo" value={formReprogramar.condicion}
+                                      onChange={(e) => setFormReprogramar(v => ({ ...v, condicion: e.target.value }))}>
+                                      <option value="Local">Local</option>
+                                      <option value="Visitante">Visitante</option>
+                                      <option value="Neutral">Neutral</option>
+                                    </select>
+                                  </label>
+                                )}
+                                <button onClick={() => guardarReprogramar(f.id)} disabled={guardandoReprogramar}
+                                  className="btn-primario" style={{ minHeight: '44px', flex: '0 0 auto' }}>
+                                  {guardandoReprogramar ? '...' : 'GUARDAR'}
+                                </button>
+                                <button onClick={() => setPartidoEditando(null)} className="btn-fantasma" style={{ flex: '0 0 auto' }}>
+                                  CANCELAR
+                                </button>
+                                <div style={{ flex: '1 1 100%', fontSize: '0.6rem', color: 'var(--text-dim)' }}>
+                                  Se conservan los eventos, el resultado y el video que ya tenga cargados.
+                                  Dejá la fecha vacía si la liga todavía no la confirmó.
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1560,13 +1788,18 @@ function Torneos() {
                                   <>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                       <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{esMiPartido ? 'MI EQUIPO' : 'LOCAL'}</span>
-                                      <input type="number" min="0" value={f.goles_propios} onChange={(e) => actualizarResultado(f.id, e.target.value, f.goles_rival, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: 'var(--bg)', color: esMiPartido ? 'var(--accent)' : 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                      <input type="number" min="0" value={golDe(f, 'goles_propios')} onChange={(e) => escribirGol(f, 'goles_propios', e.target.value)} onBlur={() => guardarGoles(f.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }} onFocus={(e) => { const el = e.currentTarget; setTimeout(() => el.select(), 0); }} style={{ width: '40px', textAlign: 'center', background: 'var(--bg)', color: esMiPartido ? 'var(--accent)' : 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
                                     </div>
                                     <span style={{ fontWeight: 900 }}>-</span>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                       <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)' }}>{esMiPartido ? 'RIVAL' : 'VISIT.'}</span>
-                                      <input type="number" min="0" value={f.goles_rival} onChange={(e) => actualizarResultado(f.id, f.goles_propios, e.target.value, 'Finalizado')} style={{ width: '40px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
+                                      <input type="number" min="0" value={golDe(f, 'goles_rival')} onChange={(e) => escribirGol(f, 'goles_rival', e.target.value)} onBlur={() => guardarGoles(f.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }} onFocus={(e) => { const el = e.currentTarget; setTimeout(() => el.select(), 0); }} style={{ width: '40px', textAlign: 'center', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '5px', fontWeight: 900, borderRadius: '4px' }} />
                                     </div>
+                                    {/* Sin toast por partido: cargando diez resultados seguidos
+                                        serían diez carteles. Un ✓ al lado alcanza. */}
+                                    <span style={{ width: 14, fontSize: '0.7rem', color: guardadoGoles[f.id] === 'ok' ? 'var(--ok)' : 'var(--text-dim)' }}>
+                                      {guardadoGoles[f.id] === 'guardando' ? '⏳' : guardadoGoles[f.id] === 'ok' ? '✓' : ''}
+                                    </span>
                                     <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}>↺</button>
                                   </>
                                 )}
