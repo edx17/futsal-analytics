@@ -1,0 +1,151 @@
+"""
+Asignación de equipo por color. Es la parte del pipeline que decide si una
+mancha de píxeles es de los nuestros o del rival, y no interviene ninguna red
+neuronal: es estadística de color y se puede probar entera acá.
+"""
+
+import sys
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from futsal_ia.equipos import (  # noqa: E402
+    DESCONOCIDO,
+    PROPIO,
+    RIVAL,
+    asignar_propio,
+    color_de_torso,
+    entrenar_clasificador,
+)
+
+ROJO = [200, 40, 40]
+AZUL = [40, 40, 200]
+AMARILLO_ARQUERO = [250, 250, 40]
+NEGRO_ARBITRO = [20, 20, 20]
+PISO_VERDE = [30, 120, 60]
+
+
+def _colores(rng, base, n, ruido=8):
+    return [rng.normal(base, ruido) for _ in range(n)]
+
+
+def _partido_tipico(semilla=0):
+    rng = np.random.default_rng(semilla)
+    return (
+        _colores(rng, ROJO, 300)
+        + _colores(rng, AZUL, 300)
+        + _colores(rng, AMARILLO_ARQUERO, 40)
+        + _colores(rng, NEGRO_ARBITRO, 30)
+    )
+
+
+def test_separa_los_dos_equipos_de_campo():
+    clas = entrenar_clasificador(_partido_tipico())
+    assert clas.confiable
+    equipo_rojo = clas.clasificar(np.array(ROJO))
+    equipo_azul = clas.clasificar(np.array(AZUL))
+    assert {equipo_rojo, equipo_azul} == {PROPIO, RIVAL}
+
+
+def test_arqueros_y_arbitro_no_ensucian_los_equipos():
+    """
+    Visten distinto, forman sus propios grupos y quedan afuera. Es a propósito:
+    si el arquero cayera dentro del grupo de su equipo, el conteo de jugadores
+    de campo daría mal y el arquero rival aparecería como propio.
+    """
+    clas = entrenar_clasificador(_partido_tipico())
+    assert clas.clasificar(np.array(AMARILLO_ARQUERO)) == DESCONOCIDO
+    assert clas.clasificar(np.array(NEGRO_ARBITRO)) == DESCONOCIDO
+
+
+def test_un_click_del_operador_da_vuelta_los_grupos():
+    """El único dato de identidad que la Fase 1 le pide a un humano."""
+    clas = entrenar_clasificador(_partido_tipico())
+    clas = asignar_propio(clas, np.array(ROJO))
+    assert clas.clasificar(np.array(ROJO)) == PROPIO
+    assert clas.clasificar(np.array(AZUL)) == RIVAL
+
+    clas = asignar_propio(clas, np.array(AZUL))
+    assert clas.clasificar(np.array(AZUL)) == PROPIO
+    assert clas.clasificar(np.array(ROJO)) == RIVAL
+
+
+def test_asignar_propio_dos_veces_seguidas_no_cambia_nada():
+    clas = entrenar_clasificador(_partido_tipico())
+    una = asignar_propio(clas, np.array(ROJO))
+    dos = asignar_propio(una, np.array(ROJO))
+    assert una.equipo_por_grupo == dos.equipo_por_grupo
+
+
+def test_avisa_cuando_los_dos_equipos_visten_parecido():
+    """
+    Dos juegos de camisetas casi iguales. La clasificación pasa a ser una
+    moneda al aire, y eso hay que DECIRLO en vez de devolver números con cara
+    de dato. Se arregla en la cancha eligiendo las camisetas, no en el código.
+    """
+    rng = np.random.default_rng(1)
+    colores = (
+        _colores(rng, [200, 40, 40], 300)
+        + _colores(rng, [215, 55, 50], 300)     # casi el mismo rojo
+        + _colores(rng, AMARILLO_ARQUERO, 40)
+        + _colores(rng, NEGRO_ARBITRO, 30)
+    )
+    clas = entrenar_clasificador(colores)
+    assert not clas.confiable
+    assert clas.separacion < clas.SEPARACION_MINIMA
+
+
+def test_color_de_torso_ignora_cabeza_short_y_piso():
+    """
+    El recorte se queda con la franja del pecho. Si tomara el recuadro entero,
+    el piso que se ve entre las piernas y a los costados correría el color
+    hacia el verde y arruinaría el agrupamiento.
+    """
+    alto, ancho = 100, 40
+    recorte = np.zeros((alto, ancho, 3), dtype=np.uint8)
+    recorte[:, :] = PISO_VERDE          # todo el fondo es piso
+    recorte[15:55, 10:30] = ROJO        # la camiseta, donde el método mira
+    color = color_de_torso(recorte)
+    assert color is not None
+    assert np.allclose(color, ROJO, atol=1)
+
+
+def test_la_mediana_aguanta_el_piso_colandose_por_un_costado():
+    """
+    Con promedio, una camiseta roja con un tercio de piso verde encima da un
+    color que no existe en la escena. Con mediana gana el que más manda.
+    """
+    recorte = np.zeros((100, 40, 3), dtype=np.uint8)
+    recorte[:, :] = ROJO
+    recorte[15:55, 22:30] = PISO_VERDE   # 40% de la franja del torso es piso
+    color = color_de_torso(recorte)
+    assert np.allclose(color, ROJO, atol=1)
+
+
+def test_color_de_torso_devuelve_none_con_recortes_basura():
+    assert color_de_torso(None) is None
+    assert color_de_torso(np.zeros((0, 0, 3), dtype=np.uint8)) is None
+    assert color_de_torso(np.zeros((2, 2, 3), dtype=np.uint8)) is None   # muy chico
+    assert color_de_torso(np.zeros((50, 50), dtype=np.uint8)) is None    # sin canales
+
+
+def test_clasificar_sin_color_no_adivina():
+    clas = entrenar_clasificador(_partido_tipico())
+    assert clas.clasificar(None) == DESCONOCIDO
+
+
+def test_hacen_falta_colores_suficientes():
+    with pytest.raises(ValueError, match="al menos"):
+        entrenar_clasificador([np.array(ROJO), np.array(AZUL)])
+
+
+def test_el_agrupamiento_es_reproducible():
+    """Mismo video, mismos grupos. Si no, dos corridas dan estadísticas distintas."""
+    a = entrenar_clasificador(_partido_tipico(), semilla=42)
+    b = entrenar_clasificador(_partido_tipico(), semilla=42)
+    assert a.separacion == pytest.approx(b.separacion)
+    for color in (ROJO, AZUL, AMARILLO_ARQUERO):
+        assert a.clasificar(np.array(color)) == b.clasificar(np.array(color))

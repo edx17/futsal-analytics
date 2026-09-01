@@ -1,0 +1,14 @@
+# Fase 1. Las versiones van fijadas: un cambio de versión del detector cambia
+# los números, y sin fijar no se puede comparar un partido contra otro.
+numpy==2.1.3
+opencv-python-headless==4.10.0.84
+supervision==0.25.1          # MIT: seguimiento ByteTrack y utilidades
+rfdetr==1.1.0                # Apache 2.0: detector por defecto
+
+# Solo para desarrollo
+pytest==8.3.4
+
+# NO se instala por defecto: Ultralytics YOLO es AGPL-3.0 y obliga a abrir el
+# código del servicio o a pagar licencia comercial. Está soportado en
+# deteccion.py para comparar precisión, no para producción.
+# ultralytics==8.3.40
