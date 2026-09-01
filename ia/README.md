@@ -74,20 +74,21 @@ Honestidad sobre qué está probado de verdad:
 | Módulo | Estado |
 |---|---|
 | `cancha.py` | **Verificado.** 9 tests. La grilla Z1–Z4 × I/C/D se compara contra el `zonaDe()` real de `src/offline/modelo.js` corriéndolo con node sobre una grilla densa |
-| `geometria.py` | **Verificado.** 15 tests contra una cámara sintética en un corner, de la que conocemos la respuesta correcta |
+| `geometria.py` | **Verificado.** 17 tests contra una cámara sintética en un corner, de la que conocemos la respuesta correcta |
 | `equipos.py` | **Verificado.** 12 tests de clustering de color |
 | `salida.py` | **Verificado.** 13 tests; los campos se comparan contra `crearSnapshot()` y `crearRecorrido()` reales de modelo.js |
-| `deteccion.py` | **Sin ejecutar.** Necesita GPU y los pesos del modelo |
+| `preproceso.py` | **Verificado.** 14 tests del giro y recorte determinista |
+| `deteccion.py` | **Parcial.** El partido en mosaicos y la fusión están verificados (11 tests); el detector en sí necesita GPU y los pesos |
 | `seguimiento.py` | **Sin ejecutar.** Necesita `supervision` instalado |
 | `lente.py` | **Sin ejecutar.** Necesita OpenCV y un video real |
 | `pipeline.py` | **Sin ejecutar de punta a punta.** La orquestación no se probó con un video |
 | `overlay.py` | **Sin ejecutar.** |
 
-Los cuatro verificados son el núcleo que decide si los números salen bien o
-espejados. Los otros cinco se prueban recién con el primer partido filmado.
+Los verificados son el núcleo que decide si los números salen bien o
+espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-cd ia && python -m pytest tests/ -q     # 49 tests
+cd ia && python -m pytest tests/ -q     # 77 tests
 ```
 
 ## Decisiones que están en el código y conviene no olvidar
@@ -104,6 +105,15 @@ cd ia && python -m pytest tests/ -q     # 49 tests
    frame.
 5. **El pipeline escribe un JSON, no toca Supabase.** Un análisis sin revisar no
    debería poder ensuciar la tabla de eventos del club.
-6. **Detector RF-DETR (Apache 2.0) por defecto.** Ultralytics YOLO es AGPL-3.0 y
+6. **El giro y el recorte son un dato, no un paso manual.** Viajan en un JSON
+   junto a la calibración y se aplican solos. Si el recorte saliera tres
+   píxeles distinto un día, la homografía seguiría calculando sin fallar y
+   todas las posiciones quedarían corridas para siempre.
+7. **Primero se endereza la lente, después se encuadra.** Al revés no funciona:
+   la corrección depende de dónde está el centro óptico del sensor, y recortar
+   lo corre.
+8. **El informe de precisión se calcula por período.** Con un arco cerca y otro
+   lejos, la misma celda cambia de calidad hasta 8x entre tiempos.
+9. **Detector RF-DETR (Apache 2.0) por defecto.** Ultralytics YOLO es AGPL-3.0 y
    está detrás de un aviso: si esto se comercializa, obliga a abrir el código
    del servicio o a pagar licencia.

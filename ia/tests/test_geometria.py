@@ -230,3 +230,39 @@ def test_lo_que_esta_sobre_el_horizonte_queda_afuera():
     for v in range(0, 400, 20):
         x_m, y_m = h.a_cancha(float(ANCHO_PX / 2), float(v))
         assert h.dentro_de_cancha(x_m, y_m) is False
+
+
+def test_la_misma_celda_cambia_de_calidad_entre_tiempos():
+    """
+    Z1-Z4 se cuentan desde el arco PROPIO y los equipos cambian de lado en el
+    entretiempo. Con un arco cerca de la cámara y el otro lejos, Z4 del primer
+    tiempo y Z4 del segundo son extremos físicos distintos, con calidades de
+    dato distintas. Si el informe no toma el flag, miente en uno de los dos.
+    """
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    derecho = h.reporte_precision(3.0, invertida=False)
+    espejado = h.reporte_precision(3.0, invertida=True)
+
+    assert derecho["peor_celda"] == "Z4-D"
+    assert espejado["peor_celda"] == "Z1-I"     # la de siempre, vista al revés
+    assert derecho["celdas"]["Z4-D"]["error_m"] == pytest.approx(
+        espejado["celdas"]["Z1-I"]["error_m"]
+    )
+    assert derecho["invertida"] is False and espejado["invertida"] is True
+
+
+def test_el_informe_por_periodo_expone_la_asimetria():
+    """
+    Sumar Z4 del PT con Z4 del ST mezcla un dato de centímetros con uno de
+    medio metro. El informe existe para que eso se vea antes de sacar
+    conclusiones, no después.
+    """
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    rep = h.reporte_por_periodo(3.0, invertida_pt=False)
+
+    assert rep["PT"]["invertida"] is False
+    assert rep["ST"]["invertida"] is True
+    assert rep["asimetria_maxima"] > 3.0, "la asimetría del corner tiene que saltar"
+    z4d = rep["comparacion"]["Z4-D"]
+    assert z4d["error_pt_m"] > z4d["error_st_m"]
+    assert z4d["veces_peor"] == pytest.approx(z4d["error_pt_m"] / z4d["error_st_m"], abs=0.1)

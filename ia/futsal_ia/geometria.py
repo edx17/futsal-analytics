@@ -182,7 +182,8 @@ class Homografia:
             "m_por_px_peor": float(1.0 / sigmas[1]) if sigmas[1] > 1e-9 else float("inf"),
         }
 
-    def reporte_precision(self, error_deteccion_px: float = 3.0) -> dict:
+    def reporte_precision(self, error_deteccion_px: float = 3.0,
+                          invertida: bool = False) -> dict:
         """
         Precisión esperable celda por celda de la grilla Z1-Z4 x I/C/D.
 
@@ -190,6 +191,13 @@ class Homografia:
         tener varias veces menos píxeles por metro que el cercano. Este informe
         lo pone en números en vez de dejarlo como sorpresa, y es lo que después
         permite decir "el heatmap en Z4-D tiene medio metro de incertidumbre".
+
+        `invertida` NO es un detalle: las zonas Z1-Z4 se cuentan desde el arco
+        PROPIO, y los equipos cambian de lado en el entretiempo. O sea que Z4
+        del primer tiempo y Z4 del segundo son extremos FÍSICOS distintos de la
+        cancha. Con un arco cerca de la cámara y el otro lejos, esas dos Z4
+        tienen calidades de dato completamente distintas, y el informe tiene
+        que calcularse con el mismo flag que se usa para analizar el período.
         """
         celdas = {}
         for celda in CELDAS:
@@ -197,6 +205,8 @@ class Homografia:
             ci = ("I", "C", "D").index(celda.carril)
             x_m = (zi + 0.5) * (LARGO_CANCHA_M / 4.0)
             y_m = (ci + 0.5) * (ANCHO_CANCHA_M / 3.0)
+            if invertida:
+                x_m, y_m = LARGO_CANCHA_M - x_m, ANCHO_CANCHA_M - y_m
             esc = self.escala_local(x_m, y_m)
             if esc is None:
                 celdas[celda.etiqueta] = {"error_m": None, "px_por_m": None}
@@ -209,11 +219,44 @@ class Homografia:
         return {
             "error_rms_calibracion_m": round(self.error_rms_m, 3),
             "error_deteccion_px_asumido": error_deteccion_px,
+            "invertida": invertida,
             "celdas": celdas,
             "peor_celda": max(celdas, key=lambda k: celdas[k]["error_m"] or -1) if validas else None,
             "mejor_celda": min(celdas, key=lambda k: celdas[k]["error_m"] if celdas[k]["error_m"] is not None else 1e9) if validas else None,
             "error_max_m": round(max(validas), 3) if validas else None,
             "error_min_m": round(min(validas), 3) if validas else None,
+        }
+
+    def reporte_por_periodo(self, error_deteccion_px: float = 3.0,
+                            invertida_pt: bool = False) -> dict:
+        """
+        Los dos informes juntos, que es la única forma de ver la asimetría.
+
+        Con un arco cerca de la cámara y el otro lejos, la misma celda de la
+        app cambia de calidad entre tiempos. Sumar Z4 del PT con Z4 del ST es
+        mezclar un dato de centímetros con uno de medio metro. Este informe
+        existe para que eso se vea antes de sacar conclusiones, no después.
+        """
+        pt = self.reporte_precision(error_deteccion_px, invertida=invertida_pt)
+        st = self.reporte_precision(error_deteccion_px, invertida=not invertida_pt)
+        comparacion = {}
+        for etiqueta in pt["celdas"]:
+            e_pt = pt["celdas"][etiqueta]["error_m"]
+            e_st = st["celdas"][etiqueta]["error_m"]
+            if e_pt is None or e_st is None or min(e_pt, e_st) <= 0:
+                continue
+            comparacion[etiqueta] = {
+                "error_pt_m": e_pt,
+                "error_st_m": e_st,
+                "veces_peor": round(max(e_pt, e_st) / min(e_pt, e_st), 1),
+            }
+        peor = max(comparacion, key=lambda k: comparacion[k]["veces_peor"]) if comparacion else None
+        return {
+            "PT": pt,
+            "ST": st,
+            "comparacion": comparacion,
+            "celda_mas_asimetrica": peor,
+            "asimetria_maxima": comparacion[peor]["veces_peor"] if peor else None,
         }
 
     def a_dict(self) -> dict:

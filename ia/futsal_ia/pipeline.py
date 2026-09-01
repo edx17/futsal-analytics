@@ -4,13 +4,20 @@ Orquestación de la Fase 1: video -> posiciones sobre la cancha.
 El orden importa y cada paso depende del anterior:
 
     1. leer el frame
-    2. enderezar la lente          (si no, la homografía miente en los bordes)
-    3. detectar personas
-    4. seguirlas entre frames
-    5. proyectar los PIES al plano de la cancha
-    6. tirar lo que cae fuera      (tribuna, bancos, mesa de control)
-    7. clasificar por color        (dos pasadas: una junta colores, otra asigna)
-    8. escribir snapshots y recorridos
+    2. enderezar la lente          (sobre el frame COMPLETO: la distorsión es
+                                    una propiedad del sensor entero, y recortar
+                                    antes corre el centro óptico y arruina la
+                                    corrección)
+    3. girar y recortar            (el encuadre, siempre el mismo)
+    4. detectar personas
+    5. seguirlas entre frames
+    6. proyectar los PIES al plano de la cancha
+    7. tirar lo que cae fuera      (tribuna, bancos, mesa de control)
+    8. clasificar por color        (dos pasadas: una junta colores, otra asigna)
+    9. escribir snapshots y recorridos
+
+La calibración se hace sobre el frame YA enderezado y encuadrado, así que el
+encuadre viaja junto a la calibración y se aplica idéntico en cada análisis.
 
 Son dos pasadas sobre el video porque el clasificador de equipos necesita ver
 el partido entero antes de decidir los grupos. La primera pasada es barata
@@ -34,6 +41,7 @@ from .equipos import (
     entrenar_clasificador,
 )
 from .geometria import Homografia
+from .preproceso import Encuadre
 from .salida import Ficha, Track, crear_snapshot
 
 
@@ -96,6 +104,21 @@ def _abrir(ruta):
     return cap, cv2
 
 
+def _preparar(frame, enderezador, encuadre):
+    """
+    Enderezar y después encuadrar, siempre en ese orden.
+
+    Al revés no funciona: la corrección de lente depende de dónde está el
+    centro óptico del sensor, y recortar lo corre. Corregir sobre un frame ya
+    recortado deja una imagen que parece derecha y no lo está.
+    """
+    if enderezador is not None:
+        frame = enderezador(frame)
+    if encuadre is not None:
+        frame = encuadre.aplicar(frame)
+    return frame
+
+
 def _recorte(frame, bbox):
     x1, y1, x2, y2 = (int(round(v)) for v in bbox)
     alto, ancho = frame.shape[:2]
@@ -107,7 +130,8 @@ def _recorte(frame, bbox):
 
 
 def muestrear_colores(ruta_video, detector, homografia: Homografia, *,
-                      enderezador=None, muestras: int = 300,
+                      enderezador=None, encuadre: Encuadre | None = None,
+                      muestras: int = 300,
                       params: Parametros = PARAMETROS) -> list[np.ndarray]:
     """
     Primera pasada: junta colores de torso repartidos por todo el partido.
@@ -125,8 +149,7 @@ def muestrear_colores(ruta_video, detector, homografia: Homografia, *,
             ok, frame = cap.read()
             if not ok:
                 continue
-            if enderezador is not None:
-                frame = enderezador(frame)
+            frame = _preparar(frame, enderezador, encuadre)
             for det in detector.detectar(frame):
                 x_m, y_m = homografia.a_cancha(*det.pies)
                 if not homografia.dentro_de_cancha(x_m, y_m, params.margen_cancha_m):
@@ -151,6 +174,7 @@ def analizar(
     detector=None,
     seguidor=None,
     enderezador=None,
+    encuadre: Encuadre | None = None,
     t_inicio_ms: int = 0,
     params: Parametros = PARAMETROS,
     al_avanzar=None,
@@ -175,7 +199,9 @@ def analizar(
     paso = max(1, int(round(fps_video / params.fps_analisis)))
 
     res = ResultadoAnalisis(clasificador=clasificador)
-    res.reporte_precision = homografia.reporte_precision(params.error_deteccion_px)
+    res.reporte_precision = homografia.reporte_precision(
+        params.error_deteccion_px, invertida=invertida
+    )
     if not clasificador.confiable:
         res.avisos.append(
             f"Los dos equipos visten demasiado parecido (separación de color "
@@ -206,8 +232,7 @@ def analizar(
             t_ms = t_inicio_ms + (res.progreso.frames_leidos - 1) / fps_video * 1000.0
             if t_ms < 0:
                 continue
-            if enderezador is not None:
-                frame = enderezador(frame)
+            frame = _preparar(frame, enderezador, encuadre)
 
             detecciones = detector.detectar(frame)
             res.progreso.detecciones += len(detecciones)

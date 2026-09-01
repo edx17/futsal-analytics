@@ -90,6 +90,43 @@ calculadas con `etiquetaZona()`, igual que los que carga `TomaDatosOffline`.
 
 ---
 
+## La misma zona no vale lo mismo en los dos tiempos
+
+Consecuencia directa del setup: **un arco queda cerca de la cámara y el otro
+lejos**, y los equipos cambian de lado en el entretiempo.
+
+Como las zonas Z1–Z4 se cuentan desde el arco propio, Z4 del primer tiempo y
+Z4 del segundo son **extremos físicos distintos de la cancha**. Medido sobre
+una cámara simulada en el corner:
+
+| Celda | error en PT | error en ST | relación |
+|---|---:|---:|---:|
+| Z1-I | 0,06 m | 0,45 m | **7,9x** |
+| Z2-C | 0,16 m | 0,26 m | 1,7x |
+| Z4-D | 0,45 m | 0,06 m | **7,9x** |
+
+Reproducible con `python -m futsal_ia.cli precision --calibracion cal.json`.
+
+**Regla que sale de esto: sumar una celda entre períodos sin aclararlo es
+mezclar centímetros con medio metro.** Las celdas del centro (Z2-D, Z3-I)
+casi no cambian; las de los extremos cambian por ocho.
+
+Qué se hace con esto, en orden:
+
+1. El informe de precisión se calcula **por período**, con el mismo flag
+   `invertida` que se usó para analizar. Ya está implementado.
+2. Todo agregado de temporada por celda tiene que llevar de qué mitad de la
+   cancha viene cada parte, o directamente reportarse por período.
+3. Para comparar entre partidos, las celdas del centro son las confiables.
+   Las de los extremos hay que leerlas sabiendo de qué tiempo salen.
+
+Esto **no invalida ninguna métrica**. Los conteos (pases, remates,
+recuperaciones) no dependen de esa precisión: para saber que hubo una
+recuperación en Z4 alcanza con medio metro de sombra. Lo que sí se ve afectado
+son las distancias finas y los mapas de calor de alta resolución.
+
+---
+
 ## Parámetros ajustables
 
 Todos los umbrales viven en un solo archivo de configuración, versionado.

@@ -108,3 +108,98 @@ def crear_detector(nombre: str = "rfdetr", conf_minima: float = 0.35) -> Detecto
     if nombre == "yolo":
         return DetectorYOLO(conf_minima=conf_minima)
     raise ValueError(f"Detector desconocido: {nombre!r}. Opciones: 'rfdetr', 'yolo'.")
+
+
+# ── Detección en mosaicos ──────────────────────────────────────────────────
+#
+# Los detectores achican la imagen a un tamaño fijo antes de mirarla. Un
+# jugador en el fondo de la cancha, que ya ocupa pocos píxeles en el original,
+# después de ese achique queda en nada y el detector no lo ve.
+#
+# La salida es partir el frame en pedazos que se solapan, correr el detector
+# en cada uno a resolución completa, y juntar los resultados. Un jugador chico
+# del fondo pasa a ser un jugador de tamaño normal dentro de su pedazo.
+#
+# Cuesta plata: N pedazos son N inferencias. Sobre un frame ya recortado a la
+# cancha suele no hacer falta para jugadores, porque el recorte solo ya
+# resolvió el problema. Donde sí va a hacer falta es en la Fase 2, con la
+# pelota, que es el objeto chico de verdad.
+
+def generar_mosaicos(ancho: int, alto: int, tam: int = 1280, solape: float = 0.2):
+    """
+    Pedazos cuadrados que cubren toda la imagen, solapados.
+
+    El solape no es opcional: sin él, un jugador que cae justo en la costura
+    queda partido al medio y ninguno de los dos pedazos lo detecta entero.
+    Con 20% de solape, cualquier jugador entra completo en al menos un pedazo.
+    """
+    if ancho <= 0 or alto <= 0:
+        raise ValueError(f"Dimensiones inválidas: {ancho}x{alto}")
+    if not 0 <= solape < 1:
+        raise ValueError(f"El solape va entre 0 y 1, llegó {solape}")
+
+    paso = max(1, int(tam * (1 - solape)))
+    xs = list(range(0, max(1, ancho - tam + 1), paso))
+    ys = list(range(0, max(1, alto - tam + 1), paso))
+    # El último pedazo se pega al borde en vez de sobresalir: si sobresaliera,
+    # habría que rellenar con negro y el detector vería un borde que no existe.
+    if xs[-1] + tam < ancho:
+        xs.append(max(0, ancho - tam))
+    if ys[-1] + tam < alto:
+        ys.append(max(0, alto - tam))
+
+    return [(x, y, min(tam, ancho - x), min(tam, alto - y)) for y in ys for x in xs]
+
+
+def _iou(a, b) -> float:
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    ix1, iy1 = max(ax1, bx1), max(ay1, by1)
+    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+    if ix2 <= ix1 or iy2 <= iy1:
+        return 0.0
+    inter = (ix2 - ix1) * (iy2 - iy1)
+    union = (ax2 - ax1) * (ay2 - ay1) + (bx2 - bx1) * (by2 - by1) - inter
+    return inter / union if union > 0 else 0.0
+
+
+def fusionar(detecciones: list[Deteccion], umbral_iou: float = 0.5) -> list[Deteccion]:
+    """
+    Supresión de no-máximos: un jugador que cae en la zona de solape aparece
+    dos veces, una por cada pedazo. Se queda la de mayor confianza.
+
+    Sin esto, cada jugador de la costura contaría doble y el conteo de
+    jugadores en cancha daría cualquier cosa.
+    """
+    quedan = sorted(detecciones, key=lambda d: d.confianza, reverse=True)
+    elegidas: list[Deteccion] = []
+    while quedan:
+        mejor = quedan.pop(0)
+        elegidas.append(mejor)
+        quedan = [d for d in quedan if _iou(mejor.bbox, d.bbox) < umbral_iou]
+    return elegidas
+
+
+class DetectorEnMosaicos:
+    """Envuelve cualquier detector y lo corre por pedazos."""
+
+    def __init__(self, base: Detector, tam: int = 1280, solape: float = 0.2,
+                 umbral_iou: float = 0.5):
+        self.base = base
+        self.tam = tam
+        self.solape = solape
+        self.umbral_iou = umbral_iou
+
+    def detectar(self, frame) -> list[Deteccion]:
+        alto, ancho = frame.shape[:2]
+        mosaicos = generar_mosaicos(ancho, alto, self.tam, self.solape)
+        if len(mosaicos) <= 1:
+            return self.base.detectar(frame)
+
+        todas: list[Deteccion] = []
+        for x, y, w, h in mosaicos:
+            for d in self.base.detectar(frame[y:y + h, x:x + w]):
+                x1, y1, x2, y2 = d.bbox
+                todas.append(Deteccion(bbox=(x1 + x, y1 + y, x2 + x, y2 + y),
+                                       confianza=d.confianza))
+        return fusionar(todas, self.umbral_iou)

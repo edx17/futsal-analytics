@@ -10,6 +10,7 @@ from pathlib import Path
 from .cancha import PUNTOS_REFERENCIA
 from .config import PARAMETROS
 from .geometria import ErrorCalibracion, Homografia, calibrar
+from .preproceso import Encuadre
 
 
 def _cmd_puntos(_):
@@ -57,7 +58,27 @@ def _imprimir_precision(rep):
 
 def _cmd_precision(args):
     h = Homografia.de_dict(json.loads(Path(args.calibracion).read_text()))
-    _imprimir_precision(h.reporte_precision(args.error_px))
+    rep = h.reporte_por_periodo(args.error_px, invertida_pt=args.invertida_pt)
+
+    for periodo in ("PT", "ST"):
+        print(f"\n{'=' * 46}\n  {periodo}\n{'=' * 46}")
+        _imprimir_precision(rep[periodo])
+
+    if rep["asimetria_maxima"] and rep["asimetria_maxima"] > 2:
+        print(f"\n{'=' * 46}")
+        print("  LA MISMA CELDA CAMBIA DE CALIDAD ENTRE TIEMPOS")
+        print(f"{'=' * 46}\n")
+        print("Las zonas se cuentan desde el arco propio y los equipos cambian")
+        print("de lado en el entretiempo, así que Z4 del PT y Z4 del ST son")
+        print("extremos FÍSICOS distintos de la cancha.\n")
+        print(f"  {'celda':<8} {'PT':>9} {'ST':>9} {'ratio':>7}")
+        for etiqueta, d in rep["comparacion"].items():
+            print(f"  {etiqueta:<8} {d['error_pt_m']:>7.2f} m {d['error_st_m']:>7.2f} m "
+                  f"{d['veces_peor']:>6.1f}x")
+        print(f"\n  Peor caso: {rep['celda_mas_asimetrica']}, "
+              f"{rep['asimetria_maxima']}x entre tiempos.")
+        print("  NO sumes esa celda entre períodos sin aclarar de dónde viene")
+        print("  cada mitad: estarías mezclando centímetros con medio metro.")
     return 0
 
 
@@ -70,6 +91,11 @@ def _cmd_analizar(args):
     h = Homografia.de_dict(json.loads(Path(args.calibracion).read_text()))
     detector = crear_detector(args.detector, conf_minima=PARAMETROS.conf_minima_persona)
 
+    encuadre = Encuadre.leer(args.encuadre) if args.encuadre else None
+    if encuadre:
+        print(f"Encuadre: giro {encuadre.rotacion_grados}°, salida "
+              f"{encuadre.resolucion_salida[0]}x{encuadre.resolucion_salida[1]}")
+
     enderezador = None
     if args.lente:
         enderezador = Enderezador(CalibracionLente.leer(args.lente))
@@ -80,7 +106,8 @@ def _cmd_analizar(args):
               "tablero de ajedrez mejora la precisión en los bordes del cuadro.")
 
     print("Pasada 1/2: juntando colores de camiseta...")
-    colores = muestrear_colores(args.video, detector, h, enderezador=enderezador)
+    colores = muestrear_colores(args.video, detector, h, enderezador=enderezador,
+                                encuadre=encuadre)
     clas = entrenar_clasificador(colores)
     print(f"  {len(colores)} torsos, separación de color {clas.separacion:.0f} "
           f"({'confiable' if clas.confiable else 'NO CONFIABLE'})")
@@ -90,7 +117,7 @@ def _cmd_analizar(args):
         args.video, h, clas,
         club_id=args.club, id_partido=args.partido, periodo=args.periodo,
         invertida=args.invertida, detector=detector, enderezador=enderezador,
-        t_inicio_ms=args.inicio_ms,
+        encuadre=encuadre, t_inicio_ms=args.inicio_ms,
         al_avanzar=lambda p: print(f"  {p.frames_analizados} frames, "
                                    f"{len(res.tracks)} tracks", end="\r"),
     )
@@ -123,6 +150,8 @@ def main(argv=None):
     p = sub.add_parser("precision", help="informe de precisión de una calibración")
     p.add_argument("--calibracion", required=True)
     p.add_argument("--error-px", type=float, default=PARAMETROS.error_deteccion_px)
+    p.add_argument("--invertida-pt", action="store_true",
+                   help="el equipo propio ataca hacia la izquierda en el primer tiempo")
     p.set_defaults(func=_cmd_precision)
 
     a = sub.add_parser("analizar", help="procesa un video y escribe posiciones")
@@ -140,6 +169,7 @@ def main(argv=None):
     a.add_argument("--lente", help="JSON de calibración de lente")
     a.add_argument("--lente-aproximada", nargs=2, type=int, metavar=("ANCHO", "ALTO"),
                    help="usa coeficientes aproximados de GoPro Wide")
+    a.add_argument("--encuadre", help="JSON del giro y recorte (va junto a la calibración)")
     a.add_argument("--overlay", help="ruta del video de auditoría a generar")
     a.set_defaults(func=_cmd_analizar)
 
