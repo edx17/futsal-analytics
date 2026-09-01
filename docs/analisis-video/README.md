@@ -11,7 +11,7 @@ partido. La IA hace el trabajo tedioso; un operador corrige lo dudoso.
 | Doc | Qué define | Estado |
 |---|---|---|
 | [`00-diccionario-metricas.md`](00-diccionario-metricas.md) | Qué es exactamente cada métrica, quién la produce (IA / asistida / manual) y con qué precisión se acepta | v0.2 — **decisiones del CT cerradas** |
-| [`01-protocolo-filmacion.md`](01-protocolo-filmacion.md) | Cómo se graba el partido para que el pipeline funcione | Borrador — **pendiente de prueba en cancha** |
+| [`01-protocolo-filmacion.md`](01-protocolo-filmacion.md) | Cómo se graba el partido para que el pipeline funcione. Incluye los ajustes de la GoPro Hero 13 en corner | v0.2 — **pendiente de prueba en cancha** |
 
 ## Estado del proyecto
 
@@ -23,6 +23,10 @@ partido. La IA hace el trabajo tedioso; un operador corrige lo dudoso.
   - [ ] Set de control: 5 partidos codificados a mano
 - **Fase 1 — Posiciones 2D**: detección, tracking, equipo, homografía, overlay
   de auditoría. Entrega heatmaps y mapa de ocupación.
+  - [x] Código en [`ia/`](../../ia/README.md). 49 tests
+  - [x] Núcleo geométrico y de formato verificado contra `modelo.js` con node
+  - [ ] Corrida completa sobre un partido real (necesita el primer video)
+  - [ ] Calibración de lente con tablero de ajedrez
 - **Fase 2 — Pelota**: posesión y pases. El bloque más difícil y el que más
   valor aporta. Si esto no funciona con el material del club, el alcance del
   proyecto se recorta acá.

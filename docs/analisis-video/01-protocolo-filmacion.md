@@ -1,6 +1,6 @@
 # Protocolo de filmación
 
-> **Versión 0.1 — BORRADOR.**
+> **Versión 0.2.** Incorpora el setup elegido: GoPro Hero 13 fija en un corner, bien alta.
 
 ## Por qué esto va antes que el código
 
@@ -84,6 +84,100 @@ AAAA-MM-DD_categoria_vs-RIVAL_ST.mp4
 ```
 
 Un archivo por período. Ejemplo: `2026-09-14_primera_vs-SanLorenzo_PT.mp4`.
+
+---
+
+## El setup elegido: GoPro Hero 13 en un corner, alta
+
+Decisión tomada. La tabla de arriba pide el centro de la lateral porque es lo
+mejor en abstracto; el corner tiene un costo concreto, medible, y acá está
+medido en vez de quedar como advertencia vaga. **La altura es lo que salva el
+setup**, y ese es justamente el punto fuerte de esta decisión.
+
+### Lo que cuesta el corner, en números
+
+Corriendo la calibración de la Fase 1 sobre una cámara simulada en un corner a
+12 m de altura, 4K, con 3 px de error de detección:
+
+| Celda | píxeles por metro | incertidumbre |
+|---|---:|---:|
+| Z1-I (rincón cercano) | 52,6 | **6 cm** |
+| Z2-C | 19,0 | 16 cm |
+| Z3-C | 11,5 | 26 cm |
+| Z4-C | 7,6 | 40 cm |
+| Z4-D (rincón lejano) | 6,7 | **45 cm** |
+
+Reproducible con `python -m futsal_ia.cli precision --calibracion tu_cal.json`.
+
+Ocho veces peor en la esquina lejana que en la cercana. Nada de esto invalida
+el proyecto —45 cm sigue siendo utilísimo para heatmaps, ocupación y zonas—
+pero significa dos cosas: que un dato de Z4-D no es del mismo material que uno
+de Z1-I, y que el pipeline tiene que decirlo en vez de dejarlo pasar. Por eso
+el informe de precisión sale en cada análisis.
+
+**Cómo se mejora, en orden de impacto**: subir la cámara, correrla hacia atrás
+alejándola de la esquina, y recién después cualquier cosa del software.
+Simulado, pasar de 8 m a 12 m de altura y de 2 m a 5 m de retroceso mejora
+notablemente el rincón lejano. Nada de lo que se escriba en Python compite con
+eso.
+
+### Linear NO alcanza desde un corner
+
+Este es el hallazgo que más cambia la configuración de la cámara.
+
+Para que la cancha entera entre en cuadro desde un corner hacen falta
+**unos 115–125 grados de campo horizontal**, según qué tan alta y qué tan
+atrás esté. El modo **Linear de la GoPro ronda los 90–95 grados: no alcanza.**
+Desde el centro de la lateral sí alcanzaría; desde un corner, no.
+
+Consecuencia directa: hay que filmar en **Wide**, que distorsiona, y corregir
+la distorsión en el pipeline antes de calibrar. Deja de ser opcional.
+
+La homografía asume que las líneas rectas se ven rectas. Calibrar sobre una
+imagen curvada da un resultado que anda bien en el centro y cada vez peor hacia
+los bordes — es decir, exactamente donde está el rincón lejano, que ya es el
+peor lugar de la imagen. Los dos errores se suman.
+
+`ia/futsal_ia/lente.py` trae coeficientes aproximados para arrancar y
+`calibrar_con_tablero()` para hacerlo bien. La calibración real es filmar un
+tablero de ajedrez impreso desde 20–30 ángulos, ocupando las esquinas del
+cuadro. Una tarde, una sola vez por cámara y por modo.
+
+### Ajustes de la GoPro
+
+Verificá los nombres exactos en el menú de tu unidad, pero el criterio es este:
+
+| Ajuste | Valor | Por qué |
+|---|---|---|
+| Lente digital | **Wide** | Linear no cubre la cancha desde el corner |
+| Horizon Lock / nivelación | **APAGADO** | Rota y recorta el cuadro sobre la marcha. Una homografía fija deja de valer si el encuadre se mueve un grado |
+| HyperSmooth / estabilización | **APAGADO** | Mismo problema. Está en un trípode, no hace falta |
+| Resolución | **4K**, no 5.3K | 5,3K calienta más y no aporta: el cuello de botella es la lente, no los píxeles |
+| Framerate | 60 fps | Ya pensando en la Fase 2, que necesita la pelota |
+| Obturador | **≥ 1/500** (ProTune, manual) | El motion blur es el enemigo número uno de la detección de pelota |
+| ISO | Fijo, tope bajo | Que no lo mueva la cámara sola |
+| Balance de blancos | **Manual, fijo** | Si cambia, los colores se mueven y el clustering de equipos se mezcla |
+| Bitrate | **High** | La compresión agresiva destruye la pelota antes que a los jugadores |
+
+Los tres apagados —Horizon Lock, estabilización, automatismos— son los que
+silenciosamente arruinan un partido entero.
+
+### Dos trampas prácticas de la GoPro
+
+1. **Parte los archivos.** Cuando la grabación pasa cierto tamaño la GoPro
+   corta y sigue en un archivo nuevo. Hay que **concatenarlos antes de
+   analizar**, o los tiempos del segundo pedazo salen corridos y todo el
+   cruce con el reloj de `TomaDatos` queda mal. Con `ffmpeg`:
+
+   ```bash
+   printf "file '%s'\n" GX01*.MP4 > lista.txt
+   ffmpeg -f concat -safe 0 -i lista.txt -c copy periodo_PT.mp4
+   ```
+
+2. **Se calienta.** En resoluciones altas puede cortar sola antes de que
+   termine el período. **Probá una grabación completa de 25 minutos con la
+   alimentación conectada antes del primer partido en serio**, no el día del
+   partido.
 
 ---
 
