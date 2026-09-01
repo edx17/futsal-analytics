@@ -1,8 +1,8 @@
 # Diccionario de métricas — análisis de video
 
-> **Versión 0.1 — BORRADOR.** Escrito a partir de la taxonomía que ya usa
-> `src/pages/TomaDatos.jsx`. Necesita que el CT lo corrija antes de escribir
-> una línea de pipeline.
+> **Versión 0.2.** Decisiones del CT incorporadas (2026-09-01). Escrito a
+> partir del modelo compartido `src/offline/modelo.js`, que es la autoridad
+> sobre coordenadas, tiempo y vocabulario de acciones.
 
 ## Para qué existe este documento
 
@@ -32,24 +32,61 @@ perfecta y costo cero.
 
 ---
 
-## Convención de coordenadas (CRÍTICO)
+## Convención de coordenadas — ya está resuelta, no se reinventa
 
-Hoy conviven dos sistemas y no son compatibles:
+`src/offline/modelo.js` es la autoridad y documenta la convención:
 
-- **`eventos.zona_x` / `zona_y`**: normalizadas 0–100, y **espejadas** cuando
-  `direccionAtaque === 'izquierda'` (`x → 100-x`, `y → 100-y`). Es decir: en
-  la base, el equipo Propio **siempre ataca hacia la derecha**.
-- **Salida del tracking**: metros crudos sobre cancha de 40 × 20, origen en
-  una esquina fija de la imagen, sin espejar.
+```
+x = 0   → nuestro arco          y = 0   → banda izquierda mirando al arco rival
+x = 100 → arco rival            y = 100 → banda derecha
+```
 
-**Regla única**: el pipeline normaliza a la convención de `eventos` **antes**
-de escribir nada. `x_norm = (x_m / 40) * 100`, `y_norm = (y_m / 20) * 100`, y
-después aplica el mismo espejado según el período y el lado en que arrancó el
-equipo Propio. Se guardan **las dos**: `zona_x/zona_y` para compatibilidad y
-`x_m/y_m` crudos para poder recalcular sin reprocesar el video.
+Siempre 0–100 y siempre **absolutas respecto del arco propio**, o sea que el
+espejado según el lado de la cancha ya está resuelto por `espejar(p, invertida)`.
 
-Si esto no se respeta, los heatmaps de la IA salen invertidos respecto de los
-de `TomaDatos` y nadie se va a dar cuenta hasta que sea tarde.
+**El pipeline no define coordenadas propias.** Convierte de metros a esta
+convención y después importa y usa las funciones que ya existen:
+
+| Función de `modelo.js` | Para qué |
+|---|---|
+| `espejar(p, invertida)` | Normalizar según el lado en que ataca el equipo |
+| `zonaDe(x, y)` / `etiquetaZona(x, y)` | Asignar la celda Z1–Z4 × I/C/D |
+| `tMsDeEvento(ev)` / `msAbsoluto(periodo, tMs)` | Tiempo, en ms dentro del período |
+| `LARGO_CANCHA_M` (40) / `ANCHO_CANCHA_M` (20) | Conversión metros ↔ 0–100 |
+
+Conversión: `x_norm = (x_m / 40) * 100`, `y_norm = (y_m / 20) * 100`, y después
+`espejar()`.
+
+Se guardan **las dos**: `zona_x` / `zona_y` en la convención de la app, y los
+metros crudos en el snapshot, para poder recalcular sin reprocesar el video.
+
+**Lo que sí hay que arreglar**: `VideoTracingIA.jsx` hoy devuelve metros crudos
+40×20 sin normalizar ni espejar. Si se guarda así, los mapas de la IA salen
+invertidos respecto de los de `TomaDatos` y nadie se va a dar cuenta hasta que
+sea tarde.
+
+---
+
+## Zonas de cancha — las que ya existen
+
+No hay tercios ni ninguna grilla nueva. La cancha se lee con la grilla del
+club, definida en `modelo.js`: **cuatro zonas de 10 m desde el arco propio
+(Z1 Z2 Z3 Z4) por tres carriles (I, C, D)**. Doce celdas.
+
+```
+        ┌────────┬────────┬────────┬────────┐
+   I    │  Z1-I  │  Z2-I  │  Z3-I  │  Z4-I  │
+        ├────────┼────────┼────────┼────────┤
+   C    │  Z1-C  │  Z2-C  │  Z3-C  │  Z4-C  │
+        ├────────┼────────┼────────┼────────┤
+   D    │  Z1-D  │  Z2-D  │  Z3-D  │  Z4-D  │
+        └────────┴────────┴────────┴────────┘
+    arco propio                       arco rival
+      0-10m     10-20m    20-30m    30-40m
+```
+
+Cada evento que emite la IA sale con `zona_tactica` y `zona_tactica_fin`
+calculadas con `etiquetaZona()`, igual que los que carga `TomaDatosOffline`.
 
 ---
 
@@ -63,10 +100,40 @@ versión del diccionario se calculó.
 |---|---|---|
 | `CONTROL_MIN_MS` | 1000 ms | Cuánto tiene que retener un equipo para que cuente como posesión y no rebote |
 | `PASE_DIST_MIN_M` | 2,0 m | Distancia mínima recorrida para que un contacto cuente como pase |
-| `PRESION_RADIO_M` | 2,0 m | Rival más cercano dentro de este radio ⇒ la acción fue "bajo presión" |
+| `PRESION_RADIO_M` | **1,0 m** | Rival más cercano dentro de este radio ⇒ la acción fue "bajo presión". Decisión del CT: 2 m no es presión en futsal |
 | `REBOTE_MAX_MS` | 400 ms | Contacto más corto que esto es despeje/rebote, no posesión |
 | `BLOQUEO_RADIO_M` | 1,5 m | Rival de campo dentro de este radio en la trayectoria ⇒ remate bloqueado |
-| `TERCIO_DEF` / `TERCIO_OFE` | 0–33 / 67–100 | Cortes de tercio para recuperación alta/media/baja |
+| `ZONA_RECUPERACION_ALTA` | `['Z3','Z4']` | Qué zonas cuentan como recuperación alta (mitad rival) |
+
+---
+
+## El esquema de salida ya existe (no hay base de datos que diseñar)
+
+`src/offline/modelo.js` + la migración `20260824120000_captura_offline.sql` ya
+definen exactamente las estructuras que el pipeline tiene que producir. La IA
+no inventa un formato propio: **llena el mismo que llena un humano cargando en
+`TomaDatosOffline`.**
+
+| Fábrica en `modelo.js` | Tabla | Qué escribe la IA ahí |
+|---|---|---|
+| `crearSnapshot()` | `snapshots_posicionales` | Posiciones de los 10 + `x_balon`/`y_balon` en un instante. **Es literalmente la salida del tracking** |
+| `crearRecorrido()` | `recorridos_jugador` | Trayectoria de un jugador (`puntos`) en un tramo. Es la salida del tracker por track-id |
+| `crearEvento()` | `eventos` | Pases, pérdidas, recuperaciones, remates, con zona, secuencia y flags |
+| `crearSecuencia()` | `secuencias_pase` | Cadenas de pases |
+| `crearStint()` | `stints_cancha` | Tramos en cancha. **Los llena el humano, no la IA** |
+
+La única marca nueva: `eventos.origen_captura` (la columna ya existe) pasa a
+valer `'ia'` en vez de `'offline'`, para poder filtrar, comparar y auditar por
+origen.
+
+**Consecuencia práctica**: todo lo que hay en `src/analytics/` — `posesiones.js`,
+`transiciones.js`, `xg.js`, `spatial.js`, `insights.js` — funciona sobre eventos
+sin saber quién los generó. Si el pipeline emite eventos correctos, la posesión,
+las transiciones, el xG y los mapas **ya están calculados**. No hay que
+reimplementar nada de eso.
+
+Esto recorta la Fase 4 casi entera y baja el riesgo del proyecto: el trabajo
+real es producir eventos buenos, no construir una app alrededor de ellos.
 
 ---
 
@@ -102,7 +169,8 @@ cancha y los intervalos de pelota en juego.
 **Cómo se calcula.** No hace falta que la IA reconozca al jugador. Se cruzan
 dos streams que ya existen por separado:
 
-1. Intervalos en cancha ⇒ eventos `Cambio` de `TomaDatos` (MANUAL, exacto).
+1. Intervalos en cancha ⇒ tabla `stints_cancha` (`entrada_ms` / `salida_ms`),
+   que ya la llena `TomaDatosOffline` vía `crearStint()`. MANUAL, exacto.
 2. Intervalos de pelota en juego ⇒ métrica 1 (AUTO).
 
 `tiempo_neto_jugador = Σ (intervalo_en_cancha ∩ intervalo_pelota_en_juego)`
@@ -130,7 +198,8 @@ contacto controlado, o la pelota sale.
 hace ≥ 2 contactos consecutivos. Todo lo más corto que `REBOTE_MAX_MS` es
 rebote o despeje y **no** transfiere posesión.
 
-**Se reporta sobre tiempo neto, no sobre tiempo total.** Los porcentajes
+**Siempre sobre tiempo neto. Nunca sobre tiempo total.** Decisión del CT: es
+lo que demanda el futsal, donde el reloj corrido no dice nada. Los porcentajes
 suman 100 % contando solo pelota en juego.
 
 **Precisión objetivo.** ±3 puntos porcentuales.
@@ -155,32 +224,46 @@ cual la pelota recorre ≥ `PASE_DIST_MIN_M` y el siguiente contacto lo hace
 | Remate | No — es remate, categoría aparte |
 | Despeje sin destinatario claro | No — se marca `Despeje` |
 | Rebote de remate que cae en un compañero | No |
-| Saque de banda, córner, saque de meta | **Sí**, con flag `balon_parado` |
+| Saque de banda, córner, saque de meta | **Sí**, con `etiqueta_tactica: 'Pelota parada'` |
 | Pase hacia atrás al arquero | Sí |
 | Pase que termina en gol | Sí, y además `Asistencia` |
 
-**Mapeo al vocabulario existente.** `Pase Incompleto` ya existe en
-`getColorAccion`. Los completos hoy no se registran de a uno; la IA los
-agrega como tipo nuevo.
+**Saque de banda (decisión del CT).** Cuenta como pase con todas las de la
+ley: puede ser completo, incompleto, y puede ser **asistencia** si termina en
+gol. Se distingue solo por `etiqueta_tactica: 'Pelota parada'`, que ya está en
+`ETIQUETAS_TACTICAS`. Esto importa más en futsal que en fútbol 11: el saque de
+banda es un arma ofensiva real y esconderlo en otra categoría borraría datos
+que el CT usa.
+
+**Mapeo al vocabulario existente.** No hay tipo nuevo que inventar: la acción
+`Pase` de `modelo.js` ya tiene `resultado: true` y el evento ya lleva
+`pase_completado`, `id_receptor`, y coordenadas de origen y destino
+(`zona_x/y` → `zona_x_fin/y_fin`).
 
 **Precisión objetivo.** ±8 % en el total; 85 % de acierto en la clasificación
 completo/incompleto.
 
 ---
 
-### 5. Cadena de pases — AUTO (tabla `secuencias_pase`, ya existe)
+### 5. Cadena de pases — AUTO
 
 **Definición.** Secuencia ordenada de pases consecutivos del mismo equipo sin
-interrupción. **Termina** en: pérdida, remate, falta, salida de la pelota o
-fin de período.
+interrupción. **Termina** en cualquier acción con `cierra: true` en `ACCIONES`
+(pérdida, los cuatro tipos de remate, bloqueo/intercepción), o en falta, salida
+de pelota o fin de período.
 
-Se guarda por secuencia: cantidad de pases, duración, tercio donde arrancó,
-tercio donde terminó, y en qué desenlace terminó.
+**No hay tabla nueva que diseñar.** `crearSecuencia()` y la tabla
+`secuencias_pase` ya existen con exactamente los campos que hacen falta:
+`cantidad_pases`, `pases_completados`, `pases_incompletos`, `t_inicio_ms`,
+`t_fin_ms`, `resultado`, `id_evento_final`, `etiqueta_tactica`. Cada evento de
+pase se cuelga con `secuencia_id` y `orden_secuencia`.
 
-**Sin identidad de jugador**, la cadena es anónima: sirve para "secuencias de
-5+ pases que terminan en remate", no para "el 7 al 10 al 4". Esa segunda
-lectura requiere que el operador asigne dorsales en la UI de corrección, y
-solo vale la pena en secuencias marcadas como relevantes.
+**Sobre la identidad.** La cadena *anónima* sale sola y ya sirve: "secuencias de
+5+ pases que terminan en remate", "de qué zona a qué zona". La cadena *nominal*
+(el 7 al 10 al 4) necesita `id_jugador` e `id_receptor`, que la IA no puede
+llenar. Se completan en la UI de corrección, y solo para las secuencias que el
+operador marque como relevantes. No tiene sentido nominalizar las 400 de un
+partido.
 
 ---
 
@@ -189,10 +272,16 @@ solo vale la pena en secuencias marcadas como relevantes.
 - **Pérdida**: el equipo pierde la posesión sin haber rematado y sin salida
   de pelota neutral. Deriva directo del cambio de posesión de la métrica 3.
 - **Recuperación**: el equipo gana la posesión en juego dinámico (no por
-  saque). Se clasifica por tercio de cancha: **Alta** (tercio ofensivo),
-  Media, Baja.
+  saque). Se clasifica por la celda donde ocurre, con `etiquetaZona()`.
 
-`Recuperación`, `Recuperación Alta` y `Pérdida` ya existen en la taxonomía.
+**Recuperación alta** = la que ocurre en `ZONA_RECUPERACION_ALTA`, hoy
+`['Z3','Z4']`, es decir la mitad del campo rival. Se reporta igual el desglose
+completo por las 12 celdas: colapsar a alta/media/baja es solo para el titular
+del reporte, el dato fino no se pierde.
+
+`Recuperación` y `Pérdida` ya existen en `ACCIONES`; `Recuperación Alta` existe
+en la taxonomía vieja de `TomaDatos` y se deriva de la zona, no se guarda como
+acción aparte.
 
 **Precisión objetivo.** ±10 %.
 
@@ -203,17 +292,27 @@ solo vale la pena en secuencias marcadas como relevantes.
 Esto no es un hecho observable, es un criterio. La IA no puede leer intención.
 Lo que sí puede calcular es un **proxy geométrico**:
 
-- **Forzado**: en el instante del contacto había un rival a ≤ `PRESION_RADIO_M`,
-  o hubo contacto físico / duelo.
+- **Forzado**: en el instante del contacto había un rival a ≤ `PRESION_RADIO_M`
+  (**1,0 m**), o hubo contacto físico / duelo.
 - **No forzado**: no había ningún rival dentro de ese radio.
 
-`Error No Forzado` ya existe en la taxonomía y `Bajo Presión` ya es un
-modificador en `TomaDatos`, así que el proxy se apoya en algo que el CT ya usa.
+**Aceptado por el CT, con una condición: tiene que ser editable.** Eso es un
+requisito de producto, no un detalle. Se implementa así:
 
-**Advertencia explícita.** El proxy y el criterio del CT **no van a coincidir
-siempre**, y no es un bug. Se muestra siempre etiquetado como estimación, con
-el radio usado a la vista, y el operador lo puede pisar. Si el CT no acepta
-esto, la métrica pasa a MANUAL y listo.
+- El evento se guarda con `tipo_perdida` (el campo ya existe en `crearEvento`)
+  y con `bajo_presion` calculado.
+- Se guarda además la **distancia real al rival más cercano** en el momento del
+  contacto. Sin ese número el operador corrige a ciegas; con él ve *por qué* la
+  IA decidió lo que decidió y puede discutirlo.
+- En la UI de corrección la clasificación se cambia con un toque, y el evento
+  queda marcado como corregido por humano para no volver a pisarlo.
+- Las correcciones se acumulan: si el CT corrige sistemáticamente en un sentido,
+  ese es el dato que dice que `PRESION_RADIO_M` está mal calibrado. **Se revisa
+  el umbral después de los primeros 5 partidos, con las correcciones en la mano.**
+
+`Bajo Presión` ya es un modificador en `TomaDatos`, así que el proxy se apoya en
+algo que el CT ya usa. Aun así, el proxy y el criterio humano no van a coincidir
+siempre, y no es un bug: se muestra siempre etiquetado como estimación.
 
 ---
 
@@ -287,10 +386,15 @@ Antes de mostrarle un número a un CT, el pipeline se valida así:
 4. Una métrica que no llega a su objetivo **no se publica en la app**. Se
    deja apagada. Un número malo con cara de dato es peor que no tener el dato.
 
-## Pendiente de decisión del CT
+## Decisiones del CT — cerradas el 2026-09-01
 
-- [ ] ¿El saque de banda cuenta como pase? (propuesta: sí, con flag)
-- [ ] `PRESION_RADIO_M` = 2,0 m — ¿es el radio que usás mentalmente?
-- [ ] ¿Los cortes de tercio son 33/67 o preferís otra división?
-- [ ] ¿Se acepta el proxy geométrico de error no forzado, o va a MANUAL?
-- [ ] ¿Posesión se reporta sobre tiempo neto (propuesta) o sobre tiempo total?
+| # | Pregunta | Decisión |
+|---|---|---|
+| 1 | ¿El saque de banda cuenta como pase? | **Sí**, con todas las de la ley: completo, incompleto y puede ser asistencia. Se marca con `etiqueta_tactica: 'Pelota parada'` |
+| 2 | Radio de presión | **1,0 m.** 2 m no es presión en futsal |
+| 3 | División de cancha | **Ninguna nueva.** Se usa la grilla del club: Z1–Z4 × I/C/D, ya definida en `modelo.js` |
+| 4 | Proxy geométrico de error no forzado | **Aceptado**, con la condición de que sea editable y muestre la distancia que usó para decidir |
+| 5 | Base de la posesión | **Siempre tiempo neto.** Nunca tiempo total |
+
+Queda una sub-decisión abierta, menor: se propone **recuperación alta = Z3 o
+Z4** (mitad rival). Si el CT prefiere que sea solo Z4, es cambiar una constante.
