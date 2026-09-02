@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Salidas del análisis: pesan y se regeneran corriendo el pipeline.
+*.mp4
+analisis_*.json
