@@ -22,11 +22,36 @@ video de auditoría.
 
 ## Instalación
 
+Los 77 tests corren solo con `numpy` y `pytest`, sin GPU ni video. Para
+procesar video de verdad hace falta el `requirements.txt` completo, que trae
+OpenCV y el detector.
+
+**Windows (PowerShell)** — una línea por vez, sin `&&`:
+
+```powershell
+cd ia
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install numpy pytest
+python -m pytest tests\ -q
+```
+
+Si `Activate.ps1` falla porque la ejecución de scripts está deshabilitada
+—lo normal en Windows—, habilitala solo para esa ventana con
+`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, o usá
+`.\.venv\Scripts\activate.bat`. Si `python` abre la Microsoft Store, usá `py`
+en su lugar (`py -m venv .venv`).
+
+**Linux y macOS:**
+
 ```bash
 cd ia
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+python3 -m venv .venv && source .venv/bin/activate
+pip install numpy pytest
+python -m pytest tests/ -q
 ```
+
+Con el entorno activo se ve `(.venv)` al principio del prompt.
 
 ## Uso
 
@@ -88,7 +113,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-cd ia && python -m pytest tests/ -q     # 77 tests
+python -m pytest tests/ -q     # 77 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar
