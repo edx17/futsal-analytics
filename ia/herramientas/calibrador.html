@@ -271,8 +271,20 @@ $("archivo").onchange = (e) => {
   im.onload = () => {
     img = im; lienzo.width = im.width; lienzo.height = im.height;
     marcas = {}; activo = 0;
+    // Casi ningún video tiene dimensiones impares: los codecs trabajan en
+    // bloques de 2x2 píxeles. Un ancho o alto impar delata una captura de
+    // pantalla de la ventana del reproductor, que recorta y escala. Los
+    // píxeles que clickeás ahí no son los píxeles del archivo, y la
+    // calibración no le va a servir al video.
+    const sospechoso = (im.width % 2) || (im.height % 2);
     $("infoImg").innerHTML = `<strong>${im.width}×${im.height}</strong> — esta resolución
-      queda grabada en el encuadre. Si los videos vienen en otra, hay que recalibrar.`;
+      queda grabada en el encuadre. Si los videos vienen en otra, hay que recalibrar.` +
+      (sospechoso ? `<div class="aviso mal" style="border-color:var(--error);color:var(--error);background:#2a1212">
+        <strong>Esto parece una captura de pantalla, no un frame del video.</strong><br>
+        Las dimensiones son impares y ningún video las tiene. Sacá el cuadro del
+        archivo con:<br>
+        <code style="display:block;margin-top:6px;white-space:pre-wrap">ffmpeg -ss 00:02:00 -i partido.mp4 -frames:v 1 -q:v 1 frame.png</code>
+      </div>` : "");
     pintarLista(); dibujar();
   };
   im.src = URL.createObjectURL(f);

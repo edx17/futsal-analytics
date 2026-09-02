@@ -55,6 +55,26 @@ Con el entorno activo se ve `(.venv)` al principio del prompt.
 
 ## Uso
 
+### Antes de todo: un frame de verdad
+
+La calibración se ata a la resolución del archivo. **Sacá el frame del video con
+ffmpeg, nunca una captura de pantalla del reproductor**: la ventana recorta y
+escala, así que los píxeles que clickeás no son los del archivo y la calibración
+no le sirve al video.
+
+```bash
+ffmpeg -ss 00:02:00 -i partido.mp4 -frames:v 1 -q:v 1 frame.png
+```
+
+Si la GoPro partió la grabación en varios archivos, concatenalos primero: si no,
+los tiempos del segundo pedazo salen corridos y el cruce con el reloj de
+`TomaDatos` queda mal.
+
+```bash
+printf "file '%s'\n" GX01*.MP4 > lista.txt
+ffmpeg -f concat -safe 0 -i lista.txt -c copy periodo_PT.mp4
+```
+
 ### Calibrar: una vez por posición de cámara, no por partido
 
 **Abrí `herramientas/calibrador.html` con doble click.** Es un HTML suelto, sin
@@ -99,6 +119,26 @@ nunca más mientras la cámara no se mueva. Sirven para todo el archivo, viejo y
 nuevo.
 
 ### Analizar: por partido y por período
+
+Primero, dos segundos de chequeo que ahorran horas:
+
+```bash
+python -m futsal_ia.cli video --video periodo_PT.mp4 --encuadre encuadre.json
+```
+
+Si dice que no coinciden, la calibración no vale para ese archivo y hay que
+rehacerla sobre un frame extraído de él. Analizar tarda horas: descubrirlo
+recién ahí es tirar una tarde.
+
+**Probá primero con un clip corto**, no con el período entero:
+
+```bash
+ffmpeg -ss 00:05:00 -t 00:02:00 -i periodo_PT.mp4 -c copy prueba.mp4
+```
+
+En CPU el análisis corre bastante por debajo del tiempo real, así que un
+período completo puede llevar varias horas. Dos minutos alcanzan de sobra para
+ver si el pipeline funciona.
 
 ```bash
 # Analizar un período

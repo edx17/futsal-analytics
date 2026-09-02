@@ -103,6 +103,92 @@ def _cmd_precision(args):
     return 0
 
 
+def _cmd_video(args):
+    """
+    Qué es realmente el archivo de video, y si el encuadre le sirve.
+
+    Existe por una razón concreta: analizar un período tarda horas. Descubrir
+    recién ahí que la calibración se hizo sobre una captura de pantalla del
+    reproductor, y no sobre un frame del video, es tirar una tarde a la basura.
+    Esto lo dice en dos segundos.
+    """
+    datos = _leer_datos_video(args.video)
+    if datos is None:
+        print("No pude leer el video. Instalá OpenCV (pip install -r requirements.txt) "
+              "o tené ffprobe en el PATH.", file=sys.stderr)
+        return 1
+
+    ancho, alto, fps, cuadros = datos
+    print(f"Video:      {ancho}x{alto}")
+    print(f"Relación:   {ancho / alto:.4f}")
+    print(f"FPS:        {fps:.2f}")
+    if cuadros:
+        print(f"Duración:   {cuadros / fps / 60:.1f} min ({cuadros} cuadros)")
+
+    if ancho % 2 or alto % 2:
+        print("\nOJO: las dimensiones son impares. Prácticamente ningún video las "
+              "tiene: esto suele ser una captura de pantalla, no un archivo de video.")
+
+    if not args.encuadre:
+        print("\nPasá --encuadre para verificar que la calibración le sirva a este video.")
+        return 0
+
+    enc = Encuadre.leer(args.encuadre)
+    esperado = tuple(enc.resolucion_origen)
+    print(f"\nEncuadre:   definido sobre {esperado[0]}x{esperado[1]}")
+    if esperado == (ancho, alto):
+        print(f"Recorte:    {enc.resolucion_salida[0]}x{enc.resolucion_salida[1]}")
+        print("\nOK: el encuadre corresponde a este video.")
+        return 0
+
+    print("\nNO COINCIDEN. La calibración no vale para este archivo.\n")
+    if esperado[0] % 2 or esperado[1] % 2:
+        print("El encuadre se definió sobre dimensiones impares, así que el frame que")
+        print("marcaste era una captura de pantalla del reproductor y no un cuadro del")
+        print("video. La ventana del reproductor recorta y escala: los píxeles que")
+        print("clickeaste no son los píxeles del archivo.\n")
+    print("Sacá un frame de verdad del video y volvé a marcar sobre ese:\n")
+    print(f'  ffmpeg -ss 00:02:00 -i "{args.video}" -frames:v 1 -q:v 1 frame.png\n')
+    print("Marcar de nuevo son cinco minutos ahora que conocés el flujo, y la")
+    print("calibración queda atada al archivo real para siempre.")
+    return 1
+
+
+def _leer_datos_video(ruta):
+    """Resolución, fps y cuadros. Con OpenCV si está; si no, con ffprobe."""
+    try:
+        import cv2
+
+        cap = cv2.VideoCapture(str(ruta))
+        if cap.isOpened():
+            datos = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                     int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                     cap.get(cv2.CAP_PROP_FPS) or 0.0,
+                     int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+            cap.release()
+            return datos
+        cap.release()
+    except ImportError:
+        pass
+
+    import shutil
+    import subprocess
+
+    if not shutil.which("ffprobe"):
+        return None
+    res = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+         "stream=width,height,avg_frame_rate,nb_frames", "-of", "json", str(ruta)],
+        capture_output=True, text=True,
+    )
+    if res.returncode != 0:
+        return None
+    f = json.loads(res.stdout)["streams"][0]
+    num, _, den = f.get("avg_frame_rate", "0/1").partition("/")
+    fps = float(num) / float(den) if float(den or 0) else 0.0
+    return int(f["width"]), int(f["height"]), fps, int(f.get("nb_frames") or 0)
+
+
 def _cmd_analizar(args):
     from .deteccion import crear_detector
     from .equipos import entrenar_clasificador
@@ -177,6 +263,11 @@ def main(argv=None):
     p.add_argument("--invertida-pt", action="store_true",
                    help="el equipo propio ataca hacia la izquierda en el primer tiempo")
     p.set_defaults(func=_cmd_precision)
+
+    v = sub.add_parser("video", help="qué es el archivo y si el encuadre le sirve")
+    v.add_argument("--video", required=True)
+    v.add_argument("--encuadre")
+    v.set_defaults(func=_cmd_video)
 
     a = sub.add_parser("analizar", help="procesa un video y escribe posiciones")
     a.add_argument("--video", required=True)
