@@ -61,15 +61,21 @@ class Parametros:
     zonas excluidas de la calibración, no bajando más esto.
     """
 
-    fps_analisis: int = 10
+    fps_analisis: int = 12
     """
     Frames por segundo que se procesan. NO son los del video.
 
-    Para posiciones, 10 fps alcanzan y sobran: un jugador de futsal se mueve
-    menos de 80 cm entre frames a esa cadencia, y entre medio se interpola.
-    Procesar los 60 fps del archivo cuesta seis veces más y no agrega nada.
-    La pelota es otra historia y va a necesitar la cadencia completa, pero eso
-    es Fase 2.
+    Estuvo en 10 y era poco por un motivo que no había medido: a esa cadencia
+    un jugador corriendo se desplaza 1,2 veces el ancho de su cuerpo entre
+    cuadro y cuadro, así que el solapamiento de recuadros da cero y el
+    seguidor por imagen pierde el track cada vez que alguien acelera.
+
+    Con el seguimiento sobre la cancha eso deja de importar tanto —la
+    predicción por velocidad no depende del solapamiento— pero más cadencia
+    sigue ayudando: huecos más cortos son predicciones más confiables. 12 es un
+    equilibrio; subirlo cuesta cómputo proporcional.
+
+    La pelota va a necesitar la cadencia completa, pero eso es Fase 2.
     """
 
     snapshot_cada_ms: int = 200

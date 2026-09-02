@@ -421,12 +421,14 @@ def analizar(
     tener que cortar un archivo aparte. Para probar, dos minutos alcanzan.
     """
     from .deteccion import crear_detector
-    from .seguimiento import SeguidorByteTrack
+    from .seguimiento_cancha import SeguidorCancha
 
     detector = detector or crear_detector("rfdetr", conf_minima=params.conf_minima_persona)
-    seguidor = seguidor or SeguidorByteTrack(
-        fps=params.fps_analisis, max_frames_sin_ver=params.max_frames_sin_ver,
-        conf_detector=params.conf_minima_persona)
+    # Sobre la cancha en metros, no sobre la imagen. Ver seguimiento_cancha.py:
+    # a 10 fps el solapamiento de recuadros entre cuadro y cuadro es cero para
+    # un jugador corriendo, y el track muere cada vez que alguien acelera.
+    seguidor = seguidor or SeguidorCancha(
+        max_sin_ver_ms=params.max_frames_sin_ver / max(params.fps_analisis, 1) * 1000)
 
     cap, cv2 = _abrir(ruta_video)
     fps_video = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -494,35 +496,35 @@ def analizar(
             # el seguidor compiten por identidades con los jugadores, ensucian
             # las asociaciones cerca de la línea y multiplican los tracks. El
             # seguidor tiene que ver únicamente lo que está en cancha.
-            detecciones = []
+            detecciones, metros = [], []
             for det in crudas:
                 x_m, y_m = homografia.a_cancha(*det.pies)
                 if homografia.dentro_de_cancha(x_m, y_m, params.margen_cancha_m):
                     detecciones.append(det)
+                    metros.append((float(x_m), float(y_m)))
                 else:
                     res.progreso.descartadas_fuera_de_cancha += 1
 
             fichas: list[Ficha] = []
-            for seguida in seguidor.actualizar(detecciones):
-                det = seguida.deteccion
+            for det, track_id in zip(detecciones, seguidor.actualizar(metros, t_ms)):
                 equipo = clasificador.clasificar(color_de_torso(_recorte(frame, det.bbox)))
                 if equipo == "Desconocido":
-                    # Arqueros y árbitros caen acá. No se tiran: se cuentan,
-                    # para saber cuánto se está descartando.
+                    # Sin color confiable: pasa con el jugador tapado o de
+                    # espaldas. Se cuenta para saber cuánto se está perdiendo.
                     res.progreso.descartadas_sin_equipo += 1
 
                 x, y = homografia.pies_a_norm(det.bbox, invertida) or (None, None)
                 if x is None:
                     continue
 
-                track = res.tracks.get(seguida.track_ia)
+                track = res.tracks.get(track_id)
                 if track is None:
-                    track = Track(track_ia=seguida.track_ia, equipo=equipo, periodo=periodo)
-                    res.tracks[seguida.track_ia] = track
-                votos = res.votos_equipo.setdefault(seguida.track_ia, {})
+                    track = Track(track_ia=track_id, equipo=equipo, periodo=periodo)
+                    res.tracks[track_id] = track
+                votos = res.votos_equipo.setdefault(track_id, {})
                 votos[equipo] = votos.get(equipo, 0) + 1
                 track.agregar(t_ms, x, y)
-                fichas.append(Ficha(equipo=equipo, x=x, y=y, track_ia=seguida.track_ia,
+                fichas.append(Ficha(equipo=equipo, x=x, y=y, track_ia=track_id,
                                     confianza=det.confianza,
                                     bbox=tuple(round(v, 1) for v in det.bbox)))
 

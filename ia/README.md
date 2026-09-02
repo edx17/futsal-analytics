@@ -310,7 +310,9 @@ Honestidad sobre qué está probado de verdad:
 | `herramientas/panel.html` | **Sin ejecutar en navegador.** |
 | `herramientas/partido.html` | **Sin ejecutar en navegador.** Tests que verifican que el `partido.json` que baja tenga las claves que el CLI lee y genere el comando que el CLI entiende |
 | `deteccion.py` | **Parcial.** El partido en mosaicos y la fusión están verificados (11 tests); el detector en sí necesita GPU y los pesos |
-| `seguimiento.py` | **Sin ejecutar.** Necesita `supervision` instalado |
+| `seguimiento_cancha.py` | **Verificado.** 13 tests: cruces, oclusiones, velocidad. Diez jugadores dos minutos con 40% de oclusión dan diez identidades |
+| `costura.py` | **Verificado.** 14 tests. Sesenta pedazos de diez jugadores se recomponen en diez |
+| `seguimiento.py` | **Sin ejecutar.** ByteTrack, ya no se usa por defecto |
 | `lente.py` | **Sin ejecutar.** Necesita OpenCV y un video real |
 | `pipeline.py` | **Sin ejecutar de punta a punta.** La orquestación no se probó con un video |
 | `overlay.py` | **Sin ejecutar.** |
@@ -320,7 +322,7 @@ espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
 pip install pytest pyflakes
-python -m pytest tests/ -q     # 195 tests, sin GPU ni video
+python -m pytest tests/ -q     # 230 tests, sin GPU ni video
 ```
 
 Uno de esos tests corre `pyflakes` sobre el paquete y falla si hay un nombre
