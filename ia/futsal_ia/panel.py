@@ -66,6 +66,55 @@ TRABAJO = Trabajo()
 CANDADO = threading.Lock()
 
 
+def _correr_equipos(datos: dict) -> None:
+    """La pasada 1 sola: agrupar colores y guardar recortes para mirar."""
+    from .config import PARAMETROS
+    from .deteccion import crear_detector
+    from .geometria import Homografia
+    from .pipeline import preparar_equipos, revisar_compatibilidad
+    from .preproceso import Encuadre
+
+    t = TRABAJO
+    try:
+        config = json.loads((RAIZ / "partido.json").read_text(encoding="utf-8"))
+        video = Path(datos.get("video") or config["video"])
+        if not video.exists():
+            raise FileNotFoundError(f"No existe el video: {video}")
+
+        h = Homografia.de_dict(json.loads(
+            (RAIZ / "calibracion.json").read_text(encoding="utf-8")))
+        encuadre = (Encuadre.leer(RAIZ / "encuadre.json")
+                    if (RAIZ / "encuadre.json").exists() else None)
+        revisar_compatibilidad(h, encuadre)
+
+        t.log("Cargando el detector...")
+        detector = crear_detector("rfdetr", conf_minima=PARAMETROS.conf_minima_persona)
+        t.log("Recorriendo el video para juntar colores de camiseta...")
+        clas, ejemplos, conteo = preparar_equipos(
+            video, detector, h, encuadre=encuadre,
+            carpeta_recortes=RAIZ / "equipos_recortes")
+
+        d = clas.a_dict()
+        d["ejemplos"] = {str(k): v for k, v in ejemplos.items()}
+        d["conteo"] = {"frames": conteo.frames, "personas": conteo.personas,
+                       "fuera_de_cancha": conteo.fuera_de_cancha,
+                       "colores": conteo.colores}
+        (RAIZ / "equipos.json").write_text(
+            json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        t.log(f"{conteo.colores} torsos de {conteo.personas} personas en "
+              f"{conteo.frames} cuadros.")
+        t.log(f"Separación de color: {clas.separacion:.0f} "
+              f"({'confiable' if clas.confiable else 'NO CONFIABLE'})")
+        t.log("Listo. Ahora decí qué es cada grupo.")
+        t.estado = "listo"
+    except Exception as e:                              # noqa: BLE001
+        t.error = f"{type(e).__name__}: {e}"
+        t.log("ERROR: " + t.error)
+        t.log(traceback.format_exc()[-1500:])
+        t.estado = "error"
+
+
 def _correr(datos: dict) -> None:
     """El análisis, en su propio hilo. Todo lo que falle se reporta al panel."""
     from .config import PARAMETROS, combinar_config
@@ -99,11 +148,19 @@ def _correr(datos: dict) -> None:
         t.log("Cargando el detector (la primera vez baja los pesos)...")
         detector = crear_detector("rfdetr", conf_minima=PARAMETROS.conf_minima_persona)
 
-        t.log("Pasada 1 de 2: juntando colores de camiseta...")
-        colores = muestrear_colores(video, detector, h, encuadre=encuadre)
-        clas = entrenar_clasificador(colores)
-        t.log(f"{len(colores)} torsos. Separación de color {clas.separacion:.0f} "
-              f"({'confiable' if clas.confiable else 'NO CONFIABLE'})")
+        equipos = RAIZ / "equipos.json"
+        if equipos.exists():
+            from .equipos import ClasificadorEquipos
+            clas = ClasificadorEquipos.de_dict(
+                json.loads(equipos.read_text(encoding="utf-8")))
+            t.log("Equipos ya definidos: " + ", ".join(
+                f"{g}={r}" for g, r in sorted(clas.equipo_por_grupo.items())))
+        else:
+            t.log("Pasada 1 de 2: juntando colores de camiseta...")
+            colores = muestrear_colores(video, detector, h, encuadre=encuadre)
+            clas = entrenar_clasificador(colores)
+            t.log(f"{len(colores)} torsos. Separación de color {clas.separacion:.0f} "
+                  f"({'confiable' if clas.confiable else 'NO CONFIABLE'})")
 
         def avanzar(p):
             t.frames = p.frames_analizados
@@ -160,6 +217,7 @@ def _estado_archivos() -> dict:
         "calibracion": info("calibracion.json"),
         "encuadre": info("encuadre.json"),
         "partido": info("partido.json"),
+        "equipos": info("equipos.json"),
         "carpeta": str(RAIZ),
         "resultados": sorted(
             p.name for p in RAIZ.glob("a*_*.*")
@@ -218,6 +276,13 @@ class Panel(BaseHTTPRequestHandler):
             with CANDADO:
                 return self._json({"trabajo": TRABAJO.a_dict(), "archivos": _estado_archivos()})
 
+        if u.path.startswith("/equipos_recortes/"):
+            nombre = Path(u.path).name
+            archivo = RAIZ / "equipos_recortes" / nombre
+            if nombre.startswith("grupo_") and nombre.endswith(".png") and archivo.exists():
+                return self._responder(archivo.read_bytes(), "image/png")
+            return self._responder(b"no existe", "text/plain", 404)
+
         if u.path == "/api/carpeta":
             return self._json(_listar(q.get("ruta", [""])[0]))
 
@@ -242,11 +307,36 @@ class Panel(BaseHTTPRequestHandler):
         if u.path == "/api/guardar":
             nombre = Path(datos.get("nombre", "")).name
             if nombre not in {"partido.json", "marcas.json", "encuadre.json",
-                              "calibracion.json"}:
+                              "calibracion.json", "equipos.json"}:
                 return self._json({"error": f"nombre no permitido: {nombre}"}, 400)
             (RAIZ / nombre).write_text(
                 json.dumps(datos["contenido"], indent=2, ensure_ascii=False), encoding="utf-8")
             return self._json({"ok": True, "ruta": str(RAIZ / nombre)})
+
+        if u.path == "/api/equipos":
+            with CANDADO:
+                if TRABAJO.estado == "corriendo":
+                    return self._json({"error": "ya hay algo corriendo"}, 409)
+                globals()["TRABAJO"] = Trabajo(estado="corriendo", periodo="equipos")
+            threading.Thread(target=_correr_equipos, args=(datos,), daemon=True).start()
+            return self._json({"ok": True})
+
+        if u.path == "/api/equipos/asignar":
+            from .equipos import ROLES, ClasificadorEquipos
+
+            archivo = RAIZ / "equipos.json"
+            if not archivo.exists():
+                return self._json({"error": "todavía no se detectaron los equipos"}, 400)
+            d = json.loads(archivo.read_text(encoding="utf-8"))
+            clas = ClasificadorEquipos.de_dict(d)
+            for grupo, rol in (datos.get("roles") or {}).items():
+                if rol not in ROLES:
+                    return self._json({"error": f"rol desconocido: {rol}"}, 400)
+                clas = clas.asignar(int(grupo), rol)
+            d.update(clas.a_dict())
+            archivo.write_text(json.dumps(d, indent=2, ensure_ascii=False),
+                               encoding="utf-8")
+            return self._json({"ok": True, "equipo_por_grupo": d["equipo_por_grupo"]})
 
         if u.path == "/api/analizar":
             with CANDADO:

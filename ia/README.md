@@ -177,6 +177,27 @@ verde no cae sobre la cancha real, ahí está la respuesta y se ve de un vistazo
 
 Imprime además la tabla de dónde cae cada persona en metros y en qué celda.
 
+### Quién es quién
+
+La IA separa a la gente en grupos por el color de la camiseta, pero **no sabe
+cuál sos vos**. Se lo decís una vez por partido, mirando recortes reales:
+
+```bash
+python -m futsal_ia.cli equipos --video PT.mp4 \
+    --calibracion calibracion.json --encuadre encuadre.json --salida equipos.json
+python -m futsal_ia.cli equipos --salida equipos.json --asignar 0=Propio 1=Rival
+```
+
+Desde el panel es con clicks, y te muestra los recortes de cada grupo.
+
+Roles posibles: `Propio`, `Rival`, `Arquero propio`, `Arquero rival`, `Arbitro`,
+`Desconocido`. Los arqueros y el árbitro caen en grupos propios porque visten
+distinto; marcarlos bien es lo que evita que el arquero rival cuente como
+jugador propio.
+
+`analizar --equipos equipos.json` reusa esto y **se saltea la pasada 1**, que
+recorre el video entero y es la parte lenta.
+
 ### Analizar: por partido y por período
 
 Primero, dos segundos de chequeo que ahorran horas:
@@ -256,7 +277,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 168 tests, sin GPU ni video
+python -m pytest tests/ -q     # 178 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar

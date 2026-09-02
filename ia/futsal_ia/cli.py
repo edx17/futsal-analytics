@@ -193,6 +193,77 @@ def _cmd_frame(args):
     return 0
 
 
+def _cmd_equipos(args):
+    """
+    La pasada 1, separada: agrupa los colores y guarda recortes de ejemplo.
+
+    Se corre una vez por partido. Después el operador dice qué es cada grupo
+    —desde el panel o con `equipos --asignar`— y el análisis reusa eso sin
+    volver a recorrer el video.
+    """
+    from .deteccion import crear_detector
+    from .equipos import ROLES, ClasificadorEquipos
+    from .pipeline import preparar_equipos
+    from .preproceso import Encuadre
+
+    destino = Path(args.salida)
+
+    if args.asignar:
+        if not destino.exists():
+            raise ArchivoFaltante(f"No encuentro {destino}. Corré primero el muestreo.")
+        d = _leer_json(destino, "equipos.json")
+        clas = ClasificadorEquipos.de_dict(d)
+        for par in args.asignar:
+            grupo, _, rol = par.partition("=")
+            if rol not in ROLES:
+                print(f"ERROR: rol desconocido {rol!r}. Opciones: {', '.join(ROLES)}",
+                      file=sys.stderr)
+                return 1
+            clas = clas.asignar(int(grupo), rol)
+        d.update(clas.a_dict())
+        destino.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
+        _imprimir_grupos(d)
+        return 0
+
+    h = Homografia.de_dict(_leer_json(args.calibracion, "calibracion.json"))
+    encuadre = (Encuadre.de_dict(_leer_json(args.encuadre, "encuadre.json"))
+                if args.encuadre else None)
+    detector = crear_detector(args.detector, conf_minima=PARAMETROS.conf_minima_persona)
+
+    print("Recorriendo el video para juntar colores de camiseta...")
+    clas, ejemplos, conteo = preparar_equipos(
+        args.video, detector, h, encuadre=encuadre,
+        carpeta_recortes=destino.parent / "equipos_recortes")
+
+    d = clas.a_dict()
+    d["ejemplos"] = {str(k): v for k, v in ejemplos.items()}
+    d["conteo"] = {"frames": conteo.frames, "personas": conteo.personas,
+                   "fuera_de_cancha": conteo.fuera_de_cancha, "colores": conteo.colores}
+    destino.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    print(f"\n{conteo.colores} torsos de {conteo.personas} personas detectadas "
+          f"en {conteo.frames} cuadros.")
+    print(f"Separación entre los dos grupos principales: {clas.separacion:.0f} "
+          f"({'confiable' if clas.confiable else 'NO CONFIABLE'})\n")
+    _imprimir_grupos(d)
+    print(f"\nGuardado en {destino}. Los recortes de ejemplo están en "
+          f"{destino.parent / 'equipos_recortes'}.")
+    print("\nMiralos y asigná los roles, por ejemplo:")
+    print(f"  python -m futsal_ia.cli equipos --salida {destino.name} "
+          "--asignar 0=Propio 1=Rival")
+    print("O hacelo con clicks desde el panel, que te muestra los recortes.")
+    return 0
+
+
+def _imprimir_grupos(d: dict) -> None:
+    print(f"  {'grupo':<7} {'rol':<16} {'color BGR':<20} ejemplos")
+    for i, centro in enumerate(d["centros"]):
+        rol = d["equipo_por_grupo"].get(str(i), "Desconocido")
+        bgr = ", ".join(f"{c:.0f}" for c in centro)
+        n = len(d.get("ejemplos", {}).get(str(i), []))
+        print(f"  {i:<7} {rol:<16} {bgr:<20} {n}")
+
+
 def _cmd_diagnostico(args):
     """
     Un cuadro, el detector, y dónde cae cada persona sobre la cancha.
@@ -425,12 +496,18 @@ def _cmd_analizar(args):
         print("AVISO: usando coeficientes de lente APROXIMADOS. Calibrar con "
               "tablero de ajedrez mejora la precisión en los bordes del cuadro.")
 
-    print("Pasada 1/2: juntando colores de camiseta...")
-    colores = muestrear_colores(args.video, detector, h, enderezador=enderezador,
-                                encuadre=encuadre)
-    clas = entrenar_clasificador(colores)
-    print(f"  {len(colores)} torsos, separación de color {clas.separacion:.0f} "
-          f"({'confiable' if clas.confiable else 'NO CONFIABLE'})")
+    if args.equipos:
+        from .equipos import ClasificadorEquipos
+        clas = ClasificadorEquipos.de_dict(_leer_json(args.equipos, "equipos.json"))
+        print(f"Equipos leídos de {args.equipos}: " + ", ".join(
+            f"{g}={r}" for g, r in sorted(clas.equipo_por_grupo.items())))
+    else:
+        print("Pasada 1/2: juntando colores de camiseta...")
+        colores = muestrear_colores(args.video, detector, h, enderezador=enderezador,
+                                    encuadre=encuadre)
+        clas = entrenar_clasificador(colores)
+        print(f"  {len(colores)} torsos, separación de color {clas.separacion:.0f} "
+              f"({'confiable' if clas.confiable else 'NO CONFIABLE'})")
 
     print("Pasada 2/2: detectando y siguiendo...")
     res = analizar(
@@ -485,6 +562,17 @@ def main(argv=None):
     f.add_argument("--salida", default="frame.png")
     f.set_defaults(func=_cmd_frame)
 
+    eq = sub.add_parser("equipos",
+                        help="agrupa los colores y deja elegir qué es cada grupo")
+    eq.add_argument("--video")
+    eq.add_argument("--calibracion")
+    eq.add_argument("--encuadre")
+    eq.add_argument("--salida", default="equipos.json")
+    eq.add_argument("--detector", default="rfdetr", choices=["rfdetr", "yolo"])
+    eq.add_argument("--asignar", nargs="+", metavar="GRUPO=ROL",
+                    help="asigna roles a los grupos ya calculados, ej: 0=Propio 1=Rival")
+    eq.set_defaults(func=_cmd_equipos)
+
     d = sub.add_parser("diagnostico",
                        help="un cuadro con los recuadros y la cancha proyectada encima")
     d.add_argument("--video", required=True)
@@ -526,6 +614,8 @@ def main(argv=None):
     a.add_argument("--lente-aproximada", nargs=2, type=int, metavar=("ANCHO", "ALTO"),
                    help="usa coeficientes aproximados de GoPro Wide")
     a.add_argument("--encuadre", help="JSON del giro y recorte (va junto a la calibración)")
+    a.add_argument("--equipos", help="equipos.json con los roles ya asignados. "
+                                     "Evita repetir el muestreo de colores")
     a.add_argument("--overlay", help="ruta del video de auditoría a generar")
     a.set_defaults(func=_cmd_analizar)
 

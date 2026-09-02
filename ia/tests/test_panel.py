@@ -189,3 +189,58 @@ def test_help_no_levanta_el_servidor():
     with pytest.raises(SystemExit) as e:
         panel.main(["--help"])
     assert e.value.code == 0
+
+
+def test_asignar_roles_sin_haber_detectado(servidor, tmp_path, monkeypatch):
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    codigo, d = post(servidor, "/api/equipos/asignar", {"roles": {"0": "Propio"}})
+    assert codigo == 400 and "todavía no se detectaron" in d["error"]
+
+
+def test_asignar_roles_escribe_en_equipos_json(servidor, tmp_path, monkeypatch):
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    (tmp_path / "equipos.json").write_text(json.dumps({
+        "centros": [[200, 40, 40], [40, 40, 200], [250, 250, 40], [20, 20, 20]],
+        "equipo_por_grupo": {"0": "Propio", "1": "Rival", "2": "Desconocido",
+                             "3": "Desconocido"},
+        "separacion": 226.0,
+    }), encoding="utf-8")
+
+    codigo, d = post(servidor, "/api/equipos/asignar",
+                     {"roles": {"1": "Propio", "2": "Arquero propio"}})
+    assert codigo == 200
+    # Propio es único: el grupo 0 tuvo que soltarlo.
+    assert d["equipo_por_grupo"]["1"] == "Propio"
+    assert d["equipo_por_grupo"]["0"] != "Propio"
+    assert d["equipo_por_grupo"]["2"] == "Arquero propio"
+
+    guardado = json.loads((tmp_path / "equipos.json").read_text(encoding="utf-8"))
+    assert guardado["equipo_por_grupo"]["1"] == "Propio"
+
+
+def test_un_rol_inventado_se_rechaza(servidor, tmp_path, monkeypatch):
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    (tmp_path / "equipos.json").write_text(json.dumps({
+        "centros": [[1, 2, 3]], "equipo_por_grupo": {"0": "Propio"}, "separacion": 1.0,
+    }), encoding="utf-8")
+    codigo, d = post(servidor, "/api/equipos/asignar", {"roles": {"0": "El Capitán"}})
+    assert codigo == 400 and "rol desconocido" in d["error"]
+
+
+def test_los_recortes_se_sirven_solo_por_nombre_esperado(servidor, tmp_path, monkeypatch):
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    carpeta = tmp_path / "equipos_recortes"
+    carpeta.mkdir()
+    (carpeta / "grupo_0_0.png").write_bytes(b"\x89PNG fingido")
+    (carpeta / "secreto.png").write_bytes(b"no")
+
+    with urllib.request.urlopen(servidor + "/equipos_recortes/grupo_0_0.png", timeout=5) as r:
+        assert r.status == 200 and r.headers["Content-Type"] == "image/png"
+
+    for intento in ("secreto.png", "..%2F..%2Frequirements.txt"):
+        try:
+            with urllib.request.urlopen(
+                    f"{servidor}/equipos_recortes/{intento}", timeout=5) as r:
+                assert r.status == 404
+        except urllib.error.HTTPError as e:
+            assert e.code == 404

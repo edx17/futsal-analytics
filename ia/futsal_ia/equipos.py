@@ -39,7 +39,16 @@ import numpy as np
 
 PROPIO = "Propio"
 RIVAL = "Rival"
+ARQUERO_PROPIO = "Arquero propio"
+ARQUERO_RIVAL = "Arquero rival"
+ARBITRO = "Arbitro"
 DESCONOCIDO = "Desconocido"
+
+# Lo que el operador puede elegir para cada grupo de color. Los arqueros y el
+# árbitro no son "ruido a descartar": marcarlos bien es lo que evita que el
+# arquero rival cuente como jugador propio y que el árbitro aparezca como uno
+# más en el conteo de gente en cancha.
+ROLES = (PROPIO, RIVAL, ARQUERO_PROPIO, ARQUERO_RIVAL, ARBITRO, DESCONOCIDO)
 
 
 def color_de_torso(recorte: np.ndarray, frac_alto=(0.15, 0.55), frac_ancho=(0.25, 0.75)) -> np.ndarray | None:
@@ -124,6 +133,10 @@ class ClasificadorEquipos:
         d = ((self.centros - np.asarray(color, dtype=np.float64)) ** 2).sum(axis=1)
         return self.equipo_por_grupo.get(int(d.argmin()), DESCONOCIDO)
 
+    def grupo_de(self, color) -> int:
+        d = ((self.centros - np.asarray(color, dtype=np.float64)) ** 2).sum(axis=1)
+        return int(d.argmin())
+
     def a_dict(self) -> dict:
         return {
             "centros": self.centros.tolist(),
@@ -131,6 +144,36 @@ class ClasificadorEquipos:
             "separacion": self.separacion,
             "confiable": self.confiable,
         }
+
+    @staticmethod
+    def de_dict(d: dict) -> "ClasificadorEquipos":
+        return ClasificadorEquipos(
+            centros=np.array(d["centros"], dtype=np.float64),
+            equipo_por_grupo={int(k): v for k, v in d["equipo_por_grupo"].items()},
+            separacion=float(d["separacion"]),
+        )
+
+    def asignar(self, grupo: int, equipo: str) -> "ClasificadorEquipos":
+        """
+        El operador dice qué es cada grupo. Un click por partido.
+
+        Es el único dato de identidad que la Fase 1 le pide a un humano, y sin
+        él la asignación de equipos es una moneda al aire: el pipeline toma el
+        grupo más poblado y lo llama propio, que no significa nada.
+        """
+        if grupo not in range(len(self.centros)):
+            raise ValueError(f"No existe el grupo {grupo}.")
+        nuevo = dict(self.equipo_por_grupo)
+        # PROPIO y RIVAL son únicos: si este grupo se los queda, el que los
+        # tenía los suelta. Dos grupos marcados como propios harían que el
+        # conteo de jugadores en cancha diera el doble.
+        if equipo in (PROPIO, RIVAL):
+            for g, eq in nuevo.items():
+                if eq == equipo:
+                    nuevo[g] = DESCONOCIDO
+        nuevo[grupo] = equipo
+        return ClasificadorEquipos(centros=self.centros, equipo_por_grupo=nuevo,
+                                   separacion=self.separacion)
 
 
 def entrenar_clasificador(

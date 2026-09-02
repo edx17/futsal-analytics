@@ -69,6 +69,19 @@
 
 <main>
 
+<style>
+  .grupo { display:flex; align-items:center; gap:12px; padding:10px;
+           border:1px solid var(--borde); border-radius:8px; margin-top:9px;
+           background:#0f0f13; flex-wrap:wrap; }
+  .grupo .swatch { width:34px; height:34px; border-radius:6px; flex:none;
+                   border:1px solid #3a3a44; }
+  .grupo .fotos { display:flex; gap:4px; flex:1; min-width:150px; }
+  .grupo .fotos img { height:56px; border-radius:4px; background:#000; }
+  .grupo select { padding:7px; border-radius:6px; border:1px solid var(--borde);
+                  background:#0f0f13; color:var(--texto); font-size:12.5px; }
+  .grupo.propio { border-color:var(--acento); }
+</style>
+
 <section>
   <h2><span class="n">1</span>Preparar la cancha</h2>
   <p class="sub">Se hace una sola vez, mientras la cámara no se mueva.
@@ -105,7 +118,21 @@
 </section>
 
 <section>
-  <h2><span class="n">3</span>Analizar</h2>
+  <h2><span class="n">3</span>Quién es quién</h2>
+  <p class="sub">La IA separa a la gente en grupos por el color de la camiseta,
+     pero no sabe cuál sos vos. Se lo decís una vez por partido, mirando los
+     recortes. Los arqueros y el árbitro caen en grupos propios porque visten
+     distinto: marcarlos bien evita que el arquero rival cuente como jugador
+     propio.</p>
+  <div class="fila">
+    <button id="detectarEquipos">Detectar los equipos</button>
+    <span class="det" id="infoEquipos" style="color:var(--tenue);font-size:12px"></span>
+  </div>
+  <div id="grupos"></div>
+</section>
+
+<section>
+  <h2><span class="n">4</span>Analizar</h2>
   <p class="sub">La prueba analiza 2 minutos. En CPU el período entero puede
      llevar horas: mirá el video de auditoría antes de largar el completo.</p>
 
@@ -175,8 +202,11 @@ async function refrescar(){
       Marcá los saques y guardalo desde la herramienta.</div>`;
   }
 
+  pintarGrupos(archivos.equipos);
+
   const listo = cal.existe && par.existe;
   $("pt").disabled = $("st").disabled = !listo || trabajo.estado === "corriendo";
+  $("detectarEquipos").disabled = !listo || trabajo.estado === "corriendo";
 
   // Progreso
   const corriendo = trabajo.estado === "corriendo";
@@ -217,6 +247,64 @@ async function refrescar(){
   }
   $("resultado").innerHTML = html;
 }
+
+// ── Quién es quién ────────────────────────────────────────────────────────
+const ROLES = ["Propio","Rival","Arquero propio","Arquero rival","Arbitro","Desconocido"];
+let gruposPintados = "";
+
+function pintarGrupos(eq){
+  if(!eq?.existe || !eq.contenido){
+    $("grupos").innerHTML = "";
+    $("infoEquipos").textContent = "Todavía no se detectaron.";
+    return;
+  }
+  const d = eq.contenido;
+  const firma = JSON.stringify([d.centros, d.equipo_por_grupo]);
+  const c = d.conteo || {};
+  $("infoEquipos").textContent =
+    `${c.colores ?? 0} torsos de ${c.personas ?? 0} personas · separación ${
+      Math.round(d.separacion ?? 0)}${d.confiable === false ? " (BAJA)" : ""}`;
+  if(firma === gruposPintados) return;    // no repintar mientras el usuario elige
+  gruposPintados = firma;
+
+  $("grupos").innerHTML = (d.centros || []).map((centro, i) => {
+    const [b, g, r] = centro.map(Math.round);
+    const rol = d.equipo_por_grupo?.[i] ?? "Desconocido";
+    const fotos = (d.ejemplos?.[i] || []).map(n =>
+      `<img src="/equipos_recortes/${n}" alt="">`).join("");
+    return `<div class="grupo ${rol === "Propio" ? "propio" : ""}">
+      <span class="swatch" style="background:rgb(${r},${g},${b})"></span>
+      <div class="fotos">${fotos || '<span class="det">sin recortes</span>'}</div>
+      <select data-grupo="${i}">
+        ${ROLES.map(x => `<option ${x === rol ? "selected" : ""}>${x}</option>`).join("")}
+      </select></div>`;
+  }).join("") + `<div class="fila" style="margin-top:12px">
+      <button id="guardarRoles" class="primario">Guardar</button>
+      <span class="det" id="okRoles" style="color:var(--acento);font-size:12px"></span>
+    </div>`;
+
+  $("guardarRoles").onclick = async () => {
+    const roles = {};
+    $("grupos").querySelectorAll("select").forEach(s => roles[s.dataset.grupo] = s.value);
+    const r = await traer("/api/equipos/asignar", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ roles }),
+    });
+    $("okRoles").textContent = r.error ? ("Error: " + r.error) : "Guardado.";
+    gruposPintados = "";
+    refrescar();
+  };
+}
+
+$("detectarEquipos").onclick = async () => {
+  const r = await traer("/api/equipos", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ video: $("video").value.trim() || null }),
+  });
+  if(r.error) alert(r.error);
+  gruposPintados = "";
+  refrescar();
+};
 
 // ── Explorador ────────────────────────────────────────────────────────────
 let carpetaActual = "";

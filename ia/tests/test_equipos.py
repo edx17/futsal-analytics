@@ -16,6 +16,7 @@ from futsal_ia.equipos import (  # noqa: E402
     DESCONOCIDO,
     PROPIO,
     RIVAL,
+    ROLES,
     asignar_propio,
     color_de_torso,
     entrenar_clasificador,
@@ -149,3 +150,72 @@ def test_el_agrupamiento_es_reproducible():
     assert a.separacion == pytest.approx(b.separacion)
     for color in (ROJO, AZUL, AMARILLO_ARQUERO):
         assert a.clasificar(np.array(color)) == b.clasificar(np.array(color))
+
+
+# ── Asignación de roles por el operador ────────────────────────────────────
+
+def test_asignar_un_rol_a_un_grupo():
+    from futsal_ia.equipos import ClasificadorEquipos
+
+    clas = entrenar_clasificador(_partido_tipico())
+    g = clas.grupo_de(np.array(ROJO))
+    clas = clas.asignar(g, PROPIO)
+    assert clas.clasificar(np.array(ROJO)) == PROPIO
+    assert isinstance(clas, ClasificadorEquipos)
+
+
+def test_propio_y_rival_son_unicos():
+    """
+    Dos grupos marcados como propios harían que el conteo de jugadores en
+    cancha diera el doble, sin que nada fallara.
+    """
+    clas = entrenar_clasificador(_partido_tipico())
+    gr, ga = clas.grupo_de(np.array(ROJO)), clas.grupo_de(np.array(AZUL))
+    clas = clas.asignar(gr, PROPIO).asignar(ga, PROPIO)
+    assert list(clas.equipo_por_grupo.values()).count(PROPIO) == 1
+    assert clas.clasificar(np.array(AZUL)) == PROPIO
+    assert clas.clasificar(np.array(ROJO)) != PROPIO
+
+
+def test_los_arqueros_y_el_arbitro_tienen_su_propio_rol():
+    """
+    No son ruido a descartar: marcarlos bien es lo que evita que el arquero
+    rival cuente como jugador propio.
+    """
+    from futsal_ia.equipos import ARBITRO, ARQUERO_PROPIO
+
+    clas = entrenar_clasificador(_partido_tipico())
+    clas = clas.asignar(clas.grupo_de(np.array(AMARILLO_ARQUERO)), ARQUERO_PROPIO)
+    clas = clas.asignar(clas.grupo_de(np.array(NEGRO_ARBITRO)), ARBITRO)
+    assert clas.clasificar(np.array(AMARILLO_ARQUERO)) == ARQUERO_PROPIO
+    assert clas.clasificar(np.array(NEGRO_ARBITRO)) == ARBITRO
+
+
+def test_se_pueden_tener_dos_arqueros_marcados():
+    """A diferencia de Propio y Rival, los roles de arquero no son excluyentes."""
+    from futsal_ia.equipos import ARQUERO_PROPIO, ARQUERO_RIVAL
+
+    clas = entrenar_clasificador(_partido_tipico())
+    clas = clas.asignar(0, ARQUERO_PROPIO).asignar(1, ARQUERO_RIVAL)
+    assert clas.equipo_por_grupo[0] == ARQUERO_PROPIO
+    assert clas.equipo_por_grupo[1] == ARQUERO_RIVAL
+
+
+def test_un_grupo_que_no_existe():
+    clas = entrenar_clasificador(_partido_tipico())
+    with pytest.raises(ValueError, match="No existe el grupo"):
+        clas.asignar(99, PROPIO)
+
+
+def test_sobrevive_al_json_con_los_roles_puestos():
+    """Se guarda en equipos.json y el análisis lo lee sin repetir el muestreo."""
+    from futsal_ia.equipos import ClasificadorEquipos
+
+    clas = entrenar_clasificador(_partido_tipico())
+    clas = clas.asignar(clas.grupo_de(np.array(ROJO)), PROPIO)
+    clas = clas.asignar(clas.grupo_de(np.array(AZUL)), RIVAL)
+
+    vuelta = ClasificadorEquipos.de_dict(clas.a_dict())
+    assert vuelta.equipo_por_grupo == clas.equipo_por_grupo
+    assert vuelta.clasificar(np.array(ROJO)) == PROPIO
+    assert vuelta.clasificar(np.array(AZUL)) == RIVAL

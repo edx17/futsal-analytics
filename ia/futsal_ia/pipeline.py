@@ -162,8 +162,6 @@ def diagnostico_video(ruta) -> str:
     su tamaño, pero en el disco no hay nada: es un marcador. OpenCV lo abre,
     lee cero bytes y falla como si el video estuviera roto.
     """
-    from pathlib import Path
-
     p = Path(ruta)
     if not p.exists():
         padre = p.parent
@@ -305,6 +303,89 @@ def muestrear_colores(ruta_video, detector, homografia: Homografia, *,
     if len(colores) < 4:
         raise SinColores(conteo.diagnostico())
     return colores
+
+
+def preparar_equipos(
+    ruta_video, detector, homografia: Homografia, *,
+    enderezador=None, encuadre: Encuadre | None = None,
+    muestras: int = 300, params: Parametros = PARAMETROS,
+    carpeta_recortes=None, por_grupo: int = 6,
+) -> tuple:
+    """
+    La pasada 1, guardada para que no haya que repetirla.
+
+    Junta colores de torso, los agrupa, y de cada grupo guarda unos pocos
+    recortes de ejemplo. Esos recortes son lo que hace posible que una persona
+    diga "este grupo somos nosotros" mirando caras y camisetas, en vez de
+    mirando un cuadradito de color plano que no significa nada.
+
+    Devuelve (clasificador, {grupo: [rutas de recortes]}).
+
+    Separarla del análisis tiene un beneficio grande: el muestreo recorre el
+    video entero y tarda. Hecho una vez por partido y guardado, las corridas
+    siguientes arrancan directo en la pasada 2.
+    """
+    import cv2
+
+    from .equipos import entrenar_clasificador
+
+    cap, cv2mod = _abrir(ruta_video)
+    total = int(cap.get(cv2mod.CAP_PROP_FRAME_COUNT)) or 1
+    saltos = np.linspace(0, max(total - 1, 0), num=min(muestras, total), dtype=int)
+    colores, recortes = [], []
+    conteo = ConteoMuestreo()
+    try:
+        for pos in saltos:
+            cap.set(cv2mod.CAP_PROP_POS_FRAMES, int(pos))
+            ok, frame = cap.read()
+            if not ok:
+                continue
+            conteo.frames += 1
+            frame = _preparar(frame, enderezador, encuadre)
+            for det in detector.detectar(frame):
+                conteo.personas += 1
+                x_m, y_m = homografia.a_cancha(*det.pies)
+                if not homografia.dentro_de_cancha(x_m, y_m, params.margen_cancha_m):
+                    conteo.fuera_de_cancha += 1
+                    continue
+                recorte = _recorte(frame, det.bbox)
+                color = color_de_torso(recorte)
+                if color is None:
+                    conteo.sin_color += 1
+                    continue
+                colores.append(color)
+                # Se guarda chico: son para mirar, no para analizar, y cien
+                # recortes a tamaño completo pesan más que el propio análisis.
+                recortes.append(cv2.resize(recorte, (48, 96),
+                                           interpolation=cv2.INTER_AREA))
+        conteo.colores = len(colores)
+    finally:
+        cap.release()
+
+    if len(colores) < 4:
+        raise SinColores(conteo.diagnostico())
+
+    clas = entrenar_clasificador(colores)
+
+    ejemplos: dict[int, list[str]] = {}
+    if carpeta_recortes is not None:
+        carpeta = Path(carpeta_recortes)
+        carpeta.mkdir(parents=True, exist_ok=True)
+        for viejo in carpeta.glob("grupo_*.png"):
+            viejo.unlink()
+        for g in range(len(clas.centros)):
+            # Los más parecidos al centro del grupo: son los que mejor
+            # representan al grupo, no los casos borde.
+            miembros = [(float(((c - clas.centros[g]) ** 2).sum()), i)
+                        for i, c in enumerate(colores) if clas.grupo_de(c) == g]
+            miembros.sort()
+            rutas = []
+            for k, (_, i) in enumerate(miembros[:por_grupo]):
+                ruta = carpeta / f"grupo_{g}_{k}.png"
+                cv2.imwrite(str(ruta), recortes[i])
+                rutas.append(ruta.name)
+            ejemplos[g] = rutas
+    return clas, ejemplos, conteo
 
 
 def analizar(
