@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel — análisis de video</title>
+<style>
+  :root { --bg:#0b0b0d; --panel:#141418; --borde:#2a2a32; --texto:#e8e8ec;
+          --tenue:#8a8a96; --acento:#00ff88; --alerta:#facc15; --error:#ef4444; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--texto);
+         font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { padding:16px 22px; border-bottom:1px solid var(--borde);
+           display:flex; justify-content:space-between; align-items:baseline; gap:16px; }
+  h1 { margin:0; font-size:15px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  header .ruta { color:var(--tenue); font-size:11.5px; font-family:ui-monospace,Consolas,monospace; }
+  main { max-width:1000px; margin:0 auto; padding:22px; }
+  section { background:var(--panel); border:1px solid var(--borde); border-radius:10px;
+            padding:18px; margin-bottom:16px; }
+  h2 { margin:0 0 4px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; }
+  h2 .n { color:var(--acento); margin-right:8px; }
+  .sub { color:var(--tenue); font-size:12.5px; margin:0 0 14px; }
+  button, .boton { font:inherit; font-weight:600; padding:9px 14px; border-radius:7px;
+    border:1px solid var(--borde); background:#1d1d24; color:var(--texto);
+    cursor:pointer; text-decoration:none; display:inline-block; }
+  button:hover:not(:disabled), .boton:hover { border-color:var(--acento); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primario { background:var(--acento); color:#000; border-color:var(--acento); }
+  .fila { display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
+  .estado { display:flex; align-items:center; gap:9px; padding:9px 12px; border-radius:7px;
+            background:#0f0f13; border:1px solid var(--borde); margin-bottom:7px; }
+  .estado.ok { border-color:var(--acento); }
+  .punto { width:9px; height:9px; border-radius:50%; background:#3a3a44; flex:none; }
+  .estado.ok .punto { background:var(--acento); }
+  .estado .qué { flex:1; font-family:ui-monospace,Consolas,monospace; font-size:12.5px; }
+  .estado .det { color:var(--tenue); font-size:12px; }
+  input[type=text] { width:100%; padding:9px; border-radius:7px; border:1px solid var(--borde);
+    background:#0f0f13; color:var(--texto); font-size:13px;
+    font-family:ui-monospace,Consolas,monospace; }
+  label { display:block; font-size:12px; color:var(--tenue); margin:12px 0 5px; }
+  pre { background:#08080a; border:1px solid var(--borde); border-radius:7px; padding:12px;
+        font-size:11.5px; max-height:280px; overflow-y:auto; white-space:pre-wrap;
+        font-family:ui-monospace,Consolas,monospace; margin:12px 0 0; }
+  .barra { height:5px; background:#0f0f13; border-radius:3px; overflow:hidden; margin:12px 0; }
+  .barra div { height:100%; background:var(--acento); width:0; transition:width .4s; }
+  .aviso { font-size:12.5px; padding:10px 13px; border-radius:7px; margin-top:12px; border:1px solid; }
+  .aviso.mal { border-color:var(--alerta); color:var(--alerta); background:#221d08; }
+  .aviso.err { border-color:var(--error); color:var(--error); background:#2a1212; }
+  .aviso.ok { border-color:var(--acento); color:var(--acento); background:#0f2018; }
+  .lista { max-height:250px; overflow-y:auto; border:1px solid var(--borde);
+           border-radius:7px; margin-top:9px; }
+  .item { padding:8px 12px; cursor:pointer; font-size:12.5px; display:flex;
+          justify-content:space-between; gap:12px; border-bottom:1px solid #1c1c22; }
+  .item:hover { background:#1b1b22; }
+  .item .mb { color:var(--tenue); font-size:11.5px; }
+  .oculto { display:none; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:10px; }
+  td { padding:4px 0; border-bottom:1px solid #1c1c22; }
+  td:last-child { text-align:right; font-family:ui-monospace,Consolas,monospace; }
+  code { background:#0f0f13; padding:1px 5px; border-radius:4px; font-size:12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Análisis de video — panel</h1>
+  <span class="ruta" id="carpeta"></span>
+</header>
+
+<main>
+
+<section>
+  <h2><span class="n">1</span>Preparar la cancha</h2>
+  <p class="sub">Se hace una sola vez, mientras la cámara no se mueva.
+     Sirve para todos los partidos, viejos y nuevos.</p>
+  <div id="piezas"></div>
+  <div class="fila" style="margin-top:14px">
+    <a class="boton" href="/calibrador.html" target="_blank">Marcar la cancha</a>
+    <a class="boton" href="/verificador.html" target="_blank">Verificar a ojo</a>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>El partido</h2>
+  <p class="sub">El video y el momento del saque de cada tiempo.</p>
+
+  <label>Video</label>
+  <input type="text" id="video" placeholder="C:\futsal\PT.mp4">
+  <div class="fila" style="margin-top:9px">
+    <button id="explorar">Buscar en el disco</button>
+    <span class="det" id="infoVideo" style="color:var(--tenue);font-size:12px"></span>
+  </div>
+  <div id="explorador" class="oculto">
+    <div class="fila" style="margin-top:10px">
+      <button id="subir">Subir una carpeta</button>
+      <span class="ruta" id="rutaActual" style="color:var(--tenue);font-size:11.5px"></span>
+    </div>
+    <div class="lista" id="listado"></div>
+  </div>
+
+  <div id="saques"></div>
+  <div class="fila" style="margin-top:14px">
+    <a class="boton" href="/partido.html" target="_blank">Marcar los saques</a>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>Analizar</h2>
+  <p class="sub">La prueba analiza 2 minutos. En CPU el período entero puede
+     llevar horas: mirá el video de auditoría antes de largar el completo.</p>
+
+  <div class="fila">
+    <button id="pt" class="primario">Analizar PT</button>
+    <button id="st">Analizar ST</button>
+    <label style="margin:0;display:flex;align-items:center;gap:6px;color:var(--texto)">
+      <input type="checkbox" id="prueba" checked> solo 2 minutos
+    </label>
+  </div>
+
+  <div id="progreso" class="oculto">
+    <div class="barra"><div id="barra"></div></div>
+    <div class="fila" style="justify-content:space-between">
+      <span class="det" id="etiqueta"></span>
+      <span class="det" id="contador"></span>
+    </div>
+    <pre id="log"></pre>
+  </div>
+
+  <div id="resultado"></div>
+</section>
+
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let cfgPartido = null, ultimoEstado = "";
+
+async function traer(url, opciones){
+  const r = await fetch(url, opciones);
+  return r.json();
+}
+
+function pieza(nombre, ok, detalle){
+  return `<div class="estado ${ok ? "ok" : ""}">
+    <span class="punto"></span>
+    <span class="qué">${nombre}</span>
+    <span class="det">${detalle}</span></div>`;
+}
+
+async function refrescar(){
+  const { trabajo, archivos } = await traer("/api/estado");
+  $("carpeta").textContent = archivos.carpeta;
+
+  const cal = archivos.calibracion, enc = archivos.encuadre, par = archivos.partido;
+  const rms = cal.contenido?.error_rms_px;
+  $("piezas").innerHTML =
+    pieza("calibracion.json", cal.existe,
+          cal.existe ? (rms != null ? `RMS ${rms.toFixed(2)} px` : "sin RMS") : "falta") +
+    pieza("encuadre.json", enc.existe,
+          enc.existe ? `${enc.contenido?.resolucion_origen?.join("×") ?? "?"} → recorte ${
+            enc.contenido?.recorte ? enc.contenido.recorte[2]+"×"+enc.contenido.recorte[3] : "?"}` : "falta") +
+    pieza("partido.json", par.existe, par.existe ? "listo" : "falta");
+
+  cfgPartido = par.contenido || null;
+  if(cfgPartido){
+    if(!$("video").value) $("video").value = cfgPartido.video || "";
+    const p = cfgPartido.periodos || {};
+    $("saques").innerHTML = `<table>
+      <tr><td>Saque del primer tiempo</td><td>${p.PT?.saque ?? "sin marcar"}</td></tr>
+      <tr><td>Saque del segundo tiempo</td><td>${p.ST?.saque ?? "sin marcar"}</td></tr>
+      <tr><td>En el PT ataca hacia</td><td>${cfgPartido.invertida_pt ? "la izquierda" : "la derecha"}</td></tr>
+    </table>`;
+  } else {
+    $("saques").innerHTML = `<div class="aviso mal">Falta el partido.json.
+      Marcá los saques y guardalo desde la herramienta.</div>`;
+  }
+
+  const listo = cal.existe && par.existe;
+  $("pt").disabled = $("st").disabled = !listo || trabajo.estado === "corriendo";
+
+  // Progreso
+  const corriendo = trabajo.estado === "corriendo";
+  $("progreso").classList.toggle("oculto", trabajo.estado === "libre");
+  if(trabajo.estado !== "libre"){
+    $("log").textContent = trabajo.mensajes.join("\n");
+    if(ultimoEstado !== trabajo.mensajes.length) $("log").scrollTop = $("log").scrollHeight;
+    ultimoEstado = trabajo.mensajes.length;
+    $("etiqueta").textContent = corriendo
+      ? `Analizando ${trabajo.periodo}...`
+      : (trabajo.estado === "error" ? "Falló" : `${trabajo.periodo} terminado`);
+    $("contador").textContent = trabajo.frames
+      ? `${trabajo.frames} cuadros · ${trabajo.tracks} tracks` : "";
+    // No hay total conocido de antemano, así que la barra muestra actividad,
+    // no porcentaje: prometer un porcentaje que no se puede calcular es peor
+    // que no mostrar ninguno.
+    $("barra").style.width = corriendo ? ((trabajo.frames % 400) / 4) + "%"
+                                       : (trabajo.estado === "listo" ? "100%" : "0");
+  }
+
+  let html = "";
+  if(trabajo.estado === "error"){
+    html = `<div class="aviso err"><strong>Falló.</strong><br>${trabajo.error}</div>`;
+  } else if(trabajo.estado === "listo"){
+    const r = trabajo.resumen || {};
+    html = `<div class="aviso ok"><strong>${trabajo.periodo} listo.</strong>
+      ${r.tracks ?? 0} tracks, ${r.snapshots ?? 0} snapshots,
+      ${r.descartadas_fuera_de_cancha ?? 0} detecciones descartadas por caer fuera de la cancha.
+      ${r.equipos_confiables === false ? "<br><strong>Los equipos NO se separaron bien por color.</strong>" : ""}
+      </div>
+      <div class="fila" style="margin-top:12px">
+        ${trabajo.overlay ? `<a class="boton primario" href="/${trabajo.overlay}" target="_blank">Ver el video de auditoría</a>` : ""}
+        ${trabajo.salida ? `<a class="boton" href="/${trabajo.salida}" target="_blank">Ver el JSON</a>` : ""}
+      </div>
+      <p class="sub" style="margin-top:12px">Mirá el overlay antes de creerle a
+      esos números. Recuadros sobre la tribuna, puntos del radar donde no hay
+      jugadores o colores que bailan: cualquiera de las tres invalida el resto.</p>`;
+  }
+  $("resultado").innerHTML = html;
+}
+
+// ── Explorador ────────────────────────────────────────────────────────────
+let carpetaActual = "";
+async function listar(ruta){
+  const d = await traer("/api/carpeta?ruta=" + encodeURIComponent(ruta || ""));
+  carpetaActual = d.ruta;
+  $("rutaActual").textContent = d.ruta;
+  $("subir").disabled = !d.padre;
+  $("listado").innerHTML =
+    (d.error ? `<div class="item" style="color:var(--alerta)">${d.error}</div>` : "") +
+    d.carpetas.map(c => `<div class="item" data-dir="${c.ruta.replace(/"/g,"&quot;")}">
+       <span>📁 ${c.nombre}</span></div>`).join("") +
+    d.videos.map(v => `<div class="item" data-video="${v.ruta.replace(/"/g,"&quot;")}">
+       <span>🎬 ${v.nombre}</span><span class="mb">${v.mb} MB</span></div>`).join("") ||
+    `<div class="item" style="color:var(--tenue)">Nada acá.</div>`;
+
+  $("listado").querySelectorAll("[data-dir]").forEach(el =>
+    el.onclick = () => listar(el.dataset.dir));
+  $("listado").querySelectorAll("[data-video]").forEach(el =>
+    el.onclick = () => {
+      $("video").value = el.dataset.video;
+      $("explorador").classList.add("oculto");
+      $("infoVideo").textContent = "Elegido.";
+    });
+}
+$("explorar").onclick = () => {
+  $("explorador").classList.toggle("oculto");
+  if(!$("explorador").classList.contains("oculto")) listar(carpetaActual);
+};
+$("subir").onclick = async () => {
+  const d = await traer("/api/carpeta?ruta=" + encodeURIComponent(carpetaActual));
+  if(d.padre) listar(d.padre);
+};
+
+// ── Lanzar ────────────────────────────────────────────────────────────────
+for(const per of ["pt","st"]){
+  $(per).onclick = async () => {
+    const r = await traer("/api/analizar", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        config: "partido.json",
+        periodo: per.toUpperCase(),
+        video: $("video").value.trim() || null,
+        prueba: $("prueba").checked,
+        desde: $("prueba").checked ? (cfgPartido?.prueba?.desde || "5:00") : "0",
+        overlay: true,
+      }),
+    });
+    if(r.error) alert(r.error);
+    refrescar();
+  };
+}
+
+refrescar();
+setInterval(refrescar, 1500);
+</script>
+</body>
+</html>

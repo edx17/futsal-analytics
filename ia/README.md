@@ -53,7 +53,27 @@ python -m pytest tests/ -q
 
 Con el entorno activo se ve `(.venv)` al principio del prompt.
 
-## Uso
+## Uso: el panel
+
+Un comando, y el resto son clicks:
+
+```bash
+python -m futsal_ia.panel
+```
+
+Abre `http://127.0.0.1:8710` en el navegador. Desde ahí: marcás la cancha,
+verificás a ojo, elegís el video con un explorador, marcás los saques y largás
+el análisis con un botón, viendo el progreso en vivo. Las herramientas abiertas
+desde el panel **guardan directo en `ia/`**, sin pasar por Descargas.
+
+Escucha solo en `127.0.0.1`: es un panel para la computadora donde corre, no un
+servicio. No es accesible desde la red ni desde otra máquina.
+
+Todo lo que hace el panel se puede hacer por línea de comandos, y a veces
+conviene: para correr varios partidos seguidos, o desde un script. Abajo está
+el detalle.
+
+## Uso por línea de comandos
 
 ### Antes de todo: un frame de verdad
 
@@ -208,6 +228,8 @@ Honestidad sobre qué está probado de verdad:
 | `preproceso.py` | **Verificado.** 14 tests del giro y recorte determinista |
 | `herramientas/calibrador.html` | **Sin ejecutar en navegador.** Tests que verifican que su lista de puntos no se desincronice de `cancha.py` y que no dependa de ningún CDN |
 | `herramientas/verificador.html` | **Sin ejecutar en navegador.** Ídem, sobre las coordenadas en metros de la cancha |
+| `panel.py` | **Verificado.** 14 tests contra un servidor real: ruteo, estado del trabajo, explorador y la lista blanca de archivos |
+| `herramientas/panel.html` | **Sin ejecutar en navegador.** |
 | `herramientas/partido.html` | **Sin ejecutar en navegador.** Tests que verifican que el `partido.json` que baja tenga las claves que el CLI lee y genere el comando que el CLI entiende |
 | `deteccion.py` | **Parcial.** El partido en mosaicos y la fusión están verificados (11 tests); el detector en sí necesita GPU y los pesos |
 | `seguimiento.py` | **Sin ejecutar.** Necesita `supervision` instalado |
@@ -219,7 +241,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 149 tests, sin GPU ni video
+python -m pytest tests/ -q     # 163 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar

@@ -114,6 +114,9 @@
       <button id="expMarcas" class="primario" disabled>marcas.json</button>
       <button id="expEncuadre" disabled>encuadre.json</button>
     </div>
+    <div class="fila" id="filaGuardar" style="display:none">
+      <button id="guardarTodo" class="primario" disabled>Guardar los dos en el proyecto</button>
+    </div>
     <p class="nota">Las marcas salen en coordenadas del frame ORIGINAL.
        <code>cli calibrar --encuadre</code> las convierte solo.</p>
   </aside>
@@ -337,6 +340,27 @@ $("limpiar").onclick = () => { marcas = {}; orden = []; activo = 0; pintarLista(
 $("giro").oninput = () => { $("valGiro").textContent = parseFloat($("giro").value).toFixed(1); calcularEncuadre(); };
 $("margen").oninput = calcularEncuadre;
 
+
+// Cuando esta página se abre desde el panel (python -m futsal_ia.panel) se
+// puede guardar directo en la carpeta del proyecto. Abierta con doble click
+// eso no existe —el navegador no escribe en el disco— y queda solo la bajada
+// al directorio de Descargas.
+const EN_PANEL = location.protocol.startsWith("http");
+async function guardarEnProyecto(nombre, obj, boton){
+  const original = boton.textContent;
+  try {
+    const r = await fetch("/api/guardar", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ nombre, contenido: obj }),
+    });
+    const d = await r.json();
+    boton.textContent = d.error ? ("Error: " + d.error) : ("Guardado en " + nombre);
+  } catch (e) {
+    boton.textContent = "No pude guardar: " + e.message;
+  }
+  setTimeout(() => boton.textContent = original, 2500);
+}
+
 function bajar(nombre, obj) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" }));
@@ -345,6 +369,23 @@ function bajar(nombre, obj) {
 $("expMarcas").onclick = () => bajar("marcas.json",
   Object.fromEntries(Object.entries(marcas).map(([k, v]) => [k, [+v[0].toFixed(2), +v[1].toFixed(2)]])));
 $("expEncuadre").onclick = () => { const e = calcularEncuadre(); if (e) bajar("encuadre.json", e); };
+
+if (EN_PANEL) {
+  document.getElementById("filaGuardar").style.display = "flex";
+  document.getElementById("guardarTodo").onclick = async (e) => {
+    const enc = calcularEncuadre();
+    await guardarEnProyecto("marcas.json", Object.fromEntries(
+      Object.entries(marcas).map(([k, v]) => [k, [+v[0].toFixed(2), +v[1].toFixed(2)]])), e.target);
+    if (enc) await guardarEnProyecto("encuadre.json", enc, e.target);
+  };
+}
+
+const _revisarOriginal = revisar;
+revisar = function () {
+  _revisarOriginal();
+  const b = document.getElementById("guardarTodo");
+  if (b) b.disabled = document.getElementById("expMarcas").disabled;
+};
 
 pintarLista();
 </script>
