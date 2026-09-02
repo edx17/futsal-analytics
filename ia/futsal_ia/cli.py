@@ -314,7 +314,17 @@ def _cmd_diagnostico(args):
     print("\nCargando el detector...")
     detector = crear_detector(args.detector, conf_minima=PARAMETROS.conf_minima_persona)
     detecciones = detector.detectar(frame)
-    print(f"\nPersonas detectadas: {len(detecciones)}\n")
+    brutas = getattr(detector, "brutas", None)
+    print(f"\nPersonas detectadas: {len(detecciones)}")
+    if brutas is not None:
+        print(f"Objetos que devolvió el modelo, antes de filtrar: {brutas}")
+        if brutas and not detecciones:
+            vistas = getattr(detector, "clases_vistas", [])
+            print("\n*** El modelo SÍ vio objetos, pero ninguno quedó como persona. ***")
+            print(f"Clases devueltas: {vistas}")
+            print("Eso es un id de clase equivocado en el filtro, no un problema")
+            print("de cámara ni de calibración.")
+    print()
 
     # La cancha según la calibración, encima de la imagen.
     contorno = [(0, 0), (LARGO_CANCHA_M, 0), (LARGO_CANCHA_M, ANCHO_CANCHA_M),

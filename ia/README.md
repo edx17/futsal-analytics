@@ -277,7 +277,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 178 tests, sin GPU ni video
+python -m pytest tests/ -q     # 181 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar
@@ -294,15 +294,19 @@ python -m pytest tests/ -q     # 178 tests, sin GPU ni video
    frame.
 5. **El pipeline escribe un JSON, no toca Supabase.** Un análisis sin revisar no
    debería poder ensuciar la tabla de eventos del club.
-6. **El giro y el recorte son un dato, no un paso manual.** Viajan en un JSON
+6. **Cada librería de detección numera las clases distinto.** RF-DETR usa los
+   ids oficiales de COCO (persona = 1, y no existe el 0); Ultralytics numera
+   contiguo desde 0 (persona = 0). Unificarlos hace que un detector devuelva
+   cero siempre, sin ningún error.
+7. **El giro y el recorte son un dato, no un paso manual.** Viajan en un JSON
    junto a la calibración y se aplican solos. Si el recorte saliera tres
    píxeles distinto un día, la homografía seguiría calculando sin fallar y
    todas las posiciones quedarían corridas para siempre.
-7. **Primero se endereza la lente, después se encuadra.** Al revés no funciona:
+8. **Primero se endereza la lente, después se encuadra.** Al revés no funciona:
    la corrección depende de dónde está el centro óptico del sensor, y recortar
    lo corre.
-8. **El informe de precisión se calcula por período.** Con un arco cerca y otro
+9. **El informe de precisión se calcula por período.** Con un arco cerca y otro
    lejos, la misma celda cambia de calidad hasta 8x entre tiempos.
-9. **Detector RF-DETR (Apache 2.0) por defecto.** Ultralytics YOLO es AGPL-3.0 y
+10. **Detector RF-DETR (Apache 2.0) por defecto.** Ultralytics YOLO es AGPL-3.0 y
    está detrás de un aviso: si esto se comercializa, obliga a abrir el código
    del servicio o a pagar licencia.

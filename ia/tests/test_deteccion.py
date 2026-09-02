@@ -216,3 +216,72 @@ def test_el_diagnostico_distingue_los_tres_motivos():
 
     chiquitos = ConteoMuestreo(frames=300, personas=1500, fuera_de_cancha=200, sin_color=1300)
     assert "demasiado chicos" in chiquitos.diagnostico()
+
+
+# ── El id de la clase "persona" ────────────────────────────────────────────
+#
+# Bug real, encontrado sobre el primer video: el filtro usaba el id 0 para
+# RF-DETR, que numera con los ids OFICIALES de COCO donde persona = 1. El
+# resultado era cero detecciones. Cero exacto, en cualquier video, sin ningún
+# error: el síntoma parecía un problema de cámara, de recorte o de calibración,
+# y no lo era.
+
+def test_cada_libreria_numera_distinto():
+    from futsal_ia.deteccion import PERSONA_RFDETR, PERSONA_ULTRALYTICS
+
+    assert PERSONA_RFDETR == 1, "RF-DETR usa los ids oficiales de COCO: persona = 1"
+    assert PERSONA_ULTRALYTICS == 0, "Ultralytics numera contiguo desde 0: persona = 0"
+    assert PERSONA_RFDETR != PERSONA_ULTRALYTICS, (
+        "Si alguien los unifica, uno de los dos detectores devuelve cero siempre"
+    )
+
+
+class _ModeloRFDETRFalso:
+    """Devuelve lo que devuelve RF-DETR: ids de COCO, persona = 1."""
+
+    def __init__(self, clases):
+        self.clases = clases
+
+    def predict(self, frame, threshold=0.5):
+        import types
+
+        n = len(self.clases)
+        return types.SimpleNamespace(
+            xyxy=[[10, 20, 50, 140]] * n,
+            class_id=self.clases,
+            confidence=[0.9] * n,
+        )
+
+
+def test_el_detector_se_queda_con_las_personas_y_no_con_la_pelota():
+    """
+    En una cancha el modelo también ve "sports ball" (37) y "chair" (62) en los
+    bancos. Solo las personas tienen que pasar.
+    """
+    from futsal_ia.deteccion import DetectorRFDETR
+
+    det = DetectorRFDETR.__new__(DetectorRFDETR)
+    det.conf_minima = 0.35
+    det.modelo = _ModeloRFDETRFalso([1, 1, 37, 62, 1])
+
+    encontradas = det.detectar(None)
+    assert len(encontradas) == 3
+    assert det.brutas == 5
+    assert det.clases_vistas == [1, 37, 62]
+
+
+def test_los_contadores_distinguen_el_bug_de_una_cancha_vacia():
+    """
+    Con el id equivocado, un cuadro lleno de jugadores da cero — igual que un
+    cuadro sin nadie. Los contadores son lo único que separa los dos casos.
+    """
+    from futsal_ia.deteccion import DetectorRFDETR
+
+    det = DetectorRFDETR.__new__(DetectorRFDETR)
+    det.conf_minima = 0.35
+    det.modelo = _ModeloRFDETRFalso([1] * 10)
+    assert len(det.detectar(None)) == 10 and det.brutas == 10
+
+    det.modelo = _ModeloRFDETRFalso([37, 62, 41])
+    assert det.detectar(None) == []
+    assert det.brutas == 3 and det.clases_vistas == [37, 41, 62]

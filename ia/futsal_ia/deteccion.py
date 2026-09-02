@@ -24,7 +24,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-CLASE_PERSONA_COCO = 0
+# ── OJO: cada librería numera las clases distinto ──────────────────────────
+#
+# No hay un "id de persona" único, y usar el mismo para las dos hace que el
+# detector descarte TODAS las personas y devuelva cero. Cero exacto, en
+# cualquier video, sin ningún error: el síntoma parece un problema de cámara,
+# de calibración o de recorte, y no lo es.
+#
+#   RF-DETR      -> ids oficiales de COCO, que arrancan en 1 y saltean números
+#                   (no hay 0 ni 12). Persona = 1.
+#                   Verificable en rfdetr/util/coco_classes.py
+#   Ultralytics  -> ids contiguos desde 0, en el orden de la lista de COCO.
+#                   Persona = 0.
+PERSONA_RFDETR = 1
+PERSONA_ULTRALYTICS = 0
 
 
 class ErrorDetector(Exception):
@@ -90,6 +103,12 @@ class Detector(Protocol):
 class DetectorRFDETR:
     """RF-DETR (Apache 2.0). El que se usa por defecto."""
 
+    brutas: int = 0
+    """Objetos que devolvió el modelo antes de filtrar por clase."""
+
+    clases_vistas: list = []
+    """Qué clases devolvió. Si acá no aparece la de persona, el id está mal."""
+
     def __init__(self, conf_minima: float = 0.35, tamano: str = "base"):
         try:
             from rfdetr import RFDETRBase, RFDETRLarge
@@ -102,8 +121,10 @@ class DetectorRFDETR:
     def detectar(self, frame) -> list[Deteccion]:
         det = self.modelo.predict(frame, threshold=self.conf_minima)
         salida = []
+        self.brutas = len(det.xyxy)
+        self.clases_vistas = sorted({int(c) for c in det.class_id})
         for bbox, clase, conf in zip(det.xyxy, det.class_id, det.confidence):
-            if int(clase) != CLASE_PERSONA_COCO:
+            if int(clase) != PERSONA_RFDETR:
                 continue
             salida.append(Deteccion(bbox=tuple(float(v) for v in bbox), confianza=float(conf)))
         return salida
@@ -134,10 +155,13 @@ class DetectorYOLO:
         )
         self.conf_minima = conf_minima
         self.modelo = YOLO(pesos)
+        self.brutas = 0
+        self.clases_vistas = []
 
     def detectar(self, frame) -> list[Deteccion]:
-        res = self.modelo.predict(frame, conf=self.conf_minima, classes=[CLASE_PERSONA_COCO],
-                                  verbose=False)[0]
+        res = self.modelo.predict(frame, conf=self.conf_minima,
+                                  classes=[PERSONA_ULTRALYTICS], verbose=False)[0]
+        self.brutas = len(res.boxes)
         return [
             Deteccion(bbox=tuple(float(v) for v in caja.xyxy[0]), confianza=float(caja.conf[0]))
             for caja in res.boxes
