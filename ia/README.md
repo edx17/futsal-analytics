@@ -293,6 +293,32 @@ como si estuvo diez minutos siguiendo al técnico rival. Treinta segundos de
 - Números que saltan → el seguidor pierde identidades. En futsal es esperable;
   lo que importa es cuánto.
 
+## Medir antes de mejorar
+
+No se puede saber si un cambio suma sin un número contra el cual compararlo.
+`herramientas/revision.html` (botón "Revisar y corregir" en el panel) muestra
+unos veinte instantes del análisis con los recuadros dibujados: se dice cuánta
+gente hay realmente, se clickean los recuadros que no son jugadores y los que
+tienen el equipo mal. Son unos diez minutos por partido.
+
+```bash
+python -m futsal_ia.cli evaluar --analisis analisis_PT.json \
+    --correcciones correcciones_PT.json --guardar medicion_1.json
+```
+
+Devuelve tres números —cuántos jugadores encuentra, cuántos de los que marca
+son jugadores, y cuántas veces le pega al equipo— y dice qué conviene tocar
+según cuál esté flojo. Después de cambiar algo:
+
+```bash
+python -m futsal_ia.cli evaluar ... --contra medicion_1.json
+```
+
+y te dice si mejoró o empeoró, en vez de opinar.
+
+Esas mismas correcciones son el material de entrenamiento para afinar el
+detector más adelante: el trabajo de revisar no se tira.
+
 ## Estado de verificación
 
 Honestidad sobre qué está probado de verdad:
@@ -322,7 +348,7 @@ espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
 pip install pytest pyflakes
-python -m pytest tests/ -q     # 230 tests, sin GPU ni video
+python -m pytest tests/ -q     # 244 tests, sin GPU ni video
 ```
 
 Uno de esos tests corre `pyflakes` sobre el paquete y falla si hay un nombre

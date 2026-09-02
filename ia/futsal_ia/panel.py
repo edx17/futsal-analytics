@@ -190,7 +190,15 @@ def _correr(datos: dict) -> None:
         t.tracks = len(res.tracks)
 
         salida = RAIZ / f"analisis_{datos['periodo']}.json"
-        guardar(res, salida, club_id=cfg["club"], id_partido=cfg["partido"])
+        guardar(res, salida, club_id=cfg["club"], id_partido=cfg["partido"],
+                meta={
+                    "video": str(video),
+                    "periodo": datos["periodo"],
+                    "invertida": cfg["invertida"],
+                    "t_saque_ms": saque_ms,
+                    "desde_ms": desde_ms,
+                    "encuadre": encuadre.a_dict() if encuadre else None,
+                })
         t.salida = salida.name
         t.resumen = res.resumen()
         for aviso in res.avisos:
@@ -300,7 +308,8 @@ class Panel(BaseHTTPRequestHandler):
 
         # Estáticos: solo los HTML de herramientas, por nombre exacto.
         nombre = Path(u.path).name
-        if nombre in {"calibrador.html", "verificador.html", "partido.html"}:
+        if nombre in {"calibrador.html", "verificador.html", "partido.html",
+                      "revision.html"}:
             return self._responder((HERRAMIENTAS / nombre).read_bytes(),
                                    "text/html; charset=utf-8")
 
@@ -319,7 +328,8 @@ class Panel(BaseHTTPRequestHandler):
         if u.path == "/api/guardar":
             nombre = Path(datos.get("nombre", "")).name
             if nombre not in {"partido.json", "marcas.json", "encuadre.json",
-                              "calibracion.json", "equipos.json"}:
+                              "calibracion.json", "equipos.json",
+                              "correcciones_PT.json", "correcciones_ST.json"}:
                 return self._json({"error": f"nombre no permitido: {nombre}"}, 400)
             (RAIZ / nombre).write_text(
                 json.dumps(datos["contenido"], indent=2, ensure_ascii=False), encoding="utf-8")

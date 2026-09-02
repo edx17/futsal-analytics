@@ -193,6 +193,51 @@ def _cmd_frame(args):
     return 0
 
 
+def _cmd_evaluar(args):
+    """Cruza el análisis con lo que dijo una persona y saca los números."""
+    from .evaluacion import RevisionInstante, comparar, evaluar, veredicto
+
+    analisis = _leer_json(args.analisis, "el análisis")
+    corr = _leer_json(args.correcciones, "las correcciones")
+    revisiones = [RevisionInstante(
+        t_ms=int(r["t_ms"]), jugadores_reales=int(r["jugadores_reales"]),
+        falsos=r.get("falsos", []), equipo_mal=r.get("equipo_mal", []),
+        faltantes=int(r.get("faltantes", 0)),
+    ) for r in corr.get("instantes", [])]
+
+    m = evaluar(analisis, revisiones)
+    if not m.get("instantes"):
+        print(m.get("aviso", "Sin datos."))
+        return 1
+
+    print(f"Instantes revisados: {m['instantes']}")
+    print(f"Jugadores que había: {m['jugadores_reales']}")
+    print(f"Detectados:          {m['detectados']}  "
+          f"({m['falsos_positivos']} que no eran jugadores)\n")
+    print(f"  Encuentra           {m['recall']:.0%} de los jugadores")
+    print(f"  De lo que marca     {m['precision']:.0%} son jugadores")
+    print(f"  Le pega al equipo   {m['acierto_equipo']:.0%} de las veces\n")
+    for d in veredicto(m):
+        print(f"  - {d}")
+
+    if args.contra:
+        previo = _leer_json(args.contra, "la medición anterior")
+        print("\nContra la medición anterior:")
+        c = comparar(previo.get("metricas", previo), m)
+        for clave, v in c.items():
+            if clave == "veredicto":
+                continue
+            print(f"  {clave:<16} {v['antes']:.3f} -> {v['despues']:.3f}  "
+                  f"({v['delta']:+.3f})")
+        print(f"\n  {c['veredicto']}")
+
+    if args.guardar:
+        Path(args.guardar).write_text(
+            json.dumps({"metricas": m}, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"\nMedición guardada en {args.guardar}, para comparar más adelante.")
+    return 0
+
+
 def _cmd_excluir(args):
     """
     Marca una franja de la cancha donde lo que se detecte no cuenta.
@@ -611,7 +656,14 @@ def _cmd_analizar(args):
         al_avanzar=lambda p: print(f"  {p.frames_analizados} frames, "
                                    f"{len(res.tracks)} tracks", end="\r"),
     )
-    destino = guardar(res, args.salida, club_id=args.club, id_partido=args.partido)
+    destino = guardar(res, args.salida, club_id=args.club, id_partido=args.partido,
+                      meta={
+                          "video": str(args.video), "periodo": args.periodo,
+                          "invertida": bool(args.invertida),
+                          "t_saque_ms": parse_tiempo(args.saque or "0"),
+                          "desde_ms": parse_tiempo(args.desde or "0"),
+                          "encuadre": encuadre.a_dict() if encuadre else None,
+                      })
     print(f"\nAnálisis guardado en {destino}\n")
     print(json.dumps(res.resumen(), indent=2, ensure_ascii=False))
     for aviso in res.avisos:
@@ -654,6 +706,13 @@ def main(argv=None):
     f.add_argument("--en", default="2:00", help="momento del video, como 'mm:ss'")
     f.add_argument("--salida", default="frame.png")
     f.set_defaults(func=_cmd_frame)
+
+    ev = sub.add_parser("evaluar", help="qué tan bien anda, contra lo que dijo una persona")
+    ev.add_argument("--analisis", required=True)
+    ev.add_argument("--correcciones", required=True)
+    ev.add_argument("--contra", help="una medición anterior, para comparar")
+    ev.add_argument("--guardar", help="guarda esta medición para comparar después")
+    ev.set_defaults(func=_cmd_evaluar)
 
     ex = sub.add_parser("excluir",
                         help="marca zonas donde lo detectado no cuenta (los bancos)")

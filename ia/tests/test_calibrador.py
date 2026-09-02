@@ -77,3 +77,27 @@ def test_el_verificador_usa_las_mismas_coordenadas_de_cancha():
 def test_el_verificador_tampoco_depende_de_un_cdn():
     texto = VERIFICADOR.read_text(encoding="utf-8")
     assert "<script src" not in texto and "cdn" not in texto.lower()
+
+
+REVISION = Path(__file__).resolve().parents[1] / "herramientas" / "revision.html"
+
+
+def test_el_revisor_existe_y_no_depende_de_un_cdn():
+    texto = REVISION.read_text(encoding="utf-8")
+    assert "<script src" not in texto and "cdn" not in texto.lower()
+
+
+def test_el_revisor_guarda_las_claves_que_lee_el_evaluador():
+    """
+    Si la herramienta escribe una cosa y el evaluador espera otra, las
+    correcciones no sirven para nada y nadie se entera hasta el final.
+    """
+    import inspect
+
+    from futsal_ia.evaluacion import RevisionInstante
+
+    texto = REVISION.read_text(encoding="utf-8")
+    campos = set(inspect.signature(RevisionInstante).parameters)
+    for clave in ("t_ms", "jugadores_reales", "falsos", "equipo_mal"):
+        assert clave in campos, f"RevisionInstante no tiene {clave}"
+        assert clave in texto, f"revision.html no escribe {clave}"

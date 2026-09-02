@@ -573,7 +573,7 @@ def resolver_equipos_por_mayoria(res: ResultadoAnalisis) -> None:
             track.equipo = max(votos, key=votos.get)
 
 
-def guardar(res: ResultadoAnalisis, destino, *, club_id, id_partido) -> Path:
+def guardar(res: ResultadoAnalisis, destino, *, club_id, id_partido, meta=None) -> Path:
     """
     Deja un JSON con todo lo que produjo el análisis, listo para que la UI de
     corrección lo revise ANTES de que nada toque la base.
@@ -583,6 +583,11 @@ def guardar(res: ResultadoAnalisis, destino, *, club_id, id_partido) -> Path:
     """
     destino = Path(destino)
     destino.write_text(json.dumps({
+        # Con qué se corrió. Sin esto, el archivo no se puede volver a mirar
+        # sobre el video: haría falta adivinar desde qué minuto se analizó, con
+        # qué recorte y con qué instante de saque, y cualquier error ahí
+        # desalinea todo sin avisar. Ya nos pasó con el overlay.
+        "meta": meta or {},
         "resumen": res.resumen(),
         "clasificador_equipos": res.clasificador.a_dict() if res.clasificador else None,
         "snapshots": res.snapshots,

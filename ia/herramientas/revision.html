@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revisar el análisis</title>
+<style>
+  :root { --bg:#0b0b0d; --panel:#141418; --borde:#2a2a32; --texto:#e8e8ec;
+          --tenue:#8a8a96; --acento:#00ff88; --error:#ef4444; --alerta:#facc15; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--texto);
+         font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--borde); }
+  h1 { margin:0; font-size:15px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  header p { margin:4px 0 0; color:var(--tenue); font-size:12.5px; }
+  main { display:grid; grid-template-columns:1fr 330px; height:calc(100vh - 62px); }
+  @media (max-width:980px){ main{grid-template-columns:1fr;height:auto;} }
+  #lienzoCaja { background:#000; display:flex; align-items:center; justify-content:center;
+                overflow:auto; }
+  canvas { max-width:100%; cursor:crosshair; }
+  aside { border-left:1px solid var(--borde); background:var(--panel);
+          overflow-y:auto; padding:16px; }
+  .paso { font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+          color:var(--acento); font-weight:700; margin:16px 0 8px; }
+  .paso:first-child { margin-top:0; }
+  button { font:inherit; font-weight:600; padding:9px 12px; border-radius:7px;
+           border:1px solid var(--borde); background:#1d1d24; color:var(--texto); cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--acento); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primario { background:var(--acento); color:#000; border-color:var(--acento); }
+  .fila { display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; }
+  label { display:block; font-size:12px; color:var(--tenue); margin:12px 0 5px; }
+  input[type=file] { width:100%; font-size:12px; }
+  input[type=number] { width:90px; padding:9px; border-radius:7px; border:1px solid var(--borde);
+    background:#0f0f13; color:var(--texto); font-size:20px; font-weight:700; text-align:center; }
+  .nota { font-size:12px; color:var(--tenue); margin-top:10px; }
+  .aviso { font-size:12.5px; padding:10px 12px; border-radius:7px; margin-top:12px; border:1px solid; }
+  .aviso.ok { border-color:var(--acento); color:var(--acento); background:#0f2018; }
+  .aviso.mal { border-color:var(--alerta); color:var(--alerta); background:#221d08; }
+  .modo { display:flex; gap:6px; margin-top:8px; }
+  .modo button { flex:1; font-size:12px; padding:8px 6px; }
+  .modo button.on { background:var(--acento); color:#000; border-color:var(--acento); }
+  .barra { display:flex; gap:3px; flex-wrap:wrap; margin-top:10px; }
+  .barra span { width:20px; height:20px; border-radius:4px; background:#22222a;
+                font-size:10px; display:flex; align-items:center; justify-content:center;
+                color:var(--tenue); cursor:pointer; }
+  .barra span.hecho { background:var(--acento); color:#000; font-weight:700; }
+  .barra span.actual { outline:2px solid #fff; }
+  code { background:#0f0f13; padding:1px 5px; border-radius:4px; font-size:12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Revisar el análisis</h1>
+  <p>Mirás unos pocos instantes y decís qué está bien y qué está mal. De ahí salen
+     los números para saber si un cambio mejora o empeora — y el material para
+     entrenar el detector.</p>
+</header>
+
+<main>
+  <div id="lienzoCaja"><canvas id="lienzo"></canvas></div>
+
+  <aside>
+    <div class="paso">Cargá</div>
+    <label>El video del partido</label>
+    <input type="file" id="fVideo" accept="video/*">
+    <label>El análisis (analisis_PT.json)</label>
+    <input type="file" id="fAnalisis" accept=".json">
+    <div id="estado"></div>
+
+    <div id="trabajo" style="display:none">
+      <div class="paso">Instante <span id="cual"></span></div>
+      <div class="barra" id="barra"></div>
+
+      <label>¿Cuántas personas hay REALMENTE en la cancha?</label>
+      <div class="fila">
+        <input type="number" id="reales" min="0" max="14" value="10">
+        <span class="nota" style="margin:0">Futsal: 10 como máximo</span>
+      </div>
+
+      <label>Clickeá un recuadro para marcarlo</label>
+      <div class="modo">
+        <button data-modo="falso" class="on">No es jugador</button>
+        <button data-modo="equipo">Equipo mal</button>
+      </div>
+      <div class="nota" id="marcados"></div>
+
+      <div class="fila">
+        <button id="anterior">← Anterior</button>
+        <button id="siguiente" class="primario">Siguiente →</button>
+      </div>
+      <p class="nota">Con las flechas ← → también. El número se guarda solo al pasar.</p>
+
+      <div class="paso">Guardar</div>
+      <div class="fila">
+        <button id="guardar" class="primario">Guardar correcciones</button>
+      </div>
+      <div id="resultado"></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const lienzo = $("lienzo"), ctx = lienzo.getContext("2d");
+const vid = document.createElement("video");
+vid.muted = true;
+
+const COLOR = { "Propio":"#88ff00", "Rival":"#ef4444", "Arquero propio":"#00c8ff",
+                "Arquero rival":"#ff00c8", "Arbitro":"#a0a0a0", "Desconocido":"#facc15" };
+const CUANTOS = 20;      // instantes a revisar
+
+let analisis = null, meta = {}, muestras = [], actual = 0, modo = "falso";
+let respuestas = {};     // t_ms -> {jugadores_reales, falsos:[], equipo_mal:[]}
+let cajas = [];          // recuadros dibujados en el cuadro actual
+
+$("fAnalisis").onchange = (e) => {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try { analisis = JSON.parse(r.result); } catch (err) {
+      $("estado").innerHTML = `<div class="aviso mal">Ese JSON no se puede leer.</div>`;
+      return;
+    }
+    meta = analisis.meta || {};
+    const snaps = (analisis.snapshots || []).filter(s => (s.posiciones || []).length);
+    if(!snaps.length){
+      $("estado").innerHTML = `<div class="aviso mal">El análisis no tiene snapshots con gente.</div>`;
+      return;
+    }
+    if(meta.t_saque_ms == null){
+      $("estado").innerHTML = `<div class="aviso mal">Este análisis es de una versión
+        vieja y no guarda con qué se corrió. Volvé a analizar y probá con el nuevo.</div>`;
+      return;
+    }
+    // Repartidos parejo a lo largo del tramo: veinte instantes bien elegidos
+    // dicen más que doscientos seguidos, que se parecen todos entre sí.
+    const paso = Math.max(1, Math.floor(snaps.length / CUANTOS));
+    muestras = snaps.filter((_, i) => i % paso === 0).slice(0, CUANTOS);
+    respuestas = {};
+    actual = 0;
+    listo();
+  };
+  r.readAsText(f);
+};
+
+$("fVideo").onchange = (e) => {
+  const f = e.target.files[0]; if(!f) return;
+  vid.src = URL.createObjectURL(f);
+  vid.onloadeddata = listo;
+};
+
+function listo(){
+  if(!analisis || !vid.src) {
+    $("estado").innerHTML = `<div class="aviso mal">Faltan el video o el análisis.</div>`;
+    return;
+  }
+  $("estado").innerHTML = `<div class="aviso ok">${muestras.length} instantes para revisar.
+    Son unos diez minutos de trabajo.</div>`;
+  $("trabajo").style.display = "block";
+  ir(0);
+}
+
+function recorte(){
+  const e = meta.encuadre;
+  if(!e || !e.recorte) return [0, 0, vid.videoWidth, vid.videoHeight];
+  return e.recorte;
+}
+
+function ir(i){
+  if(!muestras.length) return;
+  guardarActual();
+  actual = Math.max(0, Math.min(muestras.length - 1, i));
+  const snap = muestras[actual];
+  // El snapshot guarda tiempo de PERÍODO; el video corre en su propio reloj.
+  vid.currentTime = (snap.t_ms + (meta.t_saque_ms || 0)) / 1000;
+  vid.onseeked = pintar;
+  pintarBarra();
+}
+
+function pintar(){
+  const snap = muestras[actual];
+  const [rx, ry, rw, rh] = recorte();
+  lienzo.width = rw; lienzo.height = rh;
+  ctx.drawImage(vid, rx, ry, rw, rh, 0, 0, rw, rh);
+
+  const resp = respuestas[snap.t_ms] || { falsos: [], equipo_mal: [] };
+  cajas = [];
+  for(const p of snap.posiciones || []){
+    if(!p._bbox) continue;
+    const [x1, y1, x2, y2] = p._bbox;
+    const id = p._track_ia;
+    const esFalso = resp.falsos.includes(id);
+    const malEquipo = resp.equipo_mal.includes(id);
+    ctx.lineWidth = esFalso || malEquipo ? 4 : 2;
+    ctx.strokeStyle = esFalso ? "#ef4444" : malEquipo ? "#facc15"
+                    : (COLOR[p.equipo] || COLOR.Desconocido);
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.font = "bold 13px system-ui";
+    ctx.fillText(esFalso ? "NO" : malEquipo ? "EQUIPO" : String(id), x1, Math.max(12, y1 - 4));
+    cajas.push({ id, x1, y1, x2, y2 });
+  }
+  $("cual").textContent = `${actual + 1} de ${muestras.length}  ·  ${(snap.t_ms/1000).toFixed(1)}s`;
+  $("reales").value = (respuestas[snap.t_ms]?.jugadores_reales) ?? 10;
+  pintarMarcados();
+}
+
+lienzo.onclick = (e) => {
+  const r = lienzo.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (lienzo.width / r.width);
+  const y = (e.clientY - r.top) * (lienzo.height / r.height);
+  // El más chico que contiene el click: con recuadros superpuestos, el de
+  // adentro es casi siempre el que se quiso marcar.
+  const dentro = cajas.filter(c => x >= c.x1 && x <= c.x2 && y >= c.y1 && y <= c.y2)
+                      .sort((a, b) => (a.x2-a.x1)*(a.y2-a.y1) - (b.x2-b.x1)*(b.y2-b.y1));
+  if(!dentro.length) return;
+  const id = dentro[0].id;
+  const snap = muestras[actual];
+  const resp = respuestas[snap.t_ms] ||= { jugadores_reales: +$("reales").value,
+                                           falsos: [], equipo_mal: [] };
+  const lista = modo === "falso" ? resp.falsos : resp.equipo_mal;
+  const k = lista.indexOf(id);
+  if(k >= 0) lista.splice(k, 1); else lista.push(id);
+  pintar();
+};
+
+function guardarActual(){
+  if(!muestras.length) return;
+  const snap = muestras[actual];
+  const resp = respuestas[snap.t_ms] ||= { falsos: [], equipo_mal: [] };
+  resp.jugadores_reales = +$("reales").value;
+}
+
+function pintarMarcados(){
+  const resp = respuestas[muestras[actual].t_ms] || {};
+  const f = (resp.falsos || []).length, e = (resp.equipo_mal || []).length;
+  $("marcados").textContent = (f || e)
+    ? `${f} marcados como "no es jugador", ${e} con el equipo mal.`
+    : "Nada marcado en este instante.";
+}
+
+function pintarBarra(){
+  $("barra").innerHTML = muestras.map((m, i) =>
+    `<span class="${respuestas[m.t_ms]?.jugadores_reales != null ? "hecho" : ""} ${
+      i === actual ? "actual" : ""}" data-i="${i}">${i + 1}</span>`).join("");
+  $("barra").querySelectorAll("span").forEach(s => s.onclick = () => ir(+s.dataset.i));
+}
+
+$("siguiente").onclick = () => ir(actual + 1);
+$("anterior").onclick = () => ir(actual - 1);
+$("reales").onchange = () => { guardarActual(); pintarBarra(); };
+document.addEventListener("keydown", (e) => {
+  if(e.target.tagName === "INPUT") return;
+  if(e.key === "ArrowRight") ir(actual + 1);
+  if(e.key === "ArrowLeft") ir(actual - 1);
+});
+document.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
+  modo = b.dataset.modo;
+  document.querySelectorAll("[data-modo]").forEach(x => x.classList.toggle("on", x === b));
+});
+
+$("guardar").onclick = async () => {
+  guardarActual();
+  const instantes = Object.entries(respuestas)
+    .filter(([, r]) => r.jugadores_reales != null)
+    .map(([t_ms, r]) => ({ t_ms: +t_ms, jugadores_reales: r.jugadores_reales,
+                           falsos: r.falsos || [], equipo_mal: r.equipo_mal || [] }));
+  const contenido = { periodo: meta.periodo || "PT", instantes };
+  const nombre = `correcciones_${meta.periodo || "PT"}.json`;
+
+  if(location.protocol.startsWith("http")){
+    const r = await fetch("/api/guardar", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ nombre, contenido }),
+    });
+    const d = await r.json();
+    $("resultado").innerHTML = d.error
+      ? `<div class="aviso mal">${d.error}</div>`
+      : `<div class="aviso ok">Guardado en <code>${nombre}</code> (${instantes.length}
+         instantes).<br><br>Ahora, en la consola:<br>
+         <code>python -m futsal_ia.cli evaluar --analisis analisis_${meta.periodo || "PT"}.json
+         --correcciones ${nombre} --guardar medicion_1.json</code></div>`;
+  } else {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(contenido, null, 2)],
+             {type:"application/json"}));
+    a.download = nombre; a.click();
+  }
+};
+</script>
+</body>
+</html>
