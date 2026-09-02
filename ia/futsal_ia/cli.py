@@ -424,7 +424,7 @@ def _cmd_diagnostico(args):
             print(f"\nCon el umbral en 0.10 aparecerían {len(extra) - dentro} "
                   f"persona(s) más dentro de la cancha.")
             print(f"O sea que el modelo las ve pero no les cree con {conf:.2f}.")
-            print(f"Probá con --conf 0.15, o con --mosaicos si son del fondo.")
+            print("Probá con --conf 0.15, o con --mosaicos si son del fondo.")
 
     cv2.imwrite(str(args.salida), frame)
     print(f"\n{dentro} de {len(detecciones)} dentro de la cancha.")

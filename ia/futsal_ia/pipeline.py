@@ -32,14 +32,8 @@ from pathlib import Path
 
 import numpy as np
 
-from .cancha import metros_a_norm
 from .config import PARAMETROS, VERSION_DICCIONARIO, Parametros
-from .equipos import (
-    ClasificadorEquipos,
-    asignar_propio,
-    color_de_torso,
-    entrenar_clasificador,
-)
+from .equipos import ClasificadorEquipos, color_de_torso
 from .geometria import Homografia
 from .preproceso import Encuadre
 from .salida import Ficha, Track, crear_snapshot
@@ -442,6 +436,12 @@ def analizar(
     res.reporte_precision = homografia.reporte_precision(
         params.error_deteccion_px, invertida=invertida
     )
+    if not clasificador.confirmado:
+        res.avisos.append(
+            "Nadie confirmó qué grupo de color es cada equipo. Lo que dice "
+            "'Propio' es el grupo más poblado, que no significa nada: puede "
+            "ser el rival. Asigná los roles antes de creerle a los números."
+        )
     if not clasificador.confiable:
         res.avisos.append(
             f"Los dos equipos visten demasiado parecido (separación de color "

@@ -119,6 +119,15 @@ class ClasificadorEquipos:
     separacion: float
     """Distancia entre los dos grupos principales, en unidades de color."""
 
+    confirmado: bool = False
+    """
+    Si una persona ya dijo qué es cada grupo.
+
+    Mientras esté en False, los roles son una adivinanza: el agrupamiento marca
+    como propio al grupo más poblado, que no significa nada. Sirve para que el
+    análisis corra solo, pero no es información.
+    """
+
     # Debajo de esto los dos equipos visten demasiado parecido y la asignación
     # es una moneda al aire. Vale más avisar que devolver basura con confianza.
     SEPARACION_MINIMA = 40.0
@@ -143,6 +152,7 @@ class ClasificadorEquipos:
             "equipo_por_grupo": {str(k): v for k, v in self.equipo_por_grupo.items()},
             "separacion": self.separacion,
             "confiable": self.confiable,
+            "confirmado": self.confirmado,
         }
 
     @staticmethod
@@ -151,6 +161,7 @@ class ClasificadorEquipos:
             centros=np.array(d["centros"], dtype=np.float64),
             equipo_por_grupo={int(k): v for k, v in d["equipo_por_grupo"].items()},
             separacion=float(d["separacion"]),
+            confirmado=bool(d.get("confirmado", False)),
         )
 
     def asignar(self, grupo: int, equipo: str) -> "ClasificadorEquipos":
@@ -163,17 +174,25 @@ class ClasificadorEquipos:
         """
         if grupo not in range(len(self.centros)):
             raise ValueError(f"No existe el grupo {grupo}.")
-        nuevo = dict(self.equipo_por_grupo)
-        # PROPIO y RIVAL son únicos: si este grupo se los queda, el que los
-        # tenía los suelta. Dos grupos marcados como propios harían que el
-        # conteo de jugadores en cancha diera el doble.
-        if equipo in (PROPIO, RIVAL):
-            for g, eq in nuevo.items():
-                if eq == equipo:
-                    nuevo[g] = DESCONOCIDO
+        # Un mismo equipo puede caer en MÁS DE UN grupo de color, y hay que
+        # dejarlo: con la luz de un gimnasio, una camiseta verde flúor da
+        # tonos bastante distintos según dónde esté parado el jugador, y
+        # k-means la parte en dos.
+        #
+        # Antes esto era exclusivo, con el argumento de que dos grupos propios
+        # duplicarían el conteo de jugadores en cancha. Es falso: cada
+        # detección pertenece a exactamente un grupo, así que dos grupos
+        # marcados como propios suman los jugadores de los dos, que es
+        # justamente lo que se quiere.
+        # La primera asignación humana borra TODAS las adivinanzas. Dejarlas
+        # convivir es lo peor de los dos mundos: un grupo que nadie miró queda
+        # marcado como propio por un volado, al lado de otro que sí se eligió,
+        # y desde afuera se ven igual.
+        nuevo = ({g: DESCONOCIDO for g in self.equipo_por_grupo}
+                 if not self.confirmado else dict(self.equipo_por_grupo))
         nuevo[grupo] = equipo
         return ClasificadorEquipos(centros=self.centros, equipo_por_grupo=nuevo,
-                                   separacion=self.separacion)
+                                   separacion=self.separacion, confirmado=True)
 
 
 def entrenar_clasificador(

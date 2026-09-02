@@ -14,6 +14,7 @@ transformers>=4.44,<5
 
 # Solo para desarrollo
 pytest==8.3.4
+pyflakes==3.2.0   # encuentra nombres indefinidos sin ejecutar nada
 
 # NO se instala por defecto: Ultralytics YOLO es AGPL-3.0 y obliga a abrir el
 # código del servicio o a pagar licencia comercial. Está soportado en

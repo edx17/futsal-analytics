@@ -32,10 +32,8 @@ from .cancha import (
     LARGO_CANCHA_M,
     PUNTOS_POR_ID,
     PUNTOS_IMPRESCINDIBLES,
-    acotar,
     espejar,
     metros_a_norm,
-    norm_a_metros,
 )
 
 

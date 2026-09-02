@@ -16,7 +16,6 @@ from futsal_ia.equipos import (  # noqa: E402
     DESCONOCIDO,
     PROPIO,
     RIVAL,
-    ROLES,
     asignar_propio,
     color_de_torso,
     entrenar_clasificador,
@@ -164,17 +163,29 @@ def test_asignar_un_rol_a_un_grupo():
     assert isinstance(clas, ClasificadorEquipos)
 
 
-def test_propio_y_rival_son_unicos():
+def test_un_equipo_puede_caer_en_mas_de_un_grupo_de_color():
     """
-    Dos grupos marcados como propios harían que el conteo de jugadores en
-    cancha diera el doble, sin que nada fallara.
+    Pasa de verdad: con la luz de un gimnasio, una camiseta verde flúor da
+    tonos distintos según dónde esté parado el jugador y k-means la parte en
+    dos. Los dos grupos tienen que poder marcarse como el mismo equipo.
+
+    No duplica nada: cada detección pertenece a exactamente un grupo, así que
+    dos grupos propios suman los jugadores de los dos.
     """
-    clas = entrenar_clasificador(_partido_tipico())
-    gr, ga = clas.grupo_de(np.array(ROJO)), clas.grupo_de(np.array(AZUL))
-    clas = clas.asignar(gr, PROPIO).asignar(ga, PROPIO)
-    assert list(clas.equipo_por_grupo.values()).count(PROPIO) == 1
-    assert clas.clasificar(np.array(AZUL)) == PROPIO
-    assert clas.clasificar(np.array(ROJO)) != PROPIO
+    rng = np.random.default_rng(5)
+    verde_claro, verde_oscuro = [60, 220, 200], [40, 170, 150]
+    colores = (_colores(rng, verde_claro, 200) + _colores(rng, verde_oscuro, 200)
+               + _colores(rng, AZUL, 300) + _colores(rng, NEGRO_ARBITRO, 40))
+    clas = entrenar_clasificador(colores)
+
+    g1 = clas.grupo_de(np.array(verde_claro))
+    g2 = clas.grupo_de(np.array(verde_oscuro))
+    assert g1 != g2, "el test necesita que k-means los separe"
+
+    clas = clas.asignar(g1, PROPIO).asignar(g2, PROPIO)
+    assert clas.clasificar(np.array(verde_claro)) == PROPIO
+    assert clas.clasificar(np.array(verde_oscuro)) == PROPIO
+    assert list(clas.equipo_por_grupo.values()).count(PROPIO) == 2
 
 
 def test_los_arqueros_y_el_arbitro_tienen_su_propio_rol():
@@ -192,7 +203,7 @@ def test_los_arqueros_y_el_arbitro_tienen_su_propio_rol():
 
 
 def test_se_pueden_tener_dos_arqueros_marcados():
-    """A diferencia de Propio y Rival, los roles de arquero no son excluyentes."""
+    """Ningún rol es excluyente."""
     from futsal_ia.equipos import ARQUERO_PROPIO, ARQUERO_RIVAL
 
     clas = entrenar_clasificador(_partido_tipico())
@@ -219,3 +230,40 @@ def test_sobrevive_al_json_con_los_roles_puestos():
     assert vuelta.equipo_por_grupo == clas.equipo_por_grupo
     assert vuelta.clasificar(np.array(ROJO)) == PROPIO
     assert vuelta.clasificar(np.array(AZUL)) == RIVAL
+
+
+def test_la_primera_asignacion_humana_borra_las_adivinanzas():
+    """
+    El agrupamiento marca como propio al grupo más poblado, que no significa
+    nada. Si esa adivinanza sobreviviera junto a una decisión real, un grupo
+    que nadie miró quedaría marcado como propio por un volado, y desde afuera
+    se vería igual que uno elegido.
+    """
+    clas = entrenar_clasificador(_partido_tipico())
+    assert clas.confirmado is False
+    assert PROPIO in clas.equipo_por_grupo.values()      # la adivinanza
+
+    elegido = clas.grupo_de(np.array(AMARILLO_ARQUERO))
+    clas = clas.asignar(elegido, PROPIO)
+
+    assert clas.confirmado is True
+    assert list(clas.equipo_por_grupo.values()).count(PROPIO) == 1
+    assert clas.equipo_por_grupo[elegido] == PROPIO
+    assert RIVAL not in clas.equipo_por_grupo.values()   # la otra también se fue
+
+
+def test_despues_de_confirmar_las_asignaciones_se_acumulan():
+    clas = entrenar_clasificador(_partido_tipico())
+    clas = clas.asignar(0, PROPIO).asignar(1, RIVAL).asignar(2, PROPIO)
+    assert clas.equipo_por_grupo[0] == PROPIO
+    assert clas.equipo_por_grupo[1] == RIVAL
+    assert clas.equipo_por_grupo[2] == PROPIO
+
+
+def test_confirmado_viaja_en_el_json():
+    from futsal_ia.equipos import ClasificadorEquipos
+
+    clas = entrenar_clasificador(_partido_tipico())
+    assert ClasificadorEquipos.de_dict(clas.a_dict()).confirmado is False
+    confirmado = clas.asignar(0, PROPIO)
+    assert ClasificadorEquipos.de_dict(confirmado.a_dict()).confirmado is True

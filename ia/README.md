@@ -319,8 +319,15 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 190 tests, sin GPU ni video
+pip install pytest pyflakes
+python -m pytest tests/ -q     # 195 tests, sin GPU ni video
 ```
+
+Uno de esos tests corre `pyflakes` sobre el paquete y falla si hay un nombre
+usado sin definir. Está por un caso real: el panel llamaba a una función que no
+había importado, y reventaba recién al llegar a esa línea —en un hilo, dos
+horas después de arrancar— porque ningún test la ejecutaba. pyflakes lo
+encuentra sin correr nada.
 
 ## Decisiones que están en el código y conviene no olvidar
 

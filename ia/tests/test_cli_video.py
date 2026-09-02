@@ -4,7 +4,6 @@ horas. Descubrir recién ahí que la calibración se hizo sobre una captura de
 pantalla del reproductor y no sobre un frame del video es tirar una tarde.
 """
 
-import json
 import sys
 from pathlib import Path
 

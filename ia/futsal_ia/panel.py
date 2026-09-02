@@ -28,6 +28,26 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+# Estos se importan acá arriba a propósito. Antes estaban dentro de las
+# funciones, y un nombre mal importado no se notaba hasta que el análisis
+# llegaba a esa línea: dos horas después, en un hilo, con el panel mostrando
+# una barra que giraba. Arriba, cualquier test que importe el módulo lo agarra.
+# Lo único que queda adentro es el detector, que arrastra PyTorch y tardaría
+# medio minuto en cada arranque del panel.
+from .config import PARAMETROS, combinar_config
+from .equipos import ROLES, ClasificadorEquipos, entrenar_clasificador
+from .geometria import Homografia
+from .overlay import exportar as exportar_overlay
+from .pipeline import (
+    analizar,
+    guardar,
+    muestrear_colores,
+    preparar_equipos,
+    revisar_compatibilidad,
+)
+from .preproceso import Encuadre
+from .salida import parse_tiempo
+
 RAIZ = Path(__file__).resolve().parent.parent
 HERRAMIENTAS = RAIZ / "herramientas"
 VIDEOS = (".mp4", ".mov", ".mkv", ".avi", ".m4v", ".mts")
@@ -68,11 +88,7 @@ CANDADO = threading.Lock()
 
 def _correr_equipos(datos: dict) -> None:
     """La pasada 1 sola: agrupar colores y guardar recortes para mirar."""
-    from .config import PARAMETROS
     from .deteccion import crear_detector
-    from .geometria import Homografia
-    from .pipeline import preparar_equipos, revisar_compatibilidad
-    from .preproceso import Encuadre
 
     t = TRABAJO
     try:
@@ -117,13 +133,7 @@ def _correr_equipos(datos: dict) -> None:
 
 def _correr(datos: dict) -> None:
     """El análisis, en su propio hilo. Todo lo que falle se reporta al panel."""
-    from .config import PARAMETROS, combinar_config
     from .deteccion import crear_detector
-    from .equipos import entrenar_clasificador
-    from .geometria import Homografia
-    from .pipeline import analizar, guardar, muestrear_colores
-    from .preproceso import Encuadre
-    from .salida import parse_tiempo
 
     t = TRABAJO
     try:
@@ -150,7 +160,6 @@ def _correr(datos: dict) -> None:
 
         equipos = RAIZ / "equipos.json"
         if equipos.exists():
-            from .equipos import ClasificadorEquipos
             clas = ClasificadorEquipos.de_dict(
                 json.loads(equipos.read_text(encoding="utf-8")))
             t.log("Equipos ya definidos: " + ", ".join(
@@ -186,10 +195,10 @@ def _correr(datos: dict) -> None:
             t.log("AVISO: " + aviso)
 
         if datos.get("overlay", True):
-            from .overlay import exportar
             t.log("Escribiendo el video de auditoría...")
             destino = RAIZ / f"auditoria_{datos['periodo']}.mp4"
-            exportar(video, res, destino, invertida=cfg["invertida"], enderezador=None)
+            exportar_overlay(video, res, destino, invertida=cfg["invertida"],
+                             enderezador=None)
             t.overlay = destino.name
 
         t.log("Listo.")
@@ -322,16 +331,16 @@ class Panel(BaseHTTPRequestHandler):
             return self._json({"ok": True})
 
         if u.path == "/api/equipos/asignar":
-            from .equipos import ROLES, ClasificadorEquipos
-
             archivo = RAIZ / "equipos.json"
             if not archivo.exists():
                 return self._json({"error": "todavía no se detectaron los equipos"}, 400)
             d = json.loads(archivo.read_text(encoding="utf-8"))
             clas = ClasificadorEquipos.de_dict(d)
-            for grupo, rol in (datos.get("roles") or {}).items():
+            roles = datos.get("roles") or {}
+            for rol in roles.values():
                 if rol not in ROLES:
                     return self._json({"error": f"rol desconocido: {rol}"}, 400)
+            for grupo, rol in roles.items():
                 clas = clas.asignar(int(grupo), rol)
             d.update(clas.a_dict())
             archivo.write_text(json.dumps(d, indent=2, ensure_ascii=False),

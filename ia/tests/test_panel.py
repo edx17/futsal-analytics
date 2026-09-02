@@ -209,9 +209,10 @@ def test_asignar_roles_escribe_en_equipos_json(servidor, tmp_path, monkeypatch):
     codigo, d = post(servidor, "/api/equipos/asignar",
                      {"roles": {"1": "Propio", "2": "Arquero propio"}})
     assert codigo == 200
-    # Propio es único: el grupo 0 tuvo que soltarlo.
+    # La primera asignación humana borra las adivinanzas: el grupo 0, que
+    # figuraba como Propio sin que nadie lo mirara, vuelve a Desconocido.
     assert d["equipo_por_grupo"]["1"] == "Propio"
-    assert d["equipo_por_grupo"]["0"] != "Propio"
+    assert d["equipo_por_grupo"]["0"] == "Desconocido"
     assert d["equipo_por_grupo"]["2"] == "Arquero propio"
 
     guardado = json.loads((tmp_path / "equipos.json").read_text(encoding="utf-8"))
