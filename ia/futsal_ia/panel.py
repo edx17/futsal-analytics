@@ -256,8 +256,25 @@ class Panel(BaseHTTPRequestHandler):
         return self._responder(b"no existe", "text/plain", 404)
 
 
-def main(puerto: int = 8710, abrir: bool = True) -> int:
-    servidor = ThreadingHTTPServer(("127.0.0.1", puerto), Panel)
+def main(argv=None) -> int:
+    import argparse
+
+    ap = argparse.ArgumentParser(
+        prog="futsal-ia panel",
+        description="Panel local: un comando y el resto son clicks.")
+    ap.add_argument("--puerto", type=int, default=8710)
+    ap.add_argument("--no-abrir", action="store_true",
+                    help="no abrir el navegador solo")
+    args = ap.parse_args(argv)
+    puerto, abrir = args.puerto, not args.no_abrir
+
+    try:
+        servidor = ThreadingHTTPServer(("127.0.0.1", puerto), Panel)
+    except OSError as e:
+        print(f"No pude abrir el puerto {puerto}: {e}\n"
+              f"Puede que ya tengas el panel corriendo en otra consola. "
+              f"Probá con --puerto {puerto + 1}.")
+        return 1
     url = f"http://127.0.0.1:{puerto}"
     print(f"Panel en {url}")
     print("Escucha solo en esta computadora. Ctrl+C para cortar.")

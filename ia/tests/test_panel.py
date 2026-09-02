@@ -167,3 +167,25 @@ def test_el_log_no_crece_sin_limite():
         t.log(f"linea {i}")
     assert len(t.mensajes) == 300
     assert t.mensajes[-1] == "linea 999"
+
+
+def test_el_puerto_ocupado_se_explica(capsys):
+    """
+    Pasa siempre: se deja el panel abierto en una consola y se lo lanza en otra.
+    El OSError pelado no dice que es eso.
+    """
+    with socket.socket() as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(("127.0.0.1", 0))
+        s.listen(1)
+        puerto = s.getsockname()[1]
+        assert panel.main(["--puerto", str(puerto), "--no-abrir"]) == 1
+    salida = capsys.readouterr().out
+    assert "ya tengas el panel corriendo" in salida
+    assert f"--puerto {puerto + 1}" in salida
+
+
+def test_help_no_levanta_el_servidor():
+    with pytest.raises(SystemExit) as e:
+        panel.main(["--help"])
+    assert e.value.code == 0

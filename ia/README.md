@@ -241,7 +241,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 163 tests, sin GPU ni video
+python -m pytest tests/ -q     # 165 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar
