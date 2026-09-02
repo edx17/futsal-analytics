@@ -10,7 +10,7 @@ from pathlib import Path
 from .cancha import PUNTOS_REFERENCIA
 from .config import PARAMETROS
 from .geometria import ErrorCalibracion, Homografia, calibrar
-from .preproceso import Encuadre
+from .preproceso import Encuadre, ErrorEncuadre
 from .salida import parse_tiempo
 
 
@@ -27,14 +27,14 @@ def _cmd_puntos(_):
 
 
 def _cmd_calibrar(args):
-    marcas = {k: tuple(v) for k, v in json.loads(Path(args.marcas).read_text()).items()}
+    marcas = {k: tuple(v) for k, v in _leer_json(args.marcas, "marcas.json").items()}
 
     # El calibrador exporta las marcas en coordenadas del frame ORIGINAL, que es
     # sobre el que clickeó la persona. La homografía, en cambio, tiene que valer
     # sobre el frame ya girado y recortado, que es el que va a ver el detector.
     # La conversión se hace acá y no a mano: pedirle a alguien que clickee sobre
     # una imagen ya recortada es pedirle que se equivoque.
-    encuadre = Encuadre.leer(args.encuadre) if args.encuadre else None
+    encuadre = Encuadre.de_dict(_leer_json(args.encuadre, "encuadre.json")) if args.encuadre else None
     if encuadre:
         marcas = {k: encuadre.punto_a_encuadre(*v) for k, v in marcas.items()}
         afuera = [k for k, v in marcas.items()
@@ -79,7 +79,7 @@ def _imprimir_precision(rep):
 
 
 def _cmd_precision(args):
-    h = Homografia.de_dict(json.loads(Path(args.calibracion).read_text()))
+    h = Homografia.de_dict(_leer_json(args.calibracion, "calibracion.json"))
     rep = h.reporte_por_periodo(args.error_px, invertida_pt=args.invertida_pt)
 
     for periodo in ("PT", "ST"):
@@ -102,6 +102,43 @@ def _cmd_precision(args):
         print("  NO sumes esa celda entre períodos sin aclarar de dónde viene")
         print("  cada mitad: estarías mezclando centímetros con medio metro.")
     return 0
+
+
+class ArchivoFaltante(Exception):
+    """Un archivo que el usuario nombró y no está. Se reporta, no se revienta."""
+
+
+def _leer_json(ruta, que: str) -> dict:
+    """
+    Lee un JSON de entrada y, si no está, lo dice en una línea.
+
+    Un traceback de Python para "el archivo no está" es ruido: no ayuda a
+    nadie y esconde la única información útil, que es dónde buscarlo. El caso
+    real es siempre el mismo: el navegador bajó marcas.json y encuadre.json a
+    la carpeta de Descargas, no a la del proyecto.
+    """
+    p = Path(ruta)
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            raise ArchivoFaltante(f"{p} no es un JSON válido ({e}).") from e
+
+    pistas = []
+    descargas = Path.home() / "Downloads"
+    for carpeta in (Path.cwd(), descargas, Path.home() / "Descargas"):
+        candidato = carpeta / p.name
+        if carpeta != p.parent and candidato.exists():
+            pistas.append(f"  Está acá:  {candidato}")
+    if not pistas:
+        cerca = sorted(x.name for x in Path.cwd().glob("*.json"))[:6]
+        if cerca:
+            pistas.append("  JSON en esta carpeta: " + ", ".join(cerca))
+
+    raise ArchivoFaltante(
+        f"No encuentro el {que}: {p}\n" + "\n".join(pistas)
+        + ("\n  Pasale la ruta completa entre comillas, o movelo acá." if pistas else "")
+    )
 
 
 def _cmd_frame(args):
@@ -184,7 +221,7 @@ def _cmd_video(args):
         print("\nPasá --encuadre para verificar que la calibración le sirva a este video.")
         return 0
 
-    enc = Encuadre.leer(args.encuadre)
+    enc = Encuadre.de_dict(_leer_json(args.encuadre, "encuadre.json"))
     esperado = tuple(enc.resolucion_origen)
     print(f"\nEncuadre:   definido sobre {esperado[0]}x{esperado[1]}")
     if esperado == (ancho, alto):
@@ -246,16 +283,17 @@ def _cmd_analizar(args):
     from .lente import CalibracionLente, Enderezador
     from .pipeline import analizar, guardar, muestrear_colores
 
-    h = Homografia.de_dict(json.loads(Path(args.calibracion).read_text()))
+    h = Homografia.de_dict(_leer_json(args.calibracion, "calibracion.json"))
     detector = crear_detector(args.detector, conf_minima=PARAMETROS.conf_minima_persona)
 
-    encuadre = Encuadre.leer(args.encuadre) if args.encuadre else None
+    encuadre = Encuadre.de_dict(_leer_json(args.encuadre, "encuadre.json")) if args.encuadre else None
     if encuadre:
         print(f"Encuadre: giro {encuadre.rotacion_grados}°, salida "
               f"{encuadre.resolucion_salida[0]}x{encuadre.resolucion_salida[1]}")
 
     enderezador = None
     if args.lente:
+        _leer_json(args.lente, "calibración de lente")   # para fallar prolijo si no está
         enderezador = Enderezador(CalibracionLente.leer(args.lente))
     elif args.lente_aproximada:
         ancho, alto = args.lente_aproximada
@@ -354,7 +392,17 @@ def main(argv=None):
     a.set_defaults(func=_cmd_analizar)
 
     args = ap.parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except ArchivoFaltante as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+    except (ErrorCalibracion, ErrorEncuadre) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

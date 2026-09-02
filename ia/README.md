@@ -103,6 +103,9 @@ a él con `npm run dev`.
 
 Después, en la terminal:
 
+El navegador baja `marcas.json` y `encuadre.json` a la carpeta de Descargas,
+no a la del proyecto: movelos o pasá la ruta completa.
+
 ```bash
 # Calibrar. Las marcas vienen en coordenadas del frame ORIGINAL y el encuadre
 # las convierte solo: nadie clickea sobre una imagen ya recortada.
@@ -200,7 +203,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 125 tests, sin GPU ni video
+python -m pytest tests/ -q     # 132 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar
