@@ -278,10 +278,40 @@ def _leer_datos_video(ruta):
 
 
 def _cmd_analizar(args):
+    from .config import combinar_config
     from .deteccion import crear_detector
     from .equipos import entrenar_clasificador
     from .lente import CalibracionLente, Enderezador
     from .pipeline import analizar, guardar, muestrear_colores
+
+    config = _leer_json(args.config, "partido.json") if args.config else None
+    cfg = combinar_config(config, args.periodo, {
+        "video": args.video, "calibracion": args.calibracion, "encuadre": args.encuadre,
+        "lente": args.lente, "club": args.club, "partido": args.partido,
+        "saque": args.saque,
+        "invertida": True if args.invertida else None,
+    })
+    faltan = [k for k in ("video", "calibracion", "club", "partido") if not cfg.get(k)]
+    if faltan:
+        print(f"ERROR: falta indicar {', '.join(faltan)}. Pasalos como argumentos "
+              "o en el --config.", file=sys.stderr)
+        return 1
+
+    if args.prueba and not args.duracion:
+        args.duracion = "2:00"
+        if not args.desde and config:
+            args.desde = (config.get("prueba") or {}).get("desde", "5:00")
+        args.desde = args.desde or "5:00"
+        print(f"Modo prueba: {args.desde} + 2 min. Sacá --prueba para el período entero.")
+
+    args.video = cfg["video"]
+    args.calibracion = cfg["calibracion"]
+    args.encuadre = cfg["encuadre"]
+    args.lente = cfg["lente"]
+    args.club, args.partido = cfg["club"], cfg["partido"]
+    args.saque, args.invertida = cfg["saque"], cfg["invertida"]
+    print(f"Período {args.periodo} | saque en {args.saque} | "
+          f"{'ataca a la izquierda' if args.invertida else 'ataca a la derecha'}")
 
     h = Homografia.de_dict(_leer_json(args.calibracion, "calibracion.json"))
     detector = crear_detector(args.detector, conf_minima=PARAMETROS.conf_minima_persona)
@@ -313,8 +343,8 @@ def _cmd_analizar(args):
         args.video, h, clas,
         club_id=args.club, id_partido=args.partido, periodo=args.periodo,
         invertida=args.invertida, detector=detector, enderezador=enderezador,
-        encuadre=encuadre, t_saque_ms=parse_tiempo(args.saque),
-        desde_ms=parse_tiempo(args.desde),
+        encuadre=encuadre, t_saque_ms=parse_tiempo(args.saque or "0"),
+        desde_ms=parse_tiempo(args.desde or "0"),
         duracion_ms=parse_tiempo(args.duracion) if args.duracion else None,
         al_avanzar=lambda p: print(f"  {p.frames_analizados} frames, "
                                    f"{len(res.tracks)} tracks", end="\r"),
@@ -367,18 +397,22 @@ def main(argv=None):
     v.set_defaults(func=_cmd_video)
 
     a = sub.add_parser("analizar", help="procesa un video y escribe posiciones")
-    a.add_argument("--video", required=True)
-    a.add_argument("--calibracion", required=True)
-    a.add_argument("--club", required=True)
-    a.add_argument("--partido", required=True)
+    a.add_argument("--config", help="partido.json, generado por herramientas/partido.html")
+    a.add_argument("--video")
+    a.add_argument("--calibracion")
+    a.add_argument("--club")
+    a.add_argument("--partido")
     a.add_argument("--salida", required=True)
+    a.add_argument("--prueba", action="store_true",
+                   help="analiza solo 2 minutos, para ver si funciona antes de "
+                        "esperar horas")
     a.add_argument("--periodo", default="PT", choices=["PT", "ST"])
     a.add_argument("--invertida", action="store_true",
                    help="el equipo propio ataca hacia la izquierda en este período")
-    a.add_argument("--saque", default="0",
+    a.add_argument("--saque", default=None,
                    help="instante DEL VIDEO donde arranca el período, como 'mm:ss'. "
                         "Los tiempos se guardan relativos a este punto")
-    a.add_argument("--desde", default="0",
+    a.add_argument("--desde", default=None,
                    help="analizar desde este punto del video ('mm:ss')")
     a.add_argument("--duracion", default=None,
                    help="cuánto analizar desde --desde ('mm:ss' o segundos). "

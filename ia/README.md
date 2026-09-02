@@ -129,6 +129,19 @@ Con `calibracion.json` + `encuadre.json` guardados, esto no se vuelve a hacer
 nunca más mientras la cámara no se mueva. Sirven para todo el archivo, viejo y
 nuevo.
 
+### Preparar el partido: marcar los saques
+
+**Abrí `herramientas/partido.html`.** Cargás el video, lo movés hasta el saque
+de cada período —hay salto de a un cuadro, y las flechas ← → también— y
+clickeás "Marcar acá". Completás el `club_id`, el id del partido y las rutas.
+
+Te baja un `partido.json` y te escribe los comandos listos para copiar. No hay
+que tipear minutos a mano, que es de donde salen los desfasajes.
+
+El lado de la cancha se pregunta **una sola vez**, para el primer tiempo: los
+equipos cambian en el entretiempo y el segundo se deduce. Si eso sale mal no
+falla nada, simplemente todos los mapas del ST quedan espejados.
+
 ### Analizar: por partido y por período
 
 Primero, dos segundos de chequeo que ahorran horas:
@@ -148,17 +161,19 @@ En CPU el análisis corre bastante por debajo del tiempo real, así que un
 período completo puede llevar varias horas. Dos minutos alcanzan de sobra para
 ver si el pipeline funciona.
 
+Con el `partido.json` al lado, el comando es de una línea:
+
 ```bash
-# Analizar un período
-python -m futsal_ia.cli analizar \
-    --video 2026-09-14_primera_vs-SanLorenzo_PT.mp4 \
-    --calibracion calibracion.json \
-    --club <club_id> --partido <id_partido> --periodo PT \
-    --saque 0:30 --desde 5:00 --duracion 2:00 \
-    --lente-aproximada 3840 2160 \
-    --salida analisis_PT.json \
-    --overlay auditoria_PT.mp4
+python -m futsal_ia.cli analizar --config partido.json --periodo PT \
+    --prueba --salida analisis_PT.json --overlay auditoria_PT.mp4
 ```
+
+`--prueba` analiza dos minutos en vez del período entero. Sacalo cuando el
+overlay se vea bien.
+
+Todo lo del `partido.json` se puede pisar desde la consola (`--video`,
+`--saque`, `--invertida`, `--desde`, `--duracion`): el archivo es la comodidad,
+no la autoridad.
 
 `--saque` es el instante del video donde arranca el período. Los tiempos se
 guardan **relativos al saque**, no al principio del archivo, que es lo que
@@ -193,6 +208,7 @@ Honestidad sobre qué está probado de verdad:
 | `preproceso.py` | **Verificado.** 14 tests del giro y recorte determinista |
 | `herramientas/calibrador.html` | **Sin ejecutar en navegador.** Tests que verifican que su lista de puntos no se desincronice de `cancha.py` y que no dependa de ningún CDN |
 | `herramientas/verificador.html` | **Sin ejecutar en navegador.** Ídem, sobre las coordenadas en metros de la cancha |
+| `herramientas/partido.html` | **Sin ejecutar en navegador.** Tests que verifican que el `partido.json` que baja tenga las claves que el CLI lee y genere el comando que el CLI entiende |
 | `deteccion.py` | **Parcial.** El partido en mosaicos y la fusión están verificados (11 tests); el detector en sí necesita GPU y los pesos |
 | `seguimiento.py` | **Sin ejecutar.** Necesita `supervision` instalado |
 | `lente.py` | **Sin ejecutar.** Necesita OpenCV y un video real |
@@ -203,7 +219,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 132 tests, sin GPU ni video
+python -m pytest tests/ -q     # 144 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar

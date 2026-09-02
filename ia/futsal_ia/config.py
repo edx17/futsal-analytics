@@ -66,3 +66,38 @@ class Parametros:
 
 
 PARAMETROS = Parametros()
+
+
+# ── Configuración de un partido ────────────────────────────────────────────
+
+def invertida_de(periodo: str, invertida_pt: bool) -> bool:
+    """
+    Si el equipo propio ataca hacia la izquierda en este período.
+
+    No se pregunta dos veces: los equipos cambian de lado en el entretiempo,
+    así que alcanza con saber el primero. Preguntar los dos abre la puerta a
+    que alguien conteste lo mismo para ambos y todos los mapas del segundo
+    tiempo salgan espejados sin que nada falle.
+    """
+    return bool(invertida_pt) if periodo == "PT" else not bool(invertida_pt)
+
+
+def combinar_config(config: dict | None, periodo: str, explicitos: dict) -> dict:
+    """
+    Junta el partido.json con lo que se escribió en la línea de comandos.
+
+    Lo explícito gana siempre: el archivo es la comodidad, no la autoridad.
+    """
+    config = config or {}
+    salida = {
+        "video": config.get("video"),
+        "calibracion": config.get("calibracion"),
+        "encuadre": config.get("encuadre"),
+        "lente": config.get("lente"),
+        "club": config.get("club"),
+        "partido": config.get("partido"),
+        "saque": (config.get("periodos", {}).get(periodo) or {}).get("saque", "0"),
+        "invertida": invertida_de(periodo, config.get("invertida_pt", False)),
+    }
+    salida.update({k: v for k, v in explicitos.items() if v is not None})
+    return salida

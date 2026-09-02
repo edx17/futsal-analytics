@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preparar partido</title>
+<style>
+  :root { --bg:#0b0b0d; --panel:#141418; --borde:#2a2a32; --texto:#e8e8ec;
+          --tenue:#8a8a96; --acento:#00ff88; --alerta:#facc15; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--texto);
+         font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--borde); }
+  h1 { margin:0; font-size:15px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  header p { margin:4px 0 0; color:var(--tenue); font-size:12.5px; }
+  main { display:grid; grid-template-columns:1fr 380px; height:calc(100vh - 62px); }
+  @media (max-width:980px){ main{grid-template-columns:1fr;height:auto;} }
+  #izq { padding:16px; overflow-y:auto; }
+  video { width:100%; background:#000; border-radius:6px; display:block; }
+  aside { border-left:1px solid var(--borde); background:var(--panel); overflow-y:auto; padding:16px; }
+  .paso { font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+          color:var(--acento); font-weight:700; margin:18px 0 8px; }
+  .paso:first-child { margin-top:0; }
+  label { display:block; font-size:12px; color:var(--tenue); margin-top:10px; }
+  input[type=text], input[type=file] { width:100%; padding:8px; border-radius:6px;
+    border:1px solid var(--borde); background:#0f0f13; color:var(--texto); font-size:13px; }
+  button { font:inherit; font-weight:600; padding:9px 12px; border-radius:6px;
+           border:1px solid var(--borde); background:#1d1d24; color:var(--texto); cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--acento); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primario { background:var(--acento); color:#000; border-color:var(--acento); }
+  .fila { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .controles { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+  .controles button { padding:7px 10px; font-size:12px; font-family:ui-monospace,Consolas,monospace; }
+  .reloj { font:700 22px ui-monospace,Consolas,monospace; color:var(--acento);
+           padding:6px 12px; background:#0f0f13; border-radius:6px; border:1px solid var(--borde); }
+  .saque { display:flex; align-items:center; gap:10px; padding:10px 12px; margin-top:8px;
+           border:1px solid var(--borde); border-radius:6px; background:#0f0f13; }
+  .saque.puesto { border-color:var(--acento); }
+  .saque .val { flex:1; font-family:ui-monospace,Consolas,monospace; font-size:15px; font-weight:700; }
+  .saque .val.vacio { color:var(--tenue); font-weight:400; }
+  pre { background:#08080a; border:1px solid var(--borde); border-radius:6px; padding:12px;
+        font-size:11.5px; overflow-x:auto; white-space:pre-wrap; word-break:break-all;
+        font-family:ui-monospace,Consolas,monospace; margin:8px 0 0; }
+  .nota { font-size:12px; color:var(--tenue); margin-top:10px; }
+  .aviso { font-size:12.5px; padding:10px 12px; border-radius:6px; margin-top:12px;
+           border:1px solid var(--alerta); color:var(--alerta); background:#221d08; }
+  code { background:#0f0f13; padding:1px 5px; border-radius:4px; font-size:12px; }
+  input[type=checkbox] { margin-right:6px; }
+  .chk { display:flex; align-items:flex-start; margin-top:12px; font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Preparar partido</h1>
+  <p>Marcás los saques mirando el video y esto escribe los comandos. No hay que tipear minutos a mano.</p>
+</header>
+
+<main>
+  <div id="izq">
+    <input type="file" id="fVideo" accept="video/*">
+    <video id="vid" controls></video>
+
+    <div class="controles">
+      <span class="reloj" id="reloj">0:00.00</span>
+      <button data-salto="-10">−10s</button>
+      <button data-salto="-1">−1s</button>
+      <button data-salto="-0.04">−1f</button>
+      <button data-salto="0.04">+1f</button>
+      <button data-salto="1">+1s</button>
+      <button data-salto="10">+10s</button>
+    </div>
+    <p class="nota">Con el video en foco, las flechas ← → mueven de a un cuadro.
+       Poné el cuadro justo donde el pie toca la pelota en el saque, no donde
+       el árbitro silba.</p>
+
+    <div class="paso">Los dos saques</div>
+    <div class="saque" id="cajaPT">
+      <strong style="width:34px">PT</strong>
+      <span class="val vacio" id="valPT">sin marcar</span>
+      <button id="btnPT" disabled>Marcar acá</button>
+      <button id="irPT" disabled>Ir</button>
+    </div>
+    <div class="saque" id="cajaST">
+      <strong style="width:34px">ST</strong>
+      <span class="val vacio" id="valST">sin marcar</span>
+      <button id="btnST" disabled>Marcar acá</button>
+      <button id="irST" disabled>Ir</button>
+    </div>
+    <p class="nota">Si los dos períodos están en archivos separados, marcá solo
+       el que corresponda a cada uno y generá los comandos por separado.</p>
+  </div>
+
+  <aside>
+    <div class="paso">Datos del partido</div>
+    <label>Ruta del video en tu disco</label>
+    <input type="text" id="rutaVideo" placeholder="C:\futsal\videos\PT.mp4">
+    <label>club_id</label>
+    <input type="text" id="club" placeholder="el id de tu club en Supabase">
+    <label>id del partido</label>
+    <input type="text" id="partido" placeholder="el id en la tabla partidos">
+
+    <label>calibracion.json</label>
+    <input type="text" id="rutaCal" value="calibracion.json">
+    <label>encuadre.json</label>
+    <input type="text" id="rutaEnc" value="encuadre.json">
+
+    <div class="chk">
+      <input type="checkbox" id="invPT">
+      <label for="invPT" style="margin:0;color:var(--texto)">
+        En el <strong>primer tiempo</strong> el equipo propio ataca hacia la
+        <strong>izquierda</strong> (hacia el arco que marcaste como <code>prop</code>)
+      </label>
+    </div>
+    <p class="nota">Se pregunta una sola vez: en el segundo tiempo cambian de
+       lado, y eso lo deduce solo. Si te equivocás acá, todos los mapas salen
+       espejados sin que nada falle.</p>
+
+    <div class="chk">
+      <input type="checkbox" id="prueba" checked>
+      <label for="prueba" style="margin:0;color:var(--texto)">
+        Modo prueba: analizar solo 2 minutos
+      </label>
+    </div>
+
+    <div class="paso">Comandos</div>
+    <div id="salida"></div>
+
+    <div class="fila">
+      <button id="bajar" class="primario" disabled>Bajar partido.json</button>
+    </div>
+    <p class="nota">Guardá <code>partido.json</code> en <code>ia\</code> y no tenés
+       que volver a cargar nada de esto: los comandos quedan de una línea.</p>
+  </aside>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const vid = $("vid");
+let saques = { PT: null, ST: null };
+
+function fmt(s){
+  const m = Math.floor(s/60), r = s%60;
+  return `${m}:${r.toFixed(2).padStart(5,"0")}`;
+}
+// Para el comando va sin centésimas: el análisis muestrea a 10 fps, así que
+// afinar más que la décima no cambia un solo dato y ensucia la lectura.
+function fmtCmd(s){
+  const m = Math.floor(s/60), r = Math.round(s%60);
+  return r === 60 ? `${m+1}:00` : `${m}:${String(r).padStart(2,"0")}`;
+}
+
+$("fVideo").onchange = (e) => {
+  const f = e.target.files[0]; if(!f) return;
+  vid.src = URL.createObjectURL(f);
+  if(!$("rutaVideo").value) $("rutaVideo").value = f.name;
+  ["btnPT","btnST"].forEach(id => $(id).disabled = false);
+  refrescar();
+};
+vid.addEventListener("timeupdate", () => $("reloj").textContent = fmt(vid.currentTime));
+vid.addEventListener("seeked", () => $("reloj").textContent = fmt(vid.currentTime));
+
+document.querySelectorAll("[data-salto]").forEach(b => {
+  b.onclick = () => { vid.pause(); vid.currentTime = Math.max(0, vid.currentTime + parseFloat(b.dataset.salto)); };
+});
+document.addEventListener("keydown", (e) => {
+  if(e.target.tagName === "INPUT") return;
+  if(e.key === "ArrowLeft"){ vid.pause(); vid.currentTime = Math.max(0, vid.currentTime - 0.04); e.preventDefault(); }
+  if(e.key === "ArrowRight"){ vid.pause(); vid.currentTime += 0.04; e.preventDefault(); }
+});
+
+for(const per of ["PT","ST"]){
+  $("btn"+per).onclick = () => { saques[per] = vid.currentTime; refrescar(); };
+  $("ir"+per).onclick = () => { if(saques[per] != null) vid.currentTime = saques[per]; };
+}
+
+function config(){
+  return {
+    video: $("rutaVideo").value.trim(),
+    calibracion: $("rutaCal").value.trim(),
+    encuadre: $("rutaEnc").value.trim(),
+    club: $("club").value.trim(),
+    partido: $("partido").value.trim(),
+    invertida_pt: $("invPT").checked,
+    periodos: Object.fromEntries(["PT","ST"]
+      .filter(p => saques[p] != null)
+      .map(p => [p, { saque: fmtCmd(saques[p]) }])),
+    prueba: { desde: "5:00", duracion: "2:00" },
+  };
+}
+
+function refrescar(){
+  for(const per of ["PT","ST"]){
+    const puesto = saques[per] != null;
+    $("caja"+per).classList.toggle("puesto", puesto);
+    $("ir"+per).disabled = !puesto;
+    const v = $("val"+per);
+    v.textContent = puesto ? fmt(saques[per]) : "sin marcar";
+    v.classList.toggle("vacio", !puesto);
+  }
+
+  const c = config();
+  const faltan = [];
+  if(!c.video) faltan.push("la ruta del video");
+  if(!c.club) faltan.push("el club_id");
+  if(!c.partido) faltan.push("el id del partido");
+  if(Object.keys(c.periodos).length === 0) faltan.push("al menos un saque");
+
+  const caja = $("salida");
+  if(faltan.length){
+    caja.innerHTML = `<div class="aviso">Falta ${faltan.join(", ")}.</div>`;
+    $("bajar").disabled = true;
+    return;
+  }
+  $("bajar").disabled = false;
+
+  const prueba = $("prueba").checked ? " --prueba" : "";
+  const cmds = Object.keys(c.periodos).map(per =>
+    `python -m futsal_ia.cli analizar --config partido.json --periodo ${per}` +
+    `${prueba} --salida analisis_${per}.json --overlay auditoria_${per}.mp4`);
+
+  caja.innerHTML =
+    `<p class="nota" style="margin-top:0">Guardá <code>partido.json</code> en
+     <code>ia\\</code> y pegá esto en PowerShell:</p>` +
+    cmds.map(c => `<pre>${c}</pre>`).join("") +
+    `<div class="fila"><button id="copiar">Copiar comandos</button></div>` +
+    (Object.keys(c.periodos).length === 1
+      ? `<p class="nota">Marcaste un solo saque. Si el archivo tiene los dos
+         períodos, marcá también el otro.</p>` : "");
+
+  const btn = document.getElementById("copiar");
+  if(btn) btn.onclick = () => {
+    navigator.clipboard.writeText(cmds.join("\n")).then(
+      () => { btn.textContent = "Copiado"; setTimeout(() => btn.textContent = "Copiar comandos", 1500); },
+      () => btn.textContent = "No pude copiar, seleccionalo a mano");
+  };
+}
+
+["rutaVideo","club","partido","rutaCal","rutaEnc"].forEach(id => $(id).oninput = refrescar);
+["invPT","prueba"].forEach(id => $(id).onchange = refrescar);
+
+$("bajar").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(config(), null, 2)], {type:"application/json"}));
+  a.download = "partido.json"; a.click();
+};
+
+refrescar();
+</script>
+</body>
+</html>
