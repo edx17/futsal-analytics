@@ -34,6 +34,7 @@ import numpy as np
 
 from .config import PARAMETROS, VERSION_DICCIONARIO, Parametros
 from .equipos import ClasificadorEquipos, color_de_torso
+from .costura import coser_tracks, resumen_costura
 from .geometria import Homografia
 from .preproceso import Encuadre
 from .salida import Ficha, Track, crear_snapshot
@@ -102,6 +103,8 @@ class ResultadoAnalisis:
     snapshots: list[dict] = field(default_factory=list)
     tracks: dict[int, Track] = field(default_factory=dict)
     clasificador: ClasificadorEquipos | None = None
+    costuras: list = field(default_factory=list)
+    resumen_costura: dict | None = None
     votos_equipo: dict[int, dict[str, int]] = field(default_factory=dict)
     progreso: Progreso = field(default_factory=Progreso)
     reporte_precision: dict | None = None
@@ -133,6 +136,7 @@ class ResultadoAnalisis:
             "descartadas_fuera_de_cancha": self.progreso.descartadas_fuera_de_cancha,
             "descartadas_sin_equipo": self.progreso.descartadas_sin_equipo,
             "equipos_confiables": bool(self.clasificador and self.clasificador.confiable),
+            "costura": self.resumen_costura,
             "reporte_precision": self.reporte_precision,
             "avisos": self.avisos,
         }
@@ -536,6 +540,13 @@ def analizar(
         cap.release()
 
     resolver_equipos_por_mayoria(res)
+
+    # Coser va DESPUÉS de resolver los equipos: el cosido usa el color para no
+    # unir un propio con un rival, así que necesita que cada pedazo ya tenga
+    # decidido el suyo por mayoría y no por el primer cuadro.
+    antes = len(res.tracks)
+    res.tracks, res.costuras = coser_tracks(res.tracks)
+    res.resumen_costura = resumen_costura(antes, len(res.tracks), res.costuras)
     return res
 
 

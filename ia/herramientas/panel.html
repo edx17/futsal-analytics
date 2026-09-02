@@ -232,9 +232,14 @@ async function refrescar(){
     html = `<div class="aviso err"><strong>Falló.</strong><br>${trabajo.error}</div>`;
   } else if(trabajo.estado === "listo"){
     const r = trabajo.resumen || {};
+    const c = r.costura || {};
     html = `<div class="aviso ok"><strong>${trabajo.periodo} listo.</strong>
-      ${r.tracks ?? 0} tracks, ${r.snapshots ?? 0} snapshots,
+      ${r.tracks ?? 0} recorridos, ${r.snapshots ?? 0} snapshots,
       ${r.descartadas_fuera_de_cancha ?? 0} detecciones descartadas por caer fuera de la cancha.
+      ${c.tracks_antes ? `<br>Costura: ${c.tracks_antes} pedazos sueltos unidos en
+        ${c.tracks_despues} recorridos (la cadena más larga juntó ${c.piezas_por_cadena_max}).` : ""}
+      ${r.duracion_media_track_s ? `<br>Un recorrido dura ${r.duracion_media_track_s}s en promedio,
+        el más largo ${r.duracion_max_track_s}s.` : ""}
       ${r.equipos_confiables === false ? "<br><strong>Los equipos NO se separaron bien por color.</strong>" : ""}
       </div>
       <div class="fila" style="margin-top:12px">

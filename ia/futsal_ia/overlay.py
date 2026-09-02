@@ -23,7 +23,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .cancha import ANCHO_CANCHA_M, LARGO_CANCHA_M, norm_a_metros
+# Los diez que están en cancha: ocho de campo y dos arqueros.
+JUGADORES = ("Propio", "Rival", "Arquero propio", "Arquero rival")
 
 COLOR_EQUIPO = {
     "Propio": (136, 255, 0),          # BGR: el verde de la app
@@ -35,38 +36,54 @@ COLOR_EQUIPO = {
 }
 
 
-def _dibujar_cancha(cv2, lienzo, ancho, alto, margen=20, invertida=False):
+def _dibujar_radar(cv2, np, frame, snap, *, invertida, ancho_rel=0.30, margen=18):
     """
-    Dibuja la cancha y devuelve la función que lleva de 0-100 (la convención de
-    la app) a píxel del radar.
+    El minimapa, chico y arriba de la imagen, como en un juego.
 
-    Cuando el equipo propio ataca hacia la izquierda, se espeja al dibujar para
-    que el radar quede orientado como la cámara y se pueda comparar de un
-    vistazo con la imagen de arriba. Los datos guardados no se tocan.
+    Va superpuesto y no en una franja aparte por dos razones: la cancha
+    conserva su proporción real de 2 a 1 —estirada a lo ancho de la pantalla,
+    las distancias mienten al ojo— y se puede comparar de un vistazo con los
+    jugadores de la imagen sin mover la vista a otro lado.
     """
-    esc_x = (ancho - 2 * margen) / LARGO_CANCHA_M
-    esc_y = (alto - 2 * margen) / ANCHO_CANCHA_M
+    alto_img, ancho_img = frame.shape[:2]
+    ancho = int(ancho_img * ancho_rel)
+    alto = ancho // 2                    # 40 x 20 m: siempre 2 a 1
+    x0 = ancho_img - ancho - margen
+    y0 = alto_img - alto - margen
+
+    capa = frame.copy()
+    cv2.rectangle(capa, (x0, y0), (x0 + ancho, y0 + alto), (12, 12, 12), -1)
+    cv2.addWeighted(capa, 0.78, frame, 0.22, 0, frame)
+
+    pad = max(4, ancho // 40)
+    esc_x = (ancho - 2 * pad) / 100.0
+    esc_y = (alto - 2 * pad) / 100.0
 
     def a_px(x, y):
-        x_m, y_m = norm_a_metros(x, y)
         if invertida:
-            x_m, y_m = LARGO_CANCHA_M - x_m, ANCHO_CANCHA_M - y_m
-        return (int(margen + x_m * esc_x), int(margen + y_m * esc_y))
+            x, y = 100 - x, 100 - y
+        return (int(x0 + pad + x * esc_x), int(y0 + pad + y * esc_y))
 
-    cv2.rectangle(lienzo, a_px(0, 0), a_px(100, 100), (90, 90, 90), 2)
-    cv2.line(lienzo, a_px(50, 0), a_px(50, 100), (90, 90, 90), 1)
-    cv2.circle(lienzo, a_px(50, 50), int(3 * esc_x), (90, 90, 90), 1)
-    # La grilla de lectura del club: Z1-Z4 x I/C/D.
+    gris = (95, 95, 95)
+    cv2.rectangle(frame, a_px(0, 0), a_px(100, 100), gris, 1)
+    cv2.line(frame, a_px(50, 0), a_px(50, 100), gris, 1)
+    cv2.circle(frame, a_px(50, 50), int(7.5 * esc_x), gris, 1)
     for x in (25, 75):
-        cv2.line(lienzo, a_px(x, 0), a_px(x, 100), (55, 55, 55), 1)
+        cv2.line(frame, a_px(x, 0), a_px(x, 100), (48, 48, 48), 1)
     for y in (100 / 3, 200 / 3):
-        cv2.line(lienzo, a_px(0, y), a_px(100, y), (55, 55, 55), 1)
-    for zi, etiqueta in enumerate(("Z1", "Z2", "Z3", "Z4")):
-        # Las etiquetas van en coordenadas de la app, así que acompañan al
-        # espejado: Z1 siempre queda del lado del arco propio.
-        cv2.putText(lienzo, etiqueta, a_px((zi + 0.5) * 25, 8),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (70, 70, 70), 1)
-    return a_px
+        cv2.line(frame, a_px(0, y), a_px(100, y), (48, 48, 48), 1)
+    # Los arcos, para no confundir de qué lado se ataca.
+    for x, lado in ((0, 1), (100, -1)):
+        cv2.line(frame, a_px(x, 42.5), a_px(x, 57.5), (200, 200, 200), 2)
+
+    radio = max(3, ancho // 55)
+    for p in (snap["posiciones"] if snap else []):
+        color = COLOR_EQUIPO.get(p.get("equipo", "Desconocido"),
+                                 COLOR_EQUIPO["Desconocido"])
+        centro = a_px(p["x"], p["y"])
+        cv2.circle(frame, centro, radio + 1, (0, 0, 0), -1)
+        cv2.circle(frame, centro, radio, color, -1)
+    return frame
 
 
 def snapshot_para(tiempos, t_periodo: float, tolerancia_ms: float = 400):
@@ -132,10 +149,9 @@ def exportar(ruta_video, resultado, destino, *, invertida: bool = False,
     alto, ancho = muestra.shape[:2]
     cap.set(cv2.CAP_PROP_POS_FRAMES, primer_cuadro)
 
-    alto_radar = int(alto * 0.34)
     destino = Path(destino)
     salida = cv2.VideoWriter(str(destino), cv2.VideoWriter_fourcc(*"mp4v"),
-                             fps_salida, (ancho, alto + alto_radar))
+                             fps_salida, (ancho, alto))
     paso = max(1, int(round(fps_video / fps_salida)))
 
     snaps = sorted(resultado.snapshots, key=lambda s: s["t_ms"])
@@ -169,14 +185,14 @@ def exportar(ruta_video, resultado, destino, *, invertida: bool = False,
             k = snapshot_para(tiempos, t_periodo, TOLERANCIA_MS)
             snap = snaps[k] if k is not None else None
 
-            radar = np.zeros((alto_radar, ancho, 3), dtype=np.uint8)
-            a_px = _dibujar_cancha(cv2, radar, ancho, alto_radar, invertida=invertida)
             jugadores = 0
-
             for p in (snap["posiciones"] if snap else []):
                 equipo = p.get("equipo", "Desconocido")
                 color = COLOR_EQUIPO.get(equipo, COLOR_EQUIPO["Desconocido"])
-                if equipo in ("Propio", "Rival"):
+                # Los arqueros son jugadores en cancha: en futsal son dos de
+                # los diez. Contar solo a los de campo daba ocho como máximo y
+                # hacía parecer que faltaba gente cuando no faltaba.
+                if equipo in JUGADORES:
                     jugadores += 1
 
                 # El recuadro sobre la imagen. Sin esto no se puede auditar
@@ -189,18 +205,15 @@ def exportar(ruta_video, resultado, destino, *, invertida: bool = False,
                     cv2.putText(frame, str(p.get("_track_ia", "")), (x1, max(14, y1 - 5)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
 
-                centro = a_px(p["x"], p["y"])
-                cv2.circle(radar, centro, 8, color, -1)
-                cv2.putText(radar, str(p.get("_track_ia", "")),
-                            (centro[0] - 6, centro[1] - 11),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+            _dibujar_radar(cv2, np, frame, snap, invertida=invertida)
 
-            etiqueta = (f"{t_periodo / 1000:7.1f}s del periodo  |  "
-                        f"{jugadores} jugadores"
+            etiqueta = (f"{t_periodo / 1000:7.1f}s  |  {jugadores} jugadores"
                         + ("" if snap else "  |  SIN DATOS EN ESTE INSTANTE"))
             cv2.putText(frame, etiqueta, (16, 34), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8, (0, 0, 0), 4)
+            cv2.putText(frame, etiqueta, (16, 34), cv2.FONT_HERSHEY_SIMPLEX,
                         0.8, (255, 255, 255), 2)
-            salida.write(np.vstack([frame, radar]))
+            salida.write(frame)
     finally:
         cap.release()
         salida.release()
