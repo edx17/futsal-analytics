@@ -117,3 +117,13 @@ def test_nunca_faltan_las_claves_que_el_cli_espera(periodo):
     for clave in ("video", "calibracion", "encuadre", "lente", "club",
                   "partido", "saque", "invertida"):
         assert clave in cfg
+
+
+def test_futsal_es_cinco_contra_cinco():
+    """
+    Corregido: son cuatro de campo y un arquero por equipo, diez en total.
+    El propio TomaDatos de la app lo dice con cupoCancha = 5.
+    """
+    from futsal_ia.config import PARAMETROS
+
+    assert PARAMETROS.max_en_cancha == 10

@@ -33,7 +33,24 @@ class Parametros:
     zona_recuperacion_alta: tuple[str, ...] = ("Z3", "Z4")
 
     # ── Fase 1: detección y seguimiento ────────────────────────────────────
-    conf_minima_persona: float = 0.35
+    conf_minima_persona: float = 0.25
+    """
+    Confianza mínima para aceptar una detección de persona.
+
+    Bajo a propósito. Los jugadores del fondo de la cancha se ven chicos —en
+    esta cámara, seis píxeles por metro contra cuarenta y cinco en el rincón
+    cercano— y el modelo los detecta con menos confianza. Perder un jugador es
+    peor que aceptar un falso positivo: el falso positivo lo saca después el
+    filtro de cancha y las zonas excluidas, pero al jugador que no se detectó
+    no lo recupera nadie.
+    """
+
+    max_en_cancha: int = 10
+    """
+    Futsal es 5 contra 5: cuatro de campo y un arquero por equipo. Diez en
+    total, nunca más. Detectar más que esto dentro de la cancha significa que
+    algo está entrando y no debería.
+    """
     margen_cancha_m: float = 0.5
     """
     Cuánto se tolera fuera de la línea antes de descartar una detección.

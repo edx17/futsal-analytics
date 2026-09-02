@@ -285,3 +285,38 @@ def test_los_contadores_distinguen_el_bug_de_una_cancha_vacia():
     det.modelo = _ModeloRFDETRFalso([37, 62, 41])
     assert det.detectar(None) == []
     assert det.brutas == 3 and det.clases_vistas == [37, 41, 62]
+
+
+def test_los_mosaicos_no_esconden_los_contadores():
+    """
+    El diagnóstico los usa para distinguir "el modelo no vio nada" de "vio
+    cosas pero ninguna era persona". Envolver el detector no puede tapar eso.
+    """
+    from futsal_ia.deteccion import DetectorEnMosaicos, DetectorRFDETR
+
+    base = DetectorRFDETR.__new__(DetectorRFDETR)
+    base.conf_minima = 0.25
+    base.modelo = _ModeloRFDETRFalso([1, 37])
+    envuelto = DetectorEnMosaicos(base)
+
+    np = pytest.importorskip("numpy")
+    envuelto.detectar(np.zeros((400, 600, 3), dtype=np.uint8))
+    assert envuelto.brutas == base.brutas == 2
+    assert envuelto.clases_vistas == [1, 37]
+
+
+def test_crear_detector_puede_envolver_en_mosaicos():
+    from futsal_ia.deteccion import DetectorEnMosaicos, crear_detector
+
+    class _Falso:
+        def detectar(self, frame):
+            return []
+
+    import futsal_ia.deteccion as d
+    original = d.DetectorRFDETR
+    d.DetectorRFDETR = lambda conf_minima: _Falso()
+    try:
+        assert not isinstance(crear_detector("rfdetr"), DetectorEnMosaicos)
+        assert isinstance(crear_detector("rfdetr", mosaicos=True), DetectorEnMosaicos)
+    finally:
+        d.DetectorRFDETR = original

@@ -168,12 +168,15 @@ class DetectorYOLO:
         ]
 
 
-def crear_detector(nombre: str = "rfdetr", conf_minima: float = 0.35) -> Detector:
+def crear_detector(nombre: str = "rfdetr", conf_minima: float = 0.25,
+                   mosaicos: bool = False, tam_mosaico: int = 800) -> Detector:
     if nombre == "rfdetr":
-        return DetectorRFDETR(conf_minima=conf_minima)
-    if nombre == "yolo":
-        return DetectorYOLO(conf_minima=conf_minima)
-    raise ValueError(f"Detector desconocido: {nombre!r}. Opciones: 'rfdetr', 'yolo'.")
+        base = DetectorRFDETR(conf_minima=conf_minima)
+    elif nombre == "yolo":
+        base = DetectorYOLO(conf_minima=conf_minima)
+    else:
+        raise ValueError(f"Detector desconocido: {nombre!r}. Opciones: 'rfdetr', 'yolo'.")
+    return DetectorEnMosaicos(base, tam=tam_mosaico) if mosaicos else base
 
 
 # ── Detección en mosaicos ──────────────────────────────────────────────────
@@ -255,6 +258,14 @@ class DetectorEnMosaicos:
         self.tam = tam
         self.solape = solape
         self.umbral_iou = umbral_iou
+
+    @property
+    def brutas(self) -> int:
+        return getattr(self.base, "brutas", 0)
+
+    @property
+    def clases_vistas(self) -> list:
+        return getattr(self.base, "clases_vistas", [])
 
     def detectar(self, frame) -> list[Deteccion]:
         alto, ancho = frame.shape[:2]

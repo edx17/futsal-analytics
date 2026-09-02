@@ -276,7 +276,10 @@ def _cmd_equipos(args):
     h = Homografia.de_dict(_leer_json(args.calibracion, "calibracion.json"))
     encuadre = (Encuadre.de_dict(_leer_json(args.encuadre, "encuadre.json"))
                 if args.encuadre else None)
-    detector = crear_detector(args.detector, conf_minima=PARAMETROS.conf_minima_persona)
+    detector = crear_detector(
+        args.detector,
+        conf_minima=args.conf if args.conf is not None else PARAMETROS.conf_minima_persona,
+        mosaicos=args.mosaicos)
 
     print("Recorriendo el video para juntar colores de camiseta...")
     clas, ejemplos, conteo = preparar_equipos(
@@ -360,7 +363,8 @@ def _cmd_diagnostico(args):
         print("sacado con `cli frame` de ESTE video.\n")
 
     print("\nCargando el detector...")
-    detector = crear_detector(args.detector, conf_minima=PARAMETROS.conf_minima_persona)
+    conf = args.conf if args.conf is not None else PARAMETROS.conf_minima_persona
+    detector = crear_detector(args.detector, conf_minima=conf, mosaicos=args.mosaicos)
     detecciones = detector.detectar(frame)
     brutas = getattr(detector, "brutas", None)
     print(f"\nPersonas detectadas: {len(detecciones)}")
@@ -410,13 +414,26 @@ def _cmd_diagnostico(args):
         cv2.putText(frame, f"{x_m:.0f},{y_m:.0f}", (x1, y1 - 6),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
 
+    # ¿Qué aparecería con menos exigencia? Es la diferencia entre "el modelo no
+    # lo vio" y "lo vio pero no le creyó", que se arreglan de forma distinta.
+    if not args.conf and conf > 0.10:
+        flojo = crear_detector(args.detector, conf_minima=0.10, mosaicos=args.mosaicos)
+        extra = [d for d in flojo.detectar(frame)
+                 if h.dentro_de_cancha(*h.a_cancha(*d.pies), PARAMETROS.margen_cancha_m)]
+        if len(extra) > dentro:
+            print(f"\nCon el umbral en 0.10 aparecerían {len(extra) - dentro} "
+                  f"persona(s) más dentro de la cancha.")
+            print(f"O sea que el modelo las ve pero no les cree con {conf:.2f}.")
+            print(f"Probá con --conf 0.15, o con --mosaicos si son del fondo.")
+
     cv2.imwrite(str(args.salida), frame)
     print(f"\n{dentro} de {len(detecciones)} dentro de la cancha.")
-    if dentro > 14:
-        print(f"\nOJO: {dentro} personas dentro de la cancha. En futsal hay como")
-        print("máximo 12: diez de campo y dos arqueros. Lo más probable es que")
-        print("estén entrando los suplentes o el cuerpo técnico parados contra la")
-        print("línea. Marcá esa franja con:")
+    if dentro > PARAMETROS.max_en_cancha + 2:
+        print(f"\nOJO: {dentro} personas dentro de la cancha. Futsal es 5 contra 5,")
+        print(f"así que son {PARAMETROS.max_en_cancha} como máximo: cuatro de campo y")
+        print("un arquero por equipo. Lo más probable es que estén entrando los")
+        print("suplentes o el cuerpo técnico parados contra la línea. Marcá esa")
+        print("franja con:")
         print('  python -m futsal_ia.cli excluir --calibracion calibracion.json '
               '--rect "x1,y1,x2,y2"')
     print(f"Imagen anotada en {args.salida}\n")
@@ -650,6 +667,8 @@ def main(argv=None):
     eq.add_argument("--encuadre")
     eq.add_argument("--salida", default="equipos.json")
     eq.add_argument("--detector", default="rfdetr", choices=["rfdetr", "yolo"])
+    eq.add_argument("--conf", type=float)
+    eq.add_argument("--mosaicos", action="store_true")
     eq.add_argument("--asignar", nargs="+", metavar="GRUPO=ROL",
                     help="asigna roles a los grupos ya calculados, ej: 0=Propio 1=Rival")
     eq.set_defaults(func=_cmd_equipos)
@@ -662,6 +681,12 @@ def main(argv=None):
     d.add_argument("--en", default="5:00")
     d.add_argument("--salida", default="diagnostico.png")
     d.add_argument("--detector", default="rfdetr", choices=["rfdetr", "yolo"])
+    d.add_argument("--conf", type=float,
+                   help="confianza mínima. Bajala para ver si un jugador que falta "
+                        "se estaba detectando por debajo del umbral")
+    d.add_argument("--mosaicos", action="store_true",
+                   help="corre el detector por pedazos solapados: encuentra a los "
+                        "jugadores chicos del fondo, a costa de tardar más")
     d.set_defaults(func=_cmd_diagnostico)
 
     v = sub.add_parser("video", help="qué es el archivo y si el encuadre le sirve")
@@ -691,6 +716,11 @@ def main(argv=None):
                    help="cuánto analizar desde --desde ('mm:ss' o segundos). "
                         "Para probar, 2 minutos alcanzan")
     a.add_argument("--detector", default="rfdetr", choices=["rfdetr", "yolo"])
+    a.add_argument("--conf", type=float,
+                   help="confianza mínima del detector")
+    a.add_argument("--mosaicos", action="store_true",
+                   help="detecta por pedazos solapados: encuentra a los jugadores "
+                        "chicos del fondo, a costa de tardar más")
     a.add_argument("--lente", help="JSON de calibración de lente")
     a.add_argument("--lente-aproximada", nargs=2, type=int, metavar=("ANCHO", "ALTO"),
                    help="usa coeficientes aproximados de GoPro Wide")

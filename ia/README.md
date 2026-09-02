@@ -196,8 +196,28 @@ El rectángulo va en metros de cancha (`x1,y1,x2,y2`). La cancha es 40 × 20, as
 que `y > 20` es afuera del lado de una banda. Las coordenadas salen del
 diagnóstico, que las imprime para cada persona detectada.
 
-El diagnóstico dibuja las zonas en rojo translúcido, y avisa si quedan más de
-14 personas dentro: en futsal hay como máximo 12.
+El diagnóstico dibuja las zonas en rojo translúcido y avisa si quedan más
+personas de las posibles: **futsal es 5 contra 5, cuatro de campo y un arquero
+por equipo, diez en total**.
+
+### Cuando falta un jugador
+
+El fondo de la cancha es el problema: con la cámara en un corner hay seis
+píxeles por metro allá contra cuarenta y cinco en el rincón cercano, y el
+modelo detecta a esos jugadores con menos confianza. El diagnóstico compara
+contra un umbral más bajo y te dice si el jugador que falta **se estaba viendo
+pero por debajo del umbral** —que se arregla con `--conf`— o **no se vio nunca**
+—que se arregla con `--mosaicos`, que corre el detector por pedazos solapados
+para que un jugador chico sea un jugador de tamaño normal dentro de su pedazo.
+
+```bash
+python -m futsal_ia.cli diagnostico ... --conf 0.15
+python -m futsal_ia.cli diagnostico ... --mosaicos
+```
+
+Los dos flags valen también para `equipos` y `analizar`. Perder un jugador es
+peor que aceptar un falso positivo: al falso positivo lo saca el filtro de
+cancha, al jugador que no se detectó no lo recupera nadie.
 
 ### Quién es quién
 
@@ -299,7 +319,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 187 tests, sin GPU ni video
+python -m pytest tests/ -q     # 190 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar
