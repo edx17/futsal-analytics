@@ -27,6 +27,42 @@ from typing import Protocol
 CLASE_PERSONA_COCO = 0
 
 
+class ErrorDetector(Exception):
+    """El detector no se pudo cargar. Se explica, no se revienta."""
+
+
+def _traducir_import_error(e: ImportError, paquete: str) -> ErrorDetector:
+    """
+    Convierte el choque de dependencias en algo accionable.
+
+    El caso concreto: rfdetr declara `transformers` sin cota de versión, pip
+    instala la última, y transformers 5.0.0 eliminó
+    find_pruneable_heads_and_indices, que rfdetr importa. El traceback que sale
+    tiene veinte marcos y no nombra ni a rfdetr ni al conflicto: culpa a un
+    archivo de transformers por no tener una función. Nadie deduce de ahí que
+    hay que bajar una versión.
+    """
+    texto = str(e)
+    if "find_pruneable_heads_and_indices" in texto or "prune_linear_layer" in texto:
+        return ErrorDetector(
+            "rfdetr no es compatible con la versión de transformers instalada.\n\n"
+            "rfdetr pide 'transformers' sin poner cota de versión, así que pip "
+            "instala la última, y transformers 5.0.0 eliminó las funciones que "
+            "rfdetr importa.\n\n"
+            "Arreglo:\n"
+            '  pip install "transformers<5"\n\n'
+            "Si aun así no anda, probá el otro detector con --detector yolo "
+            "(ojo: Ultralytics es AGPL-3.0, sirve para probar, no para "
+            "producción si esto se comercializa)."
+        )
+    if paquete in texto or "No module named" in texto:
+        return ErrorDetector(
+            f"Falta instalar {paquete}. Corré:\n  pip install -r requirements.txt\n\n"
+            f"Detalle: {texto}"
+        )
+    return ErrorDetector(f"No pude cargar el detector {paquete}: {texto}")
+
+
 @dataclass
 class Deteccion:
     bbox: tuple[float, float, float, float]   # x1, y1, x2, y2 en píxeles
@@ -55,7 +91,10 @@ class DetectorRFDETR:
     """RF-DETR (Apache 2.0). El que se usa por defecto."""
 
     def __init__(self, conf_minima: float = 0.35, tamano: str = "base"):
-        from rfdetr import RFDETRBase, RFDETRLarge
+        try:
+            from rfdetr import RFDETRBase, RFDETRLarge
+        except ImportError as e:
+            raise _traducir_import_error(e, "rfdetr") from e
 
         self.conf_minima = conf_minima
         self.modelo = (RFDETRLarge if tamano == "large" else RFDETRBase)()
@@ -82,7 +121,10 @@ class DetectorYOLO:
     def __init__(self, conf_minima: float = 0.35, pesos: str = "yolo11m.pt"):
         import warnings
 
-        from ultralytics import YOLO
+        try:
+            from ultralytics import YOLO
+        except ImportError as e:
+            raise _traducir_import_error(e, "ultralytics") from e
 
         warnings.warn(
             "Ultralytics YOLO es AGPL-3.0. Si este módulo se comercializa, hay "

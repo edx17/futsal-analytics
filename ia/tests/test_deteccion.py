@@ -133,3 +133,61 @@ def test_un_frame_chico_no_paga_el_costo_de_los_mosaicos():
     base = _DetectorFalso()
     DetectorEnMosaicos(base, tam=1280).detectar(frame)
     assert base.llamadas == 1
+
+
+# ── Choques de dependencias ────────────────────────────────────────────────
+#
+# rfdetr declara "transformers" sin cota de versión, así que pip instala la
+# última. transformers 5.0.0 eliminó find_pruneable_heads_and_indices, que
+# rfdetr importa, y el paquete revienta al importarse. Verificado: el símbolo
+# está en 4.57.6 y no está en 5.0.0.
+#
+# El traceback que sale tiene veinte marcos y no nombra ni a rfdetr ni al
+# conflicto: culpa a un archivo de transformers por no tener una función.
+# Nadie deduce de ahí que hay que bajar una versión.
+
+def test_el_choque_con_transformers_5_se_explica():
+    from futsal_ia.deteccion import ErrorDetector, _traducir_import_error
+
+    e = ImportError(
+        "cannot import name 'find_pruneable_heads_and_indices' from "
+        "'transformers.pytorch_utils'"
+    )
+    traducido = _traducir_import_error(e, "rfdetr")
+    assert isinstance(traducido, ErrorDetector)
+    texto = str(traducido)
+    assert 'pip install "transformers<5"' in texto
+    assert "sin poner cota de versión" in texto
+    assert "--detector yolo" in texto
+
+
+def test_tambien_atrapa_la_otra_funcion_que_se_eliminó():
+    from futsal_ia.deteccion import _traducir_import_error
+
+    e = ImportError("cannot import name 'prune_linear_layer' from 'transformers.pytorch_utils'")
+    assert 'transformers<5' in str(_traducir_import_error(e, "rfdetr"))
+
+
+def test_un_paquete_que_falta_manda_a_instalar_todo():
+    from futsal_ia.deteccion import _traducir_import_error
+
+    e = ImportError("No module named 'rfdetr'")
+    texto = str(_traducir_import_error(e, "rfdetr"))
+    assert "pip install -r requirements.txt" in texto
+
+
+def test_un_import_error_desconocido_no_se_disfraza():
+    """Si es otra cosa, que se vea el mensaje original y no una receta que no aplica."""
+    from futsal_ia.deteccion import _traducir_import_error
+
+    e = ImportError("algo raro que nunca vimos")
+    texto = str(_traducir_import_error(e, "rfdetr"))
+    assert "algo raro que nunca vimos" in texto
+    assert "transformers<5" not in texto
+
+
+def test_detector_desconocido():
+    from futsal_ia.deteccion import crear_detector
+
+    with pytest.raises(ValueError, match="rfdetr"):
+        crear_detector("el_mejor_detector")

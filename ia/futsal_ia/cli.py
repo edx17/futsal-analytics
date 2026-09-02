@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from .cancha import PUNTOS_REFERENCIA
+from .deteccion import ErrorDetector
 from .config import PARAMETROS
 from .geometria import ErrorCalibracion, Homografia, calibrar
 from .preproceso import Encuadre, ErrorEncuadre
@@ -431,7 +432,7 @@ def main(argv=None):
     except ArchivoFaltante as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
-    except (ErrorCalibracion, ErrorEncuadre) as e:
+    except (ErrorCalibracion, ErrorEncuadre, ErrorDetector) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
     except FileNotFoundError as e:
