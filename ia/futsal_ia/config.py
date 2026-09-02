@@ -34,8 +34,15 @@ class Parametros:
 
     # ── Fase 1: detección y seguimiento ────────────────────────────────────
     conf_minima_persona: float = 0.35
-    margen_cancha_m: float = 1.5
-    """Cuánto se tolera fuera de la línea antes de descartar una detección."""
+    margen_cancha_m: float = 0.5
+    """
+    Cuánto se tolera fuera de la línea antes de descartar una detección.
+
+    Medido sobre un partido real: con 1,5 m entraban diez suplentes parados
+    contra la baranda. Con 0,5 m sigue entrando el que ejecuta un saque de
+    banda, que es a quien hay que dejar pasar. Los que quedan se sacan con las
+    zonas excluidas de la calibración, no bajando más esto.
+    """
 
     fps_analisis: int = 10
     """

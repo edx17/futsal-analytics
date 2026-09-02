@@ -177,6 +177,28 @@ verde no cae sobre la cancha real, ahí está la respuesta y se ve de un vistazo
 
 Imprime además la tabla de dónde cae cada persona en metros y en qué celda.
 
+### La zona de los bancos
+
+Los suplentes y el cuerpo técnico se paran **a menos de un metro de la línea**.
+La homografía los ubica bien —en y ≈ 20,5 m, fuera de la cancha— pero cualquier
+margen razonable para "el que ejecuta un saque de banda" también los deja
+pasar. Medido sobre un partido real: con 1,5 m de margen entraban diez.
+
+Bajar el margen no alcanza: a 0 m se pierde al que saca y todavía queda uno.
+Se marca la franja una vez, y vive con la calibración:
+
+```bash
+python -m futsal_ia.cli excluir --calibracion calibracion.json --rect "0,19.6,16,26"
+python -m futsal_ia.cli excluir --calibracion calibracion.json   # ver las que hay
+```
+
+El rectángulo va en metros de cancha (`x1,y1,x2,y2`). La cancha es 40 × 20, así
+que `y > 20` es afuera del lado de una banda. Las coordenadas salen del
+diagnóstico, que las imprime para cada persona detectada.
+
+El diagnóstico dibuja las zonas en rojo translúcido, y avisa si quedan más de
+14 personas dentro: en futsal hay como máximo 12.
+
 ### Quién es quién
 
 La IA separa a la gente en grupos por el color de la camiseta, pero **no sabe
@@ -277,7 +299,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 181 tests, sin GPU ni video
+python -m pytest tests/ -q     # 187 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar

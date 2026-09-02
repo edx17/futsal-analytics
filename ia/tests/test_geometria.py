@@ -155,12 +155,70 @@ def test_el_filtro_de_cancha_saca_la_tribuna():
     h = calibrar(_marcas_sinteticas(_camara_corner()))
     assert h.dentro_de_cancha(20, 10) is True
     assert h.dentro_de_cancha(0, 0) is True
-    assert h.dentro_de_cancha(-1.0, 5) is True      # pisando la línea, entra
+    assert h.dentro_de_cancha(-0.3, 5) is True      # pisando la línea, entra
     assert h.dentro_de_cancha(-6.0, 5) is False     # banco de suplentes
     assert h.dentro_de_cancha(20, 26.0) is False    # tribuna
     assert h.dentro_de_cancha(48.0, 10) is False    # atrás del arco
     assert h.dentro_de_cancha(float("nan"), 10) is False
     assert h.dentro_de_cancha(None, None) is False
+
+
+# ── La zona de los bancos ──────────────────────────────────────────────────
+#
+# Medido sobre un partido real: con el margen en 1,5 m entraban DIEZ suplentes
+# y cuerpo técnico parados contra la baranda, con los pies proyectando entre
+# y = 19,9 y y = 21,1 m. Bajar el margen no alcanza: a 0 m se pierde al que
+# ejecuta un saque de banda y todavía queda uno adentro.
+
+def test_los_suplentes_contra_la_linea_no_se_sacan_con_el_margen():
+    """Los números salen del diagnóstico real, no son inventados."""
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    banco = [20.5, 20.5, 20.1, 19.9, 20.7, 21.1, 20.6, 20.5]
+    for margen in (0.5, 0.2):
+        cuantos = sum(h.dentro_de_cancha(8.0, y, margen) for y in banco)
+        assert cuantos > 0, f"con margen {margen} el margen solo ya alcanzaría"
+
+
+def test_la_zona_excluida_saca_el_banco_sin_castigar_a_nadie():
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    h.zonas_excluidas = [[(0, 19.6), (16, 19.6), (16, 26), (0, 26)]]
+
+    for y in (20.5, 20.1, 19.9, 21.1, 20.7):
+        assert h.dentro_de_cancha(8.0, y) is False, f"y={y} tendría que quedar afuera"
+
+    # El que ejecuta un saque de banda del otro lado, y los de adentro, siguen.
+    assert h.dentro_de_cancha(8.0, 0.2) is True
+    assert h.dentro_de_cancha(20, 10) is True
+    assert h.dentro_de_cancha(30, 19.8) is True     # fuera del rango x de la zona
+
+
+def test_la_zona_excluida_es_un_poligono_no_un_rectangulo():
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    h.zonas_excluidas = [[(0, 0), (10, 0), (0, 10)]]     # triángulo
+    assert h.en_zona_excluida(1, 1) is True
+    assert h.en_zona_excluida(9, 9) is False
+
+
+def test_un_poligono_degenerado_se_ignora():
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    h.zonas_excluidas = [[(0, 0), (10, 0)]]             # dos puntos, no cierra
+    assert h.en_zona_excluida(5, 0) is False
+    assert h.dentro_de_cancha(5, 0) is True
+
+
+def test_sin_zonas_no_cambia_nada():
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    assert h.zonas_excluidas == []
+    assert h.en_zona_excluida(20, 10) is False
+
+
+def test_las_zonas_viajan_en_el_json():
+    """Se marcan una vez por cancha y viven con la calibración."""
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    h.zonas_excluidas = [[(0, 19.6), (16, 19.6), (16, 26), (0, 26)]]
+    vuelta = Homografia.de_dict(h.a_dict())
+    assert vuelta.dentro_de_cancha(8.0, 20.5) is False
+    assert vuelta.dentro_de_cancha(20, 10) is True
 
 
 def test_la_precision_cae_en_el_rincon_lejano():

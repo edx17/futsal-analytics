@@ -193,6 +193,54 @@ def _cmd_frame(args):
     return 0
 
 
+def _cmd_excluir(args):
+    """
+    Marca una franja de la cancha donde lo que se detecte no cuenta.
+
+    Sirve para la zona de los bancos: los suplentes se paran a menos de un
+    metro de la línea, la homografía los ubica bien, y cualquier margen
+    razonable para el que ejecuta un saque también los deja pasar.
+    """
+    ruta = Path(args.calibracion)
+    d = _leer_json(ruta, "calibracion.json")
+    zonas = d.get("zonas_excluidas", [])
+
+    if args.limpiar:
+        d["zonas_excluidas"] = []
+        ruta.write_text(json.dumps(d, indent=2), encoding="utf-8")
+        print("Zonas excluidas borradas.")
+        return 0
+
+    if not args.rect:
+        if not zonas:
+            print("No hay zonas excluidas.\n")
+            print("Para marcar la franja de los bancos, con las coordenadas que")
+            print("te da el diagnóstico:\n")
+            print("  python -m futsal_ia.cli excluir --calibracion calibracion.json \\")
+            print('      --rect "0,19.6,16,26"\n')
+            print("El rectángulo va en metros de cancha: x1,y1,x2,y2. La cancha es")
+            print("40 x 20, así que y mayor a 20 es afuera del lado de una banda.")
+            return 0
+        print(f"{len(zonas)} zona(s) excluida(s):")
+        for i, z in enumerate(zonas):
+            xs = [p[0] for p in z]
+            ys = [p[1] for p in z]
+            print(f"  {i}: x {min(xs):.1f} a {max(xs):.1f} m, y {min(ys):.1f} a {max(ys):.1f} m")
+        return 0
+
+    try:
+        x1, y1, x2, y2 = (float(v) for v in args.rect.split(","))
+    except ValueError:
+        print('ERROR: el rectángulo va como "x1,y1,x2,y2" en metros.', file=sys.stderr)
+        return 1
+    zonas.append([[x1, y1], [x2, y1], [x2, y2], [x1, y2]])
+    d["zonas_excluidas"] = zonas
+    ruta.write_text(json.dumps(d, indent=2), encoding="utf-8")
+    print(f"Zona agregada: x {x1} a {x2} m, y {y1} a {y2} m.")
+    print(f"Ahora hay {len(zonas)} zona(s). Volvé a correr el diagnóstico para verlo.")
+    return 0
+
+
 def _cmd_equipos(args):
     """
     La pasada 1, separada: agrupa los colores y guarda recortes de ejemplo.
@@ -335,16 +383,25 @@ def _cmd_diagnostico(args):
     cv2.line(frame, tuple(np.int32(h.a_imagen(20, 0))), tuple(np.int32(h.a_imagen(20, 20))),
              (136, 255, 0), 2)
 
+    for zona in h.zonas_excluidas:
+        pz = np.array([h.a_imagen(x, y) for x, y in zona], dtype=np.float64)
+        if np.isfinite(pz).all():
+            capa = frame.copy()
+            cv2.fillPoly(capa, [pz.astype(np.int32)], (60, 60, 200))
+            cv2.addWeighted(capa, 0.25, frame, 0.75, 0, frame)
+            cv2.polylines(frame, [pz.astype(np.int32)], True, (60, 60, 200), 2)
+
     dentro = 0
     print(f"  {'#':>3} {'x_m':>7} {'y_m':>7}  {'zona':<8} estado")
     for i, det in enumerate(detecciones, 1):
         x_m, y_m = h.a_cancha(*det.pies)
         ok_cancha = h.dentro_de_cancha(x_m, y_m, PARAMETROS.margen_cancha_m)
+        excluida = h.en_zona_excluida(x_m, y_m)
         dentro += ok_cancha
         from .cancha import etiqueta_zona, metros_a_norm
         z = etiqueta_zona(*metros_a_norm(float(x_m), float(y_m))) if np.isfinite(x_m) else "-"
-        print(f"  {i:>3} {x_m:>7.1f} {y_m:>7.1f}  {z or '-':<8} "
-              f"{'dentro' if ok_cancha else 'FUERA'}")
+        motivo = "dentro" if ok_cancha else ("zona excluida" if excluida else "FUERA")
+        print(f"  {i:>3} {x_m:>7.1f} {y_m:>7.1f}  {z or '-':<8} {motivo}")
         color = (136, 255, 0) if ok_cancha else (68, 68, 239)
         x1, y1, x2, y2 = (int(v) for v in det.bbox)
         cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
@@ -355,6 +412,13 @@ def _cmd_diagnostico(args):
 
     cv2.imwrite(str(args.salida), frame)
     print(f"\n{dentro} de {len(detecciones)} dentro de la cancha.")
+    if dentro > 14:
+        print(f"\nOJO: {dentro} personas dentro de la cancha. En futsal hay como")
+        print("máximo 12: diez de campo y dos arqueros. Lo más probable es que")
+        print("estén entrando los suplentes o el cuerpo técnico parados contra la")
+        print("línea. Marcá esa franja con:")
+        print('  python -m futsal_ia.cli excluir --calibracion calibracion.json '
+              '--rect "x1,y1,x2,y2"')
     print(f"Imagen anotada en {args.salida}\n")
     if detecciones and dentro == 0:
         print("Ninguna cayó dentro: la calibración no se corresponde con este video.")
@@ -571,6 +635,13 @@ def main(argv=None):
     f.add_argument("--en", default="2:00", help="momento del video, como 'mm:ss'")
     f.add_argument("--salida", default="frame.png")
     f.set_defaults(func=_cmd_frame)
+
+    ex = sub.add_parser("excluir",
+                        help="marca zonas donde lo detectado no cuenta (los bancos)")
+    ex.add_argument("--calibracion", required=True)
+    ex.add_argument("--rect", help='rectángulo en metros: "x1,y1,x2,y2"')
+    ex.add_argument("--limpiar", action="store_true")
+    ex.set_defaults(func=_cmd_excluir)
 
     eq = sub.add_parser("equipos",
                         help="agrupa los colores y deja elegir qué es cada grupo")

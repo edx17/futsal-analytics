@@ -94,6 +94,20 @@ class Homografia:
     error_rms_m: float
     error_por_punto_px: dict[str, float] = field(default_factory=dict)
     error_rms_px: float = 0.0
+    zonas_excluidas: list = field(default_factory=list)
+    """
+    Polígonos en metros de cancha donde lo que se detecte NO cuenta.
+
+    Existen por algo muy concreto: los suplentes y el cuerpo técnico se paran
+    pegados a la línea de banda, a veces a menos de un metro. La homografía los
+    ubica bien —en y = 20,5 m, fuera de la cancha— pero cualquier margen
+    razonable para "el que pisa la línea en un saque" también los deja pasar.
+    Bajar el margen a cero pierde a los jugadores legítimos y ni siquiera
+    alcanza para sacarlos a todos.
+
+    Marcadas una vez por cancha, junto con la calibración, resuelven el
+    problema sin castigar a nadie.
+    """
     resolucion: tuple[int, int] | None = None
     _reporte: dict = field(default=None, repr=False)
 
@@ -139,7 +153,25 @@ class Homografia:
 
     # ── Filtros ───────────────────────────────────────────────────────────
 
-    def dentro_de_cancha(self, x_m, y_m, margen_m: float = 1.5) -> bool:
+    def en_zona_excluida(self, x_m, y_m) -> bool:
+        """Punto en polígono por lanzamiento de rayo, sobre cada zona marcada."""
+        for zona in self.zonas_excluidas:
+            if len(zona) < 3:
+                continue
+            adentro = False
+            n = len(zona)
+            for i in range(n):
+                x1, y1 = zona[i]
+                x2, y2 = zona[(i + 1) % n]
+                if (y1 > y_m) != (y2 > y_m):
+                    corte = (x2 - x1) * (y_m - y1) / (y2 - y1) + x1
+                    if x_m < corte:
+                        adentro = not adentro
+            if adentro:
+                return True
+        return False
+
+    def dentro_de_cancha(self, x_m, y_m, margen_m: float = 0.5) -> bool:
         """
         Con la cámara en un corner, la tribuna, los bancos y la mesa de control
         entran en cuadro y el detector de personas los encuentra a todos. Este
@@ -148,6 +180,8 @@ class Homografia:
         descarta. Sale gratis y es más confiable que cualquier heurística.
         """
         if x_m is None or y_m is None or not np.isfinite(x_m) or not np.isfinite(y_m):
+            return False
+        if self.en_zona_excluida(x_m, y_m):
             return False
         # bool() explícito: comparar numpy floats devuelve np.bool_, que no es
         # `is True` ni `is False` y hace fallar cualquier chequeo por identidad
@@ -270,6 +304,7 @@ class Homografia:
             "error_por_punto_m": self.error_por_punto,
             "error_por_punto_px": self.error_por_punto_px,
             "resolucion": list(self.resolucion) if self.resolucion else None,
+            "zonas_excluidas": [[list(p) for p in z] for z in self.zonas_excluidas],
         }
 
     @staticmethod
@@ -284,6 +319,8 @@ class Homografia:
             error_por_punto_px=d.get("error_por_punto_px", {}),
             error_rms_px=float(d.get("error_rms_px", 0.0)),
             resolucion=tuple(d["resolucion"]) if d.get("resolucion") else None,
+            zonas_excluidas=[[tuple(p) for p in z]
+                             for z in d.get("zonas_excluidas", [])],
         )
 
 
