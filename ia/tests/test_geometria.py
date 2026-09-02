@@ -266,3 +266,75 @@ def test_el_informe_por_periodo_expone_la_asimetria():
     z4d = rep["comparacion"]["Z4-D"]
     assert z4d["error_pt_m"] > z4d["error_st_m"]
     assert z4d["veces_peor"] == pytest.approx(z4d["error_pt_m"] / z4d["error_st_m"], abs=0.1)
+
+
+# ── Esquinas en orden cambiado ─────────────────────────────────────────────
+#
+# Es EL error del operador, y el más peligroso: dos esquinas intercambiadas
+# dan un cuadrilátero en forma de moño, la homografía se resuelve igual sin
+# fallar, y devuelve posiciones absurdas sin avisar. Los casos de acá salen de
+# una calibración real de la cancha de VF que llegó con este problema.
+
+def test_detecta_dos_esquinas_intercambiadas_y_dice_cuales():
+    from futsal_ia.geometria import revisar_esquinas
+
+    marcas = _marcas_sinteticas(_camara_corner())
+    marcas["esq_prop_izq"], marcas["esq_prop_der"] = (
+        marcas["esq_prop_der"], marcas["esq_prop_izq"])
+
+    aviso = revisar_esquinas(marcas)
+    assert aviso is not None
+    assert "esq_prop_izq" in aviso and "esq_prop_der" in aviso
+    with pytest.raises(ErrorCalibracion, match="esq_prop_izq"):
+        calibrar(marcas)
+
+
+def test_las_esquinas_bien_marcadas_no_disparan_el_aviso():
+    from futsal_ia.geometria import revisar_esquinas
+
+    assert revisar_esquinas(_marcas_sinteticas(_camara_corner())) is None
+
+
+def test_sin_las_cuatro_esquinas_no_se_puede_revisar_el_orden():
+    """Con la esquina cercana tapada por una baranda hay que poder calibrar igual."""
+    from futsal_ia.geometria import revisar_esquinas
+
+    marcas = _marcas_sinteticas(_camara_corner())
+    del marcas["esq_prop_izq"]
+    assert revisar_esquinas(marcas) is None
+    assert calibrar(marcas).error_rms_px < 1.0
+
+
+def test_la_tolerancia_va_en_pixeles_y_no_en_metros():
+    """
+    Con la cámara en un corner un metro vale decenas de veces menos en el
+    rincón lejano que en el cercano. Un umbral en metros rechaza calibraciones
+    buenas por culpa de la perspectiva y no de quien marcó: un click perfecto
+    en el fondo "falla" por medio metro sin que nadie se haya equivocado.
+    """
+    h = calibrar(_marcas_sinteticas(_camara_corner(), ruido_px=4.0))
+    assert h.error_rms_px < 12.0
+
+    escalas = [h.escala_local(x, y)["px_por_m_peor"]
+               for x, y in [(1, 1), (39, 19), (20, 10)]]
+    assert max(escalas) / min(escalas) > 4, "el setup del test ya no es asimétrico"
+
+    # El mismo error de click, medido en metros, da números muy distintos
+    # según dónde caiga. En píxeles, no.
+    en_px = list(h.error_por_punto_px.values())
+    assert max(en_px) / max(min(en_px), 0.01) < max(escalas) / min(escalas)
+
+
+def test_un_click_muy_desviado_se_rechaza_igual():
+    marcas = _marcas_sinteticas(_camara_corner())
+    marcas["penal_riv"] = (marcas["penal_riv"][0] + 120, marcas["penal_riv"][1] + 90)
+    with pytest.raises(ErrorCalibracion, match="penal_riv"):
+        calibrar(marcas)
+
+
+def test_los_dos_errores_viajan_en_el_json():
+    h = calibrar(_marcas_sinteticas(_camara_corner(), ruido_px=3.0))
+    d = h.a_dict()
+    assert "error_rms_px" in d and "error_por_punto_px" in d
+    h2 = Homografia.de_dict(d)
+    assert h2.error_rms_px == pytest.approx(h.error_rms_px)

@@ -90,8 +90,10 @@ class Homografia:
     H: np.ndarray                 # píxel -> metros de cancha
     H_inv: np.ndarray             # metros de cancha -> píxel
     ids_usados: tuple[str, ...]
-    error_por_punto: dict[str, float]   # error de reproyección, en metros
+    error_por_punto: dict[str, float]      # error de reproyección, en metros
     error_rms_m: float
+    error_por_punto_px: dict[str, float] = field(default_factory=dict)
+    error_rms_px: float = 0.0
     resolucion: tuple[int, int] | None = None
     _reporte: dict = field(default=None, repr=False)
 
@@ -264,7 +266,9 @@ class Homografia:
             "H": self.H.tolist(),
             "ids_usados": list(self.ids_usados),
             "error_rms_m": self.error_rms_m,
+            "error_rms_px": self.error_rms_px,
             "error_por_punto_m": self.error_por_punto,
+            "error_por_punto_px": self.error_por_punto_px,
             "resolucion": list(self.resolucion) if self.resolucion else None,
         }
 
@@ -277,19 +281,74 @@ class Homografia:
             ids_usados=tuple(d.get("ids_usados", ())),
             error_por_punto=d.get("error_por_punto_m", {}),
             error_rms_m=float(d.get("error_rms_m", 0.0)),
+            error_por_punto_px=d.get("error_por_punto_px", {}),
+            error_rms_px=float(d.get("error_rms_px", 0.0)),
             resolucion=tuple(d["resolucion"]) if d.get("resolucion") else None,
         )
 
 
-# Por encima de esto la calibración está mal hecha: o se clickeó un punto
-# equivocado o la lente está distorsionando y hay que corregirla antes.
-ERROR_RMS_MAXIMO_M = 0.30
+# El umbral va EN PÍXELES, no en metros, y esa distinción importa.
+#
+# Con la cámara en un corner, un metro de cancha vale 136 px cerca y 3 px
+# lejos: 43 veces menos. Un umbral en metros trata esos dos extremos como si
+# fueran lo mismo y termina rechazando calibraciones buenas por culpa de la
+# perspectiva, no de quien marcó. Un click perfecto en el rincón lejano
+# "falla" por medio metro sin que nadie se haya equivocado.
+#
+# El error de reproyección en píxeles mide lo único que la persona controla:
+# qué tan bien clickeó. 6 px es lo que mete alguien con pulso normal usando
+# la lupa; por encima de 12 hay un punto mal marcado o la lente sin corregir.
+ERROR_RMS_MAXIMO_PX = 12.0
+
+# Se sigue reportando en metros porque es lo que se entiende, pero como dato
+# informativo y no como criterio de aceptación.
+ESQUINAS_EN_ORDEN = ("esq_prop_izq", "esq_prop_der", "esq_riv_der", "esq_riv_izq")
+
+
+def _cruz(o, a, b) -> float:
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+
+def _es_simple(p) -> bool:
+    """¿El cuadrilátero no se cruza a sí mismo?"""
+    def corta(p1, p2, p3, p4):
+        d1, d2 = _cruz(p3, p4, p1), _cruz(p3, p4, p2)
+        d3, d4 = _cruz(p1, p2, p3), _cruz(p1, p2, p4)
+        return ((d1 > 0) != (d2 > 0)) and ((d3 > 0) != (d4 > 0))
+    return not (corta(p[0], p[1], p[2], p[3]) or corta(p[1], p[2], p[3], p[0]))
+
+
+def revisar_esquinas(marcas: dict[str, tuple[float, float]]) -> str | None:
+    """
+    Detecta las esquinas marcadas en orden cambiado, que es EL error del
+    operador: dos esquinas intercambiadas dan un cuadrilátero en forma de moño.
+
+    Lo insidioso es que la homografía se resuelve igual, sin fallar y sin
+    avisar, y devuelve posiciones absurdas. Más vale detectarlo acá.
+
+    Devuelve un mensaje diciendo qué par intercambiar, o None si está bien.
+    """
+    if not all(e in marcas for e in ESQUINAS_EN_ORDEN):
+        return None
+    p = [marcas[e] for e in ESQUINAS_EN_ORDEN]
+    if _es_simple(p):
+        return None
+    # De los tres órdenes cíclicos posibles de cuatro puntos, exactamente uno
+    # no se cruza. Buscamos cuál y traducimos a "intercambiá estos dos".
+    for i, j in ((0, 1), (1, 2), (0, 2)):
+        q = list(p)
+        q[i], q[j] = q[j], q[i]
+        if _es_simple(q):
+            return (f"'{ESQUINAS_EN_ORDEN[i]}' y '{ESQUINAS_EN_ORDEN[j]}' están "
+                    "intercambiadas: marcadas así, la cancha queda con forma de moño.")
+    return ("Las cuatro esquinas no forman un cuadrilátero válido: alguna está "
+            "mal marcada.")
 
 
 def calibrar(
     marcas: dict[str, tuple[float, float]],
     resolucion: tuple[int, int] | None = None,
-    tolerancia_rms_m: float = ERROR_RMS_MAXIMO_M,
+    tolerancia_rms_px: float = ERROR_RMS_MAXIMO_PX,
 ) -> Homografia:
     """
     Calcula la homografía a partir de los puntos que marcó el operador.
@@ -311,6 +370,10 @@ def calibrar(
             f"Hacen falta al menos 4 puntos y llegaron {len(marcas)}."
             + (f" Faltan las esquinas: {faltantes}." if faltantes else "")
         )
+
+    problema = revisar_esquinas(marcas)
+    if problema:
+        raise ErrorCalibracion(problema)
 
     ids = tuple(sorted(marcas))
     px = np.array([marcas[i] for i in ids], dtype=float)
@@ -339,14 +402,21 @@ def calibrar(
     provisoria.error_por_punto = {i: round(float(e), 4) for i, e in zip(ids, errores)}
     provisoria.error_rms_m = float(np.sqrt((errores ** 2).mean()))
 
-    if provisoria.error_rms_m > tolerancia_rms_m:
-        peor = max(provisoria.error_por_punto, key=provisoria.error_por_punto.get)
+    # El criterio de aceptación: cuánto se desvía en la IMAGEN, que es lo único
+    # que la persona que marcó controla.
+    vuelta = provisoria.a_imagen(metros[:, 0], metros[:, 1])
+    err_px = np.sqrt(((vuelta - px) ** 2).sum(axis=1))
+    provisoria.error_por_punto_px = {i: round(float(e), 2) for i, e in zip(ids, err_px)}
+    provisoria.error_rms_px = float(np.sqrt((err_px ** 2).mean()))
+
+    if provisoria.error_rms_px > tolerancia_rms_px:
+        peor = max(provisoria.error_por_punto_px, key=provisoria.error_por_punto_px.get)
         raise ErrorCalibracion(
-            f"Calibración poco confiable: error RMS de {provisoria.error_rms_m:.2f} m "
-            f"(máximo aceptable {tolerancia_rms_m} m). El punto peor marcado es "
-            f"'{peor}' ({PUNTOS_POR_ID[peor].etiqueta}), con {provisoria.error_por_punto[peor]:.2f} m. "
-            "Revisá ese click. Si están todos bien marcados, lo más probable es "
-            "que la lente esté distorsionando: filmá en Linear o corregí la "
-            "distorsión antes de calibrar."
+            f"Calibración poco confiable: error RMS de {provisoria.error_rms_px:.1f} px "
+            f"(máximo aceptable {tolerancia_rms_px:.0f} px). El punto peor marcado es "
+            f"'{peor}' ({PUNTOS_POR_ID[peor].etiqueta}), desviado "
+            f"{provisoria.error_por_punto_px[peor]:.1f} px. Revisá ese click. Si están "
+            "todos bien marcados, lo más probable es que la lente esté distorsionando: "
+            "corregí la distorsión antes de calibrar."
         )
     return provisoria

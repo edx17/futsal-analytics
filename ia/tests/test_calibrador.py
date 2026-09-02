@@ -47,3 +47,33 @@ def test_el_html_no_pide_una_libreria_de_afuera():
     texto = HTML.read_text(encoding="utf-8")
     assert "<script src" not in texto
     assert "cdn" not in texto.lower()
+
+
+VERIFICADOR = Path(__file__).resolve().parents[1] / "herramientas" / "verificador.html"
+
+
+def test_el_verificador_existe():
+    assert VERIFICADOR.exists()
+
+
+def test_el_verificador_usa_las_mismas_coordenadas_de_cancha():
+    """
+    El verificador dibuja la cancha desde sus propias constantes en metros. Si
+    se desincronizan de cancha.py, dibuja una cancha que no es la que se
+    calibró y el chequeo visual pasa a mentir.
+    """
+    from futsal_ia.cancha import PUNTOS_POR_ID
+
+    texto = VERIFICADOR.read_text(encoding="utf-8")
+    bloque = texto[texto.index("const PUNTOS_M = {"):texto.index("};", texto.index("const PUNTOS_M"))]
+    encontrados = {pid: (x, y)
+                   for pid, x, y in re.findall(r"(\w+):\[([\d.]+),([\d.]+)\]", bloque)}
+    assert set(encontrados) == set(PUNTOS_POR_ID)
+    for pid, (x, y) in encontrados.items():
+        ref = PUNTOS_POR_ID[pid]
+        assert float(x) == ref.x_m and float(y) == ref.y_m, f"{pid} no coincide con cancha.py"
+
+
+def test_el_verificador_tampoco_depende_de_un_cdn():
+    texto = VERIFICADOR.read_text(encoding="utf-8")
+    assert "<script src" not in texto and "cdn" not in texto.lower()

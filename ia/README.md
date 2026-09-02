@@ -88,6 +88,12 @@ python -m futsal_ia.cli precision --calibracion calibracion.json
 python -m futsal_ia.cli puntos
 ```
 
+**Verificá antes de confiar.** Abrí `herramientas/verificador.html` y cargale el
+frame, `calibracion.json`, `encuadre.json` y `marcas.json`: dibuja la cancha
+calculada encima de la foto. Si las líneas verdes caen sobre las líneas reales
+del piso, está bien. Un RMS bajo con las líneas corridas significa que marcaste
+mal de forma consistente, y solo se ve mirando.
+
 Con `calibracion.json` + `encuadre.json` guardados, esto no se vuelve a hacer
 nunca más mientras la cámara no se mueva. Sirven para todo el archivo, viejo y
 nuevo.
@@ -132,7 +138,8 @@ Honestidad sobre qué está probado de verdad:
 | `equipos.py` | **Verificado.** 12 tests de clustering de color |
 | `salida.py` | **Verificado.** 13 tests; los campos se comparan contra `crearSnapshot()` y `crearRecorrido()` reales de modelo.js |
 | `preproceso.py` | **Verificado.** 14 tests del giro y recorte determinista |
-| `herramientas/calibrador.html` | **Sin ejecutar en navegador.** 4 tests verifican que su lista de puntos no se desincronice de `cancha.py` y que no dependa de ningún CDN |
+| `herramientas/calibrador.html` | **Sin ejecutar en navegador.** Tests que verifican que su lista de puntos no se desincronice de `cancha.py` y que no dependa de ningún CDN |
+| `herramientas/verificador.html` | **Sin ejecutar en navegador.** Ídem, sobre las coordenadas en metros de la cancha |
 | `deteccion.py` | **Parcial.** El partido en mosaicos y la fusión están verificados (11 tests); el detector en sí necesita GPU y los pesos |
 | `seguimiento.py` | **Sin ejecutar.** Necesita `supervision` instalado |
 | `lente.py` | **Sin ejecutar.** Necesita OpenCV y un video real |
@@ -143,7 +150,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 81 tests, sin GPU ni video
+python -m pytest tests/ -q     # 90 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar

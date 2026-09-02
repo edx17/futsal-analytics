@@ -171,7 +171,8 @@ function dibujar() {
   // El polígono de la cancha, si ya están las cuatro esquinas: es la forma más
   // rápida de darse cuenta de que se clickeó una esquina cambiada de orden.
   if (ESQUINAS.every(e => marcas[e])) {
-    ctx.strokeStyle = "rgba(0,255,136,.5)";
+    const mal = revisarEsquinas();
+    ctx.strokeStyle = mal ? "rgba(239,68,68,.85)" : "rgba(0,255,136,.5)";
     ctx.setLineDash([10, 8]);
     ctx.beginPath();
     ESQUINAS.forEach((e, i) => i ? ctx.lineTo(...marcas[e]) : ctx.moveTo(...marcas[e]));
@@ -194,17 +195,48 @@ function pintarLista() {
   revisar();
 }
 
+// El error del operador, y el más peligroso: dos esquinas intercambiadas dan
+// un cuadrilátero en forma de moño. La homografía se resuelve igual, sin
+// fallar y sin avisar, y devuelve posiciones absurdas. Se detecta acá, antes
+// de exportar, y se dice QUÉ par intercambiar.
+function cruz(o, a, b) { return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0]); }
+function corta(p1, p2, p3, p4) {
+  const d1 = cruz(p3,p4,p1), d2 = cruz(p3,p4,p2), d3 = cruz(p1,p2,p3), d4 = cruz(p1,p2,p4);
+  return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+}
+function esSimple(p) { return !(corta(p[0],p[1],p[2],p[3]) || corta(p[1],p[2],p[3],p[0])); }
+
+function revisarEsquinas() {
+  if (!ESQUINAS.every(e => marcas[e])) return null;
+  const p = ESQUINAS.map(e => marcas[e]);
+  if (esSimple(p)) return null;
+  for (const [i, j] of [[0,1],[1,2],[0,2]]) {
+    const q = p.slice(); [q[i], q[j]] = [q[j], q[i]];
+    if (esSimple(q)) return [ESQUINAS[i], ESQUINAS[j]];
+  }
+  return ["?", "?"];
+}
+
 function revisar() {
   const n = Object.keys(marcas).length;
-  const caja = $("estado");
   const listo = n >= 4;
-  caja.innerHTML = `<div class="aviso ${listo ? "ok" : "mal"}">` +
+  const cruzadas = revisarEsquinas();
+  let html = `<div class="aviso ${listo ? "ok" : "mal"}">` +
     (listo
       ? `${n} de 15 marcados. Alcanza para calibrar.` +
         (n < 8 ? " Marcá más: con cuatro el error da siempre cero y engaña." : "")
       : `${n} de 15. Hacen falta al menos 4.`) + `</div>`;
-  $("expMarcas").disabled = !listo;
-  $("expEncuadre").disabled = !listo;
+
+  if (cruzadas) {
+    html += `<div class="aviso mal" style="border-color:var(--error);color:var(--error);background:#2a1212">
+      <strong>La cancha queda con forma de moño.</strong><br>
+      Intercambiá <code>${cruzadas[0]}</code> y <code>${cruzadas[1]}</code>.<br><br>
+      Recordá que izquierda y derecha son <strong>desde adentro de la cancha
+      mirando hacia el arco contrario</strong>, no desde donde está la cámara.</div>`;
+  }
+  $("estado").innerHTML = html;
+  $("expMarcas").disabled = !listo || !!cruzadas;
+  $("expEncuadre").disabled = !listo || !!cruzadas;
   calcularEncuadre();
 }
 
