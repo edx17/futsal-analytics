@@ -97,6 +97,14 @@ class Ficha:
     id_jugador: int | str | None = None
     dorsal: int | None = None
     confianza: float | None = None
+    bbox: tuple | None = None
+    """
+    El recuadro en la imagen ANALIZADA (después del encuadre).
+
+    Viaja como campo local para que el video de auditoría pueda dibujarlo. Sin
+    esto el overlay solo muestra puntos en un radar, y un punto mal ubicado se
+    ve exactamente igual que uno bien ubicado: no se puede auditar nada.
+    """
 
     def a_posicion(self) -> dict:
         """La forma exacta que espera `posiciones` en snapshots y en video.js."""
@@ -107,6 +115,7 @@ class Ficha:
             "x": _redondear(self.x),
             "y": _redondear(self.y),
             "_track_ia": self.track_ia,
+            "_bbox": list(self.bbox) if self.bbox else None,
         }
 
 

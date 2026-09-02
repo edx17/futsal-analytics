@@ -43,7 +43,9 @@ def _partido_tipico(semilla=0):
 
 
 def test_separa_los_dos_equipos_de_campo():
-    clas = entrenar_clasificador(_partido_tipico())
+    # Cuatro grupos para cuatro poblaciones: acá se prueba el agrupamiento,
+    # no la elección del número de grupos.
+    clas = entrenar_clasificador(_partido_tipico(), grupos=4)
     assert clas.confiable
     equipo_rojo = clas.clasificar(np.array(ROJO))
     equipo_azul = clas.clasificar(np.array(AZUL))
@@ -56,14 +58,14 @@ def test_arqueros_y_arbitro_no_ensucian_los_equipos():
     si el arquero cayera dentro del grupo de su equipo, el conteo de jugadores
     de campo daría mal y el arquero rival aparecería como propio.
     """
-    clas = entrenar_clasificador(_partido_tipico())
+    clas = entrenar_clasificador(_partido_tipico(), grupos=4)
     assert clas.clasificar(np.array(AMARILLO_ARQUERO)) == DESCONOCIDO
     assert clas.clasificar(np.array(NEGRO_ARBITRO)) == DESCONOCIDO
 
 
 def test_un_click_del_operador_da_vuelta_los_grupos():
     """El único dato de identidad que la Fase 1 le pide a un humano."""
-    clas = entrenar_clasificador(_partido_tipico())
+    clas = entrenar_clasificador(_partido_tipico(), grupos=4)
     clas = asignar_propio(clas, np.array(ROJO))
     assert clas.clasificar(np.array(ROJO)) == PROPIO
     assert clas.clasificar(np.array(AZUL)) == RIVAL
@@ -267,3 +269,62 @@ def test_confirmado_viaja_en_el_json():
     assert ClasificadorEquipos.de_dict(clas.a_dict()).confirmado is False
     confirmado = clas.asignar(0, PROPIO)
     assert ClasificadorEquipos.de_dict(confirmado.a_dict()).confirmado is True
+
+
+def test_con_pocos_grupos_los_arqueros_se_pierden():
+    """
+    El motivo de subir el valor por defecto. En una cancha hay dos equipos, DOS
+    arqueros de colores distintos y uno o dos árbitros: seis poblaciones como
+    mínimo. Con cuatro grupos, k-means fusiona y los arqueros dejan de existir
+    como grupo propio.
+    """
+    rng = np.random.default_rng(11)
+    ARQ_ROSA, ARQ_CELESTE = [180, 105, 255], [230, 200, 90]
+    colores = (_colores(rng, ROJO, 300) + _colores(rng, AZUL, 300)
+               + _colores(rng, ARQ_ROSA, 45) + _colores(rng, ARQ_CELESTE, 45)
+               + _colores(rng, NEGRO_ARBITRO, 35))
+
+    pocos = entrenar_clasificador(colores, grupos=4)
+    muchos = entrenar_clasificador(colores, grupos=7)
+
+    distintos_pocos = len({pocos.grupo_de(np.array(c))
+                           for c in (ROJO, AZUL, ARQ_ROSA, ARQ_CELESTE, NEGRO_ARBITRO)})
+    distintos_muchos = len({muchos.grupo_de(np.array(c))
+                            for c in (ROJO, AZUL, ARQ_ROSA, ARQ_CELESTE, NEGRO_ARBITRO)})
+    assert distintos_pocos < 5, "con 4 grupos algo tiene que fusionarse"
+    assert distintos_muchos == 5, "con 7 grupos las cinco poblaciones se separan"
+
+
+def test_la_separacion_se_recalcula_con_los_roles_puestos():
+    """
+    Antes de asignar, la separación es la distancia entre los dos grupos más
+    poblados, que con muchos grupos pueden ser dos pedazos del MISMO equipo y
+    dar un número sin sentido. Con los roles puestos se mide lo que importa.
+    """
+    rng = np.random.default_rng(3)
+    verde_a, verde_b, blanco = [60, 230, 210], [45, 185, 165], [235, 235, 235]
+    colores = (_colores(rng, verde_a, 200) + _colores(rng, verde_b, 200)
+               + _colores(rng, blanco, 250) + _colores(rng, NEGRO_ARBITRO, 40))
+    clas = entrenar_clasificador(colores, grupos=5)
+
+    clas = (clas.asignar(clas.grupo_de(np.array(verde_a)), PROPIO)
+                .asignar(clas.grupo_de(np.array(verde_b)), PROPIO)
+                .asignar(clas.grupo_de(np.array(blanco)), RIVAL))
+
+    esperada = min(
+        float(np.sqrt(((np.array(v) - np.array(blanco)) ** 2).sum()))
+        for v in (verde_a, verde_b)
+    )
+    assert clas.separacion == pytest.approx(esperada, rel=0.15)
+    assert clas.confiable
+
+
+def test_dos_equipos_parecidos_se_delatan_despues_de_asignar():
+    rng = np.random.default_rng(4)
+    casi_a, casi_b = [200, 40, 40], [214, 54, 50]
+    colores = (_colores(rng, casi_a, 250) + _colores(rng, casi_b, 250)
+               + _colores(rng, NEGRO_ARBITRO, 40))
+    clas = entrenar_clasificador(colores, grupos=4)
+    clas = (clas.asignar(clas.grupo_de(np.array(casi_a)), PROPIO)
+                .asignar(clas.grupo_de(np.array(casi_b)), RIVAL))
+    assert not clas.confiable

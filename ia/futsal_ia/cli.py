@@ -620,7 +620,9 @@ def _cmd_analizar(args):
         from .overlay import exportar
         print(f"\nEscribiendo video de auditoría en {args.overlay}...")
         exportar(args.video, res, args.overlay, invertida=args.invertida,
-                 enderezador=enderezador)
+                 enderezador=enderezador, encuadre=encuadre,
+                 desde_ms=parse_tiempo(args.desde or "0"),
+                 t_saque_ms=parse_tiempo(args.saque or "0"))
         print("Miralo antes de creerle un solo número al resumen de arriba.")
     return 0
 

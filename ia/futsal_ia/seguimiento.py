@@ -34,12 +34,26 @@ class DeteccionSeguida:
 
 class SeguidorByteTrack:
     def __init__(self, fps: int = 10, max_frames_sin_ver: int = 30,
-                 umbral_alto: float = 0.5, umbral_asociacion: float = 0.8):
+                 umbral_alto: float | None = None, umbral_asociacion: float = 0.8,
+                 conf_detector: float = 0.25):
+        """
+        `umbral_alto` es la confianza que necesita una detección para ABRIR un
+        track nuevo. Estaba fijo en 0.5 mientras el detector aceptaba desde
+        0.25: los jugadores del fondo de la cancha, que se detectan con menos
+        confianza justamente por estar lejos, nunca llegaban a abrir track.
+        Aparecían y desaparecían sin identidad.
+
+        Por defecto se ata a la confianza del detector, apenas por encima, para
+        que todo lo que el detector acepta pueda además existir como track.
+        """
+        if umbral_alto is None:
+            umbral_alto = min(conf_detector + 0.05, 0.5)
         import numpy as np
         import supervision as sv
 
         self.np = np
         self.sv = sv
+        self.umbral_alto = umbral_alto
         self.seguidor = sv.ByteTrack(
             track_activation_threshold=umbral_alto,
             lost_track_buffer=max_frames_sin_ver,

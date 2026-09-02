@@ -75,8 +75,15 @@ class Parametros:
     snapshot_cada_ms: int = 200
     """Cada cuánto se guarda una foto del tablero completo."""
 
-    max_frames_sin_ver: int = 30
-    """Frames que un track sobrevive tapado antes de darse por perdido."""
+    max_frames_sin_ver: int = 50
+    """
+    Cuadros que un track sobrevive tapado antes de darse por perdido.
+
+    A 10 fps son cinco segundos. Estaba en 30 (tres segundos) y en futsal es
+    poco: en 400 m² los jugadores se tapan entre ellos todo el tiempo, y cada
+    track que muere y renace es una identidad nueva. Sobre dos minutos de
+    partido salieron 83 tracks para diez jugadores.
+    """
 
     # ── Calibración ────────────────────────────────────────────────────────
     error_rms_maximo_m: float = 0.30

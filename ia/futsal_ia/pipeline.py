@@ -420,8 +420,9 @@ def analizar(
     from .seguimiento import SeguidorByteTrack
 
     detector = detector or crear_detector("rfdetr", conf_minima=params.conf_minima_persona)
-    seguidor = seguidor or SeguidorByteTrack(fps=params.fps_analisis,
-                                             max_frames_sin_ver=params.max_frames_sin_ver)
+    seguidor = seguidor or SeguidorByteTrack(
+        fps=params.fps_analisis, max_frames_sin_ver=params.max_frames_sin_ver,
+        conf_detector=params.conf_minima_persona)
 
     cap, cv2 = _abrir(ruta_video)
     fps_video = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -481,17 +482,25 @@ def analizar(
                 continue
             frame = _preparar(frame, enderezador, encuadre)
 
-            detecciones = detector.detectar(frame)
-            res.progreso.detecciones += len(detecciones)
-            fichas: list[Ficha] = []
+            crudas = detector.detectar(frame)
+            res.progreso.detecciones += len(crudas)
 
+            # Se filtra ANTES de seguir, no después. El banco, el árbitro de
+            # mesa y la tribuna son unas diez personas por cuadro: metidas en
+            # el seguidor compiten por identidades con los jugadores, ensucian
+            # las asociaciones cerca de la línea y multiplican los tracks. El
+            # seguidor tiene que ver únicamente lo que está en cancha.
+            detecciones = []
+            for det in crudas:
+                x_m, y_m = homografia.a_cancha(*det.pies)
+                if homografia.dentro_de_cancha(x_m, y_m, params.margen_cancha_m):
+                    detecciones.append(det)
+                else:
+                    res.progreso.descartadas_fuera_de_cancha += 1
+
+            fichas: list[Ficha] = []
             for seguida in seguidor.actualizar(detecciones):
                 det = seguida.deteccion
-                x_m, y_m = homografia.a_cancha(*det.pies)
-                if not homografia.dentro_de_cancha(x_m, y_m, params.margen_cancha_m):
-                    res.progreso.descartadas_fuera_de_cancha += 1
-                    continue
-
                 equipo = clasificador.clasificar(color_de_torso(_recorte(frame, det.bbox)))
                 if equipo == "Desconocido":
                     # Arqueros y árbitros caen acá. No se tiran: se cuentan,
@@ -510,7 +519,8 @@ def analizar(
                 votos[equipo] = votos.get(equipo, 0) + 1
                 track.agregar(t_ms, x, y)
                 fichas.append(Ficha(equipo=equipo, x=x, y=y, track_ia=seguida.track_ia,
-                                    confianza=det.confianza))
+                                    confianza=det.confianza,
+                                    bbox=tuple(round(v, 1) for v in det.bbox)))
 
             if ultimo_snapshot_ms is None or t_ms - ultimo_snapshot_ms >= params.snapshot_cada_ms:
                 res.snapshots.append(crear_snapshot(

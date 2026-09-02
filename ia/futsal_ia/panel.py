@@ -176,12 +176,14 @@ def _correr(datos: dict) -> None:
 
         t.log("Pasada 2 de 2: detectando y siguiendo...")
         prueba = datos.get("prueba", True)
+        desde_ms = parse_tiempo(datos.get("desde") or "0")
+        saque_ms = parse_tiempo(cfg["saque"])
         res = analizar(
             video, h, clas,
             club_id=cfg["club"], id_partido=cfg["partido"], periodo=datos["periodo"],
             invertida=cfg["invertida"], detector=detector, encuadre=encuadre,
-            t_saque_ms=parse_tiempo(cfg["saque"]),
-            desde_ms=parse_tiempo(datos.get("desde") or "0"),
+            t_saque_ms=saque_ms,
+            desde_ms=desde_ms,
             duracion_ms=parse_tiempo("2:00") if prueba else None,
             al_avanzar=avanzar,
         )
@@ -198,7 +200,8 @@ def _correr(datos: dict) -> None:
             t.log("Escribiendo el video de auditoría...")
             destino = RAIZ / f"auditoria_{datos['periodo']}.mp4"
             exportar_overlay(video, res, destino, invertida=cfg["invertida"],
-                             enderezador=None)
+                             enderezador=None, encuadre=encuadre,
+                             desde_ms=desde_ms, t_saque_ms=saque_ms)
             t.overlay = destino.name
 
         t.log("Listo.")

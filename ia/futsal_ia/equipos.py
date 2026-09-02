@@ -117,7 +117,18 @@ class ClasificadorEquipos:
     centros: np.ndarray
     equipo_por_grupo: dict[int, str]
     separacion: float
-    """Distancia entre los dos grupos principales, en unidades de color."""
+    """
+    Distancia de color entre los dos equipos.
+
+    Antes de que alguien asigne roles es una estimación: la distancia entre los
+    dos grupos más poblados. Con siete grupos eso puede dar dos pedazos del
+    MISMO equipo y el número no significa nada.
+
+    Una vez asignados los roles se recalcula como la mínima distancia entre
+    cualquier grupo propio y cualquier grupo rival, que es exactamente lo que
+    hay que saber: si los dos equipos visten parecido, la clasificación es una
+    moneda al aire y hay que decirlo.
+    """
 
     confirmado: bool = False
     """
@@ -191,23 +202,49 @@ class ClasificadorEquipos:
         nuevo = ({g: DESCONOCIDO for g in self.equipo_por_grupo}
                  if not self.confirmado else dict(self.equipo_por_grupo))
         nuevo[grupo] = equipo
-        return ClasificadorEquipos(centros=self.centros, equipo_por_grupo=nuevo,
-                                   separacion=self.separacion, confirmado=True)
+        return ClasificadorEquipos(
+            centros=self.centros, equipo_por_grupo=nuevo,
+            separacion=self._separacion_entre_equipos(nuevo), confirmado=True)
+
+    def _separacion_entre_equipos(self, roles: dict) -> float:
+        """
+        Lo más parecidos que llegan a estar un grupo propio y uno rival.
+
+        Se toma el mínimo y no el promedio a propósito: si UN grupo propio se
+        confunde con UN grupo rival, ahí ya hay jugadores mal clasificados, por
+        más que los otros grupos estén lejísimos.
+        """
+        propios = [i for i, r in roles.items() if r in (PROPIO, ARQUERO_PROPIO)]
+        rivales = [i for i, r in roles.items() if r in (RIVAL, ARQUERO_RIVAL)]
+        if not propios or not rivales:
+            return self.separacion
+        return min(
+            float(np.sqrt(((self.centros[a] - self.centros[b]) ** 2).sum()))
+            for a in propios for b in rivales
+        )
 
 
 def entrenar_clasificador(
     colores: list[np.ndarray],
-    grupos: int = 4,
+    grupos: int = 7,
     semilla: int = 0,
 ) -> ClasificadorEquipos:
     """
     Agrupa los colores de todo el partido.
 
-    `grupos` = 4 por defecto: los dos equipos de campo más los arqueros y el
-    árbitro, que visten distinto y merecen su propio grupo en vez de ensuciar
-    los de campo. Los dos grupos MÁS POBLADOS son los equipos: son diez
-    jugadores de campo contra dos arqueros y un árbitro, así que la mayoría
-    manda y no hace falta ninguna heurística más fina.
+    `grupos` = 7 por defecto. Con 4 no alcanzaba: en una cancha hay los dos
+    equipos de campo, DOS arqueros que visten cada uno de un color distinto, y
+    uno o dos árbitros. Son seis poblaciones como mínimo, y encima la luz de un
+    gimnasio parte una misma camiseta en dos tonos según dónde esté parado el
+    jugador. Con menos grupos que poblaciones, k-means fusiona: los arqueros se
+    mezclan con el árbitro y dejan de distinguirse.
+
+    Pasarse de grupos no cuesta casi nada —el operador marca dos como "Propio"
+    y listo— pero quedarse corto pierde información que no se recupera.
+
+    Los dos grupos MÁS POBLADOS quedan como equipos de forma provisoria: son
+    ocho jugadores de campo contra dos arqueros y un árbitro, así que la
+    mayoría manda. Es solo una adivinanza hasta que alguien confirme.
 
     Devuelve el clasificador con los dos grupos mayores marcados como equipos
     y el resto como Desconocido. Cuál de los dos es el propio lo decide el
