@@ -162,6 +162,21 @@ El lado de la cancha se pregunta **una sola vez**, para el primer tiempo: los
 equipos cambian en el entretiempo y el segundo se deduce. Si eso sale mal no
 falla nada, simplemente todos los mapas del ST quedan espejados.
 
+### Cuando algo no cierra: el diagnóstico
+
+```bash
+python -m futsal_ia.cli diagnostico --video PT.mp4 \
+    --calibracion calibracion.json --encuadre encuadre.json \
+    --en 5:00 --salida diagnostico.png
+```
+
+Toma un cuadro, corre el detector y escribe una imagen con los recuadros
+—verdes si caen dentro de la cancha, rojos si no—, los pies marcados, y **el
+contorno de la cancha según la calibración dibujado encima**. Si ese contorno
+verde no cae sobre la cancha real, ahí está la respuesta y se ve de un vistazo.
+
+Imprime además la tabla de dónde cae cada persona en metros y en qué celda.
+
 ### Analizar: por partido y por período
 
 Primero, dos segundos de chequeo que ahorran horas:
@@ -241,7 +256,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 165 tests, sin GPU ni video
+python -m pytest tests/ -q     # 168 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar

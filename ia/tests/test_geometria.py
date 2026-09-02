@@ -338,3 +338,37 @@ def test_los_dos_errores_viajan_en_el_json():
     assert "error_rms_px" in d and "error_por_punto_px" in d
     h2 = Homografia.de_dict(d)
     assert h2.error_rms_px == pytest.approx(h.error_rms_px)
+
+
+# ── Calibración y encuadre que no se corresponden ──────────────────────────
+
+def test_una_calibracion_de_otro_tamaño_se_rechaza_antes_de_analizar():
+    """
+    El error más caro de todos: si las resoluciones no coinciden, las
+    coordenadas no significan lo mismo y TODO cae fuera de la cancha, pero
+    nada falla. El análisis corre entero y devuelve cero, después de horas.
+    """
+    from futsal_ia.pipeline import ErrorIncompatible, revisar_compatibilidad
+    from futsal_ia.preproceso import Encuadre
+
+    h = calibrar(_marcas_sinteticas(_camara_corner()), resolucion=(1615, 741))
+    bueno = Encuadre(resolucion_origen=(1920, 1080), recorte=(100, 200, 1615, 741))
+    # Un recorte válido para este cuadro, pero de otro tamaño que el calibrado.
+    malo = Encuadre(resolucion_origen=(1920, 1080), recorte=(0, 0, 1900, 900))
+
+    revisar_compatibilidad(h, bueno)        # no levanta nada
+    revisar_compatibilidad(h, None)         # sin encuadre no hay nada que comparar
+
+    with pytest.raises(ErrorIncompatible, match="1615x741") as e:
+        revisar_compatibilidad(h, malo)
+    assert "1900x900" in str(e.value)
+    assert "calibrar" in str(e.value)
+
+
+def test_sin_resolucion_guardada_no_se_puede_comparar():
+    """Las calibraciones viejas no la traen: no se rompe, solo no verifica."""
+    from futsal_ia.pipeline import revisar_compatibilidad
+    from futsal_ia.preproceso import Encuadre
+
+    h = calibrar(_marcas_sinteticas(_camara_corner()))
+    revisar_compatibilidad(h, Encuadre(resolucion_origen=(1920, 1080)))

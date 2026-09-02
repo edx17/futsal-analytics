@@ -45,6 +45,55 @@ from .preproceso import Encuadre
 from .salida import Ficha, Track, crear_snapshot
 
 
+class ErrorIncompatible(Exception):
+    """La calibración y el encuadre no hablan del mismo cuadro."""
+
+
+class SinColores(Exception):
+    """
+    La pasada 1 no juntó ningún color de camiseta.
+
+    Existe como excepción propia porque el mensaje tiene que decir POR QUÉ, y
+    hay tres motivos posibles que se arreglan de forma distinta: el detector no
+    encuentra gente, la encuentra pero la homografía la manda fuera de la
+    cancha, o los recortes salen demasiado chicos. Sin los contadores, los tres
+    se ven igual: cero.
+    """
+
+
+@dataclass
+class ConteoMuestreo:
+    frames: int = 0
+    personas: int = 0
+    fuera_de_cancha: int = 0
+    sin_color: int = 0
+    colores: int = 0
+
+    def diagnostico(self) -> str:
+        if self.frames == 0:
+            return ("No se pudo leer ningún cuadro del video. El archivo está pero "
+                    "no se decodifica: probá reproducirlo, y si está en OneDrive o "
+                    "Drive movelo a una carpeta local.")
+        if self.personas == 0:
+            return (f"El detector no encontró una sola persona en {self.frames} cuadros. "
+                    "Casi seguro el recorte del encuadre está mal y estás analizando "
+                    "un pedazo de la tribuna o del piso vacío. Abrí el verificador y "
+                    "mirá qué queda dentro del recorte.")
+        if self.fuera_de_cancha >= self.personas:
+            return (f"Se detectaron {self.personas} personas en {self.frames} cuadros, "
+                    f"pero TODAS cayeron fuera de la cancha según la homografía.\n\n"
+                    "Eso significa que la calibración y el video no se corresponden. "
+                    "Lo más común: el calibracion.json es de un frame distinto al que "
+                    "estás analizando, o se regeneró el encuadre y no la calibración.\n\n"
+                    "Corré el diagnóstico para verlo:\n"
+                    "  python -m futsal_ia.cli diagnostico --video ... --calibracion ... "
+                    "--encuadre ... --salida diagnostico.png")
+        return (f"Se detectaron {self.personas} personas y "
+                f"{self.fuera_de_cancha} cayeron fuera de la cancha, pero ningún "
+                f"recorte dio un color usable ({self.sin_color} descartados). "
+                "Los jugadores se ven demasiado chicos en el cuadro.")
+
+
 @dataclass
 class Progreso:
     frames_leidos: int = 0
@@ -143,6 +192,38 @@ def diagnostico_video(ruta) -> str:
             "carpeta local.")
 
 
+def revisar_compatibilidad(homografia, encuadre) -> None:
+    """
+    Que la calibración y el encuadre hablen del mismo tamaño de cuadro.
+
+    La homografía guarda sobre qué resolución se calibró. Si el encuadre
+    produce otra, las coordenadas no significan lo mismo y TODO cae fuera de la
+    cancha — pero nada falla: el análisis corre entero y devuelve cero. Es el
+    error más caro de todos, porque se paga en horas de procesamiento antes de
+    que aparezca.
+
+    El caso típico: se rehace el encuadre y se olvida regenerar la calibración,
+    o al revés.
+    """
+    esperada = getattr(homografia, "resolucion", None)
+    if not esperada:
+        return
+    real = tuple(encuadre.resolucion_salida) if encuadre else None
+    if real is None or tuple(esperada) == real:
+        return
+    raise ErrorIncompatible(
+        f"La calibración se hizo sobre un cuadro de {esperada[0]}x{esperada[1]} "
+        f"y el encuadre produce {real[0]}x{real[1]}.\n\n"
+        "Las coordenadas no significan lo mismo, así que todas las detecciones "
+        "caerían fuera de la cancha y el análisis devolvería cero después de "
+        "horas.\n\n"
+        "Pasa cuando se rehace el encuadre y no se regenera la calibración, o al "
+        "revés. Volvé a calibrar:\n"
+        "  python -m futsal_ia.cli calibrar --marcas marcas.json "
+        "--encuadre encuadre.json --salida calibracion.json"
+    )
+
+
 def tiempo_de_periodo(ms_video: float, t_saque_ms: float) -> float:
     """
     De instante del video a instante del PERÍODO.
@@ -197,22 +278,32 @@ def muestrear_colores(ruta_video, detector, homografia: Homografia, *,
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
     saltos = np.linspace(0, max(total - 1, 0), num=min(muestras, total), dtype=int)
     colores = []
+    conteo = ConteoMuestreo()
     try:
         for pos in saltos:
             cap.set(cv2.CAP_PROP_POS_FRAMES, int(pos))
             ok, frame = cap.read()
             if not ok:
                 continue
+            conteo.frames += 1
             frame = _preparar(frame, enderezador, encuadre)
             for det in detector.detectar(frame):
+                conteo.personas += 1
                 x_m, y_m = homografia.a_cancha(*det.pies)
                 if not homografia.dentro_de_cancha(x_m, y_m, params.margen_cancha_m):
+                    conteo.fuera_de_cancha += 1
                     continue
                 color = color_de_torso(_recorte(frame, det.bbox))
-                if color is not None:
-                    colores.append(color)
+                if color is None:
+                    conteo.sin_color += 1
+                    continue
+                colores.append(color)
+        conteo.colores = len(colores)
     finally:
         cap.release()
+
+    if len(colores) < 4:
+        raise SinColores(conteo.diagnostico())
     return colores
 
 
@@ -263,6 +354,8 @@ def analizar(
     primer_cuadro = int(round(desde_ms / 1000.0 * fps_video)) if desde_ms else 0
     if primer_cuadro:
         cap.set(cv2.CAP_PROP_POS_FRAMES, primer_cuadro)
+
+    revisar_compatibilidad(homografia, encuadre)
 
     res = ResultadoAnalisis(clasificador=clasificador)
     res.reporte_precision = homografia.reporte_precision(

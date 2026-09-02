@@ -191,3 +191,28 @@ def test_detector_desconocido():
 
     with pytest.raises(ValueError, match="rfdetr"):
         crear_detector("el_mejor_detector")
+
+
+# ── Cuando la pasada 1 no junta ningún color ───────────────────────────────
+
+def test_el_diagnostico_distingue_los_tres_motivos():
+    """
+    Los tres se ven igual desde afuera —cero colores— y se arreglan distinto.
+    Sin contadores, el mensaje "hacen falta al menos 4 colores y llegaron 0" no
+    le sirve a nadie.
+    """
+    from futsal_ia.pipeline import ConteoMuestreo
+
+    assert "no se decodifica" in ConteoMuestreo().diagnostico()
+
+    sin_gente = ConteoMuestreo(frames=300, personas=0)
+    assert "no encontró una sola persona" in sin_gente.diagnostico()
+    assert "recorte" in sin_gente.diagnostico()
+
+    todas_fuera = ConteoMuestreo(frames=300, personas=1500, fuera_de_cancha=1500)
+    texto = todas_fuera.diagnostico()
+    assert "TODAS cayeron fuera" in texto
+    assert "diagnostico" in texto
+
+    chiquitos = ConteoMuestreo(frames=300, personas=1500, fuera_de_cancha=200, sin_color=1300)
+    assert "demasiado chicos" in chiquitos.diagnostico()

@@ -11,6 +11,7 @@ from .cancha import PUNTOS_REFERENCIA
 from .deteccion import ErrorDetector
 from .config import PARAMETROS
 from .geometria import ErrorCalibracion, Homografia, calibrar
+from .pipeline import ErrorIncompatible, SinColores
 from .preproceso import Encuadre, ErrorEncuadre
 from .salida import parse_tiempo
 
@@ -189,6 +190,98 @@ def _cmd_frame(args):
     print(f"Cuadro guardado en {args.salida}")
     print(f"Resolución: {ancho}x{alto}  (la que tiene que quedar en el encuadre)")
     print("\nAbrí herramientas/calibrador.html y cargá este archivo.")
+    return 0
+
+
+def _cmd_diagnostico(args):
+    """
+    Un cuadro, el detector, y dónde cae cada persona sobre la cancha.
+
+    Es la herramienta que contesta "por qué no encontró a nadie" sin deducir
+    nada: dibuja los recuadros, marca los pies, y encima proyecta la cancha
+    según la calibración. Si el contorno verde no cae sobre la cancha real, el
+    problema es la calibración y se ve de un vistazo.
+    """
+    import cv2
+    import numpy as np
+
+    from .cancha import ANCHO_CANCHA_M, LARGO_CANCHA_M
+    from .deteccion import crear_detector
+    from .pipeline import _preparar, diagnostico_video
+    from .preproceso import Encuadre
+
+    h = Homografia.de_dict(_leer_json(args.calibracion, "calibracion.json"))
+    encuadre = (Encuadre.de_dict(_leer_json(args.encuadre, "encuadre.json"))
+                if args.encuadre else None)
+
+    cap = cv2.VideoCapture(str(args.video))
+    if not cap.isOpened():
+        print(f"ERROR: {diagnostico_video(args.video)}", file=sys.stderr)
+        return 1
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(parse_tiempo(args.en) / 1000.0 * fps))
+    ok, frame = cap.read()
+    cap.release()
+    if not ok:
+        print("ERROR: no pude leer ese cuadro.", file=sys.stderr)
+        return 1
+
+    crudo = frame.shape[1], frame.shape[0]
+    frame = _preparar(frame, None, encuadre)
+    alto, ancho = frame.shape[:2]
+    print(f"Cuadro del video: {crudo[0]}x{crudo[1]}")
+    print(f"Después del encuadre: {ancho}x{alto}")
+    print(f"La calibración se hizo sobre: "
+          f"{h.resolucion[0]}x{h.resolucion[1]}" if h.resolucion else "sin resolución guardada")
+    if h.resolucion and tuple(h.resolucion) != (ancho, alto):
+        print("\n*** ACÁ ESTÁ EL PROBLEMA ***")
+        print("La calibración se hizo sobre un cuadro de otro tamaño que el que")
+        print("sale del encuadre. Las coordenadas no significan lo mismo, así que")
+        print("todo cae fuera de la cancha. Volvé a calibrar sobre un frame")
+        print("sacado con `cli frame` de ESTE video.\n")
+
+    print("\nCargando el detector...")
+    detector = crear_detector(args.detector, conf_minima=PARAMETROS.conf_minima_persona)
+    detecciones = detector.detectar(frame)
+    print(f"\nPersonas detectadas: {len(detecciones)}\n")
+
+    # La cancha según la calibración, encima de la imagen.
+    contorno = [(0, 0), (LARGO_CANCHA_M, 0), (LARGO_CANCHA_M, ANCHO_CANCHA_M),
+                (0, ANCHO_CANCHA_M), (0, 0)]
+    pts = np.array([h.a_imagen(x, y) for x, y in contorno], dtype=np.float64)
+    if np.isfinite(pts).all():
+        cv2.polylines(frame, [pts.astype(np.int32)], False, (136, 255, 0), 3)
+    cv2.line(frame, tuple(np.int32(h.a_imagen(20, 0))), tuple(np.int32(h.a_imagen(20, 20))),
+             (136, 255, 0), 2)
+
+    dentro = 0
+    print(f"  {'#':>3} {'x_m':>7} {'y_m':>7}  {'zona':<8} estado")
+    for i, det in enumerate(detecciones, 1):
+        x_m, y_m = h.a_cancha(*det.pies)
+        ok_cancha = h.dentro_de_cancha(x_m, y_m, PARAMETROS.margen_cancha_m)
+        dentro += ok_cancha
+        from .cancha import etiqueta_zona, metros_a_norm
+        z = etiqueta_zona(*metros_a_norm(float(x_m), float(y_m))) if np.isfinite(x_m) else "-"
+        print(f"  {i:>3} {x_m:>7.1f} {y_m:>7.1f}  {z or '-':<8} "
+              f"{'dentro' if ok_cancha else 'FUERA'}")
+        color = (136, 255, 0) if ok_cancha else (68, 68, 239)
+        x1, y1, x2, y2 = (int(v) for v in det.bbox)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+        u, v = det.pies
+        cv2.circle(frame, (int(u), int(v)), 5, color, -1)
+        cv2.putText(frame, f"{x_m:.0f},{y_m:.0f}", (x1, y1 - 6),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
+
+    cv2.imwrite(str(args.salida), frame)
+    print(f"\n{dentro} de {len(detecciones)} dentro de la cancha.")
+    print(f"Imagen anotada en {args.salida}\n")
+    if detecciones and dentro == 0:
+        print("Ninguna cayó dentro: la calibración no se corresponde con este video.")
+        print("Mirá la imagen: si el contorno verde de la cancha no cae sobre la")
+        print("cancha real, ahí está la respuesta.")
+    elif not detecciones:
+        print("El detector no vio a nadie. Mirá la imagen: lo más probable es que")
+        print("el recorte del encuadre no esté mostrando la cancha.")
     return 0
 
 
@@ -392,6 +485,16 @@ def main(argv=None):
     f.add_argument("--salida", default="frame.png")
     f.set_defaults(func=_cmd_frame)
 
+    d = sub.add_parser("diagnostico",
+                       help="un cuadro con los recuadros y la cancha proyectada encima")
+    d.add_argument("--video", required=True)
+    d.add_argument("--calibracion", required=True)
+    d.add_argument("--encuadre")
+    d.add_argument("--en", default="5:00")
+    d.add_argument("--salida", default="diagnostico.png")
+    d.add_argument("--detector", default="rfdetr", choices=["rfdetr", "yolo"])
+    d.set_defaults(func=_cmd_diagnostico)
+
     v = sub.add_parser("video", help="qué es el archivo y si el encuadre le sirve")
     v.add_argument("--video", required=True)
     v.add_argument("--encuadre")
@@ -430,6 +533,9 @@ def main(argv=None):
     try:
         return args.func(args)
     except ArchivoFaltante as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+    except (SinColores, ErrorIncompatible) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
     except (ErrorCalibracion, ErrorEncuadre, ErrorDetector) as e:

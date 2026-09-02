@@ -92,6 +92,10 @@ def _correr(datos: dict) -> None:
         h = Homografia.de_dict(json.loads(Path(cfg["calibracion"]).read_text(encoding="utf-8")))
         encuadre = (Encuadre.leer(cfg["encuadre"]) if cfg.get("encuadre") else None)
 
+        # Antes de cargar el detector: si la calibración y el encuadre no se
+        # corresponden, mejor saberlo ahora que después de bajar 355 MB.
+        revisar_compatibilidad(h, encuadre)
+
         t.log("Cargando el detector (la primera vez baja los pesos)...")
         detector = crear_detector("rfdetr", conf_minima=PARAMETROS.conf_minima_persona)
 
