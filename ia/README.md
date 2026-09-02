@@ -63,8 +63,14 @@ píxeles que clickeás no son los del archivo. Un ancho o alto impar delata una
 captura, porque los codecs trabajan en bloques de 2x2 píxeles.
 
 ```bash
-python -m futsal_ia.cli frame --video periodo_PT.mp4 --en 2:00 --salida frame.png
+python -m futsal_ia.cli frame --video "C:\futsal\videos\periodo_PT.mp4" --en 2:00 --salida frame.png
 ```
+
+`--video` acepta cualquier ruta; la relativa se resuelve desde donde esté
+parada la consola. **No dejes los videos dentro de OneDrive, Dropbox o Drive**:
+con sincronización a pedido el archivo figura con su nombre y su tamaño pero en
+el disco no hay nada, y OpenCV falla como si el video estuviera roto. Una
+carpeta local suelta y listo.
 
 Sale del mismo camino que después va a leer el análisis: mismo decodificador,
 misma resolución, mismos píxeles. No hace falta ffmpeg.
@@ -194,7 +200,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 119 tests, sin GPU ni video
+python -m pytest tests/ -q     # 125 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar

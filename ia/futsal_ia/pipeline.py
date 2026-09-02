@@ -100,8 +100,47 @@ def _abrir(ruta):
 
     cap = cv2.VideoCapture(str(ruta))
     if not cap.isOpened():
-        raise FileNotFoundError(f"No se pudo abrir el video: {ruta}")
+        raise FileNotFoundError(diagnostico_video(ruta))
     return cap, cv2
+
+
+def diagnostico_video(ruta) -> str:
+    """
+    Por qué no se pudo abrir, en lugar de un "no se pudo abrir" a secas.
+
+    El caso que más cuesta descubrir solo: un archivo dentro de OneDrive o
+    Drive con sincronización a pedido. Figura en el explorador con su nombre y
+    su tamaño, pero en el disco no hay nada: es un marcador. OpenCV lo abre,
+    lee cero bytes y falla como si el video estuviera roto.
+    """
+    from pathlib import Path
+
+    p = Path(ruta)
+    if not p.exists():
+        padre = p.parent
+        pista = ""
+        if padre.exists():
+            vecinos = sorted(x.name for x in padre.glob("*.mp4"))[:5]
+            if vecinos:
+                pista = "\nEn esa carpeta hay: " + ", ".join(vecinos)
+        else:
+            pista = f"\nLa carpeta {padre} tampoco existe."
+        return (f"No existe el archivo: {p}\n"
+                "Si la ruta tiene espacios, ponela entre comillas." + pista)
+
+    tam = p.stat().st_size
+    if tam == 0:
+        return f"El archivo {p} está vacío (0 bytes)."
+    if tam < 100_000:
+        return (f"El archivo {p} pesa solo {tam / 1024:.0f} KB. Si está dentro de "
+                "OneDrive o Google Drive, puede ser un marcador de sincronización "
+                "a pedido y no el video: figura con su nombre pero en el disco no "
+                "hay nada. Abrilo una vez desde el explorador para que se baje, o "
+                "mejor, movelo a una carpeta local fuera de la nube.")
+    return (f"No pude leer el video {p} ({tam / 1e6:.0f} MB). El archivo está, así "
+            "que o el formato no es compatible o está incompleto. Probá "
+            "reproducirlo; si la carpeta sincroniza con la nube, movelo a una "
+            "carpeta local.")
 
 
 def tiempo_de_periodo(ms_video: float, t_saque_ms: float) -> float:

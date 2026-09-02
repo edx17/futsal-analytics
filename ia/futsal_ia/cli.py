@@ -128,7 +128,8 @@ def _cmd_frame(args):
 
     cap = cv2.VideoCapture(str(args.video))
     if not cap.isOpened():
-        print(f"No pude abrir el video: {args.video}", file=sys.stderr)
+        from .pipeline import diagnostico_video
+        print(f"ERROR: {diagnostico_video(args.video)}", file=sys.stderr)
         return 1
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
