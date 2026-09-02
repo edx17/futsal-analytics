@@ -57,18 +57,20 @@ Con el entorno activo se ve `(.venv)` al principio del prompt.
 
 ### Antes de todo: un frame de verdad
 
-La calibración se ata a la resolución del archivo. **Sacá el frame del video con
-ffmpeg, nunca una captura de pantalla del reproductor**: la ventana recorta y
-escala, así que los píxeles que clickeás no son los del archivo y la calibración
-no le sirve al video.
+La calibración se ata a la resolución del archivo. **Nunca calibres sobre una
+captura de pantalla del reproductor**: la ventana recorta y escala, así que los
+píxeles que clickeás no son los del archivo. Un ancho o alto impar delata una
+captura, porque los codecs trabajan en bloques de 2x2 píxeles.
 
 ```bash
-ffmpeg -ss 00:02:00 -i partido.mp4 -frames:v 1 -q:v 1 frame.png
+python -m futsal_ia.cli frame --video periodo_PT.mp4 --en 2:00 --salida frame.png
 ```
 
-Si la GoPro partió la grabación en varios archivos, concatenalos primero: si no,
-los tiempos del segundo pedazo salen corridos y el cruce con el reloj de
-`TomaDatos` queda mal.
+Sale del mismo camino que después va a leer el análisis: mismo decodificador,
+misma resolución, mismos píxeles. No hace falta ffmpeg.
+
+Si la GoPro partió la grabación en varios archivos, ahí sí conviene unirlos
+antes con ffmpeg; si no, los tiempos del segundo pedazo salen corridos.
 
 ```bash
 printf "file '%s'\n" GX01*.MP4 > lista.txt
@@ -130,11 +132,8 @@ Si dice que no coinciden, la calibración no vale para ese archivo y hay que
 rehacerla sobre un frame extraído de él. Analizar tarda horas: descubrirlo
 recién ahí es tirar una tarde.
 
-**Probá primero con un clip corto**, no con el período entero:
-
-```bash
-ffmpeg -ss 00:05:00 -t 00:02:00 -i periodo_PT.mp4 -c copy prueba.mp4
-```
+**Probá primero con un tramo corto**, no con el período entero. No hace falta
+cortar un archivo: `--desde` y `--duracion` recortan el tramo a analizar.
 
 En CPU el análisis corre bastante por debajo del tiempo real, así que un
 período completo puede llevar varias horas. Dos minutos alcanzan de sobra para
@@ -146,10 +145,15 @@ python -m futsal_ia.cli analizar \
     --video 2026-09-14_primera_vs-SanLorenzo_PT.mp4 \
     --calibracion calibracion.json \
     --club <club_id> --partido <id_partido> --periodo PT \
+    --saque 0:30 --desde 5:00 --duracion 2:00 \
     --lente-aproximada 3840 2160 \
     --salida analisis_PT.json \
     --overlay auditoria_PT.mp4
 ```
+
+`--saque` es el instante del video donde arranca el período. Los tiempos se
+guardan **relativos al saque**, no al principio del archivo, que es lo que
+después permite cruzarlos con los cambios que carga `TomaDatos`.
 
 En el segundo tiempo se agrega `--invertida`, porque los equipos cambian de
 lado y las zonas se cuentan desde el arco propio.
@@ -190,7 +194,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 90 tests, sin GPU ni video
+python -m pytest tests/ -q     # 119 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar

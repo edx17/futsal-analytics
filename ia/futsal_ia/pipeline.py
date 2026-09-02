@@ -104,6 +104,21 @@ def _abrir(ruta):
     return cap, cv2
 
 
+def tiempo_de_periodo(ms_video: float, t_saque_ms: float) -> float:
+    """
+    De instante del video a instante del PERÍODO.
+
+    Se RESTA el saque, no se suma. Sumando, un saque en el segundo 30 estampaba
+    todo 30 s tarde y el cruce con los cambios que carga TomaDatos —de donde
+    sale el tiempo neto por jugador— quedaba corrido en todo el partido, sin
+    que nada fallara.
+
+    Devuelve negativo para lo que pasó antes del saque, que es lo que permite
+    descartar el calentamiento y la formación.
+    """
+    return ms_video - t_saque_ms
+
+
 def _preparar(frame, enderezador, encuadre):
     """
     Enderezar y después encuadrar, siempre en ese orden.
@@ -175,7 +190,9 @@ def analizar(
     seguidor=None,
     enderezador=None,
     encuadre: Encuadre | None = None,
-    t_inicio_ms: int = 0,
+    t_saque_ms: int = 0,
+    desde_ms: int = 0,
+    duracion_ms: int | None = None,
     params: Parametros = PARAMETROS,
     al_avanzar=None,
 ) -> ResultadoAnalisis:
@@ -184,8 +201,15 @@ def analizar(
 
     `invertida` es el lado en que ataca el equipo propio en este período. Es el
     mismo flag que usa la app: si sale mal, todos los mapas quedan espejados.
-    `t_inicio_ms` es el instante del video donde arranca el período, o sea el
-    saque inicial, no el principio del archivo.
+
+    `t_saque_ms` es el instante DEL VIDEO donde arranca el período. Los tiempos
+    que se guardan son relativos al saque, no al principio del archivo: si el
+    saque está en el segundo 30, un evento del video en 0:45 se guarda como
+    0:15 del período. Es lo que después permite cruzar con los cambios que
+    carga TomaDatos, que también cuentan desde el saque.
+
+    `desde_ms` y `duracion_ms` recortan qué tramo del video se analiza, sin
+    tener que cortar un archivo aparte. Para probar, dos minutos alcanzan.
     """
     from .deteccion import crear_detector
     from .seguimiento import SeguidorByteTrack
@@ -197,6 +221,9 @@ def analizar(
     cap, cv2 = _abrir(ruta_video)
     fps_video = cap.get(cv2.CAP_PROP_FPS) or 30.0
     paso = max(1, int(round(fps_video / params.fps_analisis)))
+    primer_cuadro = int(round(desde_ms / 1000.0 * fps_video)) if desde_ms else 0
+    if primer_cuadro:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, primer_cuadro)
 
     res = ResultadoAnalisis(clasificador=clasificador)
     res.reporte_precision = homografia.reporte_precision(
@@ -229,7 +256,14 @@ def analizar(
                 continue
             indice += 1
 
-            t_ms = t_inicio_ms + (res.progreso.frames_leidos - 1) / fps_video * 1000.0
+            ms_video = (primer_cuadro + res.progreso.frames_leidos - 1) / fps_video * 1000.0
+            if duracion_ms is not None and ms_video - desde_ms > duracion_ms:
+                break
+            # Los tiempos se guardan relativos al SAQUE, no al principio del
+            # archivo. Restar y no sumar: sumando, un saque en el segundo 30
+            # estampaba todo 30 s tarde y el cruce con los cambios cargados a
+            # mano quedaba corrido en todo el partido.
+            t_ms = tiempo_de_periodo(ms_video, t_saque_ms)
             if t_ms < 0:
                 continue
             frame = _preparar(frame, enderezador, encuadre)

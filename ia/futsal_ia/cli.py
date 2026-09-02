@@ -11,6 +11,7 @@ from .cancha import PUNTOS_REFERENCIA
 from .config import PARAMETROS
 from .geometria import ErrorCalibracion, Homografia, calibrar
 from .preproceso import Encuadre
+from .salida import parse_tiempo
 
 
 def _cmd_puntos(_):
@@ -100,6 +101,55 @@ def _cmd_precision(args):
               f"{rep['asimetria_maxima']}x entre tiempos.")
         print("  NO sumes esa celda entre períodos sin aclarar de dónde viene")
         print("  cada mitad: estarías mezclando centímetros con medio metro.")
+    return 0
+
+
+def _cmd_frame(args):
+    """
+    Saca un cuadro del video para calibrar sobre él.
+
+    Existe para no depender de ffmpeg, pero sobre todo para que el frame salga
+    del MISMO camino que después va a leer el análisis: mismo decodificador,
+    misma resolución, mismos píxeles. Un frame sacado con otra herramienta
+    puede venir escalado o recortado sin que se note, y ahí la calibración
+    queda atada a una imagen que el pipeline nunca va a ver.
+    """
+    try:
+        import cv2
+    except ImportError:
+        print("Hace falta OpenCV: pip install opencv-python-headless", file=sys.stderr)
+        return 1
+
+    try:
+        ms = parse_tiempo(args.en)
+    except ValueError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+
+    cap = cv2.VideoCapture(str(args.video))
+    if not cap.isOpened():
+        print(f"No pude abrir el video: {args.video}", file=sys.stderr)
+        return 1
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    objetivo = int(round(ms / 1000.0 * fps))
+    if total and objetivo >= total:
+        print(f"ERROR: el video dura {total / fps / 60:.1f} min y pediste el minuto "
+              f"{ms / 60000:.1f}.", file=sys.stderr)
+        cap.release()
+        return 1
+    cap.set(cv2.CAP_PROP_POS_FRAMES, objetivo)
+    ok, frame = cap.read()
+    cap.release()
+    if not ok:
+        print("No pude leer ese cuadro.", file=sys.stderr)
+        return 1
+
+    alto, ancho = frame.shape[:2]
+    cv2.imwrite(str(args.salida), frame)
+    print(f"Cuadro guardado en {args.salida}")
+    print(f"Resolución: {ancho}x{alto}  (la que tiene que quedar en el encuadre)")
+    print("\nAbrí herramientas/calibrador.html y cargá este archivo.")
     return 0
 
 
@@ -224,7 +274,9 @@ def _cmd_analizar(args):
         args.video, h, clas,
         club_id=args.club, id_partido=args.partido, periodo=args.periodo,
         invertida=args.invertida, detector=detector, enderezador=enderezador,
-        encuadre=encuadre, t_inicio_ms=args.inicio_ms,
+        encuadre=encuadre, t_saque_ms=parse_tiempo(args.saque),
+        desde_ms=parse_tiempo(args.desde),
+        duracion_ms=parse_tiempo(args.duracion) if args.duracion else None,
         al_avanzar=lambda p: print(f"  {p.frames_analizados} frames, "
                                    f"{len(res.tracks)} tracks", end="\r"),
     )
@@ -264,6 +316,12 @@ def main(argv=None):
                    help="el equipo propio ataca hacia la izquierda en el primer tiempo")
     p.set_defaults(func=_cmd_precision)
 
+    f = sub.add_parser("frame", help="saca un cuadro del video para calibrar")
+    f.add_argument("--video", required=True)
+    f.add_argument("--en", default="2:00", help="momento del video, como 'mm:ss'")
+    f.add_argument("--salida", default="frame.png")
+    f.set_defaults(func=_cmd_frame)
+
     v = sub.add_parser("video", help="qué es el archivo y si el encuadre le sirve")
     v.add_argument("--video", required=True)
     v.add_argument("--encuadre")
@@ -278,8 +336,14 @@ def main(argv=None):
     a.add_argument("--periodo", default="PT", choices=["PT", "ST"])
     a.add_argument("--invertida", action="store_true",
                    help="el equipo propio ataca hacia la izquierda en este período")
-    a.add_argument("--inicio-ms", type=int, default=0, dest="inicio_ms",
-                   help="instante del video donde arranca el período (saque inicial)")
+    a.add_argument("--saque", default="0",
+                   help="instante DEL VIDEO donde arranca el período, como 'mm:ss'. "
+                        "Los tiempos se guardan relativos a este punto")
+    a.add_argument("--desde", default="0",
+                   help="analizar desde este punto del video ('mm:ss')")
+    a.add_argument("--duracion", default=None,
+                   help="cuánto analizar desde --desde ('mm:ss' o segundos). "
+                        "Para probar, 2 minutos alcanzan")
     a.add_argument("--detector", default="rfdetr", choices=["rfdetr", "yolo"])
     a.add_argument("--lente", help="JSON de calibración de lente")
     a.add_argument("--lente-aproximada", nargs=2, type=int, metavar=("ANCHO", "ALTO"),

@@ -44,6 +44,31 @@ def nuevo_local_id(prefijo: str = "ev") -> str:
     return f"{prefijo}_{base36 or '0'}_{cola}"
 
 
+def parse_tiempo(texto) -> int:
+    """
+    Acepta "1:23:45", "5:30", "90" o 90 y devuelve milisegundos.
+
+    Escribir los tiempos como los lee una persona evita el error de poner
+    90000 donde iban 90 segundos, que después aparece como un desfasaje de
+    minuto y medio en todo el partido y cuesta un día encontrar.
+    """
+    if isinstance(texto, (int, float)):
+        return int(float(texto) * 1000)
+    partes = str(texto).strip().split(":")
+    if len(partes) > 3 or not all(p.strip() for p in partes):
+        raise ValueError(f"No entiendo el tiempo {texto!r}. Usá 'mm:ss', 'hh:mm:ss' o segundos.")
+    try:
+        valores = [float(p) for p in partes]
+    except ValueError as exc:
+        raise ValueError(f"No entiendo el tiempo {texto!r}.") from exc
+    if any(v < 0 for v in valores):
+        raise ValueError(f"El tiempo {texto!r} es negativo.")
+    segundos = 0.0
+    for v in valores:
+        segundos = segundos * 60 + v
+    return int(round(segundos * 1000))
+
+
 def ms_a_min_seg(ms: float) -> tuple[int, int]:
     ms = max(0.0, float(ms))
     return int(ms // 60000), int((ms % 60000) // 1000)
