@@ -8,7 +8,6 @@ se rompe y nos enteramos ahí, no seis meses después mirando un heatmap raro.
 """
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -16,6 +15,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from apoyo_js import correr_js, url_modelo  # noqa: E402
 from futsal_ia.cancha import (  # noqa: E402
     CELDAS,
     acotar,
@@ -27,8 +27,6 @@ from futsal_ia.cancha import (  # noqa: E402
     zona_de,
 )
 
-RAIZ = Path(__file__).resolve().parents[2]
-MODELO_JS = RAIZ / "src" / "offline" / "modelo.js"
 
 # Puntos elegidos a mano: bordes exactos de celda, justo antes y justo después
 # de cada corte, negativos, mayores a 100 y el 100/3 que es el que más se
@@ -44,8 +42,8 @@ TODOS = CASOS + GRILLA
 
 
 def _zonas_segun_js(puntos):
-    script = f"""
-import {{ zonaDe, espejar, acotar }} from '{MODELO_JS.as_posix()}';
+    return correr_js(f"""
+import {{ zonaDe, espejar, acotar }} from '{url_modelo()}';
 const pts = {json.dumps(puntos)};
 const salida = pts.map(([x, y]) => {{
   const z = zonaDe(x, y);
@@ -55,14 +53,7 @@ const salida = pts.map(([x, y]) => {{
            espejado: [e.x, e.y] }};
 }});
 process.stdout.write(JSON.stringify(salida));
-"""
-    res = subprocess.run(
-        ["node", "--input-type=module", "-e", script],
-        capture_output=True, text=True, cwd=RAIZ,
-    )
-    if res.returncode != 0:
-        pytest.skip(f"No se pudo correr modelo.js con node: {res.stderr[:300]}")
-    return json.loads(res.stdout)
+""")
 
 
 def test_zona_de_coincide_con_modelo_js():

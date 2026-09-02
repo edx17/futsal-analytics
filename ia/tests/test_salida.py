@@ -7,7 +7,6 @@ modelo.js con node y comparando los campos, no leyendo el archivo y confiando.
 """
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -15,6 +14,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from apoyo_js import correr_js, url_modelo  # noqa: E402
 from futsal_ia.cancha import etiqueta_zona  # noqa: E402
 from futsal_ia.salida import (  # noqa: E402
     BALON_ID,
@@ -28,8 +28,6 @@ from futsal_ia.salida import (  # noqa: E402
     nuevo_local_id,
 )
 
-RAIZ = Path(__file__).resolve().parents[2]
-MODELO_JS = RAIZ / "src" / "offline" / "modelo.js"
 
 # Campos que la IA agrega a propósito y que modelo.js no tiene.
 EXTRAS_IA = {"origen_captura"}
@@ -38,19 +36,9 @@ def _sin_locales(campos):
     return {c for c in campos if not c.startswith("_")}
 
 
-def _correr_js(script):
-    res = subprocess.run(
-        ["node", "--input-type=module", "-e", script],
-        capture_output=True, text=True, cwd=RAIZ,
-    )
-    if res.returncode != 0:
-        pytest.skip(f"No se pudo correr modelo.js con node: {res.stderr[:300]}")
-    return json.loads(res.stdout)
-
-
 def test_el_snapshot_tiene_los_mismos_campos_que_modelo_js():
-    js = _correr_js(f"""
-import {{ crearSnapshot }} from '{MODELO_JS.as_posix()}';
+    js = correr_js(f"""
+import {{ crearSnapshot }} from '{url_modelo()}';
 process.stdout.write(JSON.stringify(Object.keys(
   crearSnapshot({{ clubId: 'c1', idPartido: 1, periodo: 'PT', tMs: 0, posiciones: [] }})
 )));
@@ -63,8 +51,8 @@ process.stdout.write(JSON.stringify(Object.keys(
 
 
 def test_el_recorrido_tiene_los_mismos_campos_que_modelo_js():
-    js = _correr_js(f"""
-import {{ crearRecorrido }} from '{MODELO_JS.as_posix()}';
+    js = correr_js(f"""
+import {{ crearRecorrido }} from '{url_modelo()}';
 process.stdout.write(JSON.stringify(Object.keys(
   crearRecorrido({{ clubId: 'c1', idPartido: 1 }})
 )));
@@ -80,8 +68,8 @@ process.stdout.write(JSON.stringify(Object.keys(
 
 def test_ms_a_min_seg_coincide_con_modelo_js():
     casos = [0, 1, 999, 1000, 59999, 60000, 65432, 1199999, 1200000, 2400000]
-    js = _correr_js(f"""
-import {{ msAMinSeg, DURACION_PERIODO_MS }} from '{MODELO_JS.as_posix()}';
+    js = correr_js(f"""
+import {{ msAMinSeg, DURACION_PERIODO_MS }} from '{url_modelo()}';
 const casos = {json.dumps(casos)};
 process.stdout.write(JSON.stringify({{
   valores: casos.map(ms => msAMinSeg(ms)),
