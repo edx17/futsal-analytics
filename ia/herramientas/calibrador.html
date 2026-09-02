@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calibrador de cancha</title>
+<style>
+  :root {
+    --bg: #0b0b0d; --panel: #141418; --borde: #2a2a32; --texto: #e8e8ec;
+    --tenue: #8a8a96; --acento: #00ff88; --alerta: #facc15; --error: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texto);
+         font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--borde); }
+  h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: .04em;
+       text-transform: uppercase; }
+  header p { margin: 4px 0 0; color: var(--tenue); font-size: 12.5px; }
+  main { display: grid; grid-template-columns: 1fr 340px; gap: 0;
+         height: calc(100vh - 62px); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; height: auto; } }
+
+  #lienzoCaja { position: relative; overflow: auto; background: #000;
+                display: flex; align-items: center; justify-content: center; }
+  #lienzo { cursor: crosshair; display: block; max-width: 100%; }
+  #lupa { position: fixed; width: 190px; height: 190px; border: 2px solid var(--acento);
+          border-radius: 50%; pointer-events: none; display: none; z-index: 50;
+          box-shadow: 0 6px 30px rgba(0,0,0,.8); }
+
+  aside { border-left: 1px solid var(--borde); background: var(--panel);
+          overflow-y: auto; padding: 16px; }
+  .paso { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+          color: var(--acento); font-weight: 700; margin: 18px 0 8px; }
+  .paso:first-child { margin-top: 0; }
+  button { font: inherit; font-weight: 600; padding: 9px 12px; border-radius: 6px;
+           border: 1px solid var(--borde); background: #1d1d24; color: var(--texto);
+           cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--acento); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.primario { background: var(--acento); color: #000; border-color: var(--acento); }
+  .fila { display: flex; gap: 8px; margin-top: 10px; }
+  .fila > * { flex: 1; }
+
+  ol { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; align-items: center; gap: 8px; padding: 7px 9px;
+       border: 1px solid transparent; border-radius: 6px; font-size: 12.5px;
+       cursor: pointer; }
+  li:hover { background: #1b1b22; }
+  li.activo { border-color: var(--acento); background: #10241a; }
+  li.hecho .nom { color: var(--acento); }
+  li.oblig .nom::after { content: " *"; color: var(--alerta); }
+  .nom { flex: 1; }
+  .coord { font-family: ui-monospace, Consolas, monospace; font-size: 11px;
+           color: var(--tenue); }
+  .marca { width: 9px; height: 9px; border-radius: 50%; background: #333; flex: none; }
+  li.hecho .marca { background: var(--acento); }
+
+  .aviso { font-size: 12px; padding: 9px 11px; border-radius: 6px; margin-top: 10px;
+           border: 1px solid; }
+  .aviso.ok { border-color: var(--acento); color: var(--acento); background: #0f2018; }
+  .aviso.mal { border-color: var(--alerta); color: var(--alerta); background: #221d08; }
+  label { display: block; font-size: 12px; color: var(--tenue); margin-top: 12px; }
+  input[type=range] { width: 100%; }
+  input[type=number] { width: 100%; padding: 7px; border-radius: 6px;
+                       border: 1px solid var(--borde); background: #0f0f13; color: var(--texto); }
+  code { background: #0f0f13; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .nota { font-size: 12px; color: var(--tenue); margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Calibrador de cancha</h1>
+  <p>Marcás los puntos de referencia sobre un frame y salen <code>marcas.json</code> y <code>encuadre.json</code>.
+     Se hace una vez por posición de cámara, no por partido.</p>
+</header>
+
+<main>
+  <div id="lienzoCaja">
+    <canvas id="lienzo"></canvas>
+  </div>
+
+  <aside>
+    <div class="paso">1. El frame</div>
+    <input type="file" id="archivo" accept="image/*">
+    <p class="nota">Sacá un cuadro de cualquier partido. Si podés, con la cancha vacía:
+       las líneas se ven sin nadie encima.</p>
+    <div id="infoImg" class="nota"></div>
+
+    <div class="paso">2. Los puntos</div>
+    <p class="nota" style="margin-top:0">Clickeá en la imagen para marcar el punto resaltado.
+       Los de <span style="color:var(--alerta)">*</span> son las esquinas. Salteá con un click
+       en la lista los que no se vean: la calibración usa mínimos cuadrados y
+       <strong>no necesita las cuatro esquinas</strong>.</p>
+    <ol id="lista"></ol>
+    <div class="fila">
+      <button id="deshacer">Deshacer</button>
+      <button id="limpiar">Limpiar todo</button>
+    </div>
+    <div id="estado"></div>
+
+    <div class="paso">3. El encuadre</div>
+    <label>Giro: <span id="valGiro">0.0</span>°</label>
+    <input type="range" id="giro" min="-15" max="15" step="0.1" value="0">
+    <label>Margen alrededor de la cancha (px)</label>
+    <input type="number" id="margen" value="60" min="0" step="10">
+    <p class="nota">El margen no es decorativo: los jugadores salen de la cancha y si el
+       recorte pasa raspando la línea, el seguidor los pierde y los vuelve a encontrar
+       con número nuevo cada vez.</p>
+    <div id="infoEncuadre" class="nota"></div>
+
+    <div class="paso">4. Exportar</div>
+    <div class="fila">
+      <button id="expMarcas" class="primario" disabled>marcas.json</button>
+      <button id="expEncuadre" disabled>encuadre.json</button>
+    </div>
+    <p class="nota">Las marcas salen en coordenadas del frame ORIGINAL.
+       <code>cli calibrar --encuadre</code> las convierte solo.</p>
+  </aside>
+</main>
+
+<canvas id="lupa"></canvas>
+
+<script>
+// Los 15 puntos, en el mismo orden y con los mismos ids que
+// ia/futsal_ia/cancha.py. Hay un test que compara las dos listas para que no
+// se desincronicen: si agregás uno acá, agregalo allá.
+const PUNTOS = [
+  ["esq_prop_izq",  "Esquina de nuestro arco, banda izquierda", true],
+  ["esq_prop_der",  "Esquina de nuestro arco, banda derecha",   true],
+  ["esq_riv_der",   "Esquina del arco rival, banda derecha",    true],
+  ["esq_riv_izq",   "Esquina del arco rival, banda izquierda",  true],
+  ["medio_izq",     "Mitad de cancha, banda izquierda",         false],
+  ["medio_der",     "Mitad de cancha, banda derecha",           false],
+  ["centro",        "Punto central (centro del círculo)",       false],
+  ["poste_prop_izq","Poste izquierdo de nuestro arco",          false],
+  ["poste_prop_der","Poste derecho de nuestro arco",            false],
+  ["poste_riv_izq", "Poste izquierdo del arco rival",           false],
+  ["poste_riv_der", "Poste derecho del arco rival",             false],
+  ["penal_prop",    "Punto de penal nuestro (6 m)",             false],
+  ["penal_riv",     "Punto de penal rival (6 m)",               false],
+  ["doble_penal_prop", "Marca de 10 m propia",                  false],
+  ["doble_penal_riv",  "Marca de 10 m rival",                   false],
+];
+const ESQUINAS = ["esq_prop_izq", "esq_prop_der", "esq_riv_der", "esq_riv_izq"];
+
+const $ = (id) => document.getElementById(id);
+const lienzo = $("lienzo"), ctx = lienzo.getContext("2d");
+const lupa = $("lupa"), ctxLupa = lupa.getContext("2d");
+lupa.width = lupa.height = 190;
+
+let img = null, marcas = {}, activo = 0, orden = [];
+
+function dibujar() {
+  if (!img) return;
+  ctx.drawImage(img, 0, 0);
+  for (const [id, p] of Object.entries(marcas)) {
+    const esActivo = PUNTOS[activo] && PUNTOS[activo][0] === id;
+    ctx.strokeStyle = esActivo ? "#fff" : "#00ff88";
+    ctx.lineWidth = Math.max(2, img.width / 900);
+    const r = Math.max(9, img.width / 190);
+    ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(p[0] - r * 1.7, p[1]); ctx.lineTo(p[0] + r * 1.7, p[1]);
+    ctx.moveTo(p[0], p[1] - r * 1.7); ctx.lineTo(p[0], p[1] + r * 1.7);
+    ctx.stroke();
+    ctx.fillStyle = "#00ff88";
+    ctx.font = `bold ${Math.max(13, img.width / 130)}px system-ui`;
+    ctx.fillText(id, p[0] + r * 2, p[1] - r);
+  }
+  // El polígono de la cancha, si ya están las cuatro esquinas: es la forma más
+  // rápida de darse cuenta de que se clickeó una esquina cambiada de orden.
+  if (ESQUINAS.every(e => marcas[e])) {
+    ctx.strokeStyle = "rgba(0,255,136,.5)";
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ESQUINAS.forEach((e, i) => i ? ctx.lineTo(...marcas[e]) : ctx.moveTo(...marcas[e]));
+    ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+
+function pintarLista() {
+  $("lista").innerHTML = "";
+  PUNTOS.forEach(([id, etiqueta, oblig], i) => {
+    const li = document.createElement("li");
+    li.className = [i === activo && "activo", marcas[id] && "hecho", oblig && "oblig"]
+      .filter(Boolean).join(" ");
+    const p = marcas[id];
+    li.innerHTML = `<span class="marca"></span><span class="nom">${etiqueta}</span>` +
+      `<span class="coord">${p ? Math.round(p[0]) + "," + Math.round(p[1]) : "—"}</span>`;
+    li.onclick = () => { activo = i; pintarLista(); dibujar(); };
+    $("lista").appendChild(li);
+  });
+  revisar();
+}
+
+function revisar() {
+  const n = Object.keys(marcas).length;
+  const caja = $("estado");
+  const listo = n >= 4;
+  caja.innerHTML = `<div class="aviso ${listo ? "ok" : "mal"}">` +
+    (listo
+      ? `${n} de 15 marcados. Alcanza para calibrar.` +
+        (n < 8 ? " Marcá más: con cuatro el error da siempre cero y engaña." : "")
+      : `${n} de 15. Hacen falta al menos 4.`) + `</div>`;
+  $("expMarcas").disabled = !listo;
+  $("expEncuadre").disabled = !listo;
+  calcularEncuadre();
+}
+
+// Mismo cálculo que recorte_desde_esquinas() en preproceso.py: gira alrededor
+// del centro y recorta la caja que contiene todos los puntos, más el margen.
+function calcularEncuadre() {
+  if (!img || Object.keys(marcas).length < 3) { $("infoEncuadre").textContent = ""; return null; }
+  const grados = parseFloat($("giro").value), margen = parseInt($("margen").value) || 0;
+  const rad = grados * Math.PI / 180, cos = Math.cos(rad), sen = Math.sin(rad);
+  const cx = img.width / 2, cy = img.height / 2;
+  const girado = Object.values(marcas).map(([u, v]) => [
+    cos * u + sen * v + (1 - cos) * cx - sen * cy,
+    -sen * u + cos * v + sen * cx + (1 - cos) * cy,
+  ]);
+  const xs = girado.map(p => p[0]), ys = girado.map(p => p[1]);
+  const x0 = Math.max(0, Math.floor(Math.min(...xs)) - margen);
+  const y0 = Math.max(0, Math.floor(Math.min(...ys)) - margen);
+  const x1 = Math.min(img.width, Math.ceil(Math.max(...xs)) + margen);
+  const y1 = Math.min(img.height, Math.ceil(Math.max(...ys)) + margen);
+  const w = x1 - x0, h = y1 - y0;
+  if (w < 2 || h < 2) { $("infoEncuadre").textContent = "El recorte quedó vacío."; return null; }
+  const antes = img.width * img.height, ahora = w * h;
+  $("infoEncuadre").innerHTML =
+    `Salida <strong>${w}×${h}</strong> — se descarta el ${Math.round((1 - ahora / antes) * 100)}% del cuadro.`;
+  return { resolucion_origen: [img.width, img.height], rotacion_grados: grados,
+           recorte: [x0, y0, w, h] };
+}
+
+$("archivo").onchange = (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const im = new Image();
+  im.onload = () => {
+    img = im; lienzo.width = im.width; lienzo.height = im.height;
+    marcas = {}; activo = 0;
+    $("infoImg").innerHTML = `<strong>${im.width}×${im.height}</strong> — esta resolución
+      queda grabada en el encuadre. Si los videos vienen en otra, hay que recalibrar.`;
+    pintarLista(); dibujar();
+  };
+  im.src = URL.createObjectURL(f);
+};
+
+lienzo.onclick = (e) => {
+  if (!img || activo >= PUNTOS.length) return;
+  const r = lienzo.getBoundingClientRect();
+  const u = (e.clientX - r.left) * (img.width / r.width);
+  const v = (e.clientY - r.top) * (img.height / r.height);
+  marcas[PUNTOS[activo][0]] = [u, v];
+  orden.push(PUNTOS[activo][0]);
+  const siguiente = PUNTOS.findIndex(([id], i) => i > activo && !marcas[id]);
+  activo = siguiente === -1 ? PUNTOS.findIndex(([id]) => !marcas[id]) : siguiente;
+  if (activo === -1) activo = PUNTOS.length;
+  pintarLista(); dibujar();
+};
+
+// La lupa es lo que hace que esto sirva: a 2700 px de ancho, un click a ojo se
+// va varios píxeles, y cada píxel de error en la calibración se paga después
+// en centímetros de error en toda la cancha.
+lienzo.onmousemove = (e) => {
+  if (!img) return;
+  const r = lienzo.getBoundingClientRect();
+  const u = (e.clientX - r.left) * (img.width / r.width);
+  const v = (e.clientY - r.top) * (img.height / r.height);
+  const z = 6, lado = 190 / z;
+  ctxLupa.fillStyle = "#000"; ctxLupa.fillRect(0, 0, 190, 190);
+  ctxLupa.imageSmoothingEnabled = false;
+  ctxLupa.drawImage(img, u - lado / 2, v - lado / 2, lado, lado, 0, 0, 190, 190);
+  ctxLupa.strokeStyle = "#00ff88"; ctxLupa.lineWidth = 1;
+  ctxLupa.beginPath();
+  ctxLupa.moveTo(95, 75); ctxLupa.lineTo(95, 115);
+  ctxLupa.moveTo(75, 95); ctxLupa.lineTo(115, 95);
+  ctxLupa.stroke();
+  lupa.style.display = "block";
+  lupa.style.left = (e.clientX + 24) + "px";
+  lupa.style.top = (e.clientY - 210) + "px";
+};
+lienzo.onmouseleave = () => { lupa.style.display = "none"; };
+
+$("deshacer").onclick = () => {
+  const ultimo = orden.pop();
+  if (!ultimo) return;
+  delete marcas[ultimo];
+  activo = PUNTOS.findIndex(([id]) => id === ultimo);
+  pintarLista(); dibujar();
+};
+$("limpiar").onclick = () => { marcas = {}; orden = []; activo = 0; pintarLista(); dibujar(); };
+$("giro").oninput = () => { $("valGiro").textContent = parseFloat($("giro").value).toFixed(1); calcularEncuadre(); };
+$("margen").oninput = calcularEncuadre;
+
+function bajar(nombre, obj) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" }));
+  a.download = nombre; a.click();
+}
+$("expMarcas").onclick = () => bajar("marcas.json",
+  Object.fromEntries(Object.entries(marcas).map(([k, v]) => [k, [+v[0].toFixed(2), +v[1].toFixed(2)]])));
+$("expEncuadre").onclick = () => { const e = calcularEncuadre(); if (e) bajar("encuadre.json", e); };
+
+pintarLista();
+</script>
+</body>
+</html>

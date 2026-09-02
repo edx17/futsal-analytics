@@ -27,6 +27,27 @@ def _cmd_puntos(_):
 
 def _cmd_calibrar(args):
     marcas = {k: tuple(v) for k, v in json.loads(Path(args.marcas).read_text()).items()}
+
+    # El calibrador exporta las marcas en coordenadas del frame ORIGINAL, que es
+    # sobre el que clickeó la persona. La homografía, en cambio, tiene que valer
+    # sobre el frame ya girado y recortado, que es el que va a ver el detector.
+    # La conversión se hace acá y no a mano: pedirle a alguien que clickee sobre
+    # una imagen ya recortada es pedirle que se equivoque.
+    encuadre = Encuadre.leer(args.encuadre) if args.encuadre else None
+    if encuadre:
+        marcas = {k: encuadre.punto_a_encuadre(*v) for k, v in marcas.items()}
+        afuera = [k for k, v in marcas.items()
+                  if not (0 <= v[0] < encuadre.resolucion_salida[0]
+                          and 0 <= v[1] < encuadre.resolucion_salida[1])]
+        if afuera:
+            print(f"ERROR: el recorte deja afuera {len(afuera)} punto(s) marcado(s): "
+                  f"{', '.join(sorted(afuera))}.\n"
+                  "Subí el margen del encuadre o revisá el giro.", file=sys.stderr)
+            return 1
+        print(f"Encuadre aplicado: giro {encuadre.rotacion_grados}°, "
+              f"salida {encuadre.resolucion_salida[0]}x{encuadre.resolucion_salida[1]}")
+        args.resolucion = list(encuadre.resolucion_salida)
+
     try:
         h = calibrar(marcas, resolucion=tuple(args.resolucion) if args.resolucion else None)
     except ErrorCalibracion as e:
@@ -145,6 +166,9 @@ def main(argv=None):
     c.add_argument("--marcas", required=True, help="JSON {id_punto: [u_px, v_px]}")
     c.add_argument("--salida", required=True)
     c.add_argument("--resolucion", nargs=2, type=int, metavar=("ANCHO", "ALTO"))
+    c.add_argument("--encuadre", help="JSON del giro y recorte. Si va, las marcas se "
+                                      "interpretan en coordenadas del frame original "
+                                      "y se convierten solas")
     c.set_defaults(func=_cmd_calibrar)
 
     p = sub.add_parser("precision", help="informe de precisión de una calibración")

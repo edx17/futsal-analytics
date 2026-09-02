@@ -55,18 +55,47 @@ Con el entorno activo se ve `(.venv)` al principio del prompt.
 
 ## Uso
 
+### Calibrar: una vez por posición de cámara, no por partido
+
+**Abrí `herramientas/calibrador.html` con doble click.** Es un HTML suelto, sin
+servidor, sin npm y sin internet: no es parte de la app de React y no se llega
+a él con `npm run dev`.
+
+1. Cargás un frame de cualquier partido (mejor con la cancha vacía).
+2. Clickeás los puntos de referencia. Hay una lupa de 6x, que es lo que hace
+   que esto sirva: a 2700 px de ancho un click a ojo se va varios píxeles, y
+   cada píxel de error en la calibración se paga después en centímetros de
+   error en toda la cancha.
+3. Los que no se vean —una esquina tapada por una baranda, por ejemplo— se
+   saltean. **No hacen falta las cuatro esquinas**: la calibración es por
+   mínimos cuadrados. Con 4 puntos cualesquiera alcanza, pero marcá todos los
+   que puedas: con 4 el error da siempre cero y engaña.
+4. Ajustás el giro y el margen del recorte.
+5. Bajás `marcas.json` y `encuadre.json`.
+
+Después, en la terminal:
+
 ```bash
-# 1. Ver qué puntos hay que marcar en la imagen
-python -m futsal_ia.cli puntos
-
-# 2. Calibrar (una vez por posición de cámara, no por partido)
+# Calibrar. Las marcas vienen en coordenadas del frame ORIGINAL y el encuadre
+# las convierte solo: nadie clickea sobre una imagen ya recortada.
 python -m futsal_ia.cli calibrar \
-    --marcas marcas.json --salida calibracion.json --resolucion 3840 2160
+    --marcas marcas.json --encuadre encuadre.json --salida calibracion.json
 
-# 3. Ver qué precisión da esa posición de cámara, celda por celda
+# Qué precisión da esa posición de cámara, celda por celda y por período
 python -m futsal_ia.cli precision --calibracion calibracion.json
 
-# 4. Analizar un período
+# La lista de puntos, si querés verla en texto
+python -m futsal_ia.cli puntos
+```
+
+Con `calibracion.json` + `encuadre.json` guardados, esto no se vuelve a hacer
+nunca más mientras la cámara no se mueva. Sirven para todo el archivo, viejo y
+nuevo.
+
+### Analizar: por partido y por período
+
+```bash
+# Analizar un período
 python -m futsal_ia.cli analizar \
     --video 2026-09-14_primera_vs-SanLorenzo_PT.mp4 \
     --calibracion calibracion.json \
@@ -76,8 +105,8 @@ python -m futsal_ia.cli analizar \
     --overlay auditoria_PT.mp4
 ```
 
-`marcas.json` es `{"esq_prop_izq": [u_px, v_px], ...}` con los píxeles que
-clickeó el operador. En el segundo tiempo se agrega `--invertida`.
+En el segundo tiempo se agrega `--invertida`, porque los equipos cambian de
+lado y las zonas se cuentan desde el arco propio.
 
 ## Mirá el overlay antes de creerle al resumen
 
@@ -103,6 +132,7 @@ Honestidad sobre qué está probado de verdad:
 | `equipos.py` | **Verificado.** 12 tests de clustering de color |
 | `salida.py` | **Verificado.** 13 tests; los campos se comparan contra `crearSnapshot()` y `crearRecorrido()` reales de modelo.js |
 | `preproceso.py` | **Verificado.** 14 tests del giro y recorte determinista |
+| `herramientas/calibrador.html` | **Sin ejecutar en navegador.** 4 tests verifican que su lista de puntos no se desincronice de `cancha.py` y que no dependa de ningún CDN |
 | `deteccion.py` | **Parcial.** El partido en mosaicos y la fusión están verificados (11 tests); el detector en sí necesita GPU y los pesos |
 | `seguimiento.py` | **Sin ejecutar.** Necesita `supervision` instalado |
 | `lente.py` | **Sin ejecutar.** Necesita OpenCV y un video real |
@@ -113,7 +143,7 @@ Los verificados son el núcleo que decide si los números salen bien o
 espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
-python -m pytest tests/ -q     # 77 tests, sin GPU ni video
+python -m pytest tests/ -q     # 81 tests, sin GPU ni video
 ```
 
 ## Decisiones que están en el código y conviene no olvidar
