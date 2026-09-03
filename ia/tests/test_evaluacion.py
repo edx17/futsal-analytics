@@ -82,7 +82,7 @@ def test_el_veredicto_manda_a_lo_que_hay_que_tocar():
     assert "excluir" in " ".join(veredicto(sucio))
 
     colores = evaluar(_analisis({0: 10}), [RevisionInstante(0, 10, equipo_mal=[1, 2, 3])])
-    assert "grupos de color" in " ".join(veredicto(colores))
+    assert "matriz" in " ".join(veredicto(colores))
 
 
 def test_avisa_cuando_son_pocos_instantes():
@@ -193,3 +193,126 @@ def test_sin_snapshot_no_inventa_cajas():
     from futsal_ia.evaluacion import cajas_etiquetadas
 
     assert cajas_etiquetadas(_correcciones_v2(), {"snapshots": []}) == []
+
+
+# ── La matriz de confusión ─────────────────────────────────────────────────
+# "Le pega al equipo el 49% de las veces" no se puede accionar: manda a probar
+# cuatro arreglos distintos. La matriz dice cuál de los cuatro es.
+
+from futsal_ia.evaluacion import (  # noqa: E402
+    JUGADORES,
+    desde_json,
+    es_jugador,
+    matriz_confusion,
+)
+
+
+def _caso(pares, agregados=()):
+    """pares: (lo que dijo la IA, lo que era). Uno por recuadro."""
+    posiciones, correcciones = [], []
+    for i, (dijo, era) in enumerate(pares, start=1):
+        posiciones.append({"_track_ia": i, "_bbox": [0, 0, 1, 1], "equipo": dijo})
+        if dijo != era:
+            correcciones.append({"track_ia": i, "rol": era})
+    analisis = {"snapshots": [{"t_ms": 0, "posiciones": posiciones}]}
+    datos = {"instantes": [{"t_ms": 0, "jugadores_reales": len(pares),
+                            "correcciones": correcciones,
+                            "agregados": [{"bbox": [0, 0, 1, 1], "rol": r}
+                                          for r in agregados]}]}
+    return analisis, datos
+
+
+def test_lo_que_nadie_corrigio_cuenta_como_acierto():
+    """
+    La persona solo toca lo que está mal. Si un recuadro llega hasta el final
+    sin corrección, es porque lo dio por bueno: eso es la diagonal.
+    """
+    mc = matriz_confusion(*_caso([("Propio", "Propio")] * 3))
+    assert mc["conteo"]["Propio|Propio"] == 3
+    assert mc["total"] == 3
+    assert mc["diagnostico"] == []
+
+
+def test_los_equipos_al_reves_se_dicen_con_todas_las_letras():
+    """
+    Es el caso más barato de arreglar —reasignar dos grupos de color— y el que
+    más fácil se confunde con "el detector anda mal".
+    """
+    mc = matriz_confusion(*_caso([("Propio", "Rival")] * 8 +
+                                 [("Rival", "Propio")] * 7))
+    assert any("AL REVÉS" in d for d in mc["diagnostico"])
+
+
+def test_un_solo_equipo_mal_no_es_lo_mismo_que_al_reves():
+    """
+    Si el error va en un solo sentido, cambiar los dos grupos no arregla nada:
+    lo que hay es un grupo asignado mal, o un equipo partido en dos.
+    """
+    mc = matriz_confusion(*_caso([("Propio", "Rival")] * 10 +
+                                 [("Propio", "Propio")] * 5))
+    dicho = " ".join(mc["diagnostico"])
+    assert "AL REVÉS" not in dicho
+    assert "comiendo" in dicho
+
+
+def test_los_arqueros_confundidos_se_detectan():
+    mc = matriz_confusion(*_caso([("Propio", "Arquero propio")] * 4 +
+                                 [("Rival", "Arquero rival")] * 3 +
+                                 [("Propio", "Propio")] * 10))
+    assert any("arqueros" in d for d in mc["diagnostico"])
+
+
+def test_lo_que_quedo_en_desconocido_se_nombra_aparte():
+    """No es que se equivoque de equipo: no se anima. Se arregla en otro lado."""
+    mc = matriz_confusion(*_caso([("Desconocido", "Propio")] * 6 +
+                                 [("Propio", "Propio")] * 10))
+    assert any("Desconocido" in d and "no se anima" in d for d in mc["diagnostico"])
+
+
+def test_las_cajas_dibujadas_a_mano_se_cuentan_aparte():
+    """No son un error de equipo: son gente que no vio. Otra columna, otro arreglo."""
+    mc = matriz_confusion(*_caso([("Propio", "Propio")], agregados=("Rival", "Rival")))
+    assert mc["no_vistas"] == {"Rival": 2}
+
+
+def test_las_columnas_van_siempre_en_el_mismo_orden():
+    """Para poder comparar dos corridas de un vistazo."""
+    mc = matriz_confusion(*_caso([("Rival", "Desconocido"), ("Propio", "Rival")]))
+    assert mc["filas"] == ["Propio", "Rival"]
+    assert mc["columnas"] == ["Rival", "Desconocido"]
+
+
+# ── El árbitro no es un jugador ────────────────────────────────────────────
+
+def test_el_arbitro_no_cuenta_como_jugador():
+    assert es_jugador("Propio") and es_jugador("Arquero rival")
+    assert not es_jugador("Arbitro")
+    assert not es_jugador("Pelota")
+    assert not es_jugador("No es persona")
+    assert not es_jugador("Desconocido")
+
+
+def test_un_arbitro_bien_marcado_es_un_falso_positivo_no_un_error_de_equipo():
+    """
+    La regresión. Antes un árbitro sumaba dos veces mal: contaba como jugador
+    encontrado (inflando el recall) y como equipo equivocado (hundiendo el
+    acierto de equipo). Encima mandaba a mirar los grupos de color, cuando lo
+    que hay que hacer con un árbitro es filtrarlo.
+    """
+    revisiones = desde_json({"instantes": [{
+        "t_ms": 0, "jugadores_reales": 10,
+        "correcciones": [{"track_ia": 1, "rol": "Arbitro"},
+                         {"track_ia": 2, "rol": "Rival"}],
+        "agregados": [{"bbox": [0, 0, 1, 1], "rol": "Arbitro"},
+                      {"bbox": [0, 0, 1, 1], "rol": "Propio"}],
+    }]})
+    r = revisiones[0]
+    assert r.falsos == [1]              # el árbitro no es un jugador en cancha
+    assert r.equipo_mal == [2]          # el error de equipo es solo el otro
+    assert r.faltantes == 1             # el árbitro dibujado tampoco suma
+
+
+def test_la_lista_de_jugadores_no_se_desincroniza_del_overlay():
+    """Dos copias de la misma verdad: si una cambia, la otra tiene que cambiar."""
+    from futsal_ia.overlay import JUGADORES as DEL_OVERLAY
+    assert JUGADORES == DEL_OVERLAY

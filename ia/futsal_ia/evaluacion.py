@@ -45,6 +45,30 @@ class RevisionInstante:
 
 NO_PERSONA = "No es persona"
 PELOTA = "Pelota"
+ARBITRO = "Arbitro"
+DESCONOCIDO = "Desconocido"
+
+# Los diez que están en cancha: ocho de campo y dos arqueros. Tiene que ser
+# igual a `overlay.JUGADORES`; hay un test que lo verifica.
+JUGADORES = ("Propio", "Rival", "Arquero propio", "Arquero rival")
+
+
+def es_jugador(rol: str) -> bool:
+    """
+    El árbitro NO es un jugador, y esto no es una sutileza de vocabulario.
+
+    Antes solo quedaban afuera "No es persona" y la pelota, así que un árbitro
+    bien marcado por una persona contaba dos veces mal: sumaba como jugador
+    encontrado (inflando el recall) y como equipo equivocado (hundiendo el
+    acierto de equipo). Y encima mandaba a mirar el lugar equivocado: el
+    mensaje decía "revisá los grupos de color" cuando lo que hay que hacer con
+    un árbitro es filtrarlo, no pintarlo de otro color.
+
+    Aguas abajo, cada detección que sobrevive se convierte en una posición y
+    entra en la posesión y en el mapa de calor. Un árbitro ahí adentro es un
+    error, no un detalle.
+    """
+    return rol in JUGADORES
 
 
 def desde_json(datos: dict) -> list[RevisionInstante]:
@@ -66,10 +90,13 @@ def desde_json(datos: dict) -> list[RevisionInstante]:
             # Un recuadro corregido a "No es persona" es un falso positivo.
             # Corregido a otro rol, la detección estaba bien y el error fue de
             # equipo: son cosas distintas y se arreglan distinto.
-            falsos = [c["track_ia"] for c in correcciones if c.get("rol") == NO_PERSONA]
-            equipo_mal = [c["track_ia"] for c in correcciones if c.get("rol") != NO_PERSONA]
-            # La pelota no es una persona: no entra en el conteo de jugadores.
-            faltantes = sum(1 for a in r.get("agregados", []) if a.get("rol") != PELOTA)
+            falsos = [c["track_ia"] for c in correcciones
+                      if not es_jugador(c.get("rol", ""))]
+            equipo_mal = [c["track_ia"] for c in correcciones
+                          if es_jugador(c.get("rol", ""))]
+            # Ni la pelota ni el árbitro son jugadores en cancha.
+            faltantes = sum(1 for a in r.get("agregados", [])
+                            if es_jugador(a.get("rol", "")))
         else:
             falsos = r.get("falsos", [])
             equipo_mal = r.get("equipo_mal", [])
@@ -114,6 +141,124 @@ def cajas_etiquetadas(datos: dict, analisis: dict) -> list[dict]:
         if cajas:
             salida.append({"t_ms": int(r["t_ms"]), "cajas": cajas})
     return salida
+
+
+# El orden en que se muestran las etiquetas. Fijo, para que dos corridas se
+# puedan comparar mirando y no haya que leer los encabezados cada vez.
+ORDEN = ("Propio", "Rival", "Arquero propio", "Arquero rival",
+         "Arbitro", "Desconocido", "Pelota", NO_PERSONA)
+
+
+def _orden(etiquetas) -> list[str]:
+    conocidas = [e for e in ORDEN if e in etiquetas]
+    return conocidas + sorted(e for e in etiquetas if e not in ORDEN)
+
+
+def matriz_confusion(analisis: dict, datos: dict) -> dict:
+    """
+    Qué dijo la IA contra qué era en realidad, celda por celda.
+
+    Existe porque "le pega al equipo el 49% de las veces" no se puede accionar.
+    Un 49% puede ser cualquiera de estas cosas, y cada una se arregla en un
+    lugar distinto:
+
+      · los dos equipos cambiados entre sí     -> una línea en equipos.json
+      · los arqueros contados como de campo    -> falta asignar ese grupo
+      · casi todo en Desconocido               -> el color no separa
+      · un solo equipo mal                     -> un grupo asignado al revés
+
+    Con la matriz, mirando dónde se juntan los números se ve cuál de las cuatro
+    es. Sin la matriz, el mismo número manda a probar las cuatro.
+    """
+    por_t = {int(s["t_ms"]): s for s in analisis.get("snapshots", [])}
+    conteo: dict[tuple[str, str], int] = {}
+    no_vistas: dict[str, int] = {}
+
+    for r in datos.get("instantes", []):
+        snap = por_t.get(int(r["t_ms"]))
+        if snap is None:
+            continue
+        corregido = {c["track_ia"]: c["rol"] for c in r.get("correcciones", [])}
+        for pos in snap.get("posiciones", []):
+            if not pos.get("_bbox"):
+                continue
+            dijo = pos.get("equipo") or DESCONOCIDO
+            # Sin corrección, la persona lo dio por bueno: era lo que decía.
+            era = corregido.get(pos.get("_track_ia"), dijo)
+            conteo[(dijo, era)] = conteo.get((dijo, era), 0) + 1
+        for a in r.get("agregados", []):
+            rol = a.get("rol", DESCONOCIDO)
+            no_vistas[rol] = no_vistas.get(rol, 0) + 1
+
+    filas = _orden({d for d, _ in conteo})
+    columnas = _orden({e for _, e in conteo})
+    return {
+        "filas": filas, "columnas": columnas,
+        "conteo": {f"{d}|{e}": n for (d, e), n in conteo.items()},
+        "no_vistas": no_vistas,
+        "total": sum(conteo.values()),
+        "diagnostico": _diagnostico_confusion(conteo),
+    }
+
+
+def _diagnostico_confusion(conteo: dict[tuple[str, str], int]) -> list[str]:
+    """
+    Los cuatro patrones que explican casi todos los errores de equipo, con el
+    arreglo de cada uno. Se nombran solo cuando pesan de verdad.
+    """
+    total = sum(conteo.values())
+    errados = sum(n for (d, e), n in conteo.items() if d != e)
+    if not total or not errados:
+        return []
+
+    def peso(pares) -> int:
+        return sum(conteo.get(par, 0) for par in pares)
+
+    dichos = []
+    cruzado = peso([("Propio", "Rival"), ("Rival", "Propio")])
+    if cruzado >= 0.4 * errados:
+        de_ida, de_vuelta = conteo.get(("Propio", "Rival"), 0), conteo.get(("Rival", "Propio"), 0)
+        if min(de_ida, de_vuelta) >= 0.3 * cruzado:
+            dichos.append(
+                f"LOS EQUIPOS ESTÁN AL REVÉS ({cruzado} de {errados} errores "
+                "son propio<->rival en los dos sentidos). Se arregla cambiando "
+                "qué grupo de color es cuál, en el panel o en equipos.json. Es "
+                "el arreglo más barato que hay: no hay que volver a analizar "
+                "nada, solo reasignar y correr de nuevo.")
+        else:
+            dichos.append(
+                f"Un equipo se está comiendo al otro ({de_ida} propio->rival, "
+                f"{de_vuelta} rival->propio). Suele ser un grupo de color "
+                "asignado al equipo equivocado, o dos grupos del mismo equipo "
+                "con uno solo asignado.")
+
+    arqueros = peso([(d, e) for (d, e) in conteo
+                     if e.startswith("Arquero") and not d.startswith("Arquero")])
+    if arqueros >= 0.2 * errados:
+        dichos.append(
+            f"{arqueros} de {errados} errores son arqueros contados como "
+            "jugadores de campo. En futsal el arquero viste distinto a "
+            "propósito: casi seguro tiene su propio grupo de color sin "
+            "asignar, o quedó pegado al grupo de su equipo. Revisá los "
+            "recortes de cada grupo en el panel.")
+
+    desconocido = sum(n for (d, e), n in conteo.items()
+                      if d == DESCONOCIDO and e != DESCONOCIDO)
+    if desconocido >= 0.25 * errados:
+        dichos.append(
+            f"{desconocido} de {errados} errores son gente que la IA dejó en "
+            "Desconocido. No es que se equivoque de equipo: no se anima. O el "
+            "color no separa (iluminación, camisetas parecidas) o hay grupos "
+            "sin asignar.")
+
+    arbitros = sum(n for (d, e), n in conteo.items()
+                   if e == ARBITRO and d != ARBITRO)
+    if arbitros >= 0.15 * errados:
+        dichos.append(
+            f"{arbitros} árbitros están entrando como jugadores. Eso ensucia "
+            "la posesión y el mapa de calor. Se saca con `cli excluir` si "
+            "están siempre en la misma zona, o asignando su grupo de color.")
+    return dichos
 
 
 def evaluar(analisis: dict, revisiones: list[RevisionInstante]) -> dict:
@@ -202,9 +347,10 @@ def veredicto(m: dict) -> list[str]:
 
     if e < 0.85:
         dichos.append(
-            f"Le pega al equipo el {e:.0%} de las veces. Revisá los grupos de "
-            "color: puede haber un grupo mezclado marcado como Desconocido, o "
-            "un equipo partido en dos grupos y solo uno asignado.")
+            f"Le pega al equipo el {e:.0%} de las veces. Mirá la matriz de acá "
+            "abajo antes de tocar nada: dice si los equipos están cambiados "
+            "entre sí, si son los arqueros, o si el color no separa. Cada una "
+            "se arregla en un lugar distinto.")
 
     if m["instantes"] < 10:
         dichos.append(

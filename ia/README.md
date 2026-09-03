@@ -323,7 +323,27 @@ python -m futsal_ia.cli evaluar --analisis analisis_PT.json \
 
 Devuelve tres números —cuántos jugadores encuentra, cuántos de los que marca
 son jugadores, y cuántas veces le pega al equipo— y dice qué conviene tocar
-según cuál esté flojo. Después de cambiar algo:
+según cuál esté flojo.
+
+Además imprime una **matriz de confusión**: filas, lo que dijo la IA; columnas,
+lo que era en realidad. Existe porque "le pega al equipo el 49% de las veces"
+no se puede accionar. Ese mismo 49% puede ser cualquiera de estas cuatro cosas,
+y cada una se arregla en un lugar distinto:
+
+| Lo que se ve en la matriz | Qué es | Dónde se arregla |
+|---|---|---|
+| Propio↔Rival en los dos sentidos | Los equipos están cambiados | Reasignar los grupos en el panel. Treinta segundos |
+| Propio→Rival pero no al revés | Un grupo de color asignado mal, o un equipo partido en dos | Ídem, mirando los recortes |
+| Propio/Rival→Arquero | El arquero cuenta como jugador de campo | Falta asignar el grupo del arquero |
+| Casi todo en la fila Desconocido | El color no separa | Iluminación, o entrenar |
+
+El árbitro no es un jugador y no cuenta como tal en ningún lado: un árbitro
+detectado es un falso positivo, no un error de equipo. Suena a detalle y no lo
+es —mandaba a mirar los grupos de color cuando lo que hay que hacer es
+filtrarlo—, y además cada detección que sobrevive entra después en la posesión
+y en el mapa de calor.
+
+Después de cambiar algo:
 
 ```bash
 python -m futsal_ia.cli evaluar ... --contra medicion_1.json

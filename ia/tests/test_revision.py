@@ -209,3 +209,20 @@ def test_el_visor_no_vuelve_a_depender_del_video():
     assert "<video" not in html
     assert "videoWidth" not in html
     assert "/api/revision" in html and "/api/cuadros" in html
+
+
+def test_el_visor_cuenta_los_mismos_jugadores_que_la_evaluacion():
+    """
+    Dos copias de la misma verdad, en dos lenguajes. Si el visor contara al
+    árbitro como jugador en cancha, el número que la persona escribe saldría
+    inflado y el recall daría más bajo de lo que es, sin que nada avise.
+    """
+    import re
+
+    from futsal_ia.evaluacion import JUGADORES
+
+    html = REVISOR.read_text(encoding="utf-8")
+    m = re.search(r"const JUGADORES = \[(.*?)\];", html, re.S)
+    assert m, "el visor ya no declara su lista de jugadores"
+    del_html = tuple(x.strip().strip('"') for x in m.group(1).split(","))
+    assert del_html == JUGADORES

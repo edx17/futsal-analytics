@@ -229,10 +229,54 @@ def _cmd_cuadros(args):
     return 0
 
 
+def _imprimir_confusion(mc: dict) -> None:
+    """
+    La matriz, en texto. Filas: lo que dijo la IA. Columnas: lo que era.
+
+    La diagonal son los aciertos. Todo lo que esté fuera de la diagonal es un
+    error, y DÓNDE está dice cuál de los cuatro problemas típicos es. Un
+    porcentaje suelto no distingue entre "los equipos están al revés" (arreglo
+    de treinta segundos) y "el color no separa" (arreglo de tarde entera).
+    """
+    if not mc.get("total"):
+        return
+
+    abrev = {"Arquero propio": "Arq.pro", "Arquero rival": "Arq.riv",
+             "Desconocido": "Descon.", "No es persona": "No-persona",
+             "Arbitro": "Árbitro"}
+    def corto(e):
+        return abrev.get(e, e)
+
+    filas, columnas = mc["filas"], mc["columnas"]
+    ancho_fila = max([len(corto(f)) for f in filas] + [len("dijo la IA")])
+    anchos = [max(len(corto(c)), 5) for c in columnas]
+
+    print("\nQué dijo la IA (filas) contra qué era en realidad (columnas)")
+    print("  " + "dijo la IA".ljust(ancho_fila) + " |" +
+          "".join(corto(c).rjust(a + 2) for c, a in zip(columnas, anchos)))
+    print("  " + "-" * (ancho_fila + 1) + "+" + "-" * sum(a + 2 for a in anchos))
+    for f in filas:
+        celdas = []
+        for c, a in zip(columnas, anchos):
+            n = mc["conteo"].get(f"{f}|{c}", 0)
+            # La diagonal marcada: es lo único que no hay que arreglar.
+            celdas.append((f"{n}*" if f == c and n else str(n) if n else ".").rjust(a + 2))
+        print("  " + corto(f).ljust(ancho_fila) + " |" + "".join(celdas))
+    print(f"  (* = acertó. {mc['total']} recuadros en total)")
+
+    if mc.get("no_vistas"):
+        detalle = ", ".join(f"{n} {corto(r)}" for r, n in
+                            sorted(mc["no_vistas"].items(), key=lambda x: -x[1]))
+        print(f"  No vio, y una persona los dibujó a mano: {detalle}")
+
+    for d in mc.get("diagnostico", []):
+        print(f"\n  >> {d}")
+
+
 def _cmd_evaluar(args):
     """Cruza el análisis con lo que dijo una persona y saca los números."""
     from .evaluacion import (cajas_etiquetadas, comparar, desde_json, evaluar,
-                             veredicto)
+                             matriz_confusion, veredicto)
 
     analisis = _leer_json(args.analisis, "el análisis")
     corr = _leer_json(args.correcciones, "las correcciones")
@@ -252,6 +296,8 @@ def _cmd_evaluar(args):
     print(f"  Le pega al equipo   {m['acierto_equipo']:.0%} de las veces\n")
     for d in veredicto(m):
         print(f"  - {d}")
+
+    _imprimir_confusion(matriz_confusion(analisis, corr))
 
     if args.contra:
         previo = _leer_json(args.contra, "la medición anterior")

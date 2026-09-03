@@ -108,7 +108,7 @@
       <div class="paso">Cuántos hay</div>
       <div class="fila">
         <input type="number" id="reales" min="0" max="14">
-        <span class="nota" style="margin:0">personas en cancha.<br>Futsal: 10 como máximo</span>
+        <span class="nota" style="margin:0">jugadores en cancha, árbitros aparte.<br>Futsal: 10 como máximo</span>
       </div>
       <div class="nota" id="resumenInstante"></div>
 
@@ -144,7 +144,12 @@ const ROLES = [
   { id:"No es persona",   color:"#7a1f1f", tecla:"0" },
 ];
 const COLOR_ROL = Object.fromEntries(ROLES.map(r => [r.id, r.color]));
-const NO_PERSONA = "No es persona", PELOTA = "Pelota";
+const NO_PERSONA = "No es persona";
+// Los diez que están en cancha. El árbitro no es uno de ellos: si contara, el
+// número que se compara contra lo que detectó la IA saldría inflado y el
+// árbitro aparecería como un error de equipo en vez de como lo que es, algo
+// que hay que filtrar. Tiene que coincidir con `evaluacion.JUGADORES`.
+const JUGADORES = ["Propio", "Rival", "Arquero propio", "Arquero rival"];
 const CARPETA = "revision_cuadros";
 
 let muestras = [], periodo = "PT", actual = 0;
@@ -287,8 +292,8 @@ function reconstruir(){
 
 function recalcular(){
   const est = estado();
-  const personas = cajas.filter(c => c.rol !== NO_PERSONA && c.rol !== PELOTA).length;
-  if(est.reales == null) est.reales = personas;
+  const jugadores = cajas.filter(c => JUGADORES.includes(c.rol)).length;
+  if(est.reales == null) est.reales = jugadores;
   $("reales").value = est.reales;
   const cambiados = Object.keys(est.correcciones).length;
   const sumados = est.agregados.length;
