@@ -92,12 +92,42 @@ def test_el_revisor_guarda_las_claves_que_lee_el_evaluador():
     Si la herramienta escribe una cosa y el evaluador espera otra, las
     correcciones no sirven para nada y nadie se entera hasta el final.
     """
-    import inspect
+    texto = REVISION.read_text(encoding="utf-8")
+    for clave in ("t_ms", "jugadores_reales", "correcciones", "agregados",
+                  "track_ia", "bbox", "rol"):
+        assert clave in texto, f"revision.html no escribe {clave}"
 
-    from futsal_ia.evaluacion import RevisionInstante
+
+def test_lo_que_escribe_el_revisor_lo_lee_el_evaluador():
+    """Ida y vuelta con una carga igual a la que arma la herramienta."""
+    from futsal_ia.evaluacion import desde_json
+
+    r = desde_json({
+        "periodo": "PT", "formato": 2,
+        "instantes": [{
+            "t_ms": 295000, "jugadores_reales": 10,
+            "correcciones": [{"track_ia": 4, "rol": "No es persona"},
+                             {"track_ia": 7, "rol": "Arquero rival"}],
+            "agregados": [{"bbox": [1.0, 2.0, 3.0, 4.0], "rol": "Rival"}],
+        }],
+    })[0]
+    assert r.t_ms == 295000 and r.jugadores_reales == 10
+    assert r.falsos == [4] and r.equipo_mal == [7] and r.faltantes == 1
+
+
+def test_los_roles_del_revisor_son_los_que_conoce_el_sistema():
+    """
+    Un rol que la herramienta ofrece y el resto no entiende se guarda igual y
+    después no significa nada.
+    """
+    import re
+
+    from futsal_ia.equipos import ROLES as ROLES_PY
 
     texto = REVISION.read_text(encoding="utf-8")
-    campos = set(inspect.signature(RevisionInstante).parameters)
-    for clave in ("t_ms", "jugadores_reales", "falsos", "equipo_mal"):
-        assert clave in campos, f"RevisionInstante no tiene {clave}"
-        assert clave in texto, f"revision.html no escribe {clave}"
+    bloque = texto[texto.index("const ROLES = ["):texto.index("];", texto.index("const ROLES"))]
+    del_html = set(re.findall(r'id:"([^"]+)"', bloque))
+    # "Pelota" y "No es persona" son propios del revisor: no son equipos, son
+    # material para la Fase 2 y descarte de falsos positivos.
+    propios_del_revisor = {"Pelota", "No es persona"}
+    assert del_html - propios_del_revisor <= set(ROLES_PY)

@@ -348,7 +348,7 @@ espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
 pip install pytest pyflakes
-python -m pytest tests/ -q     # 244 tests, sin GPU ni video
+python -m pytest tests/ -q     # 251 tests, sin GPU ni video
 ```
 
 Uno de esos tests corre `pyflakes` sobre el paquete y falla si hay un nombre

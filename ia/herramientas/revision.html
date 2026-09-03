@@ -10,56 +10,73 @@
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--texto);
          font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
-  header { padding:14px 20px; border-bottom:1px solid var(--borde); }
+  header { padding:12px 20px; border-bottom:1px solid var(--borde); }
   h1 { margin:0; font-size:15px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
-  header p { margin:4px 0 0; color:var(--tenue); font-size:12.5px; }
-  main { display:grid; grid-template-columns:1fr 330px; height:calc(100vh - 62px); }
+  header p { margin:3px 0 0; color:var(--tenue); font-size:12.5px; }
+  main { display:grid; grid-template-columns:1fr 340px; height:calc(100vh - 58px); }
   @media (max-width:980px){ main{grid-template-columns:1fr;height:auto;} }
-  #lienzoCaja { background:#000; display:flex; align-items:center; justify-content:center;
-                overflow:auto; }
-  canvas { max-width:100%; cursor:crosshair; }
+
+  #escena { background:#000; display:flex; align-items:center; justify-content:center;
+            overflow:hidden; padding:8px; }
+  /* El video va VISIBLE y el canvas encima solo para los recuadros. Copiar el
+     frame a un canvas obliga a esperar a que el navegador lo decodifique, y
+     ahí es donde antes salía todo negro. Así lo dibuja el navegador solo. */
+  #marco { position:relative; overflow:hidden; background:#000; }
+  #marco video { position:absolute; left:0; top:0; }
+  #capa { position:absolute; left:0; top:0; cursor:crosshair; }
+
   aside { border-left:1px solid var(--borde); background:var(--panel);
-          overflow-y:auto; padding:16px; }
+          overflow-y:auto; padding:14px; }
   .paso { font-size:11px; text-transform:uppercase; letter-spacing:.08em;
-          color:var(--acento); font-weight:700; margin:16px 0 8px; }
+          color:var(--acento); font-weight:700; margin:14px 0 7px; }
   .paso:first-child { margin-top:0; }
-  button { font:inherit; font-weight:600; padding:9px 12px; border-radius:7px;
+  button { font:inherit; font-weight:600; padding:8px 11px; border-radius:7px;
            border:1px solid var(--borde); background:#1d1d24; color:var(--texto); cursor:pointer; }
   button:hover:not(:disabled) { border-color:var(--acento); }
   button:disabled { opacity:.4; cursor:not-allowed; }
   button.primario { background:var(--acento); color:#000; border-color:var(--acento); }
-  .fila { display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap; }
-  label { display:block; font-size:12px; color:var(--tenue); margin:12px 0 5px; }
+  .fila { display:flex; gap:8px; margin-top:9px; align-items:center; flex-wrap:wrap; }
+  label { display:block; font-size:12px; color:var(--tenue); margin:11px 0 5px; }
   input[type=file] { width:100%; font-size:12px; }
-  input[type=number] { width:90px; padding:9px; border-radius:7px; border:1px solid var(--borde);
-    background:#0f0f13; color:var(--texto); font-size:20px; font-weight:700; text-align:center; }
-  .nota { font-size:12px; color:var(--tenue); margin-top:10px; }
-  .aviso { font-size:12.5px; padding:10px 12px; border-radius:7px; margin-top:12px; border:1px solid; }
+  input[type=number] { width:80px; padding:8px; border-radius:7px; border:1px solid var(--borde);
+    background:#0f0f13; color:var(--texto); font-size:19px; font-weight:700; text-align:center; }
+  .nota { font-size:12px; color:var(--tenue); margin-top:8px; }
+  .aviso { font-size:12.5px; padding:9px 11px; border-radius:7px; margin-top:10px; border:1px solid; }
   .aviso.ok { border-color:var(--acento); color:var(--acento); background:#0f2018; }
   .aviso.mal { border-color:var(--alerta); color:var(--alerta); background:#221d08; }
-  .modo { display:flex; gap:6px; margin-top:8px; }
-  .modo button { flex:1; font-size:12px; padding:8px 6px; }
-  .modo button.on { background:var(--acento); color:#000; border-color:var(--acento); }
-  .barra { display:flex; gap:3px; flex-wrap:wrap; margin-top:10px; }
-  .barra span { width:20px; height:20px; border-radius:4px; background:#22222a;
+
+  .roles { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px; }
+  .roles button { display:flex; align-items:center; gap:7px; font-size:12px; padding:8px;
+                  justify-content:flex-start; }
+  .roles .pip { width:11px; height:11px; border-radius:3px; flex:none; }
+  .roles .tecla { margin-left:auto; color:var(--tenue); font-size:10px;
+                  font-family:ui-monospace,Consolas,monospace; }
+
+  .barra { display:flex; gap:3px; flex-wrap:wrap; margin-top:8px; }
+  .barra span { width:21px; height:21px; border-radius:4px; background:#22222a;
                 font-size:10px; display:flex; align-items:center; justify-content:center;
                 color:var(--tenue); cursor:pointer; }
   .barra span.hecho { background:var(--acento); color:#000; font-weight:700; }
   .barra span.actual { outline:2px solid #fff; }
   code { background:#0f0f13; padding:1px 5px; border-radius:4px; font-size:12px; }
+  .sel { font-size:12px; color:var(--acento); min-height:18px; margin-top:8px; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>Revisar el análisis</h1>
-  <p>Mirás unos pocos instantes y decís qué está bien y qué está mal. De ahí salen
-     los números para saber si un cambio mejora o empeora — y el material para
-     entrenar el detector.</p>
+  <p>Corregís lo que la IA marcó mal y agregás lo que no vio. De ahí salen los números
+     para saber si un cambio mejora — y el material para entrenar el detector.</p>
 </header>
 
 <main>
-  <div id="lienzoCaja"><canvas id="lienzo"></canvas></div>
+  <div id="escena">
+    <div id="marco">
+      <video id="vid" muted playsinline preload="auto"></video>
+      <canvas id="capa"></canvas>
+    </div>
+  </div>
 
   <aside>
     <div class="paso">Cargá</div>
@@ -73,24 +90,24 @@
       <div class="paso">Instante <span id="cual"></span></div>
       <div class="barra" id="barra"></div>
 
-      <label>¿Cuántas personas hay REALMENTE en la cancha?</label>
-      <div class="fila">
-        <input type="number" id="reales" min="0" max="14" value="10">
-        <span class="nota" style="margin:0">Futsal: 10 como máximo</span>
-      </div>
+      <div class="paso">Qué es</div>
+      <p class="nota" style="margin-top:0">Clickeá un recuadro y elegí, o arrastrá sobre
+         la imagen para marcar algo que la IA no vio.</p>
+      <div class="roles" id="roles"></div>
+      <div class="sel" id="seleccion"></div>
 
-      <label>Clickeá un recuadro para marcarlo</label>
-      <div class="modo">
-        <button data-modo="falso" class="on">No es jugador</button>
-        <button data-modo="equipo">Equipo mal</button>
+      <div class="paso">Cuántos hay</div>
+      <div class="fila">
+        <input type="number" id="reales" min="0" max="14">
+        <span class="nota" style="margin:0">personas en cancha.<br>Futsal: 10 como máximo</span>
       </div>
-      <div class="nota" id="marcados"></div>
+      <div class="nota" id="resumenInstante"></div>
 
       <div class="fila">
         <button id="anterior">← Anterior</button>
         <button id="siguiente" class="primario">Siguiente →</button>
+        <button id="borrar">Limpiar</button>
       </div>
-      <p class="nota">Con las flechas ← → también. El número se guarda solo al pasar.</p>
 
       <div class="paso">Guardar</div>
       <div class="fila">
@@ -103,51 +120,45 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-const lienzo = $("lienzo"), ctx = lienzo.getContext("2d");
-const vid = document.createElement("video");
-vid.muted = true;
-vid.playsInline = true;
-// preload "auto" y el elemento colgado del DOM (aunque invisible): un <video>
-// detached no decodifica frames en varios navegadores, y drawImage copia negro
-// sin dar error. Este era el bug de la pantalla en negro.
-vid.preload = "auto";
-vid.style.cssText = "position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-10px;top:-10px";
-document.body.appendChild(vid);
+const vid = $("vid"), capa = $("capa"), ctx = capa.getContext("2d"), marco = $("marco");
 
-const COLOR = { "Propio":"#88ff00", "Rival":"#ef4444", "Arquero propio":"#00c8ff",
-                "Arquero rival":"#ff00c8", "Arbitro":"#a0a0a0", "Desconocido":"#facc15" };
-const CUANTOS = 20;      // instantes a revisar
+// Los roles que se pueden marcar. "Pelota" y "No es persona" no son equipos:
+// el primero es material para la Fase 2 (hoy la pelota NO se detecta), el
+// segundo saca de la cuenta a la gente de afuera que se coló.
+const ROLES = [
+  { id:"Propio",          color:"#88ff00", tecla:"1" },
+  { id:"Rival",           color:"#ef4444", tecla:"2" },
+  { id:"Arquero propio",  color:"#00c8ff", tecla:"3" },
+  { id:"Arquero rival",   color:"#ff5cf0", tecla:"4" },
+  { id:"Arbitro",         color:"#b0b0b0", tecla:"5" },
+  { id:"Pelota",          color:"#ffffff", tecla:"6" },
+  { id:"No es persona",   color:"#7a1f1f", tecla:"0" },
+];
+const COLOR_ROL = Object.fromEntries(ROLES.map(r => [r.id, r.color]));
+const NO_PERSONA = "No es persona", PELOTA = "Pelota";
+const CUANTOS = 20;
 
-let analisis = null, meta = {}, muestras = [], actual = 0, modo = "falso";
-let respuestas = {};     // t_ms -> {jugadores_reales, falsos:[], equipo_mal:[]}
-let cajas = [];          // recuadros dibujados en el cuadro actual
+let analisis = null, meta = {}, muestras = [], actual = 0;
+let respuestas = {};      // t_ms -> { correcciones:{track:rol}, agregados:[{bbox,rol}], reales }
+let cajas = [];           // lo dibujado en este instante: {ref, bbox, rol, origen}
+let seleccion = null, escala = 1, arrastre = null;
 
+// ── Carga ──────────────────────────────────────────────────────────────────
 $("fAnalisis").onchange = (e) => {
   const f = e.target.files[0]; if(!f) return;
   const r = new FileReader();
   r.onload = () => {
-    try { analisis = JSON.parse(r.result); } catch (err) {
-      $("estado").innerHTML = `<div class="aviso mal">Ese JSON no se puede leer.</div>`;
-      return;
-    }
+    try { analisis = JSON.parse(r.result); }
+    catch { return aviso("mal", "Ese JSON no se puede leer."); }
     meta = analisis.meta || {};
+    if(meta.t_saque_ms == null)
+      return aviso("mal", "Este análisis es de una versión vieja y no guarda con qué se corrió. Volvé a analizar.");
     const snaps = (analisis.snapshots || []).filter(s => (s.posiciones || []).length);
-    if(!snaps.length){
-      $("estado").innerHTML = `<div class="aviso mal">El análisis no tiene snapshots con gente.</div>`;
-      return;
-    }
-    if(meta.t_saque_ms == null){
-      $("estado").innerHTML = `<div class="aviso mal">Este análisis es de una versión
-        vieja y no guarda con qué se corrió. Volvé a analizar y probá con el nuevo.</div>`;
-      return;
-    }
-    // Repartidos parejo a lo largo del tramo: veinte instantes bien elegidos
-    // dicen más que doscientos seguidos, que se parecen todos entre sí.
+    if(!snaps.length) return aviso("mal", "El análisis no tiene snapshots con gente.");
     const paso = Math.max(1, Math.floor(snaps.length / CUANTOS));
     muestras = snaps.filter((_, i) => i % paso === 0).slice(0, CUANTOS);
-    respuestas = {};
-    actual = 0;
-    listo();
+    respuestas = {}; actual = 0;
+    arrancar();
   };
   r.readAsText(f);
 };
@@ -155,155 +166,246 @@ $("fAnalisis").onchange = (e) => {
 $("fVideo").onchange = (e) => {
   const f = e.target.files[0]; if(!f) return;
   vid.src = URL.createObjectURL(f);
-  vid.onloadeddata = listo;
+  vid.onloadeddata = arrancar;
 };
 
-function listo(){
-  if(!analisis || !vid.src) {
-    $("estado").innerHTML = `<div class="aviso mal">Faltan el video o el análisis.</div>`;
-    return;
-  }
-  $("estado").innerHTML = `<div class="aviso ok">${muestras.length} instantes para revisar.
-    Son unos diez minutos de trabajo.</div>`;
+const aviso = (tipo, txt) => $("estado").innerHTML = `<div class="aviso ${tipo}">${txt}</div>`;
+
+function arrancar(){
+  if(!analisis || !vid.src || !vid.videoWidth) return;
+  aviso("ok", `${muestras.length} instantes para revisar. Son unos diez minutos.`);
   $("trabajo").style.display = "block";
+  pintarRoles();
   ir(0);
 }
 
+// ── Encuadre y escala ──────────────────────────────────────────────────────
 function recorte(){
   const e = meta.encuadre;
   if(!e || !e.recorte) return [0, 0, vid.videoWidth, vid.videoHeight];
   return e.recorte;
 }
 
+function acomodar(){
+  const [rx, ry, rw, rh] = recorte();
+  const caja = $("escena").getBoundingClientRect();
+  escala = Math.min((caja.width - 20) / rw, (caja.height - 20) / rh, 1.6);
+  marco.style.width = (rw * escala) + "px";
+  marco.style.height = (rh * escala) + "px";
+  // El video se muestra entero pero corrido, y el marco recorta: así se ve
+  // exactamente el mismo cuadro que analizó el pipeline.
+  vid.style.width = (vid.videoWidth * escala) + "px";
+  vid.style.left = (-rx * escala) + "px";
+  vid.style.top = (-ry * escala) + "px";
+  capa.width = rw; capa.height = rh;                 // coordenadas del análisis
+  capa.style.width = (rw * escala) + "px";           // tamaño en pantalla
+  capa.style.height = (rh * escala) + "px";
+}
+window.addEventListener("resize", () => { if(muestras.length){ acomodar(); pintar(); } });
+
+// ── Navegación ─────────────────────────────────────────────────────────────
 function ir(i){
   if(!muestras.length) return;
   guardarActual();
   actual = Math.max(0, Math.min(muestras.length - 1, i));
-  const snap = muestras[actual];
+  seleccion = null;
   // El snapshot guarda tiempo de PERÍODO; el video corre en su propio reloj.
-  const objetivo = (snap.t_ms + (meta.t_saque_ms || 0)) / 1000;
-
-  // El evento 'seeked' avisa que el seek terminó, pero NO que el frame ya está
-  // decodificado y listo para copiar: dibujar ahí da negro. requestVideoFrame-
-  // Callback dispara exactamente cuando hay un frame nuevo presentado, que es
-  // justo lo que hace falta. Donde no exista, se cae a 'seeked' + dos rAF, que
-  // le da al decodificador un respiro antes de copiar.
-  if (typeof vid.requestVideoFrameCallback === "function") {
-    vid.requestVideoFrameCallback(() => pintar());
-  } else {
-    vid.onseeked = () => requestAnimationFrame(() => requestAnimationFrame(pintar));
-  }
-  vid.currentTime = objetivo;
+  vid.currentTime = (muestras[actual].t_ms + (meta.t_saque_ms || 0)) / 1000;
+  acomodar();
+  reconstruir();
+  pintar();
   pintarBarra();
 }
 
-function pintar(){
-  const snap = muestras[actual];
-  const [rx, ry, rw, rh] = recorte();
-  lienzo.width = rw; lienzo.height = rh;
-  ctx.drawImage(vid, rx, ry, rw, rh, 0, 0, rw, rh);
+function estado(){
+  const t = muestras[actual].t_ms;
+  return respuestas[t] ||= { correcciones:{}, agregados:[], reales:null };
+}
 
-  const resp = respuestas[snap.t_ms] || { falsos: [], equipo_mal: [] };
+/* Arma la lista de cajas del instante: las que detectó la IA (con su rol
+   corregido si alguien lo cambió) más las que agregó la persona. */
+function reconstruir(){
+  const snap = muestras[actual], est = estado();
   cajas = [];
   for(const p of snap.posiciones || []){
     if(!p._bbox) continue;
-    const [x1, y1, x2, y2] = p._bbox;
     const id = p._track_ia;
-    const esFalso = resp.falsos.includes(id);
-    const malEquipo = resp.equipo_mal.includes(id);
-    ctx.lineWidth = esFalso || malEquipo ? 4 : 2;
-    ctx.strokeStyle = esFalso ? "#ef4444" : malEquipo ? "#facc15"
-                    : (COLOR[p.equipo] || COLOR.Desconocido);
-    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-    ctx.fillStyle = ctx.strokeStyle;
-    ctx.font = "bold 13px system-ui";
-    ctx.fillText(esFalso ? "NO" : malEquipo ? "EQUIPO" : String(id), x1, Math.max(12, y1 - 4));
-    cajas.push({ id, x1, y1, x2, y2 });
+    cajas.push({ ref:id, origen:"ia", bbox:p._bbox,
+                 rol: est.correcciones[id] ?? (p.equipo || "Desconocido"),
+                 original: p.equipo || "Desconocido" });
   }
-  $("cual").textContent = `${actual + 1} de ${muestras.length}  ·  ${(snap.t_ms/1000).toFixed(1)}s`;
-  $("reales").value = (respuestas[snap.t_ms]?.jugadores_reales) ?? 10;
-  pintarMarcados();
+  est.agregados.forEach((a, k) =>
+    cajas.push({ ref:"+" + k, origen:"humano", bbox:a.bbox, rol:a.rol, idx:k }));
+  recalcular();
 }
 
-lienzo.onclick = (e) => {
-  const r = lienzo.getBoundingClientRect();
-  const x = (e.clientX - r.left) * (lienzo.width / r.width);
-  const y = (e.clientY - r.top) * (lienzo.height / r.height);
-  // El más chico que contiene el click: con recuadros superpuestos, el de
-  // adentro es casi siempre el que se quiso marcar.
-  const dentro = cajas.filter(c => x >= c.x1 && x <= c.x2 && y >= c.y1 && y <= c.y2)
-                      .sort((a, b) => (a.x2-a.x1)*(a.y2-a.y1) - (b.x2-b.x1)*(b.y2-b.y1));
-  if(!dentro.length) return;
-  const id = dentro[0].id;
-  const snap = muestras[actual];
-  const resp = respuestas[snap.t_ms] ||= { jugadores_reales: +$("reales").value,
-                                           falsos: [], equipo_mal: [] };
-  const lista = modo === "falso" ? resp.falsos : resp.equipo_mal;
-  const k = lista.indexOf(id);
-  if(k >= 0) lista.splice(k, 1); else lista.push(id);
+function recalcular(){
+  const est = estado();
+  const personas = cajas.filter(c => c.rol !== NO_PERSONA && c.rol !== PELOTA).length;
+  if(est.reales == null) est.reales = personas;
+  $("reales").value = est.reales;
+  const cambiados = Object.keys(est.correcciones).length;
+  const sumados = est.agregados.length;
+  $("resumenInstante").textContent =
+    `${cajas.length} recuadros · ${cambiados} corregidos · ${sumados} agregados por vos`;
+}
+
+// ── Dibujo de los recuadros ────────────────────────────────────────────────
+function pintar(){
+  ctx.clearRect(0, 0, capa.width, capa.height);
+  for(const c of cajas){
+    const [x1, y1, x2, y2] = c.bbox;
+    const esSel = seleccion === c.ref;
+    const color = COLOR_ROL[c.rol] || "#facc15";
+    ctx.lineWidth = esSel ? 4 : (c.origen === "humano" ? 3 : 2);
+    ctx.strokeStyle = color;
+    if(c.rol === NO_PERSONA) ctx.setLineDash([6, 4]); else ctx.setLineDash([]);
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.setLineDash([]);
+    const etiqueta = c.origen === "humano" ? "+ " + c.rol : c.rol;
+    ctx.font = "bold 13px system-ui";
+    const w = ctx.measureText(etiqueta).width + 8;
+    ctx.fillStyle = "rgba(0,0,0,.72)";
+    ctx.fillRect(x1, Math.max(0, y1 - 17), w, 16);
+    ctx.fillStyle = color;
+    ctx.fillText(etiqueta, x1 + 4, Math.max(12, y1 - 5));
+    if(esSel){
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
+      ctx.strokeRect(x1 - 3, y1 - 3, x2 - x1 + 6, y2 - y1 + 6);
+    }
+  }
+  $("cual").textContent = `${actual + 1} de ${muestras.length} · ${(muestras[actual].t_ms/1000).toFixed(1)}s`;
+  $("seleccion").textContent = seleccion == null
+    ? "Nada seleccionado." : `Seleccionado: ${seleccion}. Elegí qué es.`;
+}
+
+// ── Interacción: click para seleccionar, arrastre para agregar ─────────────
+function aLienzo(e){
+  const r = capa.getBoundingClientRect();
+  return [(e.clientX - r.left) / escala, (e.clientY - r.top) / escala];
+}
+
+capa.onmousedown = (e) => {
+  const [x, y] = aLienzo(e);
+  const dentro = cajas.filter(c => x >= c.bbox[0] && x <= c.bbox[2] && y >= c.bbox[1] && y <= c.bbox[3])
+    .sort((a,b) => (a.bbox[2]-a.bbox[0])*(a.bbox[3]-a.bbox[1]) - (b.bbox[2]-b.bbox[0])*(b.bbox[3]-b.bbox[1]));
+  if(dentro.length){ seleccion = dentro[0].ref; pintar(); return; }
+  arrastre = { x0:x, y0:y, x1:x, y1:y };
+};
+
+capa.onmousemove = (e) => {
+  if(!arrastre) return;
+  [arrastre.x1, arrastre.y1] = aLienzo(e);
+  pintar();
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.setLineDash([5,4]);
+  ctx.strokeRect(Math.min(arrastre.x0, arrastre.x1), Math.min(arrastre.y0, arrastre.y1),
+                 Math.abs(arrastre.x1 - arrastre.x0), Math.abs(arrastre.y1 - arrastre.y0));
+  ctx.setLineDash([]);
+};
+
+capa.onmouseup = () => {
+  if(!arrastre) return;
+  const w = Math.abs(arrastre.x1 - arrastre.x0), h = Math.abs(arrastre.y1 - arrastre.y0);
+  const a = arrastre; arrastre = null;
+  if(w < 4 || h < 4){ seleccion = null; pintar(); return; }   // un click suelto, no una caja
+  const est = estado();
+  est.agregados.push({ bbox:[Math.min(a.x0,a.x1), Math.min(a.y0,a.y1),
+                             Math.max(a.x0,a.x1), Math.max(a.y0,a.y1)].map(v => +v.toFixed(1)),
+                       rol:"Propio" });
+  est.reales = null;                       // que se recalcule con la caja nueva
+  reconstruir();
+  seleccion = "+" + (est.agregados.length - 1);
   pintar();
 };
 
-function guardarActual(){
-  if(!muestras.length) return;
-  const snap = muestras[actual];
-  const resp = respuestas[snap.t_ms] ||= { falsos: [], equipo_mal: [] };
-  resp.jugadores_reales = +$("reales").value;
+// ── Roles ──────────────────────────────────────────────────────────────────
+function pintarRoles(){
+  $("roles").innerHTML = ROLES.map(r =>
+    `<button data-rol="${r.id}"><span class="pip" style="background:${r.color}"></span>
+     ${r.id}<span class="tecla">${r.tecla}</span></button>`).join("");
+  $("roles").querySelectorAll("[data-rol]").forEach(b =>
+    b.onclick = () => aplicarRol(b.dataset.rol));
 }
 
-function pintarMarcados(){
-  const resp = respuestas[muestras[actual].t_ms] || {};
-  const f = (resp.falsos || []).length, e = (resp.equipo_mal || []).length;
-  $("marcados").textContent = (f || e)
-    ? `${f} marcados como "no es jugador", ${e} con el equipo mal.`
-    : "Nada marcado en este instante.";
+function aplicarRol(rol){
+  if(seleccion == null) return;
+  const est = estado();
+  const c = cajas.find(x => x.ref === seleccion);
+  if(!c) return;
+  if(c.origen === "humano") est.agregados[c.idx].rol = rol;
+  else if(rol === c.original) delete est.correcciones[c.ref];   // volvió a lo que decía la IA
+  else est.correcciones[c.ref] = rol;
+  est.reales = null;
+  reconstruir();
+  pintar();
+  pintarBarra();
+}
+
+document.addEventListener("keydown", (e) => {
+  if(e.target.tagName === "INPUT") return;
+  const r = ROLES.find(x => x.tecla === e.key);
+  if(r){ aplicarRol(r.id); return; }
+  if(e.key === "ArrowRight") ir(actual + 1);
+  if(e.key === "ArrowLeft") ir(actual - 1);
+  if((e.key === "Delete" || e.key === "Backspace") && String(seleccion).startsWith("+")){
+    const est = estado();
+    est.agregados.splice(+String(seleccion).slice(1), 1);
+    seleccion = null; est.reales = null; reconstruir(); pintar();
+  }
+});
+
+function guardarActual(){
+  if(!muestras.length) return;
+  const est = estado();
+  est.reales = +$("reales").value;
 }
 
 function pintarBarra(){
-  $("barra").innerHTML = muestras.map((m, i) =>
-    `<span class="${respuestas[m.t_ms]?.jugadores_reales != null ? "hecho" : ""} ${
-      i === actual ? "actual" : ""}" data-i="${i}">${i + 1}</span>`).join("");
+  $("barra").innerHTML = muestras.map((m, i) => {
+    const r = respuestas[m.t_ms];
+    const tocado = r && (r.reales != null || Object.keys(r.correcciones).length || r.agregados.length);
+    return `<span class="${tocado ? "hecho" : ""} ${i === actual ? "actual" : ""}" data-i="${i}">${i+1}</span>`;
+  }).join("");
   $("barra").querySelectorAll("span").forEach(s => s.onclick = () => ir(+s.dataset.i));
 }
 
 $("siguiente").onclick = () => ir(actual + 1);
 $("anterior").onclick = () => ir(actual - 1);
 $("reales").onchange = () => { guardarActual(); pintarBarra(); };
-document.addEventListener("keydown", (e) => {
-  if(e.target.tagName === "INPUT") return;
-  if(e.key === "ArrowRight") ir(actual + 1);
-  if(e.key === "ArrowLeft") ir(actual - 1);
-});
-document.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
-  modo = b.dataset.modo;
-  document.querySelectorAll("[data-modo]").forEach(x => x.classList.toggle("on", x === b));
-});
+$("borrar").onclick = () => {
+  delete respuestas[muestras[actual].t_ms];
+  seleccion = null; reconstruir(); pintar(); pintarBarra();
+};
 
+// ── Guardar ────────────────────────────────────────────────────────────────
 $("guardar").onclick = async () => {
   guardarActual();
-  const instantes = Object.entries(respuestas)
-    .filter(([, r]) => r.jugadores_reales != null)
-    .map(([t_ms, r]) => ({ t_ms: +t_ms, jugadores_reales: r.jugadores_reales,
-                           falsos: r.falsos || [], equipo_mal: r.equipo_mal || [] }));
-  const contenido = { periodo: meta.periodo || "PT", instantes };
-  const nombre = `correcciones_${meta.periodo || "PT"}.json`;
+  const instantes = Object.entries(respuestas).map(([t_ms, r]) => ({
+    t_ms: +t_ms,
+    jugadores_reales: r.reales,
+    correcciones: Object.entries(r.correcciones).map(([track_ia, rol]) => ({ track_ia:+track_ia, rol })),
+    agregados: r.agregados,
+  })).filter(x => x.jugadores_reales != null);
+
+  const periodo = meta.periodo || "PT";
+  const contenido = { periodo, formato: 2, instantes };
+  const nombre = `correcciones_${periodo}.json`;
 
   if(location.protocol.startsWith("http")){
-    const r = await fetch("/api/guardar", {
-      method: "POST", headers: {"Content-Type": "application/json"},
+    const res = await fetch("/api/guardar", {
+      method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ nombre, contenido }),
     });
-    const d = await r.json();
+    const d = await res.json();
     $("resultado").innerHTML = d.error
       ? `<div class="aviso mal">${d.error}</div>`
-      : `<div class="aviso ok">Guardado en <code>${nombre}</code> (${instantes.length}
-         instantes).<br><br>Ahora, en la consola:<br>
-         <code>python -m futsal_ia.cli evaluar --analisis analisis_${meta.periodo || "PT"}.json
+      : `<div class="aviso ok">Guardado en <code>${nombre}</code> (${instantes.length} instantes).
+         <br><br>Ahora, en la consola:<br>
+         <code>python -m futsal_ia.cli evaluar --analisis analisis_${periodo}.json
          --correcciones ${nombre} --guardar medicion_1.json</code></div>`;
   } else {
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(contenido, null, 2)],
-             {type:"application/json"}));
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(contenido, null, 2)], {type:"application/json"}));
     a.download = nombre; a.click();
   }
 };

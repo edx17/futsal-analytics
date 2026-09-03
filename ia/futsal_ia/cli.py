@@ -195,15 +195,12 @@ def _cmd_frame(args):
 
 def _cmd_evaluar(args):
     """Cruza el análisis con lo que dijo una persona y saca los números."""
-    from .evaluacion import RevisionInstante, comparar, evaluar, veredicto
+    from .evaluacion import (cajas_etiquetadas, comparar, desde_json, evaluar,
+                             veredicto)
 
     analisis = _leer_json(args.analisis, "el análisis")
     corr = _leer_json(args.correcciones, "las correcciones")
-    revisiones = [RevisionInstante(
-        t_ms=int(r["t_ms"]), jugadores_reales=int(r["jugadores_reales"]),
-        falsos=r.get("falsos", []), equipo_mal=r.get("equipo_mal", []),
-        faltantes=int(r.get("faltantes", 0)),
-    ) for r in corr.get("instantes", [])]
+    revisiones = desde_json(corr)
 
     m = evaluar(analisis, revisiones)
     if not m.get("instantes"):
@@ -230,6 +227,13 @@ def _cmd_evaluar(args):
             print(f"  {clave:<16} {v['antes']:.3f} -> {v['despues']:.3f}  "
                   f"({v['delta']:+.3f})")
         print(f"\n  {c['veredicto']}")
+
+    cajas = cajas_etiquetadas(corr, analisis)
+    if cajas:
+        total = sum(len(c["cajas"]) for c in cajas)
+        a_mano = sum(1 for c in cajas for x in c["cajas"] if x["origen"] == "humano")
+        print(f"\n{total} cajas confirmadas en {len(cajas)} cuadros "
+              f"({a_mano} dibujadas a mano). Es material de entrenamiento.")
 
     if args.guardar:
         Path(args.guardar).write_text(

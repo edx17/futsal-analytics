@@ -43,6 +43,79 @@ class RevisionInstante:
     """Jugadores que estaban y no marcó. Se cuentan, no se ubican."""
 
 
+NO_PERSONA = "No es persona"
+PELOTA = "Pelota"
+
+
+def desde_json(datos: dict) -> list[RevisionInstante]:
+    """
+    Lee un correcciones.json, en cualquiera de los dos formatos.
+
+    El formato 1 solo guardaba conteos y listas de ids. El 2 guarda, por cada
+    recuadro corregido, QUÉ era en realidad, y las cajas que la persona dibujó
+    para lo que la IA no vio. Eso es lo que lo vuelve material de entrenamiento
+    y no solo un contador de errores.
+
+    Las métricas salen igual de los dos, así que las mediciones viejas se
+    siguen pudiendo comparar contra las nuevas.
+    """
+    salida = []
+    for r in datos.get("instantes", []):
+        if "correcciones" in r or "agregados" in r:
+            correcciones = r.get("correcciones", [])
+            # Un recuadro corregido a "No es persona" es un falso positivo.
+            # Corregido a otro rol, la detección estaba bien y el error fue de
+            # equipo: son cosas distintas y se arreglan distinto.
+            falsos = [c["track_ia"] for c in correcciones if c.get("rol") == NO_PERSONA]
+            equipo_mal = [c["track_ia"] for c in correcciones if c.get("rol") != NO_PERSONA]
+            # La pelota no es una persona: no entra en el conteo de jugadores.
+            faltantes = sum(1 for a in r.get("agregados", []) if a.get("rol") != PELOTA)
+        else:
+            falsos = r.get("falsos", [])
+            equipo_mal = r.get("equipo_mal", [])
+            faltantes = int(r.get("faltantes", 0))
+        salida.append(RevisionInstante(
+            t_ms=int(r["t_ms"]),
+            jugadores_reales=int(r["jugadores_reales"]),
+            falsos=falsos, equipo_mal=equipo_mal, faltantes=faltantes,
+        ))
+    return salida
+
+
+def cajas_etiquetadas(datos: dict, analisis: dict) -> list[dict]:
+    """
+    Todas las cajas confirmadas por una persona, listas para entrenar.
+
+    Junta las que la IA marcó y nadie desmintió, con el rol corregido cuando lo
+    hubo, más las que la persona dibujó a mano. Las marcadas como "No es
+    persona" quedan afuera: enseñarle al detector que ahí hay alguien sería
+    justamente el error que queremos sacarle.
+
+    Todavía no hay un comando de entrenamiento —primero hay que medir si hace
+    falta— pero el trabajo de revisar ya queda en la forma que ese paso pide.
+    """
+    por_t = {int(s["t_ms"]): s for s in analisis.get("snapshots", [])}
+    salida = []
+    for r in datos.get("instantes", []):
+        snap = por_t.get(int(r["t_ms"]))
+        if snap is None:
+            continue
+        corregido = {c["track_ia"]: c["rol"] for c in r.get("correcciones", [])}
+        cajas = []
+        for p in snap.get("posiciones", []):
+            if not p.get("_bbox"):
+                continue
+            rol = corregido.get(p.get("_track_ia"), p.get("equipo", "Desconocido"))
+            if rol == NO_PERSONA:
+                continue
+            cajas.append({"bbox": p["_bbox"], "rol": rol, "origen": "ia"})
+        for a in r.get("agregados", []):
+            cajas.append({"bbox": a["bbox"], "rol": a["rol"], "origen": "humano"})
+        if cajas:
+            salida.append({"t_ms": int(r["t_ms"]), "cajas": cajas})
+    return salida
+
+
 def evaluar(analisis: dict, revisiones: list[RevisionInstante]) -> dict:
     """
     Cruza el análisis con lo que dijo la persona y saca los números.
