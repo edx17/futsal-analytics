@@ -106,6 +106,13 @@ const $ = (id) => document.getElementById(id);
 const lienzo = $("lienzo"), ctx = lienzo.getContext("2d");
 const vid = document.createElement("video");
 vid.muted = true;
+vid.playsInline = true;
+// preload "auto" y el elemento colgado del DOM (aunque invisible): un <video>
+// detached no decodifica frames en varios navegadores, y drawImage copia negro
+// sin dar error. Este era el bug de la pantalla en negro.
+vid.preload = "auto";
+vid.style.cssText = "position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-10px;top:-10px";
+document.body.appendChild(vid);
 
 const COLOR = { "Propio":"#88ff00", "Rival":"#ef4444", "Arquero propio":"#00c8ff",
                 "Arquero rival":"#ff00c8", "Arbitro":"#a0a0a0", "Desconocido":"#facc15" };
@@ -174,8 +181,19 @@ function ir(i){
   actual = Math.max(0, Math.min(muestras.length - 1, i));
   const snap = muestras[actual];
   // El snapshot guarda tiempo de PERÍODO; el video corre en su propio reloj.
-  vid.currentTime = (snap.t_ms + (meta.t_saque_ms || 0)) / 1000;
-  vid.onseeked = pintar;
+  const objetivo = (snap.t_ms + (meta.t_saque_ms || 0)) / 1000;
+
+  // El evento 'seeked' avisa que el seek terminó, pero NO que el frame ya está
+  // decodificado y listo para copiar: dibujar ahí da negro. requestVideoFrame-
+  // Callback dispara exactamente cuando hay un frame nuevo presentado, que es
+  // justo lo que hace falta. Donde no exista, se cae a 'seeked' + dos rAF, que
+  // le da al decodificador un respiro antes de copiar.
+  if (typeof vid.requestVideoFrameCallback === "function") {
+    vid.requestVideoFrameCallback(() => pintar());
+  } else {
+    vid.onseeked = () => requestAnimationFrame(() => requestAnimationFrame(pintar));
+  }
+  vid.currentTime = objetivo;
   pintarBarra();
 }
 
