@@ -8,3 +8,7 @@ venv/
 # Salidas del análisis: pesan y se regeneran corriendo el pipeline.
 *.mp4
 analisis_*.json
+equipos_recortes/
+revision_cuadros/
+# Las correcciones a mano y las mediciones NO van acá: son diez minutos de
+# trabajo humano cada una y el material para entrenar el detector.

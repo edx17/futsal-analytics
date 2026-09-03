@@ -245,3 +245,87 @@ def test_los_recortes_se_sirven_solo_por_nombre_esperado(servidor, tmp_path, mon
                 assert r.status == 404
         except urllib.error.HTTPError as e:
             assert e.code == 404
+
+
+# ── Los cuadros para revisar ───────────────────────────────────────────────
+# El revisor ya no carga el video: pide imágenes que sacó el servidor. Lo que
+# se prueba acá es que no sirva la imagen equivocada ni archivos que no son
+# cuadros.
+
+def _dejar_cuadros(carpeta, periodo="PT"):
+    carpeta.mkdir(parents=True, exist_ok=True)
+    (carpeta / f"cuadro_{periodo}_000.jpg").write_bytes(b"\xff\xd8\xff jpg")
+    (carpeta / "indice.json").write_text(json.dumps({
+        "periodo": periodo,
+        "instantes": [{"t_ms": 0, "imagen": f"cuadro_{periodo}_000.jpg",
+                       "ancho": 100, "alto": 80, "desfase_ms": 0.0,
+                       "posiciones": []}],
+        "avisos": [],
+    }), encoding="utf-8")
+
+
+def test_sin_cuadros_el_revisor_se_entera(servidor, tmp_path, monkeypatch):
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    assert get(servidor, "/api/revision?periodo=PT") == {"existe": False}
+
+
+def test_los_cuadros_de_un_periodo_no_sirven_para_el_otro(servidor, tmp_path, monkeypatch):
+    """
+    Mostrar el cuadro del primer tiempo con los recuadros del segundo no se ve
+    roto: se ve como un detector que erra todo. Es peor que no mostrar nada.
+    """
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    _dejar_cuadros(tmp_path / panel.CARPETA_CUADROS, "PT")
+
+    d = get(servidor, "/api/revision?periodo=PT")
+    assert d["existe"] and len(d["indice"]["instantes"]) == 1
+
+    d = get(servidor, "/api/revision?periodo=ST")
+    assert d["existe"] is False and d["hay_de"] == "PT"
+
+
+def test_los_cuadros_se_sirven_como_imagen(servidor, tmp_path, monkeypatch):
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    _dejar_cuadros(tmp_path / panel.CARPETA_CUADROS)
+    with urllib.request.urlopen(
+            f"{servidor}/{panel.CARPETA_CUADROS}/cuadro_PT_000.jpg", timeout=5) as r:
+        assert r.status == 200
+        assert r.headers["Content-Type"] == "image/jpeg"
+
+
+def test_por_esa_carpeta_no_sale_cualquier_archivo(servidor, tmp_path, monkeypatch):
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    carpeta = tmp_path / panel.CARPETA_CUADROS
+    _dejar_cuadros(carpeta)
+    (carpeta / "secreto.txt").write_text("nada", encoding="utf-8")
+    for intento in ("secreto.txt", "../partido.json"):
+        try:
+            with urllib.request.urlopen(
+                    f"{servidor}/{panel.CARPETA_CUADROS}/{intento}", timeout=5) as r:
+                assert r.status == 404
+        except urllib.error.HTTPError as e:
+            assert e.code == 404
+
+
+def test_pedir_cuadros_sin_analisis_queda_en_error(servidor, tmp_path, monkeypatch):
+    """El caso real: se abre el revisor antes de haber corrido el análisis."""
+    monkeypatch.setattr(panel, "RAIZ", tmp_path)
+    codigo, d = post(servidor, "/api/cuadros", {"periodo": "PT"})
+    assert codigo == 200 and d["ok"]
+
+    for _ in range(60):
+        estado = get(servidor, "/api/estado")["trabajo"]
+        if estado["estado"] in ("error", "listo"):
+            break
+        time.sleep(0.1)
+    assert estado["estado"] == "error"
+    assert "analisis_PT.json" in estado["error"]
+
+
+def test_no_saca_cuadros_mientras_corre_un_analisis(servidor):
+    panel.TRABAJO.estado = "corriendo"
+    try:
+        codigo, d = post(servidor, "/api/cuadros", {"periodo": "PT"})
+        assert codigo == 409 and "corriendo" in d["error"]
+    finally:
+        panel.TRABAJO.estado = "libre"

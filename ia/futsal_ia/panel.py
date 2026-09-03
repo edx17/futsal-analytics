@@ -46,6 +46,8 @@ from .pipeline import (
     revisar_compatibilidad,
 )
 from .preproceso import Encuadre
+from .revision import CARPETA as CARPETA_CUADROS
+from .revision import exportar_cuadros
 from .salida import parse_tiempo
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -221,6 +223,43 @@ def _correr(datos: dict) -> None:
         t.estado = "error"
 
 
+def _correr_cuadros(datos: dict) -> None:
+    """
+    Sacar del video los cuadros a revisar. Va en un hilo como el análisis
+    porque son veinte búsquedas dentro de un archivo largo: con el video del
+    partido tarda bastante más de lo que un navegador espera una respuesta.
+    """
+    t = TRABAJO
+    try:
+        periodo = datos.get("periodo") or "PT"
+        archivo = RAIZ / f"analisis_{periodo}.json"
+        if not archivo.exists():
+            raise FileNotFoundError(
+                f"Todavía no hay {archivo.name}. Primero corré el análisis de "
+                f"ese período.")
+        analisis = json.loads(archivo.read_text(encoding="utf-8"))
+        meta = analisis.get("meta") or {}
+        video = Path(datos.get("video") or meta.get("video") or "")
+        if not video.exists():
+            raise FileNotFoundError(
+                f"No encuentro el video con el que se hizo el análisis: {video}")
+
+        t.log(f"Sacando los cuadros de {video.name} para revisar {periodo}...")
+        indice = exportar_cuadros(
+            video, analisis, RAIZ / CARPETA_CUADROS,
+            cuantos=int(datos.get("cuantos") or 20),
+            al_avanzar=lambda hechos, total: setattr(t, "frames", hechos))
+        for aviso in indice.get("avisos", []):
+            t.log("AVISO: " + aviso)
+        t.log(f"{len(indice['instantes'])} cuadros listos. Abrí el revisor.")
+        t.estado = "listo"
+    except Exception as e:                              # noqa: BLE001
+        t.error = f"{type(e).__name__}: {e}"
+        t.log("ERROR: " + t.error)
+        t.log(traceback.format_exc()[-1500:])
+        t.estado = "error"
+
+
 def _estado_archivos() -> dict:
     """Qué piezas ya están y cuáles faltan. Es la mitad del valor del panel."""
     def info(nombre):
@@ -303,6 +342,30 @@ class Panel(BaseHTTPRequestHandler):
                 return self._responder(archivo.read_bytes(), "image/png")
             return self._responder(b"no existe", "text/plain", 404)
 
+        if u.path == "/api/revision":
+            carpeta = RAIZ / CARPETA_CUADROS
+            indice = carpeta / "indice.json"
+            periodo = q.get("periodo", [""])[0]
+            if not indice.exists():
+                return self._json({"existe": False})
+            d = json.loads(indice.read_text(encoding="utf-8"))
+            # Los cuadros de un período no sirven para revisar el otro: mejor
+            # decir que no hay que mostrar la imagen equivocada con recuadros
+            # que no le corresponden.
+            if periodo and d.get("periodo") != periodo:
+                return self._json({"existe": False, "hay_de": d.get("periodo")})
+            return self._json({"existe": True, "indice": d})
+
+        if u.path.startswith("/" + CARPETA_CUADROS + "/"):
+            nombre = Path(u.path).name
+            archivo = RAIZ / CARPETA_CUADROS / nombre
+            permitido = (nombre.startswith("cuadro_") and nombre.endswith(".jpg")) \
+                or nombre == "indice.json"
+            if permitido and archivo.exists():
+                tipo = "image/jpeg" if nombre.endswith(".jpg") else "application/json"
+                return self._responder(archivo.read_bytes(), tipo)
+            return self._responder(b"no existe", "text/plain", 404)
+
         if u.path == "/api/carpeta":
             return self._json(_listar(q.get("ruta", [""])[0]))
 
@@ -359,6 +422,15 @@ class Panel(BaseHTTPRequestHandler):
             archivo.write_text(json.dumps(d, indent=2, ensure_ascii=False),
                                encoding="utf-8")
             return self._json({"ok": True, "equipo_por_grupo": d["equipo_por_grupo"]})
+
+        if u.path == "/api/cuadros":
+            with CANDADO:
+                if TRABAJO.estado == "corriendo":
+                    return self._json({"error": "ya hay algo corriendo"}, 409)
+                globals()["TRABAJO"] = Trabajo(
+                    estado="corriendo", periodo=datos.get("periodo", "PT"))
+            threading.Thread(target=_correr_cuadros, args=(datos,), daemon=True).start()
+            return self._json({"ok": True})
 
         if u.path == "/api/analizar":
             with CANDADO:

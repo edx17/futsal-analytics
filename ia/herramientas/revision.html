@@ -18,11 +18,11 @@
 
   #escena { background:#000; display:flex; align-items:center; justify-content:center;
             overflow:hidden; padding:8px; }
-  /* El video va VISIBLE y el canvas encima solo para los recuadros. Copiar el
-     frame a un canvas obliga a esperar a que el navegador lo decodifique, y
-     ahí es donde antes salía todo negro. Así lo dibuja el navegador solo. */
+  /* La imagen va visible y el canvas encima solo para los recuadros. Copiarla
+     a un canvas obligaría a esperar a que el navegador la decodifique, y ahí
+     es donde antes salía todo negro. Así la dibuja el navegador solo. */
   #marco { position:relative; overflow:hidden; background:#000; }
-  #marco video { position:absolute; left:0; top:0; }
+  #foto { position:absolute; left:0; top:0; display:block; }
   #capa { position:absolute; left:0; top:0; cursor:crosshair; }
 
   aside { border-left:1px solid var(--borde); background:var(--panel);
@@ -37,9 +37,9 @@
   button.primario { background:var(--acento); color:#000; border-color:var(--acento); }
   .fila { display:flex; gap:8px; margin-top:9px; align-items:center; flex-wrap:wrap; }
   label { display:block; font-size:12px; color:var(--tenue); margin:11px 0 5px; }
-  input[type=file] { width:100%; font-size:12px; }
-  input[type=number] { width:80px; padding:8px; border-radius:7px; border:1px solid var(--borde);
-    background:#0f0f13; color:var(--texto); font-size:19px; font-weight:700; text-align:center; }
+  select, input[type=number] { padding:8px; border-radius:7px; border:1px solid var(--borde);
+    background:#0f0f13; color:var(--texto); font-size:14px; }
+  input[type=number] { width:80px; font-size:19px; font-weight:700; text-align:center; }
   .nota { font-size:12px; color:var(--tenue); margin-top:8px; }
   .aviso { font-size:12.5px; padding:9px 11px; border-radius:7px; margin-top:10px; border:1px solid; }
   .aviso.ok { border-color:var(--acento); color:var(--acento); background:#0f2018; }
@@ -60,6 +60,8 @@
   .barra span.actual { outline:2px solid #fff; }
   code { background:#0f0f13; padding:1px 5px; border-radius:4px; font-size:12px; }
   .sel { font-size:12px; color:var(--acento); min-height:18px; margin-top:8px; }
+  pre.log { font-size:11px; color:var(--tenue); background:#0f0f13; padding:8px;
+            border-radius:6px; max-height:130px; overflow:auto; white-space:pre-wrap; }
 </style>
 </head>
 <body>
@@ -73,18 +75,25 @@
 <main>
   <div id="escena">
     <div id="marco">
-      <video id="vid" muted playsinline preload="auto"></video>
+      <img id="foto" alt="">
       <canvas id="capa"></canvas>
     </div>
   </div>
 
   <aside>
-    <div class="paso">Cargá</div>
-    <label>El video del partido</label>
-    <input type="file" id="fVideo" accept="video/*">
-    <label>El análisis (analisis_PT.json)</label>
-    <input type="file" id="fAnalisis" accept=".json">
+    <div class="paso">Período</div>
+    <div class="fila">
+      <select id="periodo">
+        <option value="PT">Primer tiempo</option>
+        <option value="ST">Segundo tiempo</option>
+      </select>
+      <button id="preparar">Preparar cuadros</button>
+    </div>
+    <p class="nota" style="margin-top:6px">Los cuadros los saca el servidor del mismo
+       video que analizó. El navegador solo muestra imágenes, así que no importa
+       el códec.</p>
     <div id="estado"></div>
+    <pre class="log" id="log" style="display:none"></pre>
 
     <div id="trabajo" style="display:none">
       <div class="paso">Instante <span id="cual"></span></div>
@@ -120,7 +129,7 @@
 
 <script>
 const $ = (id) => document.getElementById(id);
-const vid = $("vid"), capa = $("capa"), ctx = capa.getContext("2d"), marco = $("marco");
+const foto = $("foto"), capa = $("capa"), ctx = capa.getContext("2d"), marco = $("marco");
 
 // Los roles que se pueden marcar. "Pelota" y "No es persona" no son equipos:
 // el primero es material para la Fase 2 (hoy la pelota NO se detecta), el
@@ -136,105 +145,108 @@ const ROLES = [
 ];
 const COLOR_ROL = Object.fromEntries(ROLES.map(r => [r.id, r.color]));
 const NO_PERSONA = "No es persona", PELOTA = "Pelota";
-const CUANTOS = 20;
+const CARPETA = "revision_cuadros";
 
-let analisis = null, meta = {}, muestras = [], actual = 0;
+let muestras = [], periodo = "PT", actual = 0;
 let respuestas = {};      // t_ms -> { correcciones:{track:rol}, agregados:[{bbox,rol}], reales }
 let cajas = [];           // lo dibujado en este instante: {ref, bbox, rol, origen}
 let seleccion = null, escala = 1, arrastre = null;
-
-// ── Carga ──────────────────────────────────────────────────────────────────
-$("fAnalisis").onchange = (e) => {
-  const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    try { analisis = JSON.parse(r.result); }
-    catch { return aviso("mal", "Ese JSON no se puede leer."); }
-    meta = analisis.meta || {};
-    if(meta.t_saque_ms == null)
-      return aviso("mal", "Este análisis es de una versión vieja y no guarda con qué se corrió. Volvé a analizar.");
-    const snaps = (analisis.snapshots || []).filter(s => (s.posiciones || []).length);
-    if(!snaps.length) return aviso("mal", "El análisis no tiene snapshots con gente.");
-    const paso = Math.max(1, Math.floor(snaps.length / CUANTOS));
-    muestras = snaps.filter((_, i) => i % paso === 0).slice(0, CUANTOS);
-    respuestas = {}; actual = 0;
-    arrancar();
-  };
-  r.readAsText(f);
-};
-
-$("fVideo").onchange = (e) => {
-  const f = e.target.files[0]; if(!f) return;
-  vid.src = URL.createObjectURL(f);
-  // 'loadedmetadata' es el evento que garantiza videoWidth, y llega antes que
-  // 'loadeddata'. Se escuchan los dos: si por lo que sea uno no llega, el otro
-  // destraba igual. Antes se esperaba solo a 'loadeddata' y si no llegaba, la
-  // página se quedaba muda para siempre.
-  vid.onloadedmetadata = arrancar;
-  vid.onloadeddata = arrancar;
-  vid.onerror = () => aviso("mal",
-    "El navegador no pudo abrir ese video. Suele pasar con codecs que Chrome no " +
-    "reproduce (por ejemplo HEVC). Probá con el MP4 original, o convertilo a H.264.");
-  aviso("mal", "Cargando el video...");
-};
-
-function aviso(tipo, txt){
-  $("estado").innerHTML = `<div class="aviso ${tipo}">${txt}</div>`;
-}
-
-/* Por qué la página no arranca todavía, en castellano.
-
-   Antes esto era un `return` mudo: si faltaba algo, no se dibujaba nada y
-   tampoco se decía nada, así que una pantalla en negro podía ser el video sin
-   cargar, el JSON sin elegir o un error de JavaScript. Tres cosas distintas,
-   el mismo vacío. */
-function queFalta(){
-  if(!analisis) return "Falta elegir el analisis_PT.json.";
-  if(!vid.src) return "Falta elegir el video.";
-  if(!vid.videoWidth) return `El video todavía no abrió (readyState ${vid.readyState}). ` +
-    "Si se queda acá, el navegador no puede reproducir ese archivo.";
-  if(!muestras.length) return "El análisis no tiene instantes para revisar.";
-  return null;
-}
-
-function arrancar(){
-  const falta = queFalta();
-  if(falta) return aviso("mal", falta);
-  aviso("ok", `${muestras.length} instantes para revisar. Son unos diez minutos.`);
-  $("trabajo").style.display = "block";
-  pintarRoles();
-  ir(0);
-}
 
 // Cualquier error de JavaScript se muestra en pantalla. Sin esto, un error
 // deja la página en negro y no hay forma de saber qué pasó sin abrir la
 // consola del navegador.
 window.addEventListener("error", (e) => {
-  $("estado").innerHTML = `<div class="aviso mal"><strong>Se rompió algo.</strong><br>
-    ${e.message}<br><span style="opacity:.7">${(e.filename||"").split("/").pop()}:${e.lineno}</span></div>`;
+  $("estado").innerHTML = '<div class="aviso mal"><strong>Se rompió algo.</strong><br>' +
+    e.message + '<br><span style="opacity:.7">' +
+    (e.filename || "").split("/").pop() + ":" + e.lineno + "</span></div>";
 });
 
-// ── Encuadre y escala ──────────────────────────────────────────────────────
-function recorte(){
-  const e = meta.encuadre;
-  if(!e || !e.recorte) return [0, 0, vid.videoWidth, vid.videoHeight];
-  return e.recorte;
+function aviso(tipo, txt){
+  $("estado").innerHTML = '<div class="aviso ' + tipo + '">' + txt + "</div>";
 }
 
+// ── Carga ──────────────────────────────────────────────────────────────────
+/* Ya no se carga el video ni el JSON a mano. El servidor deja veinte JPG y un
+   indice.json con los recuadros de cada uno; esta página solo los pide.
+
+   Antes esta parte pedía el video del partido y lo hacía saltar de instante en
+   instante. Con un archivo que Chrome no sabe decodificar —H.265, el de la
+   GoPro— la página quedaba en negro para siempre, aunque el análisis hubiera
+   salido bien. Una imagen la muestra cualquier navegador. */
+async function cargarIndice(){
+  if(!location.protocol.startsWith("http")){
+    return aviso("mal", "Abrí esta página desde el panel " +
+      "(<code>python -m futsal_ia.panel</code> y después " +
+      "<code>http://127.0.0.1:8710/revision.html</code>). " +
+      "Sola, no puede pedirle los cuadros al servidor.");
+  }
+  periodo = $("periodo").value;
+  let d;
+  try {
+    d = await (await fetch("/api/revision?periodo=" + periodo)).json();
+  } catch(err){
+    return aviso("mal", "No pude hablar con el panel. ¿Sigue abierto? (" + err.message + ")");
+  }
+  if(!d.existe){
+    $("trabajo").style.display = "none";
+    const extra = d.hay_de
+      ? " (los que hay son del " + d.hay_de + ")"
+      : "";
+    return aviso("mal", "Todavía no hay cuadros para " + periodo + extra +
+      ". Apretá <strong>Preparar cuadros</strong>: tarda un rato porque busca " +
+      "veinte veces dentro del video.");
+  }
+  muestras = d.indice.instantes || [];
+  if(!muestras.length) return aviso("mal", "El índice no tiene instantes.");
+  respuestas = {}; actual = 0;
+  let txt = muestras.length + " instantes para revisar. Son unos diez minutos.";
+  for(const a of (d.indice.avisos || [])) txt += "<br>" + a;
+  aviso("ok", txt);
+  $("trabajo").style.display = "block";
+  pintarRoles();
+  ir(0);
+}
+
+$("periodo").onchange = cargarIndice;
+
+$("preparar").onclick = async () => {
+  $("preparar").disabled = true;
+  $("log").style.display = "block";
+  aviso("ok", "Sacando los cuadros del video...");
+  const res = await fetch("/api/cuadros", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ periodo: $("periodo").value }),
+  });
+  const d = await res.json();
+  if(d.error){ $("preparar").disabled = false; return aviso("mal", d.error); }
+  seguir();
+};
+
+async function seguir(){
+  const d = await (await fetch("/api/estado")).json();
+  const t = d.trabajo || {};
+  $("log").textContent = (t.mensajes || []).slice(-12).join("\n");
+  if(t.estado === "corriendo"){ setTimeout(seguir, 900); return; }
+  $("preparar").disabled = false;
+  if(t.estado === "error") return aviso("mal", t.error || "Falló.");
+  cargarIndice();
+}
+
+// ── Escala ─────────────────────────────────────────────────────────────────
+/* Los cuadros salen del servidor YA RECORTADOS al mismo encuadre del análisis,
+   así que las coordenadas de los recuadros valen tal cual sobre la imagen. No
+   hay recorte ni corrimiento que calcular acá. */
 function acomodar(){
-  const [rx, ry, rw, rh] = recorte();
+  const m = muestras[actual];
   const caja = $("escena").getBoundingClientRect();
-  escala = Math.min((caja.width - 20) / rw, (caja.height - 20) / rh, 1.6);
-  marco.style.width = (rw * escala) + "px";
-  marco.style.height = (rh * escala) + "px";
-  // El video se muestra entero pero corrido, y el marco recorta: así se ve
-  // exactamente el mismo cuadro que analizó el pipeline.
-  vid.style.width = (vid.videoWidth * escala) + "px";
-  vid.style.left = (-rx * escala) + "px";
-  vid.style.top = (-ry * escala) + "px";
-  capa.width = rw; capa.height = rh;                 // coordenadas del análisis
-  capa.style.width = (rw * escala) + "px";           // tamaño en pantalla
-  capa.style.height = (rh * escala) + "px";
+  escala = Math.min((caja.width - 20) / m.ancho, (caja.height - 20) / m.alto, 1.6);
+  marco.style.width = (m.ancho * escala) + "px";
+  marco.style.height = (m.alto * escala) + "px";
+  foto.style.width = (m.ancho * escala) + "px";
+  foto.style.height = (m.alto * escala) + "px";
+  capa.width = m.ancho; capa.height = m.alto;        // coordenadas del análisis
+  capa.style.width = (m.ancho * escala) + "px";      // tamaño en pantalla
+  capa.style.height = (m.alto * escala) + "px";
 }
 window.addEventListener("resize", () => { if(muestras.length){ acomodar(); pintar(); } });
 
@@ -244,8 +256,7 @@ function ir(i){
   guardarActual();
   actual = Math.max(0, Math.min(muestras.length - 1, i));
   seleccion = null;
-  // El snapshot guarda tiempo de PERÍODO; el video corre en su propio reloj.
-  vid.currentTime = (muestras[actual].t_ms + (meta.t_saque_ms || 0)) / 1000;
+  foto.src = "/" + CARPETA + "/" + muestras[actual].imagen;
   acomodar();
   reconstruir();
   pintar();
@@ -282,7 +293,7 @@ function recalcular(){
   const cambiados = Object.keys(est.correcciones).length;
   const sumados = est.agregados.length;
   $("resumenInstante").textContent =
-    `${cajas.length} recuadros · ${cambiados} corregidos · ${sumados} agregados por vos`;
+    cajas.length + " recuadros · " + cambiados + " corregidos · " + sumados + " agregados por vos";
 }
 
 // ── Dibujo de los recuadros ────────────────────────────────────────────────
@@ -309,9 +320,10 @@ function pintar(){
       ctx.strokeRect(x1 - 3, y1 - 3, x2 - x1 + 6, y2 - y1 + 6);
     }
   }
-  $("cual").textContent = `${actual + 1} de ${muestras.length} · ${(muestras[actual].t_ms/1000).toFixed(1)}s`;
+  $("cual").textContent = (actual + 1) + " de " + muestras.length +
+    " · " + (muestras[actual].t_ms / 1000).toFixed(1) + "s";
   $("seleccion").textContent = seleccion == null
-    ? "Nada seleccionado." : `Seleccionado: ${seleccion}. Elegí qué es.`;
+    ? "Nada seleccionado." : "Seleccionado: " + seleccion + ". Elegí qué es.";
 }
 
 // ── Interacción: click para seleccionar, arrastre para agregar ─────────────
@@ -356,8 +368,8 @@ capa.onmouseup = () => {
 // ── Roles ──────────────────────────────────────────────────────────────────
 function pintarRoles(){
   $("roles").innerHTML = ROLES.map(r =>
-    `<button data-rol="${r.id}"><span class="pip" style="background:${r.color}"></span>
-     ${r.id}<span class="tecla">${r.tecla}</span></button>`).join("");
+    '<button data-rol="' + r.id + '"><span class="pip" style="background:' + r.color + '"></span>' +
+    r.id + '<span class="tecla">' + r.tecla + "</span></button>").join("");
   $("roles").querySelectorAll("[data-rol]").forEach(b =>
     b.onclick = () => aplicarRol(b.dataset.rol));
 }
@@ -377,7 +389,7 @@ function aplicarRol(rol){
 }
 
 document.addEventListener("keydown", (e) => {
-  if(e.target.tagName === "INPUT") return;
+  if(e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
   const r = ROLES.find(x => x.tecla === e.key);
   if(r){ aplicarRol(r.id); return; }
   if(e.key === "ArrowRight") ir(actual + 1);
@@ -404,7 +416,8 @@ function pintarBarra(){
   $("barra").innerHTML = muestras.map((m, i) => {
     const r = respuestas[m.t_ms];
     const tocado = r && (r.reales != null || Object.keys(r.correcciones).length || r.agregados.length);
-    return `<span class="${tocado ? "hecho" : ""} ${i === actual ? "actual" : ""}" data-i="${i}">${i+1}</span>`;
+    return '<span class="' + (tocado ? "hecho" : "") + " " + (i === actual ? "actual" : "") +
+           '" data-i="' + i + '">' + (i + 1) + "</span>";
   }).join("");
   $("barra").querySelectorAll("span").forEach(s => s.onclick = () => ir(+s.dataset.i));
 }
@@ -427,28 +440,29 @@ $("guardar").onclick = async () => {
     agregados: r.agregados,
   })).filter(x => x.jugadores_reales != null);
 
-  const periodo = meta.periodo || "PT";
   const contenido = { periodo, formato: 2, instantes };
-  const nombre = `correcciones_${periodo}.json`;
+  const nombre = "correcciones_" + periodo + ".json";
 
-  if(location.protocol.startsWith("http")){
-    const res = await fetch("/api/guardar", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ nombre, contenido }),
-    });
-    const d = await res.json();
-    $("resultado").innerHTML = d.error
-      ? `<div class="aviso mal">${d.error}</div>`
-      : `<div class="aviso ok">Guardado en <code>${nombre}</code> (${instantes.length} instantes).
-         <br><br>Ahora, en la consola:<br>
-         <code>python -m futsal_ia.cli evaluar --analisis analisis_${periodo}.json
-         --correcciones ${nombre} --guardar medicion_1.json</code></div>`;
-  } else {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(contenido, null, 2)], {type:"application/json"}));
-    a.download = nombre; a.click();
-  }
+  const res = await fetch("/api/guardar", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ nombre, contenido }),
+  });
+  const d = await res.json();
+  $("resultado").innerHTML = d.error
+    ? '<div class="aviso mal">' + d.error + "</div>"
+    : '<div class="aviso ok">Guardado en <code>' + nombre + "</code> (" +
+      instantes.length + " instantes).<br><br>Ahora, en la consola:<br>" +
+      "<code>python -m futsal_ia.cli evaluar --analisis analisis_" + periodo +
+      ".json --correcciones " + nombre + " --guardar medicion_1.json</code></div>";
 };
+
+// El panel abre esta página con ?periodo=ST cuando lo que acaba de analizar es
+// el segundo tiempo. Sin esto arrancaba siempre en PT y los cuadros "no
+// existían" sin explicación.
+const pedido = new URLSearchParams(location.search).get("periodo");
+if(pedido === "PT" || pedido === "ST") $("periodo").value = pedido;
+
+cargarIndice();
 </script>
 </body>
 </html>

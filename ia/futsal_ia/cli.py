@@ -193,6 +193,42 @@ def _cmd_frame(args):
     return 0
 
 
+def _cmd_cuadros(args):
+    """
+    Saca del video los cuadros a revisar, ya recortados.
+
+    El visor antes cargaba el video entero. Eso ataba la revisión a que el
+    navegador supiera reproducir ese archivo, y Chrome no reproduce varios
+    códecs que OpenCV sí lee. Con los cuadros como imágenes, el visor anda con
+    cualquier video que el análisis haya podido leer.
+    """
+    from .revision import CARPETA, exportar_cuadros
+
+    analisis = _leer_json(args.analisis, "el análisis")
+    video = args.video or (analisis.get("meta") or {}).get("video")
+    if not video:
+        print("ERROR: este análisis no dice de qué video salió. "
+              "Pasá --video.", file=sys.stderr)
+        return 1
+    if not Path(video).exists():
+        print(f"ERROR: no existe el video: {video}", file=sys.stderr)
+        return 1
+
+    destino = Path(args.salida or (Path(args.analisis).parent / CARPETA))
+    try:
+        indice = exportar_cuadros(video, analisis, destino, cuantos=args.cuantos)
+    except (ValueError, FileNotFoundError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+
+    print(f"{len(indice['instantes'])} cuadros en {destino}")
+    for aviso in indice.get("avisos", []):
+        print("AVISO: " + aviso)
+    print("Ahora abrí el revisor: python -m futsal_ia.panel "
+          "y entrá a http://127.0.0.1:8710/revision.html")
+    return 0
+
+
 def _cmd_evaluar(args):
     """Cruza el análisis con lo que dijo una persona y saca los números."""
     from .evaluacion import (cajas_etiquetadas, comparar, desde_json, evaluar,
@@ -710,6 +746,14 @@ def main(argv=None):
     f.add_argument("--en", default="2:00", help="momento del video, como 'mm:ss'")
     f.add_argument("--salida", default="frame.png")
     f.set_defaults(func=_cmd_frame)
+
+    cu = sub.add_parser("cuadros",
+                        help="saca del video los cuadros a revisar (para el revisor)")
+    cu.add_argument("--analisis", required=True)
+    cu.add_argument("--video", help="por defecto, el que dice el análisis")
+    cu.add_argument("--salida", help="carpeta destino (por defecto revision_cuadros)")
+    cu.add_argument("--cuantos", type=int, default=20)
+    cu.set_defaults(func=_cmd_cuadros)
 
     ev = sub.add_parser("evaluar", help="qué tan bien anda, contra lo que dijo una persona")
     ev.add_argument("--analisis", required=True)

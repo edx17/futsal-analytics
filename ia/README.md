@@ -299,7 +299,22 @@ No se puede saber si un cambio suma sin un número contra el cual compararlo.
 `herramientas/revision.html` (botón "Revisar y corregir" en el panel) muestra
 unos veinte instantes del análisis con los recuadros dibujados: se dice cuánta
 gente hay realmente, se clickean los recuadros que no son jugadores y los que
-tienen el equipo mal. Son unos diez minutos por partido.
+tienen el equipo mal. Con las teclas 1 a 6 y 0 se marca qué es cada uno
+—propio, rival, arqueros, árbitro, pelota, o directamente no es una persona— y
+arrastrando sobre la imagen se agrega lo que la IA no vio. Son unos diez
+minutos por partido.
+
+El visor **no carga el video**: los cuadros los saca el servidor con OpenCV y
+los deja como JPG ya recortados al mismo encuadre del análisis. Antes cargaba
+el video del partido y ahí se rompía todo, porque Chrome no decodifica H.265
+—el códec de la GoPro— y la página quedaba en negro aunque el análisis hubiera
+salido perfecto. Ahora el navegador solo muestra imágenes, que muestra
+cualquiera. La primera vez hay que apretar "Preparar cuadros" y esperar; o
+desde la consola:
+
+```bash
+python -m futsal_ia.cli cuadros --analisis analisis_PT.json
+```
 
 ```bash
 python -m futsal_ia.cli evaluar --analisis analisis_PT.json \
@@ -332,8 +347,10 @@ Honestidad sobre qué está probado de verdad:
 | `preproceso.py` | **Verificado.** 14 tests del giro y recorte determinista |
 | `herramientas/calibrador.html` | **Sin ejecutar en navegador.** Tests que verifican que su lista de puntos no se desincronice de `cancha.py` y que no dependa de ningún CDN |
 | `herramientas/verificador.html` | **Sin ejecutar en navegador.** Ídem, sobre las coordenadas en metros de la cancha |
-| `panel.py` | **Verificado.** 14 tests contra un servidor real: ruteo, estado del trabajo, explorador y la lista blanca de archivos |
+| `panel.py` | **Verificado.** 20 tests contra un servidor real: ruteo, estado del trabajo, explorador y las listas blancas de archivos |
+| `revision.py` | **Verificado.** 13 tests, con video de verdad: cada cuadro se pinta de un gris igual a su número, así que leyendo el brillo se comprueba que salió del instante que dice |
 | `herramientas/panel.html` | **Sin ejecutar en navegador.** |
+| `herramientas/revision.html` | **Corrido en Chromium.** Se abrió con Playwright contra el panel real: carga los cuadros, dibuja los recuadros encima, se marcan roles y se guardan las correcciones |
 | `herramientas/partido.html` | **Sin ejecutar en navegador.** Tests que verifican que el `partido.json` que baja tenga las claves que el CLI lee y genere el comando que el CLI entiende |
 | `deteccion.py` | **Parcial.** El partido en mosaicos y la fusión están verificados (11 tests); el detector en sí necesita GPU y los pesos |
 | `seguimiento_cancha.py` | **Verificado.** 13 tests: cruces, oclusiones, velocidad. Diez jugadores dos minutos con 40% de oclusión dan diez identidades |

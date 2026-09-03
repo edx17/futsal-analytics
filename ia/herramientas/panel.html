@@ -244,7 +244,7 @@ async function refrescar(){
       </div>
       <div class="fila" style="margin-top:12px">
         ${trabajo.overlay ? `<a class="boton primario" href="/${trabajo.overlay}" target="_blank">Ver el video de auditoría</a>` : ""}
-        <a class="boton" href="/revision.html" target="_blank">Revisar y corregir</a>
+        <a class="boton" href="/revision.html?periodo=${trabajo.periodo}" target="_blank">Revisar y corregir</a>
         ${trabajo.salida ? `<a class="boton" href="/${trabajo.salida}" target="_blank">Ver el JSON</a>` : ""}
       </div>
       <p class="sub" style="margin-top:12px">Mirá el overlay antes de creerle a
