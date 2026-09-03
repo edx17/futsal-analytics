@@ -166,18 +166,53 @@ $("fAnalisis").onchange = (e) => {
 $("fVideo").onchange = (e) => {
   const f = e.target.files[0]; if(!f) return;
   vid.src = URL.createObjectURL(f);
+  // 'loadedmetadata' es el evento que garantiza videoWidth, y llega antes que
+  // 'loadeddata'. Se escuchan los dos: si por lo que sea uno no llega, el otro
+  // destraba igual. Antes se esperaba solo a 'loadeddata' y si no llegaba, la
+  // página se quedaba muda para siempre.
+  vid.onloadedmetadata = arrancar;
   vid.onloadeddata = arrancar;
+  vid.onerror = () => aviso("mal",
+    "El navegador no pudo abrir ese video. Suele pasar con codecs que Chrome no " +
+    "reproduce (por ejemplo HEVC). Probá con el MP4 original, o convertilo a H.264.");
+  aviso("mal", "Cargando el video...");
 };
 
-const aviso = (tipo, txt) => $("estado").innerHTML = `<div class="aviso ${tipo}">${txt}</div>`;
+function aviso(tipo, txt){
+  $("estado").innerHTML = `<div class="aviso ${tipo}">${txt}</div>`;
+}
+
+/* Por qué la página no arranca todavía, en castellano.
+
+   Antes esto era un `return` mudo: si faltaba algo, no se dibujaba nada y
+   tampoco se decía nada, así que una pantalla en negro podía ser el video sin
+   cargar, el JSON sin elegir o un error de JavaScript. Tres cosas distintas,
+   el mismo vacío. */
+function queFalta(){
+  if(!analisis) return "Falta elegir el analisis_PT.json.";
+  if(!vid.src) return "Falta elegir el video.";
+  if(!vid.videoWidth) return `El video todavía no abrió (readyState ${vid.readyState}). ` +
+    "Si se queda acá, el navegador no puede reproducir ese archivo.";
+  if(!muestras.length) return "El análisis no tiene instantes para revisar.";
+  return null;
+}
 
 function arrancar(){
-  if(!analisis || !vid.src || !vid.videoWidth) return;
+  const falta = queFalta();
+  if(falta) return aviso("mal", falta);
   aviso("ok", `${muestras.length} instantes para revisar. Son unos diez minutos.`);
   $("trabajo").style.display = "block";
   pintarRoles();
   ir(0);
 }
+
+// Cualquier error de JavaScript se muestra en pantalla. Sin esto, un error
+// deja la página en negro y no hay forma de saber qué pasó sin abrir la
+// consola del navegador.
+window.addEventListener("error", (e) => {
+  $("estado").innerHTML = `<div class="aviso mal"><strong>Se rompió algo.</strong><br>
+    ${e.message}<br><span style="opacity:.7">${(e.filename||"").split("/").pop()}:${e.lineno}</span></div>`;
+});
 
 // ── Encuadre y escala ──────────────────────────────────────────────────────
 function recorte(){
@@ -356,8 +391,13 @@ document.addEventListener("keydown", (e) => {
 
 function guardarActual(){
   if(!muestras.length) return;
-  const est = estado();
-  est.reales = +$("reales").value;
+  // Solo si hay un número escrito. El campo arranca vacío, y `+"" === 0`:
+  // sin este chequeo, el primer instante quedaba guardado con cero personas
+  // apenas se abría la página, y después nunca se recalculaba porque ya
+  // "tenía" un valor.
+  const v = $("reales").value;
+  if(v === "" || v == null) return;
+  estado().reales = +v;
 }
 
 function pintarBarra(){

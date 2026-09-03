@@ -348,12 +348,16 @@ espejados. El resto se prueba recién con el primer partido filmado.
 
 ```bash
 pip install pytest pyflakes
-python -m pytest tests/ -q     # 251 tests, sin GPU ni video
+python -m pytest tests/ -q     # 263 tests, sin GPU ni video
 ```
 
-Uno de esos tests corre `pyflakes` sobre el paquete y falla si hay un nombre
-usado sin definir. Está por un caso real: el panel llamaba a una función que no
-había importado, y reventaba recién al llegar a esa línea —en un hilo, dos
+Dos de esos tests son guardianes de errores que ya pasaron: uno corre
+`pyflakes` sobre el paquete y falla si hay un nombre usado sin definir; el otro
+pasa el JavaScript de cada herramienta HTML por `node --check`, porque un error
+de sintaxis ahí no rompe una línea sino el archivo entero, y la página queda en
+negro sin decir nada.
+
+El primero está por un caso real: el panel llamaba a una función que no había importado, y reventaba recién al llegar a esa línea —en un hilo, dos
 horas después de arrancar— porque ningún test la ejecutaba. pyflakes lo
 encuentra sin correr nada.
 
