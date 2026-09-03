@@ -351,6 +351,43 @@ python -m futsal_ia.cli evaluar ... --contra medicion_1.json
 
 y te dice si mejoró o empeoró, en vez de opinar.
 
+**La revisión se hace una vez y sirve para siempre** (formato 3). Guarda la
+verdad como cajas —dónde estaba cada uno y qué era—, no como "el track 3 estaba
+mal". La diferencia importa: al volver a analizar con otros parámetros los
+tracks se renumeran, así que una revisión atada a números de track solo mide la
+corrida que tenías enfrente, y cada cambio obligaría a revisar todo de nuevo.
+Con cajas, se emparejan por solapamiento y la misma revisión mide cualquier
+corrida del mismo video. Correcciones viejas:
+
+```bash
+python -m futsal_ia.cli migrar-correcciones --correcciones correcciones_PT.json
+```
+
+## Quién es quién, con evidencia
+
+Asignar los grupos de color a mano es un click por grupo y parece trivial. Es
+el punto donde un error cuesta más: un grupo sin asignar hace que TODAS sus
+detecciones salgan como Desconocido, y un grupo con el rol equivocado las hace
+salir mal con cara de estar bien. Nada de eso se ve mirando los recortes.
+
+En el primer partido real pasó: de 164 detecciones revisadas, 66 cayeron en
+grupos sin asignar y la IA nunca dijo "Rival" ni una vez, con 43 rivales en
+cancha.
+
+```bash
+python -m futsal_ia.cli equipos-desde-revision --correcciones correcciones_PT.json
+```
+
+Toma las cajas que ya etiquetaste en la revisión, les saca el color del torso
+—con la misma función que usó el análisis, de los JPG que ya están en disco— y
+vota. Doscientas muestras contra siete recortes mirados a ojo. Muestra qué
+haría; con `--aplicar` lo escribe.
+
+De paso mide algo que el ojo no puede: la pureza de cada grupo. Un grupo mitad
+propio y mitad rival no está mal asignado, es un color que no separa, y eso no
+se arregla asignando. Los grupos mezclados quedan en Desconocido a propósito;
+los que no tienen evidencia suficiente no se tocan.
+
 Esas mismas correcciones son el material de entrenamiento para afinar el
 detector más adelante: el trabajo de revisar no se tira.
 
@@ -368,6 +405,8 @@ Honestidad sobre qué está probado de verdad:
 | `herramientas/calibrador.html` | **Sin ejecutar en navegador.** Tests que verifican que su lista de puntos no se desincronice de `cancha.py` y que no dependa de ningún CDN |
 | `herramientas/verificador.html` | **Sin ejecutar en navegador.** Ídem, sobre las coordenadas en metros de la cancha |
 | `panel.py` | **Verificado.** 20 tests contra un servidor real: ruteo, estado del trabajo, explorador y las listas blancas de archivos |
+| `asignacion.py` | **Verificado.** 17 tests: votación, pureza, grupos mezclados y el color leído de un JPG real |
+| `evaluacion.py` | **Verificado.** 41 tests. El emparejamiento por solapamiento se prueba con dos corridas de tracks distintos sobre la misma revisión |
 | `revision.py` | **Verificado.** 13 tests, con video de verdad: cada cuadro se pinta de un gris igual a su número, así que leyendo el brillo se comprueba que salió del instante que dice |
 | `herramientas/panel.html` | **Sin ejecutar en navegador.** |
 | `herramientas/revision.html` | **Corrido en Chromium.** Se abrió con Playwright contra el panel real: carga los cuadros, dibuja los recuadros encima, se marcan roles y se guardan las correcciones |

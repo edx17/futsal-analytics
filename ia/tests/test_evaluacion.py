@@ -316,3 +316,195 @@ def test_la_lista_de_jugadores_no_se_desincroniza_del_overlay():
     """Dos copias de la misma verdad: si una cambia, la otra tiene que cambiar."""
     from futsal_ia.overlay import JUGADORES as DEL_OVERLAY
     assert JUGADORES == DEL_OVERLAY
+
+
+# ── Medir por geometría (formato 3) ────────────────────────────────────────
+# Los formatos 1 y 2 guardaban "el track 3 estaba mal". Al volver a analizar
+# con otros parámetros el track 3 es otra persona, así que los diez minutos de
+# revisión servían para medir UNA corrida: la que se tenía enfrente. Con eso, el
+# ciclo de medir -> cambiar -> volver a medir no existe.
+
+import pytest  # noqa: E402
+
+from futsal_ia.evaluacion import _iou, medir, verdad_de  # noqa: E402
+
+
+def _con_verdad(detecciones, verdad, contados=None):
+    """detecciones: (bbox, equipo). verdad: (bbox, rol)."""
+    analisis = {"snapshots": [{"t_ms": 0, "posiciones": [
+        {"_track_ia": i, "_bbox": b, "equipo": eq}
+        for i, (b, eq) in enumerate(detecciones, 1)]}]}
+    datos = {"formato": 3, "instantes": [{
+        "t_ms": 0,
+        "jugadores_reales": contados if contados is not None else
+                            sum(1 for _, r in verdad if r in JUGADORES),
+        "verdad": [{"bbox": b, "rol": r} for b, r in verdad],
+    }]}
+    return analisis, datos
+
+
+def test_el_solapamiento_se_calcula_bien():
+    assert _iou([0, 0, 10, 10], [0, 0, 10, 10]) == 1.0
+    assert _iou([0, 0, 10, 10], [20, 20, 30, 30]) == 0.0
+    assert _iou([0, 0, 10, 10], [5, 0, 15, 10]) == pytest.approx(1 / 3)
+
+
+def test_la_misma_verdad_mide_dos_corridas_distintas():
+    """
+    La regresión que motivó todo esto. Dos análisis del mismo momento, con los
+    tracks numerados distinto —como pasa siempre al re-analizar— y la misma
+    revisión. Los números tienen que reflejar cada corrida, no la vieja.
+    """
+    verdad = [([0, 0, 10, 20], "Propio"), ([30, 0, 40, 20], "Rival")]
+    mal, datos = _con_verdad([([0, 0, 10, 20], "Propio"),
+                              ([30, 0, 40, 20], "Desconocido")], verdad)
+    bien, _ = _con_verdad([([30, 0, 40, 20], "Rival"),      # otro orden,
+                           ([0, 0, 10, 20], "Propio")], verdad)  # otros ids
+
+    assert medir(mal, datos)["acierto_equipo"] == 0.5
+    assert medir(bien, datos)["acierto_equipo"] == 1.0
+    assert medir(bien, datos)["recall"] == 1.0
+
+
+def test_un_jugador_que_no_se_detecto_baja_el_recall():
+    verdad = [([0, 0, 10, 20], "Propio"), ([30, 0, 40, 20], "Rival")]
+    analisis, datos = _con_verdad([([0, 0, 10, 20], "Propio")], verdad)
+    m = medir(analisis, datos)
+    assert m["recall"] == 0.5 and m["faltantes"] == 1
+    assert m["precision"] == 1.0        # lo que marcó, lo marcó bien
+
+
+def test_un_arbitro_detectado_no_cuenta_como_jugador_encontrado():
+    """
+    El recuadro está bien puesto —ahí hay una persona— pero no es un jugador.
+    Aguas abajo entra en la posesión y en el mapa de calor, así que es un
+    falso positivo, no un acierto.
+    """
+    verdad = [([0, 0, 10, 20], "Propio"), ([30, 0, 40, 20], "Arbitro")]
+    analisis, datos = _con_verdad([([0, 0, 10, 20], "Propio"),
+                                   ([30, 0, 40, 20], "Propio")], verdad)
+    m = medir(analisis, datos)
+    assert m["jugadores_reales"] == 1
+    assert m["recall"] == 1.0
+    assert m["precision"] == 0.5 and m["falsos_positivos"] == 1
+
+
+def test_un_recuadro_donde_nadie_etiqueto_nada_se_avisa():
+    """
+    Puede ser basura, o puede ser un jugador que esta corrida encontró y la
+    revisión no llegó a marcar. Son cosas opuestas y no se distinguen, así que
+    se cuenta del lado pesimista y se avisa.
+    """
+    verdad = [([0, 0, 10, 20], "Propio")]
+    analisis, datos = _con_verdad([([0, 0, 10, 20], "Propio"),
+                                   ([90, 90, 99, 110], "Rival")], verdad)
+    m = medir(analisis, datos)
+    assert m["falsos_positivos"] == 1
+    assert m["detecciones_sin_etiqueta"] == 1
+
+
+def test_un_recuadro_corrido_no_cuenta_como_el_mismo_jugador():
+    verdad = [([0, 0, 10, 20], "Propio")]
+    analisis, datos = _con_verdad([([200, 200, 210, 220], "Propio")], verdad)
+    m = medir(analisis, datos)
+    assert m["recall"] == 0.0 and m["falsos_positivos"] == 1
+
+
+def test_si_alguien_conto_mas_de_los_que_dibujo_se_avisa():
+    """A un jugador que nadie marcó no se lo puede encontrar: el recall miente."""
+    verdad = [([0, 0, 10, 20], "Propio")]
+    analisis, datos = _con_verdad([([0, 0, 10, 20], "Propio")], verdad, contados=10)
+    assert medir(analisis, datos)["descuadre_conteo"] == 9
+
+
+def test_las_correcciones_viejas_se_siguen_leyendo_pero_avisan():
+    """
+    Que sigan sirviendo es importante: son diez minutos de trabajo humano. Que
+    avisen también, porque miden una sola corrida y eso no se ve en el número.
+    """
+    analisis = {"snapshots": [{"t_ms": 0, "posiciones": [
+        {"_track_ia": 1, "_bbox": [0, 0, 1, 1], "equipo": "Propio"}]}]}
+    viejo = {"formato": 2, "instantes": [{
+        "t_ms": 0, "jugadores_reales": 1,
+        "correcciones": [{"track_ia": 1, "rol": "Rival"}], "agregados": []}]}
+    m = medir(analisis, viejo)
+    assert m["instantes"] == 1
+    assert not m.get("geometrica")
+    assert "NO otra" in m["aviso_formato"]
+    assert verdad_de(viejo) == {}
+
+
+def test_la_matriz_tambien_se_arma_por_geometria():
+    verdad = [([0, 0, 10, 20], "Rival"), ([30, 0, 40, 20], "Rival")]
+    analisis, datos = _con_verdad([([0, 0, 10, 20], "Propio"),
+                                   ([30, 0, 40, 20], "Propio")], verdad)
+    mc = matriz_confusion(analisis, datos)
+    assert mc["geometrica"] and mc["conteo"]["Propio|Rival"] == 2
+
+
+# ── Migrar correcciones viejas ─────────────────────────────────────────────
+# Diez minutos de trabajo humano por partido no se tiran porque el formato haya
+# cambiado. Lo que le falta al formato viejo está en el análisis que se revisó.
+
+from futsal_ia.evaluacion import NoEsElMismoAnalisis, a_formato_3  # noqa: E402
+
+_ANALISIS_REVISADO = {"snapshots": [{"t_ms": 0, "posiciones": [
+    {"_track_ia": 1, "_bbox": [0, 0, 10, 20], "equipo": "Propio"},
+    {"_track_ia": 2, "_bbox": [30, 0, 40, 20], "equipo": "Propio"},
+]}]}
+_VIEJAS = {"formato": 2, "instantes": [{
+    "t_ms": 0, "jugadores_reales": 3,
+    "correcciones": [{"track_ia": 2, "rol": "Rival"}],
+    "agregados": [{"bbox": [60, 0, 70, 20], "rol": "Arquero rival"}],
+}]}
+
+
+def test_la_revision_vieja_se_recupera_entera():
+    d = a_formato_3(_ANALISIS_REVISADO, _VIEJAS)
+    verdad = d["instantes"][0]["verdad"]
+    assert len(verdad) == 3
+    assert verdad[0] == {"bbox": [0, 0, 10, 20], "rol": "Propio"}   # sin corregir
+    assert verdad[1] == {"bbox": [30, 0, 40, 20], "rol": "Rival"}   # corregido
+    assert verdad[2] == {"bbox": [60, 0, 70, 20], "rol": "Arquero rival"}  # a mano
+
+
+def test_lo_migrado_mide_igual_que_lo_original():
+    """Si la conversión cambiara los números, no sería una conversión."""
+    antes = medir(_ANALISIS_REVISADO, _VIEJAS)
+    despues = medir(_ANALISIS_REVISADO, a_formato_3(_ANALISIS_REVISADO, _VIEJAS))
+    for k in ("jugadores_reales", "detectados", "recall", "acierto_equipo"):
+        assert antes[k] == despues[k], k
+
+
+def test_migrar_con_el_analisis_equivocado_se_niega():
+    """
+    Con otra corrida, cada número de track apunta a otra persona y saldría una
+    verdad inventada. Eso es peor que no tener ninguna: se ve igual de bien.
+    """
+    otro = {"snapshots": [{"t_ms": 0, "posiciones": [
+        {"_track_ia": 77, "_bbox": [0, 0, 10, 20], "equipo": "Propio"}]}]}
+    with pytest.raises(NoEsElMismoAnalisis, match="otra corrida"):
+        a_formato_3(otro, _VIEJAS)
+
+
+def test_migrar_algo_que_ya_esta_migrado_no_hace_nada():
+    ya = {"formato": 3, "instantes": [{"t_ms": 0, "jugadores_reales": 1,
+                                       "verdad": [{"bbox": [0, 0, 1, 1], "rol": "Propio"}]}]}
+    assert a_formato_3(_ANALISIS_REVISADO, ya) is ya
+
+
+def test_un_analisis_de_otro_partido_se_niega():
+    with pytest.raises(NoEsElMismoAnalisis, match="Ninguno"):
+        a_formato_3({"snapshots": [{"t_ms": 999999, "posiciones": []}]}, _VIEJAS)
+
+
+def test_el_indice_de_la_revision_sirve_igual_que_el_analisis():
+    """
+    Y es la fuente correcta: es el registro de lo que la persona miró, no una
+    corrida que puede o no ser la misma.
+    """
+    indice = {"periodo": "PT", "instantes": [
+        {"t_ms": 0, "imagen": "c.jpg", "posiciones":
+         _ANALISIS_REVISADO["snapshots"][0]["posiciones"]}]}
+    assert (a_formato_3(indice, _VIEJAS)["instantes"][0]["verdad"]
+            == a_formato_3(_ANALISIS_REVISADO, _VIEJAS)["instantes"][0]["verdad"])

@@ -275,18 +275,26 @@ function estado(){
 
 /* Arma la lista de cajas del instante: las que detectó la IA (con su rol
    corregido si alguien lo cambió) más las que agregó la persona. */
-function reconstruir(){
-  const snap = muestras[actual], est = estado();
-  cajas = [];
-  for(const p of snap.posiciones || []){
+/* Una sola función arma las cajas de un instante, y la usan las dos cosas que
+   tienen que coincidir: lo que se dibuja en pantalla y lo que se guarda. Si
+   fueran dos funciones distintas podrían separarse sin que nada avise, y el
+   archivo guardado diría algo que nadie vio. */
+function cajasDe(snap, est){
+  const salida = [];
+  for(const p of (snap.posiciones || [])){
     if(!p._bbox) continue;
     const id = p._track_ia;
-    cajas.push({ ref:id, origen:"ia", bbox:p._bbox,
-                 rol: est.correcciones[id] ?? (p.equipo || "Desconocido"),
-                 original: p.equipo || "Desconocido" });
+    salida.push({ ref:id, origen:"ia", bbox:p._bbox,
+                  rol: est.correcciones[id] ?? (p.equipo || "Desconocido"),
+                  original: p.equipo || "Desconocido" });
   }
   est.agregados.forEach((a, k) =>
-    cajas.push({ ref:"+" + k, origen:"humano", bbox:a.bbox, rol:a.rol, idx:k }));
+    salida.push({ ref:"+" + k, origen:"humano", bbox:a.bbox, rol:a.rol, idx:k }));
+  return salida;
+}
+
+function reconstruir(){
+  cajas = cajasDe(muestras[actual], estado());
   recalcular();
 }
 
@@ -438,14 +446,21 @@ $("borrar").onclick = () => {
 // ── Guardar ────────────────────────────────────────────────────────────────
 $("guardar").onclick = async () => {
   guardarActual();
+  const porT = Object.fromEntries(muestras.map(m => [m.t_ms, m]));
   const instantes = Object.entries(respuestas).map(([t_ms, r]) => ({
     t_ms: +t_ms,
     jugadores_reales: r.reales,
+    // La verdad como CAJAS, no como números de track. Es lo que hace que estos
+    // diez minutos sirvan contra cualquier análisis futuro del mismo video: al
+    // volver a analizar con otros parámetros, los tracks son otros, pero los
+    // jugadores siguen estando en el mismo lugar de la imagen.
+    verdad: cajasDe(porT[+t_ms], r).map(c => ({ bbox:c.bbox, rol:c.rol })),
+    // Se siguen guardando por compatibilidad con mediciones ya hechas.
     correcciones: Object.entries(r.correcciones).map(([track_ia, rol]) => ({ track_ia:+track_ia, rol })),
     agregados: r.agregados,
-  })).filter(x => x.jugadores_reales != null);
+  })).filter(x => x.jugadores_reales != null && porT[x.t_ms]);
 
-  const contenido = { periodo, formato: 2, instantes };
+  const contenido = { periodo, formato: 3, instantes };
   const nombre = "correcciones_" + periodo + ".json";
 
   const res = await fetch("/api/guardar", {
@@ -458,7 +473,10 @@ $("guardar").onclick = async () => {
     : '<div class="aviso ok">Guardado en <code>' + nombre + "</code> (" +
       instantes.length + " instantes).<br><br>Ahora, en la consola:<br>" +
       "<code>python -m futsal_ia.cli evaluar --analisis analisis_" + periodo +
-      ".json --correcciones " + nombre + " --guardar medicion_1.json</code></div>";
+      ".json --correcciones " + nombre + " --guardar medicion_1.json</code>" +
+      "<br><br>Y para que deduzca solo qué grupo de color es cada equipo:<br>" +
+      "<code>python -m futsal_ia.cli equipos-desde-revision --correcciones " +
+      nombre + "</code></div>";
 };
 
 // El panel abre esta página con ?periodo=ST cuando lo que acaba de analizar es

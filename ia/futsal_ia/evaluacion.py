@@ -145,8 +145,10 @@ def cajas_etiquetadas(datos: dict, analisis: dict) -> list[dict]:
 
 # El orden en que se muestran las etiquetas. Fijo, para que dos corridas se
 # puedan comparar mirando y no haya que leer los encabezados cada vez.
+SIN_ETIQUETA = "nadie lo etiquetó"
+
 ORDEN = ("Propio", "Rival", "Arquero propio", "Arquero rival",
-         "Arbitro", "Desconocido", "Pelota", NO_PERSONA)
+         "Arbitro", "Desconocido", "Pelota", NO_PERSONA, SIN_ETIQUETA)
 
 
 def _orden(etiquetas) -> list[str]:
@@ -170,6 +172,10 @@ def matriz_confusion(analisis: dict, datos: dict) -> dict:
     Con la matriz, mirando dónde se juntan los números se ve cuál de las cuatro
     es. Sin la matriz, el mismo número manda a probar las cuatro.
     """
+    verdad = verdad_de(datos)
+    if verdad:
+        return _confusion_por_geometria(analisis, verdad)
+
     por_t = {int(s["t_ms"]): s for s in analisis.get("snapshots", [])}
     conteo: dict[tuple[str, str], int] = {}
     no_vistas: dict[str, int] = {}
@@ -201,11 +207,57 @@ def matriz_confusion(analisis: dict, datos: dict) -> dict:
     }
 
 
+def _confusion_por_geometria(analisis: dict, verdad: dict) -> dict:
+    """
+    La misma matriz, emparejando por solapamiento en vez de por número de
+    track. Es la única que sirve contra una corrida distinta de aquella sobre
+    la que se revisó.
+    """
+    snaps = {int(s["t_ms"]): s for s in analisis.get("snapshots", [])}
+    conteo: dict[tuple[str, str], int] = {}
+    no_vistas: dict[str, int] = {}
+
+    for t, cajas in verdad.items():
+        snap = snaps.get(t)
+        if snap is None:
+            continue
+        det = [{"bbox": p["_bbox"], "equipo": p.get("equipo") or DESCONOCIDO}
+               for p in snap.get("posiciones", []) if p.get("_bbox")]
+        emparejados, sueltas, faltan = _emparejar(det, cajas)
+        for d, v in emparejados:
+            par = (d["equipo"], v["rol"])
+            conteo[par] = conteo.get(par, 0) + 1
+        for d in sueltas:
+            # Marcó algo donde la persona no etiquetó nada.
+            par = (d["equipo"], SIN_ETIQUETA)
+            conteo[par] = conteo.get(par, 0) + 1
+        for v in faltan:
+            no_vistas[v["rol"]] = no_vistas.get(v["rol"], 0) + 1
+
+    filas = _orden({d for d, _ in conteo})
+    columnas = _orden({e for _, e in conteo})
+    return {
+        "filas": filas, "columnas": columnas,
+        "conteo": {f"{d}|{e}": n for (d, e), n in conteo.items()},
+        "no_vistas": no_vistas,
+        "total": sum(conteo.values()),
+        "diagnostico": _diagnostico_confusion(conteo),
+        "geometrica": True,
+    }
+
+
 def _diagnostico_confusion(conteo: dict[tuple[str, str], int]) -> list[str]:
     """
     Los cuatro patrones que explican casi todos los errores de equipo, con el
     arreglo de cada uno. Se nombran solo cuando pesan de verdad.
     """
+    # Solo lo que tiene camiseta. Un recuadro sobre la nada, o sobre algo que
+    # nadie etiquetó, es un error de DETECCIÓN: mezclarlo acá adentro diluye
+    # los porcentajes y manda a arreglar el clasificador por un problema del
+    # detector.
+    CLASIFICABLES = ("Propio", "Rival", "Arquero propio", "Arquero rival",
+                     ARBITRO, DESCONOCIDO)
+    conteo = {par: n for par, n in conteo.items() if par[1] in CLASIFICABLES}
     total = sum(conteo.values())
     errados = sum(n for (d, e), n in conteo.items() if d != e)
     if not total or not errados:
@@ -259,6 +311,233 @@ def _diagnostico_confusion(conteo: dict[tuple[str, str], int]) -> list[str]:
             "la posesión y el mapa de calor. Se saca con `cli excluir` si "
             "están siempre en la misma zona, o asignando su grupo de color.")
     return dichos
+
+
+# Cuánto se tienen que pisar dos recuadros para decir que son el mismo. 0.45 es
+# holgado a propósito: la caja que dibuja una persona a mano y la que devuelve
+# el detector nunca coinciden al píxel, y lo que se está midiendo es si
+# encontró al jugador, no si lo encuadró prolijo.
+IOU_MINIMO = 0.45
+
+
+def _iou(a, b) -> float:
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    x1, y1 = max(ax1, bx1), max(ay1, by1)
+    x2, y2 = min(ax2, bx2), min(ay2, by2)
+    if x2 <= x1 or y2 <= y1:
+        return 0.0
+    inter = (x2 - x1) * (y2 - y1)
+    union = (ax2 - ax1) * (ay2 - ay1) + (bx2 - bx1) * (by2 - by1) - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _emparejar(detecciones: list[dict], verdad: list[dict]) -> tuple[list, list, list]:
+    """
+    Empareja recuadros por solapamiento, del que mejor calza al que peor.
+
+    Greedy y no óptimo a propósito: con diez personas por cuadro la diferencia
+    contra un húngaro es nula, y esto se lee.
+    """
+    pares = sorted(
+        ((_iou(d["bbox"], v["bbox"]), i, j)
+         for i, d in enumerate(detecciones) for j, v in enumerate(verdad)),
+        key=lambda x: -x[0])
+    usadas_d, usadas_v, emparejados = set(), set(), []
+    for iou, i, j in pares:
+        if iou < IOU_MINIMO:
+            break
+        if i in usadas_d or j in usadas_v:
+            continue
+        usadas_d.add(i)
+        usadas_v.add(j)
+        emparejados.append((detecciones[i], verdad[j]))
+    sueltas = [d for i, d in enumerate(detecciones) if i not in usadas_d]
+    no_vistas = [v for j, v in enumerate(verdad) if j not in usadas_v]
+    return emparejados, sueltas, no_vistas
+
+
+def verdad_de(datos: dict) -> dict[int, list[dict]]:
+    """
+    La verdad de cada instante, como cajas etiquetadas.
+
+    Es el formato 3, y existe por una limitación que recién se ve cuando uno
+    intenta medir por segunda vez. Los formatos 1 y 2 guardaban las
+    correcciones por número de track: "el track 3 era Rival". Al volver a
+    analizar con otros parámetros, el track 3 es otra persona o no existe, y
+    para los recuadros que nadie corrigió ni siquiera quedaba anotado qué eran:
+    se daba por bueno lo que había dicho la IA.
+
+    O sea que los diez minutos de revisión servían para medir UNA corrida, la
+    que se tenía enfrente. Cualquier cambio de parámetro obligaba a revisar
+    todo de nuevo, que es exactamente lo que vuelve inviable el ciclo de medir,
+    cambiar y volver a medir.
+
+    Guardando la verdad como cajas —dónde estaba cada uno y qué era— el trabajo
+    sirve contra cualquier análisis futuro del mismo video: se emparejan los
+    recuadros por solapamiento y listo.
+    """
+    salida = {}
+    for r in datos.get("instantes", []):
+        if r.get("verdad") is not None:
+            salida[int(r["t_ms"])] = [
+                {"bbox": v["bbox"], "rol": v.get("rol", DESCONOCIDO)}
+                for v in r["verdad"]]
+    return salida
+
+
+class NoEsElMismoAnalisis(Exception):
+    """Las correcciones no se hicieron sobre ese análisis."""
+
+
+def _instantes_de(fuente: dict) -> dict[int, list[dict]]:
+    """
+    Los recuadros de cada instante, venga de donde venga.
+
+    Dos fuentes tienen esta información y no son igual de buenas:
+
+      · `revision_cuadros/indice.json` es el REGISTRO de lo que la persona
+        efectivamente miró. Es la fuente correcta.
+      · un `analisis_PT.json` sirve solo si es exactamente la corrida sobre la
+        que se revisó. Al re-analizar, los tracks se renumeran desde uno, así
+        que muchos ids siguen existiendo por casualidad y una verificación por
+        ids no alcanza para darse cuenta.
+    """
+    filas = fuente.get("instantes")
+    if filas is None:
+        filas = fuente.get("snapshots", [])
+    return {int(f["t_ms"]): f.get("posiciones", []) for f in filas}
+
+
+def a_formato_3(fuente: dict, datos: dict) -> dict:
+    """
+    Convierte correcciones viejas al formato de cajas, sin volver a revisar.
+
+    Los diez minutos que alguien pasó marcando no se tiran porque el formato
+    haya cambiado. Todo lo que le falta al formato 2 —dónde estaba cada uno—
+    está en lo que esa persona miró: las correcciones dicen "el track 3 era
+    Rival" y el índice de la revisión dice dónde estaba el track 3.
+
+    `fuente` tiene que ser el índice de los cuadros revisados, o el mismísimo
+    análisis sobre el que se revisó. Con otra corrida, cada número de track
+    apuntaría a otra persona y saldría una verdad inventada, que es peor que no
+    tener ninguna porque se ve igual de bien.
+    """
+    if verdad_de(datos):
+        return datos
+
+    por_t = _instantes_de(fuente)
+    faltan, instantes = [], []
+    for r in datos.get("instantes", []):
+        t = int(r["t_ms"])
+        posiciones = por_t.get(t)
+        if posiciones is None:
+            faltan.append(t)
+            continue
+        corregido = {c["track_ia"]: c["rol"] for c in r.get("correcciones", [])}
+        tracks = {p.get("_track_ia") for p in posiciones}
+        sueltos = [k for k in corregido if k not in tracks]
+        if sueltos:
+            raise NoEsElMismoAnalisis(
+                f"En {t} ms las correcciones mencionan el track {sueltos[0]}, "
+                "que no está en ese instante. Esta revisión se hizo sobre otra "
+                "corrida: pasale el indice.json de los cuadros que revisaste.")
+        verdad = [{"bbox": p["_bbox"],
+                   "rol": corregido.get(p.get("_track_ia"), p.get("equipo", DESCONOCIDO))}
+                  for p in posiciones if p.get("_bbox")]
+        verdad += [{"bbox": a["bbox"], "rol": a.get("rol", DESCONOCIDO)}
+                   for a in r.get("agregados", [])]
+        instantes.append({**r, "verdad": verdad})
+
+    if not instantes:
+        raise NoEsElMismoAnalisis(
+            "Ninguno de los instantes revisados aparece ahí. No es lo que se "
+            "revisó.")
+    return {**datos, "formato": 3, "instantes": instantes,
+            "instantes_sin_registro": faltan}
+
+
+def medir(analisis: dict, datos: dict) -> dict:
+    """
+    Los números, del mejor modo que permitan las correcciones que haya.
+
+    Con el formato 3 se mide por geometría y sirve contra cualquier corrida.
+    Con los formatos viejos se cuenta como antes, que solo vale contra la
+    corrida sobre la que se revisó; se avisa, porque un número que dejó de
+    significar lo que dice es peor que no tenerlo.
+    """
+    verdad = verdad_de(datos)
+    if verdad:
+        return _medir_por_geometria(analisis, verdad, datos)
+    m = evaluar(analisis, desde_json(datos))
+    if m.get("instantes"):
+        m["aviso_formato"] = (
+            "Estas correcciones son de un formato viejo: guardan qué track "
+            "estaba mal, no dónde estaba cada uno. Sirven para medir la corrida "
+            "sobre la que se revisó, pero NO otra: al re-analizar, los números "
+            "de track son otros. Volvé a guardar desde el visor para que la "
+            "próxima medición valga contra cualquier corrida.")
+    return m
+
+
+def _medir_por_geometria(analisis: dict, verdad: dict, datos: dict) -> dict:
+    snaps = {int(s["t_ms"]): s for s in analisis.get("snapshots", [])}
+    dicho_por_instante = {int(r["t_ms"]): r.get("jugadores_reales")
+                          for r in datos.get("instantes", [])}
+
+    reales = detectados = aciertos = equipo_ok = 0
+    falsos = sin_etiqueta = faltantes = 0
+    sin_snapshot, discrepancia = [], 0
+
+    for t, cajas in sorted(verdad.items()):
+        snap = snaps.get(t)
+        if snap is None:
+            sin_snapshot.append(t)
+            continue
+        det = [{"bbox": p["_bbox"], "equipo": p.get("equipo") or DESCONOCIDO}
+               for p in snap.get("posiciones", []) if p.get("_bbox")]
+        jugadores = [c for c in cajas if es_jugador(c["rol"])]
+        reales += len(jugadores)
+        detectados += len(det)
+
+        # Lo que la persona contó a ojo contra lo que llegó a dibujar. Si no
+        # coinciden, la verdad está incompleta y el recall sale mejor de lo que
+        # es: no se puede encontrar a alguien que nadie marcó.
+        contado = dicho_por_instante.get(t)
+        if contado is not None and contado != len(jugadores):
+            discrepancia += abs(contado - len(jugadores))
+
+        emparejados, sueltas, no_vistas = _emparejar(det, cajas)
+        for d, v in emparejados:
+            if es_jugador(v["rol"]):
+                aciertos += 1
+                if d["equipo"] == v["rol"]:
+                    equipo_ok += 1
+            else:
+                falsos += 1          # cayó sobre un árbitro, la pelota o nada
+        falsos += len(sueltas)
+        sin_etiqueta += len(sueltas)
+        faltantes += sum(1 for v in no_vistas if es_jugador(v["rol"]))
+
+    if not verdad or len(sin_snapshot) == len(verdad):
+        return {"instantes": 0,
+                "aviso": "Ninguno de los instantes revisados existe en el análisis."}
+
+    return {
+        "instantes": len(verdad) - len(sin_snapshot),
+        "jugadores_reales": reales,
+        "detectados": detectados,
+        "falsos_positivos": falsos,
+        "faltantes": faltantes,
+        "equipo_equivocado": aciertos - equipo_ok,
+        "recall": round(aciertos / reales, 3) if reales else 0.0,
+        "precision": round(aciertos / detectados, 3) if detectados else 0.0,
+        "acierto_equipo": round(equipo_ok / aciertos, 3) if aciertos else 0.0,
+        "instantes_sin_snapshot": sin_snapshot,
+        "detecciones_sin_etiqueta": sin_etiqueta,
+        "descuadre_conteo": discrepancia,
+        "geometrica": True,
+    }
 
 
 def evaluar(analisis: dict, revisiones: list[RevisionInstante]) -> dict:

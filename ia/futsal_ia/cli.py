@@ -229,6 +229,126 @@ def _cmd_cuadros(args):
     return 0
 
 
+def _cmd_migrar_correcciones(args):
+    """
+    Pasa correcciones viejas al formato de cajas, sin volver a revisar nada.
+
+    Diez minutos de trabajo humano por partido no se tiran porque el formato
+    haya cambiado. Lo que le falta al formato viejo está en el índice de los
+    cuadros que esa persona miró.
+    """
+    import json
+
+    from .evaluacion import NoEsElMismoAnalisis, a_formato_3, verdad_de
+    from .revision import CARPETA
+
+    corr = _leer_json(args.correcciones, "las correcciones")
+    if verdad_de(corr):
+        print("Estas correcciones ya están en el formato nuevo. No hice nada.")
+        return 0
+
+    if args.analisis:
+        # El índice es el registro de lo que se miró; un análisis solo sirve si
+        # es exactamente esa corrida, y eso no se puede verificar del todo.
+        fuente = _leer_json(args.analisis, "el análisis")
+        print("OJO: estoy usando un análisis y no el índice de la revisión. "
+              "Si no es EXACTAMENTE la corrida que revisaste, la conversión "
+              "sale mal y no se nota.")
+    else:
+        fuente = _leer_json(Path(args.cuadros or CARPETA) / "indice.json",
+                            "el índice de los cuadros revisados")
+
+    try:
+        nuevo = a_formato_3(fuente, corr)
+    except NoEsElMismoAnalisis as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
+
+    destino = Path(args.salida or args.correcciones)
+    if destino == Path(args.correcciones):
+        respaldo = destino.with_suffix(".formato2.json")
+        respaldo.write_text(json.dumps(corr, indent=2, ensure_ascii=False),
+                            encoding="utf-8")
+        print(f"Copia de lo anterior en {respaldo}")
+    destino.write_text(json.dumps(nuevo, indent=2, ensure_ascii=False),
+                       encoding="utf-8")
+    cajas = sum(len(i["verdad"]) for i in nuevo["instantes"])
+    print(f"{cajas} cajas en {len(nuevo['instantes'])} instantes, escritas en "
+          f"{destino}.")
+    print("Ahora esta revisión sirve para medir cualquier corrida del mismo "
+          "video, no solo la que tenías enfrente.")
+    return 0
+
+
+def _cmd_equipos_desde_revision(args):
+    """
+    Deduce qué grupo de color es cada equipo, votando con lo que revisó una
+    persona en vez de mirando siete recortes.
+
+    Es el arreglo del problema más caro que apareció en el primer partido real:
+    grupos sin asignar y un equipo entero que la IA nunca nombró. Mirando
+    recortes eso no se ve —los siete recortes se ven bien— y en los números
+    aparece como "acierto de equipo 50%", que manda a mirar la iluminación.
+    """
+    import json
+
+    from .asignacion import aplicar, avisos, colorear, muestras_de_revision, votar
+    from .equipos import ClasificadorEquipos
+
+    carpeta = Path(args.cuadros)
+    indice = _leer_json(carpeta / "indice.json", "el índice de los cuadros")
+    corr = _leer_json(args.correcciones, "las correcciones")
+    d_equipos = _leer_json(args.equipos, "los equipos")
+    clas = ClasificadorEquipos.de_dict(d_equipos)
+
+    muestras = muestras_de_revision(indice, corr)
+    if not muestras:
+        print("ERROR: no hay ninguna caja etiquetada en esas correcciones. "
+              "¿Revisaste y guardaste en el visor?", file=sys.stderr)
+        return 1
+
+    con_color, sin_color = colorear(muestras, carpeta)
+    if not con_color:
+        print(f"ERROR: no pude leer el color de ninguna de las {len(muestras)} "
+              f"cajas. ¿Están los JPG en {carpeta}?", file=sys.stderr)
+        return 1
+
+    v = votar(clas, con_color)
+    print(f"{len(con_color)} cajas etiquetadas con color legible"
+          + (f" ({sin_color} sin color, muy chicas)" if sin_color else ""))
+    print()
+
+    ancho = max(len(f["actual"]) for f in v["grupos"])
+    for f in v["grupos"]:
+        cabeza = f"  Grupo {f['grupo']}  {f['muestras']:>4} muestras  " \
+                 f"|  ahora: {f['actual']:<{ancho}}  ->  "
+        if f["propuesta"]:
+            marca = "=" if f["propuesta"] == f["actual"] else "CAMBIA a"
+            print(f"{cabeza}{marca} {f['propuesta']}  ({f['pureza']:.0%} de acuerdo)")
+        else:
+            print(f"{cabeza}sin tocar ({f['motivo']})")
+        if f["votos"]:
+            detalle = ", ".join(f"{r} {n}" for r, n in
+                                sorted(f["votos"].items(), key=lambda x: -x[1]))
+            print(f"{' ' * 12}{detalle}")
+
+    for a in avisos(v):
+        print(f"\n  >> {a}")
+
+    if not args.aplicar:
+        print("\nNo escribí nada. Si te cierra, corré lo mismo con --aplicar.")
+        return 0
+
+    nuevo = aplicar(clas, v)
+    d_equipos.update(nuevo.a_dict())
+    Path(args.equipos).write_text(
+        json.dumps(d_equipos, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"\nEscrito en {args.equipos}.")
+    print("Ahora hay que volver a analizar: la asignación de equipos se aplica "
+          "durante el análisis, no después.")
+    return 0
+
+
 def _imprimir_confusion(mc: dict) -> None:
     """
     La matriz, en texto. Filas: lo que dijo la IA. Columnas: lo que era.
@@ -275,14 +395,13 @@ def _imprimir_confusion(mc: dict) -> None:
 
 def _cmd_evaluar(args):
     """Cruza el análisis con lo que dijo una persona y saca los números."""
-    from .evaluacion import (cajas_etiquetadas, comparar, desde_json, evaluar,
-                             matriz_confusion, veredicto)
+    from .evaluacion import (cajas_etiquetadas, comparar, matriz_confusion,
+                             medir, veredicto)
 
     analisis = _leer_json(args.analisis, "el análisis")
     corr = _leer_json(args.correcciones, "las correcciones")
-    revisiones = desde_json(corr)
 
-    m = evaluar(analisis, revisiones)
+    m = medir(analisis, corr)
     if not m.get("instantes"):
         print(m.get("aviso", "Sin datos."))
         return 1
@@ -296,6 +415,20 @@ def _cmd_evaluar(args):
     print(f"  Le pega al equipo   {m['acierto_equipo']:.0%} de las veces\n")
     for d in veredicto(m):
         print(f"  - {d}")
+
+    if m.get("aviso_formato"):
+        print(f"\n  OJO: {m['aviso_formato']}")
+    if m.get("detecciones_sin_etiqueta"):
+        print(f"\n  OJO: {m['detecciones_sin_etiqueta']} recuadros de este "
+              "análisis caen donde la revisión no etiquetó nada. Se cuentan "
+              "como falsos positivos, pero pueden ser gente que esta corrida "
+              "encontró y la revisión no llegó a marcar: en ese caso los "
+              "números salen peores que la realidad.")
+    if m.get("descuadre_conteo"):
+        print(f"\n  OJO: hay {m['descuadre_conteo']} jugadores de diferencia "
+              "entre los que se contaron a ojo y los que quedaron dibujados. "
+              "A un jugador que nadie marcó no se lo puede encontrar: el "
+              "recall sale mejor de lo que es.")
 
     _imprimir_confusion(matriz_confusion(analisis, corr))
 
@@ -800,6 +933,30 @@ def main(argv=None):
     cu.add_argument("--salida", help="carpeta destino (por defecto revision_cuadros)")
     cu.add_argument("--cuantos", type=int, default=20)
     cu.set_defaults(func=_cmd_cuadros)
+
+    mg = sub.add_parser(
+        "migrar-correcciones",
+        help="pasa correcciones viejas al formato de cajas, sin revisar de nuevo")
+    mg.add_argument("--correcciones", required=True)
+    mg.add_argument("--cuadros", help="la carpeta de la revisión "
+                                      "(por defecto revision_cuadros)")
+    mg.add_argument("--analisis", help="solo si no tenés la carpeta de la "
+                                       "revisión; tiene que ser EXACTAMENTE "
+                                       "la corrida que se revisó")
+    mg.add_argument("--salida", help="por defecto reescribe el mismo archivo, "
+                                     "dejando una copia del anterior")
+    mg.set_defaults(func=_cmd_migrar_correcciones)
+
+    ed = sub.add_parser(
+        "equipos-desde-revision",
+        help="deduce qué grupo de color es cada equipo, con lo que revisó una persona")
+    ed.add_argument("--cuadros", default="revision_cuadros",
+                    help="la carpeta con los JPG y el indice.json")
+    ed.add_argument("--correcciones", required=True)
+    ed.add_argument("--equipos", default="equipos.json")
+    ed.add_argument("--aplicar", action="store_true",
+                    help="sin esto solo muestra qué haría")
+    ed.set_defaults(func=_cmd_equipos_desde_revision)
 
     ev = sub.add_parser("evaluar", help="qué tan bien anda, contra lo que dijo una persona")
     ev.add_argument("--analisis", required=True)
