@@ -3,6 +3,7 @@ import { TablaResponsive } from '../components/TablaResponsive';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext'; // <-- IMPORTAMOS EL CONTEXTO DE AUTENTICACIÓN
+import { estaActivo, textoBaja } from '../utils/plantelActivo';
 
 function Plantel() {
   const { perfil } = useAuth(); // <-- OBTENEMOS EL PERFIL
@@ -16,6 +17,12 @@ function Plantel() {
   // --- NUEVO ESTADO PARA EL FILTRO ---
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+
+  /* Los dados de baja no se ven salvo que los pidas. El plantel es para
+     trabajar con los que están; los que se fueron se consultan aparte. */
+  const [verBajas, setVerBajas] = useState(false);
+  const [bajaEnCurso, setBajaEnCurso] = useState(null); // id del jugador
+  const [motivoBaja, setMotivoBaja] = useState('');
 
   const clubId = localStorage.getItem('club_id');
   const { showToast } = useToast(); 
@@ -170,8 +177,42 @@ function Plantel() {
     setMostrarModalAlta(true);
   };
 
+  const abrirBaja = (jugador) => {
+    setBajaEnCurso(jugador.id);
+    setMotivoBaja('');
+  };
+
+  const confirmarBaja = async (id) => {
+    const hoy = new Date();
+    const fecha_baja = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    const cambios = { activo: false, fecha_baja, motivo_baja: motivoBaja.trim() || null };
+
+    const { error } = await supabase.from('jugadores').update(cambios).eq('id', id);
+    if (error) {
+      /* Si la columna todavía no existe, el mensaje de PostgREST no dice qué
+         hacer. Mejor decirlo: falta correr el SQL. */
+      const falta = /activo|column/i.test(error.message || '');
+      return showToast(
+        falta
+          ? 'Falta correr la migración 20260904120000_baja_jugadores.sql en Supabase.'
+          : 'No se pudo dar de baja: ' + error.message,
+        'error');
+    }
+    setJugadores(prev => prev.map(j => (j.id === id ? { ...j, ...cambios } : j)));
+    setBajaEnCurso(null);
+    showToast('Jugador dado de baja. Su historial queda intacto.', 'success');
+  };
+
+  const reactivarJugador = async (id) => {
+    const cambios = { activo: true, fecha_baja: null, motivo_baja: null };
+    const { error } = await supabase.from('jugadores').update(cambios).eq('id', id);
+    if (error) return showToast('No se pudo reactivar: ' + error.message, 'error');
+    setJugadores(prev => prev.map(j => (j.id === id ? { ...j, ...cambios } : j)));
+    showToast('Jugador reincorporado al plantel', 'success');
+  };
+
   const eliminarJugador = async (id) => {
-    if(window.confirm("¿Seguro que querés eliminar a este jugador? Esto podría afectar las estadísticas de partidos pasados.")){
+    if(window.confirm("Eliminar borra al jugador y su historial de partidos, y no se puede deshacer.\n\nSi dejó de venir al club, usá DAR DE BAJA en su lugar: sale de las listas del día a día y conserva todo lo que aportó.\n\n¿Eliminar igual?")){
       const { error } = await supabase.from('jugadores').delete().eq('id', id);
       if(!error) {
         showToast("Jugador eliminado", "info");
@@ -289,7 +330,13 @@ function Plantel() {
   // Extraemos categorías únicas para los botones de filtro
   const categoriasExistentes = ['Todas', ...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
 
+  const cantidadBajas = jugadores.filter(j => !estaActivo(j)).length;
+
   const jugadoresOrdenados = [...jugadores]
+    /* verBajas alterna entre las dos listas en vez de sumarlas: mezclar
+       activos y dados de baja en la misma tabla es justo lo que hace que
+       después convoques a alguien que ya no viene. */
+    .filter(j => (verBajas ? !estaActivo(j) : estaActivo(j)))
     .filter(j => filtroCategoria === 'Todas' || j.categoria === filtroCategoria)
     .sort((a, b) => {
       let valorA = a[ordenColumna] || '';
@@ -320,6 +367,14 @@ function Plantel() {
   const GRUPOS_PLANTEL_LABEL = { gen: 'DATOS' };
   const COLS_PLANTEL = [
     { k: 'dorsal', t: 'DORSAL', g: 'gen', r: j => j.dorsal ?? '—' },
+    /* Sólo cuando mirás las bajas: en el plantel activo esta columna estaría
+       vacía en todas las filas. */
+    ...(verBajas ? [{ k: 'baja', t: 'BAJA', g: 'gen', r: j => (
+      <div>
+        <div style={{ color: 'var(--aviso)', fontWeight: 800, fontSize: '0.75rem' }}>{textoBaja(j)}</div>
+        {j.motivo_baja && <div style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>{j.motivo_baja}</div>}
+      </div>
+    ) }] : []),
     { k: 'posicion', t: 'POSICIÓN', g: 'gen', r: j => j.posicion?.toUpperCase() || '—' },
     { k: 'categoria', t: 'CATEGORÍA', g: 'gen', r: j => j.categoria?.toUpperCase() || '—' },
     { k: 'acciones', t: 'ACCIONES', g: 'gen', r: j => (
@@ -327,6 +382,18 @@ function Plantel() {
         <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: 'var(--text)', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>💬 WhatsApp</button>
         <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>📋 PIN</button>
         <button onClick={(e) => { e.stopPropagation(); abrirEdicion(j); }} style={{ ...btnGhost, minHeight: '40px' }}>EDITAR</button>
+        {estaActivo(j) ? (
+          <button onClick={(e) => { e.stopPropagation(); abrirBaja(j); }}
+            title="Sale de las listas del día a día y conserva todo su historial"
+            style={{ ...btnGhost, color: 'var(--aviso)', borderColor: 'var(--aviso)', minHeight: '40px' }}>
+            ⏸ DAR DE BAJA
+          </button>
+        ) : (
+          <button onClick={(e) => { e.stopPropagation(); reactivarJugador(j.id); }}
+            style={{ ...btnGhost, color: 'var(--ok)', borderColor: 'var(--ok)', minHeight: '40px' }}>
+            ↩ REINCORPORAR
+          </button>
+        )}
         <button onClick={(e) => { e.stopPropagation(); eliminarJugador(j.id); }} style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444', minHeight: '40px' }}>✕ ELIMINAR</button>
       </div>
     ) },
@@ -337,7 +404,25 @@ function Plantel() {
       <div className="bento-card">
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-          <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--text)' }}>MI PLANTEL ({jugadoresOrdenados.length})</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--text)' }}>
+              {verBajas ? `DADOS DE BAJA (${jugadoresOrdenados.length})` : `MI PLANTEL (${jugadoresOrdenados.length})`}
+            </div>
+            {(cantidadBajas > 0 || verBajas) && (
+              <button
+                onClick={() => setVerBajas(v => !v)}
+                style={{
+                  minHeight: '40px', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer',
+                  background: verBajas ? 'var(--aviso)' : 'transparent',
+                  border: `1px solid ${verBajas ? 'var(--aviso)' : 'var(--border)'}`,
+                  color: verBajas ? '#000' : 'var(--text-dim)',
+                  fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.04em',
+                }}
+              >
+                {verBajas ? '← VOLVER AL PLANTEL' : `VER BAJAS (${cantidadBajas})`}
+              </button>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR CT</button>
             <button onClick={copiarTodosSeparados} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR WHATSAPP</button>
@@ -372,6 +457,37 @@ function Plantel() {
           })}
         </div>
 
+        {/* Confirmar la baja pidiendo el motivo. Es texto libre porque los
+            motivos reales no entran en una lista: se fue a otro club, dejó de
+            venir, lesión larga, se mudó. */}
+        {bajaEnCurso && (() => {
+          const j = jugadores.find(x => x.id === bajaEnCurso);
+          if (!j) return null;
+          return (
+            <div style={{ margin: '0 0 18px 0', padding: '14px', background: 'var(--bg)', border: '1px solid var(--aviso)', borderRadius: '8px' }}>
+              <div style={{ fontWeight: 900, marginBottom: '4px' }}>
+                Dar de baja a {(j.apellido || '').toUpperCase()} {(j.nombre || '')}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: '12px', lineHeight: 1.5 }}>
+                Sale del plantel y de las listas del día a día: pasar lista, convocatorias y el
+                pedido de wellness. <strong>Sus goles, asistencias, minutos y tarjetas del año
+                siguen contando</strong> en los resúmenes. Se puede reincorporar cuando quieras.
+              </div>
+              <label className="campo-rotulo">Motivo (opcional)</label>
+              <input type="text" className="campo" autoFocus maxLength={120}
+                placeholder="Ej: se fue a otro club / dejó de venir / se mudó"
+                value={motivoBaja}
+                onChange={(e) => setMotivoBaja(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') confirmarBaja(j.id); if (e.key === 'Escape') setBajaEnCurso(null); }} />
+              <div className="modal-acciones" style={{ display: 'flex', gap: '10px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setBajaEnCurso(null)} className="btn-fantasma">CANCELAR</button>
+                <button onClick={() => confirmarBaja(j.id)} className="btn-primario"
+                  style={{ background: 'var(--aviso)', color: '#000' }}>⏸ CONFIRMAR BAJA</button>
+              </div>
+            </div>
+          );
+        })()}
+
         <TablaResponsive
           filas={jugadoresOrdenados}
           columnas={COLS_PLANTEL}
@@ -393,6 +509,10 @@ function Plantel() {
                 <th onClick={() => manejarOrden('nombre')} style={{ textAlign: 'left', cursor: 'pointer' }}>JUGADOR {getSortIcon('nombre')}</th>
                 <th onClick={() => manejarOrden('posicion')} style={{ cursor: 'pointer' }}>POSICIÓN {getSortIcon('posicion')}</th>
                 <th onClick={() => manejarOrden('categoria')} style={{ cursor: 'pointer' }}>CAT. {getSortIcon('categoria')}</th>
+                {/* Esta tabla de escritorio está escrita a mano, aparte de
+                    COLS_PLANTEL (que maneja las tarjetas de móvil), así que la
+                    columna de baja hay que agregarla en los dos lados. */}
+                {verBajas && <th style={{ textAlign: 'left' }}>BAJA</th>}
                 <th>ACCIONES</th>
               </tr>
             </thead>
@@ -410,6 +530,12 @@ function Plantel() {
                   </td>
                   <td style={{ color: 'var(--text-dim)' }}>{j.posicion?.toUpperCase()}</td>
                   <td style={{ color: 'var(--text-dim)' }}>{j.categoria?.toUpperCase()}</td>
+                  {verBajas && (
+                    <td style={{ textAlign: 'left' }}>
+                      <div style={{ color: 'var(--aviso)', fontWeight: 800, fontSize: '0.75rem' }}>{textoBaja(j)}</div>
+                      {j.motivo_baja && <div style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>{j.motivo_baja}</div>}
+                    </td>
+                  )}
                   <td>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
                       {/* Enviar PIN directo WhatsApp */}
@@ -430,12 +556,19 @@ function Plantel() {
                       </button>
                       <span style={{ color: 'var(--border)', fontSize: '0.85rem' }}>|</span>
                       <button onClick={() => abrirEdicion(j)} style={btnGhost}>EDITAR</button>
-                      <button onClick={() => eliminarJugador(j.id)} style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444' }}>✕</button>
+                      {estaActivo(j) ? (
+                        <button onClick={() => abrirBaja(j)} title="Dar de baja (conserva su historial)"
+                          style={{ ...btnGhost, color: 'var(--aviso)', borderColor: 'var(--aviso)' }}>⏸</button>
+                      ) : (
+                        <button onClick={() => reactivarJugador(j.id)} title="Reincorporar al plantel"
+                          style={{ ...btnGhost, color: 'var(--ok)', borderColor: 'var(--ok)' }}>↩</button>
+                      )}
+                      <button onClick={() => eliminarJugador(j.id)} title="Eliminar definitivamente (borra su historial)" style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444' }}>✕</button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {jugadoresOrdenados.length === 0 && <tr><td colSpan="5" style={{ padding: '20px', color: 'var(--text-dim)' }}>No hay jugadores cargados en esta categoría.</td></tr>}
+              {jugadoresOrdenados.length === 0 && <tr><td colSpan={verBajas ? 6 : 5} style={{ padding: '20px', color: 'var(--text-dim)' }}>{verBajas ? 'No hay jugadores dados de baja.' : 'No hay jugadores cargados en esta categoría.'}</td></tr>}
             </tbody>
           </table>
         </div>

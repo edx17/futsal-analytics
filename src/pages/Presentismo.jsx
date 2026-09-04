@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import CalendarioAsistencia from '../components/CalendarioAsistencia';
 import { resumirMesPorDia, claveMes } from '../utils/resumenMensual';
+import { soloActivos } from '../utils/plantelActivo';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Cell 
@@ -83,7 +84,10 @@ function Presentismo() {
         .eq('club_id', clubId)
         .eq('categoria', categoria)
         .order('apellido');
-      let jugadoresLista = jubs || [];
+      /* Los dados de baja no se listan para pasar lista: si no, todos los días
+         aparecen como ausentes y ensucian el porcentaje del plantel. Su
+         historial de asistencias anterior sigue estando en `historial`. */
+      let jugadoresLista = soloActivos(jubs);
 
       // 2) historial completo
       const { data: histAll } = await supabase
@@ -113,6 +117,8 @@ function Presentismo() {
           .in('id', faltantes)
           .order('apellido');
 
+        /* Estos SÍ entran aunque estén de baja: ya tienen la asistencia
+           cargada ese día, y esconderlos borraría un dato real del pasado. */
         jugadoresLista = jugadoresLista.concat(extras || []);
       }
 
