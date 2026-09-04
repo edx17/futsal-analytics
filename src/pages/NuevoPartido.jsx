@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { soloActivos } from '../utils/plantelActivo';
 
 /* Comparación de nombres de equipo tolerante a mayúsculas, espacios y acentos.
    Distintas pantallas resuelven el nombre del club por caminos distintos
@@ -61,7 +62,8 @@ function NuevoPartido() {
       if (torneos) setTorneosBD(torneos);
 
       const { data: jugadores } = await supabase.from('jugadores').select('*').eq('club_id', clubId);
-      if (jugadores) setJugadoresBD(jugadores);
+      // Un jugador dado de baja no se puede convocar: no está más en el club.
+      if (jugadores) setJugadoresBD(soloActivos(jugadores));
 
       // Resolver el nombre real del club si no está en localStorage
       if (!localStorage.getItem('mi_club')) {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
+import { soloActivos } from '../utils/plantelActivo';
 
 // ===== Ventanas configurables (en días) =====
 const VENTANA_CUMPLEANOS_DIAS = 3;
@@ -304,10 +305,23 @@ export function useTablon(clubId, misCategorias = []) {
     setError(null);
 
     try {
-      let queryJug = supabase.from('jugadores').select('id, nombre, apellido, categoria, fechanac').eq('club_id', clubId);
-      if (misCategorias?.length > 0) queryJug = queryJug.in('categoria', misCategorias);
-      const { data: jugadoresData } = await queryJug;
-      const jugadoresMap = new Map((jugadoresData || []).map((j) => [j.id, j]));
+      /* `activo` se pide aparte del resto porque puede no existir todavía: si
+         la migración de bajas no se corrió, PostgREST rechaza la consulta
+         entera y la campanita se queda sin NINGUNA alerta, no sólo sin esta.
+         Por eso, si falla, se reintenta con las columnas de siempre. */
+      const COLS_BASE = 'id, nombre, apellido, categoria, fechanac';
+      const pedirJugadores = async (columnas) => {
+        let q = supabase.from('jugadores').select(columnas).eq('club_id', clubId);
+        if (misCategorias?.length > 0) q = q.in('categoria', misCategorias);
+        return q;
+      };
+      let { data: jugadoresData, error: errJug } = await pedirJugadores(`${COLS_BASE}, activo`);
+      if (errJug) ({ data: jugadoresData } = await pedirJugadores(COLS_BASE));
+
+      /* Los dados de baja salen del tablón: si no, el aviso de wellness diría
+         "56 de 56 sin completar" para siempre, contando gente que ya no viene,
+         y un aviso que nunca se puede apagar deja de leerse. */
+      const jugadoresMap = new Map(soloActivos(jugadoresData).map((j) => [j.id, j]));
 
       const resultados = await Promise.allSettled(
         GENERADORES.map((fn) => fn(clubId, jugadoresMap, misCategorias))
