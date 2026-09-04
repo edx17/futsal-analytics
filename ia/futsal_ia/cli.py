@@ -517,6 +517,49 @@ def _imprimir_confusion(mc: dict) -> None:
         print(f"\n  >> {d}")
 
 
+def _cmd_seguimiento(args):
+    """
+    Qué tan bien sostiene el seguimiento la identidad de un jugador.
+
+    Lo único del pipeline que nunca se había medido, y de lo que dependen el
+    mapa de calor y el tiempo por jugador. No hace falta etiquetar nada: sale
+    del análisis que ya está en disco, aprovechando que en futsal hay diez
+    jugadores en cancha y nunca más.
+    """
+    from .config import PARAMETROS
+    from .diagnostico_seguimiento import diagnosticar, veredicto
+
+    analisis = _leer_json(args.analisis, "el análisis")
+    d = diagnosticar(analisis, max_en_cancha=PARAMETROS.max_en_cancha)
+    if d.get("aviso"):
+        print(d["aviso"], file=sys.stderr)
+        return 1
+
+    print(f"{d['minutos']} minutos, {d['detecciones']} detecciones\n")
+    print(f"  Recorridos                {d['tracks']}")
+    print(f"  Gente en cancha           {d['gente_en_cancha_mediana']} típico, "
+          f"{d['gente_en_cancha_max']} máximo (futsal: {d['max_esperado']})")
+    print(f"  Pedazos por jugador       {d['fragmentos_por_jugador']}")
+    print(f"  Dura un recorrido         {d['duracion_mediana_s']}s típico, "
+          f"{d['duracion_p90_s']}s los mejores")
+    print(f"  Recorridos de menos de 1s {d['tracks_de_menos_de_1s']}")
+    print(f"  Arrancan donde murió otro {d['relevos']}")
+    print(f"  Cruces del mismo equipo   {d['cruces_por_minuto']} por minuto")
+    print(f"  Equipo que baila          {d['tracks_con_equipo_inestable']} recorridos")
+
+    for linea in veredicto(d):
+        print(f"\n  >> {linea}")
+
+    # La aritmética que nadie mira y explica la mitad de los cortes.
+    olvido_s = PARAMETROS.max_frames_sin_ver / max(PARAMETROS.fps_analisis, 1)
+    print(f"\n  Con la configuración de hoy ({PARAMETROS.fps_analisis} fps, "
+          f"{PARAMETROS.max_frames_sin_ver} cuadros de tolerancia) un recorrido "
+          f"sobrevive {olvido_s:.1f}s sin que lo vean, y al reaparecer lo busca "
+          f"en un radio de hasta {10.0 * olvido_s:.0f} metros: la cancha entera. "
+          f"A esa distancia, quien matchea es el que pasaba por ahí.")
+    return 0
+
+
 def _cmd_evaluar(args):
     """Cruza el análisis con lo que dijo una persona y saca los números."""
     from .evaluacion import (cajas_etiquetadas, comparar, matriz_confusion,
@@ -1097,6 +1140,12 @@ def main(argv=None):
     ed.add_argument("--aplicar", action="store_true",
                     help="sin esto solo muestra qué haría")
     ed.set_defaults(func=_cmd_equipos_desde_revision)
+
+    sg = sub.add_parser(
+        "seguimiento",
+        help="si el seguimiento sostiene la identidad de un jugador o la pierde")
+    sg.add_argument("--analisis", required=True)
+    sg.set_defaults(func=_cmd_seguimiento)
 
     ev = sub.add_parser("evaluar", help="qué tan bien anda, contra lo que dijo una persona")
     ev.add_argument("--analisis", required=True)
