@@ -280,67 +280,191 @@ def _cmd_migrar_correcciones(args):
     return 0
 
 
-def _cmd_equipos_desde_revision(args):
-    """
-    Deduce qué grupo de color es cada equipo, votando con lo que revisó una
-    persona en vez de mirando siete recortes.
-
-    Es el arreglo del problema más caro que apareció en el primer partido real:
-    grupos sin asignar y un equipo entero que la IA nunca nombró. Mirando
-    recortes eso no se ve —los siete recortes se ven bien— y en los números
-    aparece como "acierto de equipo 50%", que manda a mirar la iluminación.
-    """
-    import json
-
-    from .asignacion import aplicar, avisos, colorear, muestras_de_revision, votar
-    from .equipos import ClasificadorEquipos
+def _muestras_etiquetadas(args):
+    """Las cajas etiquetadas en la revisión, con el color de cada torso."""
+    from .asignacion import colorear, muestras_de_revision
 
     carpeta = Path(args.cuadros)
     indice = _leer_json(carpeta / "indice.json", "el índice de los cuadros")
     corr = _leer_json(args.correcciones, "las correcciones")
-    d_equipos = _leer_json(args.equipos, "los equipos")
-    clas = ClasificadorEquipos.de_dict(d_equipos)
-
     muestras = muestras_de_revision(indice, corr)
     if not muestras:
-        print("ERROR: no hay ninguna caja etiquetada en esas correcciones. "
-              "¿Revisaste y guardaste en el visor?", file=sys.stderr)
-        return 1
-
+        raise ArchivoFaltante(
+            "No hay ninguna caja etiquetada en esas correcciones. "
+            "¿Revisaste y guardaste en el visor?")
     con_color, sin_color = colorear(muestras, carpeta)
     if not con_color:
-        print(f"ERROR: no pude leer el color de ninguna de las {len(muestras)} "
-              f"cajas. ¿Están los JPG en {carpeta}?", file=sys.stderr)
+        raise ArchivoFaltante(
+            f"No pude leer el color de ninguna de las {len(muestras)} cajas. "
+            f"¿Están los JPG en {carpeta}?")
+    return con_color, sin_color
+
+
+def _cmd_color_diagnostico(args):
+    """
+    ¿El color de la camiseta alcanza para saber de qué equipo es cada uno?
+
+    Es la pregunta que hay que contestar antes de seguir tocando parámetros, y
+    hasta ahora se contestaba de memoria. El primer partido real dio 50% de
+    acierto de equipo, y la explicación fácil —"faltó asignar los grupos"— no
+    era la buena: con los grupos que salieron, el techo era 69% aun asignando
+    perfecto. Eso solo se ve midiendo.
+
+    Se prueban los espacios de color contra las cajas que una persona etiquetó,
+    partiendo por INSTANTE: dos jugadores del mismo cuadro no son dos ejemplos
+    independientes, y mezclarlos daría un número alto que no significa nada.
+    """
+    from .asignacion import validar
+    from .color import DESCRIPCION, ESPACIOS
+
+    con_color, sin_color = _muestras_etiquetadas(args)
+    instantes = len({m.get("t_ms") for m in con_color})
+    print(f"{len(con_color)} cajas etiquetadas en {instantes} instantes"
+          + (f" ({sin_color} sin color legible)" if sin_color else ""))
+    if instantes < 5:
+        print("OJO: con tan pocos instantes los números de abajo se mueven "
+              "mucho. Revisá unos veinte.")
+    print("\nQué tanto se le puede sacar al color, según cómo se lo mire.")
+    print("Partido por instante, así que es lo que se espera en un momento "
+          "del partido que el modelo no vio.\n")
+    print(f"  {'espacio':<12} {'agrupando':>10} {'con etiquetas':>14}   qué es")
+    print("  " + "-" * 74)
+
+    resultados = []
+    for espacio in ESPACIOS:
+        try:
+            v = validar(con_color, espacio=espacio, por_rol=args.por_rol)
+        except (ImportError, ValueError) as e:
+            print(f"  {espacio:<12} {'-':>10} {'-':>14}   no se pudo: {e}")
+            continue
+        if v.get("aviso"):
+            print(f"  {espacio:<12} {'-':>10} {'-':>14}   {v['aviso']}")
+            continue
+        resultados.append(v)
+        print(f"  {espacio:<12} {v['agrupado']:>9.0%} {v['supervisado']:>13.0%}"
+              f"   {DESCRIPCION[espacio]}")
+
+    if not resultados:
         return 1
 
-    v = votar(clas, con_color)
+    mejor = max(resultados, key=lambda v: v["supervisado"])
+    print(f"\n  Mejor: {mejor['espacio']} con etiquetas, {mejor['supervisado']:.0%}.")
+    print("\n  Por rol, con ese espacio:")
+    for rol, d in mejor["por_rol"].items():
+        print(f"    {rol:<16} {d['acierto']:>5.0%}  ({d['muestras']} muestras)")
+
+    techo_viejo = max(v["agrupado"] for v in resultados)
+    for d in _veredicto_color(mejor, techo_viejo):
+        print(f"\n  >> {d}")
+    return 0
+
+
+def _veredicto_color(mejor: dict, techo_agrupado: float) -> list[str]:
+    """Qué significan esos números para lo que hay que hacer ahora."""
+    sup, esp = mejor["supervisado"], mejor["espacio"]
+    dichos = []
+    if sup >= 0.9:
+        dichos.append(
+            f"El color alcanza: bien usado da {sup:.0%}. Corré "
+            f"`equipos-desde-revision --supervisado --espacio {esp} --aplicar` "
+            "y volvé a analizar.")
+    elif sup >= 0.75:
+        falla = 1 - sup
+        cada = round(1 / falla) if falla else 0
+        dichos.append(
+            f"El color alcanza a medias: {sup:.0%}, o sea que uno de cada "
+            f"{cada} va a salir con el equipo equivocado. Sirve igual y es "
+            f"gratis: aplicalo, y después mirá los roles flojos de la lista de "
+            f"arriba, que es donde está el error concentrado.")
+    else:
+        dichos.append(
+            f"El color NO alcanza: ni usando las etiquetas se pasa de {sup:.0%}. "
+            "Seguir tocando la asignación no va a mover nada. Las camisetas se "
+            "ven demasiado parecidas a esta distancia, o el recorte del torso "
+            "está agarrando fondo en vez de camiseta. Antes de entrenar nada, "
+            "mirá los recortes de `equipos_recortes/` y fijate qué se ve ahí.")
+
+    if sup - techo_agrupado >= 0.1:
+        dichos.append(
+            f"Usar las etiquetas gana {sup - techo_agrupado:.0%} contra agrupar "
+            "a ciegas, y eso ya es con la asignación regalada. O sea que el "
+            "problema no era qué rol se le puso a cada grupo: eran los grupos.")
+    return dichos
+
+
+def _cmd_equipos_desde_revision(args):
+    """
+    Decide qué es cada grupo de color con lo que revisó una persona, en vez de
+    mirando siete recortes.
+
+    Dos modos, y la diferencia importa:
+
+      · por defecto, se le pone nombre a los grupos que YA existen. Barato, y
+        alcanza cuando los grupos son buenos y lo único que falló fue el
+        nombre.
+      · `--supervisado` arma los grupos DE CERO a partir de las etiquetas. Hace
+        falta cuando los grupos mismos están mal: en el primer partido real, el
+        techo con los grupos que había era 69% aun asignándolos perfecto, así
+        que ningún nombre lo arreglaba.
+
+    Cuál corresponde lo dice `cli color-diagnostico`, que lo mide.
+    """
+    import json
+
+    from .asignacion import aplicar, avisos, validar, votar
+    from .equipos import ClasificadorEquipos, entrenar_supervisado
+
+    con_color, sin_color = _muestras_etiquetadas(args)
+    d_equipos = _leer_json(args.equipos, "los equipos")
+    clas = ClasificadorEquipos.de_dict(d_equipos)
     print(f"{len(con_color)} cajas etiquetadas con color legible"
           + (f" ({sin_color} sin color, muy chicas)" if sin_color else ""))
     print()
 
-    ancho = max(len(f["actual"]) for f in v["grupos"])
-    for f in v["grupos"]:
-        cabeza = f"  Grupo {f['grupo']}  {f['muestras']:>4} muestras  " \
-                 f"|  ahora: {f['actual']:<{ancho}}  ->  "
-        if f["propuesta"]:
-            marca = "=" if f["propuesta"] == f["actual"] else "CAMBIA a"
-            print(f"{cabeza}{marca} {f['propuesta']}  ({f['pureza']:.0%} de acuerdo)")
-        else:
-            print(f"{cabeza}sin tocar ({f['motivo']})")
-        if f["votos"]:
-            detalle = ", ".join(f"{r} {n}" for r, n in
-                                sorted(f["votos"].items(), key=lambda x: -x[1]))
-            print(f"{' ' * 12}{detalle}")
-
-    for a in avisos(v):
-        print(f"\n  >> {a}")
+    if args.supervisado:
+        v = validar(con_color, espacio=args.espacio, por_rol=args.por_rol)
+        nuevo = entrenar_supervisado(con_color, espacio=args.espacio,
+                                     por_rol=args.por_rol)
+        cuenta: dict[str, int] = {}
+        for rol in nuevo.equipo_por_grupo.values():
+            cuenta[rol] = cuenta.get(rol, 0) + 1
+        print(f"Clasificador armado con las etiquetas, en espacio "
+              f"'{args.espacio}':")
+        for rol, n in sorted(cuenta.items()):
+            print(f"  {rol:<16} {n} montón(es) de color")
+        if not v.get("aviso"):
+            print(f"\n  Acierto esperado: {v['supervisado']:.0%} "
+                  f"(partiendo por instante, o sea en momentos que no vio).")
+            for rol, d in v["por_rol"].items():
+                print(f"    {rol:<16} {d['acierto']:>5.0%}  ({d['muestras']})")
+        validacion = v
+    else:
+        v = votar(clas, con_color)
+        ancho = max(len(f["actual"]) for f in v["grupos"])
+        for f in v["grupos"]:
+            cabeza = (f"  Grupo {f['grupo']}  {f['muestras']:>4} muestras  "
+                      f"|  ahora: {f['actual']:<{ancho}}  ->  ")
+            if f["propuesta"]:
+                marca = "=" if f["propuesta"] == f["actual"] else "CAMBIA a"
+                print(f"{cabeza}{marca} {f['propuesta']}  "
+                      f"({f['pureza']:.0%} de acuerdo)")
+            else:
+                print(f"{cabeza}sin tocar ({f['motivo']})")
+            if f["votos"]:
+                detalle = ", ".join(f"{r} {n}" for r, n in
+                                    sorted(f["votos"].items(), key=lambda x: -x[1]))
+                print(f"{' ' * 12}{detalle}")
+        for a in avisos(v):
+            print(f"\n  >> {a}")
+        nuevo, validacion = aplicar(clas, v), None
 
     if not args.aplicar:
         print("\nNo escribí nada. Si te cierra, corré lo mismo con --aplicar.")
         return 0
 
-    nuevo = aplicar(clas, v)
     d_equipos.update(nuevo.a_dict())
+    if validacion and not validacion.get("aviso"):
+        d_equipos["validacion"] = validacion
     Path(args.equipos).write_text(
         json.dumps(d_equipos, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nEscrito en {args.equipos}.")
@@ -947,6 +1071,16 @@ def main(argv=None):
                                      "dejando una copia del anterior")
     mg.set_defaults(func=_cmd_migrar_correcciones)
 
+    cd = sub.add_parser(
+        "color-diagnostico",
+        help="mide si el color de las camisetas alcanza para separar equipos")
+    cd.add_argument("--cuadros", default="revision_cuadros")
+    cd.add_argument("--correcciones", required=True)
+    cd.add_argument("--por-rol", type=int, default=2,
+                    help="cuántos montones de color por rol (la misma camiseta "
+                         "se ve distinta según dónde esté parado el jugador)")
+    cd.set_defaults(func=_cmd_color_diagnostico)
+
     ed = sub.add_parser(
         "equipos-desde-revision",
         help="deduce qué grupo de color es cada equipo, con lo que revisó una persona")
@@ -954,6 +1088,12 @@ def main(argv=None):
                     help="la carpeta con los JPG y el indice.json")
     ed.add_argument("--correcciones", required=True)
     ed.add_argument("--equipos", default="equipos.json")
+    ed.add_argument("--supervisado", action="store_true",
+                    help="arma los grupos de cero con las etiquetas, en vez de "
+                         "ponerle nombre a los que ya hay")
+    ed.add_argument("--espacio", default="bgr",
+                    help="espacio de color; lo elige color-diagnostico")
+    ed.add_argument("--por-rol", type=int, default=2)
     ed.add_argument("--aplicar", action="store_true",
                     help="sin esto solo muestra qué haría")
     ed.set_defaults(func=_cmd_equipos_desde_revision)

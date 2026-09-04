@@ -37,6 +37,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .color import a_espacio
+
 PROPIO = "Propio"
 RIVAL = "Rival"
 ARQUERO_PROPIO = "Arquero propio"
@@ -130,6 +132,15 @@ class ClasificadorEquipos:
     moneda al aire y hay que decirlo.
     """
 
+    espacio: str = "bgr"
+    """
+    En qué espacio se comparan los colores. Los centros están EN ese espacio.
+
+    Por defecto BGR crudo, que es lo que se venía usando y lo que tienen los
+    archivos ya guardados. Cuál conviene se mide con `cli color-diagnostico`
+    sobre las cajas que una persona etiquetó, no se elige de memoria.
+    """
+
     confirmado: bool = False
     """
     Si una persona ya dijo qué es cada grupo.
@@ -150,11 +161,18 @@ class ClasificadorEquipos:
     def clasificar(self, color: np.ndarray | None) -> str:
         if color is None:
             return DESCONOCIDO
-        d = ((self.centros - np.asarray(color, dtype=np.float64)) ** 2).sum(axis=1)
-        return self.equipo_por_grupo.get(int(d.argmin()), DESCONOCIDO)
+        return self.equipo_por_grupo.get(self.grupo_de(color), DESCONOCIDO)
 
     def grupo_de(self, color) -> int:
-        d = ((self.centros - np.asarray(color, dtype=np.float64)) ** 2).sum(axis=1)
+        """
+        El grupo más cercano. La conversión de espacio pasa SIEMPRE por acá.
+
+        Es a propósito que sea el único lugar: si el que entrena convirtiera y
+        el que clasifica no, los centros y los colores vivirían en espacios
+        distintos y la comparación no fallaría, daría cualquier cosa.
+        """
+        v = a_espacio(np.asarray(color, dtype=np.float64), self.espacio)
+        d = ((self.centros - v) ** 2).sum(axis=1)
         return int(d.argmin())
 
     def a_dict(self) -> dict:
@@ -164,6 +182,7 @@ class ClasificadorEquipos:
             "separacion": self.separacion,
             "confiable": self.confiable,
             "confirmado": self.confirmado,
+            "espacio": self.espacio,
         }
 
     @staticmethod
@@ -173,6 +192,9 @@ class ClasificadorEquipos:
             equipo_por_grupo={int(k): v for k, v in d["equipo_por_grupo"].items()},
             separacion=float(d["separacion"]),
             confirmado=bool(d.get("confirmado", False)),
+            # Los archivos de antes no lo tienen y son BGR: el default los deja
+            # funcionando igual que siempre.
+            espacio=d.get("espacio", "bgr"),
         )
 
     def asignar(self, grupo: int, equipo: str) -> "ClasificadorEquipos":
@@ -204,7 +226,8 @@ class ClasificadorEquipos:
         nuevo[grupo] = equipo
         return ClasificadorEquipos(
             centros=self.centros, equipo_por_grupo=nuevo,
-            separacion=self._separacion_entre_equipos(nuevo), confirmado=True)
+            separacion=self._separacion_entre_equipos(nuevo), confirmado=True,
+            espacio=self.espacio)
 
     def _separacion_entre_equipos(self, roles: dict) -> float:
         """
@@ -228,6 +251,7 @@ def entrenar_clasificador(
     colores: list[np.ndarray],
     grupos: int = 7,
     semilla: int = 0,
+    espacio: str = "bgr",
 ) -> ClasificadorEquipos:
     """
     Agrupa los colores de todo el partido.
@@ -255,7 +279,7 @@ def entrenar_clasificador(
         raise ValueError(
             f"Hacen falta al menos {grupos} colores para agrupar y llegaron {len(validos)}."
         )
-    datos = np.array(validos, dtype=np.float64)
+    datos = a_espacio(np.array(validos, dtype=np.float64), espacio)
     centros, etiquetas = _kmeans(datos, grupos, semilla=semilla)
 
     poblacion = np.bincount(etiquetas, minlength=len(centros))
@@ -269,7 +293,7 @@ def entrenar_clasificador(
     equipo_por_grupo[a] = PROPIO
     equipo_por_grupo[b] = RIVAL
     return ClasificadorEquipos(centros=centros, equipo_por_grupo=equipo_por_grupo,
-                               separacion=separacion)
+                               separacion=separacion, espacio=espacio)
 
 
 def asignar_propio(clas: ClasificadorEquipos, color_propio: np.ndarray) -> ClasificadorEquipos:
@@ -278,8 +302,7 @@ def asignar_propio(clas: ClasificadorEquipos, color_propio: np.ndarray) -> Clasi
     falta. Un click por partido: es el único dato de identidad que la Fase 1
     le pide a un humano.
     """
-    d = ((clas.centros - np.asarray(color_propio, dtype=np.float64)) ** 2).sum(axis=1)
-    elegido = int(d.argmin())
+    elegido = clas.grupo_de(color_propio)
     if clas.equipo_por_grupo.get(elegido) == PROPIO:
         return clas
     nuevo = dict(clas.equipo_por_grupo)
@@ -288,4 +311,59 @@ def asignar_propio(clas: ClasificadorEquipos, color_propio: np.ndarray) -> Clasi
             nuevo[g] = RIVAL
     nuevo[elegido] = PROPIO
     return ClasificadorEquipos(centros=clas.centros, equipo_por_grupo=nuevo,
-                               separacion=clas.separacion)
+                               separacion=clas.separacion, espacio=clas.espacio)
+
+
+def entrenar_supervisado(
+    muestras: list[dict],
+    espacio: str = "bgr",
+    por_rol: int = 2,
+    semilla: int = 0,
+) -> ClasificadorEquipos:
+    """
+    Un clasificador armado con ejemplos etiquetados, en vez de agrupando a ciegas.
+
+    La diferencia con `entrenar_clasificador` no es de precisión, es de método.
+    k-means no sabe qué está buscando: encuentra la estructura que HAY en los
+    colores, que puede ser "camisetas" pero también puede ser "zonas de la
+    cancha con más luz". Después alguien mira siete recortes y le pone nombre a
+    cada montón, y si los montones no eran los equipos no hay nombre que lo
+    arregle. En el primer partido real pasó eso: el techo de acierto con los
+    grupos que salieron era 69%, aun asignándolos perfecto.
+
+    Acá los montones se arman POR ROL, con los ejemplos que una persona ya
+    etiquetó. `por_rol` permite más de un montón por rol, que es lo que hace
+    falta cuando la misma camiseta se ve distinta según dónde esté parado el
+    jugador: dos montones de "Propio" siguen siendo los dos "Propio".
+
+    Sigue siendo el mismo `ClasificadorEquipos`, así que el resto del pipeline
+    no se entera. Cuánto sirve se mide con `asignacion.validar`, no se supone.
+    """
+    por_etiqueta: dict[str, list] = {}
+    for m in muestras:
+        if m["rol"] in (DESCONOCIDO, ""):
+            continue
+        por_etiqueta.setdefault(m["rol"], []).append(m["color"])
+    if not por_etiqueta:
+        raise ValueError("No hay ninguna muestra etiquetada para entrenar.")
+
+    centros, roles = [], {}
+    for rol, colores in sorted(por_etiqueta.items()):
+        datos = a_espacio(np.array(colores, dtype=np.float64), espacio)
+        k = max(1, min(por_rol, len(datos)))
+        if k == 1:
+            trozos = [datos.mean(axis=0)]
+        else:
+            c, _ = _kmeans(datos, k, semilla=semilla)
+            trozos = list(c)
+        for centro in trozos:
+            roles[len(centros)] = rol
+            centros.append(centro)
+
+    centros = np.array(centros, dtype=np.float64)
+    clas = ClasificadorEquipos(centros=centros, equipo_por_grupo=roles,
+                               separacion=0.0, confirmado=True, espacio=espacio)
+    return ClasificadorEquipos(
+        centros=centros, equipo_por_grupo=roles,
+        separacion=clas._separacion_entre_equipos(roles),
+        confirmado=True, espacio=espacio)

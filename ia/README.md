@@ -388,6 +388,45 @@ propio y mitad rival no está mal asignado, es un color que no separa, y eso no
 se arregla asignando. Los grupos mezclados quedan en Desconocido a propósito;
 los que no tienen evidencia suficiente no se tocan.
 
+### ¿Y si los grupos mismos están mal?
+
+Pasó en el primer partido real: cada rol repartido en tres o cuatro grupos y
+grupos con dos equipos adentro. **El techo con esos grupos era 69% aunque la
+asignación fuera perfecta**, así que ningún click lo arreglaba. k-means no sabe
+qué está buscando: encuentra la estructura que hay en los colores, que puede
+ser "camisetas" pero también puede ser "zonas de la cancha con más luz".
+
+```bash
+python -m futsal_ia.cli color-diagnostico --correcciones correcciones_PT.json
+```
+
+Contesta la pregunta que hay que contestar antes de seguir tocando parámetros:
+**¿el color de la camiseta alcanza para saber de qué equipo es cada uno?**
+Prueba cuatro espacios de color contra las cajas etiquetadas y da dos números
+por espacio:
+
+- **agrupando**: el techo del método de hoy, con la asignación *regalada*. Si
+  este número es bajo, ningún click lo mejora.
+- **con etiquetas**: lo que se saca usando las etiquetas para armar los grupos.
+  Si este también es bajo, el color no alcanza y hay que ir por otro lado.
+
+Las particiones son **por instante**, no por muestra: dos jugadores del mismo
+cuadro no son dos ejemplos independientes —misma luz, mismo cuadro, a veces el
+mismo jugador— y mezclarlos daría un número alto que no significa nada.
+
+Cuál espacio gana depende de las camisetas, la luz y la cancha: se mide, no se
+elige de memoria. Cuando el diagnóstico da verde:
+
+```bash
+python -m futsal_ia.cli equipos-desde-revision --correcciones correcciones_PT.json \
+    --supervisado --espacio <el que ganó> --aplicar
+```
+
+Arma los grupos de cero a partir de las etiquetas, con varios montones por rol
+—la misma camiseta se ve distinta según dónde esté parado el jugador— y guarda
+el acierto esperado junto al clasificador. Sigue siendo el mismo
+`ClasificadorEquipos`: el resto del pipeline no se entera.
+
 Esas mismas correcciones son el material de entrenamiento para afinar el
 detector más adelante: el trabajo de revisar no se tira.
 
@@ -399,7 +438,8 @@ Honestidad sobre qué está probado de verdad:
 |---|---|
 | `cancha.py` | **Verificado.** 9 tests. La grilla Z1–Z4 × I/C/D se compara contra el `zonaDe()` real de `src/offline/modelo.js` corriéndolo con node sobre una grilla densa |
 | `geometria.py` | **Verificado.** 17 tests contra una cámara sintética en un corner, de la que conocemos la respuesta correcta |
-| `equipos.py` | **Verificado.** 12 tests de clustering de color |
+| `equipos.py` | **Verificado.** 23 tests de clustering de color, el clasificador supervisado y el espacio en que compara |
+| `color.py` | **Verificado.** 15 tests: que cada espacio haga lo que dice, incluido el matiz al dar la vuelta y el ruido de matiz en los grises |
 | `salida.py` | **Verificado.** 13 tests; los campos se comparan contra `crearSnapshot()` y `crearRecorrido()` reales de modelo.js |
 | `preproceso.py` | **Verificado.** 14 tests del giro y recorte determinista |
 | `herramientas/calibrador.html` | **Sin ejecutar en navegador.** Tests que verifican que su lista de puntos no se desincronice de `cancha.py` y que no dependa de ningún CDN |

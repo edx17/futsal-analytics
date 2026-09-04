@@ -230,3 +230,97 @@ def avisos(votacion: dict) -> list[str]:
             f"{len(flacos)} grupo(s) con muy pocas muestras quedaron sin tocar. "
             "Revisá más instantes si te importa ese color.")
     return dichos
+
+
+# ── Medir si el color alcanza ──────────────────────────────────────────────
+
+def _por_instante(muestras: list[dict], pliegues: int) -> list[list[int]]:
+    """
+    Reparte los instantes, no las muestras.
+
+    Importa mucho y es fácil de hacer mal. Dos jugadores del mismo cuadro no
+    son dos ejemplos independientes: es la misma luz, el mismo cuadro, a veces
+    el mismo jugador. Si un instante quedara partido entre entrenamiento y
+    prueba, el número saldría alto porque el modelo ya vio ese momento, y no
+    diría nada sobre el resto del partido.
+    """
+    instantes = sorted({m.get("t_ms", 0) for m in muestras})
+    grupos = [instantes[i::pliegues] for i in range(pliegues)]
+    return [[i for i, m in enumerate(muestras) if m.get("t_ms", 0) in set(g)]
+            for g in grupos if g]
+
+
+def validar(muestras: list[dict], espacio: str = "bgr", por_rol: int = 2,
+            grupos_kmeans: int = 7, pliegues: int = 5) -> dict:
+    """
+    Cuánto se le puede sacar al color, en ese espacio, con cada método.
+
+    Devuelve dos números que responden preguntas distintas:
+
+      · `agrupado` es el techo del método de hoy: agrupar a ciegas y ponerle a
+        cada grupo el rol que más aparece. Le damos la asignación PERFECTA, que
+        es mejor de lo que puede hacer una persona mirando recortes. Si este
+        número es bajo, ningún click lo arregla.
+      · `supervisado` es lo que se saca usando las etiquetas para armar los
+        grupos. Si este también es bajo, el color no alcanza y punto: hay que
+        ir por otro lado (más resolución sobre el jugador, o entrenar el
+        detector para que distinga equipos por algo más que la camiseta).
+    """
+    import numpy as np
+
+    from .color import a_espacio
+    from .equipos import _kmeans, entrenar_supervisado
+
+    partes = _por_instante(muestras, pliegues)
+    if len(partes) < 2:
+        return {"espacio": espacio, "muestras": len(muestras),
+                "aviso": "hacen falta al menos dos instantes distintos"}
+
+    acierto_sup = acierto_km = total = 0
+    por_rol_ok: dict[str, list[int]] = {}
+
+    for prueba in partes:
+        idx_prueba = set(prueba)
+        entrena = [m for i, m in enumerate(muestras) if i not in idx_prueba]
+        evalua = [muestras[i] for i in prueba]
+        if not entrena or not evalua:
+            continue
+
+        clas = entrenar_supervisado(entrena, espacio=espacio, por_rol=por_rol)
+        for m in evalua:
+            ok = clas.clasificar(m["color"]) == m["rol"]
+            acierto_sup += ok
+            r = por_rol_ok.setdefault(m["rol"], [0, 0])
+            r[0] += ok
+            r[1] += 1
+
+        # El techo del método de hoy, con la asignación regalada.
+        datos = a_espacio(np.array([m["color"] for m in entrena], dtype=np.float64),
+                          espacio)
+        k = min(grupos_kmeans, len(datos))
+        centros, etiquetas = _kmeans(datos, k)
+        mayoria: dict[int, str] = {}
+        for g in range(len(centros)):
+            votos: dict[str, int] = {}
+            for m, e in zip(entrena, etiquetas):
+                if e == g:
+                    votos[m["rol"]] = votos.get(m["rol"], 0) + 1
+            if votos:
+                mayoria[g] = max(votos.items(), key=lambda x: x[1])[0]
+        for m in evalua:
+            v = a_espacio(np.asarray(m["color"], dtype=np.float64), espacio)
+            g = int(((centros - v) ** 2).sum(axis=1).argmin())
+            acierto_km += mayoria.get(g) == m["rol"]
+        total += len(evalua)
+
+    if not total:
+        return {"espacio": espacio, "muestras": len(muestras),
+                "aviso": "no se pudo armar ninguna partición"}
+    return {
+        "espacio": espacio,
+        "muestras": total,
+        "supervisado": acierto_sup / total,
+        "agrupado": acierto_km / total,
+        "por_rol": {r: {"acierto": ok / n, "muestras": n}
+                    for r, (ok, n) in sorted(por_rol_ok.items())},
+    }

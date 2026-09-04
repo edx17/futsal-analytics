@@ -220,3 +220,155 @@ def test_una_imagen_que_falta_no_rompe_nada(tmp_path):
     con_color, sin_color = colorear(
         [{"imagen": "no_esta.jpg", "bbox": [0, 0, 40, 90], "rol": "Propio"}], tmp_path)
     assert con_color == [] and sin_color == 1
+
+
+# ── Medir si el color alcanza ──────────────────────────────────────────────
+# El primer partido real dio 50% de acierto de equipo, y la explicación fácil
+# —"faltó asignar los grupos"— no era la buena: con los grupos que salieron el
+# techo era 69% aun asignando perfecto. Eso solo se ve midiendo.
+
+from futsal_ia.asignacion import _por_instante, validar  # noqa: E402
+from futsal_ia.color import ESPACIOS  # noqa: E402
+from futsal_ia.equipos import entrenar_supervisado  # noqa: E402
+
+
+def _partido(separables=True, instantes=20, semilla=0):
+    """Un partido sintético con luz al azar, sin relación con el rol."""
+    rng = np.random.default_rng(semilla)
+    base = ({"Propio": (60, 210, 60), "Rival": (150, 150, 150)} if separables
+            else {"Propio": (150, 155, 150), "Rival": (150, 150, 158)})
+    base.update({"Arquero propio": (240, 190, 40), "Arquero rival": (40, 40, 190)})
+    plantel = ["Propio"] * 4 + ["Rival"] * 4 + ["Arquero propio", "Arquero rival"]
+    muestras = []
+    for k in range(instantes):
+        for rol in plantel:
+            luz = rng.uniform(0.5, 1.4)
+            color = np.clip(np.array(base[rol], float) * luz + rng.normal(0, 7, 3),
+                            0, 255)
+            muestras.append({"t_ms": k * 2000, "rol": rol, "color": color})
+    return muestras
+
+
+def test_los_pliegues_no_parten_un_instante():
+    """
+    Es la propiedad que hace honesto al número. Dos jugadores del mismo cuadro
+    no son dos ejemplos independientes: misma luz, mismo cuadro, a veces el
+    mismo jugador. Si un instante quedara a los dos lados, el modelo estaría
+    siendo evaluado sobre algo que ya vio.
+    """
+    muestras = _partido(instantes=10)
+    partes = _por_instante(muestras, 5)
+    assert len(partes) == 5
+    vistos = set()
+    for parte in partes:
+        instantes = {muestras[i]["t_ms"] for i in parte}
+        assert not (instantes & vistos), "un instante cayó en dos pliegues"
+        vistos |= instantes
+    assert sum(len(p) for p in partes) == len(muestras)   # no se pierde ninguna
+
+
+def test_con_camisetas_distintas_el_color_alcanza():
+    v = validar(_partido(separables=True), espacio="bgr")
+    assert v["supervisado"] > 0.95
+
+
+def test_con_camisetas_parecidas_el_color_no_alcanza_y_se_nota():
+    """
+    El caso que hay que poder detectar: si acá diera un número alto, el
+    diagnóstico mandaría a aplicar algo que no va a funcionar.
+    """
+    v = validar(_partido(separables=False), espacio="bgr")
+    assert v["supervisado"] < 0.85
+
+
+def test_ningun_espacio_inventa_una_separacion_que_no_existe():
+    """
+    Dos camisetas del MISMO tono que solo se diferencian en el brillo. Para el
+    espacio que ignora el brillo son literalmente el mismo color, y tiene que
+    reportarlo como lo que es: no se pueden distinguir.
+
+    Esto es lo que hace confiable al diagnóstico. Un espacio que devolviera un
+    número alto acá mandaría a aplicar algo que no puede funcionar, y el error
+    aparecería recién en el partido siguiente.
+    """
+    rng = np.random.default_rng(3)
+    muestras = []
+    for k in range(20):
+        for rol, base in (("Propio", (60, 200, 60)), ("Rival", (30, 100, 30))):
+            for _ in range(4):
+                luz = rng.uniform(0.4, 1.6)
+                muestras.append({"t_ms": k * 2000, "rol": rol,
+                                 "color": np.clip(np.array(base, float) * luz, 0, 255)})
+    # Mitad y mitad es tirar una moneda: exactamente lo que corresponde.
+    assert validar(muestras, espacio="cromatico")["supervisado"] < 0.7
+
+
+@pytest.mark.parametrize("espacio", ESPACIOS)
+def test_todos_los_espacios_devuelven_un_numero_comparable(espacio):
+    """
+    Cuál gana NO se decide acá: depende de las camisetas, la luz y la cancha de
+    cada partido, y por eso se mide con `cli color-diagnostico` sobre los datos
+    de ese partido. Lo que sí tiene que pasar siempre es que los cuatro
+    devuelvan un número sobre la misma escala, o la comparación no valdría.
+    """
+    v = validar(_partido(separables=True), espacio=espacio)
+    assert 0.0 <= v["agrupado"] <= 1.0
+    assert 0.0 <= v["supervisado"] <= 1.0
+    assert v["muestras"] == 200
+
+
+def test_el_desglose_por_rol_dice_donde_esta_el_error():
+    v = validar(_partido(separables=False), espacio="bgr")
+    assert set(v["por_rol"]) == {"Propio", "Rival", "Arquero propio", "Arquero rival"}
+    # Los arqueros visten distinto: tienen que salir mejor que los dos grises.
+    assert v["por_rol"]["Arquero rival"]["acierto"] > v["por_rol"]["Propio"]["acierto"]
+
+
+def test_con_un_solo_instante_no_se_puede_validar():
+    """Sin dos instantes no hay nada contra qué probar, y hay que decirlo."""
+    v = validar([{"t_ms": 0, "rol": "Propio", "color": np.array([1., 2., 3.])}])
+    assert "aviso" in v and "instantes" in v["aviso"]
+
+
+# ── El clasificador armado con etiquetas ───────────────────────────────────
+
+def test_el_supervisado_arma_un_monton_por_rol():
+    clas = entrenar_supervisado(_partido(), espacio="bgr", por_rol=1)
+    assert sorted(clas.equipo_por_grupo.values()) == [
+        "Arquero propio", "Arquero rival", "Propio", "Rival"]
+
+
+def test_puede_haber_varios_montones_del_mismo_rol():
+    """
+    La misma camiseta se ve distinta según dónde esté parado el jugador. Dos
+    montones de "Propio" siguen siendo los dos "Propio".
+    """
+    clas = entrenar_supervisado(_partido(), espacio="bgr", por_rol=3)
+    cuenta = {}
+    for rol in clas.equipo_por_grupo.values():
+        cuenta[rol] = cuenta.get(rol, 0) + 1
+    assert cuenta["Propio"] == 3 and cuenta["Rival"] == 3
+
+
+def test_el_supervisado_recuerda_en_que_espacio_se_entreno():
+    """
+    Si el que entrena convierte y el que clasifica no, los centros y los
+    colores viven en espacios distintos: no falla, da cualquier cosa.
+    """
+    clas = entrenar_supervisado(_partido(), espacio="cromatico")
+    assert clas.espacio == "cromatico"
+    assert ClasificadorEquipos.de_dict(clas.a_dict()).espacio == "cromatico"
+    # Y clasifica bien un color crudo, convirtiéndolo por dentro.
+    assert clas.clasificar(np.array([60., 210., 60.]) * 0.5) == "Propio"
+
+
+def test_un_equipos_json_viejo_sigue_siendo_bgr():
+    """Los archivos guardados antes no tienen el campo y son BGR."""
+    d = {"centros": [[1., 2., 3.]], "equipo_por_grupo": {"0": "Propio"},
+         "separacion": 50.0}
+    assert ClasificadorEquipos.de_dict(d).espacio == "bgr"
+
+
+def test_sin_etiquetas_no_se_entrena():
+    with pytest.raises(ValueError, match="ninguna muestra"):
+        entrenar_supervisado([{"rol": "Desconocido", "color": np.zeros(3)}])
