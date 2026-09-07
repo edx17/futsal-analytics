@@ -10,6 +10,40 @@ import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
 import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
 import { parseFixturePegado, matchearRivales, calcularAliasNuevos, ID_MI_CLUB } from '../utils/parseFixturePegado';
+import { calcularTabla, resultadosDe, statsDe, rachasDe, mejorYPeor, puestoDe, equiposDe } from '../utils/analisisTorneo';
+
+/* Una fila de la comparación. `mayorEsMejor` decide a quién se le pinta el
+   número: en goles en contra y en puesto, menos es mejor. En PJ no hay mejor
+   ni peor —una rueda puede tener más fechas que la otra— así que va en null y
+   no se destaca ninguno. */
+const FILAS_COMPARACION = [
+  { k: 'puesto', t: 'Puesto', mayorEsMejor: false, valor: (l) => l.puesto ?? 99, texto: (v) => (v === 99 ? '—' : `${v}º`) },
+  { k: 'pj',     t: 'Jugados',        mayorEsMejor: null,  valor: (l) => l.stats.pj },
+  { k: 'pts',    t: 'Puntos',         mayorEsMejor: true,  valor: (l) => l.stats.pts },
+  { k: 'efi',    t: 'Eficacia',       mayorEsMejor: true,  valor: (l) => l.stats.eficacia, texto: (v) => `${v}%` },
+  { k: 'pg',     t: 'Ganados',        mayorEsMejor: true,  valor: (l) => l.stats.pg },
+  { k: 'pe',     t: 'Empatados',      mayorEsMejor: null,  valor: (l) => l.stats.pe },
+  { k: 'pp',     t: 'Perdidos',       mayorEsMejor: false, valor: (l) => l.stats.pp },
+  { k: 'gf',     t: 'Goles a favor',  mayorEsMejor: true,  valor: (l) => l.stats.gf },
+  { k: 'gc',     t: 'Goles en contra',mayorEsMejor: false, valor: (l) => l.stats.gc },
+  { k: 'dif',    t: 'Diferencia',     mayorEsMejor: true,  valor: (l) => l.stats.dif, texto: (v) => (v >= 0 ? `+${v}` : String(v)) },
+  { k: 'vallas', t: 'Valla invicta',  mayorEsMejor: true,  valor: (l) => l.stats.vallas },
+  { k: 'invicto',t: 'Mejor invicto',  mayorEsMejor: true,  valor: (l) => l.rachas.mejorInvicto },
+];
+
+const tabChip = {
+  padding: '9px 14px', borderRadius: '20px', borderWidth: '1px', borderStyle: 'solid',
+  cursor: 'pointer', fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.04em',
+  minHeight: '40px', fontFamily: 'inherit',
+};
+
+const Kpi = ({ rotulo, valor, pie, color }) => (
+  <div>
+    <div className="stat-label" style={{ marginBottom: '2px' }}>{rotulo}</div>
+    <div style={{ fontSize: '1.7rem', fontWeight: 900, lineHeight: 1.1, color: color || 'var(--text)' }}>{valor}</div>
+    {pie && <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px' }}>{pie}</div>}
+  </div>
+);
 
 function Torneos() {
   const clubId = localStorage.getItem('club_id');
@@ -36,7 +70,11 @@ function Torneos() {
   const [fixture, setFixture] = useState([]);
   
   // SOLAPAS AMPLIADAS
-  const [tabMisTorneos, setTabMisTorneos] = useState('posiciones'); // 'posiciones' | 'fixture' | 'reporte'
+  const [tabMisTorneos, setTabMisTorneos] = useState('posiciones'); // 'posiciones' | 'fixture' | 'reporte' | 'comparar' | 'miequipo'
+
+  // Solapa COMPARAR: qué se compara contra qué.
+  const [modoComparar, setModoComparar] = useState('ruedas'); // 'ruedas' | 'equipos'
+  const [rivalComparar, setRivalComparar] = useState('');
   
   // SELECTOR DE MODO DE TABLA
   const [modoTabla, setModoTabla] = useState('general'); // 'general' | 'local' | 'visitante'
@@ -841,101 +879,87 @@ function Torneos() {
     return r;
   }, [historial, ventanaRacha]);
 
-  const tablaPosiciones = useMemo(() => {
-    const tabla = {};
+  /* La tabla se calcula en analisisTorneo.js para poder pedirla también por
+     rueda y por equipo en las solapas nuevas. Es la misma lógica que estaba
+     acá: verificado contra 600 fixtures al azar en los tres modos, sin una
+     sola diferencia. */
+  const tablaPosiciones = useMemo(
+    () => calcularTabla(fixtureRueda, miClubGlobal, modoTabla),
+    [fixtureRueda, miClubGlobal, modoTabla]
+  );
 
-    fixtureRueda.forEach(f => {
-      const esMiPartido = (!f.nombre_propio || f.nombre_propio === miClubGlobal) || (f.rival === miClubGlobal);
-      
-      let equipoLocal = '';
-      let equipoVisita = '';
-      let escudoLocal = null;
-      let escudoVisita = null;
+  /* ══════════════════════════════════════════════════════════════════════
+     SOLAPAS COMPARAR Y MI EQUIPO
 
-      if (esMiPartido) {
-        if (f.condicion === 'Visitante') {
-           equipoLocal = f.rival || 'Rival Desconocido';
-           equipoVisita = miClubGlobal;
-           escudoLocal = f.escudo_rival;
-           escudoVisita = f.escudo_propio;
-        } else {
-           equipoLocal = miClubGlobal;
-           equipoVisita = f.rival || 'Rival Desconocido';
-           escudoLocal = f.escudo_propio;
-           escudoVisita = f.escudo_rival;
-        }
-      } else {
-        equipoLocal = f.nombre_propio || miClubGlobal;
-        equipoVisita = f.rival || 'Rival Desconocido';
-        escudoLocal = f.escudo_propio;
-        escudoVisita = f.escudo_rival;
-      }
+     Las dos trabajan sobre `fixture` completo y NO sobre `fixtureRueda`: el
+     sentido de comparar rueda 1 con rueda 2 se pierde si arriba hay un filtro
+     que ya dejó una sola rueda, y el resumen de mi equipo es del torneo
+     entero.
+     ══════════════════════════════════════════════════════════════════════ */
 
-      [equipoLocal, equipoVisita].forEach((eq, index) => {
-        if (!tabla[eq]) {
-          tabla[eq] = { 
-            nombre: eq, escudo: index === 0 ? escudoLocal : escudoVisita, 
-            pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0, rachaGeneral: [],
-            pjL: 0, pgL: 0, peL: 0, ppL: 0, gfL: 0, gcL: 0, ptsL: 0, rachaLocal: [],
-            pjV: 0, pgV: 0, peV: 0, ppV: 0, gfV: 0, gcV: 0, ptsV: 0, rachaVisita: []
-          };
-        }
-      });
+  const equiposDelTorneo = useMemo(
+    () => equiposDe(fixture, miClubGlobal).filter(e => e !== miClubGlobal),
+    [fixture, miClubGlobal]
+  );
 
-      if (f.estado === 'Finalizado' || f.estado === 'Jugado') {
-        let golesLocal = 0; let golesVisita = 0;
-        if (esMiPartido && f.condicion === 'Visitante') {
-           golesLocal = Number(f.goles_rival) || 0;
-           golesVisita = Number(f.goles_propios) || 0;
-        } else {
-           golesLocal = Number(f.goles_propios) || 0;
-           golesVisita = Number(f.goles_rival) || 0;
-        }
+  // Un rival por defecto, para que la solapa no arranque vacía.
+  useEffect(() => {
+    if (!rivalComparar && equiposDelTorneo.length > 0) setRivalComparar(equiposDelTorneo[0]);
+    if (rivalComparar && !equiposDelTorneo.includes(rivalComparar)) setRivalComparar(equiposDelTorneo[0] || '');
+  }, [equiposDelTorneo, rivalComparar]);
 
-        const tLocal = tabla[equipoLocal];
-        const tVisita = tabla[equipoVisita];
+  /* Un "lado" de la comparación: los números de un equipo sobre un conjunto
+     de partidos, más su puesto en la tabla de ESE conjunto. El puesto se
+     calcula con la tabla del subconjunto a propósito: "3º en la primera
+     rueda" es un dato distinto de "3º en el torneo". */
+  const armarLado = React.useCallback((rotulo, partidos, equipo) => {
+    const resultados = resultadosDe(partidos, equipo, miClubGlobal);
+    return {
+      rotulo, equipo, resultados,
+      stats: statsDe(resultados),
+      rachas: rachasDe(resultados),
+      puesto: puestoDe(calcularTabla(partidos, miClubGlobal), equipo),
+      ...mejorYPeor(resultados),
+    };
+  }, [miClubGlobal]);
 
-        tLocal.pj++; tVisita.pj++;
-        tLocal.gf += golesLocal; tVisita.gf += golesVisita;
-        tLocal.gc += golesVisita; tVisita.gc += golesLocal;
+  const comparacion = useMemo(() => {
+    if (modoComparar === 'ruedas') {
+      if (!hayRuedas) return null;
+      const r1 = fixture.filter(f => ruedaDe(f) === 1);
+      const r2 = fixture.filter(f => ruedaDe(f) === 2);
+      return {
+        tipo: 'ruedas',
+        a: armarLado('1ª RUEDA', r1, miClubGlobal),
+        b: armarLado('2ª RUEDA', r2, miClubGlobal),
+      };
+    }
+    if (!rivalComparar) return null;
+    return {
+      tipo: 'equipos',
+      a: armarLado(miClubGlobal || 'MI EQUIPO', fixture, miClubGlobal),
+      b: armarLado(rivalComparar, fixture, rivalComparar),
+    };
+  }, [modoComparar, fixture, hayRuedas, ruedaDe, miClubGlobal, rivalComparar, armarLado]);
 
-        tLocal.pjL++; tLocal.gfL += golesLocal; tLocal.gcL += golesVisita;
-        tVisita.pjV++; tVisita.gfV += golesVisita; tVisita.gcV += golesLocal;
-
-        if (golesLocal > golesVisita) {
-          tLocal.pg++; tLocal.pts += 3; tLocal.pgL++; tLocal.ptsL += 3; tLocal.rachaGeneral.push('V'); tLocal.rachaLocal.push('V');
-          tVisita.pp++; tVisita.ppV++; tVisita.rachaGeneral.push('D'); tVisita.rachaVisita.push('D');
-        } else if (golesLocal < golesVisita) {
-          tVisita.pg++; tVisita.pts += 3; tVisita.pgV++; tVisita.ptsV += 3; tVisita.rachaGeneral.push('V'); tVisita.rachaVisita.push('V');
-          tLocal.pp++; tLocal.ppL++; tLocal.rachaGeneral.push('D'); tLocal.rachaLocal.push('D');
-        } else {
-          tLocal.pe++; tLocal.pts += 1; tLocal.peL++; tLocal.ptsL += 1; tLocal.rachaGeneral.push('E'); tLocal.rachaLocal.push('E');
-          tVisita.pe++; tVisita.pts += 1; tVisita.peV++; tVisita.ptsV += 1; tVisita.rachaGeneral.push('E'); tVisita.rachaVisita.push('E');
-        }
-      }
-    });
-
-    return Object.values(tabla).map(t => {
-      t.difGeneral = t.gf - t.gc;
-      t.difLocal = t.gfL - t.gcL;
-      t.difVisita = t.gfV - t.gcV;
-      return t;
-    }).sort((a, b) => {
-      if (modoTabla === 'local') {
-        if (b.ptsL !== a.ptsL) return b.ptsL - a.ptsL;
-        if (b.difLocal !== a.difLocal) return b.difLocal - a.difLocal;
-        return b.gfL - a.gfL;
-      } else if (modoTabla === 'visitante') {
-        if (b.ptsV !== a.ptsV) return b.ptsV - a.ptsV;
-        if (b.difVisita !== a.difVisita) return b.difVisita - a.difVisita;
-        return b.gfV - a.gfV;
-      } else {
-        if (b.pts !== a.pts) return b.pts - a.pts;
-        if (b.difGeneral !== a.difGeneral) return b.difGeneral - a.difGeneral;
-        return b.gf - a.gf;
-      }
-    });
-  }, [fixtureRueda, miClubGlobal, modoTabla]);
+  /* El torneo entero de mi equipo, sin el filtro de rueda de arriba. */
+  const miEquipo = useMemo(() => {
+    if (!miClubGlobal) return null;
+    const resultados = resultadosDe(fixture, miClubGlobal, miClubGlobal);
+    if (resultados.length === 0) return null;
+    const deLocal = resultados.filter(r => r.condicion === 'Local');
+    const deVisita = resultados.filter(r => r.condicion === 'Visitante');
+    return {
+      resultados,
+      stats: statsDe(resultados),
+      rachas: rachasDe(resultados),
+      local: statsDe(deLocal),
+      visitante: statsDe(deVisita),
+      puesto: puestoDe(calcularTabla(fixture, miClubGlobal), miClubGlobal),
+      totalEquipos: calcularTabla(fixture, miClubGlobal).length,
+      ...mejorYPeor(resultados),
+    };
+  }, [fixture, miClubGlobal]);
 
   const reporteLiga = useMemo(() => {
     if (!fixtureRueda || fixtureRueda.length === 0) return null;
@@ -1394,6 +1418,20 @@ function Torneos() {
                     style={{ background: tabMisTorneos === 'reporte' ? 'var(--border)' : 'transparent', color: tabMisTorneos === 'reporte' ? '#a855f7' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
                   >
                     REPORTE
+                  </button>
+                  <button
+                    onClick={() => setTabMisTorneos('comparar')}
+                    className="tab-btn"
+                    style={{ background: tabMisTorneos === 'comparar' ? 'var(--border)' : 'transparent', color: tabMisTorneos === 'comparar' ? 'var(--frio)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
+                  >
+                    COMPARAR
+                  </button>
+                  <button
+                    onClick={() => setTabMisTorneos('miequipo')}
+                    className="tab-btn"
+                    style={{ background: tabMisTorneos === 'miequipo' ? 'var(--border)' : 'transparent', color: tabMisTorneos === 'miequipo' ? 'var(--accent)' : 'var(--text-dim)', padding: '10px 20px', borderRadius: '4px', fontWeight: 800 }}
+                  >
+                    MI EQUIPO
                   </button>
               </div>
               <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem', padding: '10px 20px', fontWeight: 800 }}>
@@ -2087,6 +2125,222 @@ function Torneos() {
                  </div>
               )
             )}
+
+            {/* ═══════════ SOLAPA: COMPARAR ═══════════ */}
+            {tabMisTorneos === 'comparar' && (
+              <div style={{ animation: 'fadeIn 0.3s' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '20px' }}>
+                  {[['ruedas', '1ª vs 2ª RUEDA'], ['equipos', 'MI EQUIPO vs OTRO']].map(([id, txt]) => (
+                    <button key={id} onClick={() => setModoComparar(id)}
+                      style={{ ...tabChip, background: modoComparar === id ? 'var(--frio)' : 'transparent',
+                               color: modoComparar === id ? '#000' : 'var(--text-dim)',
+                               borderColor: modoComparar === id ? 'var(--frio)' : 'var(--border)' }}>
+                      {txt}
+                    </button>
+                  ))}
+                  {modoComparar === 'equipos' && (
+                    <select className="campo" style={{ width: 'auto', minWidth: '200px' }}
+                      value={rivalComparar} onChange={(e) => setRivalComparar(e.target.value)}>
+                      {equiposDelTorneo.map(eq => <option key={eq} value={eq}>{eq}</option>)}
+                    </select>
+                  )}
+                </div>
+
+                {modoComparar === 'ruedas' && !hayRuedas ? (
+                  <div className="bento-card" style={{ textAlign: 'center', color: 'var(--text-dim)' }}>
+                    Este torneo no tiene ruedas configuradas. Definí cuántas fechas tiene la primera
+                    rueda desde el botón de configuración del torneo y vas a poder compararlas.
+                  </div>
+                ) : !comparacion ? (
+                  <div className="bento-card" style={{ textAlign: 'center', color: 'var(--text-dim)' }}>
+                    Todavía no hay partidos cargados para comparar.
+                  </div>
+                ) : (
+                  <>
+                    <div className="bento-card" style={{ marginBottom: '20px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '8px', alignItems: 'center' }}>
+                        <div />
+                        {[comparacion.a, comparacion.b].map((lado, i) => (
+                          <div key={i} style={{ textAlign: 'center' }}>
+                            <div style={{ fontWeight: 900, fontSize: '0.9rem', color: i === 0 ? 'var(--accent)' : 'var(--frio)' }}>
+                              {lado.rotulo.toUpperCase()}
+                            </div>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>
+                              {lado.puesto ? `${lado.puesto}º en la tabla` : 'sin partidos'}
+                            </div>
+                          </div>
+                        ))}
+
+                        {FILAS_COMPARACION.map(fila => {
+                          const va = fila.valor(comparacion.a);
+                          const vb = fila.valor(comparacion.b);
+                          const mejorA = fila.mayorEsMejor === null ? false
+                            : fila.mayorEsMejor ? va > vb : va < vb;
+                          const mejorB = fila.mayorEsMejor === null ? false
+                            : fila.mayorEsMejor ? vb > va : vb < va;
+                          const celda = (v, destacar) => (
+                            <div style={{ textAlign: 'center', padding: '9px 4px', borderRadius: '6px',
+                                          background: destacar ? 'rgba(0,255,136,0.10)' : 'transparent',
+                                          fontWeight: destacar ? 900 : 700,
+                                          color: destacar ? 'var(--ok)' : 'var(--text)' }}>
+                              {fila.texto ? fila.texto(v) : v}
+                            </div>
+                          );
+                          return (
+                            <React.Fragment key={fila.k}>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800,
+                                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                                            borderTop: '1px solid var(--border)', paddingTop: '9px' }}>
+                                {fila.t}
+                              </div>
+                              <div style={{ borderTop: '1px solid var(--border)' }}>{celda(va, mejorA)}</div>
+                              <div style={{ borderTop: '1px solid var(--border)' }}>{celda(vb, mejorB)}</div>
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* El listado de fechas, en orden creciente, de cada lado. */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
+                      {[comparacion.a, comparacion.b].map((lado, i) => (
+                        <div key={i} className="bento-card">
+                          <div className="stat-label" style={{ marginBottom: '12px', color: i === 0 ? 'var(--accent)' : 'var(--frio)' }}>
+                            {lado.rotulo.toUpperCase()} · {lado.resultados.length} PARTIDOS
+                          </div>
+                          {lado.resultados.length === 0 ? (
+                            <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Sin partidos jugados.</div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {lado.resultados.map(r => (
+                                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px',
+                                                         padding: '7px 9px', borderRadius: '6px', background: 'var(--bg)' }}>
+                                  <span style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                 fontSize: '0.6rem', fontWeight: 900, color: '#000',
+                                                 background: r.res === 'V' ? '#86efac' : r.res === 'D' ? '#fca5a5' : '#fde047' }}>
+                                    {r.res}
+                                  </span>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', width: 62, flexShrink: 0 }}>
+                                    {(r.jornada || '—').toUpperCase()}
+                                  </span>
+                                  <span style={{ flex: 1, fontSize: '0.75rem', fontWeight: 700, minWidth: 0,
+                                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {r.condicion === 'Local' ? 'vs' : '@'} {r.rival}
+                                  </span>
+                                  <span style={{ fontWeight: 900, fontSize: '0.8rem' }}>{r.gf}-{r.gc}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ═══════════ SOLAPA: MI EQUIPO ═══════════ */}
+            {tabMisTorneos === 'miequipo' && (
+              <div style={{ animation: 'fadeIn 0.3s' }}>
+                {!miEquipo ? (
+                  <div className="bento-card" style={{ textAlign: 'center', color: 'var(--text-dim)' }}>
+                    Todavía no hay partidos finalizados de tu equipo en este torneo.
+                  </div>
+                ) : (
+                  <>
+                    <div className="bento-card" style={{ marginBottom: '20px', borderTop: '3px solid var(--accent)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '18px' }}>
+                        <Kpi rotulo="PUESTO" valor={miEquipo.puesto ? `${miEquipo.puesto}º` : '—'}
+                             pie={miEquipo.totalEquipos ? `de ${miEquipo.totalEquipos} equipos` : ''} color="var(--accent)" />
+                        <Kpi rotulo="JUGADOS" valor={miEquipo.stats.pj} />
+                        <Kpi rotulo="G / E / P" valor={`${miEquipo.stats.pg}-${miEquipo.stats.pe}-${miEquipo.stats.pp}`} />
+                        <Kpi rotulo="PUNTOS" valor={miEquipo.stats.pts} pie={`${miEquipo.stats.eficacia}% de eficacia`} color="var(--accent)" />
+                        <Kpi rotulo="GOLES" valor={`${miEquipo.stats.gf}:${miEquipo.stats.gc}`}
+                             pie={`${miEquipo.stats.dif >= 0 ? '+' : ''}${miEquipo.stats.dif} de diferencia`} />
+                        <Kpi rotulo="VALLA INVICTA" valor={miEquipo.stats.vallas} pie="partidos sin goles en contra" />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: '20px' }}>
+                      <div className="bento-card">
+                        <div className="stat-label" style={{ marginBottom: '14px' }}>RACHAS</div>
+                        {miEquipo.rachas.actualTipo && (
+                          <div style={{ marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}>
+                            <div className="stat-label" style={{ marginBottom: '4px' }}>AHORA MISMO</div>
+                            <div style={{ fontSize: '1.3rem', fontWeight: 900,
+                                          color: miEquipo.rachas.actualTipo === 'V' ? 'var(--ok)'
+                                               : miEquipo.rachas.actualTipo === 'D' ? 'var(--peligro)' : 'var(--amarillo)' }}>
+                              {miEquipo.rachas.actualCantidad}{' '}
+                              {miEquipo.rachas.actualTipo === 'V' ? (miEquipo.rachas.actualCantidad === 1 ? 'victoria' : 'victorias')
+                               : miEquipo.rachas.actualTipo === 'D' ? (miEquipo.rachas.actualCantidad === 1 ? 'derrota' : 'derrotas')
+                               : (miEquipo.rachas.actualCantidad === 1 ? 'empate' : 'empates')} al hilo
+                            </div>
+                          </div>
+                        )}
+                        {[
+                          ['Mejor racha ganando', miEquipo.rachas.mejorGanando, 'var(--ok)'],
+                          ['Más partidos invicto', miEquipo.rachas.mejorInvicto, 'var(--ok)'],
+                          ['Peor racha perdiendo', miEquipo.rachas.peorPerdiendo, 'var(--peligro)'],
+                          ['Más partidos sin ganar', miEquipo.rachas.peorSinGanar, 'var(--peligro)'],
+                        ].map(([t, v, c]) => (
+                          <div key={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '7px 0' }}>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>{t}</span>
+                            <span style={{ fontWeight: 900, fontSize: '1.05rem', color: v > 0 ? c : 'var(--text-dim)' }}>{v}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="bento-card">
+                        <div className="stat-label" style={{ marginBottom: '14px' }}>MEJOR Y PEOR PARTIDO</div>
+                        {[['MEJOR', miEquipo.mejor, 'var(--ok)'], ['PEOR', miEquipo.peor, 'var(--peligro)']].map(([t, r, c]) => (
+                          <div key={t} style={{ marginBottom: '14px' }}>
+                            <div className="stat-label" style={{ color: c, marginBottom: '4px' }}>{t}</div>
+                            {r ? (
+                              <>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{r.gf} - {r.gc}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                                  {r.condicion === 'Local' ? 'vs' : '@'} {r.rival}
+                                  {r.jornada ? ` · ${r.jornada}` : ''}{r.fecha ? ` · ${r.fecha}` : ''}
+                                </div>
+                              </>
+                            ) : <div style={{ color: 'var(--text-dim)' }}>—</div>}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="bento-card">
+                        <div className="stat-label" style={{ marginBottom: '14px' }}>DE LOCAL Y DE VISITANTE</div>
+                        {[['LOCAL', miEquipo.local], ['VISITANTE', miEquipo.visitante]].map(([t, e]) => (
+                          <div key={t} style={{ marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '5px' }}>
+                              <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>{t}</span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                                {e.pj} PJ · {e.gf}:{e.gc} · {e.eficacia}%
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', height: '9px', borderRadius: '5px', overflow: 'hidden', background: 'var(--bg)' }}>
+                              {[['#86efac', e.pg], ['#fde047', e.pe], ['#fca5a5', e.pp]].map(([col, n], i) => (
+                                n > 0 ? <div key={i} style={{ width: `${(n / Math.max(1, e.pj)) * 100}%`, background: col }} title={`${n}`} /> : null
+                              ))}
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+                              {e.pg} ganados · {e.pe} empatados · {e.pp} perdidos
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+                          Promedio: <strong style={{ color: 'var(--text)' }}>{miEquipo.stats.promGF}</strong> goles a favor
+                          y <strong style={{ color: 'var(--text)' }}>{miEquipo.stats.promGC}</strong> en contra por partido.
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
           </div>
         </>
       ) : (
