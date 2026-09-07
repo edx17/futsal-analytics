@@ -8,6 +8,8 @@
  * tres veces con tres listas distintas, y para poder probarlo sin navegador.
  */
 
+import { numeroJornada } from './ruedas';
+
 export const ES_JUGADO = (f) => f?.estado === 'Finalizado' || f?.estado === 'Jugado';
 
 /**
@@ -126,7 +128,28 @@ export function puestoDe(tabla = [], equipo) {
   return i === -1 ? null : i + 1;
 }
 
-const porFecha = (a, b) => {
+/**
+ * Orden de partidos: por NÚMERO DE FECHA, no por el día en que se jugó.
+ *
+ * Los partidos se reprograman, se suspenden y se juegan fuera de orden, así
+ * que ordenar por día deja la segunda rueda como 19, 20, 18, 22, 24. Por
+ * número de fecha, la primera fila de una rueda es la ida de la primera fila
+ * de la otra, que es lo que hace que las dos columnas se puedan leer
+ * enfrentadas.
+ *
+ * Sin número en la jornada (copas: "Octavos", "Semi") se cae al orden natural
+ * del texto y, recién al final, al día jugado.
+ */
+const porOrdenDeFecha = (a, b) => {
+  const na = numeroJornada(a.jornada);
+  const nb = numeroJornada(b.jornada);
+  if (na != null && nb != null && na !== nb) return na - nb;
+  if (na != null && nb == null) return -1;
+  if (na == null && nb != null) return 1;
+
+  const j = String(a.jornada || '').localeCompare(String(b.jornada || ''), 'es', { numeric: true, sensitivity: 'base' });
+  if (j !== 0) return j;
+
   if (a.fecha && b.fecha) return String(a.fecha).localeCompare(String(b.fecha));
   return (a.id ?? 0) - (b.id ?? 0);
 };
@@ -139,7 +162,7 @@ export function resultadosDe(partidos = [], equipo, miClub) {
   return (partidos || [])
     .map((f) => ({ n: normalizarPartido(f, miClub), f }))
     .filter(({ n }) => n.jugado && (n.local === equipo || n.visita === equipo))
-    .sort((a, b) => porFecha(a.f, b.f))
+    .sort((a, b) => porOrdenDeFecha(a.f, b.f))
     .map(({ n, f }) => {
       const deLocal = n.local === equipo;
       const gf = deLocal ? n.golesLocal : n.golesVisita;
