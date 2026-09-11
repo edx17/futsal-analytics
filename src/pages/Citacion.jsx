@@ -32,10 +32,6 @@ const UMBRAL_AMARILLAS = 5;   // cada 5 amarillas, una fecha (igual que Discipli
 const PARTIDOS_PARA_RATING = 8;
 const SEMANAS_PRESENTISMO = 6;
 
-/* Un jugador puede recibir la citación por privado sólo si tiene el WhatsApp
-   vinculado (lo vincula el bot de wellness cuando el jugador le escribe). */
-const tieneWhatsApp = (j) => !!String(j?.contacto || '').replace(/[^0-9]/g, '');
-
 const hoyISO = () => {
   const h = new Date();
   return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`;
@@ -105,6 +101,7 @@ function Citacion() {
   const [cargando, setCargando] = useState(true);
   const [calculandoRatings, setCalculandoRatings] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [publicando, setPublicando] = useState(false);
 
   const [partidos, setPartidos] = useState([]);
   const [partidoId, setPartidoId] = useState('');
@@ -413,16 +410,67 @@ function Citacion() {
     }
   };
 
-  const abrirWhatsApp = () => {
+  /* Exportar = abrir WhatsApp con el mensaje ya escrito y que el técnico elija
+     el grupo. No hay envío automático: la API de Meta no soporta grupos. */
+  const exportarWhatsApp = () => {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(textoFinal)}`, '_blank');
   };
 
-  const abrirWhatsAppJugador = (j) => {
-    const numero = String(j.contacto || '').replace(/[^0-9]/g, '');
-    const url = numero
-      ? `https://api.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(textoFinal)}`
-      : `https://api.whatsapp.com/send?text=${encodeURIComponent(textoFinal)}`;
-    window.open(url, '_blank');
+  /* El Tablón es el único canal que llega solo al teléfono del jugador: la
+     novedad se ve en la app, y el cron de push (smart-service) manda el aviso
+     en su próxima corrida. WhatsApp, en cambio, siempre necesita que alguien
+     apriete enviar. */
+  const publicarEnTablon = async () => {
+    if (!partido) return;
+    if (convocados.length === 0) return showToast('Todavía no tildaste a ningún convocado.', 'warning');
+    if (!perfil?.id) return showToast('Error de sesión. Volvé a iniciar sesión.', 'error');
+
+    setPublicando(true);
+
+    // La citación deja de tener sentido al día siguiente del partido.
+    const vence = new Date(`${String(partido.fecha).split('T')[0]}T23:59:59`);
+    vence.setDate(vence.getDate() + 1);
+
+    const { error } = await supabase.from('novedades').insert([{
+      club_id: clubId,
+      autor_id: perfil.id,
+      publico_objetivo: 'Ambos',
+      categorias: partido.categoria ? [partido.categoria] : [],
+      mensaje: textoFinal,
+      fecha_vencimiento: vence.toISOString(),
+    }]);
+
+    if (error) {
+      setPublicando(false);
+      console.error('INSERT novedades:', error);
+      return showToast(error.code === '42501'
+        ? 'Sin permiso para publicar en el Tablón. Verificá tu rol.'
+        : `No se pudo publicar: ${error.message}`, 'error');
+    }
+
+    /* Marcamos el partido como "citación publicada": es lo que mira el cron
+       para mandar el push una sola vez. Si la migración todavía no se corrió
+       esto falla, pero la novedad ya quedó publicada igual. */
+    const citacionActualizada = {
+      ...(partido.citacion || {}),
+      mensaje: textoFinal,
+      indumentaria: form.indumentaria,
+      entrada: form.entrada,
+      publicada_at: new Date().toISOString(),
+    };
+    const { error: errorMarca } = await supabase.from('partidos')
+      .update({ citacion: citacionActualizada }).eq('id', partido.id);
+
+    setPublicando(false);
+
+    if (errorMarca) {
+      return showToast(faltaLaColumna(errorMarca)
+        ? 'Publicado en el Tablón ✅ El push automático necesita la migración corrida.'
+        : 'Publicado en el Tablón ✅ (no se pudo marcar el partido para el push)', 'warning');
+    }
+
+    setPartidos(ps => ps.map(p => p.id === partido.id ? { ...p, citacion: citacionActualizada } : p));
+    showToast('Publicado en el Tablón ✅ El push sale en la próxima corrida del cron.', 'success');
   };
 
   const guardarCitacion = async () => {
@@ -633,13 +681,6 @@ function Citacion() {
                       <div style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: '1rem', color: ev.score >= 70 ? 'var(--accent)' : ev.score >= 50 ? 'var(--text)' : 'var(--text-dim)' }}>{ev.score}</div>
                       <div style={{ fontSize: '0.5rem', color: 'var(--text-dim)', letterSpacing: '0.05em' }}>SCORE</div>
                     </div>
-                    {tildado && tieneWhatsApp(ev.jugador) && (
-                      <button onClick={(e) => { e.stopPropagation(); abrirWhatsAppJugador(ev.jugador); }}
-                        title="Mandarle la citación por privado"
-                        style={{ background: '#25D366', border: 'none', color: '#fff', borderRadius: '6px', padding: '6px 8px', cursor: 'pointer', fontSize: '0.75rem', flexShrink: 0 }}>
-                        💬
-                      </button>
-                    )}
                   </div>
                 );
               })}
@@ -695,20 +736,26 @@ function Citacion() {
               </button>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(3, 1fr)', gap: '10px', marginTop: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(2, 1fr)', gap: '10px', marginTop: '16px' }}>
               <button onClick={copiar} className="btn-action" style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer' }}>
                 📋 COPIAR MENSAJE
               </button>
-              <button onClick={abrirWhatsApp}
+              <button onClick={exportarWhatsApp}
                 style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', background: '#25D366', color: '#fff', border: 'none' }}>
-                💬 ABRIR WHATSAPP
+                📤 EXPORTAR PARA WHATSAPP
+              </button>
+              <button onClick={publicarEnTablon} disabled={publicando}
+                style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: publicando ? 'wait' : 'pointer', background: '#3b82f6', color: '#fff', border: 'none' }}>
+                {publicando ? 'PUBLICANDO…' : '📌 PUBLICAR EN EL TABLÓN'}
               </button>
               <button onClick={guardarCitacion} disabled={guardando} className="btn-secondary" style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: guardando ? 'wait' : 'pointer' }}>
                 {guardando ? 'GUARDANDO…' : '💾 GUARDAR CONVOCATORIA'}
               </button>
             </div>
-            <div style={{ marginTop: '10px', fontSize: '0.65rem', color: 'var(--text-dim)', textAlign: 'center' }}>
-              "Abrir WhatsApp" te deja elegir el grupo con el mensaje ya escrito · "Guardar" carga los convocados al partido
+            <div style={{ marginTop: '10px', fontSize: '0.65rem', color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6 }}>
+              <strong>Exportar</strong> abre WhatsApp con el mensaje escrito y vos elegís el grupo ·
+              <strong> Tablón</strong> lo publica dentro de la app y dispara el push ·
+              <strong> Guardar</strong> deja los convocados precargados en NUEVO PARTIDO
             </div>
           </div>
         </>

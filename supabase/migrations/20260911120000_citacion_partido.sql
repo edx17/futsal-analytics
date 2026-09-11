@@ -30,7 +30,9 @@ alter table public.partidos
   add column if not exists direccion text,
 
   -- Todo lo propio de la citación de ESTE partido, junto:
-  --   { mensaje, indumentaria, entrada, guardada_at }
+  --   { mensaje, indumentaria, entrada, guardada_at, publicada_at }
+  -- `publicada_at` es además lo que mira el cron de push (smart-service) para
+  -- avisar UNA sola vez por partido cuando la citación se publica al Tablón.
   -- En jsonb y no en cuatro columnas porque es un bloque que se lee y se
   -- escribe siempre entero, y así sumar un campo mañana no pide migración.
   add column if not exists citacion jsonb;

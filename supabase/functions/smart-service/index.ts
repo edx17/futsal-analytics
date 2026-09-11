@@ -494,6 +494,7 @@ Deno.serve(async (req) => {
   let clubesConPush = 0;
   let digestsEnviados = 0;
   let previasEnviadas = 0;
+  let citacionesEnviadas = 0;
   const entregas = { intentados: 0, entregados: 0, vencidos: 0, fallados: 0, errores: [] as string[] };
   const sumar = (p: Awaited<ReturnType<typeof enviarATodos>>) => {
     entregas.intentados += p.intentados;
@@ -554,10 +555,48 @@ Deno.serve(async (req) => {
         previasEnviadas++;
       }
     }
+
+    /* --- CITACIÓN PUBLICADA: un push por partido ---------------------------
+       La pantalla de CITACIÓN marca `partidos.citacion.publicada_at` cuando el
+       técnico publica la convocatoria en el Tablón. Acá se avisa una sola vez
+       por partido (dedupe por run_key), en la próxima corrida del cron.
+
+       Si la migración de la citación todavía no se corrió, la columna no
+       existe: el select falla, se loguea y se sigue con el resto. */
+    const { data: conCitacion, error: errorCitacion } = await supabase
+      .from("partidos")
+      .select("id, fecha, rival, condicion, hora_citacion")
+      .eq("club_id", clubId)
+      .eq("estado", "Pendiente")
+      .gte("fecha", hoy)
+      .not("citacion->>publicada_at", "is", null);
+
+    if (errorCitacion) {
+      console.error("Citación push (¿falta correr la migración 20260911120000?):", errorCitacion.message);
+    } else {
+      for (const p of conCitacion || []) {
+        const runKeyCitacion = `citacion-${p.id}`;
+        if (await yaNotificado(clubId, runKeyCitacion)) continue;
+
+        const partes = String(p.fecha || "").split("-");
+        const cuando = partes.length === 3 ? `${partes[2]}/${partes[1]}` : String(p.fecha || "");
+        const detalle = [cuando, p.hora_citacion ? `citados ${p.hora_citacion}` : null, p.condicion]
+          .filter(Boolean).join(" · ");
+
+        sumar(await enviarATodos(subs, {
+          title: `📣 Citación vs ${p.rival || "rival"}`,
+          body: detalle || "Mirá la convocatoria en el Tablón",
+          tag: runKeyCitacion,
+          data: { url: "/inicio" },
+        }));
+        await marcarNotificado(clubId, runKeyCitacion);
+        citacionesEnviadas++;
+      }
+    }
   }
 
   return new Response(
-    JSON.stringify({ ok: true, clubesConPush, digestsEnviados, previasEnviadas, entregas }),
+    JSON.stringify({ ok: true, clubesConPush, digestsEnviados, previasEnviadas, citacionesEnviadas, entregas }),
     { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
   );
 });
