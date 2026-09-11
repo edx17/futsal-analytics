@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { soloActivos } from '../utils/plantelActivo';
+import { disponibilidadDe, cuentaParaPresentismo, cuentaComoPresente } from '../utils/disponibilidad';
 import { analizarPartido, calcularMinutosPorJugador } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import {
@@ -110,6 +111,7 @@ function Citacion() {
   const [sanciones, setSanciones] = useState([]);
   const [amarillasPorJugador, setAmarillasPorJugador] = useState({});
   const [wellnessHoy, setWellnessHoy] = useState([]);
+  const [lesiones, setLesiones] = useState([]);
   const [ratings, setRatings] = useState({});
 
   const [seleccion, setSeleccion] = useState({});
@@ -136,6 +138,7 @@ function Citacion() {
         let qJugadores = supabase.from('jugadores').select('*').eq('club_id', clubId).order('apellido', { ascending: true });
         let qAsistencias = supabase.from('asistencias').select('*').eq('club_id', clubId).gte('fecha', diasAtrasISO(SEMANAS_PRESENTISMO * 7));
         const qSanciones = supabase.from('disciplina_sanciones').select('*').eq('club_id', clubId);
+        const qLesiones = supabase.from('lesiones').select('*').eq('club_id', clubId);
         const qWellness = supabase.from('wellness').select('*').eq('club_id', clubId).eq('fecha', hoy);
         const qClub = supabase.from('clubes').select('*').eq('id', clubId).maybeSingle();
 
@@ -145,9 +148,13 @@ function Citacion() {
           qAsistencias = qAsistencias.in('categoria', misCategorias);
         }
 
-        const [rPar, rJug, rAsi, rSan, rWel, rClub] = await Promise.all([
-          qPartidos, qJugadores, qAsistencias, qSanciones, qWellness, qClub,
+        const [rPar, rJug, rAsi, rSan, rWel, rClub, rLes] = await Promise.all([
+          qPartidos, qJugadores, qAsistencias, qSanciones, qWellness, qClub, qLesiones,
         ]);
+
+        /* Si la tabla de lesiones todavía no existe (migración sin correr), la
+           citación sigue funcionando: simplemente no bloquea por lesión. */
+        if (rLes.error) console.warn('Citación sin datos de lesiones:', rLes.error.message);
 
         /* El fixture guarda con mi club_id los cruces entre OTROS equipos del
            torneo. Se reconocen porque van como 'Neutral' Y el nombre propio no
@@ -163,6 +170,7 @@ function Citacion() {
         setAsistencias(rAsi.data || []);
         setSanciones(rSan.data || []);
         setWellnessHoy(rWel.data || []);
+        setLesiones(rLes.data || []);
 
         /* La plantilla del mensaje: primero la del club, si no la última que
            se usó en este navegador, si no la que viene de fábrica. */
@@ -317,17 +325,23 @@ function Citacion() {
   }, [jugadores, partido?.categoria]);
 
   const evaluacion = useMemo(() => {
+    /* Los días que el jugador estuvo lesionado no entran en la cuenta: no son
+       una falta suya. Antes, dos meses de lesión le hundían el porcentaje y,
+       como el presentismo pesa 45% acá, lo dejaban sin convocatorias durante
+       meses por algo que no eligió. */
     const presentismo = {};
     asistencias.forEach(a => {
+      if (!cuentaParaPresentismo(a.estado)) return;
       const k = String(a.jugador_id);
       if (!presentismo[k]) presentismo[k] = { presentes: 0, total: 0 };
       presentismo[k].total++;
-      if (a.estado === 'presente' || a.estado === 'tarde') presentismo[k].presentes++;
+      if (cuentaComoPresente(a.estado)) presentismo[k].presentes++;
     });
 
     /* BLOQUEOS: el que no puede jugar no se sugiere. Igual queda en la lista y
        se puede tildar a mano: el técnico sabe cosas que la base no. */
     const bloqueos = {};
+    const avisos = {};
     const fechasPendientes = {};
     const acumulacionesCumplidas = {};
     sanciones.forEach(s => {
@@ -348,6 +362,19 @@ function Citacion() {
       if (pendientes > 0) bloqueos[k] = `Suspendido por ${n} amarillas`;
     });
 
+    /* Lesionados: bloqueo duro en la sugerencia, igual que un suspendido. El
+       CT lo puede tildar igual si sabe algo que la base no sabe. Se evalúa a
+       la FECHA DEL PARTIDO, no a hoy: al que le dan el alta el sábado se lo
+       puede citar para el domingo. */
+    const fechaPartido = partido?.fecha ? String(partido.fecha).split('T')[0] : hoyISO();
+    jugadoresCategoria.forEach(j => {
+      const estado = disponibilidadDe(lesiones, j.id, fechaPartido);
+      if (!estado.lesion) return;
+      const k = String(j.id);
+      if (estado.nivel === 'baja') bloqueos[k] = `${estado.etiqueta}: ${estado.detalle}`;
+      else if (estado.nivel === 'readaptacion' && !bloqueos[k]) avisos[k] = `En readaptación: ${estado.detalle}`;
+    });
+
     const hoy = hoyISO();
     jugadoresCategoria.forEach(j => {
       const vto = j.vencimiento_apto ? String(j.vencimiento_apto).split('T')[0] : null;
@@ -356,9 +383,9 @@ function Citacion() {
       }
     });
 
-    const avisos = {};
     wellnessHoy.forEach(w => {
-      if (enRojoWell(w)) avisos[String(w.jugador_id)] = 'Wellness en rojo hoy';
+      const k = String(w.jugador_id);
+      if (enRojoWell(w) && !avisos[k]) avisos[k] = 'Wellness en rojo hoy';
     });
 
     return sugerirConvocatoria({
@@ -366,7 +393,7 @@ function Citacion() {
       presentismo, ratings, bloqueos, avisos,
       limite: limiteConvocados(partido?.competicion),
     });
-  }, [jugadoresCategoria, asistencias, sanciones, amarillasPorJugador, wellnessHoy, ratings, partido?.competicion]);
+  }, [jugadoresCategoria, asistencias, sanciones, amarillasPorJugador, wellnessHoy, ratings, lesiones, partido?.competicion, partido?.fecha]);
 
   /* ── 5. MENSAJE ───────────────────────────────────────────────────────── */
   const convocados = useMemo(

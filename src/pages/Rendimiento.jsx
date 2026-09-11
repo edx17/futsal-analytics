@@ -8,16 +8,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer, Legend, Cell, ReferenceLine, LineChart, Line,
 } from 'recharts';
-
-// ─── REHAB LIBRARY ──────────────────────────────────────────────────────────
-const REHAB_LIB = {
-  isquiosural: [{ t: 'Dead Bugs', v: 'https://youtube.com/shorts/vn72PVWnu14' }, { t: 'Puente glúteo unilateral', v: 'https://youtube.com/shorts/Y-N53Q6XxiI' }, { t: 'Peso muerto rumano uni', v: 'https://youtu.be/YXjc7TURwfE' }],
-  movilidad:   [{ t: 'Dorsiflexión c/ banda', v: 'https://youtube.com/shorts/Re7XMKgAti8' }, { t: 'Obelisco', v: 'https://youtube.com/shorts/dWLrnRwY41c' }, { t: 'Movilidad Toráxica', v: 'https://youtube.com/shorts/2et2ZXUk6co' }],
-  tobillo:     [{ t: 'Mov. Articular', v: 'https://youtube.com/shorts/dYS9cgYk2lY' }, { t: 'Salto Alternado', v: 'https://youtube.com/shorts/b5qmCWB8cpo' }, { t: 'Dorsiflexión c/ carga', v: 'https://youtube.com/shorts/tXVq7MAOAVY' }],
-  pelvica:     [{ t: 'Bird-dog', v: 'https://youtube.com/shorts/Tjo5oYHoS8M' }, { t: 'Puente almeja c/ banda', v: 'https://youtube.com/shorts/9vWRjF08xiQ' }, { t: 'Isométricos glúteo', v: 'https://youtube.com/shorts/oxouNCjxHWw' }],
-  cadera:      [{ t: '90-90 Rotación interna', v: 'https://youtube.com/shorts/p2NUakSyUcE' }, { t: 'Ranita', v: 'https://youtube.com/shorts/cvgsb7xCgN4' }, { t: 'Curl Nórdico invertido', v: 'https://youtube.com/shorts/UZf6CbQR8_s' }],
-  escapular:   [{ t: 'Movilidad Escapular', v: 'https://youtube.com/shorts/5j4inxyq-MA' }, { t: 'Halo Split KB', v: 'https://youtube.com/shorts/UARPXzqDNhM' }, { t: 'Pájaros con poleas', v: 'https://youtu.be/ki6gkb_mJr0' }],
-};
+import { REHAB_LIB } from '../utils/rehab';
 
 const ELITE = { musc: 48.5, adip: 9.0, sum6: 45.0, cmj: 55, abk: 62, broad: 2.60, yoyo: 21.0, visc: 4, imc: 23.0 };
 

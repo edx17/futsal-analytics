@@ -345,6 +345,43 @@ async function alertasPersonal(jugadoresMap: Map<any, any>) {
   return alertas;
 }
 
+/* Lesiones que pasaron su fecha de alta estimada sin que nadie confirme el
+   alta. O el jugador ya volvió y no se cargó, o se complicó: en los dos casos
+   el CT tiene que enterarse, porque de eso dependen la citación y el plan de
+   la semana. */
+async function alertasLesiones(clubId: string, jugadoresMap: Map<any, any>) {
+  const alertas: any[] = [];
+  const hoy = hoyISO();
+
+  const { data: lesiones, error } = await supabase
+    .from("lesiones")
+    .select("id, jugador_id, zona, estado, fecha_alta_estimada")
+    .eq("club_id", clubId)
+    .neq("estado", "alta");
+
+  if (error) {
+    // Típico: la migración de lesiones todavía no se corrió en este proyecto.
+    console.error("Alertas de lesiones:", error.message);
+    return alertas;
+  }
+
+  (lesiones || []).forEach((l: any) => {
+    if (!l.fecha_alta_estimada) return;
+    if (String(l.fecha_alta_estimada).slice(0, 10) >= hoy) return;
+    const jugador = jugadoresMap.get(l.jugador_id) || jugadoresMap.get(String(l.jugador_id));
+    alertas.push({
+      id: `lesion-vencida-${l.id}`,
+      categoria: "lesiones",
+      prioridad: "importante",
+      titulo: `${jugador ? nombreJug(jugador) : "Un jugador"}: venció el alta estimada`,
+      sub: `${l.zona || "Lesión"} · confirmá el alta o corré la fecha`,
+      ruta: "/enfermeria",
+    });
+  });
+
+  return alertas;
+}
+
 async function alertasTesoreria(clubId: string, jugadoresMap: Map<any, any>) {
   const alertas: any[] = [];
   const hoy = hoyISO();
@@ -379,6 +416,7 @@ async function calcularAlertasDelClub(clubId: string) {
     alertasTransferencias(clubId),
     alertasPersonal(jugadoresMap),
     alertasTesoreria(clubId, jugadoresMap),
+    alertasLesiones(clubId, jugadoresMap),
   ]);
 
   const todas = resultados.filter((r) => r.status === "fulfilled").flatMap((r: any) => r.value);

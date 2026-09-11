@@ -45,6 +45,7 @@ const BancoTareas         = lazy(() => import('./pages/BancoTareas'));
 const CargaWellness       = lazy(() => import('./pages/CargaWellness'));
 const PlanificadorSemanal = lazy(() => import('./pages/PlanificadorSemanal'));
 const Citacion            = lazy(() => import('./pages/Citacion'));
+const Enfermeria          = lazy(() => import('./pages/Enfermeria'));
 const Presentismo         = lazy(() => import('./pages/Presentismo'));
 const Tesoreria           = lazy(() => import('./pages/Tesoreria'));
 const Sponsors            = lazy(() => import('./pages/Sponsors'));
@@ -170,6 +171,7 @@ function AppRoutes() {
       <Route path="/origen-goles" element={<ProtectedRoute><OrigenGoles /></ProtectedRoute>} />
       <Route path="/disciplina" element={<ProtectedRoute><Disciplina /></ProtectedRoute>} />
       <Route path="/wellness" element={<ProtectedRoute><CargaWellness /></ProtectedRoute>} />
+      <Route path="/enfermeria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct', 'jugador']}><Enfermeria /></ProtectedRoute>} />
       <Route path="/banco-tareas" element={<ProtectedRoute><BancoTareas /></ProtectedRoute>} /> 
       <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
       <Route path="/aceptar-terminos" element={<ProtectedRoute><AceptarTerminos /></ProtectedRoute>} />
@@ -315,6 +317,7 @@ useEffect(() => {
           <Routes>
             <Route path="/kiosco/home" element={<Inicio />} />
             <Route path="/kiosco/wellness" element={<CargaWellness />} />
+            <Route path="/kiosco/enfermeria" element={<Enfermeria />} />
             <Route path="/kiosco/rendimiento" element={<Rendimiento />} />
             <Route path="/kiosco/resumen" element={<Resumen />} />
             <Route path="/kiosco/resumen/:id" element={<Resumen />} />
@@ -428,6 +431,7 @@ useEffect(() => {
                 {!permisos.esJugador && <NavLink to="/plantel-resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📋 <span>RESUMEN PLANTEL</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/transferencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💸 <span>TRANSFERENCIAS</span></NavLink>}
                 {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
+                <NavLink to="/enfermeria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏥 <span>{permisos.esJugador ? 'MI ESTADO FÍSICO' : 'ENFERMERÍA'}</span></NavLink>
                 <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🌡️ <span>WELLNESS</span></NavLink>
                 <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
                 <NavLink to="/novedades" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📢 <span>NOVEDADES</span></NavLink>
