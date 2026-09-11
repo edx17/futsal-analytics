@@ -237,6 +237,101 @@ const PitchLines = ({ stroke = "rgba(255,255,255,0.18)", strokeWidth = 0.5 }) =>
   </svg>
 );
 
+/* ══════════════════════════════════════════════════════════════════════
+   FILA DEL HISTORIAL DE PARTIDOS
+   Si el jugador entró a la cancha, la fila se resalta. Si fue citado y
+   no ingresó, queda atenuada: sigue estando, pero no compite visualmente.
+   Click en la fila → resumen real de ese partido.
+   ══════════════════════════════════════════════════════════════════════ */
+const COLOR_RESULTADO = { G: '#00ff88', E: '#fbbf24', P: '#ef4444' };
+
+const FilaPartido = ({ fila, esMovil, accentColor, seleccionado, onAbrir, onFiltrar }) => {
+  const { partido: p, jugo, titular, goles, asistencias, amarillas, rojas, finalizado, gf, gc, resultado, pctParticipacion, conDatos } = fila;
+
+  const fecha = p.fecha ? String(p.fecha).split('-').reverse().join('/') : 'S/F';
+  const esLocal = String(p.condicion || '').toLowerCase().startsWith('l');
+  const colorBorde = jugo ? (resultado ? COLOR_RESULTADO[resultado] : accentColor) : 'rgba(255,255,255,0.15)';
+
+  const etiqueta = !finalizado
+    ? { txt: 'PENDIENTE', color: 'rgba(255,255,255,0.45)' }
+    : jugo
+      ? (titular ? { txt: 'TITULAR', color: accentColor } : { txt: 'INGRESÓ', color: '#0ea5e9' })
+      : { txt: conDatos ? 'NO INGRESÓ' : 'SIN DATOS', color: 'rgba(255,255,255,0.45)' };
+
+  const sinAportes = jugo && !goles && !asistencias && !amarillas && !rojas;
+
+  return (
+    <div
+      className={`jp-fila-partido${jugo ? '' : ' atenuada'}`}
+      onClick={onAbrir}
+      title={`Ver el resumen de ${p.rival || 'este partido'}`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: esMovil ? '8px' : '12px', flexWrap: 'wrap',
+        padding: esMovil ? '10px' : '11px 14px',
+        background: seleccionado ? 'rgba(255,255,255,0.05)' : '#0a0a0a',
+        border: `1px solid ${seleccionado ? accentColor : 'rgba(255,255,255,0.06)'}`,
+        borderLeft: `3px solid ${colorBorde}`,
+        borderRadius: '8px', cursor: 'pointer'
+      }}
+    >
+      <div style={{ width: esMovil ? '58px' : '74px', flexShrink: 0 }}>
+        <div style={{ fontFamily: 'monospace', fontSize: esMovil ? '0.7rem' : '0.78rem', fontWeight: 800, color: 'rgba(255,255,255,0.75)' }}>{fecha}</div>
+        <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {p.competicion || 'Amistoso'}
+        </div>
+      </div>
+
+      <div title={esLocal ? 'Local' : 'Visitante'}
+        style={{ width: '16px', flexShrink: 0, textAlign: 'center', fontSize: '0.62rem', fontWeight: 900, color: esLocal ? '#00ff88' : '#fbbf24' }}>
+        {esLocal ? 'L' : 'V'}
+      </div>
+
+      {p.escudo_rival
+        ? <img src={p.escudo_rival} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain', flexShrink: 0 }} />
+        : <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.55rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {(p.rival || 'R').substring(0, 2).toUpperCase()}
+          </div>}
+
+      <div style={{ flex: 1, minWidth: '80px', fontSize: esMovil ? '0.76rem' : '0.85rem', fontWeight: 800, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {p.rival || 'RIVAL'}
+      </div>
+
+      <div style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: esMovil ? '0.85rem' : '0.95rem', minWidth: '44px', textAlign: 'center', color: resultado ? COLOR_RESULTADO[resultado] : 'rgba(255,255,255,0.25)' }}>
+        {finalizado ? `${gf}-${gc}` : '—'}
+      </div>
+
+      <div style={{ display: 'flex', gap: '7px', alignItems: 'center', fontSize: '0.72rem', fontFamily: 'monospace', minWidth: esMovil ? 'auto' : '78px' }}>
+        {goles > 0 && <span style={{ color: '#00ff88' }} title="Goles">⚽{goles}</span>}
+        {asistencias > 0 && <span style={{ color: '#c084fc' }} title="Asistencias">🅰️{asistencias}</span>}
+        {amarillas > 0 && <span title="Amarillas">{'\u{1F7E8}'}{amarillas > 1 ? amarillas : ''}</span>}
+        {rojas > 0 && <span title="Roja">{'\u{1F7E5}'}</span>}
+        {sinAportes && <span style={{ color: 'rgba(255,255,255,0.18)' }}>–</span>}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+        {jugo && pctParticipacion > 0 && (
+          <span title="% del partido con él en cancha"
+            style={{ fontSize: '0.62rem', fontFamily: 'monospace', color: 'rgba(255,255,255,0.35)' }}>
+            {pctParticipacion.toFixed(0)}%
+          </span>
+        )}
+        <span style={{ fontSize: '0.57rem', fontWeight: 900, letterSpacing: '0.05em', color: etiqueta.color, border: `1px solid ${etiqueta.color}`, borderRadius: '4px', padding: '3px 6px', whiteSpace: 'nowrap' }}>
+          {etiqueta.txt}
+        </span>
+        {onFiltrar && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onFiltrar(); }}
+            title="Filtrar este perfil por este partido"
+            style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', borderRadius: '4px', padding: '2px 6px', fontSize: '0.68rem', cursor: 'pointer', lineHeight: 1.4 }}>
+            🎯
+          </button>
+        )}
+        <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900 }}>›</span>
+      </div>
+    </div>
+  );
+};
+
 // ==========================================
 
 function JugadorPerfil() {
@@ -277,6 +372,7 @@ function JugadorPerfil() {
   const [filtroAccionMapa, setFiltroAccionMapa] = useState('Todas');
   const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState('Todas');
   const [tabActiva, setTabActiva] = useState('estadisticas'); 
+  const [verTodoHistorial, setVerTodoHistorial] = useState(false);
 
   const heatmapRef = useRef(null);
 
@@ -944,6 +1040,89 @@ function JugadorPerfil() {
     };
   }, [eventos, eventosCompletos, eventosPartidoExtra, partidoFiltro, torneoFiltro, jugadorId, jugadorSeleccionado, partidosDelTorneo, jugadores, sanciones]);
 
+  /* ══════════════════════════════════════════════════════════════════════
+     🗓️ HISTORIAL DE PARTIDOS DEL JUGADOR
+     Todos los partidos donde entró en la convocatoria, jugados o no.
+     A propósito NO mira partidoFiltro (si lo hiciera, la lista se reduciría
+     a un solo partido); sí respeta el torneo elegido arriba.
+     ══════════════════════════════════════════════════════════════════════ */
+  const historialPartidos = useMemo(() => {
+    if (!jugadorId) return [];
+    const idStr = String(jugadorId);
+
+    const evsPorPartido = {};
+    eventosCompletos.forEach(e => {
+      if (!evsPorPartido[e.id_partido]) evsPorPartido[e.id_partido] = [];
+      evsPorPartido[e.id_partido].push(e);
+    });
+
+    const filas = partidosDelTorneo.map(p => {
+      const evsPartido = evsPorPartido[p.id] || [];
+
+      let plantilla = [];
+      try {
+        const pl = typeof p.plantilla === 'string' ? JSON.parse(p.plantilla) : p.plantilla;
+        if (Array.isArray(pl)) plantilla = pl;
+      } catch { plantilla = []; }
+      const convocatoria = plantilla.find(x => String(x.id_jugador) === idStr);
+      const citado = !!convocatoria || plantillaIds(p).includes(idStr);
+
+      /* "Jugó" = estuvo en cancha según los quintetos/cambios del partido, o
+         registró alguna acción propia. Lo segundo cubre partidos viejos donde
+         el quinteto no se cargó. */
+      const { participacion } = calcularParticipacion(evsPartido);
+      const part = participacion[idStr] || null;
+      const tuvoAcciones = evsPartido.some(e => e.id_jugador == jugadorId);
+      const jugo = !!part?.presente || tuvoAcciones;
+
+      const primerQ = evsPartido.find(e => e.quinteto_activo);
+      const titular = jugo && (primerQ
+        ? parseQuinteto(primerQ.quinteto_activo).includes(idStr)
+        : convocatoria?.titular === true);
+
+      let goles = 0, asistencias = 0, amarillas = 0, rojas = 0;
+      evsPartido.forEach(ev => {
+        const a = (ev.accion || '').toLowerCase();
+        const esGol = a === 'gol' || a === 'remate - gol';
+        if (esGol && ev.id_asistencia == jugadorId) asistencias++;
+        if (ev.id_jugador != jugadorId) return;
+        if (esGol) goles++;
+        else if (a.includes('amarilla')) amarillas++;
+        else if (a.includes('roja')) rojas++;
+      });
+
+      const finalizado = p.estado === 'Finalizado' || p.estado === 'Jugado';
+      const gf = Number(p.goles_propios) || 0;
+      const gc = Number(p.goles_rival) || 0;
+
+      return {
+        partido: p, citado, jugo, titular,
+        goles, asistencias, amarillas, rojas,
+        finalizado, gf, gc,
+        resultado: !finalizado ? null : (gf > gc ? 'G' : gf < gc ? 'P' : 'E'),
+        pctParticipacion: part?.pct || 0,
+        conDatos: evsPartido.length > 0
+      };
+    }).filter(f => f.citado || f.jugo);
+
+    return filas.sort((a, b) => {
+      const fa = String(a.partido.fecha || '');
+      const fb = String(b.partido.fecha || '');
+      if (fa !== fb) return fa < fb ? 1 : -1;
+      return String(b.partido.id).localeCompare(String(a.partido.id));
+    });
+  }, [partidosDelTorneo, eventosCompletos, jugadorId]);
+
+  const totalJugados = historialPartidos.filter(f => f.jugo).length;
+  const totalSinIngresar = historialPartidos.length - totalJugados;
+  const LIMITE_HISTORIAL = 10;
+  const historialVisible = verTodoHistorial ? historialPartidos : historialPartidos.slice(0, LIMITE_HISTORIAL);
+
+  const irAlPartido = (idPartido) => {
+    if (!idPartido) return;
+    navigate(isKiosco ? `/kiosco/resumen/${idPartido}` : `/resumen/${idPartido}`);
+  };
+
   const evMapa = useMemo(() => {
     if (!perfil || perfil.vacio) return [];
     let eventosAMostrar = [...perfil.accionesDirectas];
@@ -1169,6 +1348,10 @@ function JugadorPerfil() {
         .jp-stat-card:hover { transform: translateY(-2px); }
         @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .jp-section { animation: slideIn 0.3s ease both; }
+        .jp-fila-partido { transition: transform 0.15s, border-color 0.15s, opacity 0.15s, filter 0.15s; }
+        .jp-fila-partido:hover { transform: translateX(3px); border-color: rgba(255,255,255,0.22); }
+        .jp-fila-partido.atenuada { opacity: 0.42; filter: grayscale(0.75); }
+        .jp-fila-partido.atenuada:hover { opacity: 0.8; filter: grayscale(0.2); }
       `}</style>
 
       {/* ── CONTROLES SUPERIORES ── */}
@@ -1882,6 +2065,60 @@ function JugadorPerfil() {
               </div>
             </div>
           )}
+
+          {/* ────────── HISTORIAL: PARTIDOS DEL JUGADOR ────────── */}
+          <div className="bento-card jp-section">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
+              <div className="stat-label" style={{ color: accentColor, margin: 0 }}>
+                🗓️ PARTIDOS DEL JUGADOR
+                <InfoBox texto="Todos los partidos en los que estuvo convocado. Los que jugó se resaltan; si fue citado y no ingresó, la fila queda atenuada. Tocá cualquier fila para abrir el resumen de ese partido." />
+              </div>
+              {historialPartidos.length > 0 && (
+                <div style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.04em', color: 'rgba(255,255,255,0.35)' }}>
+                  <span style={{ color: accentColor }}>{totalJugados} JUGADOS</span>
+                  {totalSinIngresar > 0 && <> · {totalSinIngresar} SIN INGRESAR</>}
+                  {torneoFiltro !== 'Todos' && <> · SOLO ESTE TORNEO</>}
+                </div>
+              )}
+            </div>
+
+            {historialPartidos.length === 0 ? (
+              <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.8rem', textAlign: 'center', padding: '26px 0' }}>
+                Todavía no hay partidos con este jugador en la convocatoria.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {historialVisible.map(fila => (
+                    <FilaPartido
+                      key={fila.partido.id}
+                      fila={fila}
+                      esMovil={esMovil}
+                      accentColor={accentColor}
+                      seleccionado={partidoFiltro !== 'Todos' && fila.partido.id == partidoFiltro}
+                      onAbrir={() => irAlPartido(fila.partido.id)}
+                      onFiltrar={fila.conDatos ? () => {
+                        setPartidoFiltro(fila.partido.id);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      } : null}
+                    />
+                  ))}
+                </div>
+
+                {historialPartidos.length > LIMITE_HISTORIAL && (
+                  <button
+                    onClick={() => setVerTodoHistorial(v => !v)}
+                    style={{ marginTop: '12px', width: '100%', padding: '10px', background: 'transparent', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: '8px', color: 'rgba(255,255,255,0.5)', fontWeight: 800, fontSize: '0.7rem', letterSpacing: '0.05em', cursor: 'pointer' }}>
+                    {verTodoHistorial ? '▲ VER MENOS' : `▼ VER LOS ${historialPartidos.length} PARTIDOS`}
+                  </button>
+                )}
+
+                <div style={{ marginTop: '12px', fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center' }}>
+                  Tocá una fila para ir al resumen del partido · 🎯 filtra este perfil por ese partido
+                </div>
+              </>
+            )}
+          </div>
 
         </div>
       )}
