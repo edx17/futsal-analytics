@@ -44,6 +44,7 @@ const CreadorFisico       = lazy(() => import('./pages/CreadorFisico'));
 const BancoTareas         = lazy(() => import('./pages/BancoTareas'));
 const CargaWellness       = lazy(() => import('./pages/CargaWellness'));
 const PlanificadorSemanal = lazy(() => import('./pages/PlanificadorSemanal'));
+const Citacion            = lazy(() => import('./pages/Citacion'));
 const Presentismo         = lazy(() => import('./pages/Presentismo'));
 const Tesoreria           = lazy(() => import('./pages/Tesoreria'));
 const Sponsors            = lazy(() => import('./pages/Sponsors'));
@@ -138,6 +139,7 @@ function AppRoutes() {
       <Route path="/plantel" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Plantel /></ProtectedRoute>} />
       <Route path="/transferencias" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Transferencias /></ProtectedRoute>} />
       <Route path="/microciclo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><PlanificadorSemanal /></ProtectedRoute>} />
+      <Route path="/citacion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Citacion /></ProtectedRoute>} />
       <Route path="/creador-tareas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorTareas /></ProtectedRoute>} />
       <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
       <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
@@ -401,6 +403,7 @@ useEffect(() => {
               <>
                 {permisos.puedeEscribirDeportivo && (
                   <>
+                    <NavLink to="/citacion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📣 <span>CITACIÓN</span></NavLink>
                     <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🗓️ <span>MICROCICLO</span></NavLink>
                     <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎨 <span>CREADOR TÁCTICO</span></NavLink>
                     <NavLink to="/creador-fisico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏋️‍♂️ <span>CREADOR FÍSICO</span></NavLink>

@@ -11,6 +11,15 @@ const normalizarNombre = (v) => String(v || '')
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .trim().toLowerCase().replace(/\s+/g, ' ');
 
+/* La convocatoria que deja la pantalla de CITACIÓN vive en `partidos.plantilla`
+   y puede venir como jsonb o como texto, según cómo la haya escrito la app. */
+const parsePlantillaGuardada = (partido) => {
+  try {
+    const pl = typeof partido?.plantilla === 'string' ? JSON.parse(partido.plantilla) : partido?.plantilla;
+    return Array.isArray(pl) ? pl.filter(x => x && x.id_jugador != null) : [];
+  } catch { return []; }
+};
+
 function NuevoPartido() {
   const navigate = useNavigate();
   const clubId = localStorage.getItem('club_id');
@@ -45,6 +54,7 @@ function NuevoPartido() {
 
   // ESTADOS DE CONVOCATORIA
   const [seleccion, setSeleccion] = useState({});
+  const [citadosPrecargados, setCitadosPrecargados] = useState(0);
   const [filtroVerCategoria, setFiltroVerCategoria] = useState('TODOS');
   const [ordenCriterio, setOrdenCriterio] = useState('dorsal');
   const [ordenDireccion, setOrdenDireccion] = useState('asc');
@@ -161,6 +171,7 @@ function NuevoPartido() {
         ...prev, id: null, rival_id: '', jornada: '', fecha: new Date().toISOString().split('T')[0], condicion: 'Local'
       }));
       setRivalSeleccionado(null);
+      setCitadosPrecargados(0);
       return;
     }
 
@@ -178,6 +189,21 @@ function NuevoPartido() {
       }));
       const rivalObj = rivalesBD.find(r => r.id === partido.rival_id);
       setRivalSeleccionado(rivalObj || null);
+
+      /* Si la CITACIÓN ya dejó la convocatoria cargada, la traemos tildada.
+         Es un punto de partida, no una decisión cerrada: acá se confirma o se
+         cambia si hubo alguna baja de último momento. */
+      const citados = parsePlantillaGuardada(partido);
+      if (citados.length > 0) {
+        setSeleccion(prev => {
+          const base = { ...prev };
+          citados.forEach(c => {
+            base[c.id_jugador] = { convocado: true, titular: !!c.titular };
+          });
+          return base;
+        });
+      }
+      setCitadosPrecargados(citados.length);
     }
   };
 
@@ -448,6 +474,22 @@ function NuevoPartido() {
       </div>
 
       <div className="bento-card">
+        {citadosPrecargados > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+            background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.35)',
+            borderRadius: '6px', padding: '12px 14px', marginBottom: '18px', fontSize: '0.8rem',
+          }}>
+            <span style={{ fontSize: '1.1rem' }}>📣</span>
+            <span style={{ flex: 1, minWidth: '220px' }}>
+              <strong>{citadosPrecargados} citados precargados desde la CITACIÓN.</strong>{' '}
+              <span style={{ color: 'var(--text-dim)' }}>
+                Confirmá la lista o ajustala si hubo alguna baja de último momento. Los titulares se marcan acá.
+              </span>
+            </span>
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
             <div className="stat-label">CONVOCATORIA Y SISTEMA INICIAL</div>
