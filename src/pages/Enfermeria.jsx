@@ -7,7 +7,7 @@ import { soloActivos } from '../utils/plantelActivo';
 import { ejerciciosParaZona, REHAB_LIB } from '../utils/rehab';
 import {
   ZONAS, TIPOS, LATERALIDADES, MECANISMOS, CONTEXTOS, GRAVEDADES, ESTADOS,
-  hoyISO, soloFecha, sumarDias, diasDeBaja, altaVencida, estaAbierta,
+  hoyISO, soloFecha, sumarDias, diasEntre, diasDeBaja, altaVencida, estaAbierta,
   disponibilidadDe, resumenPlantel,
 } from '../utils/disponibilidad';
 
@@ -209,6 +209,7 @@ function Enfermeria() {
   const puedeEditar = !esJugador && ['superuser', 'ct'].includes(rol);
 
   const clubId = perfil?.club_id || localStorage.getItem('club_id');
+  const miClub = localStorage.getItem('mi_club') || perfil?.clubes?.nombre || '';
   const esCT = rol === 'ct';
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
   const miJugadorId = isKiosco ? kioscoJugadorId : perfil?.jugador_id;
@@ -232,8 +233,9 @@ function Enfermeria() {
     try {
       let qJug = supabase.from('jugadores').select('*').eq('club_id', clubId).order('apellido', { ascending: true });
       let qLes = supabase.from('lesiones').select('*').eq('club_id', clubId).order('fecha_lesion', { ascending: false });
-      const qPar = supabase.from('partidos').select('id, fecha, rival, categoria')
-        .eq('club_id', clubId).order('fecha', { ascending: false }).limit(40);
+      const qPar = supabase.from('partidos')
+        .select('id, fecha, rival, categoria, condicion, nombre_propio, competicion')
+        .eq('club_id', clubId).order('fecha', { ascending: false }).limit(80);
 
       if (esCT && misCategorias.length > 0) qJug = qJug.in('categoria', misCategorias);
       if (esJugador && miJugadorId) qLes = qLes.eq('jugador_id', miJugadorId);
@@ -278,6 +280,38 @@ function Enfermeria() {
   );
 
   const resumen = useMemo(() => resumenPlantel(lesiones, jugadores, hoy), [lesiones, jugadores, hoy]);
+
+  /* Qué partidos se ofrecen al cargar una lesión "en partido".
+     Antes se listaban los últimos 40 del club y la lista era inservible: traía
+     los cruces entre OTROS equipos que el fixture guarda con mi club_id, los
+     de todas las categorías y los del fixture sin fecha cargada. Un jugador de
+     tercera no se lesiona en un partido de primera ni en un cruce ajeno.
+
+     Se recorta a: partidos MÍOS, de la categoría del jugador, con fecha
+     cargada y anteriores o iguales al día de la lesión, ordenados por
+     cercanía a esa fecha. */
+  const partidosParaLesion = useMemo(() => {
+    const norm = (t) => String(t || '').trim().toLowerCase();
+    const nombresMios = new Set([norm(miClub), norm(localStorage.getItem('mi_club') || '')].filter(Boolean));
+    const esCruceAjeno = (p) => p.condicion === 'Neutral' && nombresMios.size > 0 && p.nombre_propio
+      && !nombresMios.has(norm(p.nombre_propio)) && !nombresMios.has(norm(p.rival));
+
+    const jugador = jugadores.find(j => String(j.id) === String(form.jugador_id));
+    const categoria = jugador?.categoria ? String(jugador.categoria).trim() : null;
+    const fechaLesion = soloFecha(form.fecha_lesion);
+
+    return partidos
+      .filter(p => p.fecha && !esCruceAjeno(p))
+      .filter(p => !categoria || String(p.categoria || '').trim() === categoria)
+      .filter(p => !fechaLesion || soloFecha(p.fecha) <= fechaLesion)
+      .sort((a, b) => {
+        if (!fechaLesion) return String(b.fecha).localeCompare(String(a.fecha));
+        const da = Math.abs(diasEntre(soloFecha(a.fecha), fechaLesion) ?? 9999);
+        const db = Math.abs(diasEntre(soloFecha(b.fecha), fechaLesion) ?? 9999);
+        return da - db;
+      })
+      .slice(0, 12);
+  }, [partidos, jugadores, miClub, form.jugador_id, form.fecha_lesion]);
 
   /* ── ACCIONES ─────────────────────────────────────────────────────────── */
   const abrirNueva = () => {
@@ -580,12 +614,22 @@ function Enfermeria() {
               <Campo titulo="¿En qué partido?" span={esMovil ? 1 : 2}>
                 <select style={input} value={form.partido_id} onChange={e => setForm(f => ({ ...f, partido_id: e.target.value }))}>
                   <option value="">— Sin especificar —</option>
-                  {partidos.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {soloFecha(p.fecha)?.split('-').reverse().join('/')} · vs {p.rival}
-                    </option>
-                  ))}
+                  {partidosParaLesion.map(p => {
+                    const mismoDia = soloFecha(p.fecha) === soloFecha(form.fecha_lesion);
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {soloFecha(p.fecha).split('-').reverse().join('/')} · vs {p.rival}
+                        {p.competicion ? ` (${p.competicion})` : ''}
+                        {mismoDia ? ' ← ese día' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
+                {partidosParaLesion.length === 0 && (
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '5px' }}>
+                    No hay partidos de su categoría hasta esa fecha.
+                  </div>
+                )}
               </Campo>
             ) : <div style={{ gridColumn: esMovil ? 'auto' : 'span 2' }} />}
 

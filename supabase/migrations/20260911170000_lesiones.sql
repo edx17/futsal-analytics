@@ -64,10 +64,14 @@ create index if not exists lesiones_club_fecha_idx on public.lesiones (club_id, 
 create index if not exists lesiones_jugador_idx on public.lesiones (jugador_id, fecha_lesion desc);
 
 -- ── PRESENTISMO: EL ESTADO NUEVO ───────────────────────────────────────────
--- `asistencias.estado` es texto libre, así que 'lesionado' no necesita
--- migración. Se documenta acá para que quede el registro de que a partir de
--- esta versión existe un quinto estado, y que ese estado NO cuenta como falta:
--- sale del denominador del porcentaje, no suma como ausencia.
+-- A partir de esta versión `asistencias.estado` tiene un quinto valor,
+-- 'lesionado', que NO cuenta como falta: sale del denominador del porcentaje,
+-- no suma como ausencia.
+--
+-- OJO: acá decía que no hacía falta migración porque la columna era texto
+-- libre. Era falso — hay un CHECK sobre `estado` y el valor nuevo lo violaba,
+-- rompiendo el guardado de TODA la planilla. Se arregla en la migración
+-- 20260912160000_asistencias_estado_lesionado.sql.
 comment on column public.asistencias.estado is
   'presente | tarde | ausente | justificado | lesionado. "lesionado" se excluye del cálculo de presentismo (no cuenta como presente ni como falta).';
 
