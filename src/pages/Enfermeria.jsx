@@ -24,6 +24,20 @@ import {
    fecha estimada de vuelta y los ejercicios que le tocan.
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* Postgres contesta el rechazo de RLS con su texto crudo ("new row violates
+   row-level security policy..."), que no le dice nada a un técnico de futsal.
+   Se traduce a algo accionable. */
+const mensajeDeError = (error, accion = 'guardar') => {
+  if (!error) return '';
+  if (error.code === '42501' || /row-level security/i.test(error.message || '')) {
+    return `Tu usuario no tiene permiso para ${accion} lesiones en la base. Hay que correr la migración 20260912120000_lesiones_rls.sql en Supabase (crea las políticas de la tabla).`;
+  }
+  if (error.code === '42P01' || error.code === 'PGRST205' || /does not exist|schema cache/i.test(error.message || '')) {
+    return 'Falta crear la tabla de lesiones: corré la migración 20260911170000_lesiones.sql en Supabase.';
+  }
+  return `No se pudo ${accion}: ${error.message}`;
+};
+
 const FORM_VACIO = {
   id: null,
   jugador_id: '',
@@ -226,15 +240,10 @@ function Enfermeria() {
 
       const [rJug, rLes, rPar] = await Promise.all([qJug, qLes, qPar]);
 
-      if (rLes.error) {
-        /* Sin la migración corrida la tabla no existe. Se avisa con el texto
-           exacto en vez de dejar la pantalla en blanco sin explicación. */
-        const faltaTabla = rLes.error.code === '42P01' || rLes.error.code === 'PGRST205'
-          || /does not exist|schema cache/i.test(rLes.error.message || '');
-        showToast(faltaTabla
-          ? 'Falta crear la tabla de lesiones: corré la migración 20260911170000_lesiones.sql en Supabase.'
-          : `No se pudieron leer las lesiones: ${rLes.error.message}`, 'error');
-      }
+      /* Sin la migración corrida la tabla no existe, o existe sin políticas.
+         En los dos casos se dice qué correr, en vez de dejar la pantalla en
+         blanco sin explicación. */
+      if (rLes.error) showToast(mensajeDeError(rLes.error, 'leer'), 'error');
 
       setJugadores(soloActivos(rJug.data || []));
       setLesiones(rLes.data || []);
@@ -330,7 +339,7 @@ function Enfermeria() {
       : await supabase.from('lesiones').insert([{ ...payload, creado_por: perfil?.id || null, evolucion: [] }]).select();
 
     setGuardando(false);
-    if (res.error) return showToast(`No se pudo guardar: ${res.error.message}`, 'error');
+    if (res.error) return showToast(mensajeDeError(res.error, 'guardar'), 'error');
 
     showToast(form.id ? 'Lesión actualizada ✅' : 'Lesión registrada ✅', 'success');
     setEditando(false);
@@ -342,7 +351,7 @@ function Enfermeria() {
     const { error } = await supabase.from('lesiones')
       .update({ estado: 'alta', fecha_alta_real: hoyISO(), updated_at: new Date().toISOString() })
       .eq('id', lesion.id);
-    if (error) return showToast(`No se pudo dar el alta: ${error.message}`, 'error');
+    if (error) return showToast(mensajeDeError(error, 'dar el alta de'), 'error');
     showToast(`${nombreDe(lesion.jugador_id)} tiene el alta ✅`, 'success');
     cargar();
   };
@@ -351,7 +360,7 @@ function Enfermeria() {
     const { error } = await supabase.from('lesiones')
       .update({ estado: 'readaptacion', updated_at: new Date().toISOString() })
       .eq('id', lesion.id);
-    if (error) return showToast(`No se pudo actualizar: ${error.message}`, 'error');
+    if (error) return showToast(mensajeDeError(error, 'actualizar'), 'error');
     showToast('Pasó a readaptación.', 'success');
     cargar();
   };
@@ -365,7 +374,7 @@ function Enfermeria() {
     ];
     const { error } = await supabase.from('lesiones')
       .update({ evolucion, updated_at: new Date().toISOString() }).eq('id', lesion.id);
-    if (error) return showToast(`No se pudo guardar la nota: ${error.message}`, 'error');
+    if (error) return showToast(mensajeDeError(error, 'agregar notas a'), 'error');
     setNotaNueva(n => ({ ...n, [lesion.id]: '' }));
     cargar();
   };
@@ -394,7 +403,7 @@ function Enfermeria() {
       fecha_vencimiento: new Date(Date.now() + 7 * 86400000).toISOString(),
     }]);
 
-    if (error) return showToast(`No se pudo publicar: ${error.message}`, 'error');
+    if (error) return showToast(mensajeDeError(error, 'publicar el parte de'), 'error');
     showToast('Parte médico publicado en el Tablón ✅', 'success');
   };
 

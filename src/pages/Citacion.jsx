@@ -120,6 +120,9 @@ function Citacion() {
   const [minutosAntes, setMinutosAntes] = useState(MINUTOS_ANTES_DEFAULT);
   const [mensajeManual, setMensajeManual] = useState(null);   // si el técnico edita el texto final
   const [verPlantilla, setVerPlantilla] = useState(false);
+  /* Categorías de más que el técnico quiere ver además de la del partido:
+     bajar dos de 1ra para que jueguen en 3ra, subir uno de 4ta, etc. */
+  const [categoriasExtra, setCategoriasExtra] = useState([]);
 
   const partido = useMemo(() => partidos.find(p => String(p.id) === String(partidoId)) || null, [partidos, partidoId]);
 
@@ -220,6 +223,7 @@ function Citacion() {
       : {});
 
     setMensajeManual(citacionGuardada.mensaje || null);
+    setCategoriasExtra([]);
 
     /* La dirección del rival, si ya la anotamos alguna vez, se recuerda. */
     if (!partido.direccion && partido.rival_id) {
@@ -319,10 +323,35 @@ function Citacion() {
   }, [clubId, partido?.categoria, jugadores]);
 
   /* ── 4. PLANTEL DE LA CATEGORÍA + EVALUACIÓN ──────────────────────────── */
-  const jugadoresCategoria = useMemo(() => {
-    if (!partido?.categoria) return jugadores;
-    return jugadores.filter(j => String(j.categoria || '').trim() === String(partido.categoria).trim());
+  const mismaCategoria = (j) =>
+    !partido?.categoria || String(j.categoria || '').trim() === String(partido.categoria).trim();
+
+  /* Las otras categorías del club, para poder traer refuerzos. */
+  const otrasCategorias = useMemo(() => {
+    const cats = new Set(jugadores.map(j => String(j.categoria || '').trim()).filter(Boolean));
+    if (partido?.categoria) cats.delete(String(partido.categoria).trim());
+    return [...cats].sort((a, b) => a.localeCompare(b, 'es'));
   }, [jugadores, partido?.categoria]);
+
+  /* Se ven: los de la categoría del partido, los de las categorías que el
+     técnico haya sumado, y SIEMPRE los que ya están tildados — si no, apagar
+     un filtro los sacaría de la lista sin que se note. */
+  const jugadoresVisibles = useMemo(() => jugadores.filter(j =>
+    mismaCategoria(j)
+    || categoriasExtra.includes(String(j.categoria || '').trim())
+    || seleccion[String(j.id)]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [jugadores, partido?.categoria, categoriasExtra, seleccion]);
+
+  /* Sólo los de la categoría del partido entran en la SUGERENCIA automática:
+     que el motor proponga solo a un jugador de 1ra para un partido de 3ra
+     sería pasarle por encima al técnico. Los de otras categorías se ven, se
+     puntúan y se pueden tildar a mano, que es de lo que se trata. */
+  const jugadoresPropios = useMemo(
+    () => jugadores.filter(mismaCategoria),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [jugadores, partido?.categoria]
+  );
 
   const evaluacion = useMemo(() => {
     /* Los días que el jugador estuvo lesionado no entran en la cuenta: no son
@@ -367,7 +396,7 @@ function Citacion() {
        la FECHA DEL PARTIDO, no a hoy: al que le dan el alta el sábado se lo
        puede citar para el domingo. */
     const fechaPartido = partido?.fecha ? String(partido.fecha).split('T')[0] : hoyISO();
-    jugadoresCategoria.forEach(j => {
+    jugadoresVisibles.forEach(j => {
       const estado = disponibilidadDe(lesiones, j.id, fechaPartido);
       if (!estado.lesion) return;
       const k = String(j.id);
@@ -376,7 +405,7 @@ function Citacion() {
     });
 
     const hoy = hoyISO();
-    jugadoresCategoria.forEach(j => {
+    jugadoresVisibles.forEach(j => {
       const vto = j.vencimiento_apto ? String(j.vencimiento_apto).split('T')[0] : null;
       if (vto && vto < hoy && !bloqueos[String(j.id)]) {
         bloqueos[String(j.id)] = `Apto médico vencido el ${partesDeFecha(vto).larga}`;
@@ -388,17 +417,22 @@ function Citacion() {
       if (enRojoWell(w) && !avisos[k]) avisos[k] = 'Wellness en rojo hoy';
     });
 
-    return sugerirConvocatoria({
-      jugadores: jugadoresCategoria,
-      presentismo, ratings, bloqueos, avisos,
-      limite: limiteConvocados(partido?.competicion),
-    });
-  }, [jugadoresCategoria, asistencias, sanciones, amarillasPorJugador, wellnessHoy, ratings, lesiones, partido?.competicion, partido?.fecha]);
+    const comun = { presentismo, ratings, bloqueos, avisos, limite: limiteConvocados(partido?.competicion) };
+
+    // Se puntúa a todos los que están a la vista…
+    const { evaluados } = sugerirConvocatoria({ ...comun, jugadores: jugadoresVisibles });
+    // …pero la tilde automática sale sólo de la categoría del partido.
+    const { sugeridos } = sugerirConvocatoria({ ...comun, jugadores: jugadoresPropios });
+
+    return { evaluados, sugeridos };
+  }, [jugadoresVisibles, jugadoresPropios, asistencias, sanciones, amarillasPorJugador, wellnessHoy, ratings, lesiones, partido?.competicion, partido?.fecha]);
 
   /* ── 5. MENSAJE ───────────────────────────────────────────────────────── */
+  /* Del plantel completo y no de la lista visible: si el técnico tilda a dos
+     de 1ra y después apaga ese filtro, tienen que seguir en la citación. */
   const convocados = useMemo(
-    () => jugadoresCategoria.filter(j => seleccion[String(j.id)]),
-    [jugadoresCategoria, seleccion]
+    () => jugadores.filter(j => seleccion[String(j.id)]),
+    [jugadores, seleccion]
   );
 
   const textoGenerado = useMemo(() => {
@@ -415,15 +449,30 @@ function Citacion() {
 
   const limite = limiteConvocados(partido?.competicion);
   const arquerosCitados = convocados.filter(esArquero).length;
+  const refuerzos = convocados.filter(j => !mismaCategoria(j)).length;
   const excedido = convocados.length > limite;
 
   /* ── 6. ACCIONES ──────────────────────────────────────────────────────── */
   const toggle = (id) => setSeleccion(s => ({ ...s, [String(id)]: !s[String(id)] }));
 
   const aplicarSugerencia = () => {
-    setSeleccion(Object.fromEntries([...evaluacion.sugeridos].map(id => [id, true])));
+    /* La sugerencia cubre la categoría del partido y pisa lo que haya tildado
+       ahí. A los refuerzos de otra categoría no los toca: el motor no los
+       evalúa para sugerir, así que tampoco tiene por qué borrarlos. */
+    const refuerzosTildados = jugadores
+      .filter(j => seleccion[String(j.id)] && !mismaCategoria(j))
+      .map(j => [String(j.id), true]);
+
+    setSeleccion(Object.fromEntries([
+      ...[...evaluacion.sugeridos].map(id => [id, true]),
+      ...refuerzosTildados,
+    ]));
     setMensajeManual(null);
-    showToast(`${evaluacion.sugeridos.size} jugadores sugeridos. Tildá o destildá lo que quieras.`, 'success');
+
+    const extra = refuerzosTildados.length > 0
+      ? ` (se mantienen ${refuerzosTildados.length} de otra categoría)`
+      : '';
+    showToast(`${evaluacion.sugeridos.size} jugadores sugeridos${extra}. Tildá o destildá lo que quieras.`, 'success');
   };
 
   const limpiar = () => { setSeleccion({}); setMensajeManual(null); };
@@ -676,8 +725,41 @@ function Citacion() {
               <span style={{ color: arquerosCitados === 0 ? '#fbbf24' : 'var(--text-dim)' }}>
                 {arquerosCitados} ARQUERO{arquerosCitados === 1 ? '' : 'S'} {arquerosCitados === 0 && '· ¡FALTA ARQUERO!'}
               </span>
+              {refuerzos > 0 && (
+                <span style={{ color: '#3b82f6' }}>
+                  {refuerzos} DE OTRA CATEGORÍA
+                </span>
+              )}
               {calculandoRatings && <span style={{ color: 'var(--text-dim)' }}>CALCULANDO RENDIMIENTOS…</span>}
             </div>
+
+            {otrasCategorias.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', padding: '10px 12px', background: 'var(--panel)', borderRadius: '8px' }}>
+                <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.05em', color: 'var(--text-dim)', textTransform: 'uppercase' }}>
+                  Sumar de otra categoría:
+                </span>
+                {partido?.categoria && (
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '5px 10px', borderRadius: '999px', background: 'var(--accent)', color: '#000' }}>
+                    {String(partido.categoria).toUpperCase()}
+                  </span>
+                )}
+                {otrasCategorias.map(cat => {
+                  const activa = categoriasExtra.includes(cat);
+                  return (
+                    <button key={cat}
+                      onClick={() => setCategoriasExtra(cs => activa ? cs.filter(c => c !== cat) : [...cs, cat])}
+                      style={{
+                        fontSize: '0.65rem', fontWeight: 800, padding: '5px 10px', borderRadius: '999px', cursor: 'pointer',
+                        background: activa ? '#3b82f6' : 'transparent',
+                        color: activa ? '#fff' : 'var(--text-dim)',
+                        border: `1px solid ${activa ? '#3b82f6' : 'var(--border)'}`,
+                      }}>
+                      {activa ? '✓ ' : '+ '}{cat.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(2, 1fr)', gap: '8px' }}>
               {evaluacion.evaluados.map(ev => {
@@ -697,6 +779,13 @@ function Citacion() {
                         {ev.esArquero && '🥅 '}
                         {ev.jugador.apellido}, {ev.jugador.nombre}
                         <span style={{ color: 'var(--text-dim)', fontWeight: 600, marginLeft: '6px', fontFamily: 'monospace', fontSize: '0.7rem' }}>#{ev.jugador.dorsal}</span>
+                        {/* El refuerzo de otra categoría se marca, para que no
+                            se cuele en la lista sin que el técnico lo note. */}
+                        {!mismaCategoria(ev.jugador) && (
+                          <span style={{ marginLeft: '7px', fontSize: '0.55rem', fontWeight: 900, padding: '2px 6px', borderRadius: '4px', background: '#3b82f6', color: '#fff', verticalAlign: 'middle' }}>
+                            {String(ev.jugador.categoria || '').toUpperCase()}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {ev.motivos.join(' · ')}
