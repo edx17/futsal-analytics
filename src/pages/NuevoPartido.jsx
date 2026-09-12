@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
+import { disponibilidadDe } from '../utils/disponibilidad';
 import { soloActivos } from '../utils/plantelActivo';
 
 /* Comparación de nombres de equipo tolerante a mayúsculas, espacios y acentos.
@@ -55,6 +56,7 @@ function NuevoPartido() {
   // ESTADOS DE CONVOCATORIA
   const [seleccion, setSeleccion] = useState({});
   const [citadosPrecargados, setCitadosPrecargados] = useState(0);
+  const [lesiones, setLesiones] = useState([]);
   const [filtroVerCategoria, setFiltroVerCategoria] = useState('TODOS');
   const [ordenCriterio, setOrdenCriterio] = useState('dorsal');
   const [ordenDireccion, setOrdenDireccion] = useState('asc');
@@ -70,6 +72,13 @@ function NuevoPartido() {
 
       const { data: torneos } = await supabase.from('torneos').select('*').eq('club_id', clubId).order('nombre', { ascending: true });
       if (torneos) setTorneosBD(torneos);
+
+      /* Las lesiones abiertas, para avisar si se convoca a alguien que está
+         de baja. Si la tabla todavía no existe, se sigue sin avisos. */
+      const { data: les, error: errLes } = await supabase.from('lesiones')
+        .select('*').eq('club_id', clubId).neq('estado', 'alta');
+      if (errLes) console.warn('Nuevo Partido sin datos de lesiones:', errLes.message);
+      setLesiones(les || []);
 
       const { data: jugadores } = await supabase.from('jugadores').select('*').eq('club_id', clubId);
       // Un jugador dado de baja no se puede convocar: no está más en el club.
@@ -327,6 +336,23 @@ function NuevoPartido() {
     return ['TODOS', ...Array.from(cats)];
   }, [jugadoresBD]);
 
+  /* El estado físico se evalúa A LA FECHA DEL PARTIDO, no a hoy: al que le
+     dan el alta el sábado se lo puede convocar para el domingo. */
+  const estadoFisico = useMemo(() => {
+    const fecha = formData.fecha || new Date().toISOString().split('T')[0];
+    const mapa = {};
+    jugadoresBD.forEach(j => {
+      const d = disponibilidadDe(lesiones, j.id, fecha);
+      if (d.lesion) mapa[String(j.id)] = d;
+    });
+    return mapa;
+  }, [lesiones, jugadoresBD, formData.fecha]);
+
+  const convocadosLesionados = useMemo(
+    () => jugadoresBD.filter(j => seleccion[j.id]?.convocado && estadoFisico[String(j.id)]?.nivel === 'baja'),
+    [jugadoresBD, seleccion, estadoFisico]
+  );
+
   const jugadoresProcesados = useMemo(() => {
     let lista = jugadoresBD.filter(j => filtroVerCategoria === 'TODOS' ? true : j.categoria === filtroVerCategoria);
     
@@ -474,6 +500,25 @@ function NuevoPartido() {
       </div>
 
       <div className="bento-card">
+        {convocadosLesionados.length > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.4)',
+            borderRadius: '6px', padding: '12px 14px', marginBottom: '18px', fontSize: '0.8rem',
+          }}>
+            <span style={{ fontSize: '1.1rem' }}>🏥</span>
+            <span style={{ flex: 1, minWidth: '220px' }}>
+              <strong>
+                Estás convocando a {convocadosLesionados.length} jugador{convocadosLesionados.length === 1 ? '' : 'es'} de baja:
+              </strong>{' '}
+              <span style={{ color: 'var(--text-dim)' }}>
+                {convocadosLesionados.map(j => `${j.apellido || j.nombre} (${estadoFisico[String(j.id)]?.detalle || 'lesionado'})`).join(' · ')}.
+                {' '}Es un aviso, no un bloqueo: si está para jugar, seguí.
+              </span>
+            </span>
+          </div>
+        )}
+
         {citadosPrecargados > 0 && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
@@ -546,7 +591,15 @@ function NuevoPartido() {
                         {j.apellido ? <span style={{ fontWeight: 800 }}>{j.apellido.toUpperCase()} </span> : ''}
                         {j.nombre.toUpperCase()}
                       </td>
-                      <td className="pos-label" style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{j.posicion ? j.posicion.substring(0,3).toUpperCase() : 'N/A'}</td>
+                      <td className="pos-label" style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                        {j.posicion ? j.posicion.substring(0,3).toUpperCase() : 'N/A'}
+                        {estadoFisico[String(j.id)] && (
+                          <div title={estadoFisico[String(j.id)].detalle}
+                            style={{ fontSize: '0.58rem', fontWeight: 900, color: estadoFisico[String(j.id)].color, marginTop: '2px' }}>
+                            🏥 {estadoFisico[String(j.id)].etiqueta}
+                          </div>
+                        )}
+                      </td>
                       <td><input type="checkbox" checked={estado.convocado} onChange={() => manejarTilde(j.id, 'convocado')} style={{ transform: 'scale(1.3)', cursor: 'pointer' }} /></td>
                       <td><input type="checkbox" checked={estado.titular} onChange={() => manejarTilde(j.id, 'titular')} disabled={!estado.convocado} style={{ transform: 'scale(1.3)', cursor: estado.convocado ? 'pointer' : 'not-allowed', accentColor: 'var(--accent)' }} /></td>
                     </tr>
@@ -572,6 +625,12 @@ function NuevoPartido() {
                   
                   <div className="mono-accent" style={{ position: 'absolute', top: '10px', left: '10px', fontSize: '1rem', color: 'var(--accent)', fontWeight: 'bold' }}>{j.dorsal || '-'}</div>
                   <div className="pos-label" style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '0.65rem', color: 'var(--text-dim)' }}>{j.posicion ? j.posicion.substring(0,3).toUpperCase() : 'N/A'}</div>
+                  {estadoFisico[String(j.id)] && (
+                    <div title={estadoFisico[String(j.id)].detalle}
+                      style={{ position: 'absolute', top: '32px', right: '10px', fontSize: '0.55rem', fontWeight: 900, color: estadoFisico[String(j.id)].color }}>
+                      🏥 {estadoFisico[String(j.id)].etiqueta}
+                    </div>
+                  )}
                   
                   <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'var(--panel)', marginTop: '10px', marginBottom: '15px', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     {j.foto ? (

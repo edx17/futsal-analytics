@@ -6,6 +6,7 @@ import { useEsMovil } from '../utils/useEsMovil';
 import CalendarioAsistencia from '../components/CalendarioAsistencia';
 import { resumirMesPorDia, claveMes } from '../utils/resumenMensual';
 import { soloActivos } from '../utils/plantelActivo';
+import { disponibilidadDe, cuentaParaPresentismo, cuentaComoPresente, ASISTENCIA_LESIONADO } from '../utils/disponibilidad';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Cell 
@@ -38,6 +39,7 @@ function Presentismo() {
   const [jugadores, setJugadores] = useState([]);
   const [historial, setHistorial] = useState([]); 
   
+  const [lesiones, setLesiones] = useState([]);
   const [asistenciasHoy, setAsistenciasHoy] = useState({});
   const [notasHoy, setNotasHoy] = useState({});
 
@@ -62,14 +64,23 @@ function Presentismo() {
       
       jugadores.forEach(j => {
         const reg = asistFecha.find(a => String(a.jugador_id) === String(j.id));
-        asisInit[j.id] = reg ? reg.estado : 'presente';
-        notasInit[j.id] = reg ? (reg.notas || '') : '';
+        if (reg) {
+          asisInit[j.id] = reg.estado;
+          notasInit[j.id] = reg.notas || '';
+          return;
+        }
+        /* Si la Enfermería lo tiene de baja ese día, ya viene marcado como
+           lesionado: no hay que acordarse de cambiarlo uno por uno, y así el
+           día no le cuenta como falta. */
+        const fisico = disponibilidadDe(lesiones, j.id, fecha);
+        asisInit[j.id] = fisico.lesion ? ASISTENCIA_LESIONADO : 'presente';
+        notasInit[j.id] = fisico.lesion ? (fisico.detalle || '') : '';
       });
       
       setAsistenciasHoy(asisInit);
       setNotasHoy(notasInit);
     }
-  }, [fecha, historial, jugadores]);
+  }, [fecha, historial, jugadores, lesiones]);
 
   const cargarBaseDatos = async () => {
     // Seguridad adicional: Si es CT y trata de forzar una categoría no permitida, abortamos
@@ -90,6 +101,13 @@ function Presentismo() {
       let jugadoresLista = soloActivos(jubs);
 
       // 2) historial completo
+      /* Las lesiones abiertas del club: definen quién viene premarcado como
+         lesionado y se descuentan del cálculo de presentismo. */
+      const { data: les, error: errLes } = await supabase
+        .from('lesiones').select('*').eq('club_id', clubId);
+      if (errLes) console.warn('Presentismo sin datos de lesiones:', errLes.message);
+      setLesiones(les || []);
+
       const { data: histAll } = await supabase
         .from('asistencias')
         .select('*')
@@ -162,6 +180,9 @@ function Presentismo() {
     }
   };
 
+  /* `cuentaComoPresente` recibe el estado; estos filtros pasan el registro. */
+  const cuentaComoPresente2 = (h) => cuentaComoPresente(h.estado);
+
   const stats = useMemo(() => {
     if (historial.length === 0 || jugadores.length === 0) return null;
 
@@ -172,38 +193,49 @@ function Presentismo() {
     const histMensual = historial.filter(h => h.fecha.startsWith(`${añoActual}-${mesActual}`));
 
     const diasUnicosMes = new Set(histMensual.map(h => h.fecha)).size;
+    /* Los días con el jugador lesionado no entran en la cuenta: no son una
+       falta suya. Antes, dos meses de lesión le dejaban el presentismo en el
+       piso, y ese mismo número es el que pesa 45% en la sugerencia de la
+       CITACIÓN: el que volvía de una lesión larga quedaba sin convocatorias
+       por algo que no eligió. */
     const rankingMensual = jugadores.map(j => {
-      const asistJ = histMensual.filter(h => String(h.jugador_id) === String(j.id));
-      const pres = asistJ.filter(a => a.estado === 'presente' || a.estado === 'tarde').length;
+      const todos = histMensual.filter(h => String(h.jugador_id) === String(j.id));
+      const asistJ = todos.filter(a => cuentaParaPresentismo(a.estado));
+      const pres = asistJ.filter(a => cuentaComoPresente(a.estado)).length;
+      const diasLesionado = todos.length - asistJ.length;
       return {
         id: j.id,
         nombre: `${j.apellido}, ${j.nombre}`,
         total: asistJ.length,
         presentes: pres,
+        diasLesionado,
         porc: asistJ.length > 0 ? Math.round((pres / asistJ.length) * 100) : 0,
         estadoGral: asistJ.slice(-3).every(a => a.estado === 'ausente') && asistJ.length >= 3 ? 'desertor' : 'ok'
       };
     }).sort((a, b) => b.nombre.localeCompare(a.nombre));
 
-    const presentesMes = histMensual.filter(h => h.estado === 'presente' || h.estado === 'tarde').length;
-    const promedioMensual = histMensual.length > 0 ? Math.round((presentesMes / histMensual.length) * 100) : 0;
+    const computablesMes = histMensual.filter(h => cuentaParaPresentismo(h.estado));
+    const presentesMes = computablesMes.filter(cuentaComoPresente2).length;
+    const promedioMensual = computablesMes.length > 0 ? Math.round((presentesMes / computablesMes.length) * 100) : 0;
 
-    const presentesAnual = histAnual.filter(h => h.estado === 'presente' || h.estado === 'tarde').length;
-    const promedioAnual = histAnual.length > 0 ? Math.round((presentesAnual / histAnual.length) * 100) : 0;
+    const computablesAnual = histAnual.filter(h => cuentaParaPresentismo(h.estado));
+    const presentesAnual = computablesAnual.filter(cuentaComoPresente2).length;
+    const promedioAnual = computablesAnual.length > 0 ? Math.round((presentesAnual / computablesAnual.length) * 100) : 0;
 
     const mesesMap = {};
     histAnual.forEach(h => {
       const objFecha = new Date(h.fecha + 'T12:00:00');
       const mesNombre = objFecha.toLocaleString('es-ES', { month: 'short' }).toUpperCase();
+      if (!cuentaParaPresentismo(h.estado)) return;
       if (!mesesMap[mesNombre]) mesesMap[mesNombre] = { name: mesNombre, total: 0, presentes: 0 };
       mesesMap[mesNombre].total++;
-      if (h.estado === 'presente' || h.estado === 'tarde') mesesMap[mesNombre].presentes++;
+      if (cuentaComoPresente(h.estado)) mesesMap[mesNombre].presentes++;
     });
-    const dataMeses = Object.values(mesesMap).map(m => ({ ...m, porcentaje: Math.round((m.presentes / m.total) * 100) }));
+    const dataMeses = Object.values(mesesMap).map(m => ({ ...m, porcentaje: m.total > 0 ? Math.round((m.presentes / m.total) * 100) : 0 }));
 
     const top10Anual = jugadores.map(j => {
-      const asistJ = histAnual.filter(h => String(h.jugador_id) === String(j.id));
-      const pres = asistJ.filter(a => a.estado === 'presente' || a.estado === 'tarde').length;
+      const asistJ = histAnual.filter(h => String(h.jugador_id) === String(j.id) && cuentaParaPresentismo(h.estado));
+      const pres = asistJ.filter(a => cuentaComoPresente(a.estado)).length;
       return {
         nombre: `${j.apellido}, ${j.nombre.substring(0,1)}.`,
         porc: asistJ.length > 0 ? Math.round((pres / asistJ.length) * 100) : 0
@@ -297,13 +329,14 @@ function Presentismo() {
                             ...inputStyle, 
                             width: '100%',
                             padding: '12px',
-                            background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : '#1e3a8a' 
+                            background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : asistenciasHoy[j.id] === 'lesionado' ? '#4c1d95' : '#1e3a8a' 
                           }}
                         >
                           <option value="presente">✅ PRESENTE</option>
                           <option value="ausente">❌ AUSENTE</option>
                           <option value="tarde">⏳ TARDE</option>
                           <option value="justificado">📝 JUSTIF.</option>
+                          <option value="lesionado">🏥 LESIONADO</option>
                         </select>
                       </div>
                       
@@ -345,13 +378,15 @@ function Presentismo() {
                               style={{ 
                                 ...inputStyle, 
                                 width: '100%',
-                                background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : '#1e3a8a' 
+                                background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : asistenciasHoy[j.id] === 'lesionado' ? '#4c1d95' : '#1e3a8a' 
                               }}
                             >
                               <option value="presente">✅ PRESENTE</option>
                               <option value="ausente">❌ AUSENTE</option>
                               <option value="tarde">⏳ TARDE</option>
                               <option value="justificado">📝 JUSTIF.</option>
+                              <option value="lesionado">🏥 LESIONADO</option>
+                          <option value="lesionado">🏥 LESIONADO</option>
                             </select>
                           </td>
                           <td style={{ padding: '5px 10px' }}>

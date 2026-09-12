@@ -15,6 +15,7 @@ import { calcularXGEvento } from '../analytics/xg';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
+import { disponibilidadDe } from '../utils/disponibilidad';
 import PlayerReportGenerator from '../components/PlayerReportGenerator';
 import PlayerReportIGStory from '../components/PlayerReportIGStory';
 
@@ -246,7 +247,7 @@ const PitchLines = ({ stroke = "rgba(255,255,255,0.18)", strokeWidth = 0.5 }) =>
 const COLOR_RESULTADO = { G: '#00ff88', E: '#fbbf24', P: '#ef4444' };
 
 const FilaPartido = ({ fila, esMovil, accentColor, seleccionado, onAbrir, onFiltrar }) => {
-  const { partido: p, jugo, titular, goles, asistencias, amarillas, rojas, finalizado, gf, gc, resultado, pctParticipacion, conDatos } = fila;
+  const { partido: p, jugo, titular, goles, asistencias, amarillas, rojas, finalizado, gf, gc, resultado, pctParticipacion, conDatos, lesionado, detalleLesion } = fila;
 
   const fecha = p.fecha ? String(p.fecha).split('-').reverse().join('/') : 'S/F';
   const esLocal = String(p.condicion || '').toLowerCase().startsWith('l');
@@ -256,7 +257,9 @@ const FilaPartido = ({ fila, esMovil, accentColor, seleccionado, onAbrir, onFilt
     ? { txt: 'PENDIENTE', color: 'rgba(255,255,255,0.45)' }
     : jugo
       ? (titular ? { txt: 'TITULAR', color: accentColor } : { txt: 'INGRESÓ', color: '#0ea5e9' })
-      : { txt: conDatos ? 'NO INGRESÓ' : 'SIN DATOS', color: 'rgba(255,255,255,0.45)' };
+      : lesionado
+        ? { txt: 'LESIONADO', color: '#f87171' }
+        : { txt: conDatos ? 'NO INGRESÓ' : 'SIN DATOS', color: 'rgba(255,255,255,0.45)' };
 
   const sinAportes = jugo && !goles && !asistencias && !amarillas && !rojas;
 
@@ -264,7 +267,7 @@ const FilaPartido = ({ fila, esMovil, accentColor, seleccionado, onAbrir, onFilt
     <div
       className={`jp-fila-partido${jugo ? '' : ' atenuada'}`}
       onClick={onAbrir}
-      title={`Ver el resumen de ${p.rival || 'este partido'}`}
+      title={lesionado && detalleLesion ? `Lesionado: ${detalleLesion}` : `Ver el resumen de ${p.rival || 'este partido'}`}
       style={{
         display: 'flex', alignItems: 'center', gap: esMovil ? '8px' : '12px', flexWrap: 'wrap',
         padding: esMovil ? '10px' : '11px 14px',
@@ -353,6 +356,7 @@ function JugadorPerfil() {
   const [eventosCompletos, setEventosCompletos] = useState([]);
   const [eventosPartidoExtra, setEventosPartidoExtra] = useState({ id: null, data: [] });
   const [wellnessJugador, setWellnessJugador] = useState([]);
+  const [lesiones, setLesiones] = useState([]);
   
   const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
   const kioscoJugadorId = localStorage.getItem('kiosco_jugador_id');
@@ -538,6 +542,12 @@ function JugadorPerfil() {
 
       const { data: well } = await supabase.from('wellness').select('*').eq('jugador_id', jugadorId).order('fecha', { ascending: false }).limit(30);
       setWellnessJugador(well || []);
+
+      /* Las lesiones del jugador, para distinguir en el historial los partidos
+         que se perdió lesionado de los que estuvo citado y no entró. */
+      const { data: les, error: errLes } = await supabase.from('lesiones').select('*').eq('jugador_id', jugadorId);
+      if (errLes) console.warn('Perfil sin datos de lesiones:', errLes.message);
+      setLesiones(les || []);
     }
 
     if (!cargandoAuth && partidos.length > 0) {
@@ -1095,8 +1105,13 @@ function JugadorPerfil() {
       const gf = Number(p.goles_propios) || 0;
       const gc = Number(p.goles_rival) || 0;
 
+      // Si ese día estaba lesionado, no es que "no entró": no estaba.
+      const fisico = jugo ? null : disponibilidadDe(lesiones, jugadorId, p.fecha);
+
       return {
         partido: p, citado, jugo, titular,
+        lesionado: !!fisico?.lesion,
+        detalleLesion: fisico?.lesion ? fisico.detalle : null,
         goles, asistencias, amarillas, rojas,
         finalizado, gf, gc,
         resultado: !finalizado ? null : (gf > gc ? 'G' : gf < gc ? 'P' : 'E'),
@@ -1111,7 +1126,7 @@ function JugadorPerfil() {
       if (fa !== fb) return fa < fb ? 1 : -1;
       return String(b.partido.id).localeCompare(String(a.partido.id));
     });
-  }, [partidosDelTorneo, eventosCompletos, jugadorId]);
+  }, [partidosDelTorneo, eventosCompletos, jugadorId, lesiones]);
 
   const totalJugados = historialPartidos.filter(f => f.jugo).length;
   const totalSinIngresar = historialPartidos.length - totalJugados;

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
+import { mapaDisponibilidad } from '../utils/disponibilidad';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 
@@ -486,6 +487,8 @@ const PlanificadorSemanal = () => {
   const [modoVista, setModoVista] = useState('semanal'); 
   const [diasCalendario, setDiasCalendario] = useState([]);
   const [sesiones, setSesiones] = useState([]);
+  const [lesiones, setLesiones] = useState([]);
+  const [jugadoresPlantel, setJugadoresPlantel] = useState([]);
   const [partidosOficiales, setPartidosOficiales] = useState([]);
   const [tareasBanco, setTareasBanco] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -530,6 +533,24 @@ const PlanificadorSemanal = () => {
     duracion_fisico: '',
     detalle_fisico: []
   });
+
+  /* Los que no están disponibles cada día, para planificar sabiendo con quién
+     se cuenta. Se cachea por fecha porque la grilla pregunta lo mismo muchas
+     veces mientras dibuja la semana. */
+  const noDisponiblesDe = useMemo(() => {
+    const cache = {};
+    return (fechaStr) => {
+      if (!cache[fechaStr]) {
+        const mapa = mapaDisponibilidad(lesiones, jugadoresPlantel, fechaStr);
+        cache[fechaStr] = Object.entries(mapa).map(([id, estado]) => ({
+          id, estado,
+          jugador: jugadoresPlantel.find(j => String(j.id) === id),
+        })).filter(x => x.jugador);
+      }
+      return cache[fechaStr];
+    };
+  }, [lesiones, jugadoresPlantel]);
+
 
   const nivelesCarga = {
     'Baja': { color: '#10b981', label: 'Baja' },
@@ -630,6 +651,20 @@ const PlanificadorSemanal = () => {
 
       const { data: dataSesiones, error: errSesiones } = await querySesiones;
       if (errSesiones) throw errSesiones;
+
+      /* Quién no está disponible cada día. La Enfermería es la fuente; acá
+         sólo se lee para que el CT planifique sabiendo con quién cuenta. */
+      let qJugPlantel = supabase.from('jugadores').select('id, nombre, apellido, categoria, activo').eq('club_id', club_id);
+      if (filtroCategoria !== 'Todas') qJugPlantel = qJugPlantel.eq('categoria', filtroCategoria);
+      else if (misCategorias.length > 0) qJugPlantel = qJugPlantel.in('categoria', misCategorias);
+
+      const [rJugPlantel, rLesiones] = await Promise.all([
+        qJugPlantel,
+        supabase.from('lesiones').select('*').eq('club_id', club_id).neq('estado', 'alta'),
+      ]);
+      if (rLesiones.error) console.warn('Microciclo sin datos de lesiones:', rLesiones.error.message);
+      setJugadoresPlantel((rJugPlantel.data || []).filter(j => j.activo !== false));
+      setLesiones(rLesiones.data || []);
 
       // 🛡️ SOLO PARTIDOS DE MI EQUIPO
       //
@@ -1298,6 +1333,7 @@ const PlanificadorSemanal = () => {
           }}>
             {diasCalendario.map((dia, idx) => {
               const sesionesDia = sesiones.filter(s => s.fecha === dia.fechaStr);
+              const bajasDia = noDisponiblesDe(dia.fechaStr);
               const partidosDia = partidosOficiales.filter(p => p.fecha === dia.fechaStr);
               const opacidadMes = dia.isMesActual ? 1 : 0.4;
 
@@ -1326,6 +1362,22 @@ const PlanificadorSemanal = () => {
                           </div>
                         </div>
                       ))}
+
+                      {bajasDia.length > 0 && (sesionesDia.length > 0 || partidosDia.length > 0) && (
+                        <div style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '6px', padding: '8px 10px' }}>
+                          <div style={{ fontSize: '0.58rem', fontWeight: 900, color: '#ef4444', letterSpacing: '0.05em', marginBottom: '5px' }}>
+                            🏥 NO DISPONIBLES ({bajasDia.length})
+                          </div>
+                          {bajasDia.map(b => (
+                            <div key={b.id} title={b.estado.detalle || ''}
+                              style={{ fontSize: '0.65rem', color: 'var(--text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <span style={{ color: b.estado.color, fontWeight: 800 }}>•</span>{' '}
+                              {b.jugador.apellido || b.jugador.nombre}
+                              {b.estado.nivel === 'readaptacion' && <span style={{ color: '#f59e0b' }}> (readapt.)</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {sesionesDia.map(sesion => {
                         const colorNivel = nivelesCarga[sesion.nivel_carga]?.color || 'var(--text-dim)';
