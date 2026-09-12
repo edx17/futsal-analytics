@@ -72,11 +72,10 @@ comment on column public.asistencias.estado is
   'presente | tarde | ausente | justificado | lesionado. "lesionado" se excluye del cálculo de presentismo (no cuenta como presente ni como falta).';
 
 -- ── RLS ────────────────────────────────────────────────────────────────────
--- Se sigue el mismo modelo que el resto de las tablas del proyecto. Si tu
--- proyecto tiene RLS activo en `jugadores` y `asistencias`, replicá acá las
--- mismas políticas por club_id. Se deja preparado y comentado para no
--- romper el acceso si tu setup todavía no usa RLS en estas tablas:
+-- Las políticas de esta tabla están en la migración 20260912120000_lesiones_rls.sql.
 --
--- alter table public.lesiones enable row level security;
--- create policy "lesiones del propio club" on public.lesiones
---   for all using (club_id = (select club_id from public.usuarios where id = auth.uid()));
+-- Acá había un ejemplo comentado que estaba MAL (usaba una subconsulta a
+-- `usuarios`, que tiene su propio RLS y devuelve NULL desde el navegador, así
+-- que rechazaba todos los INSERT). Se quitó para que nadie lo copie: las
+-- políticas buenas usan los helpers get_user_rol() / get_user_club_id(), que
+-- son los que ya usan sesiones, eventos, jugadores y temas_semana.
