@@ -174,7 +174,14 @@ function Presentismo() {
 
     } catch (err) {
       console.error("Error completo:", err);
-      showToast("Error al guardar: " + err.message, "error");
+      /* El CHECK de `estado` es el error típico después de sumar 'lesionado':
+         la planilla se guarda con un upsert de TODOS los jugadores del día,
+         así que un solo lesionado bloquea el guardado de la lista entera. */
+      const esCheckDeEstado = err?.code === '23514'
+        || /asistencias_estado_check|check constraint/i.test(err?.message || '');
+      showToast(esCheckDeEstado
+        ? 'La base todavía no acepta el estado "lesionado": hay que correr la migración 20260912160000_asistencias_estado_lesionado.sql en Supabase.'
+        : "Error al guardar: " + err.message, "error");
     } finally {
       setCargando(false);
     }
@@ -386,7 +393,6 @@ function Presentismo() {
                               <option value="tarde">⏳ TARDE</option>
                               <option value="justificado">📝 JUSTIF.</option>
                               <option value="lesionado">🏥 LESIONADO</option>
-                          <option value="lesionado">🏥 LESIONADO</option>
                             </select>
                           </td>
                           <td style={{ padding: '5px 10px' }}>
