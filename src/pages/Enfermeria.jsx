@@ -474,16 +474,32 @@ function Enfermeria() {
           </p>
         </div>
         {puedeEditar && (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
             <button onClick={publicarParte} style={{ padding: '10px 16px', borderRadius: '8px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none' }}>
               📌 PARTE AL TABLÓN
             </button>
-            <button onClick={abrirNueva} className="btn-action" style={{ padding: '10px 16px', borderRadius: '8px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer' }}>
+            <button onClick={abrirNueva} className="btn-action" style={{ padding: '10px 16px', borderRadius: '8px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', flex: esMovil ? 1 : 'none' }}>
               + NUEVA LESIÓN
             </button>
           </div>
         )}
       </div>
+
+      {/* Esconder los botones sin explicar por qué deja al usuario buscando
+          algo que no existe para su rol. Mejor decírselo, y con el rol a la
+          vista para que sepa con qué usuario tiene que entrar. */}
+      {!puedeEditar && (
+        <div className="bento-card" style={{ borderLeft: '4px solid #f59e0b', padding: '14px 16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '1.1rem' }}>🔒</span>
+          <div style={{ fontSize: '0.82rem' }}>
+            <strong>Estás entrando como {(perfil?.rol || 'sin rol').toUpperCase()}, y desde ese rol la Enfermería es de sólo lectura.</strong>
+            <div style={{ color: 'var(--text-dim)', marginTop: '4px' }}>
+              La carga de lesiones está habilitada para <strong>CT</strong> y <strong>superuser</strong>.
+              Si tenés que cargarlas con este usuario, avisá y se suma tu rol.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── RESUMEN ── */}
       <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px' }}>
@@ -611,8 +627,23 @@ function Enfermeria() {
       {cargando ? (
         <div className="bento-card" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>Cargando…</div>
       ) : abiertas.length === 0 ? (
-        <div className="bento-card" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>
-          ✅ No hay lesiones abiertas. Plantel completo.
+        <div className="bento-card" style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '10px' }}>✅</div>
+          <div style={{ fontWeight: 900, fontSize: '1.05rem', marginBottom: '6px' }}>No hay lesiones abiertas</div>
+          <div style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: puedeEditar ? '20px' : 0 }}>
+            {lesiones.length === 0
+              ? 'Todavía no cargaste ninguna lesión.'
+              : 'Plantel completo: todas las lesiones tienen el alta.'}
+          </div>
+          {/* Sin esto, la única puerta de entrada era un botón chico arriba a
+              la derecha, y en una pantalla recién estrenada (que es justo
+              cuando está vacía) no había forma de darse cuenta. */}
+          {puedeEditar && (
+            <button onClick={abrirNueva} className="btn-action"
+              style={{ padding: '14px 26px', borderRadius: '8px', fontWeight: 900, fontSize: '0.85rem', cursor: 'pointer' }}>
+              + REGISTRAR {lesiones.length === 0 ? 'LA PRIMERA LESIÓN' : 'UNA LESIÓN'}
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(2, 1fr)', gap: '14px' }}>
