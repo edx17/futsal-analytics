@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase';
 import { planPorId, limiteDelClub, esFundador, categoriasDe, formatARS, whatsappLink,
-         COBRO, hayTransferencia, linkMP, precioDe } from '../utils/planes';
+         COBRO, hayTransferencia, linkMP, precioDe, mensajeDePago } from '../utils/planes';
 
 /* Un alias se copia, no se transcribe: transcribirlo a mano es la forma más
    común de que una transferencia termine en la cuenta equivocada. */
@@ -171,8 +171,23 @@ function MiSuscripcion() {
                       Titular: {COBRO.transferencia.titular}
                     </div>
                   )}
+                  {/* El aviso es la parte que sostiene todo el esquema: sin él
+                      hay que adivinar quién pagó. El mensaje sale armado con
+                      club, plan, monto y fecha, así se activa sin preguntar
+                      nada y el club no tiene que escribir. */}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                    {[['mensual', '✅ YA TRANSFERÍ EL MES'], ['anual', '✅ YA TRANSFERÍ EL AÑO']].map(([ciclo, texto]) => (
+                      <a key={ciclo}
+                        href={whatsappLink(mensajeDePago({ club: nombre, planId: plan?.id, ciclo }))}
+                        target="_blank" rel="noreferrer"
+                        style={{ flex: 1, minWidth: '170px', textAlign: 'center', background: '#25D366', color: '#fff', padding: '12px', borderRadius: '6px', fontWeight: 900, fontSize: '0.78rem', textDecoration: 'none' }}>
+                        {texto}
+                      </a>
+                    ))}
+                  </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '10px' }}>
-                    Después de transferir, avisanos por WhatsApp con el comprobante y te activamos el mes.
+                    Transferí al alias y tocá el botón: se abre WhatsApp con el aviso escrito.
+                    Mandá el comprobante y te activamos el acceso.
                   </div>
                 </div>
               )}
@@ -197,8 +212,8 @@ function MiSuscripcion() {
               )}
 
               <button onClick={handlePagarSuscripcion}
-                style={{ background: '#25D366', color: '#fff', padding: '14px', fontSize: '0.9rem', fontWeight: 900, border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-                💬 ARREGLAR EL PAGO POR WHATSAPP
+                style={{ background: hayTransferencia() ? 'transparent' : '#25D366', color: hayTransferencia() ? 'var(--text-dim)' : '#fff', border: hayTransferencia() ? '1px solid var(--border)' : 'none', padding: '14px', fontSize: '0.85rem', fontWeight: 900, borderRadius: '6px', cursor: 'pointer' }}>
+                {hayTransferencia() ? '💬 TENGO UNA CONSULTA' : '💬 ARREGLAR EL PAGO POR WHATSAPP'}
               </button>
             </div>
           </div>

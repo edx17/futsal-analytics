@@ -34,19 +34,47 @@ export const DIAS_TRIAL = 30;
    lo que haya cargado y nunca queda un botón que no lleva a ningún lado.
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* Los datos de cobro salen del entorno y NO del código: el repositorio es
+   público, así que el alias y el nombre del titular quedarían visibles en
+   GitHub y en el historial de commits para siempre. Además, por entorno se
+   pueden cambiar sin tocar una línea ni volver a deployar desde cero.
+
+   Van en Vercel (Settings → Environment Variables) y en el .env local. */
 export const COBRO = {
   transferencia: {
-    alias: '',            // ej: 'virtual.club.mp'
-    cbu: '',              // opcional
-    titular: '',          // nombre que figura en la cuenta
+    alias:   import.meta.env?.VITE_COBRO_ALIAS   || '',
+    cbu:     import.meta.env?.VITE_COBRO_CBU     || '',
+    titular: import.meta.env?.VITE_COBRO_TITULAR || '',
   },
-  // Link de pago de MP por plan y ciclo. Se pegan tal cual salen del panel.
+  /* Link de pago de Mercado Pago por plan y ciclo, para el que quiere pagar
+     con tarjeta o en cuotas. Vacíos hoy a propósito: la transferencia no
+     tiene comisión, así que es la vía principal. Cuando haga falta, se crean
+     una vez en el panel de MP y se pegan acá — son fijos y reutilizables. */
   mercadopago: {
-    dt:   { mensual: '', anual: '' },
-    ct:   { mensual: '', anual: '' },
-    club: { mensual: '', anual: '' },
+    dt:   { mensual: import.meta.env?.VITE_MP_DT_MENSUAL   || '', anual: import.meta.env?.VITE_MP_DT_ANUAL   || '' },
+    ct:   { mensual: import.meta.env?.VITE_MP_CT_MENSUAL   || '', anual: import.meta.env?.VITE_MP_CT_ANUAL   || '' },
+    club: { mensual: import.meta.env?.VITE_MP_CLUB_MENSUAL || '', anual: import.meta.env?.VITE_MP_CLUB_ANUAL || '' },
   },
 };
+
+/**
+ * El mensaje que manda el club cuando ya transfirió.
+ *
+ * Va armado desde la app con todo lo que hace falta para activarlo sin
+ * preguntar nada: qué club es, qué plan, cuánto y cuándo. Un "ya pagué" suelto
+ * obliga a tres mensajes de ida y vuelta para saber de quién es.
+ */
+export function mensajeDePago({ club, planId, ciclo = 'mensual' }) {
+  const plan = planPorId(planId);
+  const precio = precioDe(planId, ciclo);
+  const hoy = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return [
+    `Hola! Ya transferí la suscripción de ${club || 'mi club'}.`,
+    plan ? `Plan ${plan.nombre} · ${ciclo}${precio ? ` · ${precio.etiqueta}` : ''}` : null,
+    `Fecha: ${hoy}`,
+    'Adjunto el comprobante.',
+  ].filter(Boolean).join('\n');
+}
 
 export const hayTransferencia = () => !!(COBRO.transferencia.alias || COBRO.transferencia.cbu);
 export const linkMP = (planId, ciclo = 'mensual') =>
