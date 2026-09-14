@@ -19,6 +19,39 @@ export const whatsappLink = (mensaje = 'Hola! Quiero probar Virtual.Club en mi c
 
 export const DIAS_TRIAL = 30;
 
+/* ══════════════════════════════════════════════════════════════════════════
+   CÓMO COBRAR
+   Dos vías a propósito, porque los clubes pagan de las dos formas:
+
+   · TRANSFERENCIA → sin comisión. Es la que conviene y por eso va primero.
+   · LINK DE MERCADO PAGO → tarjeta y cuotas, con la comisión de MP.
+
+   Los links son FIJOS y REUTILIZABLES: se crean una vez por plan y ciclo
+   desde el panel de MP, y los paga quien sea las veces que sea. No hay que
+   generar uno por club ni por mes.
+
+   Todo lo que esté vacío simplemente no se muestra: la pantalla se adapta a
+   lo que haya cargado y nunca queda un botón que no lleva a ningún lado.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+export const COBRO = {
+  transferencia: {
+    alias: '',            // ej: 'virtual.club.mp'
+    cbu: '',              // opcional
+    titular: '',          // nombre que figura en la cuenta
+  },
+  // Link de pago de MP por plan y ciclo. Se pegan tal cual salen del panel.
+  mercadopago: {
+    dt:   { mensual: '', anual: '' },
+    ct:   { mensual: '', anual: '' },
+    club: { mensual: '', anual: '' },
+  },
+};
+
+export const hayTransferencia = () => !!(COBRO.transferencia.alias || COBRO.transferencia.cbu);
+export const linkMP = (planId, ciclo = 'mensual') =>
+  COBRO.mercadopago?.[String(planId || '').toLowerCase()]?.[ciclo] || '';
+
 /* `limiteCategorias: null` = sin límite. */
 export const PLANES = [
   {
