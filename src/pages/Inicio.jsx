@@ -21,69 +21,62 @@ import { fetchPaginado } from '../utils/supaPaginado';
    VERSION_ACTUAL en localStorage y no vuelve hasta el próximo release.
    Para publicar novedades: subí VERSION_ACTUAL y editá NOVEDADES_VERSION.
 ============================================================================ */
-const VERSION_ACTUAL = 'v0.00202608151531';
+const VERSION_ACTUAL = 'v0.00202609141157';
 const LS_VERSION_VISTA = 'vc_version_novedades_vista';
 
-const NOVEDADES_TITULO = 'El Video Entra al Sistema';
-const NOVEDADES_BAJADA = 'Los partidos que ya jugaste se convierten en scouting del rival, los cortes salen solos de los eventos, y todo queda separado por categoría.';
+const NOVEDADES_TITULO = 'Quién Está y Quién No';
+const NOVEDADES_BAJADA = 'La citación al grupo se arma sola desde el fixture, las lesiones dejan de vivir en la cabeza del técnico, y el que se lesiona ya no lo paga con su presentismo.';
 
 const NOVEDADES_VERSION = [
   {
-    grupo: 'Dossier de Video del Rival',
+    grupo: 'Citación',
     color: '#00ff88',
     items: [
-      { t: 'El video del rival, dentro de Scouting', d: 'Cada rival tiene ahora su propio dossier de video: entrás desde su ficha y ves todos los cortes que existen de él, sin pasar por Videoanálisis.' },
-      { t: 'Enfrentamientos y Scouting separados', d: 'Dos solapas. ENFRENTAMIENTOS son los partidos que jugaste contra él. SCOUTING son sus cruces contra terceros que están en el fixture. Nunca se mezclan.' },
-      { t: 'Nosotros / Ellos', d: 'En los enfrentamientos podés filtrar los cortes por lado: lo que hicieron ellos o lo que hicimos nosotros.' },
-      { t: 'Ver todo de corrido', d: 'Un botón encadena todos los cortes filtrados, uno atrás del otro, para la charla previa.' },
-      { t: 'Recorte sin editar nada', d: 'El reproductor arranca y corta en el segundo exacto de cada jugada. No hay que recortar el video.' },
+      { t: 'La citación se arma sola', d: 'Pantalla nueva en Planificación. Elegís el próximo partido y trae todo del fixture: rival, fecha, hora, sede, categoría y si sos local o visitante. La hora de citación se propone 90 minutos antes del inicio.' },
+      { t: 'Te sugiere a quién citar', d: 'Cruza el presentismo de las últimas seis semanas, el rating de los últimos ocho partidos y la regularidad. El que siempre rinde parejo puntea más alto que el del 9 y tres 4. Cada jugador muestra por qué puntúa lo que puntúa.' },
+      { t: 'No te sugiere a un suspendido', d: 'El que tiene fechas pendientes, acumulación de amarillas, el apto médico vencido o está lesionado queda marcado y fuera de la sugerencia. Lo podés citar igual: la decisión sigue siendo tuya.' },
+      { t: 'Controla el límite y los arqueros', d: 'Avisa si te pasaste de 14 convocados (16 en amistoso) y si no tildaste ningún arquero.' },
+      { t: 'Bajar y subir jugadores entre categorías', d: 'Chips arriba de la lista para sumar jugadores de otras divisiones. El refuerzo queda marcado con su categoría para que no se te cuele sin verlo.' },
+      { t: 'El mensaje del club, igual que siempre', d: 'La plantilla usa el formato que ya mandás al grupo: negritas, arqueros primero y la lista por apellido. Se copia, se exporta a WhatsApp con el texto escrito, o se publica en el Tablón.' },
+      { t: 'Los citados llegan a Nuevo Partido', d: 'Lo que citaste viene ya tildado al iniciar el partido, para confirmarlo o cambiarlo si hubo una baja de último momento.' },
     ],
   },
   {
-    grupo: 'Cortes Automáticos',
+    grupo: 'Enfermería',
     color: '#0ea5e9',
     items: [
-      { t: 'Los cortes salen de los eventos', d: 'Cada gol, remate, falta, pérdida y recuperación que cargaste en vivo se convierte solo en un corte de video. No hay que volver a mirar el partido.' },
-      { t: 'Sincronización que se guarda', d: 'El segundo de inicio del PT y del ST ahora queda guardado en el partido. Antes se perdía en cada recarga y había que cargarlo de nuevo.' },
-      { t: 'Los goles arrancan antes', d: 'El corte de un gol empieza más atrás que el resto, para que se vea la construcción y no solo la definición.' },
-      { t: 'Avisos claros', d: 'El dossier te dice qué partidos no tienen video vinculado y cuáles tienen video pero les falta la sincronización.' },
+      { t: 'Las lesiones tienen su lugar', d: 'Pantalla nueva en Plantel: fecha, zona, tipo, gravedad, tratamiento, profesional a cargo y fecha estimada de vuelta. Cada lesión lleva su propio historial de partes de evolución.' },
+      { t: 'Se cruza con toda la app', d: 'El lesionado no se sugiere en la citación, aparece avisado si lo convocás en Nuevo Partido, y figura como no disponible en los días del microciclo.' },
+      { t: 'Para saber dónde nos lesionamos', d: 'Las zonas y los tipos son listas fijas y no texto libre. Con una temporada cargada vas a poder responder qué se lesiona más en el plantel y cuántos días perdés por eso.' },
+      { t: 'Si se lesionó jugando, queda linkeado al partido', d: 'Con el tiempo eso dice en qué partidos te lesionás y con qué carga previa.' },
+      { t: 'El alta no se da sola', d: 'Pasada la fecha estimada, la ficha queda marcada como vencida hasta que alguien confirme el alta a mano. El sistema no declara sano a nadie por calendario.' },
+      { t: 'Parte médico al Tablón', d: 'Un botón publica el estado del plantel para el cuerpo técnico, y el aviso de altas vencidas llega por notificación.' },
     ],
   },
   {
-    grupo: 'Video en el Fixture',
+    grupo: 'Lo que ve el jugador',
     color: '#a855f7',
     items: [
-      { t: 'Cargar video de cualquier cruce', d: 'Ahora se puede pegar el link de YouTube en cualquier partido del fixture, incluidos los que juegan dos rivales entre sí.' },
-      { t: 'Un video, dos scoutings', d: 'Si cargás Rival A contra Rival B, los cortes que marques aparecen en el dossier de los dos.' },
-      { t: 'Marcados como SCOUTING', d: 'Esos cruces aparecen identificados en Videoanálisis, para que sepas de entrada que ahí los cortes van a mano: no hay eventos cargados de partidos que no jugaste.' },
+      { t: 'Su lesión y cuándo vuelve', d: 'Desde su perfil ve la zona, los días que lleva, la fecha estimada de vuelta y las indicaciones que le dejó el cuerpo técnico. Las notas internas no las ve.' },
+      { t: 'Sus ejercicios de rehabilitación', d: 'Según la zona de la lesión, salen solos de la biblioteca de Fisiología. El trabajo preventivo lo ve siempre, esté lesionado o no.' },
+      { t: 'Todos sus partidos, en su perfil', d: 'Al final del Resumen por Jugador está la lista de los partidos en los que estuvo convocado. Los que jugó se resaltan con el resultado y su aporte; los que fue citado y no entró quedan atenuados, y los que se perdió lesionado aparecen marcados. Tocando cualquiera se abre el resumen de ese partido.' },
     ],
   },
   {
-    grupo: 'Todo por Categoría',
+    grupo: 'Presentismo',
     color: '#fbbf24',
     items: [
-      { t: 'Selector de categoría en Scouting', d: 'Nuevo selector arriba de la lista de rivales. Manda sobre el sistema táctico de cada ficha y sobre el dossier de video.' },
-      { t: 'El video sabe de qué división es', d: 'Cada video y cada corte quedan asociados a su categoría. El material de Primera ya no aparece mezclado con el de Tercera.' },
-      { t: 'Filtro en el explorador', d: 'El buscador de clips de Videoanálisis se puede filtrar por categoría.' },
-      { t: 'Categoría al cargar un video', d: 'Si el video se asocia a un partido, hereda la categoría solo. Si es un video suelto, se elige al cargarlo.' },
+      { t: 'Estado nuevo: lesionado', d: 'Al pasar lista, si la Enfermería lo tiene de baja ese día ya viene marcado, sin tener que acordarse jugador por jugador.' },
+      { t: 'La lesión deja de contar como falta', d: 'Este es el cambio más importante de la versión. Los días de baja salen del cálculo: no cuentan como presente ni como ausente. Antes, dos meses de lesión hundían el porcentaje del jugador, y ese mismo número pesa 45% en la sugerencia de la citación, así que el que volvía quedaba sin convocatorias por algo que no eligió. Los porcentajes de los lesionados van a subir: los nuevos son los correctos.' },
     ],
   },
   {
-    grupo: 'Velocidad y Capacidad',
+    grupo: 'Detalles',
     color: '#22d3ee',
     items: [
-      { t: 'Se acabó el techo de 1000 filas', d: 'Todas las pantallas ahora leen la base por tramos. Antes, pasadas las mil filas, los datos se recortaban sin avisar y los números salían mal.' },
-      { t: 'El fixture abre mucho más rápido', d: 'Un torneo grande hacía cientos de consultas para saber qué partidos estaban trackeados. Ahora hace una sola.' },
-      { t: 'Base de datos indexada', d: 'Se agregaron índices en partidos, eventos, videos y clips. Baja a la mitad el tiempo de las pantallas de análisis.' },
-    ],
-  },
-  {
-    grupo: 'Correcciones',
-    color: '#ef4444',
-    items: [
-      { t: 'Historial contra el rival, corregido', d: 'El H2H de Scouting contaba también los cruces entre dos rivales del fixture. Ahora solo cuenta partidos que jugaste vos, así que los números pueden bajar: los nuevos son los correctos.' },
-      { t: 'Fixture y tabla de posiciones', d: 'Se corrigió una falla que dejaba el fixture, la tabla y los gráficos completamente vacíos.' },
-      { t: 'Los errores dejan de esconderse', d: 'Cuando una consulta falla, ahora se avisa en vez de mostrar la pantalla vacía como si no hubiera datos cargados.' },
+      { t: 'La cancha del rival se recuerda', d: 'La segunda vez que vas a la cancha de un rival, la citación completa la sede y la dirección sola.' },
+      { t: 'Listas de partidos más cortas', d: 'Donde se elige un partido ya no aparecen los cruces entre otros equipos del fixture ni los de otras categorías. Sólo los tuyos, los que corresponden.' },
+      { t: 'Errores que se entienden', d: 'Cuando la base rechaza algo, la pantalla lo explica en castellano y dice qué falta, en vez de mostrar el error técnico crudo.' },
     ],
   },
 ];
