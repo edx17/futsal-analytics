@@ -130,6 +130,47 @@ export const ahorroAnual = (plan) => {
   return Math.round((1 - plan.precio.usdAnual / mensualAnualizado) * 100);
 };
 
+/* ══════════════════════════════════════════════════════════════════════════
+   RENOVACIONES
+   El cobro es a mano: el club escribe, se arregla el pago y se le extiende el
+   vencimiento desde ADM SUSCRIPCIONES. Estas dos funciones son para que esa
+   parte no dependa de contar días en la cabeza.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const aISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Nueva fecha de vencimiento al renovar.
+ *
+ * Si la suscripción todavía está vigente, se SUMA a lo que le queda; si ya
+ * venció, arranca de hoy. Renovar tres días antes no puede costarle al club
+ * los días que le sobraban.
+ */
+export function renovar(vencimientoActual, { meses = 0, anios = 0 } = {}) {
+  const hoy = new Date();
+  hoy.setHours(12, 0, 0, 0);
+
+  let base = hoy;
+  if (vencimientoActual) {
+    const actual = new Date(`${String(vencimientoActual).split('T')[0]}T12:00:00`);
+    if (!Number.isNaN(actual.getTime()) && actual > hoy) base = actual;
+  }
+
+  const salida = new Date(base);
+  salida.setMonth(salida.getMonth() + Number(meses || 0));
+  salida.setFullYear(salida.getFullYear() + Number(anios || 0));
+  return aISO(salida);
+}
+
+/** Cuánto hay que cobrarle a un club por un ciclo, en pesos y en dólares. */
+export function precioDe(planId, ciclo = 'mensual') {
+  const plan = planPorId(planId);
+  if (!plan) return null;
+  return ciclo === 'anual'
+    ? { usd: plan.precio.usdAnual, ars: null, etiqueta: `USD ${plan.precio.usdAnual} / año` }
+    : { usd: plan.precio.usd, ars: plan.precio.ars, etiqueta: `${formatARS(plan.precio.ars)} o USD ${plan.precio.usd} / mes` };
+}
+
 /** Las categorías distintas que tiene cargadas un club, normalizadas. */
 export const categoriasDe = (jugadores = []) => {
   const set = new Set();

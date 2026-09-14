@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { PLANES, precioDe, renovar, esFundador } from '../utils/planes';
 import { useAuth } from '../context/AuthContext';
 import { TablaResponsive } from '../components/TablaResponsive';
 
@@ -200,10 +201,33 @@ function AdmSuscripciones() {
                   style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' }}
                 >
                   <option value="trial">Trial (Prueba)</option>
-                  <option value="basico">Básico</option>
-                  <option value="pro">Pro (Completo)</option>
-                  <option value="premium">Premium</option>
+                  {PLANES.map(pl => (
+                    <option key={pl.id} value={pl.id}>
+                      {pl.nombre} — {pl.limiteCategorias ? `${pl.limiteCategorias} ${pl.limiteCategorias === 1 ? 'categoría' : 'categorías'}` : 'sin límite'}
+                    </option>
+                  ))}
+                  {/* Los nombres viejos siguen en la lista para no perder de
+                      vista a los clubes que todavía los tienen asignados. */}
+                  {['basico', 'pro', 'premium'].includes(formData.plan_actual) && (
+                    <option value={formData.plan_actual}>{formData.plan_actual} (plan viejo)</option>
+                  )}
                 </select>
+
+                {(() => {
+                  const precio = precioDe(formData.plan_actual);
+                  if (!precio) return null;
+                  return (
+                    <p style={{ fontSize: '0.75rem', color: 'var(--accent)', marginTop: '6px', fontWeight: 700 }}>
+                      Se le cobra: {precio.etiqueta} · anual {precioDe(formData.plan_actual, 'anual').etiqueta}
+                    </p>
+                  );
+                })()}
+
+                {esFundador(clubSeleccionado) && (
+                  <p style={{ fontSize: '0.75rem', color: '#facc15', marginTop: '6px', fontWeight: 700 }}>
+                    ⭐ Socio fundador: no paga y no tiene tope de categorías.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -227,6 +251,30 @@ function AdmSuscripciones() {
                   onChange={(e) => setFormData({...formData, fecha_vencimiento: e.target.value})}
                   style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' }}
                 />
+
+                {/* Cobrar es a mano; contar los días no tiene por qué serlo.
+                    Renovar SUMA sobre lo que le queda si todavía está vigente:
+                    pagar tres días antes no puede costarle esos días. */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                  {[
+                    { t: '+ 1 MES', args: { meses: 1 } },
+                    { t: '+ 3 MESES', args: { meses: 3 } },
+                    { t: '+ 1 AÑO', args: { anios: 1 } },
+                  ].map(op => (
+                    <button key={op.t} type="button"
+                      onClick={() => setFormData(f => ({
+                        ...f,
+                        fecha_vencimiento: renovar(f.fecha_vencimiento, op.args),
+                        suscripcion_activa: true,
+                      }))}
+                      style={{ flex: 1, minWidth: '90px', padding: '9px', background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '4px', cursor: 'pointer', fontWeight: 800, fontSize: '0.72rem' }}>
+                      {op.t}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '6px' }}>
+                  Renovar activa el servicio y suma el tiempo a lo que le quede. Vacío = sin vencimiento.
+                </p>
               </div>
 
               <button 
