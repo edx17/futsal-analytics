@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { supabase } from '../supabase';
+import { puedeUsarCategoria, categoriasDe } from '../utils/planes';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext'; // <-- IMPORTAMOS EL CONTEXTO DE AUTENTICACIÓN
 import { estaActivo, textoBaja } from '../utils/plantelActivo';
@@ -109,6 +110,23 @@ function Plantel() {
   const handleGuardarJugador = async () => {
     if (!formData.nombre || !formData.dorsal) {
       showToast("El nombre y el dorsal son obligatorios.", "warning");
+      return;
+    }
+
+    /* Límite de categorías del plan. Sólo frena cuando la categoría es NUEVA
+       para el club: mover un jugador entre las que ya tiene nunca se bloquea.
+       Al editar, el propio jugador sale de la cuenta, porque si es el único de
+       su categoría moverlo no suma una categoría, la cambia. */
+    const jugadoresParaConteo = formData.id
+      ? jugadores.filter(j => String(j.id) !== String(formData.id))
+      : jugadores;
+    const chequeoPlan = puedeUsarCategoria({
+      club: perfil?.clubes,
+      categoriasActuales: categoriasDe(jugadoresParaConteo),
+      categoriaNueva: formData.categoria,
+    });
+    if (!chequeoPlan.permitido) {
+      showToast(chequeoPlan.motivo, 'warning');
       return;
     }
 

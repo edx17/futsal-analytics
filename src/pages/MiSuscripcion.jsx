@@ -1,10 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabase';
+import { planPorId, limiteDelClub, esFundador, categoriasDe, formatARS, whatsappLink } from '../utils/planes';
 
 function MiSuscripcion() {
   const { perfil } = useAuth();
-  const navigate = useNavigate();
+
+  /* Cuántas categorías está usando hoy, para que el club vea a cuánto está de
+     su tope antes de chocarse con el aviso al cargar un jugador.
+
+     Va ANTES del return temprano de abajo a propósito: un hook declarado
+     después de un return condicional no se ejecuta en todos los renders y
+     React rompe. */
+  const [categoriasUsadas, setCategoriasUsadas] = useState(null);
+  useEffect(() => {
+    if (!perfil?.club_id) return;
+    supabase.from('jugadores').select('categoria, activo').eq('club_id', perfil.club_id)
+      .then(({ data, error }) => {
+        if (error) return console.warn('No se pudieron contar las categorías:', error.message);
+        setCategoriasUsadas(categoriasDe((data || []).filter(j => j.activo !== false)).length);
+      });
+  }, [perfil?.club_id]);
 
   if (!perfil || !perfil.clubes) return <div style={{ color: 'var(--text)', textAlign: 'center', marginTop: '50px' }}>Cargando datos...</div>;
 
@@ -21,10 +37,19 @@ function MiSuscripcion() {
 
   const esPrueba = plan_actual === 'trial';
 
-  // --- FUNCIÓN PLACEHOLDER PARA MERCADO PAGO ---
+  const club = perfil.clubes;
+  const plan = planPorId(plan_actual);
+  const limite = limiteDelClub(club);
+  const fundador = esFundador(club);
+
+  /* El cobro todavía es a mano: el club escribe, se arregla el pago y se le
+     activa la suscripción desde ADM SUSCRIPCIONES. Antes acá había un alert()
+     de placeholder que no llevaba a ningún lado. */
   const handlePagarSuscripcion = () => {
-    alert("Próximo paso: ¡Acá llamamos a la Edge Function de Supabase que abre Mercado Pago!");
-    // Lógica de MP irá acá...
+    window.open(whatsappLink(
+      `Hola! Quiero activar la suscripción de ${nombre}.` +
+      (plan ? ` Plan ${plan.nombre} (${formatARS(plan.precio.ars)}/mes).` : '')
+    ), '_blank');
   };
 
   return (
@@ -61,7 +86,19 @@ function MiSuscripcion() {
           <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '6px', border: '1px solid var(--border)' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 800, marginBottom: '5px' }}>PLAN ACTUAL</div>
             <div style={{ fontSize: '1.3rem', fontWeight: 900, color: esPrueba ? '#facc15' : 'var(--accent)', textTransform: 'uppercase' }}>
-              {plan_actual || 'Básico'}
+              {plan ? plan.nombre : (plan_actual || 'Básico')}
+            </div>
+            {fundador && (
+              <div style={{ marginTop: '8px', display: 'inline-block', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.35)', color: 'var(--accent)', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em', padding: '4px 9px', borderRadius: '20px' }}>
+                ⭐ SOCIO FUNDADOR · SIN CARGO
+              </div>
+            )}
+            <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+              {categoriasUsadas === null
+                ? 'Contando categorías…'
+                : limite == null
+                  ? `${categoriasUsadas} ${categoriasUsadas === 1 ? 'categoría' : 'categorías'} · sin límite`
+                  : `${categoriasUsadas} de ${limite} ${limite === 1 ? 'categoría' : 'categorías'}`}
             </div>
           </div>
 

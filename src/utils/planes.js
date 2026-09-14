@@ -67,6 +67,51 @@ export const PLANES = [
   },
 ];
 
+/* ══════════════════════════════════════════════════════════════════════════
+   QUÉ PUEDE HACER CADA CLUB
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** Los clubes que ya usaban la app antes de que tuviera precio. No pagan. */
+export const esFundador = (club) => club?.socio_fundador === true;
+
+/**
+ * Cuántas categorías distintas puede cargar este club.
+ * `null` = sin límite. El orden importa: fundador gana sobre todo, después el
+ * override manual del club, y recién al final el límite del plan.
+ */
+export function limiteDelClub(club) {
+  if (!club) return null;
+  if (esFundador(club)) return null;
+  if (club.limite_categorias != null && club.limite_categorias !== '') return Number(club.limite_categorias);
+  return limiteDelPlan(club.plan_actual);
+}
+
+/**
+ * ¿Puede sumar un jugador en `categoriaNueva`?
+ *
+ * Sólo molesta cuando la categoría es realmente nueva para el club: mover
+ * jugadores entre las que ya tiene nunca se bloquea, y un club que ya está
+ * por encima del tope puede seguir trabajando con lo que tiene cargado.
+ */
+export function puedeUsarCategoria({ club, categoriasActuales = [], categoriaNueva }) {
+  const limite = limiteDelClub(club);
+  const nueva = String(categoriaNueva || '').trim().toLowerCase();
+  if (!nueva) return { permitido: true };
+
+  const actuales = categoriasActuales.map(c => String(c || '').trim().toLowerCase()).filter(Boolean);
+  if (actuales.includes(nueva)) return { permitido: true };          // ya la usa
+  if (limite == null) return { permitido: true };                    // sin tope
+  if (actuales.length < limite) return { permitido: true };
+
+  const plan = planPorId(club?.plan_actual);
+  return {
+    permitido: false,
+    limite,
+    motivo: `Tu plan ${plan ? plan.nombre : 'actual'} permite ${limite} ${limite === 1 ? 'categoría' : 'categorías'} `
+      + `y ya tenés ${actuales.length} (${actuales.join(', ')}). Para sumar "${String(categoriaNueva).trim()}" hay que pasar al plan siguiente.`,
+  };
+}
+
 export const planPorId = (id) => PLANES.find(p => p.id === String(id || '').toLowerCase()) || null;
 
 /** Cuántas categorías permite un plan. Un id desconocido no bloquea a nadie. */
