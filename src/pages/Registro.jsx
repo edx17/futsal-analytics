@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { DIAS_TRIAL, planPorId } from '../utils/planes';
 
 export default function Registro() {
   const [searchParams] = useSearchParams();
-  const planElegido = searchParams.get('plan') || 'trial'; 
+  const planElegido = searchParams.get('plan') || 'trial';
+  const planInteres = planPorId(planElegido);   // null si vino sin plan o con uno viejo
   
   const [formData, setFormData] = useState({
     nombreClub: '',
@@ -24,10 +26,17 @@ export default function Registro() {
     setError('');
 
     try {
-      // 1. Calcular el vencimiento (Trial = hoy + 10 días. Pro = hoy, porque tiene que pagar para activar)
-      const fechaVencimiento = planElegido === 'trial' 
-        ? new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString() 
-        : new Date().toISOString(); 
+      /* TODOS arrancan con la prueba completa, venga del plan que venga.
+      
+         Antes esto tenía dos fallas que se comían clientes:
+         · el trial daba 10 días y el landing promete 30;
+         · el que elegía un plan pago se creaba con suscripcion_activa en
+           false y vencimiento HOY, así que entraba y quedaba bloqueado al
+           instante en "Mi Suscripción" sin haber podido probar nada.
+      
+         El plan elegido se guarda aparte (plan_interes) para saber qué
+         venderle cuando se le termine la prueba. */
+      const fechaVencimiento = new Date(Date.now() + DIAS_TRIAL * 24 * 60 * 60 * 1000).toISOString();
 
       // 2. Crear el usuario en Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -43,8 +52,9 @@ export default function Registro() {
         .from('clubes')
         .insert([{
           nombre: formData.nombreClub,
-          plan_actual: planElegido,
-          suscripcion_activa: planElegido === 'trial', // Si es trial arranca activo, si es pro arranca inactivo hasta que pague
+          plan_actual: 'trial',
+          plan_interes: planInteres ? planInteres.id : null,
+          suscripcion_activa: true,
           fecha_vencimiento: fechaVencimiento
         }])
         .select()
@@ -68,12 +78,8 @@ export default function Registro() {
 
       if (perfilError) throw new Error("Error al configurar tu perfil: " + perfilError.message);
 
-      // 5. Redirección final
-      if (planElegido === 'trial') {
-        navigate('/inicio'); // El trial entra a usarlo directo
-      } else {
-        navigate('/mi-suscripcion'); // El Pro va a pagar
-      }
+      // 5. A usarlo. Nadie paga antes de probar.
+      navigate('/inicio');
 
     } catch (err) {
       setError(err.message);
@@ -89,7 +95,8 @@ export default function Registro() {
           CREAR <span style={{ color: 'var(--accent)' }}>CUENTA</span>
         </h2>
         <p style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '30px' }}>
-          Estás a punto de dar de alta el plan <strong style={{color: 'var(--text)', textTransform: 'uppercase'}}>{planElegido}</strong>
+          {DIAS_TRIAL} días gratis con todo desbloqueado. Sin tarjeta.
+          {planInteres && <><br />Después seguís con el plan <strong style={{ color: 'var(--text)' }}>{planInteres.nombre}</strong>, si te sirve.</>}
         </p>
         
         {error && <div style={{ color: '#ef4444', marginBottom: '15px', fontSize: '0.8rem', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: '10px', borderRadius: '4px' }}>{error}</div>}
