@@ -5,6 +5,8 @@ import { useEsMovil } from '../utils/useEsMovil';
 // ==========================================
 // CONFIGURACIÓN VISUAL
 // ==========================================
+import { PLANES, DIAS_TRIAL, formatARS, ahorroAnual, whatsappLink, WHATSAPP_MOSTRAR } from '../utils/planes';
+
 const COLORS = {
   bg: '#050505', 
   bgDeep: '#000000',
@@ -197,16 +199,19 @@ function Landing() {
         <div style={heroOverlayStyle} />
 
         <div style={heroContentStyle}>
-          <div style={badgeStyle}>ANALÍTICA DE ÉLITE PARA FUTSAL</div>
+          <div style={badgeStyle}>LA APP DE TU CLUB DE FUTSAL</div>
           <h1 style={heroTitleStyle}>
-            Dejá de intuir.<br />Empezá a <span style={{ color: COLORS.accent }}>Ganá</span>r.
+            Toda la semana de tu equipo,<br />en <span style={{ color: COLORS.accent }}>un solo lugar</span>.
           </h1>
           <p style={heroSubtitleStyle}>
-            Plataforma integral de videotracking y datos estructurados. Medí el impacto real de cada jugada y quinteto en tiempo real.
+            Citación, presentismo, lesiones y el análisis del partido. Del grupo de WhatsApp y la planilla de papel, a una app que ya lo tiene todo.
           </p>
           <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <MainButton onClick={() => navigate('/registro?plan=trial')}>SOLICITAR DEMO GRATIS</MainButton>
+            <MainButton onClick={() => navigate('/registro?plan=trial')}>PROBAR GRATIS {DIAS_TRIAL} DÍAS</MainButton>
             <MainButton onClick={() => window.location.href='#demo'} primary={false}>VER CÓMO FUNCIONA ⬇</MainButton>
+          </div>
+          <div style={{ marginTop: '18px', fontSize: '0.8rem', color: COLORS.textDim }}>
+            Sin tarjeta · Configurás tu plantel en 10 minutos
           </div>
         </div>
 
@@ -370,6 +375,63 @@ function Landing() {
         </div>
       </Section>
 
+      {/* PRECIOS */}
+      <Section id="precios" darkBg={true}>
+        <Title>Un precio por lo que usás</Title>
+        <Subtitle>Lo único que cambia es cuántas categorías manejás. Ningún plan esconde funciones.</Subtitle>
+
+        <div style={planesGridStyle}>
+          {PLANES.map((plan) => (
+            <div key={plan.id} style={plan.destacado ? planCardDestacadoStyle : planCardStyle}>
+              {plan.destacado && <div style={planTagStyle}>EL MÁS ELEGIDO</div>}
+
+              <div style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.12em', color: COLORS.accent }}>
+                {plan.nombre}
+              </div>
+              <div style={{ fontSize: '0.82rem', color: COLORS.textDim, marginTop: '4px' }}>{plan.bajada}</div>
+
+              <div style={{ margin: '20px 0 4px', fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.02em' }}>
+                {formatARS(plan.precio.ars)}
+                <span style={{ fontSize: '0.8rem', color: COLORS.textDim, fontWeight: 600 }}> /mes</span>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: COLORS.textDim }}>
+                Fuera de Argentina: USD {plan.precio.usd}/mes
+              </div>
+              <div style={{ fontSize: '0.78rem', color: COLORS.accent, marginTop: '6px', fontWeight: 700 }}>
+                Anual USD {plan.precio.usdAnual} · {ahorroAnual(plan)}% menos
+              </div>
+
+              <div style={{ fontSize: '0.78rem', color: COLORS.textDim, margin: '18px 0 14px', lineHeight: 1.6, minHeight: '54px' }}>
+                {plan.para}
+              </div>
+
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1 }}>
+                {plan.incluye.map((item) => (
+                  <li key={item} style={{ fontSize: '0.82rem', padding: '6px 0', color: COLORS.text }}>
+                    <span style={{ color: COLORS.accent, fontWeight: 900, marginRight: '8px' }}>✓</span>{item}
+                  </li>
+                ))}
+              </ul>
+
+              <MainButton
+                onClick={() => navigate(`/registro?plan=${plan.id}`)}
+                primary={!!plan.destacado}
+                style={{ width: '100%', marginTop: '22px', fontSize: '0.8rem', padding: '14px' }}
+              >
+                PROBAR {DIAS_TRIAL} DÍAS GRATIS
+              </MainButton>
+            </div>
+          ))}
+        </div>
+
+        <p style={{ textAlign: 'center', color: COLORS.textDim, fontSize: '0.85rem', marginTop: '36px', lineHeight: 1.8 }}>
+          Los {DIAS_TRIAL} días son con todo desbloqueado y sin tarjeta. Sin permanencia: si dejás de pagar,
+          tus datos quedan guardados.<br />
+          ¿Tu club no entra en ninguno? <a href={whatsappLink('Hola! Quiero consultar por un plan para mi club.')}
+            target="_blank" rel="noreferrer" style={{ color: COLORS.accent, fontWeight: 700 }}>Escribinos</a> y lo vemos.
+        </p>
+      </Section>
+
       {/* CTA INTERMEDIO */}
       <Section id="cta-final" style={{borderBottom: 'none'}}>
         <div style={ctaCardStyle}>
@@ -378,7 +440,7 @@ function Landing() {
             <p style={{marginBottom: '40px', color: COLORS.text, opacity: 0.9, maxWidth: '600px', margin: '0 auto 40px auto'}}>
               Unite a los clubes que ya usan datos para ganar partidos. Tu próximo rival ya podría estar usándolo.
             </p>
-            <MainButton onClick={() => navigate('/registro')} style={{fontSize: '1.1rem', padding: '20px 40px'}}>EMPEZAR MI PRUEBA GRATIS</MainButton>
+            <MainButton onClick={() => navigate('/registro')} style={{fontSize: '1.1rem', padding: '20px 40px'}}>PROBAR GRATIS {DIAS_TRIAL} DÍAS</MainButton>
           </div>
         </div>
       </Section>
@@ -394,10 +456,19 @@ function Landing() {
           <div style={{ fontSize: '1.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>
             VIRTUAL<span style={{color: COLORS.accent}}>CLUB</span>
           </div>
-          <p style={{color: 'var(--text-dim)', maxWidth: '500px', margin: '0 auto'}}>La ventaja injusta que estabas buscando para tu staff técnico.</p>
-          <div style={{marginTop: '40px', display: 'flex', gap: '20px', justifyContent: 'center', color: '#444', flexWrap: 'wrap'}}>
-            <span>Soporte</span> | <span>Precios</span> | <span>Contacto</span>
+          <p style={{color: 'var(--text-dim)', maxWidth: '500px', margin: '0 auto'}}>La app que le ordena la semana a tu club.</p>
+
+          <a href={whatsappLink()} target="_blank" rel="noreferrer" style={waButtonStyle}>
+            💬 Escribinos por WhatsApp
+          </a>
+          <div style={{ marginTop: '10px', fontSize: '0.8rem', color: COLORS.textDim }}>{WHATSAPP_MOSTRAR}</div>
+
+          <div style={{marginTop: '30px', display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', fontSize: '0.85rem'}}>
+            <a href="#precios" style={footerLinkStyle}>Precios</a>
+            <a href="#demo" style={footerLinkStyle}>Cómo funciona</a>
+            <a href={whatsappLink('Hola! Tengo una consulta sobre Virtual.Club.')} target="_blank" rel="noreferrer" style={footerLinkStyle}>Soporte</a>
           </div>
+          <div style={{ marginTop: '24px', fontSize: '0.72rem', color: '#444' }}>Hecho en Argentina · Para futsal</div>
           <p style={{ marginTop: '50px', fontSize: '0.8rem', color: '#333' }}>© 2026 VirtualFutsal. Software diseñado para la victoria.</p>
         </div>
       </footer>
@@ -408,6 +479,13 @@ function Landing() {
 // ==========================================
 // ESTILOS EN JS
 // ==========================================
+
+const planesGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '22px', maxWidth: '1100px', margin: '0 auto' };
+const planCardStyle = { background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '30px 26px', display: 'flex', flexDirection: 'column', position: 'relative' };
+const planCardDestacadoStyle = { ...planCardStyle, border: `1px solid ${COLORS.accent}`, boxShadow: '0 0 0 1px rgba(0,255,136,0.2), 0 20px 60px rgba(0,255,136,0.07)' };
+const planTagStyle = { position: 'absolute', top: '-11px', left: '50%', transform: 'translateX(-50%)', background: COLORS.accent, color: '#000', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.1em', padding: '4px 12px', borderRadius: '20px', whiteSpace: 'nowrap' };
+const waButtonStyle = { display: 'inline-flex', alignItems: 'center', gap: '9px', background: '#25D366', color: '#fff', fontWeight: 800, fontSize: '0.85rem', padding: '13px 22px', borderRadius: '8px', textDecoration: 'none', marginTop: '28px' };
+const footerLinkStyle = { color: COLORS.textDim, textDecoration: 'none', borderBottom: `1px solid ${COLORS.border}`, paddingBottom: '2px' };
 
 const titleStyle = { 
   fontSize: '3.5rem', 
