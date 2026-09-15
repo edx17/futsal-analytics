@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext'; 
 import { calcularXGEvento } from '../analytics/xg'; 
 import { TablaResponsive } from '../components/TablaResponsive';
+import { ESTADOS_GOL, ORDEN_ESTADOS, analizarEstados, pct } from '../utils/estadoGoles';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ComposedChart, Line
@@ -73,7 +74,7 @@ function OrigenGoles() {
         setCargando(true);
         if (!clubId) { setPartidos([]); setJugadores([]); setEventos([]); setTorneos([]); setCargando(false); return; }
         
-        const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria, torneo_id').eq('club_id', clubId);
+        const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria, torneo_id, estado, goles_propios, goles_rival').eq('club_id', clubId);
         const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal').eq('club_id', clubId);
         const { data: t } = await supabase.from('torneos').select('id, nombre, categoria').eq('club_id', clubId);
         
@@ -280,6 +281,29 @@ function OrigenGoles() {
   }, [eventos, mapaPartidos, jugadores, filtroCategoria, filtroTorneo]);
 
   const dataAnalizada = useMemo(() => analizarEquipo(filtroEquipo), [analizarEquipo, filtroEquipo]);
+
+  /* CÓMO SE DAN LOS PARTIDOS
+   * Siempre desde nuestro lado, sin importar el filtro Propio/Rival: la pregunta
+   * "¿abrimos el marcador?" sólo tiene sentido desde nuestro banco.
+   * Necesita la cronología completa (goles del rival incluidos), así que descarta
+   * los partidos donde los goles cargados no coinciden con el resultado final. */
+  const estadoDelPartido = useMemo(() => {
+    const jugados = partidos.filter(p => {
+      const pasaCat = filtroCategoria === 'Todas' || p.categoria === filtroCategoria;
+      const pasaTor = !filtroTorneo || p.torneo_id === filtroTorneo;
+      const pasaEstado = p.estado === 'Finalizado' || p.estado === 'Jugado';
+      return pasaCat && pasaTor && pasaEstado;
+    });
+
+    const golesPorPartido = new Map();
+    eventos.forEach(ev => {
+      if (!golesPorPartido.has(ev.id_partido)) golesPorPartido.set(ev.id_partido, []);
+      golesPorPartido.get(ev.id_partido).push(ev);
+    });
+
+    const r = analizarEstados(jugados, golesPorPartido);
+    return { ...r, candidatos: jugados.length };
+  }, [partidos, eventos, filtroCategoria, filtroTorneo]);
 
   const comparativa = useMemo(() => {
     const af = analizarEquipo('Propio');
@@ -570,6 +594,136 @@ function OrigenGoles() {
               </ResponsiveContainer>
             </div>
 
+          </div>
+
+          {/* CÓMO SE DAN LOS PARTIDOS */}
+          <div className="bento-card" style={{ marginBottom: '20px' }}>
+            <div className="stat-label" style={{ marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
+              CÓMO SE DAN LOS PARTIDOS <InfoBox texto="Cómo estaba el marcador justo antes de cada gol nuestro: si abrimos, si empatamos, si dimos vuelta. Se lee siempre desde nuestro lado, no cambia con el filtro de Equipo." />
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '18px' }}>
+              Siempre desde nuestro lado · {estadoDelPartido.analizados} partido{estadoDelPartido.analizados === 1 ? '' : 's'} con la cronología completa
+            </div>
+
+            {estadoDelPartido.analizados === 0 ? (
+              <div style={{ padding: '30px 20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.85rem', lineHeight: 1.6 }}>
+                <div style={{ fontSize: '1.8rem', marginBottom: '10px' }}>🧭</div>
+                Todavía no hay partidos con la cronología completa para este filtro.<br />
+                Para reconstruir el marcador gol a gol hacen falta <strong>los goles del rival cargados</strong> y que el total coincida con el resultado final del partido.
+                {estadoDelPartido.descartados > 0 && (
+                  <div style={{ marginTop: '10px', fontSize: '0.75rem' }}>
+                    {estadoDelPartido.descartados} partido{estadoDelPartido.descartados === 1 ? '' : 's'} quedó afuera por esa diferencia.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* TRES TITULARES */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginBottom: '22px' }}>
+
+                  <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.07)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                    <div className="stat-label" style={{ color: '#10b981', marginBottom: '6px' }}>EMPEZAMOS GANANDO</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1 }}>
+                      {estadoDelPartido.abrimos.pj}
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-dim)' }}> / {estadoDelPartido.analizados}</span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '6px' }}>
+                      {pct(estadoDelPartido.abrimos.pj, estadoDelPartido.analizados)}% de los partidos · el 1er gol fue nuestro
+                    </div>
+                    {estadoDelPartido.abrimos.pj > 0 && (
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, marginTop: '8px' }}>
+                        <span style={{ color: '#10b981' }}>{estadoDelPartido.abrimos.v}V</span>
+                        <span style={{ color: '#f59e0b', marginLeft: '8px' }}>{estadoDelPartido.abrimos.e}E</span>
+                        <span style={{ color: '#ef4444', marginLeft: '8px' }}>{estadoDelPartido.abrimos.d}D</span>
+                        <span style={{ color: 'var(--text-dim)', fontWeight: 600, marginLeft: '8px' }}>
+                          ({pct(estadoDelPartido.abrimos.v, estadoDelPartido.abrimos.pj)}% de victorias)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.07)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                    <div className="stat-label" style={{ color: '#f59e0b', marginBottom: '6px' }}>GOLES PARA EMPATAR</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1 }}>
+                      {estadoDelPartido.conteo.empate}
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-dim)' }}> / {estadoDelPartido.totalPropios}</span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '6px' }}>
+                      {pct(estadoDelPartido.conteo.empate, estadoDelPartido.totalPropios)}% de nuestros goles igualaron el partido
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.07)', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
+                    <div className="stat-label" style={{ color: '#a855f7', marginBottom: '6px' }}>GOLES PARA DAR VUELTA</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 900, lineHeight: 1 }}>
+                      {estadoDelPartido.conteo.vuelta}
+                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-dim)' }}> / {estadoDelPartido.totalPropios}</span>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '6px' }}>
+                      Nos pusieron arriba después de estar perdiendo
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* DESGLOSE DE LOS GOLES */}
+                <div className="stat-label" style={{ marginBottom: '12px', display: 'flex', alignItems: 'center' }}>
+                  CADA GOL NUESTRO, SEGÚN CÓMO ESTABA EL PARTIDO <InfoBox texto="Estado del marcador en el instante anterior al gol. Un equipo que acumula goles 'para estirar' domina; uno que acumula 'de descuento' llega tarde." />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {ORDEN_ESTADOS.map(k => {
+                    const cantidad = estadoDelPartido.conteo[k];
+                    const porcentaje = pct(cantidad, estadoDelPartido.totalPropios);
+                    return (
+                      <div key={k} style={{ opacity: cantidad === 0 ? 0.4 : 1 }} title={ESTADOS_GOL[k].ayuda}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px', marginBottom: '5px' }}>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.04em', color: ESTADOS_GOL[k].color }}>
+                            {ESTADOS_GOL[k].label}
+                          </span>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                            {cantidad} <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}>({porcentaje}%)</span>
+                          </span>
+                        </div>
+                        <div style={{ height: '14px', background: 'var(--hover)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${porcentaje}%`, height: '100%', background: ESTADOS_GOL[k].color, borderRadius: '4px', transition: 'width 0.4s' }} />
+                        </div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '4px' }}>{ESTADOS_GOL[k].ayuda}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* PIE: REMONTADAS Y DATOS FUERA DE ANÁLISIS */}
+                <div style={{ marginTop: '20px', paddingTop: '14px', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '20px', fontSize: '0.75rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-dim)' }}>Partidos remontados por nosotros: </span>
+                    <strong style={{ color: '#10b981' }}>{estadoDelPartido.remontadas}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-dim)' }}>Ventajas que no supimos sostener: </span>
+                    <strong style={{ color: '#ef4444' }}>{estadoDelPartido.remontados}</strong>
+                  </div>
+                  {estadoDelPartido.nosAbrieron.pj > 0 && (
+                    <div>
+                      <span style={{ color: 'var(--text-dim)' }}>Cuando nos abren el marcador: </span>
+                      <strong>{estadoDelPartido.nosAbrieron.v}V {estadoDelPartido.nosAbrieron.e}E {estadoDelPartido.nosAbrieron.d}D</strong>
+                    </div>
+                  )}
+                  {estadoDelPartido.sinGoles > 0 && (
+                    <div>
+                      <span style={{ color: 'var(--text-dim)' }}>Sin goles (0-0): </span>
+                      <strong>{estadoDelPartido.sinGoles}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {estadoDelPartido.descartados > 0 && (
+                  <div style={{ marginTop: '12px', fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                    ⚠️ {estadoDelPartido.descartados} de {estadoDelPartido.candidatos} partidos quedaron fuera de este análisis: los goles cargados no coinciden con el resultado final, así que el marcador no se puede reconstruir sin inventar. Se arregla completando los goles (propios y del rival) en la toma de datos.
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
