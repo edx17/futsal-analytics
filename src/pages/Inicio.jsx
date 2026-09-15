@@ -9,6 +9,7 @@ import { analizarPartido } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import { fetchPaginado } from '../utils/supaPaginado';
+import { categoriaMasAlta } from '../utils/categorias';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -165,12 +166,8 @@ const plantillaIds = (p) => {
   } catch { return []; }
 };
 
-/* Jerarquía de categorías para elegir la categoría inicial (Primera arriba, promocionales al final). */
-const normCat = (s) => (s || '').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-const ORDEN_CATEGORIAS = ['primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta', 'septima', 'octava', 'novena', 'decima'];
-const rankCategoria = (cat) => { const n = normCat(cat); const i = ORDEN_CATEGORIAS.findIndex((tok) => n.includes(tok)); return i === -1 ? 999 : i; };
-/* La de mayor jerarquía disponible; las desconocidas (promocionales, etc.) van al final, alfabéticas. */
-const categoriaInicial = (cats) => [...(cats || [])].sort((a, b) => (rankCategoria(a) - rankCategoria(b)) || String(a).localeCompare(String(b)))[0];
+/* Jerarquía de categorías: vive en utils/categorias.js, compartida con Scouting. */
+const categoriaInicial = (cats) => categoriaMasAlta(cats);
 
 /* Corre el engine UNA vez sobre el último partido => xG + ranking (port de Resumen). */
 function analizarUltimo(eventos, jugadores) {
