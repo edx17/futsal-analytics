@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { useCategorias } from '../utils/useCategorias';
 import InfoBox from '../components/InfoBox';
 import { TablaResponsive } from '../components/TablaResponsive';
 
@@ -105,15 +106,12 @@ function Transferencias() {
     return `$${v.toLocaleString('es-AR')}`;
   };
 
-  // Categorías disponibles para el filtro
-  const categoriasDisponibles = useMemo(() => {
-    const base = misCategorias.length > 0
-      ? misCategorias
-      : ['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava'];
-    const desdeData = transferencias.map(t => t.categoria).filter(Boolean);
-    const set = Array.from(new Set([...base, ...desdeData]));
-    return misCategorias.length > 0 ? set.filter(c => misCategorias.includes(c)) : set;
-  }, [misCategorias, transferencias]);
+  /* Las categorías salen de una sola fuente (utils/categorias.js), no de una
+     lista escrita a mano. Se incluyen las históricas: una transferencia vieja
+     puede ser de una categoría que hoy ya no tiene plantel. */
+  const { categorias: categoriasDisponibles } = useCategorias({
+    incluirHistoricas: true, asignadas: misCategorias,
+  });
 
   // Transferencias visibles (scope de categoría como en el resto de la app)
   const transFiltradas = useMemo(() => {

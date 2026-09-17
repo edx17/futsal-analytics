@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { useCategorias } from '../utils/useCategorias';
 import InfoBox from '../components/InfoBox';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
@@ -175,15 +176,11 @@ function Torneos() {
     setAliasRivales(data || []);
   };
 
-  const categoriasUnicas = useMemo(() => {
-    const categoriasPorDefecto = ['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava'];
-    let base = Array.from(new Set([...categoriasPorDefecto, ...torneos.map(t => t.categoria)]));
-    
-    if (misCategorias.length > 0) {
-      base = base.filter(c => misCategorias.includes(c));
-    }
-    return base;
-  }, [torneos, misCategorias]);
+  /* Las del club, no una lista fija. Con históricas, porque un torneo ya
+     cargado puede ser de una categoría que este año no tiene plantel. */
+  const { categorias: categoriasUnicas } = useCategorias({
+    incluirHistoricas: true, asignadas: misCategorias,
+  });
 
   const torneosFiltrados = useMemo(() => {
     return torneos.filter(t => t.categoria === filtroCategoria);

@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { supabase } from '../supabase';
 import { puedeUsarCategoria, categoriasDe } from '../utils/planes';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext'; // <-- IMPORTAMOS EL CONTEXTO DE AUTENTICACIÓN
 import { estaActivo, textoBaja } from '../utils/plantelActivo';
+import { useCategorias } from '../utils/useCategorias';
+import { unirCategorias, LISTA_BASE } from '../utils/categorias';
+
+/* Centinela del selector: no es una categoría, es "quiero escribir una". */
+const OTRA = '__otra__';
 
 function Plantel() {
   const { perfil } = useAuth(); // <-- OBTENEMOS EL PERFIL
@@ -23,6 +28,18 @@ function Plantel() {
      trabajar con los que están; los que se fueron se consultan aparte. */
   const [verBajas, setVerBajas] = useState(false);
   const [bajaEnCurso, setBajaEnCurso] = useState(null); // id del jugador
+
+  /* La categoría del jugador es EL dato que define las divisiones del club:
+     si acá entra texto libre aparecen "Reserva", "1ra" y "Primera" como si
+     fueran cosas distintas, y todas las pantallas que las listan se
+     desalinean. Por eso se elige de la lista; crear una división nueva es
+     posible, pero es un acto deliberado y no un error de tipeo. */
+  const [categoriaLibre, setCategoriaLibre] = useState(false);
+  const { todas: categoriasClub } = useCategorias({ incluirHistoricas: true });
+  const opcionesCategoria = useMemo(
+    () => unirCategorias(categoriasClub, LISTA_BASE, [formData?.categoria]),
+    [categoriasClub, formData?.categoria]
+  );
   const [motivoBaja, setMotivoBaja] = useState('');
 
   const clubId = localStorage.getItem('club_id');
@@ -734,11 +751,26 @@ function Plantel() {
                   </div>
                   <div>
                     <div className="section-title">CATEGORÍA</div>
-                    <select value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} style={inputIndustrial}>
-                      <option value="Primera">Primera</option><option value="Tercera">Tercera</option>
-                      <option value="Cuarta">Cuarta</option><option value="Quinta">Quinta</option>
-                      <option value="Sexta">Sexta</option><option value="Séptima">Séptima</option><option value="Octava">Octava</option>
+                    <select
+                      value={categoriaLibre ? OTRA : formData.categoria}
+                      onChange={e => {
+                        if (e.target.value === OTRA) { setCategoriaLibre(true); setFormData({...formData, categoria: ''}); }
+                        else { setCategoriaLibre(false); setFormData({...formData, categoria: e.target.value}); }
+                      }}
+                      style={inputIndustrial}
+                    >
+                      {opcionesCategoria.map(c => <option key={c} value={c}>{c}</option>)}
+                      <option value={OTRA}>+ Otra categoría…</option>
                     </select>
+                    {categoriaLibre && (
+                      <input
+                        autoFocus
+                        value={formData.categoria}
+                        onChange={e => setFormData({...formData, categoria: e.target.value})}
+                        placeholder="Nombre de la categoría nueva"
+                        style={{...inputIndustrial, marginTop: '6px'}}
+                      />
+                    )}
                   </div>
                   <div>
                     <div className="section-title">PIERNA HÁBIL</div>
