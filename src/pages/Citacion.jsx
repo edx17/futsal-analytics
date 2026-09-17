@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
+import { mismaCategoria as mismaCategoriaTexto } from '../utils/categorias';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
@@ -113,6 +114,8 @@ function Citacion() {
   const [wellnessHoy, setWellnessHoy] = useState([]);
   const [lesiones, setLesiones] = useState([]);
   const [ratings, setRatings] = useState({});
+  /* Cuántos partidos se miraron y cuántos tenían eventos cargados. */
+  const [diagRating, setDiagRating] = useState(null);
 
   const [seleccion, setSeleccion] = useState({});
   const [form, setForm] = useState({ sede: '', direccion: '', horario: '', horaCitacion: '', entrada: '', indumentaria: '' });
@@ -248,14 +251,39 @@ function Citacion() {
       setCalculandoRatings(true);
       try {
         const anio = new Date().getFullYear();
-        const { data: recientes } = await supabase.from('partidos')
-          .select('id, fecha, categoria')
-          .eq('club_id', clubId).eq('categoria', partido.categoria)
-          .in('estado', ['Finalizado', 'Jugado'])
-          .order('fecha', { ascending: false }).limit(PARTIDOS_PARA_RATING);
 
-        const ids = (recientes || []).map(p => p.id);
-        if (ids.length === 0) { if (!cancelado) { setRatings({}); setAmarillasPorJugador({}); } return; }
+        /* Dos cosas que hacían que esto devolviera los partidos equivocados:
+         *
+         * 1. `order('fecha', desc)` sin más deja los NULOS PRIMERO — es el
+         *    comportamiento de Postgres. Los partidos del fixture importado
+         *    no tienen fecha, así que se quedaban con los ocho lugares de
+         *    "los últimos ocho" y adentro no había un solo evento cargado.
+         *    Con nullsFirst:false los sin fecha van al final, donde va lo que
+         *    no se sabe cuándo pasó.
+         *
+         * 2. `eq('categoria', ...)` es comparación exacta: "Tercera" y
+         *    "tercera " son distintas para la base. Se trae de más y se
+         *    recorta acá con la comparación que ignora mayúsculas y acentos. */
+        const { data: candidatos } = await supabase.from('partidos')
+          .select('id, fecha, categoria')
+          .eq('club_id', clubId)
+          .in('estado', ['Finalizado', 'Jugado'])
+          .order('fecha', { ascending: false, nullsFirst: false })
+          .limit(PARTIDOS_PARA_RATING * 12);
+
+        const recientes = (candidatos || [])
+          .filter(p => mismaCategoriaTexto(p.categoria, partido.categoria))
+          .slice(0, PARTIDOS_PARA_RATING);
+
+        const ids = recientes.map(p => p.id);
+        if (ids.length === 0) {
+          if (!cancelado) {
+            setRatings({});
+            setAmarillasPorJugador({});
+            setDiagRating({ partidos: 0, conDatos: 0 });
+          }
+          return;
+        }
 
         const eventos = await traerPaginado(() => supabase.from('eventos').select('*')
           .in('id_partido', ids)
@@ -310,7 +338,14 @@ function Citacion() {
           });
         });
 
-        if (!cancelado) { setRatings(acumulado); setAmarillasPorJugador(amarillas); }
+        if (!cancelado) {
+          setRatings(acumulado);
+          setAmarillasPorJugador(amarillas);
+          /* Para poder decir POR QUÉ no hay ratings, en vez de un "sin
+             partidos analizados" que no distingue entre "este jugador no
+             jugó" y "no hay un solo partido con datos cargados". */
+          setDiagRating({ partidos: ids.length, conDatos: Object.keys(porPartido).length });
+        }
       } catch (err) {
         console.error('Citación, ratings:', err);
       } finally {
@@ -732,6 +767,24 @@ function Citacion() {
               )}
               {calculandoRatings && <span style={{ color: 'var(--text-dim)' }}>CALCULANDO RENDIMIENTOS…</span>}
             </div>
+
+            {/* Cuando no hay un solo partido con datos, el "Sin partidos
+                analizados" de cada jugador no dice nada: parece un problema
+                de él cuando es del conjunto. Acá se dice qué pasó. */}
+            {!calculandoRatings && diagRating && diagRating.conDatos === 0 && (
+              <div style={{
+                marginBottom: '14px', padding: '11px 13px', borderRadius: '8px',
+                background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.3)',
+                fontSize: '0.78rem', lineHeight: 1.5, color: 'var(--text-dim)',
+              }}>
+                <strong style={{ color: '#fbbf24' }}>El rendimiento no se está usando en esta sugerencia.</strong>{' '}
+                {diagRating.partidos === 0
+                  ? <>No hay partidos finalizados de <b>{partido?.categoria}</b> para mirar.</>
+                  : <>Se miraron los últimos {diagRating.partidos} partidos de <b>{partido?.categoria}</b>, pero
+                     ninguno tiene acciones cargadas: se guardó el resultado sin pasar por la toma de datos en vivo.</>}
+                {' '}Mientras tanto el puntaje sale sólo del presentismo, así que ordena por asistencia.
+              </div>
+            )}
 
             {otrasCategorias.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', padding: '10px 12px', background: 'var(--panel)', borderRadius: '8px' }}>
