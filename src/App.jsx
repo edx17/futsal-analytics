@@ -64,6 +64,7 @@ const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
 const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 
 import './App.css';
+import LimiteDeError from './components/LimiteDeError';
 
 // ==========================================
 // 🌍 CATÁLOGO OPERATIVO DE ACCIONES RÁPIDAS
@@ -295,6 +296,7 @@ useEffect(() => {
   if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
+        <LimiteDeError>
         <Suspense fallback={<CargandoPantalla />}>
           <Routes>
             <Route path="/" element={perfil ? <Navigate to="/inicio" replace /> : <Landing />} />
@@ -305,6 +307,7 @@ useEffect(() => {
             <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
           </Routes>
         </Suspense>
+        </LimiteDeError>
       </main>
     );
   }
@@ -313,6 +316,7 @@ useEffect(() => {
   if (isKioscoMode && isKioscoPath) {
     return (
       <main className="app-content-fullscreen">
+        <LimiteDeError>
         <Suspense fallback={<CargandoPantalla />}>
           <Routes>
             <Route path="/kiosco/home" element={<Inicio />} />
@@ -329,6 +333,7 @@ useEffect(() => {
             <Route path="/kiosco/*" element={<Navigate to="/kiosco/home" replace />} />
           </Routes>
         </Suspense>
+        </LimiteDeError>
       </main>
     );
   }
@@ -529,9 +534,11 @@ useEffect(() => {
       {/* ÁREA PRINCIPAL DE CONTENIDO */}
       <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '0px 0px 85px 0px' : '40px', position: 'relative' }}>
         <div style={{ padding: esMovil ? '20px 15px' : '0' }}>
-          <Suspense fallback={<CargandoPantalla />}>
+          <LimiteDeError>
+        <Suspense fallback={<CargandoPantalla />}>
             <AppRoutes />
           </Suspense>
+        </LimiteDeError>
         </div>
       </main>
 
