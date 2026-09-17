@@ -29,17 +29,6 @@ function Plantel() {
   const [verBajas, setVerBajas] = useState(false);
   const [bajaEnCurso, setBajaEnCurso] = useState(null); // id del jugador
 
-  /* La categoría del jugador es EL dato que define las divisiones del club:
-     si acá entra texto libre aparecen "Reserva", "1ra" y "Primera" como si
-     fueran cosas distintas, y todas las pantallas que las listan se
-     desalinean. Por eso se elige de la lista; crear una división nueva es
-     posible, pero es un acto deliberado y no un error de tipeo. */
-  const [categoriaLibre, setCategoriaLibre] = useState(false);
-  const { todas: categoriasClub } = useCategorias({ incluirHistoricas: true });
-  const opcionesCategoria = useMemo(
-    () => unirCategorias(categoriasClub, LISTA_BASE, [formData?.categoria]),
-    [categoriasClub, formData?.categoria]
-  );
   const [motivoBaja, setMotivoBaja] = useState('');
 
   const clubId = localStorage.getItem('club_id');
@@ -56,6 +45,22 @@ function Plantel() {
     obra_social: '', contacto_emergencia: '', talla_ropa: '', talla_calzado: '', foto: ''
   };
   const [formData, setFormData] = useState(estadoInicial);
+
+  /* La categoría del jugador es EL dato que define las divisiones del club:
+     si acá entra texto libre aparecen "Reserva", "1ra" y "Primera" como si
+     fueran cosas distintas, y todas las pantallas que las listan se
+     desalinean. Por eso se elige de la lista; crear una división nueva es
+     posible, pero es un acto deliberado y no un error de tipeo.
+
+     VA DESPUÉS DE formData a propósito: el array de dependencias del useMemo
+     se evalúa durante el render, así que declararlo más arriba lo lee antes
+     de que exista y la pantalla entera se cae con un ReferenceError. */
+  const [categoriaLibre, setCategoriaLibre] = useState(false);
+  const { todas: categoriasClub } = useCategorias({ incluirHistoricas: true });
+  const opcionesCategoria = useMemo(
+    () => unirCategorias(categoriasClub, LISTA_BASE, [formData?.categoria]),
+    [categoriasClub, formData?.categoria]
+  );
 
   useEffect(() => {
     if (clubId) fetchJugadores();
