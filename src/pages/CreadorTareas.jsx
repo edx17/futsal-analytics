@@ -15,6 +15,7 @@ import {
   BASE_W, getBaseH, renderBoard, hitEl, hitArrow, getDPR, uid,
   convertOldEl, convertOldLine,
 } from '../tactica/pizarra'
+import { FORMACIONES, CLAVES_FORMACION, elementosDeFormacion } from '../tactica/formaciones'
 import { useToast } from '../components/ToastContext'
 import { useAuth } from '../context/AuthContext' 
 import { NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
@@ -36,6 +37,54 @@ function boardReducer(state, action) {
         : {...state, elements: state.elements.map(e => e.id === id ? {...e, ...patch} : e)} 
     }
     case 'DEL_SEL':   { if(!state.selected)return state; const s=save(state); const{id,isArrow}=s.selected; return {...s,elements:isArrow?s.elements:s.elements.filter(e=>e.id!==id),arrows:isArrow?s.arrows.filter(a=>a.id!==id):s.arrows,selected:null} }
+    /* Duplicar: la copia aparece corrida para que se vea que son dos, y
+       queda seleccionada para moverla de una. Sin `bow`: la copia no hereda
+       el recorrido del original. */
+    case 'ADD_VARIOS': { const s=save(state); return {...s, elements:[...s.elements, ...action.els]} }
+    case 'DUP_SEL': {
+      if(!state.selected||state.selected.isArrow) return state
+      const orig=state.elements.find(e=>e.id===state.selected.id); if(!orig) return state
+      const s=save(state)
+      const copia={...orig, id:action.id, x:orig.x+26, y:orig.y+26}
+      delete copia.bow
+      if(copia.label && /^\d+$/.test(copia.label)){
+        const usados=new Set(s.elements.filter(e=>e.type===orig.type).map(e=>e.label))
+        let n=Number(copia.label)+1
+        while(usados.has(String(n))) n++
+        copia.label=String(n)
+      }
+      return {...s, elements:[...s.elements, copia], selected:{id:copia.id,isArrow:false}}
+    }
+    /* Espejar: la misma jugada por la otra punta. En futsal media pizarra se
+       repite de los dos lados, y rehacerla ficha por ficha es media hora. */
+    case 'MIRROR': {
+      const s=save(state)
+      const W=action.ancho, H=action.alto
+      const ejeX=(v)=>W-v, ejeY=(v)=>H-v
+      const vert=action.eje==='vertical'
+      const pt=(x,y)=>vert?{x,y:ejeY(y)}:{x:ejeX(x),y}
+      return {
+        ...s,
+        elements: s.elements.map(e=>{
+          if(e.type?.startsWith('zone')){
+            // Las zonas se anclan en su esquina: hay que reflejar la esquina opuesta.
+            const p=pt(e.x+(vert?0:e.w), e.y+(vert?e.h:0))
+            return {...e, x:vert?e.x:p.x, y:vert?p.y:e.y}
+          }
+          const p=pt(e.x,e.y)
+          const r=e.rotation?((vert?-e.rotation:180-e.rotation)%360+360)%360:e.rotation
+          const el={...e, x:p.x, y:p.y, rotation:r}
+          if(el.bow) el.bow=vert?{x:el.bow.x,y:-el.bow.y}:{x:-el.bow.x,y:el.bow.y}
+          return el
+        }),
+        arrows: s.arrows.map(a=>{
+          const p1=pt(a.x1,a.y1), p2=pt(a.x2,a.y2)
+          // Reflejar invierte el sentido de giro, así que la curvatura cambia de signo.
+          return {...a, x1:p1.x, y1:p1.y, x2:p2.x, y2:p2.y, curve:a.curve?-a.curve:a.curve}
+        }),
+        selected:null,
+      }
+    }
     case 'LAYER':     { if(!state.selected||state.selected.isArrow)return state; const arr=[...state.elements]; const i=arr.findIndex(e=>e.id===state.selected.id); if(action.dir==='front'&&i<arr.length-1)[arr[i],arr[i+1]]=[arr[i+1],arr[i]]; if(action.dir==='back'&&i>0)[arr[i],arr[i-1]]=[arr[i-1],arr[i]]; return {...state,elements:arr} }
     case 'UNDO':      { if(!state.history.length)return state; const prev=state.history[state.history.length-1]; return {...state,...prev,history:state.history.slice(0,-1),selected:null} }
     case 'CLEAR':     { const s=save(state); return {...s,elements:[],arrows:[],selected:null} }
@@ -232,6 +281,9 @@ const CreadorTareas = () => {
   const isPlayingRef = useRef(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [animSnapshot, setAnimSnapshot] = useState(null)
+  /* Posición dentro de la jugada, de 0 a 1. Antes sólo existía play/stop y no
+     había forma de pararse en la mitad a mirar un movimiento. */
+  const [avance, setAvance] = useState(0)
 
   const tempRef = useRef({ arrow:null, zone:null })
   const ixRef   = useRef({ dragging:false, dOffX:0, dOffY:0, drawingArrow:null, drawingZone:null, tempTextPos:null, bowId:null, bowDesde:null })
@@ -259,7 +311,7 @@ const CreadorTareas = () => {
       const g = JSON.parse(localStorage.getItem('ct_secciones') || 'null')
       if (g) return g
     } catch { /* modo privado o json roto */ }
-    return { jugadores: true, materiales: true, anotaciones: true }
+    return { formaciones: false, jugadores: true, materiales: true, anotaciones: true }
   })
   const toggleSeccion = (k) => setSeccionesAbiertas(prev => {
     const n = { ...prev, [k]: !prev[k] }
@@ -327,6 +379,7 @@ const CreadorTareas = () => {
         id:       f.id || uid(),
         elements: f.elements || f.elementos?.map(convertOldEl) || [],
         arrows:   f.arrows   || f.lineas?.map(convertOldLine)  || [],
+        duracion: f.duracion,
       }))
     } else {
       loadedFrames = [{
@@ -384,8 +437,8 @@ const CreadorTareas = () => {
      salen de compararlo con lo que hay ahora en la pizarra. Sólo mientras se
      edita: al reproducir estorbarían. */
   const elementosPrevios = useMemo(
-    () => ((!isPlaying && frameIdx > 0) ? (frames[frameIdx - 1]?.elements || []) : []),
-    [isPlaying, frameIdx, frames]
+    () => ((!isPlaying && !animSnapshot && frameIdx > 0) ? (frames[frameIdx - 1]?.elements || []) : []),
+    [isPlaying, animSnapshot, frameIdx, frames]
   )
   const trayectos = useMemo(
     () => (elementosPrevios.length ? trayectosEntre(elementosPrevios, board.elements) : []),
@@ -405,8 +458,10 @@ const CreadorTareas = () => {
   useEffect(() => {
     const cv = canvasRef.current; if(!cv)return
     const ctx = cv.getContext('2d')
-    const displayEls  = isPlaying && animSnapshot ? animSnapshot.elements : board.elements
-    const displayArrs = isPlaying && animSnapshot ? animSnapshot.arrows   : board.arrows
+    /* La instantánea manda al reproducir Y al mover la barra de avance: en
+       los dos casos lo que se ve es un instante calculado, no la pizarra. */
+    const displayEls  = animSnapshot ? animSnapshot.elements : board.elements
+    const displayArrs = animSnapshot ? animSnapshot.arrows   : board.arrows
 
     const baseH = getBaseH(pitchCfg.variant)
 
@@ -489,6 +544,43 @@ const CreadorTareas = () => {
     setFrameIdx(prev=>prev+1)
   }
 
+  const duplicarSeleccion = () => {
+    if (isPlaying || !board.selected || board.selected.isArrow) return
+    dispatchBoard({ type:'DUP_SEL', id: uid() })
+  }
+
+  /* La duración vive en el fotograma de DESTINO: dice cuánto tarda en
+     llegar hasta él, igual que el recorrido curvo. */
+  const cambiarDuracion = (ms) => {
+    if (isPlaying || frameIdx === 0) return
+    setFrames(prev => prev.map((f,i)=> i===frameIdx ? {...f, duracion: ms} : f))
+  }
+
+  const ponerFormacion = (clave, deQuien) => {
+    if (isPlaying) return
+    const els = elementosDeFormacion(clave, {
+      ancho: BASE_W, alto: getBaseH(pitchCfg.variant),
+      equipo: deQuien === 'rival' ? 'away' : 'home',
+      arquero: deQuien === 'rival' ? 'gk-vio' : 'gk-ama',
+      comoRival: deQuien === 'rival',
+      nuevoId: uid,
+    })
+    if (!els.length) return
+    dispatchBoard({ type:'ADD_VARIOS', els })
+    setTool('select')
+    if (esMovil) setPanelMovil(null)
+    showToast(`${FORMACIONES[clave].label} puesto${deQuien === 'rival' ? ' para el rival' : ''}.`, 'success')
+  }
+
+  const espejarJugada = (eje = 'horizontal') => {
+    if (isPlaying) return
+    if (!board.elements.length && !board.arrows.length) {
+      showToast('No hay nada para espejar en este fotograma.', 'warning'); return
+    }
+    dispatchBoard({ type:'MIRROR', eje, ancho: BASE_W, alto: getBaseH(pitchCfg.variant) })
+    showToast(eje === 'horizontal' ? 'Jugada espejada de izquierda a derecha.' : 'Jugada espejada de arriba a abajo.', 'success')
+  }
+
   function eliminarFrame(idx) {
     if (isPlaying) return
     if (frames.length<=1) { showToast("No podés borrar el único fotograma.","warning"); return }
@@ -499,6 +591,38 @@ const CreadorTareas = () => {
     dispatchBoard({ type:'LOAD', elements:newFrames[newIdx].elements||[], arrows:newFrames[newIdx].arrows||[] })
     setFrameIdx(newIdx)
   }
+
+  /* La jugada entera como una sola línea de tiempo de 0 a 1: el tramo N va
+     de N/(cantidad-1) a (N+1)/(cantidad-1). Lo usan el play y la barra de
+     avance, así que las dos muestran exactamente lo mismo. */
+  const cuadroEn = useCallback((avance, listaFrames) => {
+    const fs = listaFrames || frames
+    if (fs.length < 2) return { elements: fs[0]?.elements || [], arrows: fs[0]?.arrows || [] }
+    const tramos = fs.length - 1
+    const t = Math.max(0, Math.min(1, avance)) * tramos
+    const i = Math.min(Math.floor(t), tramos - 1)
+    const p = t - i
+    const ease = p < .5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2) / 2
+    const fA = fs[i], fB = fs[i+1]
+    const interpolados = (fA.elements||[]).map(elA => {
+      const elB = (fB.elements||[]).find(b => b.id === elA.id)
+      if (!elB) return elA
+      const q = puntoEnTrayecto(elA, elB, elB.bow, ease)
+      return { ...elA, x:q.x, y:q.y }
+    })
+    const nuevos = (fB.elements||[]).filter(b => !(fA.elements||[]).find(a => a.id === b.id))
+    return { elements: [...interpolados, ...(p > .8 ? nuevos : [])], arrows: fA.arrows || [], tramo: i }
+  }, [frames])
+
+  /* Mover la barra de avance con la jugada parada: mirar un instante puntual
+     sin tener que reproducir todo de nuevo. */
+  const irAAvance = (avance) => {
+    if (isPlayingRef.current) { isPlayingRef.current = false; setIsPlaying(false) }
+    setAvance(avance)
+    setAnimSnapshot(cuadroEn(avance))
+  }
+
+  const salirDelScrub = () => { setAnimSnapshot(null); setAvance(0) }
 
   const togglePlay = async () => {
     if (isPlayingRef.current) {
@@ -511,7 +635,7 @@ const CreadorTareas = () => {
     isPlayingRef.current=true; setIsPlaying(true); setTool('select')
     if(esMovil) setPanelMovil(null)
 
-    const DURATION=800, PAUSE=400
+    const PAUSE=400
 
     const allFrames = [...frames]
     allFrames[frameIdx] = { ...allFrames[frameIdx], elements:JSON.parse(JSON.stringify(board.elements)), arrows:JSON.parse(JSON.stringify(board.arrows)) }
@@ -519,6 +643,8 @@ const CreadorTareas = () => {
     for (let i=0; i<allFrames.length-1; i++) {
       if (!isPlayingRef.current) break
       const fA = allFrames[i], fB = allFrames[i+1]
+      /* Cada tramo dura lo que diga su fotograma de destino. */
+      const DURATION = Number(fB.duracion) > 0 ? Number(fB.duracion) : 800
 
       setAnimSnapshot({ elements: fA.elements||[], arrows: fA.arrows||[] })
 
@@ -529,19 +655,12 @@ const CreadorTareas = () => {
           if (!startTime) startTime=ts
           const elapsed=ts-startTime
           let progress=elapsed/DURATION; if(progress>1)progress=1
-          const ease = progress<.5 ? 2*progress*progress : 1-Math.pow(-2*progress+2,2)/2
 
-          const interpolated = (fA.elements||[]).map(elA => {
-            const elB=(fB.elements||[]).find(b=>b.id===elA.id)
-            if(!elB) return elA
-            /* El bow lo lleva la ficha en el fotograma de DESTINO: describe
-               cómo llegó hasta ahí. Sin bow el recorrido es la recta de
-               siempre. */
-            const q = puntoEnTrayecto(elA, elB, elB.bow, ease)
-            return { ...elA, x:q.x, y:q.y }
-          })
-          const newEls = (fB.elements||[]).filter(b=>!(fA.elements||[]).find(a=>a.id===b.id))
-          setAnimSnapshot({ elements:[...interpolated,...(progress>.8?newEls:[])], arrows: fA.arrows||[] })
+          /* Mismo cálculo que la barra de avance: una sola fuente de verdad
+             sobre dónde está cada ficha en cada instante. */
+          const global = (i + progress) / (allFrames.length - 1)
+          setAvance(global)
+          setAnimSnapshot(cuadroEn(global, allFrames))
 
           if(progress<1) requestAnimationFrame(animate)
           else resolve()
@@ -554,7 +673,7 @@ const CreadorTareas = () => {
       await new Promise(res=>setTimeout(res,PAUSE))
     }
 
-    isPlayingRef.current=false; setIsPlaying(false); setAnimSnapshot(null)
+    isPlayingRef.current=false; setIsPlaying(false); setAnimSnapshot(null); setAvance(0)
     const lastIdx=allFrames.length-1
     dispatchBoard({ type:'LOAD', elements:allFrames[lastIdx].elements||[], arrows:allFrames[lastIdx].arrows||[] })
     setFrameIdx(lastIdx)
@@ -588,7 +707,10 @@ const CreadorTareas = () => {
 
   const onPointerDown = useCallback((e) => {
     e.preventDefault()
-    if (isPlaying) return
+    /* Con la jugada parada en un instante (barra de avance) lo que se ve es
+       un cálculo, no el fotograma: tocar ahí movería fichas que no son las
+       que se están mostrando. */
+    if (isPlaying || animSnapshot) return
     try { e.currentTarget.setPointerCapture(e.pointerId) } catch(_){}
     pointersRef.current.set(e.pointerId, rawFromEvent(e))
     if (pointersRef.current.size >= 2) {
@@ -642,10 +764,10 @@ const CreadorTareas = () => {
       tempRef.current.zone=ix.drawingZone; return
     }
     if(tool==='text'){ix.tempTextPos=p;setTextModal(true)}
-  },[tool, board, isPlaying, esMovil, panelMovil, getPos])
+  },[tool, board, isPlaying, animSnapshot, esMovil, panelMovil, getPos])
 
   const onPointerMove = useCallback((e) => {
-    if(isPlaying) return
+    if(isPlaying || animSnapshot) return
     if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, rawFromEvent(e))
     if (pointersRef.current.size >= 2 && gestureRef.current) {
       const pts=[...pointersRef.current.values()]
@@ -681,7 +803,7 @@ const CreadorTareas = () => {
     }
     if(ix.drawingArrow){ix.drawingArrow.cx=p.x;ix.drawingArrow.cy=p.y;tempRef.current.arrow={...ix.drawingArrow};forceUpdate();return}
     if(ix.drawingZone){ix.drawingZone.w=p.x-ix.drawingZone.sx;ix.drawingZone.h=p.y-ix.drawingZone.sy;tempRef.current.zone={...ix.drawingZone};forceUpdate()}
-  },[board.selected, board.elements, isPlaying, getPos, esMovil, cvSize])
+  },[board.selected, board.elements, isPlaying, animSnapshot, getPos, esMovil, cvSize])
 
   const onPointerUp = useCallback((e) => {
     pointersRef.current.delete(e.pointerId)
@@ -722,6 +844,13 @@ const CreadorTareas = () => {
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         dispatchBoard({type:'UNDO'})
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault()   // en el navegador Ctrl+D es "agregar a favoritos"
+        /* Este efecto se registra una sola vez, así que no puede llamar a
+           duplicarSeleccion(): quedaría mirando el board del primer render.
+           El reducer ya sabe qué hay seleccionado; isPlaying sale del ref. */
+        if (!isPlayingRef.current) dispatchBoard({ type:'DUP_SEL', id: uid() })
       }
       if (e.key === 'Escape') {
         setTool('select')
@@ -956,6 +1085,22 @@ const CreadorTareas = () => {
               <span className="ti">↖</span> Seleccionar / Mover
             </div>
 
+            <SeccionSidebar titulo="Formaciones" abierta={seccionesAbiertas.formaciones} onToggle={()=>toggleSeccion('formaciones')}>
+              <div className="ct-grid s1">
+                {CLAVES_FORMACION.map(k=>(
+                  <div key={k} className="ct-tool wide" title={FORMACIONES[k].ayuda} onClick={()=>ponerFormacion(k,'propio')}>
+                    <span className="ti">⬢</span>{FORMACIONES[k].label}
+                  </div>
+                ))}
+                <div className="ct-tool wide" style={{color:'var(--red)',borderColor:'rgba(239,68,68,.35)'}}
+                     title="Pone el 3-1 del rival, enfrentado y en su color"
+                     onClick={()=>ponerFormacion('3-1','rival')}>
+                  <span className="ti">⬢</span>3-1 del rival
+                </div>
+              </div>
+            </SeccionSidebar>
+
+            <div className="ct-div"/>
             <SeccionSidebar titulo="Jugadores" abierta={seccionesAbiertas.jugadores} onToggle={()=>toggleSeccion('jugadores')}>
               <div className="ct-grid">
                 {TOOLS_PLAYERS.map(t=>(
@@ -1053,6 +1198,35 @@ const CreadorTareas = () => {
                   </select>
                 </div>
 
+                {frames.length > 1 && frameIdx > 0 && (
+                  <>
+                    <div className="ct-psec"><div className="ct-psec-title">Duración de este tramo</div></div>
+                    <div className="ct-prop-row">
+                      <span className="ct-prop-lbl">Llegar acá en</span>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <input className="ct-pinput" type="range" min={300} max={3000} step={100}
+                          value={frames[frameIdx]?.duracion ?? 800}
+                          onChange={e=>cambiarDuracion(Number(e.target.value))} style={{width:74}} />
+                        <span style={{fontSize:10,color:'var(--text)',width:34,textAlign:'right'}}>
+                          {((frames[frameIdx]?.duracion ?? 800)/1000).toFixed(1)}s
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{fontSize:9,color:'var(--muted)',padding:'0 14px 8px',lineHeight:1.4}}>
+                      Un pase corto y una corrida de 30 metros no duran lo mismo.
+                    </div>
+                  </>
+                )}
+
+                <div className="ct-psec"><div className="ct-psec-title">Espejar la jugada</div></div>
+                <div className="ct-prop-row">
+                  <span className="ct-prop-lbl">Este fotograma</span>
+                  <div className="ct-seg">
+                    <div className="ct-sopt" title="La misma jugada por la otra punta de la cancha" onClick={()=>espejarJugada('horizontal')}>⇄</div>
+                    <div className="ct-sopt" title="La misma jugada por el otro lado" onClick={()=>espejarJugada('vertical')}>⇅</div>
+                  </div>
+                </div>
+
                 <div className="ct-psec"><div className="ct-psec-title">Mostrar elementos</div></div>
                 <div className="ct-prop-row">
                   <span className="ct-prop-lbl">Áreas y Puntos</span>
@@ -1118,6 +1292,15 @@ const CreadorTareas = () => {
                   <div className="ct-prop-row"><span className="ct-prop-lbl">Punteado</span><div className="ct-seg"><div className={`ct-sopt${selData.dashed?' on':''}`} onClick={()=>upSel({dashed:true})}>Sí</div><div className={`ct-sopt${!selData.dashed?' on':''}`} onClick={()=>upSel({dashed:false})}>No</div></div></div>
                 </>}
 
+                {!isArrow && (
+                  <div className="ct-psec">
+                    <div className="ct-psec-title">Copiar</div>
+                    <div className="ct-sopt" style={{textAlign:'center',padding:'6px'}} onClick={duplicarSeleccion}>
+                      ⧉ Duplicar <span style={{opacity:.55}}>(Ctrl+D)</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="ct-psec">
                   <div className="ct-psec-title">Capas</div>
                   <div style={{display:'flex',gap:3,paddingBottom:4}}>
@@ -1135,6 +1318,8 @@ const CreadorTareas = () => {
       {!esMovil && (
         <div className="ct-bottombar">
           <TimelineBar
+            avance={avance} onAvance={irAAvance} onSalirScrub={salirDelScrub}
+            enScrub={!!animSnapshot && !isPlaying}
             verCebolla={verCebolla} onToggleCebolla={toggleCebolla}
             frames={frames} frameIdx={frameIdx} isPlaying={isPlaying}
             onPlay={togglePlay} onGo={cambiarFrame} onDup={duplicarFrameActual}
@@ -1495,7 +1680,8 @@ function SeccionSidebar({ titulo, abierta, onToggle, children }) {
   )
 }
 
-function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, onDel, verCebolla, onToggleCebolla }) {
+function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, onDel,
+                       verCebolla, onToggleCebolla, avance, onAvance, onSalirScrub, enScrub }) {
   return (
     <>
       <button className="ct-play-btn"
@@ -1525,7 +1711,26 @@ function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, 
       >
         👻 Fantasma
       </button>
-      {frameIdx>0 && (
+      {/* Barra de avance: parar la jugada en cualquier instante y mirarla.
+          Antes era play o nada. */}
+      {frames.length>1 && (
+        <>
+          <div style={{width:1,height:30,background:'var(--border)',flexShrink:0}}/>
+          <input
+            type="range" min={0} max={1} step={0.002} value={avance}
+            onChange={e=>onAvance(Number(e.target.value))}
+            title="Mover para ver la jugada en cualquier instante"
+            style={{width:150,flexShrink:0,accentColor:'var(--accent)',cursor:'pointer'}}
+          />
+          <span style={{fontSize:9,color:'var(--muted)',fontFamily:"'JetBrains Mono',monospace",width:32,flexShrink:0}}>
+            {Math.round(avance*100)}%
+          </span>
+          {enScrub && (
+            <button className="ct-tbtn" onClick={onSalirScrub} title="Volver a editar el fotograma">✎ Editar</button>
+          )}
+        </>
+      )}
+      {frameIdx>0 && !enScrub && (
         <span style={{fontSize:9,color:'var(--muted)',fontFamily:"'JetBrains Mono',monospace",whiteSpace:'nowrap'}}>
           arrastrá el punto del camino para curvarlo
         </span>
