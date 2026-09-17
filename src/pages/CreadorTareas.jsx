@@ -3,10 +3,11 @@
  * Motor táctico: FutsalBoard canvas (nativo, sin react-konva)
  */
 
-import { useState, useRef, useEffect, useReducer, useCallback } from 'react'
+import { useState, useRef, useEffect, useReducer, useCallback, useMemo } from 'react'
 import { useEsMovil } from '../utils/useEsMovil'
 import { supabase } from '../supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { trayectosEntre, tiradorEn, trazarTrayecto, puntoEnTrayecto, bowDesdeTirador, hayCurva } from '../utils/trayectoria'
 import { useToast } from '../components/ToastContext'
 import { useAuth } from '../context/AuthContext' 
 import { NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
@@ -232,9 +233,12 @@ function getDPR() {
 /* Pinta cancha + elementos en coordenadas logicas (BASE_W x baseH).
    La usan tanto el canvas en pantalla como el export a PNG. */
 function renderBoard(ctx, opts) {
-  const { elements, arrows, selected, pitchCfg, tempArrow, tempZone, isMobile } = opts
+  const { elements, arrows, selected, pitchCfg, tempArrow, tempZone, isMobile,
+          cebolla, trayectos, idArrastrado } = opts
   const baseH = getBaseH(pitchCfg.variant)
   renderPitch(ctx, BASE_W, baseH, pitchCfg)
+  if (cebolla?.length) drawCebolla(ctx, cebolla, BASE_W, isMobile)
+  if (trayectos?.length) drawTrayectos(ctx, trayectos, idArrastrado, opts.escalaPantalla)
   renderElements(ctx, elements, arrows, selected, BASE_W, tempArrow, tempZone, isMobile)
 }
 
@@ -405,6 +409,58 @@ function selRing(ctx,x,y,r) {
   ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([])
 }
 
+/* PAPEL CEBOLLA: el fotograma anterior, tenue, debajo del actual. Sin esto
+   se anima a ciegas: duplicás el cuadro, movés las fichas y no ves de dónde
+   venían. */
+function drawCebolla(ctx, elements, cW, isMobile) {
+  ctx.save()
+  ctx.globalAlpha = 0.22
+  elements.filter(e => !e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, null, cW, isMobile))
+  ctx.restore()
+}
+
+/* El camino que hace cada ficha desde el fotograma anterior, con el tirador
+   que lo curva. Es lo que después recorre la animación. */
+function drawTrayectos(ctx, trayectos, idArrastrado, escala = 1) {
+  /* La cancha se escala a la pantalla, asi que un radio en unidades logicas
+     se achica con ella: en un celular el tirador quedaba de unos 3 px y no
+     habia forma de agarrarlo. Todo lo de abajo se mide en px de PANTALLA y
+     se divide por la escala para volver a unidades logicas. */
+  const px = (n) => n / (escala || 1)
+  trayectos.forEach(t => {
+    const activo = t.id === idArrastrado
+    ctx.save()
+    ctx.strokeStyle = activo ? '#00ff88' : 'rgba(0,229,255,.55)'
+    ctx.lineWidth = px(activo ? 2.4 : 1.6)
+    ctx.setLineDash([px(7), px(6)])
+    trazarTrayecto(ctx, t.desde, t.hasta, t.bow)
+    ctx.stroke()
+    ctx.setLineDash([])
+
+    // Punto de partida: marca de donde salio.
+    ctx.fillStyle = 'rgba(0,229,255,.5)'
+    ctx.beginPath(); ctx.arc(t.desde.x, t.desde.y, px(3.5), 0, Math.PI*2); ctx.fill()
+
+    // Tirador. Se agranda mientras se arrastra para no perderlo bajo el dedo.
+    const r = px(activo ? 12 : 9)
+    ctx.fillStyle = activo ? '#00ff88' : '#0a0b0f'
+    ctx.strokeStyle = activo ? '#00ff88' : '#00e5ff'
+    ctx.lineWidth = px(2.2)
+    ctx.beginPath(); ctx.arc(t.tirador.x, t.tirador.y, r, 0, Math.PI*2)
+    ctx.fill(); ctx.stroke()
+    if (!hayCurva(t.bow) && !activo) {
+      // Recta todavia: una crucecita que invita a arrastrar.
+      const b = px(3.5)
+      ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = px(1.6)
+      ctx.beginPath()
+      ctx.moveTo(t.tirador.x - b, t.tirador.y); ctx.lineTo(t.tirador.x + b, t.tirador.y)
+      ctx.moveTo(t.tirador.x, t.tirador.y - b); ctx.lineTo(t.tirador.x, t.tirador.y + b)
+      ctx.stroke()
+    }
+    ctx.restore()
+  })
+}
+
 function drawArrow(ctx, a, selected) {
   const isSel = selected?.id===a.id
   const st = ARROW_STYLES[a.style]||ARROW_STYLES['arrow-pase']
@@ -528,6 +584,18 @@ const CSS = `
 .ct-tool.on{background:rgba(0,255,136,.07);border-color:var(--accent);color:var(--accent)}
 .ct-tool.wide{grid-column:span 2;flex-direction:row;gap:8px;padding:6px 10px;font-size:10px;justify-content:flex-start}
 .ct-div{height:1px;background:var(--border);margin:4px 8px}
+/* Cabecera plegable: el emoji de cada ficha no decía su color real (y 🟡 era
+   a la vez "Arq. Amarillo" y "Cono Plano"), así que ahora la muestra un punto
+   pintado con el color con el que se dibuja en la cancha. */
+.ct-sbh{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.8px;color:var(--muted);text-transform:uppercase;padding:11px 14px 5px}
+.ct-sbh:hover{color:var(--text)}
+.ct-sbh .caret{font-size:8px;opacity:.7;transition:transform .15s}
+.ct-sbh .caret.cerrado{transform:rotate(-90deg)}
+.ct-dot{width:15px;height:15px;border-radius:50%;border:2px solid;flex-shrink:0}
+.ct-tool-sel{display:flex;align-items:center;gap:8px;margin:10px 8px 4px;padding:9px 11px;background:var(--s2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;color:var(--muted);transition:all .12s}
+.ct-tool-sel:hover{background:var(--s3);border-color:var(--border2);color:var(--text)}
+.ct-tool-sel.on{background:rgba(0,255,136,.09);border-color:var(--accent);color:var(--accent)}
+.ct-tool-sel .ti{font-size:15px;line-height:1}
 .ct-canvas-area{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg);background-image:radial-gradient(ellipse at 30% 20%,rgba(0,229,255,.04) 0%,transparent 50%);overflow:hidden;position:relative}
 @media(max-width:768px){
   .ct-canvas-area{padding-bottom:calc(62px + env(safe-area-inset-bottom,12px))}
@@ -671,7 +739,7 @@ const CreadorTareas = () => {
   const [animSnapshot, setAnimSnapshot] = useState(null)
 
   const tempRef = useRef({ arrow:null, zone:null })
-  const ixRef   = useRef({ dragging:false, dOffX:0, dOffY:0, drawingArrow:null, drawingZone:null, tempTextPos:null })
+  const ixRef   = useRef({ dragging:false, dOffX:0, dOffY:0, drawingArrow:null, drawingZone:null, tempTextPos:null, bowId:null, bowDesde:null })
 
   const canvasRef  = useRef(null)
   const areaRef    = useRef(null)
@@ -688,6 +756,33 @@ const CreadorTareas = () => {
   const gestureRef = useRef(null)
   const resetVista = () => { const v={zoom:1,panX:0,panY:0}; viewRef.current=v; setView(v) }
   const [panelMovil, setPanelMovil] = useState(null)
+
+  /* Qué secciones del menú quedan abiertas. Antes estaban las cuatro
+     desplegadas siempre: 21 herramientas en una columna. */
+  const [seccionesAbiertas, setSeccionesAbiertas] = useState(() => {
+    try {
+      const g = JSON.parse(localStorage.getItem('ct_secciones') || 'null')
+      if (g) return g
+    } catch { /* modo privado o json roto */ }
+    return { jugadores: true, materiales: true, anotaciones: true }
+  })
+  const toggleSeccion = (k) => setSeccionesAbiertas(prev => {
+    const n = { ...prev, [k]: !prev[k] }
+    try { localStorage.setItem('ct_secciones', JSON.stringify(n)) } catch { /* modo privado */ }
+    return n
+  })
+
+  /* Papel cebolla: se ve mientras editás, nunca al reproducir ni en el PNG
+     exportado. La preferencia se recuerda porque es de las que cada CT deja
+     fija. */
+  const [verCebolla, setVerCebolla] = useState(() => {
+    try { return localStorage.getItem('ct_cebolla') !== '0' } catch { return true }
+  })
+  const toggleCebolla = () => setVerCebolla(v => {
+    const n = !v
+    try { localStorage.setItem('ct_cebolla', n ? '1' : '0') } catch { /* modo privado */ }
+    return n
+  })
   const [nombreTarea, setNombreTarea] = useState(tareaAEditar?.titulo||'')
   const [textModal, setTextModal]   = useState(false)
   const [textValue, setTextValue]   = useState('')
@@ -790,6 +885,28 @@ const CreadorTareas = () => {
     return () => { if (mq) mq.removeEventListener('change', onChange) }
   }, [])
 
+  /* El fotograma anterior es la referencia de todo: el fantasma y los caminos
+     salen de compararlo con lo que hay ahora en la pizarra. Sólo mientras se
+     edita: al reproducir estorbarían. */
+  const elementosPrevios = useMemo(
+    () => ((!isPlaying && frameIdx > 0) ? (frames[frameIdx - 1]?.elements || []) : []),
+    [isPlaying, frameIdx, frames]
+  )
+  const trayectos = useMemo(
+    () => (elementosPrevios.length ? trayectosEntre(elementosPrevios, board.elements) : []),
+    [elementosPrevios, board.elements]
+  )
+  /* El arrastre del tirador vive en un ref: lee la lista sin re-suscribir los
+     manejadores de puntero en cada cuadro. */
+  const trayectosRef = useRef(trayectos)
+  trayectosRef.current = trayectos
+
+  /* Px de pantalla por unidad logica. Con la cancha rotada el ancho logico
+     (BASE_W) se dibuja sobre el ALTO del canvas. */
+  const escalaPantalla = ((rotarCancha ? cvSize.h : cvSize.w) / BASE_W) * view.zoom
+  const escalaRef = useRef(escalaPantalla)
+  escalaRef.current = escalaPantalla
+
   useEffect(() => {
     const cv = canvasRef.current; if(!cv)return
     const ctx = cv.getContext('2d')
@@ -824,10 +941,15 @@ const CreadorTareas = () => {
       tempArrow: tempRef.current.arrow,
       tempZone: tempRef.current.zone,
       isMobile: esMovil,
+      cebolla: verCebolla ? elementosPrevios : null,
+      trayectos,
+      idArrastrado: ixRef.current.bowId,
+      escalaPantalla,
     })
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil, rotarCancha, view, dpr])
+  }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil, rotarCancha, view, dpr,
+      verCebolla, elementosPrevios, trayectos, escalaPantalla])
 
   function syncCurrentFrame(overrideIdx) {
     const idx = overrideIdx ?? frameIdx
@@ -861,7 +983,11 @@ const CreadorTareas = () => {
     setFrames(prev => {
       const a=[...prev]
       a[frameIdx] = {...a[frameIdx], elements:JSON.parse(JSON.stringify(board.elements)), arrows:JSON.parse(JSON.stringify(board.arrows))}
-      const newFrame = { id:`frame-${Date.now()}`, elements:JSON.parse(JSON.stringify(board.elements)), arrows:JSON.parse(JSON.stringify(board.arrows)) }
+      const newFrame = {
+        id:`frame-${Date.now()}`,
+        elements:JSON.parse(JSON.stringify(board.elements)).map(el=>{ const copia={...el}; delete copia.bow; return copia }),
+        arrows:JSON.parse(JSON.stringify(board.arrows)),
+      }
       a.splice(frameIdx+1, 0, newFrame)
       return a
     })
@@ -913,7 +1039,11 @@ const CreadorTareas = () => {
           const interpolated = (fA.elements||[]).map(elA => {
             const elB=(fB.elements||[]).find(b=>b.id===elA.id)
             if(!elB) return elA
-            return { ...elA, x:elA.x+(elB.x-elA.x)*ease, y:elA.y+(elB.y-elA.y)*ease }
+            /* El bow lo lleva la ficha en el fotograma de DESTINO: describe
+               cómo llegó hasta ahí. Sin bow el recorrido es la recta de
+               siempre. */
+            const q = puntoEnTrayecto(elA, elB, elB.bow, ease)
+            return { ...elA, x:q.x, y:q.y }
           })
           const newEls = (fB.elements||[]).filter(b=>!(fA.elements||[]).find(a=>a.id===b.id))
           setAnimSnapshot({ elements:[...interpolated,...(progress>.8?newEls:[])], arrows: fA.arrows||[] })
@@ -980,6 +1110,15 @@ const CreadorTareas = () => {
     if (esMovil && panelMovil) setPanelMovil(null)
     const p=getPos(e); const ix=ixRef.current
 
+    /* El tirador de la trayectoria gana sobre todo lo demás: está encima de la
+       cancha y suele caer cerca de otras fichas. Anda con cualquier
+       herramienta, así no hay que volver a Seleccionar sólo para curvar. */
+    const tir = tiradorEn(trayectosRef.current, p.x, p.y, 22 / (escalaRef.current || 1))
+    if (tir) {
+      ix.bowId = tir.id; ix.bowDesde = tir.desde
+      return
+    }
+
     if (tool==='select') {
       const arr=hitArrow(board.arrows,p.x,p.y)
       if(arr){dispatchBoard({type:'SELECT',sel:{id:arr.id,isArrow:true}});return}
@@ -1030,6 +1169,11 @@ const CreadorTareas = () => {
       return
     }
     const p=getPos(e); const ix=ixRef.current
+    if(ix.bowId){
+      const el=board.elements.find(x=>x.id===ix.bowId)
+      if(el) dispatchBoard({type:'UPDATE_SEL',id:ix.bowId,isArrow:false,bow:bowDesdeTirador(ix.bowDesde,el,p)})
+      return
+    }
     if(ix.dragging&&board.selected){
       if(!ix.hasDragged){
         const dist=Math.hypot(p.x-(ix.pointerDownX||p.x), p.y-(ix.pointerDownY||p.y))
@@ -1042,7 +1186,7 @@ const CreadorTareas = () => {
     }
     if(ix.drawingArrow){ix.drawingArrow.cx=p.x;ix.drawingArrow.cy=p.y;tempRef.current.arrow={...ix.drawingArrow};forceUpdate();return}
     if(ix.drawingZone){ix.drawingZone.w=p.x-ix.drawingZone.sx;ix.drawingZone.h=p.y-ix.drawingZone.sy;tempRef.current.zone={...ix.drawingZone};forceUpdate()}
-  },[board.selected, isPlaying, getPos, esMovil, cvSize])
+  },[board.selected, board.elements, isPlaying, getPos, esMovil, cvSize])
 
   const onPointerUp = useCallback((e) => {
     pointersRef.current.delete(e.pointerId)
@@ -1050,6 +1194,7 @@ const CreadorTareas = () => {
     if (pointersRef.current.size < 2) gestureRef.current=null
     if (pointersRef.current.size >= 1) return
     const p=getPos(e); const ix=ixRef.current
+    if(ix.bowId){ ix.bowId=null; ix.bowDesde=null; return }
     if(ix.dragging && !ix.hasDragged && board.selected){
       dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow}})
     }
@@ -1069,7 +1214,7 @@ const CreadorTareas = () => {
       }
       ix.drawingZone=null;tempRef.current.zone=null;forceUpdate()
     }
-  },[getPos])
+  },[getPos, board.selected])
 
   useEffect(()=>{
     function onKey(e){
@@ -1123,7 +1268,8 @@ const CreadorTareas = () => {
     const octx = off.getContext('2d')
     octx.setTransform(s, 0, 0, s, 0, 0)
     /* selected en null y sin temp: el PNG no se lleva el halo de seleccion
-       ni la flecha a medio dibujar. */
+       ni la flecha a medio dibujar. Tampoco se pasan cebolla ni trayectos:
+       el fantasma y los caminos son ayudas de edicion, no parte del grafico. */
     renderBoard(octx, {
       elements: board.elements,
       arrows: board.arrows,
@@ -1239,10 +1385,10 @@ const CreadorTareas = () => {
     {id:'arco',       icon:'⬛', label:'Arco'},
   ]
   const TOOLS_ANNOT = [
-    {id:'arrow-pase',       icon:'⤳', label:'Pase'},
-    {id:'arrow-conduccion', icon:'⤴', label:'Conducción'},
-    {id:'arrow-disparo',    icon:'🎯', label:'Disparo'},
-    {id:'arrow-presion',    icon:'⚡', label:'Presión'},
+    {id:'arrow-pase',       icon:'⇢', label:'Pase',       color:ARROW_STYLES['arrow-pase'].color},
+    {id:'arrow-conduccion', icon:'⇝', label:'Conducción', color:ARROW_STYLES['arrow-conduccion'].color},
+    {id:'arrow-disparo',    icon:'⇉', label:'Disparo',    color:ARROW_STYLES['arrow-disparo'].color},
+    {id:'arrow-presion',    icon:'⇻', label:'Presión',    color:ARROW_STYLES['arrow-presion'].color},
     {id:'zone-rect',        icon:'⬜', label:'Zona Rect.'},
     {id:'zone-ellipse',     icon:'⭕', label:'Zona Elipse'},
     {id:'text',             icon:'T',  label:'Texto'},
@@ -1279,6 +1425,9 @@ const CreadorTareas = () => {
 
       {!esMovil && (
         <div className={`ct-header${tareaIdEditando?' edit-mode':''}`}>
+          <button className="ct-tbtn" onClick={()=>navigate(-1)} title="Volver a la pantalla anterior" style={{flexShrink:0}}>← Volver</button>
+          <div style={{width:1,height:26,background:'var(--border)',flexShrink:0}}/>
+
           {tareaIdEditando && <div style={{background:'var(--blue)',color:'#fff',padding:'4px 10px',borderRadius:'6px',fontSize:'0.75rem',fontWeight:'bold',flexShrink:0}}>MODO EDICIÓN</div>}
 
           <input
@@ -1306,20 +1455,25 @@ const CreadorTareas = () => {
 
         {!esMovil && (
           <aside className="ct-sidebar">
-            <div className="ct-sbl">Jugadores</div>
-            <div className="ct-sbb">
+            {/* Seleccionar es la herramienta que más se usa y estaba al fondo
+                de todo, bajo un título "Modos". Ahora abre el menú. */}
+            <div className={`ct-tool-sel${tool==='select'?' on':''}`} onClick={()=>setTool('select')}>
+              <span className="ti">↖</span> Seleccionar / Mover
+            </div>
+
+            <SeccionSidebar titulo="Jugadores" abierta={seccionesAbiertas.jugadores} onToggle={()=>toggleSeccion('jugadores')}>
               <div className="ct-grid">
                 {TOOLS_PLAYERS.map(t=>(
                   <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} onClick={()=>setTool(t.id)}>
-                    <span className="ti">{t.icon}</span>{t.label}
+                    <span className="ct-dot" style={{background:TEAM_COLORS[t.id].fill,borderColor:TEAM_COLORS[t.id].stroke}}/>
+                    {t.label}
                   </div>
                 ))}
               </div>
-            </div>
+            </SeccionSidebar>
 
             <div className="ct-div"/>
-            <div className="ct-sbl">Materiales</div>
-            <div className="ct-sbb">
+            <SeccionSidebar titulo="Materiales" abierta={seccionesAbiertas.materiales} onToggle={()=>toggleSeccion('materiales')}>
               <div className="ct-grid">
                 {TOOLS_MAT.map(t=>(
                   <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} onClick={()=>setTool(t.id)}>
@@ -1327,27 +1481,18 @@ const CreadorTareas = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </SeccionSidebar>
 
             <div className="ct-div"/>
-            <div className="ct-sbl">Anotaciones</div>
-            <div className="ct-sbb">
+            <SeccionSidebar titulo="Anotaciones" abierta={seccionesAbiertas.anotaciones} onToggle={()=>toggleSeccion('anotaciones')}>
               <div className="ct-grid">
                 {TOOLS_ANNOT.map(t=>(
                   <div key={t.id} className={`ct-tool${tool===t.id?' on':''}`} onClick={()=>setTool(t.id)}>
-                    <span className="ti">{t.icon}</span>{t.label}
+                    <span className="ti" style={t.color?{color:t.color}:undefined}>{t.icon}</span>{t.label}
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="ct-div"/>
-            <div className="ct-sbl">Modos</div>
-            <div className="ct-sbb">
-              <div className="ct-grid s1">
-                <div className={`ct-tool wide${tool==='select'?' on':''}`} onClick={()=>setTool('select')}>↖ Seleccionar / Mover</div>
-              </div>
-            </div>
+            </SeccionSidebar>
           </aside>
         )}
 
@@ -1495,6 +1640,7 @@ const CreadorTareas = () => {
       {!esMovil && (
         <div className="ct-bottombar">
           <TimelineBar
+            verCebolla={verCebolla} onToggleCebolla={toggleCebolla}
             frames={frames} frameIdx={frameIdx} isPlaying={isPlaying}
             onPlay={togglePlay} onGo={cambiarFrame} onDup={duplicarFrameActual}
             onAdd={agregarFrameVacio} onDel={eliminarFrame}
@@ -1843,7 +1989,18 @@ const CreadorTareas = () => {
   )
 }
 
-function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, onDel }) {
+function SeccionSidebar({ titulo, abierta, onToggle, children }) {
+  return (
+    <>
+      <button className="ct-sbh" onClick={onToggle} aria-expanded={abierta}>
+        {titulo}<span className={`caret${abierta?'':' cerrado'}`}>▼</span>
+      </button>
+      {abierta && <div className="ct-sbb">{children}</div>}
+    </>
+  )
+}
+
+function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, onDel, verCebolla, onToggleCebolla }) {
   return (
     <>
       <button className="ct-play-btn"
@@ -1865,6 +2022,19 @@ function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, 
       <div style={{width:1,height:30,background:'var(--border)',flexShrink:0}}/>
       <button className="ct-tbtn" style={{background:'var(--blue)',color:'#fff',borderColor:'var(--blue)'}} onClick={onDup} title="Continuar jugada">⏭ Continuar</button>
       <button className="ct-tbtn" style={{background:'#222',borderColor:'#333'}} onClick={onAdd}>➕ Vacío</button>
+      <div style={{width:1,height:30,background:'var(--border)',flexShrink:0}}/>
+      <button
+        className={`ct-tbtn${verCebolla?' on':''}`}
+        onClick={onToggleCebolla}
+        title="Mostrar el fotograma anterior en transparencia, para ver de dónde viene cada ficha"
+      >
+        👻 Fantasma
+      </button>
+      {frameIdx>0 && (
+        <span style={{fontSize:9,color:'var(--muted)',fontFamily:"'JetBrains Mono',monospace",whiteSpace:'nowrap'}}>
+          arrastrá el punto del camino para curvarlo
+        </span>
+      )}
     </>
   )
 }
