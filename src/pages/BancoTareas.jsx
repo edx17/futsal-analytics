@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import FiltrosTareas from '../components/FiltrosTareas';
 import { puntoEnTrayecto } from '../utils/trayectoria';
+import { BASE_W, getBaseH, renderPitch, renderElements } from '../tactica/pizarra';
 import { etiquetaFase, etiquetaFormato, pasaFiltros, colorFase, leerFase, FILTROS_VACIOS,
          NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
 
@@ -73,55 +74,8 @@ const ReproductorLoop = ({ editorData }) => {
   const frames = editorData?.frames || [];
   const pitchCfg = editorData?.cancha || { variant: '40x20', material: 'azul' };
 
-  const PITCH_VARIANTS = {
-    '40x20': { mW: 40, mH: 20 },
-    '28x20': { mW: 28, mH: 20 },
-    '20x20_mitad': { mW: 20, mH: 20 },
-    '20x20_central': { mW: 20, mH: 20 },
-  };
-
-  const BASE_W = 800;
-  function getBaseH(variant) {
-    const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20'];
-    return BASE_W / (vrt.mW / vrt.mH);
-  }
-
-  const TEAM_COLORS = {
-    home: { fill: '#2979ff', stroke: '#82b0ff' },
-    away: { fill: '#ef4444', stroke: '#ff8a80' },
-    verde: { fill: '#22c55e', stroke: '#86efac' },
-    rosa: { fill: '#ec4899', stroke: '#f9a8d4' },
-    'gk-ama': { fill: '#eab308', stroke: '#fde047' },
-    'gk-vio': { fill: '#a855f7', stroke: '#d8b4fe' },
-    staff: { fill: '#111111', stroke: '#555555' },
-  };
-
-  const ARROW_STYLES = {
-    'arrow-pase': { color: '#ffffff', dash: [9,5], width: 2.2 },
-    'arrow-conduccion': { color: '#ffe600', dash: [], width: 2.5 },
-    'arrow-disparo': { color: '#ff3860', dash: [], width: 3 },
-    'arrow-presion': { color: '#00e5ff', dash: [4,3], width: 2 },
-  };
-
-  const MATERIALS = {
-    azul: (ctx,w,h) => { ctx.fillStyle='#1e3a8a'; ctx.fillRect(0,0,w,h) },
-    verde: (ctx,w,h) => { ctx.fillStyle='#064e3b'; ctx.fillRect(0,0,w,h) },
-    naranja: (ctx,w,h) => { ctx.fillStyle='#92400e'; ctx.fillRect(0,0,w,h) },
-    gris: (ctx,w,h) => { ctx.fillStyle='#334155'; ctx.fillRect(0,0,w,h) },
-    parquet: (ctx,w,h) => {
-      const g = ctx.createLinearGradient(0,0,w,0);
-      g.addColorStop(0,'#7c4f2a'); g.addColorStop(.5,'#9b6035'); g.addColorStop(1,'#7c4f2a');
-      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
-      ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = .8;
-      const pw = w/22;
-      for (let x=pw; x<w; x+=pw) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke() }
-    },
-    negro: (ctx,w,h) => {
-      const g = ctx.createLinearGradient(0,0,w,h);
-      g.addColorStop(0,'#1a1c26'); g.addColorStop(1,'#12141c');
-      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
-    },
-  };
+  /* El motor de dibujo es el mismo que usa el creador: antes había acá una
+     copia con sus propias constantes, que se iba despegando de la original. */
 
   useEffect(() => {
     const container = containerRef.current;
@@ -159,199 +113,6 @@ const ReproductorLoop = ({ editorData }) => {
     return () => observer.disconnect();
   }, [pitchCfg.variant, pitchCfg.tamaño]);
 
-  function mX(m, mW, L) { return L.px + (m/mW)*L.ppw; }
-  function mY(m, mH, L) { return L.py + (m/mH)*L.pph; }
-  function playerRadius(cW) { return cW * 0.021; } 
-  function lighten(hex, amt) {
-    if (!hex || !hex.startsWith('#')) return hex||'#fff';
-    let c = hex.slice(1); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
-    return '#'+c.match(/../g).map(h => Math.min(255,parseInt(h,16)+amt).toString(16).padStart(2,'0')).join('');
-  }
-
-  function drawPitch(ctx, cW, cH, cfg) {
-    const variant = cfg.variant || cfg.tamaño || '40x20';
-    const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20'];
-    const MW = vrt.mW, MH = vrt.mH;
-    const p = Math.min(cW, cH) * 0.045;
-    const L = { px: p, py: p, ppw: cW-2*p, pph: cH-2*p };
-    const lc = cfg.lineColor || '#ffffff';
-    const alpha = cfg.material === 'negro' ? .9 : .8;
-
-    ctx.fillStyle = '#0a0b0f'; ctx.fillRect(0,0,cW,cH);
-
-    ctx.save(); ctx.beginPath(); ctx.rect(L.px, L.py, L.ppw, L.pph); ctx.clip();
-    ctx.save(); ctx.translate(L.px, L.py);
-    (MATERIALS[cfg.material] || MATERIALS.azul)(ctx, L.ppw, L.pph);
-    ctx.restore(); ctx.restore();
-
-    ctx.shadowBlur = 16; ctx.shadowColor = 'rgba(0,0,0,.8)';
-    ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = 5;
-    ctx.strokeRect(L.px, L.py, L.ppw, L.pph); ctx.shadowBlur = 0;
-
-    function line(x1,y1,x2,y2,lw=1.5, dash=[]) {
-      ctx.strokeStyle=lc; ctx.lineWidth=lw; ctx.globalAlpha=alpha; ctx.setLineDash(dash);
-      ctx.beginPath(); ctx.moveTo(mX(x1,MW,L), mY(y1,MH,L)); ctx.lineTo(mX(x2,MW,L), mY(y2,MH,L)); ctx.stroke();
-      ctx.globalAlpha=1; ctx.setLineDash([]);
-    }
-    function dot(x,y,r=3) {
-      ctx.fillStyle=lc; ctx.globalAlpha=alpha;
-      ctx.beginPath(); ctx.arc(mX(x,MW,L), mY(y,MH,L), r, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha=1;
-    }
-
-    ctx.save(); ctx.beginPath(); ctx.rect(L.px, L.py, L.ppw, L.pph); ctx.clip();
-    const midX = MW/2, midY = MH/2;
-
-    if (variant === '40x20' || variant === '28x20' || variant === '20x20_central') {
-      line(midX,0, midX,MH, 2);
-      const rPx = (3/MW)*L.ppw;
-      ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.globalAlpha=alpha;
-      ctx.beginPath(); ctx.arc(mX(midX,MW,L), mY(midY,MH,L), rPx, 0, Math.PI*2); ctx.stroke();
-      ctx.globalAlpha=1; dot(midX, midY);
-    }
-
-    if (cfg.showZones !== false) {
-      const gy1 = midY - 1.5, gy2 = midY + 1.5;
-      ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.globalAlpha=.8;
-      const drawArea = (isLeft) => {
-        const baseX = isLeft ? 0 : MW; const sign = isLeft ? 1 : -1; const rPx = (6/MW)*L.ppw;
-        ctx.beginPath();
-        if (isLeft) {
-          ctx.arc(mX(baseX,MW,L), mY(gy1,MH,L), rPx, -Math.PI/2, 0, false);
-          ctx.lineTo(mX(baseX+6,MW,L), mY(gy2,MH,L));
-          ctx.arc(mX(baseX,MW,L), mY(gy2,MH,L), rPx, 0, Math.PI/2, false);
-        } else {
-          ctx.arc(mX(baseX,MW,L), mY(gy1,MH,L), rPx, -Math.PI/2, Math.PI, true);
-          ctx.lineTo(mX(baseX-6,MW,L), mY(gy2,MH,L));
-          ctx.arc(mX(baseX,MW,L), mY(gy2,MH,L), rPx, Math.PI, Math.PI/2, true);
-        }
-        ctx.stroke();
-        dot(baseX + 6*sign, midY, 2.5); dot(baseX + 10*sign, midY, 2.5);
-        const cr = (0.25/MW)*L.ppw;
-        ctx.beginPath(); ctx.arc(mX(baseX,MW,L), mY(0,MH,L), cr, isLeft?0:Math.PI/2, isLeft?Math.PI/2:Math.PI, false); ctx.stroke();
-        ctx.beginPath(); ctx.arc(mX(baseX,MW,L), mY(MH,MH,L), cr, isLeft?-Math.PI/2:Math.PI, isLeft?0:-Math.PI/2, false); ctx.stroke();
-      };
-      if (variant !== '20x20_central') { drawArea(true); drawArea(false); }
-    }
-    ctx.restore();
-    ctx.strokeStyle=lc; ctx.lineWidth=2; ctx.globalAlpha=alpha;
-    ctx.strokeRect(L.px, L.py, L.ppw, L.pph); ctx.globalAlpha=1;
-  }
-
-  function drawElements(ctx, elements, arrows, cW) {
-    elements.filter(e => e.type?.startsWith('zone')).forEach(el => drawItem(ctx, el, cW));
-    arrows.forEach(a => drawArr(ctx, a));
-    elements.filter(e => !e.type?.startsWith('zone')).forEach(el => drawItem(ctx, el, cW));
-  }
-
-  function drawArr(ctx, a) {
-    const st = ARROW_STYLES[a.style]||ARROW_STYLES['arrow-pase'];
-    const color = a.color||st.color;
-    ctx.strokeStyle=color; ctx.lineWidth=a.lineW||st.width;
-    ctx.setLineDash(a.dashed!==undefined?(a.dashed?[9,5]:[]):st.dash);
-    ctx.globalAlpha=a.opacity??1;
-    const curve=a.curve||0, mx2=(a.x1+a.x2)/2, my2=(a.y1+a.y2)/2;
-    const dx=a.x2-a.x1, dy=a.y2-a.y1;
-    const cpx=mx2-dy*curve, cpy=my2+dx*curve;
-    ctx.beginPath(); ctx.moveTo(a.x1,a.y1); ctx.quadraticCurveTo(cpx,cpy,a.x2,a.y2); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha=1;
-    const ang=Math.atan2(a.y2-cpy,a.x2-cpx), hs=(a.lineW||st.width)*3.5;
-    ctx.fillStyle=color;
-    ctx.beginPath(); ctx.moveTo(a.x2,a.y2);
-    ctx.lineTo(a.x2-hs*Math.cos(ang-.42),a.y2-hs*Math.sin(ang-.42));
-    ctx.lineTo(a.x2-hs*Math.cos(ang+.42),a.y2-hs*Math.sin(ang+.42));
-    ctx.closePath(); ctx.fill();
-  }
-
-  function drawItem(ctx, el, cW) {
-    const { type: t, x, y, rotation = 0 } = el;
-    ctx.save();
-    let cx = x, cy = y;
-    if (t === 'zone-rect' || t === 'zone-ellipse') { cx = x + el.w/2; cy = y + el.h/2; }
-    if (rotation) { ctx.translate(cx, cy); ctx.rotate(rotation * Math.PI / 180); ctx.translate(-cx, -cy); }
-
-    const PLAYER_TYPES = ['home','away','verde','rosa','gk-ama','gk-vio','staff'];
-
-    if (PLAYER_TYPES.includes(t)) {
-      const r = (el.size==='sm'?.8:el.size==='lg'?1.2:1)*playerRadius(cW);
-      const tc = TEAM_COLORS[t] || TEAM_COLORS.home;
-      const fill = el.color || tc.fill;
-      ctx.shadowBlur=5; ctx.shadowColor='rgba(0,0,0,.5)';
-      const g = ctx.createRadialGradient(x-r*.3,y-r*.35,0,x,y,r);
-      g.addColorStop(0, lighten(fill,55)); g.addColorStop(1, fill);
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle = el.stroke || tc.stroke; ctx.lineWidth=1.8; ctx.stroke(); ctx.shadowBlur=0;
-      
-      if (t==='gk-ama'||t==='gk-vio'||t==='staff') {
-        ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.globalAlpha=.45;
-        ctx.beginPath(); ctx.arc(x,y,r+3,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
-      }
-      ctx.fillStyle='#fff'; ctx.font=`700 ${r*.85}px Syne,sans-serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(el.label||'', x, y+.5);
-    }
-    else if (t==='ball') {
-      const r = cW*0.013; ctx.globalAlpha = 1;
-      ctx.shadowBlur=4; ctx.shadowColor='rgba(0,0,0,.5)';
-      ctx.fillStyle='#ffffff'; ctx.beginPath(); ctx.arc(x, y, r*0.9, 0, Math.PI*2); ctx.fill();
-      ctx.font = `${r*2.2}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('⚽', x, y + r*0.08); ctx.shadowBlur=0;
-    }
-    else if (t==='cono_alto'||t==='cono') {
-      const r = cW*0.012; ctx.shadowBlur=4; ctx.shadowColor='rgba(0,0,0,.4)';
-      ctx.fillStyle='#ea580c'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#fb923c'; ctx.beginPath(); ctx.arc(x,y,r*0.6,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,r*0.2,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0;
-    }
-    else if (t==='cono_plato') {
-      const r = cW*0.013; ctx.shadowBlur=2; ctx.shadowColor='rgba(0,0,0,.4)';
-      ctx.fillStyle='#facc15'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#ca8a04'; ctx.beginPath(); ctx.arc(x,y,r*0.3,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle='#a16207'; ctx.lineWidth=1; ctx.stroke(); ctx.shadowBlur=0;
-    }
-    else if (t==='valla') {
-      const w=cW*.055, h=cW*.012; ctx.shadowBlur=4; ctx.shadowColor='rgba(0,0,0,.5)';
-      const g = ctx.createLinearGradient(x, y-h/2, x, y+h/2);
-      g.addColorStop(0, '#fcd34d'); g.addColorStop(1, '#d97706');
-      ctx.fillStyle=g; ctx.fillRect(x-w/2, y-h/2, w, h);
-      ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.strokeRect(x-w/2,y-h/2,w,h);
-      ctx.fillStyle='#222'; ctx.fillRect(x-w/2+2,y-h,4,h*2); ctx.fillRect(x+w/2-6,y-h,4,h*2); ctx.shadowBlur=0;
-    }
-    else if (t==='mini_arco'||t==='arco') {
-      const w = t==='mini_arco' ? cW*.05 : cW*.09; const depth = t==='mini_arco' ? w*0.4 : w*0.35;
-      ctx.shadowBlur=5; ctx.shadowColor='rgba(0,0,0,0.5)';
-      ctx.beginPath(); ctx.moveTo(x - w/2, y); ctx.lineTo(x - w/2 * 0.8, y - depth); ctx.lineTo(x + w/2 * 0.8, y - depth); ctx.lineTo(x + w/2, y);
-      ctx.fillStyle='rgba(255, 255, 255, 0.15)'; ctx.fill();
-      ctx.save(); ctx.clip(); ctx.beginPath(); ctx.strokeStyle='rgba(255, 255, 255, 0.4)'; ctx.lineWidth=0.5;
-      for(let i=-w; i<w*2; i+=w/8){ ctx.moveTo(x+i,y); ctx.lineTo(x+i+depth,y-depth); ctx.moveTo(x+i,y); ctx.lineTo(x+i-depth,y-depth); }
-      ctx.stroke(); ctx.restore();
-      ctx.beginPath(); ctx.moveTo(x - w/2, y); ctx.lineTo(x - w/2 * 0.8, y - depth); ctx.lineTo(x + w/2 * 0.8, y - depth); ctx.lineTo(x + w/2, y);
-      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x - w/2, y); ctx.lineTo(x + w/2, y);
-      ctx.strokeStyle=t==='arco'?'#ff3860':'#ffffff'; ctx.lineWidth=3; ctx.stroke();
-      ctx.beginPath(); ctx.arc(x - w/2, y, 2.5, 0, Math.PI*2); ctx.arc(x + w/2, y, 2.5, 0, Math.PI*2);
-      ctx.fillStyle='#fff'; ctx.fill(); ctx.shadowBlur=0;
-    }
-    else if (t==='zone-rect') {
-      ctx.globalAlpha=el.opacity??0.18; ctx.fillStyle=el.fill||'#00e5ff'; ctx.fillRect(el.x,el.y,el.w,el.h);
-      ctx.globalAlpha=1; ctx.strokeStyle=el.stroke||'#00e5ff'; ctx.lineWidth=el.lineW||1.8;
-      ctx.setLineDash(el.dashed?[7,4]:[]); ctx.strokeRect(el.x,el.y,el.w,el.h); ctx.setLineDash([]);
-    }
-    else if (t==='zone-ellipse') {
-      const ecx=el.x+el.w/2, ecy=el.y+el.h/2;
-      ctx.globalAlpha=el.opacity??0.18; ctx.fillStyle=el.fill||'#ff3860';
-      ctx.beginPath(); ctx.ellipse(ecx,ecy,Math.abs(el.w/2),Math.abs(el.h/2),0,0,Math.PI*2); ctx.fill();
-      ctx.globalAlpha=1; ctx.strokeStyle=el.stroke||'#ff3860'; ctx.lineWidth=el.lineW||1.8;
-      ctx.setLineDash(el.dashed?[7,4]:[]); ctx.stroke(); ctx.setLineDash([]);
-    }
-    else if (t==='text') {
-      ctx.font=`${el.bold?'700':'500'} ${el.fontSize||13}px Syne,sans-serif`; ctx.textAlign='left'; ctx.textBaseline='top';
-      if(el.bg!==false){const m=ctx.measureText(el.label||'');ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(x-4,y-4,m.width+8,(el.fontSize||13)+8);}
-      ctx.fillStyle=el.color||'#fff'; ctx.fillText(el.label||'',x,y);
-    }
-    ctx.restore();
-  }
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -374,8 +135,8 @@ const ReproductorLoop = ({ editorData }) => {
           ctx.clearRect(0, 0, cvSize.w, cvSize.h);
           ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
           
-          drawPitch(ctx, BASE_W, baseH, pitchCfg);
-          drawElements(ctx, f0.elements || f0.elementos || [], f0.arrows || f0.lineas || [], BASE_W);
+          renderPitch(ctx, BASE_W, baseH, pitchCfg);
+          renderElements(ctx, f0.elements || f0.elementos || [], f0.arrows || f0.lineas || [], BASE_W);
           break; 
         }
 
@@ -413,8 +174,8 @@ const ReproductorLoop = ({ editorData }) => {
               ctx.clearRect(0, 0, cvSize.w, cvSize.h);
               ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
               
-              drawPitch(ctx, BASE_W, baseH, pitchCfg);
-              drawElements(ctx, interpolated, arrsA, BASE_W);
+              renderPitch(ctx, BASE_W, baseH, pitchCfg);
+              renderElements(ctx, interpolated, arrsA, BASE_W);
 
               if (progress < 1) animId = requestAnimationFrame(animate);
               else resolve();

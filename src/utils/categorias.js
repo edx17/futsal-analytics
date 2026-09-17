@@ -54,3 +54,49 @@ export const categoriasVisiblesPara = (categoriasClub, asignadas) => {
   const interseccion = club.filter((c) => permitidas.has(normCat(c)));
   return interseccion.length > 0 ? interseccion : ordenarCategorias(mias);
 };
+
+/* ── LAS CATEGORÍAS REALES DEL CLUB ────────────────────────────────────────
+ *
+ * Había cuatro listas distintas escritas a mano en la app, más las pantallas
+ * que las deducían de los datos. Por eso una mostraba hasta Octava, otra
+ * sumaba las promocionales por año y otra se quedaba en Cuarta.
+ *
+ * Fuente única: lo que existe de verdad en la base. "Activa" es la que tiene
+ * al menos un jugador en el plantel; las que sólo aparecen en partidos
+ * viejos quedan como históricas, para no perder el acceso a sus datos pero
+ * tampoco ofrecerlas al cargar cosas nuevas.
+ *
+ * LISTA_BASE es sólo el respaldo para un club recién creado que todavía no
+ * cargó un solo jugador: sin ella la primera pantalla saldría vacía.
+ */
+export const LISTA_BASE = [
+  'Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava',
+];
+
+/* `jugadores` y `partidos` son filas con { categoria } (y `activo` en las de
+ * jugadores). Devuelve las activas, las históricas y la unión de ambas. */
+export function categoriasDelClub(jugadores = [], partidos = []) {
+  const conPlantel = jugadores.filter(j => j && j.activo !== false).map(j => j.categoria);
+  const activas = unirCategorias(conPlantel);
+  const vistas = new Set(activas.map(normCat));
+
+  const historicas = unirCategorias(
+    jugadores.map(j => j?.categoria),
+    partidos.map(p => p?.categoria),
+  ).filter(c => !vistas.has(normCat(c)));
+
+  return { activas, historicas, todas: unirCategorias(activas, historicas) };
+}
+
+/* Lo que una pantalla ofrece para elegir: las activas del club, recortadas
+ * por las asignadas al CT. Con `incluirHistoricas` suma las que ya no tienen
+ * plantel, para las pantallas de consulta. Si el club todavía no cargó nada,
+ * cae en LISTA_BASE para no dejar un selector vacío. */
+export function categoriasParaElegir({
+  jugadores = [], partidos = [], asignadas = [], incluirHistoricas = false,
+} = {}) {
+  const { activas, todas } = categoriasDelClub(jugadores, partidos);
+  const base = incluirHistoricas ? todas : activas;
+  const fuente = base.length > 0 ? base : LISTA_BASE;
+  return categoriasVisiblesPara(fuente, asignadas);
+}

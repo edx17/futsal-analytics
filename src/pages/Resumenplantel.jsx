@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCategorias } from '../utils/useCategorias';
 import { calcularMinutosPorJugador, calcularParticipacion } from '../analytics/engine';
 import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
@@ -141,12 +142,11 @@ export default function ResumenPlantel() {
   }, [clubId]);
 
   /* ---------- categorías disponibles ---------- */
-  const categoriasDisponibles = useMemo(() => {
-    const base = misCategorias.length > 0 ? misCategorias : ['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava'];
-    const desdeJug = raw.jugadores.map(j => j.categoria).filter(Boolean);
-    const set = Array.from(new Set([...base, ...desdeJug]));
-    return misCategorias.length > 0 ? set.filter(c => misCategorias.includes(c)) : set;
-  }, [misCategorias, raw.jugadores]);
+  /* Con históricas: es una pantalla de consulta y se miran temporadas
+     pasadas, donde puede haber categorías que hoy ya no tienen plantel. */
+  const { categorias: categoriasDisponibles } = useCategorias({
+    incluirHistoricas: true, asignadas: misCategorias,
+  });
 
   /* ---------- partidos con scope de categoría (base para el filtro de torneo) ---------- */
   const partidosScopeCat = useMemo(() => {

@@ -1,160 +1,141 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
-import { Stage, Layer, Circle, Rect, Text, Group, Line, Path } from 'react-konva';
 import { leerFase, subfasesDe } from '../utils/taxonomiaTareas';
+import { BASE_W, getBaseH, renderBoard, getDPR, convertOldEl, convertOldLine } from '../tactica/pizarra';
+import { puntoEnTrayecto } from '../utils/trayectoria';
 
 // =======================================================
-// REPRODUCTOR AUTOMÁTICO DE JUGADAS (MODO GIF)
+// REPRODUCTOR DE JUGADAS
+//
+// Dibuja con el MISMO motor que el creador (src/tactica/pizarra.js). Antes
+// era un reproductor aparte hecho en Konva que leía el formato viejo
+// (`elementos`, `lineas`), así que toda jugada guardada por el creador
+// actual se veía acá como una cancha vacía. Sigue entendiendo el formato
+// viejo, ahora convirtiéndolo, para que las jugadas históricas no se
+// pierdan.
 // =======================================================
 const ReproductorLoop = ({ editorData }) => {
-  const containerRef = useRef(null);
-  const [stageSize, setStageSize] = useState({ w: 500, h: 281, scale: 1 });
-  
-  const frames = editorData?.frames || [];
-  const cancha = editorData?.cancha || { tamaño: '40x20', color: '#064e3b' };
-  
-  const [animElements, setAnimElements] = useState(frames[0]?.elementos || []);
-  const [currentLineas, setCurrentLineas] = useState(frames[0]?.lineas || []);
+  const contenedorRef = useRef(null);
+  const canvasRef = useRef(null);
+  const vivoRef = useRef(true);
+  const [tam, setTam] = useState({ w: 0, h: 0 });
 
-  const getDimensionesLógicas = () => {
-    switch (cancha.tamaño) {
-      case '20x20_mitad': case '20x20_central': return { w: 500, h: 500 };
-      case '28x20': return { w: 700, h: 500 };
-      default: return { w: 900, h: 500 }; 
-    }
-  };
-  const logicalSize = getDimensionesLógicas();
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        const cw = containerRef.current.clientWidth;
-        const ch = containerRef.current.clientHeight;
-        const scale = Math.min(cw / logicalSize.w, ch / logicalSize.h) * 0.95;
-        setStageSize({ w: cw, h: ch, scale });
-      }
+  /* Normaliza los dos formatos a uno solo, una vez. */
+  const { frames, pitchCfg } = useMemo(() => {
+    const crudos = editorData?.frames?.length
+      ? editorData.frames
+      : [{ elements: editorData?.elements, elementos: editorData?.elementos,
+           arrows: editorData?.arrows, lineas: editorData?.lineas }];
+    const normalizados = crudos.map((f, i) => ({
+      id: f.id || `f${i}`,
+      elements: f.elements || (f.elementos || []).map(convertOldEl),
+      arrows:   f.arrows   || (f.lineas   || []).map(convertOldLine),
+      duracion: f.duracion,
+    }));
+    const cancha = editorData?.cancha || {};
+    return {
+      frames: normalizados,
+      pitchCfg: {
+        variant: cancha.tamaño || cancha.variant || '40x20',
+        material: cancha.material || 'azul',
+        showZones: true, showGrid: false, goals: 'both', lineColor: '#ffffff',
+      },
     };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [cancha.tamaño, logicalSize.w, logicalSize.h]);
+  }, [editorData]);
+
+  const baseH = getBaseH(pitchCfg.variant);
 
   useEffect(() => {
-    let isMounted = true;
-    if (frames.length < 2) return;
+    const medir = () => {
+      const c = contenedorRef.current;
+      if (!c) return;
+      const dispo = { w: c.clientWidth, h: c.clientHeight };
+      if (!dispo.w || !dispo.h) return;
+      const razon = BASE_W / baseH;
+      let w = Math.min(dispo.w, dispo.h * razon);
+      let h = w / razon;
+      if (h > dispo.h) { h = dispo.h; w = h * razon; }
+      setTam({ w: Math.round(w), h: Math.round(h) });
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    if (contenedorRef.current) ro.observe(contenedorRef.current);
+    return () => ro.disconnect();
+  }, [baseH]);
 
-    const DURATION = 800;
-    const PAUSE = 500;
+  useEffect(() => {
+    vivoRef.current = true;
+    const cv = canvasRef.current;
+    if (!cv || !tam.w) return;
+    const ctx = cv.getContext('2d');
+    const dpr = getDPR();
 
-    const playLoop = async () => {
-      while (isMounted) {
-        for (let i = 0; i < frames.length - 1; i++) {
-          if (!isMounted) break;
-          const frameA = frames[i];
-          const frameB = frames[i + 1];
-          setCurrentLineas(frameA.lineas || []);
+    const pintar = (elements, arrows) => {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, tam.w, tam.h);
+      ctx.scale(tam.w / BASE_W, tam.h / baseH);
+      renderBoard(ctx, { elements, arrows, selected: null, pitchCfg,
+                         tempArrow: null, tempZone: null, isMobile: false });
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    };
 
-          await new Promise(resolve => {
-            let startTime = null;
-            const animate = (timestamp) => {
-              if (!isMounted) return resolve();
-              if (!startTime) startTime = timestamp;
-              const progress = Math.min((timestamp - startTime) / DURATION, 1);
-              const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+    if (frames.length < 2) {
+      pintar(frames[0]?.elements || [], frames[0]?.arrows || []);
+      return;
+    }
 
-              const interpolated = (frameA.elementos || []).map(elA => {
-                const elB = (frameB.elementos || []).find(b => b.id === elA.id);
+    const PAUSA = 450;
+    const reproducir = async () => {
+      while (vivoRef.current) {
+        for (let i = 0; i < frames.length - 1 && vivoRef.current; i++) {
+          const a = frames[i], b = frames[i + 1];
+          /* Cada tramo dura lo que diga el fotograma de destino. */
+          const dur = Number(b.duracion) > 0 ? Number(b.duracion) : 800;
+          await new Promise(listo => {
+            let t0 = null;
+            const paso = (ts) => {
+              if (!vivoRef.current) return listo();
+              if (!t0) t0 = ts;
+              const p = Math.min((ts - t0) / dur, 1);
+              const ease = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+              const interpolados = a.elements.map(elA => {
+                const elB = b.elements.find(x => x.id === elA.id);
                 if (!elB) return elA;
-                return {
-                  ...elA,
-                  x: elA.x + (elB.x - elA.x) * ease,
-                  y: elA.y + (elB.y - elA.y) * ease,
-                  rotation: (elA.rotation||0) + ((elB.rotation||0) - (elA.rotation||0)) * ease,
-                };
+                const q = puntoEnTrayecto(elA, elB, elB.bow, ease);
+                return { ...elA, x: q.x, y: q.y,
+                         rotation: (elA.rotation || 0) + ((elB.rotation || 0) - (elA.rotation || 0)) * ease };
               });
-
-              setAnimElements(interpolated);
-              if (progress < 1) requestAnimationFrame(animate);
-              else resolve();
+              const nuevos = b.elements.filter(x => !a.elements.find(y => y.id === x.id));
+              pintar([...interpolados, ...(p > .8 ? nuevos : [])], a.arrows);
+              if (p < 1) requestAnimationFrame(paso); else listo();
             };
-            requestAnimationFrame(animate);
+            requestAnimationFrame(paso);
           });
-
-          if (!isMounted) break;
-          setCurrentLineas(frameB.lineas || []);
-          setAnimElements(frameB.elementos || []);
-          await new Promise(res => setTimeout(res, PAUSE));
+          if (!vivoRef.current) break;
+          pintar(b.elements, b.arrows);
+          await new Promise(r => setTimeout(r, PAUSA));
         }
-        await new Promise(res => setTimeout(res, 1000));
-        if (isMounted) {
-          setAnimElements(frames[0].elementos || []);
-          setCurrentLineas(frames[0].lineas || []);
-        }
+        if (!vivoRef.current) break;
+        await new Promise(r => setTimeout(r, 700));
+        pintar(frames[0].elements, frames[0].arrows);
       }
     };
-
-    playLoop();
-    return () => { isMounted = false; };
-  }, [frames]);
-
-  const RenderElemento = ({ el }) => {
-    const scaleFactor = (el.radio || 15) / 35; 
-    switch(el.tipo) {
-      case 'jugador': case 'arquero': case 'staff':
-        return (
-          <Group scaleX={scaleFactor} scaleY={scaleFactor}>
-            <Group x={-67} y={-40}>
-                <Path data="M 80 10 A 40 40 0 0 0 80 70 L 65 65 A 25 25 0 0 1 65 15 Z M 84 40 A 10 10 0 1 1 50 40 A 10 10 0 1 1 84 40" fill={el.color} stroke="black" strokeWidth={2} />
-            </Group>
-            <Text text={el.texto||''} fontSize={22} fontStyle="bold" fill={el.color === '#fff' || el.color === '#eab308' ? '#000' : '#fff'} x={-15} y={-11} width={30} align="center" />
-          </Group>
-        );
-      case 'pelota': return (<Group><Circle radius={el.radio} fill="#fff" stroke="#000" strokeWidth={1.5} /><Circle radius={el.radio * 0.4} fill="#000" /></Group>);
-      case 'cono_alto': return (<Group><Circle radius={el.radio} fill={el.color} stroke="#c2410c" strokeWidth={1} /><Circle radius={el.radio * 0.4} fill="#fff" opacity={0.8} /></Group>);
-      case 'cono_plato': return (<Group><Circle radius={el.radio} fill={el.color} stroke="#ca8a04" strokeWidth={1} /><Circle radius={el.radio * 0.3} fill={cancha.color} stroke="rgba(0,0,0,0.2)" strokeWidth={1} /></Group>);
-      case 'valla': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={el.h/2 - 2} width={el.w} height={4} fill={el.color} stroke="#000" strokeWidth={0.5} /></Group>);
-      case 'escalera': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={0} width={el.w} height={el.h} fill="rgba(250, 204, 21, 0.3)" stroke="#facc15" strokeWidth={1} /></Group>);
-      case 'arco': case 'mini_arco': return (<Group x={-el.w/2} y={-el.h/2}><Rect x={0} y={0} width={el.w} height={el.h} fill="rgba(255,255,255,0.2)" stroke="#fff" strokeWidth={1.5} /></Group>);
-      default: return <Rect width={el.w} height={el.h} fill={el.color} stroke="#000" strokeWidth={1} x={-el.w/2} y={-el.h/2} />;
-    }
-  };
-
-  const DibujoCancha = () => {
-    const stroke = "rgba(255,255,255,0.7)"; const sw = 3; const midX = logicalSize.w / 2; const midY = logicalSize.h / 2; const padding = 20; const t = cancha.tamaño;
-    return (<Group><Rect width={logicalSize.w} height={logicalSize.h} fill={cancha.color} /><Rect x={padding} y={padding} width={logicalSize.w - padding * 2} height={logicalSize.h - padding * 2} stroke={stroke} strokeWidth={sw} cornerRadius={5} />{(t === '40x20' || t === '28x20' || t === '20x20_central') && (<Group><Line points={[midX, padding, midX, logicalSize.h - padding]} stroke={stroke} strokeWidth={sw} /><Circle x={midX} y={midY} radius={70} stroke={stroke} strokeWidth={sw} /><Circle x={midX} y={midY} radius={4} fill={stroke} /></Group>)}{t !== '20x20_central' && (<Group><Rect x={padding} y={midY - 100} width={100} height={200} stroke={stroke} strokeWidth={sw} cornerRadius={[0, 70, 70, 0]} />{(t === '40x20' || t === '28x20') && (<Rect x={logicalSize.w - padding - 100} y={midY - 100} width={100} height={200} stroke={stroke} strokeWidth={sw} cornerRadius={[70, 0, 0, 70]} />)}</Group>)}</Group>);
-  };
+    reproducir();
+    return () => { vivoRef.current = false; };
+  }, [frames, pitchCfg, baseH, tam]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Stage width={stageSize.w} height={stageSize.h} scaleX={stageSize.scale} scaleY={stageSize.scale} x={(stageSize.w - logicalSize.w * stageSize.scale) / 2 || 0} y={(stageSize.h - logicalSize.h * stageSize.scale) / 2 || 0}>
-        <Layer>
-          <DibujoCancha />
-          {currentLineas.map(li => {
-            const isRecta = li.tipoTool === 'dibujar_pase';
-            const dashPattern = li.tipoTrazo === 'punteada' ? [12, 6] : [];
-            let endX = li.puntos[li.puntos.length-2], endY = li.puntos[li.puntos.length-1];
-            let angleRad = li.puntos.length >= 4 ? Math.atan2(endY - li.puntos[li.puntos.length-3], endX - li.puntos[li.puntos.length-4]) : 0;
-            return (
-              <Group key={li.id}>
-                <Line points={li.puntos} stroke={li.color} strokeWidth={li.grosor} opacity={li.transparencia} dash={dashPattern} lineCap="round" lineJoin="round" tension={isRecta ? 0 : 0.5} />
-                <Group x={endX} y={endY} rotation={angleRad * 180 / Math.PI} opacity={li.transparencia}>
-                  {li.topeFinal === 'triangulo' && (<Path data={`M 0 0 L -${li.grosor * 3} -${li.grosor * 1.5} L -${li.grosor * 3} ${li.grosor * 1.5} Z`} fill={li.color} stroke="#000" strokeWidth={0.5} />)}
-                </Group>
-              </Group>
-            );
-          })}
-          {animElements.map(el => (
-            <Group key={el.id} x={el.x} y={el.y} rotation={el.rotation} scaleX={el.scaleX} scaleY={el.scaleY}>
-              <RenderElemento el={el} />
-            </Group>
-          ))}
-        </Layer>
-      </Stage>
+    <div ref={contenedorRef} style={{ width: '100%', height: '100%', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+      <canvas
+        ref={canvasRef}
+        width={Math.round(tam.w * getDPR())} height={Math.round(tam.h * getDPR())}
+        style={{ width: tam.w + 'px', height: tam.h + 'px', borderRadius: '4px' }}
+      />
       {frames.length > 1 && (
-        <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', animation: 'pulse 2s infinite' }}>
+        <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>
           ▶ ANIMACIÓN
         </div>
       )}

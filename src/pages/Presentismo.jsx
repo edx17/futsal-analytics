@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { useCategorias } from '../utils/useCategorias';
 import { useEsMovil } from '../utils/useEsMovil';
 import CalendarioAsistencia from '../components/CalendarioAsistencia';
 import { resumirMesPorDia, claveMes } from '../utils/resumenMensual';
@@ -43,12 +44,21 @@ function Presentismo() {
   const [asistenciasHoy, setAsistenciasHoy] = useState({});
   const [notasHoy, setNotasHoy] = useState({});
 
-  // --- EFECTO DEL GRAN FILTRO: Auto-seleccionar categoría permitida ---
+  /* Sólo las categorías con plantel hoy: acá se toma asistencia, y una
+     división sin jugadores no tiene a quién pasarle lista. */
+  const { categorias: categoriasMostrar } = useCategorias({
+    asignadas: esCT ? misCategorias : [],
+  });
+
+  /* Auto-seleccionar una categoría que exista de verdad. El estado arranca
+     en 'Primera' por defecto, y si el club no tiene esa división la pantalla
+     quedaba con el selector en una categoría vacía y sin nadie a quien pasar
+     lista. Ahora cae en la primera disponible. */
   useEffect(() => {
-    if (esCT && misCategorias.length > 0 && !misCategorias.includes(categoria)) {
-      setCategoria(misCategorias[0]); // Selecciona la primera que tenga permitida
+    if (categoriasMostrar.length > 0 && !categoriasMostrar.includes(categoria)) {
+      setCategoria(categoriasMostrar[0]);
     }
-  }, [esCT, misCategorias, categoria]);
+  }, [categoriasMostrar, categoria]);
 
   useEffect(() => {
     if (!esJugador && categoria && clubId) {
@@ -265,10 +275,6 @@ function Presentismo() {
 
   if (esJugador) return <div style={{ textAlign: 'center', padding: '50px' }}>🚫 ACCESO RESTRINGIDO</div>;
 
-  // Lista de categorías dinámica (Si es CT, solo las suyas. Si es Manager/Admin, todas)
-  const categoriasMostrar = (esCT && misCategorias.length > 0)
-    ? misCategorias
-    : ['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', '2016', '2017', '2018', '2019'];
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', animation: 'fadeIn 0.3s', paddingBottom: '80px' }}>

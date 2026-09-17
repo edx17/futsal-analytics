@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { createClient } from '@supabase/supabase-js';
+import { useCategorias } from '../utils/useCategorias';
 
 function Usuarios() {
   const { perfil } = useAuth();
+  /* Las categorías del club al que se le está asignando el CT, no una lista
+     fija. Con históricas, por si se está reactivando una división. */
+  const { todas: categoriasDelClub } = useCategorias({ incluirHistoricas: true });
   const [usuarios, setUsuarios] = useState([]);
   const [clubes, setClubes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -592,7 +596,7 @@ function Usuarios() {
                 <div className="input-field" style={{ gridColumn: 'span 2' }}>
                   <label style={labelStyle}>CATEGORÍAS ASIGNADAS (Filtra la vista del CT)</label>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', background: 'var(--panel)', padding: '10px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                    {['Primera', 'Tercera', 'Cuarta', 'Quinta', 'Sexta', 'Séptima', 'Octava', '2016', '2017', '2018', '2019'].map(cat => {
+                    {categoriasDelClub.map(cat => {
                       const checked = (usuarioEnEdicion.categorias_asignadas || []).includes(cat);
                       return (
                         <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text)', fontSize: '0.8rem', cursor: 'pointer', padding: '4px 8px', background: checked ? '#10b98122' : 'transparent', borderRadius: '4px', border: checked ? '1px solid #10b981' : '1px solid transparent' }}>
