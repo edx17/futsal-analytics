@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import FiltrosTareas from '../components/FiltrosTareas';
+import { puntoEnTrayecto } from '../utils/trayectoria';
 import { etiquetaFase, etiquetaFormato, pasaFiltros, colorFase, leerFase, FILTROS_VACIOS,
          NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
 
@@ -397,10 +398,13 @@ const ReproductorLoop = ({ editorData }) => {
               const interpolated = elsA.map(elA => {
                 const elB = elsB.find(b => b.id === elA.id);
                 if (!elB) return elA;
+                /* El recorrido curvo lo lleva la ficha en el fotograma de
+                   destino. Sin él, la recta de siempre. */
+                const q = puntoEnTrayecto(elA, elB, elB.bow, ease);
                 return {
                   ...elA,
-                  x: elA.x + (elB.x - elA.x) * ease,
-                  y: elA.y + (elB.y - elA.y) * ease,
+                  x: q.x,
+                  y: q.y,
                   rotation: (elA.rotation||0) + ((elB.rotation||0) - (elA.rotation||0)) * ease,
                 };
               });
