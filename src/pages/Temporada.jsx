@@ -12,7 +12,9 @@ import {
 import { analizarTemporadaGlobal } from '../analytics/seasonEngine';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
-import SeasonReport from '../components/SeasonReport';
+import ModalPlaca from '../placas/ModalPlaca';
+import PlacaTemporada from '../placas/PlacaTemporada';
+import { datosDelClub } from '../placas/club';
 import { TablaResponsive } from '../components/TablaResponsive';
 
 /* Analiza la secuencia completa de resultados (más viejo -> más reciente).
@@ -769,91 +771,56 @@ function Temporada() {
       .sort((a, b) => b.total - a.total);
   }, [analiticaGlobal]);
 
-  const datosParaReporte = useMemo(() => {
+  /* LOS DATOS DE LA PLACA DE TEMPORADA
+   *
+   * Recuperaciones, pérdidas y duelos van sin contraparte: la toma de datos
+   * no registra esas acciones del rival, así que publicarlas enfrentadas
+   * mostraba un "24 a 0" que no era cierto. */
+  const datosPlacaTemporada = useMemo(() => {
     if (!analiticaGlobal || partidosFiltrados.length === 0) return null;
-    const stats = analiticaGlobal.statsEquipo;
-    const miClubGlobal = localStorage.getItem('mi_club') || 'MI EQUIPO';
-    const pj = stats.partidosJugados || 1;
+    const st = analiticaGlobal.statsEquipo;
+    const ad = analiticaGlobal.statsAdicionales;
 
-    const radarData = [
-      { subject: 'Ataque (xG)', A: Math.min(100, (stats.xgTotal / pj) * 25) },
-      { subject: 'Presión Alta', A: Math.min(100, (analiticaGlobal.statsAdicionales.recuperacionesAltas / pj) * 20) },
-      { subject: 'Duelos',       A: stats.duelosDefTotales > 0 ? (stats.duelosDefGanados / stats.duelosDefTotales) * 100 : 0 },
-      { subject: 'Construcción', A: Math.min(100, (stats.asistenciasTotales / pj) * 30) },
-      { subject: 'Solidez Def.', A: 100 - Math.min(100, (stats.xgRival / pj) * 25) },
-    ];
+    const pts = st.victorias * 3 + st.empates;
+    const duelosGan = (ad.duelosDefGanados || 0) + (ad.duelosOfeGanados || 0);
+    const duelosTot = (ad.duelosDefTotales || 0) + (ad.duelosOfeTotales || 0);
+
+    const fila = (j, campo) => ({
+      dorsal: j.dorsal,
+      nombre: (j.apellido || j.nombre || 'S/D').toUpperCase(),
+      valor: j[campo],
+    });
 
     return {
-      isTemporada: true,
-      equipos: {
-        local: { nombre: miClubGlobal, escudo: partidosFiltrados[0]?.escudo_propio || null },
-        visitante: { nombre: 'RIVALES MÚLTIPLES', escudo: null }
-      },
-      resultado: {
-        final: `${analiticaGlobal.golesPropiosTotales} - ${analiticaGlobal.golesRivalesTotales}`,
-        primerTiempo: `${stats.golesFavorPT} - ${stats.golesContraPT}`
-      },
+      club: datosDelClub(perfil),
       info: {
-        fecha: 'Temporada 2025/2026',
-        torneo: filtroCompeticion === 'Todas' ? 'Todas las Competencias' : filtroCompeticion,
-        estadio: '-',
-        categoria: filtroCategoria === 'Todas' ? 'Todas las Categorías' : filtroCategoria,
-        balanceTemporada: `${stats.victorias}V - ${stats.empates}E - ${stats.derrotas}D`
+        competicion: (filtroCompeticion === 'Todas' ? 'TODAS LAS COMPETENCIAS' : filtroCompeticion).toUpperCase(),
+        categoria: (filtroCategoria === 'Todas' ? 'TODAS LAS CATEGORÍAS' : filtroCategoria).toUpperCase(),
+        periodo: `${st.partidosJugados} ${st.partidosJugados === 1 ? 'PARTIDO ANALIZADO' : 'PARTIDOS ANALIZADOS'}`,
       },
-      stats: {
-        local: { 
-          xg: Number(stats.xgTotal.toFixed(2)), 
-          remates: analiticaGlobal.rematesPropiosTotales, 
-          rematesAlArco: analiticaGlobal.golesPropiosTotales + analiticaGlobal.desgloseRemates.propio.atajados, 
-          recuperaciones: analiticaGlobal.statsAdicionales.recuperaciones, 
-          perdidas: analiticaGlobal.statsAdicionales.perdidasPeligrosas, 
-          faltas: 0 
-        },
-        visitante: { 
-          xg: Number(stats.xgRival.toFixed(2)), 
-          remates: 0, 
-          rematesAlArco: analiticaGlobal.golesRivalesTotales + analiticaGlobal.desgloseRemates.rival.atajados, 
-          recuperaciones: 0, 
-          perdidas: 0, 
-          faltas: 0 
-        },
-        topJugadores: analiticaGlobal.topGoleadores.slice(0, 5).map(j => ({
-          nombre: `${j.dorsal || '-'} ${(j.apellido || j.nombre || 'S/N').toUpperCase()}`,
-          rating: j.goles,
-          goles: j.goles
-        })),
-        topJugadoresExt: analiticaGlobal.topAsistidores.slice(0, 5).map(j => ({
-          nombre: `${j.dorsal || '-'} ${(j.apellido || j.nombre || 'S/N').toUpperCase()}`,
-          goles: j.asistencias,
-          asistencias: j.asistencias,
-          rec: 0,
-          remates: 0
-        }))
+      balance: {
+        pj: st.partidosJugados, pg: st.victorias, pe: st.empates, pp: st.derrotas, pts,
+        eficacia: st.partidosJugados > 0 ? Math.round((pts / (st.partidosJugados * 3)) * 100) : 0,
       },
-      radarData,
-      statsAdicionales: analiticaGlobal.statsAdicionales,
-      abp: analiticaGlobal.abp,
-      desgloseRemates: analiticaGlobal.desgloseRemates,
-      perfilRemate: analiticaGlobal.perfilRemate,
-      territoryPct: analiticaGlobal.territoryPct,
-      golesZonas: analiticaGlobal.golesZonas || {},
-      desgasteData: [
-        { name: '1er TIEMPO', Anotados: stats.golesFavorPT, Recibidos: stats.golesContraPT },
-        { name: '2do TIEMPO', Anotados: stats.golesFavorST, Recibidos: stats.golesContraST },
+      goles: {
+        gf: analiticaGlobal.golesPropiosTotales,
+        gc: analiticaGlobal.golesRivalesTotales,
+        xgF: st.xgTotal, xgC: st.xgRival,
+      },
+      propio: {
+        recuperaciones: ad.recuperaciones,
+        perdidas: ad.perdidasPeligrosas,
+        duelosPct: duelosTot > 0 ? Math.round((duelosGan / duelosTot) * 100) : 0,
+      },
+      goleadores: (analiticaGlobal.topGoleadores || []).slice(0, 5).map(j => fila(j, 'goles')),
+      asistidores: (analiticaGlobal.topAsistidores || []).slice(0, 5).map(j => fila(j, 'asistencias')),
+      tiempos: [
+        { rotulo: '1T', af: st.golesFavorPT, ec: st.golesContraPT },
+        { rotulo: '2T', af: st.golesFavorST, ec: st.golesContraST },
       ],
-      golesOrigen: {
-        local: analiticaGlobal.dataOrigenGol.length > 0
-          ? analiticaGlobal.dataOrigenGol
-          : [{ name: 'Sin Goles', value: 1 }],
-        rival: analiticaGlobal.dataOrigenGolRival?.length > 0
-          ? analiticaGlobal.dataOrigenGolRival
-          : []
-      },
-      tiros: [],
-      xgFlow: [],
-      recYPer: [],
     };
-  }, [analiticaGlobal, partidosFiltrados, filtroCategoria, filtroCompeticion]);
+  }, [analiticaGlobal, partidosFiltrados, perfil, filtroCategoria, filtroCompeticion]);
+
 
   const COLORS_ORIGEN = {
     'Ataque Posicional': '#3b82f6', 
@@ -888,8 +855,9 @@ function Temporada() {
           <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             📊 FILTROS AVANZADOS DE TEMPORADA <InfoBox texto="Aislá contextos específicos. Las estadísticas de abajo se recalcularán al instante cruzando todas las opciones que elijas." />
           </div>
-          <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', padding: '8px 15px', fontSize: '0.8rem' }}>
-            📄 EXPORTAR REPORTE
+          <button onClick={() => setMostrarReporte(true)} disabled={!datosPlacaTemporada} className="btn-action"
+            style={{ width: esMovil ? '100%' : 'auto', padding: '8px 15px', fontSize: '0.8rem', opacity: datosPlacaTemporada ? 1 : 0.45 }}>
+            🖼 EXPORTAR PLACA
           </button>
         </div>
 
@@ -1737,58 +1705,14 @@ function Temporada() {
         </div>
       )}
 
-      {/* ══ OVERLAY DEL REPORTE ══ */}
-      {mostrarReporte && datosParaReporte && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.95)', zIndex: 9999, overflowY: 'auto', padding: '20px'
-        }}>
-          <div style={{
-            maxWidth: '1100px', margin: '0 auto', marginBottom: '10px',
-            display: 'flex', gap: '10px', justifyContent: 'flex-end'
-          }}>
-            <button
-              onClick={async () => {
-                try {
-                  const html2canvas = (await import('html2canvas')).default;
-                  const el = document.getElementById('season-report-exportable');
-                  const canvas = await html2canvas(el, {
-                    scale: 1,
-                    useCORS: true,
-                    backgroundColor: '#0d0d0d'
-                  });
-                  const link = document.createElement('a');
-                  link.download = `temporada-${Date.now()}.png`;
-                  link.href = canvas.toDataURL('image/png');
-                  link.click();
-                } catch (e) {
-                  console.error('Error exportando:', e);
-                  alert('No se pudo exportar. Intentá hacer captura de pantalla.');
-                }
-              }}
-              style={{
-                background: 'var(--accent)', color: '#000', border: 'none',
-                padding: '10px 20px', fontWeight: 900, cursor: 'pointer',
-                borderRadius: '4px', fontSize: '0.85rem'
-              }}
-            >
-              DESCARGAR PNG ↓
-            </button>
-            <button
-              onClick={() => setMostrarReporte(false)}
-              style={{
-                background: '#ef4444', color: '#ffffff', border: 'none',
-                padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px'
-              }}
-            >
-              CERRAR ✖
-            </button>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <SeasonReport data={datosParaReporte} />
-          </div>
-        </div>
-      )}
+      {/* ══ LA PLACA DE LA TEMPORADA ══ */}
+      <ModalPlaca
+        abierto={mostrarReporte && !!datosPlacaTemporada}
+        onCerrar={() => setMostrarReporte(false)}
+        nombreArchivo={`temporada-${datosPlacaTemporada?.club.nombre || 'club'}`}
+      >
+        {(formato) => <PlacaTemporada datos={datosPlacaTemporada} formato={formato} />}
+      </ModalPlaca>
 
     </div>
   );
