@@ -13,7 +13,8 @@ import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
-import ReportGenerator from '../components/ReportGenerator';
+import VisorPlaca from '../placas/VisorPlaca';
+import PlacaPartido from '../placas/PlacaPartido';
 import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
 import { fetchPaginado } from '../utils/supaPaginado';
@@ -1062,6 +1063,66 @@ return 'Todas';
     };
   }, [partidoSeleccionado, analitica, rematesDetalle, eventosPartido, miClubGlobal, miEscudoGlobal]);
 
+
+  /* Lo que consume la placa nueva. Se arma aparte de `datosParaReporte`
+     —que sigue alimentando la vista express— porque la placa muestra otras
+     cosas: acá NO van recuperaciones/pérdidas/duelos del rival, que la toma
+     de datos no registra y que la placa vieja publicaba como ceros. */
+  const datosPlaca = useMemo(() => {
+    if (!partidoSeleccionado || !analitica) return null;
+    const p = analitica.stats.propio, r = analitica.stats.rival;
+
+    let golesPT = 0, golesRivalPT = 0;
+    eventosPartido.forEach(ev => {
+      if (ev.periodo === 'PT' && (ev.accion === 'Gol' || ev.accion === 'Remate - Gol')) {
+        if (ev.equipo === 'Propio') golesPT++; else golesRivalPT++;
+      }
+    });
+
+    const dGan = analitica.duelos.defensivos.ganados + analitica.duelos.ofensivos.ganados;
+    const dTot = analitica.duelos.defensivos.total + analitica.duelos.ofensivos.total;
+
+    const mejor = analitica.ranking.find(j => j.impacto !== '-');
+    const marcadores = new Map();
+    eventosPartido.forEach(ev => {
+      if (ev.equipo !== 'Propio') return;
+      if (ev.accion !== 'Gol' && ev.accion !== 'Remate - Gol') return;
+      const j = jugadores.find(x => String(x.id) === String(ev.id_jugador));
+      const nom = (j?.apellido || j?.nombre || 'S/D').toUpperCase();
+      if (!marcadores.has(nom)) marcadores.set(nom, []);
+      marcadores.get(nom).push(ev.minuto != null ? `${ev.minuto}'` : '');
+    });
+
+    return {
+      club: { nombre: miClubGlobal, escudo: partidoSeleccionado.escudo_propio || miEscudoGlobal },
+      rival: { nombre: partidoSeleccionado.rival || 'RIVAL', escudo: partidoSeleccionado.escudo_rival },
+      resultado: { propios: p.goles, rival: r.goles, primerTiempo: `${golesPT} — ${golesRivalPT}` },
+      info: {
+        fecha: partidoSeleccionado.fecha || '',
+        torneo: (partidoSeleccionado.competicion || 'AMISTOSO').toUpperCase(),
+        jornada: partidoSeleccionado.jornada ? `FECHA ${partidoSeleccionado.jornada}` : '',
+        categoria: partidoSeleccionado.categoria || '',
+      },
+      comparado: {
+        xgPropio: analitica.xgPropio, xgRival: analitica.xgRival,
+        rematesPropio: p.remates, rematesRival: r.remates,
+        alArcoPropio: p.goles + p.atajados, alArcoRival: r.goles + r.atajados,
+        faltasPropio: p.faltas, faltasRival: r.faltas,
+      },
+      propio: {
+        recuperaciones: p.rec, perdidas: p.perdidas,
+        duelosPct: dTot > 0 ? Math.round((dGan / dTot) * 100) : 0,
+      },
+      figura: mejor ? {
+        nombre: (mejor.apellido || mejor.nombre || 'S/D').toUpperCase(),
+        dorsal: mejor.dorsal, rol: mejor.rol,
+        rating: Number(mejor.impacto).toFixed(1),
+        goles: mejor.goles || 0, remates: mejor.remates || 0,
+        recuperaciones: mejor.rec || 0, plusMinus: mejor.plusMinus ?? 0,
+      } : null,
+      goles: [...marcadores.entries()].map(([nombre, mins]) => ({ nombre, minutos: mins.filter(Boolean).join(' · ') })),
+    };
+  }, [partidoSeleccionado, analitica, eventosPartido, jugadores, miClubGlobal, miEscudoGlobal]);
 
   // ---- LISTA DE GOLEADORES PARA LA VISTA EXPRESS ----
   const goleadores = useMemo(() => {
@@ -2237,7 +2298,12 @@ const COLORS_ORIGEN = {
             </button>
           </div>
           
-          <ReportGenerator data={datosParaReporte} />
+          <VisorPlaca
+            nombreArchivo={`${miClubGlobal}-vs-${partidoSeleccionado?.rival || 'rival'}`}
+            onCerrar={() => setMostrarReporte(false)}
+          >
+            {(formato) => <PlacaPartido datos={datosPlaca} formato={formato} />}
+          </VisorPlaca>
         </div>
       )}
 
