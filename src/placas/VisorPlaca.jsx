@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FORMATOS, CLAVES_FORMATO, FORMATO_POR_DEFECTO, formatoDe } from './formatos';
 import { exportarPlaca } from './exportar';
-import { asegurarEstilos, COLOR_CLUB, COLOR_RIVAL } from './estilos';
+import { asegurarEstilos, COLOR_CLUB, COLOR_RIVAL, aRGB } from './estilos';
 
 /* EL MARCO DE TODAS LAS PLACAS
  *
@@ -108,6 +108,7 @@ export default function VisorPlaca({
             width: f.ancho, height: f.alto,
             transform: `scale(${escala})`, transformOrigin: 'top left',
             '--pl-club': colorClub, '--pl-rival': COLOR_RIVAL,
+            '--pl-club-rgb': aRGB(colorClub), '--pl-rival-rgb': aRGB(COLOR_RIVAL),
           }}
         >
           {typeof children === 'function' ? children(f) : children}

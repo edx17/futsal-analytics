@@ -1,5 +1,11 @@
 /* EL SISTEMA VISUAL DE LAS PLACAS
  *
+ * NADA DE color-mix() ACÁ. El navegador lo entiende perfecto, pero html2canvas
+ * —que es quien convierte la placa en PNG— tiene su propio lector de colores y
+ * se corta con "unsupported color function". El color del club se pasa también
+ * descompuesto en `--pl-club-rgb` ("0,230,118") para poder escribir
+ * rgba(var(--pl-club-rgb),.26), que sí resuelve a un rgba() plano.
+ *
  * Una sola hoja para todas. Antes cada placa traía sus colores escritos a
  * mano y ninguna se parecía a la otra.
  *
@@ -16,8 +22,8 @@ export const CSS_PLACAS = `
 .pl *{box-sizing:border-box;margin:0;padding:0}
 
 .pl-aura{position:absolute;inset:0;pointer-events:none;background:
-  radial-gradient(120% 60% at 50% -10%, color-mix(in srgb,var(--pl-club) 26%,transparent) 0%,transparent 62%),
-  radial-gradient(90% 50% at 100% 105%, color-mix(in srgb,var(--pl-club) 12%,transparent) 0%,transparent 60%)}
+  radial-gradient(120% 60% at 50% -10%, rgba(var(--pl-club-rgb),.26) 0%,transparent 62%),
+  radial-gradient(90% 50% at 100% 105%, rgba(var(--pl-club-rgb),.12) 0%,transparent 60%)}
 .pl-trama{position:absolute;inset:0;pointer-events:none;opacity:.55;
   background-image:linear-gradient(var(--pl-linea) 1px,transparent 1px),linear-gradient(90deg,var(--pl-linea) 1px,transparent 1px);
   background-size:54px 54px;-webkit-mask-image:radial-gradient(70% 60% at 50% 40%,#000 0%,transparent 100%);
@@ -34,7 +40,7 @@ export const CSS_PLACAS = `
 .pl-esc{width:132px;height:132px;border-radius:50%;display:grid;place-items:center;overflow:hidden;
   font-weight:900;font-size:44px;border:3px solid;flex-shrink:0}
 .pl-esc img{width:100%;height:100%;object-fit:cover}
-.pl-esc-l{background:color-mix(in srgb,var(--pl-club) 14%,transparent);border-color:var(--pl-club);color:var(--pl-club)}
+.pl-esc-l{background:rgba(var(--pl-club-rgb),.14);border-color:var(--pl-club);color:var(--pl-club)}
 .pl-esc-v{background:rgba(255,77,94,.10);border-color:var(--pl-rival);color:var(--pl-rival)}
 .pl-nomeq{font-size:30px;font-weight:800;letter-spacing:-.01em;text-align:center;line-height:1.1;max-width:300px}
 .pl-cifras{display:flex;align-items:center;gap:22px;font-weight:900;font-size:150px;line-height:.82;letter-spacing:-.05em}
@@ -53,8 +59,8 @@ export const CSS_PLACAS = `
 .pl-mitad{position:absolute;top:30px;height:22px;background:var(--pl-sup2);border-radius:4px}
 .pl-mL{left:0;right:50.5%}.pl-mV{left:50.5%;right:0}
 .pl-bL,.pl-bV{position:absolute;top:30px;height:22px;border-radius:4px}
-.pl-bL{right:50.5%;background:linear-gradient(90deg,color-mix(in srgb,var(--pl-club) 42%,transparent),var(--pl-club))}
-.pl-bV{left:50.5%;background:linear-gradient(90deg,var(--pl-rival),color-mix(in srgb,var(--pl-rival) 42%,transparent))}
+.pl-bL{right:50.5%;background:linear-gradient(90deg,rgba(var(--pl-club-rgb),.42),var(--pl-club))}
+.pl-bV{left:50.5%;background:linear-gradient(90deg,var(--pl-rival),rgba(var(--pl-rival-rgb),.42))}
 
 /* bloque de datos propios: no es una comparación */
 .pl-propio{background:linear-gradient(135deg,var(--pl-sup) 0%,transparent 90%);
@@ -69,7 +75,7 @@ export const CSS_PLACAS = `
 .pl-mini{font-family:var(--pl-mono);font-size:14px;letter-spacing:.2em;color:var(--pl-dim)}
 .pl-caja{background:var(--pl-sup);border:1px solid var(--pl-linea);border-radius:12px;padding:24px 26px;position:relative;overflow:hidden}
 .pl-mvp::after{content:'';position:absolute;right:-40px;top:-40px;width:170px;height:170px;border-radius:50%;
-  background:radial-gradient(circle,color-mix(in srgb,var(--pl-club) 22%,transparent),transparent 70%)}
+  background:radial-gradient(circle,rgba(var(--pl-club-rgb),.22),transparent 70%)}
 .pl-mvp-n{font-size:42px;font-weight:900;letter-spacing:-.02em;margin:6px 0 2px}
 .pl-chip{display:inline-flex;align-items:center;background:var(--pl-club);color:#04120C;
   font-family:var(--pl-mono);font-weight:800;font-size:34px;padding:5px 16px;border-radius:8px;margin-top:10px}
@@ -103,5 +109,14 @@ export function asegurarEstilos() {
 
 /* Color del club. Más adelante puede salir del escudo; por ahora es el verde
  * de la marca, que además es el del escudo de Libertadores. */
+/* html2canvas no lee color-mix(), así que el color se pasa también como
+ * componentes para poder armar rgba() planos. */
+export function aRGB(hex) {
+  let c = String(hex || '').trim().replace('#', '');
+  if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+  if (!/^[0-9a-f]{6}$/i.test(c)) return '0,230,118';
+  return [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16)).join(',');
+}
+
 export const COLOR_CLUB = '#00E676';
 export const COLOR_RIVAL = '#FF4D5E';
