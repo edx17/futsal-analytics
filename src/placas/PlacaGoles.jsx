@@ -41,7 +41,7 @@ export default function PlacaGoles({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={esStory ? { paddingTop: 120 } : undefined}>
+      <div className="pl-cont" style={{ paddingTop: esStory ? 120 : 56 }}>
 
         <Ceja
           izquierda="ORIGEN DE LOS GOLES"

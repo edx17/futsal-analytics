@@ -27,7 +27,7 @@ export default function PlacaTabla({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={esStory ? { paddingTop: 130 } : undefined}>
+      <div className="pl-cont" style={{ paddingTop: esStory ? 130 : 56 }}>
 
         <Ceja izquierda="POSICIONES" resaltado={rotuloModo} derecha={info.categoria} />
 

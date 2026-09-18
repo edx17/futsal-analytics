@@ -122,9 +122,13 @@ const barra = {
   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
   flexWrap: 'wrap', width: '100%', maxWidth: '760px',
 };
+/* El borde va en propiedades separadas y no en el atajo `border`: el botón
+ * activo pisa `borderColor`, y mezclar el atajo con la propiedad suelta hace
+ * que React avise en cada cambio de formato. */
 const btnFormato = {
   padding: '9px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '.78rem', fontWeight: 800,
-  border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-dim)',
+  borderWidth: '1px', borderStyle: 'solid', borderColor: 'var(--border)',
+  background: 'transparent', color: 'var(--text-dim)',
   fontFamily: 'inherit', letterSpacing: '.03em',
 };
 const btnBajar = {
