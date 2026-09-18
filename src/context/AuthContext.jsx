@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data, error } = await supabase
         .from('perfiles')
-        .select(`*, clubes ( nombre, plan_actual, suscripcion_activa, fecha_vencimiento )`)
+        .select(`*, clubes ( nombre, escudo_url, plan_actual, suscripcion_activa, fecha_vencimiento )`)
         .eq('id', userId)
         .maybeSingle(); // Usamos maybeSingle para evitar errores si no existe la fila
 
@@ -60,6 +60,9 @@ export const AuthProvider = ({ children }) => {
           // Nombre del club propio para todos los módulos (antes solo lo seteaba Visión Global,
           // por eso el CT caía en 'TU CLUB' y no matcheaba sus partidos).
           if (data.clubes?.nombre) localStorage.setItem('mi_club', data.clubes.nombre);
+          // El escudo sólo lo dejaba Configuración al guardar, así que hasta que
+          // alguien no entrara ahí las placas salían con las iniciales.
+          if (data.clubes?.escudo_url) localStorage.setItem('escudo_url', data.clubes.escudo_url);
         }
       }
     } catch (err) {

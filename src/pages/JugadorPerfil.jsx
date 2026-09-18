@@ -16,8 +16,40 @@ import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import { disponibilidadDe } from '../utils/disponibilidad';
-import PlayerReportGenerator from '../components/PlayerReportGenerator';
-import PlayerReportIGStory from '../components/PlayerReportIGStory';
+import ModalPlaca from '../placas/ModalPlaca';
+import PlacaJugador from '../placas/PlacaJugador';
+import { datosDelClub } from '../placas/club';
+
+/* Un número que se lee mejor con el signo adelante: +18 dice más que 18. */
+const fmtFirmado = (v, dec = 1) => {
+  const n = Number(v) || 0;
+  const t = dec > 0 ? n.toFixed(dec) : String(Math.round(n));
+  return n > 0 ? `+${t}` : t;
+};
+
+/* De qué tipo es una acción, para pintarla en el mapa de la placa. Devuelve
+   null si no corresponde dibujarla (un pase, una falta, un duelo). Los nombres
+   se comparan en minúscula porque la toma los guarda de varias formas. */
+const tipoDeAccion = (ev) => {
+  const a = (ev.accion || '').toLowerCase();
+  const esRival = ev.equipo === 'Rival' || ev.is_rival || a.includes('rival');
+
+  if (esRival) {
+    /* Sólo los remates del rival, y sólo para el arquero: son sus atajadas y
+       sus goles recibidos vistos desde el otro lado. */
+    if (a.includes('atajad') || a.includes('parad')) return 'atajada';
+    if (a.includes('gol') && !a.includes('anulado')) return 'recibido';
+    return null;
+  }
+
+  if (a.includes('gol recibido')) return 'recibido';
+  if (a.includes('atajad') || a.includes('parad')) return 'atajada';
+  if (a === 'gol' || a === 'remate - gol') return 'gol';
+  if (a.includes('remate')) return 'remate';
+  if (a.includes('recuperación') || a.includes('intercepción')) return 'recuperacion';
+  if (a.includes('pérdida')) return 'perdida';
+  return null;
+};
 
 // ==========================================
 // 🧠 HELPERS PUROS (Traidos de ResumenPlantel)
@@ -350,8 +382,6 @@ function JugadorPerfil() {
   
   const [partidos, setPartidos] = useState([]);
   const [sanciones, setSanciones] = useState([]);
-  const [clubInfo, setClubInfo] = useState({ nombre: 'VIRTUAL FUTSAL', escudo: '' });
-  
   const [eventos, setEventos] = useState([]);
   const [eventosCompletos, setEventosCompletos] = useState([]);
   const [eventosPartidoExtra, setEventosPartidoExtra] = useState({ id: null, data: [] });
@@ -380,8 +410,8 @@ function JugadorPerfil() {
 
   const heatmapRef = useRef(null);
 
-  const [mostrarReporte, setMostrarReporte] = useState(false);
-  const [mostrarStory, setMostrarStory] = useState(false);
+  /* null | 'feed' | 'story': qué formato abre el botón que se tocó. */
+  const [mostrarPlaca, setMostrarPlaca] = useState(null);
 
   useEffect(() => {
     async function checkPermisos() {
@@ -405,8 +435,6 @@ function JugadorPerfil() {
               cats = perfilData.categorias_asignadas.split(',');
             }
             setUserCats(cats.filter(c => c != null).map(c => String(c).trim().toLowerCase()));
-
-            setClubInfo({ nombre: 'CLUB ATLÉTICO FUTSAL', escudo: 'https://cdn-icons-png.flaticon.com/512/5110/5110754.png' });
           }
         }
       } catch (error) {
@@ -771,6 +799,9 @@ function JugadorPerfil() {
     const quintetosAgregados = {};
 
     let ratingsDelJugador = [];
+    /* El mismo puntaje pero atado a su partido, para poder mostrar la tira de
+       "sus últimos partidos" en la placa sin recalcular nada. */
+    const ratingPorPartido = new Map();
 
     if (evCompletosFiltrados.length > 0) {
       const evsPorPartido = {};
@@ -781,7 +812,7 @@ function JugadorPerfil() {
 
       let posesionesTotales = [];
 
-      Object.values(evsPorPartido).forEach(evsPartido => {
+      Object.entries(evsPorPartido).forEach(([idPartido, evsPartido]) => {
         evsPartido.sort((a, b) => {
           if (a.created_at && b.created_at) {
             return new Date(a.created_at) - new Date(b.created_at);
@@ -909,6 +940,7 @@ function JugadorPerfil() {
            const rat = calcularRatingJugador(jugadorSeleccionado, evsParaRatingPartido, evsRivalCanchaPartido, pmPartido, minsPartido);
            if (rat && !Number.isNaN(Number(rat))) {
                ratingsDelJugador.push(Number(rat));
+               ratingPorPartido.set(String(idPartido), Number(rat));
            }
         }
       });
@@ -1043,7 +1075,7 @@ function JugadorPerfil() {
       xgBuildup, plusMinus, minutos, transicionesInvolucrado, rol, dataRadar, topSocios,
       mejorQuinteto, rivalStats, pctAtajadas, esArqueroFijo, eventosRivalEnCancha,
       xgEnContra: xgEnContraFinal, golesPrevenidos, totalAtajadas, totalGolesRecibidos,
-      contextoGoles, contextoRecuperaciones, impactoTimeline,
+      contextoGoles, contextoRecuperaciones, impactoTimeline, ratingPorPartido,
       record, playstyles,
       participacionPromedio: partidosConParticipacion > 0 ? (participacionAcum / partidosConParticipacion) : 0,
       vacio: false 
@@ -1132,6 +1164,87 @@ function JugadorPerfil() {
   const totalSinIngresar = historialPartidos.length - totalJugados;
   const LIMITE_HISTORIAL = 10;
   const historialVisible = verTodoHistorial ? historialPartidos : historialPartidos.slice(0, LIMITE_HISTORIAL);
+
+  /* ══ LA PLACA DEL JUGADOR ══
+     Se arma después de `historialPartidos` porque la tira de abajo son sus
+     últimos partidos con el puntaje de cada uno.
+
+     Las burbujas del mapa se dibujan con las mismas coordenadas crudas que usa
+     el mapa de la pantalla, sin espejar los eventos del rival: así lo que se
+     publica es lo mismo que el cuerpo técnico vio acá. */
+  const datosPlacaJugador = useMemo(() => {
+    if (!jugadorSeleccionado || !perfil || perfil.vacio) return null;
+    const st = perfil.stats;
+    const arq = perfil.esArqueroFijo;
+
+    const pctDuelos = () => {
+      const gan = st.duelosDefGanados + st.duelosOfeGanados;
+      const tot = st.duelosDefTotales + st.duelosOfeTotales;
+      return tot > 0 ? `${Math.round((gan / tot) * 100)}%` : '—';
+    };
+
+    const filas = arq ? [
+      { l: 'PARTIDOS', v: st.jugados },
+      { l: 'ATAJADAS', v: perfil.totalAtajadas ?? st.atajadasDirectas },
+      { l: 'GOLES RECIBIDOS', v: perfil.totalGolesRecibidos ?? st.golesRecibidosDirectos },
+      { l: '% DE ATAJADAS', v: `${Math.round(perfil.pctAtajadas || 0)}%` },
+      { l: 'GOLES EVITADOS', v: fmtFirmado(perfil.golesPrevenidos),
+        color: (perfil.golesPrevenidos || 0) >= 0 ? 'var(--pl-club)' : 'var(--pl-rival)' },
+      { l: 'xG EN CONTRA', v: Number(perfil.xgEnContra || 0).toFixed(2) },
+    ] : [
+      { l: 'PARTIDOS', v: st.jugados },
+      { l: 'GOLES', v: st.goles },
+      { l: 'ASISTENCIAS', v: st.asistencias },
+      { l: 'REMATES', v: st.remates },
+      { l: 'xG ACUMULADO', v: Number(st.xG || 0).toFixed(2) },
+      { l: 'DUELOS GANADOS', v: pctDuelos() },
+      { l: 'RECUPERACIONES', v: st.recuperaciones },
+      { l: '+/−', v: fmtFirmado(perfil.plusMinus, 0),
+        color: (perfil.plusMinus || 0) >= 0 ? 'var(--pl-club)' : 'var(--pl-rival)' },
+    ];
+
+    const fuente = arq
+      ? [...perfil.accionesDirectas, ...perfil.eventosRivalEnCancha]
+      : perfil.accionesDirectas;
+
+    const acciones = fuente.map(ev => {
+      const tipo = tipoDeAccion(ev);
+      if (!tipo) return null;
+      const x = ev.zona_x_norm !== undefined ? ev.zona_x_norm : ev.zona_x;
+      const y = ev.zona_y_norm !== undefined ? ev.zona_y_norm : ev.zona_y;
+      if (x == null || y == null) return null;
+      return { x, y, tipo };
+    }).filter(Boolean);
+
+    const ultimos = historialPartidos
+      .filter(f => f.jugo)
+      .slice(0, 5)
+      .map(f => {
+        const r = perfil.ratingPorPartido?.get(String(f.partido.id));
+        return {
+          fecha: (f.partido.fecha || '').slice(5).split('-').reverse().join('/'),
+          rival: f.partido.rival || '',
+          rating: r != null ? r.toFixed(1) : null,
+        };
+      });
+
+    return {
+      club: datosDelClub(),
+      jugador: {
+        nombre: [jugadorSeleccionado.apellido, jugadorSeleccionado.nombre].filter(Boolean).join(' ') || 'JUGADOR',
+        dorsal: jugadorSeleccionado.dorsal,
+        rol: perfil.rol,
+        foto: jugadorSeleccionado.foto || null,
+        esArquero: arq,
+      },
+      info: {
+        contexto: partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : 'ESTE PARTIDO',
+        categoria: jugadorSeleccionado.categoria || '',
+      },
+      rating: perfil.impacto !== '-' ? Number(perfil.impacto).toFixed(1) : null,
+      filas, acciones, ultimos,
+    };
+  }, [jugadorSeleccionado, perfil, historialPartidos, partidoFiltro]);
 
   const irAlPartido = (idPartido) => {
     if (!idPartido) return;
@@ -1409,11 +1522,11 @@ function JugadorPerfil() {
 
         {jugadorId && perfil && !perfil.vacio && (
           <div style={{ display: 'flex', gap: '8px', width: esMovil ? '100%' : 'auto', flexDirection: esMovil ? 'column' : 'row' }}>
-            <button onClick={() => setMostrarStory(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', background: '#c084fc', color: '#000000', border: 'none', boxShadow: '0 4px 15px rgba(192,132,252,0.2)', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
-              📱 STORY
+            <button onClick={() => setMostrarPlaca('story')} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', background: '#c084fc', color: '#000000', border: 'none', boxShadow: '0 4px 15px rgba(192,132,252,0.2)', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
+              📱 HISTORIA
             </button>
-            <button onClick={() => setMostrarReporte(true)} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
-              📄 REPORTE
+            <button onClick={() => setMostrarPlaca('feed')} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
+              🖼 PLACA
             </button>
           </div>
         )}
@@ -2138,37 +2251,18 @@ function JugadorPerfil() {
         </div>
       )}
 
-      {/* ── OVERLAY STORY ── */}
-      {mostrarStory && jugadorSeleccionado && perfil && !perfil.vacio && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.97)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px' }}>
-          <div style={{ textAlign: 'right', maxWidth: '1200px', margin: '0 auto' }}>
-            <button onClick={() => setMostrarStory(false)} style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px', marginBottom: '10px' }}>✖ CERRAR STORY</button>
-          </div>
-          <PlayerReportIGStory 
-            jugador={jugadorSeleccionado} 
-            perfil={perfil} 
-            jugadores={jugadores}
-            quintetoResuelto={
-              perfil?.mejorQuinteto?.ids
-                ? perfil.mejorQuinteto.ids.map(id => jugadores.find(j => j.id == id) || null)
-                : null
-            }
-            contexto={partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : (() => { const p = partidos.find(p => p.id == partidoFiltro); return p ? `VS ${p.rival?.toUpperCase()} (${p.fecha})` : ''; })()}
-          />
-        </div>
-      )}
-
-      {/* ── OVERLAY REPORTE ── */}
-      {mostrarReporte && jugadorSeleccionado && perfil && !perfil.vacio && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.97)', zIndex: 9999, overflowY: 'auto', padding: esMovil ? '10px' : '20px' }}>
-          <div style={{ textAlign: 'right', maxWidth: '1200px', margin: '0 auto' }}>
-            <button onClick={() => setMostrarReporte(false)} style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px', marginBottom: '10px' }}>✖ CERRAR REPORTE</button>
-          </div>
-          <PlayerReportGenerator jugador={jugadorSeleccionado} perfil={perfil} wellness={metricasWellness} clubInfo={clubInfo} jugadores={jugadores}
-            contexto={partidoFiltro === 'Todos' ? 'TODA LA TEMPORADA' : (() => { const p = partidos.find(p => p.id == partidoFiltro); return p ? `VS ${p.rival?.toUpperCase()} (${p.fecha})` : ''; })()}
-          />
-        </div>
-      )}
+      {/* ── LA PLACA DEL JUGADOR ──
+          Una sola para los dos formatos. Antes eran dos componentes distintos
+          —uno cuadrado y otro 9:16— con dos exportadores y dos maquetas que ya
+          no se parecían entre sí. */}
+      <ModalPlaca
+        abierto={mostrarPlaca !== null && !!datosPlacaJugador}
+        formatoInicial={mostrarPlaca || 'feed'}
+        onCerrar={() => setMostrarPlaca(null)}
+        nombreArchivo={`jugador-${datosPlacaJugador?.jugador.nombre || 'perfil'}`}
+      >
+        {(formato) => <PlacaJugador datos={datosPlacaJugador} formato={formato} />}
+      </ModalPlaca>
     </div>
   );
 }

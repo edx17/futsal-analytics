@@ -12,6 +12,10 @@ import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda
 import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
 import { parseFixturePegado, matchearRivales, calcularAliasNuevos, ID_MI_CLUB } from '../utils/parseFixturePegado';
 import { calcularTabla, resultadosDe, statsDe, rachasDe, mejorYPeor, puestoDe, equiposDe } from '../utils/analisisTorneo';
+import ModalPlaca from '../placas/ModalPlaca';
+import PlacaTabla from '../placas/PlacaTabla';
+import PlacaCampana from '../placas/PlacaCampana';
+import { datosDelClub } from '../placas/club';
 
 /* Una fila de la comparación. `mayorEsMejor` decide a quién se le pinta el
    número: en goles en contra y en puesto, menos es mejor. En PJ no hay mejor
@@ -124,6 +128,9 @@ function Torneos() {
   const [compEq1, setCompEq1] = useState('');
   const [compEq2, setCompEq2] = useState('');
   const [compMetrica, setCompMetrica] = useState('pts');
+
+  /* null | 'tabla' | 'campana' */
+  const [placaAbierta, setPlacaAbierta] = useState(null);
 
   const miClubGlobal = useMemo(() => {
     const propio = fixture.find(f => f && f.condicion !== 'Neutral' && f.nombre_propio);
@@ -958,6 +965,55 @@ function Torneos() {
     };
   }, [fixture, miClubGlobal]);
 
+  /* ══ LAS PLACAS DEL TORNEO ══
+     La de tabla sale de la vista que el usuario está mirando (rueda y modo
+     local/visitante incluidos): si filtró la segunda rueda, la placa es de la
+     segunda rueda. La de campaña es del torneo entero, que es de lo que se
+     habla cuando se publica el recorrido.
+
+     `miClubGlobal` es la CLAVE con la que mi equipo aparece en la tabla (viene
+     con el sufijo de categoría). El nombre que se imprime sale de
+     `clubes.nombre`, que es el que se configura en Configuración. */
+  const escudosDelTorneo = useMemo(() => {
+    const m = {};
+    calcularTabla(fixture, miClubGlobal).forEach(t => { if (t.escudo) m[t.nombre] = t.escudo; });
+    return m;
+  }, [fixture, miClubGlobal]);
+
+  const datosPlacaTabla = useMemo(() => {
+    const jugados = fixtureRueda.filter(f => f.estado === 'Finalizado' || f.estado === 'Jugado').length;
+    return {
+      club: datosDelClub(perfil),
+      info: {
+        torneo: torneoActivo?.nombre || '',
+        categoria: torneoActivo?.categoria || filtroCategoria || '',
+        jornada: [
+          filtroRueda !== 'Todas' ? `${filtroRueda}ª RUEDA` : null,
+          `${jugados} DE ${fixtureRueda.length} PARTIDOS JUGADOS`,
+        ].filter(Boolean).join(' · '),
+      },
+      tabla: tablaPosiciones,
+      clave: miClubGlobal,
+      modo: modoTabla,
+    };
+  }, [perfil, torneoActivo, filtroCategoria, filtroRueda, fixtureRueda, tablaPosiciones, miClubGlobal, modoTabla]);
+
+  const datosPlacaCampana = useMemo(() => {
+    if (!miEquipo) return null;
+    return {
+      club: datosDelClub(perfil),
+      info: {
+        torneo: torneoActivo?.nombre || '',
+        categoria: torneoActivo?.categoria || filtroCategoria || '',
+        puesto: miEquipo.puesto,
+        equipos: miEquipo.totalEquipos,
+      },
+      stats: miEquipo.stats,
+      resultados: miEquipo.resultados,
+      escudos: escudosDelTorneo,
+    };
+  }, [perfil, torneoActivo, filtroCategoria, miEquipo, escudosDelTorneo]);
+
   const reporteLiga = useMemo(() => {
     if (!fixtureRueda || fixtureRueda.length === 0) return null;
     
@@ -1431,9 +1487,21 @@ function Torneos() {
                     MI EQUIPO
                   </button>
               </div>
-              <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem', padding: '10px 20px', fontWeight: 800 }}>
-                + AGREGAR FECHA
-              </button>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {tabMisTorneos === 'posiciones' && !esCopa && tablaPosiciones.length > 0 && (
+                  <button onClick={() => setPlacaAbierta('tabla')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: '10px 16px', fontWeight: 900 }}>
+                    🖼 PLACA DE LA TABLA
+                  </button>
+                )}
+                {tabMisTorneos === 'miequipo' && datosPlacaCampana && (
+                  <button onClick={() => setPlacaAbierta('campana')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: '10px 16px', fontWeight: 900 }}>
+                    🖼 PLACA DE LA CAMPAÑA
+                  </button>
+                )}
+                <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem', padding: '10px 20px', fontWeight: 800 }}>
+                  + AGREGAR FECHA
+                </button>
+              </div>
             </div>
 
             {/* 🏆 TAB: LLAVE (COPA) */}
@@ -2590,6 +2658,22 @@ function Torneos() {
           </div>
         </div>
       )}
+
+      <ModalPlaca
+        abierto={placaAbierta === 'tabla'}
+        onCerrar={() => setPlacaAbierta(null)}
+        nombreArchivo={`tabla-${datosPlacaTabla.info.torneo || 'torneo'}`}
+      >
+        {(formato) => <PlacaTabla datos={datosPlacaTabla} formato={formato} />}
+      </ModalPlaca>
+
+      <ModalPlaca
+        abierto={placaAbierta === 'campana' && !!datosPlacaCampana}
+        onCerrar={() => setPlacaAbierta(null)}
+        nombreArchivo={`campana-${datosPlacaCampana?.info.torneo || 'torneo'}`}
+      >
+        {(formato) => <PlacaCampana datos={datosPlacaCampana} formato={formato} />}
+      </ModalPlaca>
 
       <style>{`
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 99999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
