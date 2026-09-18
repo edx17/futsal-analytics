@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { calcularXGEvento } from '../analytics/xg'; 
 import { TablaResponsive } from '../components/TablaResponsive';
 import { ESTADOS_GOL, ORDEN_ESTADOS, analizarEstados, pct } from '../utils/estadoGoles';
+import { calcularTabla, puestoDe } from '../utils/analisisTorneo';
+import ModalPlaca from '../placas/ModalPlaca';
+import PlacaGoles from '../placas/PlacaGoles';
+import { datosDelClub, claveDeTabla } from '../placas/club';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ComposedChart, Line
@@ -59,6 +63,7 @@ function OrigenGoles() {
   
   const [filtroTorneo, setFiltroTorneo] = useState('');
   const [filtroEquipo, setFiltroEquipo] = useState('Propio');
+  const [mostrarPlaca, setMostrarPlaca] = useState(false);
 
   useEffect(() => {
     if (esCT && misCategorias.length > 0) {
@@ -74,7 +79,10 @@ function OrigenGoles() {
         setCargando(true);
         if (!clubId) { setPartidos([]); setJugadores([]); setEventos([]); setTorneos([]); setCargando(false); return; }
         
-        const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria, torneo_id, estado, goles_propios, goles_rival').eq('club_id', clubId);
+        /* `condicion` y `nombre_propio` hacen falta para armar la tabla del
+           torneo: sin ellas no se distingue un partido nuestro de un cruce
+           entre terceros y el ranking sale mal. */
+        const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria, torneo_id, estado, goles_propios, goles_rival, condicion, nombre_propio, escudo_propio, escudo_rival').eq('club_id', clubId);
         const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal').eq('club_id', clubId);
         const { data: t } = await supabase.from('torneos').select('id, nombre, categoria').eq('club_id', clubId);
         
@@ -239,7 +247,7 @@ function OrigenGoles() {
       if (xgGol != null) statsPorOrigen[origen].xG += xgGol;
     });
 
-    const dataPieOrigen = Object.entries(conteoOrigen).filter(([_, v]) => v > 0).map(([name, value]) => ({ name, value }));
+    const dataPieOrigen = Object.entries(conteoOrigen).filter((par) => par[1] > 0).map(([name, value]) => ({ name, value }));
     const dataEfectividadOrigen = Object.values(statsPorOrigen)
       .map(d => ({ ...d, xG: Number(d.xG.toFixed(2)) }))
       .sort((a, b) => b.Goles - a.Goles);
@@ -304,6 +312,70 @@ function OrigenGoles() {
     const r = analizarEstados(jugados, golesPorPartido);
     return { ...r, candidatos: jugados.length };
   }, [partidos, eventos, filtroCategoria, filtroTorneo]);
+
+  /* LOS DATOS DE LA PLACA
+   *
+   * El titular sale de `estadoDelPartido`, las burbujas de `mapaGoles` (que ya
+   * vienen normalizadas hacia nuestro arco) y el ranking, de la tabla del
+   * torneo: los mismos cruces que muestra Torneos/Fixture. Si no hay un torneo
+   * elegido se toma el que más partidos jugados tenga con los filtros puestos,
+   * que es del que el hincha está hablando. */
+  const datosPlaca = useMemo(() => {
+    const club = datosDelClub(perfil);
+
+    const propios = analizarEquipo('Propio');
+
+    const jugadosDeLaCat = partidos.filter(p => {
+      const pasaCat = filtroCategoria === 'Todas' || p.categoria === filtroCategoria;
+      return pasaCat && (p.estado === 'Finalizado' || p.estado === 'Jugado');
+    });
+
+    let torneoId = filtroTorneo;
+    if (!torneoId) {
+      const cuenta = new Map();
+      jugadosDeLaCat.forEach(p => {
+        if (!p.torneo_id) return;
+        cuenta.set(p.torneo_id, (cuenta.get(p.torneo_id) || 0) + 1);
+      });
+      torneoId = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    }
+
+    let liga = null;
+    if (torneoId) {
+      /* La tabla se arma con TODOS los partidos del torneo, jugados o no, y
+         con los cruces entre terceros incluidos: sin ellos el puesto es el de
+         una tabla de un solo equipo. */
+      const delTorneo = partidos.filter(p => p.torneo_id === torneoId);
+      const clave = claveDeTabla(delTorneo, club.nombre);
+      const tabla = calcularTabla(delTorneo, clave);
+      const mio = tabla.find(t => t.nombre === clave);
+      if (mio && tabla.length > 1) {
+        const rankPor = (campo, mayorEsMejor = true) => {
+          const orden = [...tabla].sort((a, b) => (mayorEsMejor ? b[campo] - a[campo] : a[campo] - b[campo]));
+          return orden.findIndex(t => t.nombre === clave) + 1;
+        };
+        liga = {
+          puesto: puestoDe(tabla, clave),
+          equipos: tabla.length,
+          gf: mio.gf, puestoGF: rankPor('gf'),
+          gc: mio.gc, puestoGC: rankPor('gc', false),
+          dif: mio.difGeneral, puestoDif: rankPor('difGeneral'),
+          torneo: torneos.find(t => t.id === torneoId)?.nombre || '',
+        };
+      }
+    }
+
+    return {
+      club,
+      info: {
+        categoria: filtroCategoria === 'Todas' ? 'TODAS LAS CATEGORÍAS' : filtroCategoria,
+        torneo: (liga?.torneo || torneos.find(t => t.id === filtroTorneo)?.nombre || '').toUpperCase(),
+      },
+      estado: estadoDelPartido,
+      goles: propios.mapaGoles.map(g => ({ x: g.x, y: g.y, xg: g.xgCalc })),
+      liga,
+    };
+  }, [perfil, analizarEquipo, partidos, torneos, filtroCategoria, filtroTorneo, estadoDelPartido]);
 
   const comparativa = useMemo(() => {
     const af = analizarEquipo('Propio');
@@ -377,6 +449,22 @@ function OrigenGoles() {
             </select>
           </div>
         </div>
+
+        <button
+          onClick={() => setMostrarPlaca(true)}
+          disabled={cargando || estadoDelPartido.analizados === 0}
+          className="btn-secondary"
+          style={{
+            fontSize: '0.7rem', fontWeight: 900, padding: '10px 16px', letterSpacing: '0.04em',
+            opacity: (cargando || estadoDelPartido.analizados === 0) ? 0.45 : 1,
+            cursor: (cargando || estadoDelPartido.analizados === 0) ? 'not-allowed' : 'pointer',
+          }}
+          title={estadoDelPartido.analizados === 0
+            ? 'Hacen falta partidos con los goles cargados completos para armar la placa.'
+            : 'Placa para feed e historias'}
+        >
+          🖼 EXPORTAR PLACA
+        </button>
       </div>
 
       {cargando ? (
@@ -855,6 +943,14 @@ function OrigenGoles() {
 
         </div>
       )}
+
+      <ModalPlaca
+        abierto={mostrarPlaca}
+        onCerrar={() => setMostrarPlaca(false)}
+        nombreArchivo={`origen-goles-${datosPlaca.club.nombre}`}
+      >
+        {(formato) => <PlacaGoles datos={datosPlaca} formato={formato} />}
+      </ModalPlaca>
     </div>
   );
 }
