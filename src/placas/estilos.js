@@ -14,6 +14,32 @@
  */
 
 export const CSS_PLACAS = `
+/* LAS TIPOGRAFÍAS VAN CON LA APP, NO CON LA RED
+ *
+ * Las placas se diseñaron en Archivo y JetBrains Mono, pero nadie las cargaba:
+ * la app sólo pide Outfit, Anton y Montserrat. El resultado era que cada
+ * equipo dibujaba la placa con la tipografía que tuviera a mano, con métricas
+ * distintas a las que se ajustó el diseño, y el contenido se pasaba de alto:
+ * en la tabla se cortaba la última fila y en varias, el pie.
+ *
+ * Para una herramienta de publicación eso no puede depender del dispositivo ni
+ * de que Google responda, así que los archivos viven en el repo. Son variables
+ * —un archivo por familia cubre todos los pesos— y pesan 108 KB entre los
+ * cuatro. El CSP ya permite font-src 'self'.
+ */
+@font-face{font-family:'Archivo';font-style:normal;font-weight:400 900;font-display:swap;
+  src:url('/assets/fuentes/archivo-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'Archivo';font-style:normal;font-weight:400 900;font-display:swap;
+  src:url('/assets/fuentes/archivo-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:400 800;font-display:swap;
+  src:url('/assets/fuentes/jetbrains-mono-latin-ext.woff2') format('woff2');
+  unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:400 800;font-display:swap;
+  src:url('/assets/fuentes/jetbrains-mono-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+
 .pl{position:relative;overflow:hidden;background:var(--pl-ink);color:var(--pl-tx);
   font-family:'Archivo',system-ui,-apple-system,sans-serif;
   --pl-ink:#070A09;--pl-sup:#0E1512;--pl-sup2:#141D19;--pl-linea:#1E2B25;
@@ -35,7 +61,17 @@ export const CSS_PLACAS = `
 /* Una sola línea: si el torneo tiene nombre largo, se corta. Al envolver
    empujaba todo para abajo y la placa se pasaba de alto. */
 .pl-ceja span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pl-ceja span:last-child{text-align:right}
+.pl-ceja > span:last-child{text-align:right}
+/* Con escudo, la ceja deja de ser una línea de texto y pasa a ser una cabecera. */
+.pl-ceja-esc{display:flex;align-items:center;gap:18px;min-width:0}
+
+/* El escudo del club. El tamaño lo pone quien lo usa: es el mismo círculo en la
+ * cabecera de una placa que al lado del nombre en otra. Sin escudo cargado caen
+ * las iniciales, que también identifican al club. */
+.pl-escudo{border-radius:50%;display:grid;place-items:center;overflow:hidden;flex-shrink:0;
+  background:rgba(var(--pl-club-rgb),.12);border:2px solid var(--pl-club);color:var(--pl-club);
+  font-family:'Archivo',sans-serif;font-weight:900;letter-spacing:-.02em}
+.pl-escudo img{width:100%;height:100%;object-fit:cover}
 .pl-ceja b{color:var(--pl-club);font-weight:800}
 
 /* marcador */
@@ -91,9 +127,17 @@ export const CSS_PLACAS = `
 .pl-gr:last-child{border:0}
 .pl-gr span{font-family:var(--pl-mono);font-size:20px;color:var(--pl-club);font-weight:700}
 
-/* pie */
-.pl-pie{margin-top:auto;border-top:1px solid var(--pl-linea);padding:26px 0 30px;
-  display:flex;align-items:center;justify-content:center;gap:24px}
+/* EL PIE VA ANCLADO ABAJO, NO EMPUJADO POR EL CONTENIDO
+ *
+ * Con "margin-top:auto" el pie era el último ítem del flex: si el contenido se
+ * pasaba de alto —y se pasaba, porque la tipografía real mide distinto que la
+ * de respaldo— lo empujaba fuera del lienzo y la placa salía sin la marca ni
+ * el nombre del club. Anclado abajo eso no puede pasar: lo que sobra se
+ * recorta arriba, donde se ve, y no en la firma. */
+.pl-pie{position:absolute;left:56px;right:56px;bottom:0;height:var(--pl-alto-pie);
+  border-top:1px solid var(--pl-linea);
+  display:flex;align-items:center;justify-content:center;gap:22px}
+.pl-pie .esc{width:50px;height:50px;font-size:17px;border-width:2px}
 .pl-pie .m{font-weight:900;font-size:26px;letter-spacing:-.01em}
 .pl-pie .m i{color:var(--pl-club);font-style:normal}
 .pl-pie .sep{width:1px;height:26px;background:var(--pl-linea)}

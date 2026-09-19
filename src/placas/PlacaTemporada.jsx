@@ -1,4 +1,5 @@
 import React from 'react';
+import { estiloContenido } from './formatos';
 import { Ceja, Escudo, Pie } from './Piezas';
 
 /* PLACA DE TEMPORADA
@@ -26,11 +27,11 @@ export default function PlacaTemporada({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={{ paddingTop: esStory ? 120 : 56 }}>
+      <div className="pl-cont" style={estiloContenido(formato, esStory ? 120 : 56)}>
 
         <Ceja izquierda="LA TEMPORADA" resaltado={info.competicion} derecha={info.categoria} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 28, marginTop: esStory ? 44 : 30 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 28, marginTop: esStory ? 28 : 28 }}>
           <Escudo url={club.escudo} nombre={club.nombre} lado="l"
                   style={{ width: esStory ? 132 : 108, height: esStory ? 132 : 108, fontSize: esStory ? 44 : 36 }} />
           <div style={{ minWidth: 0 }}>
@@ -48,7 +49,7 @@ export default function PlacaTemporada({ datos, formato }) {
           <div><b style={{ color: 'var(--pl-rival)' }}>{num(balance.pp)}</b><span>PERDIDOS</span></div>
         </div>
 
-        <div className="pl-liga" style={{ marginTop: esStory ? 28 : 20 }}>
+        <div className="pl-liga" style={{ marginTop: esStory ? 24 : 20 }}>
           <div className="pl-liga-t">LOS GOLES</div>
           <div className="pl-liga-g">
             <Lg n={num(goles.gf)} p={`${dec(goles.xgF)} xG`} l="A FAVOR" color="var(--pl-club)" />
@@ -102,7 +103,7 @@ export default function PlacaTemporada({ datos, formato }) {
           </div>
         )}
 
-        <Pie club={club.nombre} detalle={info.categoria} esStory={esStory} />
+        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
       </div>
     </>
   );

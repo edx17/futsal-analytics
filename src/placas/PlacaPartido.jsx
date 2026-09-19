@@ -1,4 +1,6 @@
 import React from 'react';
+import { estiloContenido } from './formatos';
+import { Pie } from './Piezas';
 
 /* PLACA DE PARTIDO
  *
@@ -59,7 +61,7 @@ export default function PlacaPartido({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={{ paddingTop: esStory ? 150 : 56 }}>
+      <div className="pl-cont" style={estiloContenido(formato, esStory ? 150 : 56)}>
 
         <div className="pl-ceja">
           <span>{info.torneo || 'AMISTOSO'}{info.jornada ? <b> · {info.jornada}</b> : null}</span>
@@ -117,7 +119,7 @@ export default function PlacaPartido({ datos, formato }) {
           </div>
         )}
 
-        <Pie club={club.nombre} categoria={info.categoria} esStory={esStory} />
+        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
       </div>
     </>
   );
@@ -144,13 +146,5 @@ const BloqueGoles = ({ goles, style }) => (
     {goles.map((g, i) => (
       <div className="pl-gr" key={i}>{g.nombre}<span>{g.minutos}</span></div>
     ))}
-  </div>
-);
-
-const Pie = ({ club, categoria, esStory }) => (
-  <div className="pl-pie" style={{ paddingBottom: esStory ? 140 : 30 }}>
-    <div className="m">VIRTUAL<i>.CLUB</i></div>
-    <div className="sep" />
-    <div className="cat">{[club, categoria].filter(Boolean).join(' · ').toUpperCase()}</div>
   </div>
 );
