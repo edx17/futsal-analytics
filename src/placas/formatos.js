@@ -32,14 +32,11 @@ export const FORMATOS = {
   },
 };
 
+/* El aire de arriba, igual para las seis placas. En la historia se deja más
+ * porque Instagram monta ahí la barra de perfil, pero los 120-150 px que traía
+ * cada placa por su cuenta eran demasiado y se comían el diseño. */
+export const MARGEN_SUPERIOR = { feed: 40, story: 92 };
+
 export const FORMATO_POR_DEFECTO = 'feed';
 export const CLAVES_FORMATO = Object.keys(FORMATOS);
 export const formatoDe = (id) => FORMATOS[id] || FORMATOS[FORMATO_POR_DEFECTO];
-
-/* El estilo del contenedor de contenido. Reserva abajo el alto del pie —que va
- * anclado— y lo publica como variable para que el pie lo use. Así el contenido
- * nunca se le monta encima ni lo empuja fuera del lienzo. */
-export const estiloContenido = (formato, paddingTop) => {
-  const { altoPie } = formatoDe(formato?.id);
-  return { paddingTop, paddingBottom: altoPie, '--pl-alto-pie': `${altoPie}px` };
-};

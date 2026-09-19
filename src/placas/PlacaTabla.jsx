@@ -1,6 +1,6 @@
 import React from 'react';
-import { estiloContenido } from './formatos';
-import { Ceja, Escudo, Pie } from './Piezas';
+import Marco from './Marco';
+import { Ceja, Escudo } from './Piezas';
 import { TOPE, filasVisibles } from './tabla';
 
 /* PLACA DE TABLA DE POSICIONES
@@ -28,7 +28,7 @@ export default function PlacaTabla({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={estiloContenido(formato, esStory ? 130 : 56)}>
+      <Marco formato={formato}>
 
         <Ceja club={club.nombre} escudo={club.escudo} tamano={esStory ? 66 : 58}
               izquierda="POSICIONES" resaltado={rotuloModo} derecha={info.categoria} />
@@ -66,8 +66,7 @@ export default function PlacaTabla({ datos, formato }) {
           </div>
         ))}
 
-        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
-      </div>
+      </Marco>
     </>
   );
 }

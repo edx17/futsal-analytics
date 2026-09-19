@@ -32,16 +32,15 @@ export function Escudo({ url, nombre, lado = 'l', className = 'pl-esc', style })
   );
 }
 
-/* El pie va anclado abajo con alto fijo (ver `.pl-pie` en la hoja), así que ya
- * no necesita que la placa le pase paddings distintos por formato. Lleva el
- * escudo del club: es la firma que aparece en todas las placas por igual. */
-export function Pie({ club, detalle, escudo, style }) {
+/* El pie va anclado abajo con alto fijo (ver `.pl-pie` en la hoja). Es la
+ * firma de la marca y es igual en las seis placas: al club lo identifica el
+ * escudo de arriba, no hace falta repetir el nombre acá. */
+export function Pie({ style }) {
   return (
     <div className="pl-pie" style={style}>
       <div className="m">VIRTUAL<i>.CLUB</i></div>
       <div className="sep" />
-      <Escudo url={escudo} nombre={club} className="pl-escudo esc" />
-      <div className="cat">{[club, detalle].filter(Boolean).join(' · ').toUpperCase()}</div>
+      <div className="cat">powered by Virtual Futsal</div>
     </div>
   );
 }

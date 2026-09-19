@@ -1,6 +1,5 @@
 import React from 'react';
-import { estiloContenido } from './formatos';
-import { Pie } from './Piezas';
+import Marco from './Marco';
 
 /* PLACA DE PARTIDO
  *
@@ -61,7 +60,7 @@ export default function PlacaPartido({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={estiloContenido(formato, esStory ? 150 : 56)}>
+      <Marco formato={formato}>
 
         <div className="pl-ceja">
           <span>{info.torneo || 'AMISTOSO'}{info.jornada ? <b> · {info.jornada}</b> : null}</span>
@@ -113,14 +112,13 @@ export default function PlacaPartido({ datos, formato }) {
             {goles.length > 0 && <BloqueGoles goles={goles} style={{ marginTop: 28 }} />}
           </>
         ) : (
-          <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: figura && goles.length ? '1fr 1fr' : '1fr', gap: 26, paddingBottom: 34 }}>
+          <div style={{ marginTop: 40, display: 'grid', gridTemplateColumns: figura && goles.length ? '1fr 1fr' : '1fr', gap: 26 }}>
             {figura && <BloqueFigura figura={figura} />}
             {goles.length > 0 && <BloqueGoles goles={goles} />}
           </div>
         )}
 
-        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
-      </div>
+      </Marco>
     </>
   );
 }

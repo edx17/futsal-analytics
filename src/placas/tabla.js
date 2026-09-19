@@ -2,7 +2,12 @@
  * probarlo sin navegador (y porque fast-refresh pide que un .jsx exporte sólo
  * componentes). */
 
-export const TOPE = { feed: 13, story: 20 };
+/* Cuántas filas se muestran. Antes este número existía para que la tabla no
+ * desbordara el lienzo, y había que bajarlo cada vez que algo medía distinto.
+ * Ahora el marco encoge el contenido si no entra, así que el número sólo
+ * responde a lo que tiene sentido leer: la liga completa. Más de veinte
+ * equipos y se recorta con hueco, porque a esa altura ya no se lee. */
+export const TOPE = { feed: 20, story: 20 };
 
 /* Devuelve las filas a dibujar; `corte: true` marca dónde va el hueco. */
 export function filasVisibles(tabla = [], clave, tope = 10) {
