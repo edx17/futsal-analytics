@@ -2,7 +2,7 @@
  * probarlo sin navegador (y porque fast-refresh pide que un .jsx exporte sólo
  * componentes). */
 
-export const TOPE = { feed: 14, story: 20 };
+export const TOPE = { feed: 13, story: 20 };
 
 /* Devuelve las filas a dibujar; `corte: true` marca dónde va el hueco. */
 export function filasVisibles(tabla = [], clave, tope = 10) {

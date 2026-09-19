@@ -1,4 +1,5 @@
 import React from 'react';
+import { estiloContenido } from './formatos';
 import { Ceja, Escudo, Pie } from './Piezas';
 
 /* PLACA DE CAMPAÑA
@@ -27,11 +28,12 @@ export default function PlacaCampana({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={{ paddingTop: esStory ? 130 : 56 }}>
+      <div className="pl-cont" style={estiloContenido(formato, esStory ? 130 : 56)}>
 
-        <Ceja izquierda="LA CAMPAÑA" resaltado={info.torneo} derecha={info.categoria} />
+        <Ceja club={club.nombre} escudo={club.escudo} tamano={esStory ? 66 : 58}
+              izquierda="LA CAMPAÑA" resaltado={info.torneo} derecha={info.categoria} />
 
-        <div style={{ marginTop: esStory ? 48 : 28 }}>
+        <div style={{ marginTop: esStory ? 38 : 24 }}>
           <div style={{ fontSize: esStory ? 70 : 58, fontWeight: 900, letterSpacing: '-.035em', lineHeight: 1 }}>
             {String(club.nombre || 'MI CLUB').toUpperCase()}
           </div>
@@ -42,7 +44,7 @@ export default function PlacaCampana({ datos, formato }) {
           )}
         </div>
 
-        <div className="pl-rec" style={{ marginTop: esStory ? 36 : 24, justifyContent: 'flex-start' }}>
+        <div className="pl-rec" style={{ marginTop: esStory ? 28 : 18, justifyContent: 'flex-start' }}>
           <div><b>{stats.pj}</b><span>JUGADOS</span></div>
           <div><b style={{ color: 'var(--pl-club)' }}>{stats.pg}</b><span>GANADOS</span></div>
           <div><b style={{ color: 'var(--pl-oro)' }}>{stats.pe}</b><span>EMPATADOS</span></div>
@@ -50,7 +52,7 @@ export default function PlacaCampana({ datos, formato }) {
           <div><b>{stats.gf}<span style={{ color: 'var(--pl-tenue)', fontSize: 30 }}>:</span>{stats.gc}</b><span>GOLES</span></div>
         </div>
 
-        <div className="pl-cp" style={{ marginTop: esStory ? 44 : 26, gap: esStory ? 14 : 10 }}>
+        <div className="pl-cp" style={{ marginTop: esStory ? 34 : 22, gap: esStory ? 13 : 10 }}>
           {visibles.map((r) => (
             <div className="pl-cp-f" key={r.id}>
               <Escudo url={escudos[r.rival]} nombre={r.rival} className="ec" />
@@ -72,7 +74,7 @@ export default function PlacaCampana({ datos, formato }) {
           </div>
         )}
 
-        <Pie club={club.nombre} detalle={info.torneo} esStory={esStory} />
+        <Pie club={club.nombre} escudo={club.escudo} detalle={info.torneo} />
       </div>
     </>
   );

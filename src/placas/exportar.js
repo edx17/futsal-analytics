@@ -36,9 +36,20 @@ export async function exportarPlaca(nodo, { nombre = 'placa', ancho, alto, fondo
 
   const html2canvas = (await import('html2canvas')).default;
 
-  /* Un respiro para que terminen de pintarse las fuentes y cualquier gráfico.
-     Sin esto salen placas con la tipografía de respaldo. */
-  if (document.fonts?.ready) await document.fonts.ready;
+  /* `document.fonts.ready` sólo espera lo que ya se estaba cargando, así que
+     primero se piden las dos familias a mano: si el PNG se genera antes de que
+     lleguen, sale con la tipografía de respaldo y con otras medidas. */
+  if (document.fonts) {
+    try {
+      await Promise.all([
+        document.fonts.load("800 100px 'Archivo'"),
+        document.fonts.load("900 100px 'Archivo'"),
+        document.fonts.load("700 100px 'JetBrains Mono'"),
+        document.fonts.load("800 100px 'JetBrains Mono'"),
+      ]);
+    } catch { /* si alguna no llega, se exporta igual con la de respaldo */ }
+    await document.fonts.ready;
+  }
   await new Promise(r => setTimeout(r, 180));
 
   /* La placa que se ve en pantalla está encogida con `transform: scale()` para

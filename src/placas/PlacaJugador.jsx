@@ -1,6 +1,7 @@
 import React from 'react';
 import Cancha from './Cancha';
 import { aMetros } from './medidas';
+import { estiloContenido } from './formatos';
 import { Ceja, Pie } from './Piezas';
 import { iniciales } from './club';
 import { colorRating } from './rating';
@@ -43,15 +44,16 @@ export default function PlacaJugador({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={{ paddingTop: esStory ? 120 : 56 }}>
+      <div className="pl-cont" style={estiloContenido(formato, esStory ? 120 : 56)}>
 
         <Ceja
+          club={club.nombre} escudo={club.escudo} tamano={esStory ? 66 : 58}
           izquierda={jugador.esArquero ? 'PERFIL DEL ARQUERO' : 'PERFIL DEL JUGADOR'}
           resaltado={info.contexto}
           derecha={info.categoria}
         />
 
-        <div className="pl-j-top" style={{ marginTop: esStory ? 52 : 32 }}>
+        <div className="pl-j-top" style={{ marginTop: esStory ? 38 : 26 }}>
           <div style={{ display: 'flex', gap: 26, alignItems: 'center', minWidth: 0 }}>
             <div className="pl-j-foto" style={{
               width: esStory ? 168 : 142, height: esStory ? 200 : 170, flexShrink: 0,
@@ -79,7 +81,7 @@ export default function PlacaJugador({ datos, formato }) {
         </div>
 
         {conMapa.length > 0 && (
-          <div className="pl-cancha" style={{ marginTop: esStory ? 46 : 26 }}>
+          <div className="pl-cancha" style={{ marginTop: esStory ? 32 : 20 }}>
             <Cancha style={{ width: esStory ? 900 : 820 }}>
               {conMapa.map((a, i) => {
                 const { x, y } = aMetros(a.x, a.y);
@@ -112,7 +114,7 @@ export default function PlacaJugador({ datos, formato }) {
             gridTemplateColumns: esStory ? '1fr' : '1fr 1fr',
           }}>
             {filas.map((f) => (
-              <div className="pl-j-row" key={f.l} style={esStory ? { padding: `${filas.length > 6 ? 15 : 22}px 0` } : { padding: '12px 0' }}>
+              <div className="pl-j-row" key={f.l} style={esStory ? { padding: `${filas.length > 6 ? 12 : 18}px 0` } : { padding: '12px 0' }}>
                 <div className="l" style={esStory ? undefined : { fontSize: 15 }}>{f.l}</div>
                 <div className="v" style={{ ...(esStory ? null : { fontSize: 26 }), ...(f.color ? { color: f.color } : null) }}>{f.v}</div>
               </div>
@@ -140,7 +142,7 @@ export default function PlacaJugador({ datos, formato }) {
           </div>
         )}
 
-        <Pie club={club.nombre} detalle={info.categoria} esStory={esStory} />
+        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
       </div>
     </>
   );

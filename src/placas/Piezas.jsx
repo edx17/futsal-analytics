@@ -4,10 +4,21 @@ import { iniciales } from './club';
 /* Las tres piezas que repiten todas las placas: la ceja de arriba, un escudo
  * redondo con iniciales de respaldo, y el pie con la marca y el club. */
 
-export function Ceja({ izquierda, derecha, resaltado }) {
+/* La ceja de arriba. Con `club` le antepone el escudo: es el lugar donde las
+ * placas que no lo muestran en otro lado dejan claro de qué club son. Las que
+ * ya lo tienen grande —partido y temporada— no lo repiten acá. */
+export function Ceja({ izquierda, derecha, resaltado, club, escudo, tamano = 62 }) {
+  const texto = <span>{izquierda}{resaltado ? <b> · {resaltado}</b> : null}</span>;
+
   return (
     <div className="pl-ceja">
-      <span>{izquierda}{resaltado ? <b> · {resaltado}</b> : null}</span>
+      {club ? (
+        <div className="pl-ceja-esc">
+          <Escudo url={escudo} nombre={club} className="pl-escudo"
+                  style={{ width: tamano, height: tamano, fontSize: Math.round(tamano * 0.34) }} />
+          {texto}
+        </div>
+      ) : texto}
       <span>{derecha}</span>
     </div>
   );
@@ -21,15 +32,15 @@ export function Escudo({ url, nombre, lado = 'l', className = 'pl-esc', style })
   );
 }
 
-/* El 30 del pie es el que ya trae `.pl-pie`. Se nombra siempre en vez de
- * agregarlo sólo para la historia: un `paddingBottom` que aparece y desaparece
- * sobre el `padding` abreviado de la hoja hace que React avise en cada cambio
- * de formato, y el aviso tiene razón. */
-export function Pie({ club, detalle, esStory, style }) {
+/* El pie va anclado abajo con alto fijo (ver `.pl-pie` en la hoja), así que ya
+ * no necesita que la placa le pase paddings distintos por formato. Lleva el
+ * escudo del club: es la firma que aparece en todas las placas por igual. */
+export function Pie({ club, detalle, escudo, style }) {
   return (
-    <div className="pl-pie" style={{ paddingBottom: esStory ? 120 : 30, ...style }}>
+    <div className="pl-pie" style={style}>
       <div className="m">VIRTUAL<i>.CLUB</i></div>
       <div className="sep" />
+      <Escudo url={escudo} nombre={club} className="pl-escudo esc" />
       <div className="cat">{[club, detalle].filter(Boolean).join(' · ').toUpperCase()}</div>
     </div>
   );

@@ -1,4 +1,5 @@
 import React from 'react';
+import { estiloContenido } from './formatos';
 import { Ceja, Escudo, Pie } from './Piezas';
 import { TOPE, filasVisibles } from './tabla';
 
@@ -27,11 +28,12 @@ export default function PlacaTabla({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={{ paddingTop: esStory ? 130 : 56 }}>
+      <div className="pl-cont" style={estiloContenido(formato, esStory ? 130 : 56)}>
 
-        <Ceja izquierda="POSICIONES" resaltado={rotuloModo} derecha={info.categoria} />
+        <Ceja club={club.nombre} escudo={club.escudo} tamano={esStory ? 66 : 58}
+              izquierda="POSICIONES" resaltado={rotuloModo} derecha={info.categoria} />
 
-        <div style={{ marginTop: esStory ? 50 : 30, marginBottom: esStory ? 40 : 26 }}>
+        <div style={{ marginTop: esStory ? 26 : 22, marginBottom: esStory ? 20 : 18 }}>
           <div style={{ fontSize: esStory ? 64 : 54, fontWeight: 900, letterSpacing: '-.035em', lineHeight: 1.02 }}>
             {String(info.torneo || 'TORNEO').toUpperCase()}
           </div>
@@ -64,7 +66,7 @@ export default function PlacaTabla({ datos, formato }) {
           </div>
         ))}
 
-        <Pie club={club.nombre} detalle={info.categoria} esStory={esStory} />
+        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
       </div>
     </>
   );

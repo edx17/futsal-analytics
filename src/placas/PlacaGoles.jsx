@@ -1,6 +1,7 @@
 import React from 'react';
 import Cancha from './Cancha';
 import { aMetros } from './medidas';
+import { estiloContenido } from './formatos';
 import { Ceja, Pie } from './Piezas';
 import { ESTADOS_GOL, ORDEN_ESTADOS, pct } from '../utils/estadoGoles';
 
@@ -41,16 +42,17 @@ export default function PlacaGoles({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={{ paddingTop: esStory ? 120 : 56 }}>
+      <div className="pl-cont" style={estiloContenido(formato, esStory ? 120 : 56)}>
 
         <Ceja
+          club={club.nombre} escudo={club.escudo} tamano={esStory ? 66 : 58}
           izquierda="ORIGEN DE LOS GOLES"
           resaltado={info.torneo}
           derecha={[info.categoria, analizados ? `${analizados} PARTIDOS` : null].filter(Boolean).join(' · ')}
         />
 
-        <div className="pl-hero" style={{ marginTop: esStory ? 78 : 30 }}>
-          <div className="k" style={{ fontSize: esStory ? 230 : 152 }}>
+        <div className="pl-hero" style={{ marginTop: esStory ? 54 : 22 }}>
+          <div className="k" style={{ fontSize: esStory ? 208 : 150 }}>
             {abrimos.pj}<small>/{analizados}</small>
           </div>
           <div className="t" style={{ fontSize: esStory ? 26 : 20 }}>
@@ -58,7 +60,7 @@ export default function PlacaGoles({ datos, formato }) {
           </div>
         </div>
 
-        <div className="pl-rec" style={{ marginTop: esStory ? 34 : 18 }}>
+        <div className="pl-rec" style={{ marginTop: esStory ? 28 : 16 }}>
           <div><b style={{ color: 'var(--pl-club)' }}>{abrimos.v}</b><span>GANADOS</span></div>
           <div><b style={{ color: 'var(--pl-oro)' }}>{abrimos.e}</b><span>EMPATADOS</span></div>
           <div><b style={{ color: 'var(--pl-rival)' }}>{abrimos.d}</b><span>PERDIDOS</span></div>
@@ -68,8 +70,8 @@ export default function PlacaGoles({ datos, formato }) {
         </div>
 
         {conMapa.length > 0 && (
-          <div className="pl-cancha" style={{ marginTop: esStory ? 36 : 20 }}>
-            <Cancha style={{ width: esStory ? 880 : 740 }}>
+          <div className="pl-cancha" style={{ marginTop: esStory ? 26 : 14 }}>
+            <Cancha style={{ width: esStory ? 860 : 730 }}>
               {conMapa.map((g, i) => {
                 const { x, y } = aMetros(g.x, g.y);
                 const r = radioDe(g.xg);
@@ -89,7 +91,7 @@ export default function PlacaGoles({ datos, formato }) {
           </div>
         )}
 
-        <div className="pl-lista" style={{ marginTop: esStory ? 46 : 22 }}>
+        <div className="pl-lista" style={{ marginTop: esStory ? 34 : 20 }}>
           {ORDEN_ESTADOS.filter((k) => (conteo[k] || 0) > 0).map((k) => (
             <div className="pl-li" key={k}>
               <div className="lb" style={{ color: ESTADOS_GOL[k].color }}>{ESTADOS_GOL[k].label}</div>
@@ -109,7 +111,7 @@ export default function PlacaGoles({ datos, formato }) {
             alto es el que es y prefiero que respire. */}
         {esStory && (
           <>
-            <div className="pl-rec" style={{ marginTop: 30 }}>
+            <div className="pl-rec" style={{ marginTop: 22 }}>
               <div><b style={{ color: 'var(--pl-club)' }}>{nosAbrieron.v}</b><span>GANADOS</span></div>
               <div><b style={{ color: 'var(--pl-oro)' }}>{nosAbrieron.e}</b><span>EMPATADOS</span></div>
               <div><b style={{ color: 'var(--pl-rival)' }}>{nosAbrieron.d}</b><span>PERDIDOS</span></div>
@@ -121,7 +123,7 @@ export default function PlacaGoles({ datos, formato }) {
         )}
 
         {liga && (
-          <div className="pl-liga" style={{ marginTop: esStory ? 44 : 20 }}>
+          <div className="pl-liga" style={{ marginTop: esStory ? 30 : 18 }}>
             <div className="pl-liga-t">DÓNDE NOS DEJA ESO EN EL TORNEO</div>
             <div className="pl-liga-g">
               <Lg n={liga.puesto ? `${liga.puesto}º` : '—'} p={liga.equipos ? `de ${liga.equipos}` : null} l="EN LA TABLA" />
@@ -133,14 +135,14 @@ export default function PlacaGoles({ datos, formato }) {
         )}
 
         {esStory && (estado.remontadas > 0 || estado.remontados > 0) && (
-          <div className="pl-mini" style={{ textAlign: 'center', marginTop: 26 }}>
+          <div className="pl-mini" style={{ textAlign: 'center', marginTop: 18 }}>
             {estado.remontadas} {estado.remontadas === 1 ? 'REMONTADA' : 'REMONTADAS'}
             {'  ·  '}
             {estado.remontados} {estado.remontados === 1 ? 'VEZ NOS REMONTARON' : 'VECES NOS REMONTARON'}
           </div>
         )}
 
-        <Pie club={club.nombre} detalle={info.categoria} esStory={esStory} />
+        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
       </div>
     </>
   );
