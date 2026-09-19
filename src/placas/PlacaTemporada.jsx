@@ -26,7 +26,7 @@ export default function PlacaTemporada({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={esStory ? { paddingTop: 120 } : undefined}>
+      <div className="pl-cont" style={{ paddingTop: esStory ? 120 : 56 }}>
 
         <Ceja izquierda="LA TEMPORADA" resaltado={info.competicion} derecha={info.categoria} />
 
@@ -89,7 +89,7 @@ export default function PlacaTemporada({ datos, formato }) {
         </div>
 
         {tiempos.length > 0 && (
-          <div className="pl-liga" style={{ marginTop: esStory ? 22 : 20, padding: esStory ? undefined : '16px 26px' }}>
+          <div className="pl-liga" style={{ marginTop: esStory ? 22 : 20, padding: esStory ? '20px 26px' : '16px 26px' }}>
             <div className="pl-liga-t" style={esStory ? undefined : { marginBottom: 12 }}>CÓMO SE REPARTEN LOS GOLES</div>
             <div className="pl-liga-g" style={{ gridTemplateColumns: `repeat(${tiempos.length * 2}, 1fr)` }}>
               {tiempos.map((t) => (

@@ -9,10 +9,17 @@
 
 const esAndroid = () => /Android/i.test(navigator?.userAgent || '');
 
-/* En un celular, un PNG de 1080×1920 a 2x son 2160×3840: hay equipos que no
- * lo aguantan. 2x en escritorio, 1.5x en el teléfono. */
-const escalaSegunEquipo = () =>
-  (typeof window !== 'undefined' && window.innerWidth < 768) ? 1.5 : 2;
+/* La placa se dibuja a 1080 de ancho, así que a 2x sale un PNG de 2160×2700
+   (feed) o de 2160×3840 (historia). Son 5,8 y 8,3 millones de píxeles: entran
+   holgados en el tope de ~16,7 millones que impone Safari en iPhone.
+
+   Antes el teléfono bajaba a 1.5x "por las dudas". El efecto era que la misma
+   placa se descargaba con distinta resolución según desde dónde la bajaras, que
+   es justo lo que una herramienta de publicación no tiene que hacer. */
+const ESCALA = 2;
+
+/* Marca temporal para encontrar la placa dentro del documento clonado. */
+const MARCA = 'data-placa-exportando';
 
 const limpiarNombre = (s) =>
   String(s || 'placa').normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -34,27 +41,49 @@ export async function exportarPlaca(nodo, { nombre = 'placa', ancho, alto, fondo
   if (document.fonts?.ready) await document.fonts.ready;
   await new Promise(r => setTimeout(r, 180));
 
-  const lienzo = await html2canvas(nodo, {
-    scale: escala || escalaSegunEquipo(),
-    useCORS: true,          // escudos y fotos vienen de Supabase Storage
-    allowTaint: false,      // con allowTaint el canvas se ensucia y toBlob falla
-    backgroundColor: fondo,
-    logging: false,
-    width: ancho,
-    height: alto,
-    windowWidth: ancho,
-    windowHeight: alto,
-    /* Un <canvas> de 0×0 tira excepción en Android. */
-    ignoreElements: (el) => el.tagName === 'CANVAS' && (el.width === 0 || el.height === 0),
-    onclone: (doc) => {
-      /* `repeating-linear-gradient` rompe el renderizador en Android: se
-         neutraliza sólo en la copia, la placa en pantalla no se toca. */
-      doc.querySelectorAll('*').forEach((n) => {
-        const bg = n.style?.backgroundImage || '';
-        if (bg.includes('repeating-linear-gradient')) n.style.backgroundImage = 'none';
-      });
-    },
-  });
+  /* La placa que se ve en pantalla está encogida con `transform: scale()` para
+     entrar en el hueco disponible, y html2canvas respeta ese transform: lo que
+     salía era la placa chiquita, arrinconada arriba a la izquierda de un lienzo
+     de 1080×1350. En el celular, donde la escala es de 0,34, saltaba a la vista;
+     en escritorio pasaba lo mismo pero más disimulado.
+
+     El nodo de pantalla no se toca: html2canvas clona el documento y recién
+     después mide, así que alcanza con anular el transform EN LA COPIA. Sin
+     parpadeo y sin mover nada de lo que el usuario está viendo. */
+  nodo.setAttribute(MARCA, '1');
+
+  let lienzo;
+  try {
+    lienzo = await html2canvas(nodo, {
+      scale: escala || ESCALA,
+      useCORS: true,          // escudos y fotos vienen de Supabase Storage
+      allowTaint: false,      // con allowTaint el canvas se ensucia y toBlob falla
+      backgroundColor: fondo,
+      logging: false,
+      width: ancho,
+      height: alto,
+      windowWidth: ancho,
+      windowHeight: alto,
+      /* Un <canvas> de 0×0 tira excepción en Android. */
+      ignoreElements: (el) => el.tagName === 'CANVAS' && (el.width === 0 || el.height === 0),
+      onclone: (doc) => {
+        const clon = doc.querySelector(`[${MARCA}="1"]`);
+        if (clon) {
+          clon.style.transform = 'none';
+          clon.style.transformOrigin = 'top left';
+        }
+
+        /* `repeating-linear-gradient` rompe el renderizador en Android: se
+           neutraliza sólo en la copia, la placa en pantalla no se toca. */
+        doc.querySelectorAll('*').forEach((n) => {
+          const bg = n.style?.backgroundImage || '';
+          if (bg.includes('repeating-linear-gradient')) n.style.backgroundImage = 'none';
+        });
+      },
+    });
+  } finally {
+    nodo.removeAttribute(MARCA);
+  }
 
   const archivo = `${limpiarNombre(nombre)}.png`;
 

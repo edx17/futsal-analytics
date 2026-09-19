@@ -59,7 +59,7 @@ export default function PlacaPartido({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={esStory ? { paddingTop: 150 } : undefined}>
+      <div className="pl-cont" style={{ paddingTop: esStory ? 150 : 56 }}>
 
         <div className="pl-ceja">
           <span>{info.torneo || 'AMISTOSO'}{info.jornada ? <b> · {info.jornada}</b> : null}</span>
@@ -148,7 +148,7 @@ const BloqueGoles = ({ goles, style }) => (
 );
 
 const Pie = ({ club, categoria, esStory }) => (
-  <div className="pl-pie" style={esStory ? { paddingBottom: 140 } : undefined}>
+  <div className="pl-pie" style={{ paddingBottom: esStory ? 140 : 30 }}>
     <div className="m">VIRTUAL<i>.CLUB</i></div>
     <div className="sep" />
     <div className="cat">{[club, categoria].filter(Boolean).join(' · ').toUpperCase()}</div>
