@@ -122,8 +122,12 @@ export const CSS_PLACAS = `
 .pl-mvp-d{display:flex;gap:22px;margin-top:18px;flex-wrap:wrap}
 .pl-mvp-d div{font-family:var(--pl-mono);font-size:13px;letter-spacing:.1em;color:var(--pl-dim)}
 .pl-mvp-d b{display:block;font-size:30px;color:var(--pl-tx);font-weight:800;font-family:'Archivo',sans-serif}
-.pl-gr{display:flex;justify-content:space-between;align-items:baseline;padding:11px 0;
-  border-bottom:1px solid var(--pl-linea);font-size:26px;font-weight:800}
+/* El gap evita que un apellido largo se pegue al minuto, que es lo que pasaba
+   con "FERNÁNDEZ MARTÍNEZ". El nombre se corta antes de empujar. */
+.pl-gr{display:flex;justify-content:space-between;align-items:baseline;gap:18px;padding:11px 0;
+  border-bottom:1px solid var(--pl-linea);font-size:26px;font-weight:800;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pl-gr span{flex-shrink:0}
 .pl-gr:last-child{border:0}
 .pl-gr span{font-family:var(--pl-mono);font-size:20px;color:var(--pl-club);font-weight:700}
 
@@ -137,11 +141,10 @@ export const CSS_PLACAS = `
 .pl-pie{position:absolute;left:56px;right:56px;bottom:0;height:var(--pl-alto-pie);
   border-top:1px solid var(--pl-linea);
   display:flex;align-items:center;justify-content:center;gap:22px}
-.pl-pie .esc{width:50px;height:50px;font-size:17px;border-width:2px}
 .pl-pie .m{font-weight:900;font-size:26px;letter-spacing:-.01em}
 .pl-pie .m i{color:var(--pl-club);font-style:normal}
 .pl-pie .sep{width:1px;height:26px;background:var(--pl-linea)}
-.pl-pie .cat{font-family:var(--pl-mono);font-size:16px;letter-spacing:.18em;color:var(--pl-dim)}
+.pl-pie .cat{font-family:var(--pl-mono);font-size:17px;letter-spacing:.1em;color:var(--pl-dim)}
 /* ── titular grande: un número que es el mensaje ── */
 .pl-hero{text-align:center}
 .pl-hero .k{font-weight:900;line-height:.82;letter-spacing:-.06em;color:var(--pl-club)}

@@ -1,6 +1,6 @@
 import React from 'react';
-import { estiloContenido } from './formatos';
-import { Ceja, Escudo, Pie } from './Piezas';
+import Marco from './Marco';
+import { Ceja, Escudo } from './Piezas';
 
 /* PLACA DE TEMPORADA
  *
@@ -27,7 +27,7 @@ export default function PlacaTemporada({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={estiloContenido(formato, esStory ? 120 : 56)}>
+      <Marco formato={formato}>
 
         <Ceja izquierda="LA TEMPORADA" resaltado={info.competicion} derecha={info.categoria} />
 
@@ -103,8 +103,7 @@ export default function PlacaTemporada({ datos, formato }) {
           </div>
         )}
 
-        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
-      </div>
+      </Marco>
     </>
   );
 }

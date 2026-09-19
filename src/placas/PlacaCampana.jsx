@@ -1,6 +1,6 @@
 import React from 'react';
-import { estiloContenido } from './formatos';
-import { Ceja, Escudo, Pie } from './Piezas';
+import Marco from './Marco';
+import { Ceja, Escudo } from './Piezas';
 
 /* PLACA DE CAMPAÑA
  *
@@ -28,7 +28,7 @@ export default function PlacaCampana({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={estiloContenido(formato, esStory ? 130 : 56)}>
+      <Marco formato={formato}>
 
         <Ceja club={club.nombre} escudo={club.escudo} tamano={esStory ? 66 : 58}
               izquierda="LA CAMPAÑA" resaltado={info.torneo} derecha={info.categoria} />
@@ -74,8 +74,7 @@ export default function PlacaCampana({ datos, formato }) {
           </div>
         )}
 
-        <Pie club={club.nombre} escudo={club.escudo} detalle={info.torneo} />
-      </div>
+      </Marco>
     </>
   );
 }

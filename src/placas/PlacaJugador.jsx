@@ -1,8 +1,8 @@
 import React from 'react';
+import Marco from './Marco';
 import Cancha from './Cancha';
 import { aMetros } from './medidas';
-import { estiloContenido } from './formatos';
-import { Ceja, Pie } from './Piezas';
+import { Ceja } from './Piezas';
 import { iniciales } from './club';
 import { colorRating } from './rating';
 
@@ -44,7 +44,7 @@ export default function PlacaJugador({ datos, formato }) {
   return (
     <>
       <div className="pl-aura" /><div className="pl-trama" />
-      <div className="pl-cont" style={estiloContenido(formato, esStory ? 120 : 56)}>
+      <Marco formato={formato}>
 
         <Ceja
           club={club.nombre} escudo={club.escudo} tamano={esStory ? 66 : 58}
@@ -142,8 +142,7 @@ export default function PlacaJugador({ datos, formato }) {
           </div>
         )}
 
-        <Pie club={club.nombre} escudo={club.escudo} detalle={info.categoria} />
-      </div>
+      </Marco>
     </>
   );
 }
