@@ -15,6 +15,7 @@ import { getColorAccion } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import VisorPlaca from '../placas/VisorPlaca';
 import PlacaPartido from '../placas/PlacaPartido';
+import { ordenarGolesDelPartido } from '../utils/estadoGoles';
 import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
 import { fetchPaginado } from '../utils/supaPaginado';
@@ -1083,24 +1084,37 @@ return 'Todas';
     const dTot = analitica.duelos.defensivos.total + analitica.duelos.ofensivos.total;
 
     const mejor = analitica.ranking.find(j => j.impacto !== '-');
+
+    /* Los goles salen en el orden en que se dieron: primero el período y
+       después el minuto. Antes salían en el orden en que el Map iba viendo a
+       cada jugador, así que un 9' del segundo tiempo aparecía después de un
+       12' del primero y la lista parecía mal cargada. El período se imprime
+       porque sin él ese orden no se entiende. `ordenarGolesDelPartido` es la
+       misma función que usa Origen de los Goles para reconstruir la
+       cronología. */
     const marcadores = new Map();
-    eventosPartido.forEach(ev => {
-      if (ev.equipo !== 'Propio') return;
-      if (ev.accion !== 'Gol' && ev.accion !== 'Remate - Gol') return;
+    ordenarGolesDelPartido(
+      eventosPartido.filter(ev =>
+        ev.equipo === 'Propio' && (ev.accion === 'Gol' || ev.accion === 'Remate - Gol'))
+    ).forEach(ev => {
       const j = jugadores.find(x => String(x.id) === String(ev.id_jugador));
       const nom = (j?.apellido || j?.nombre || 'S/D').toUpperCase();
       if (!marcadores.has(nom)) marcadores.set(nom, []);
-      marcadores.get(nom).push(ev.minuto != null ? `${ev.minuto}'` : '');
+      marcadores.get(nom).push(
+        ev.minuto != null ? `${ev.minuto}' ${ev.periodo || ''}`.trim() : ''
+      );
     });
 
     return {
       club: { nombre: miClubGlobal, escudo: partidoSeleccionado.escudo_propio || miEscudoGlobal },
       rival: { nombre: partidoSeleccionado.rival || 'RIVAL', escudo: partidoSeleccionado.escudo_rival },
-      resultado: { propios: p.goles, rival: r.goles, primerTiempo: `${golesPT} — ${golesRivalPT}` },
+      resultado: { propios: p.goles, rival: r.goles, primerTiempo: `${golesPT}-${golesRivalPT}` },
       info: {
         fecha: partidoSeleccionado.fecha || '',
         torneo: (partidoSeleccionado.competicion || 'AMISTOSO').toUpperCase(),
-        jornada: partidoSeleccionado.jornada ? `FECHA ${partidoSeleccionado.jornada}` : '',
+        /* El dato ya viene con la palabra adentro ("Fecha 26"), así que
+           anteponerle otra daba "FECHA Fecha 26". */
+        jornada: partidoSeleccionado.jornada || '',
         categoria: partidoSeleccionado.categoria || '',
       },
       comparado: {
@@ -1115,6 +1129,7 @@ return 'Todas';
       },
       figura: mejor ? {
         nombre: (mejor.apellido || mejor.nombre || 'S/D').toUpperCase(),
+        foto: jugadores.find(x => String(x.id) === String(mejor.id))?.foto || null,
         dorsal: mejor.dorsal, rol: mejor.rol,
         rating: Number(mejor.impacto).toFixed(1),
         goles: mejor.goles || 0, remates: mejor.remates || 0,

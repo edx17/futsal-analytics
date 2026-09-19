@@ -116,6 +116,11 @@ export const CSS_PLACAS = `
 .pl-caja{background:var(--pl-sup);border:1px solid var(--pl-linea);border-radius:12px;padding:24px 26px;position:relative;overflow:hidden}
 .pl-mvp::after{content:'';position:absolute;right:-40px;top:-40px;width:170px;height:170px;border-radius:50%;
   background:radial-gradient(circle,rgba(var(--pl-club-rgb),.22),transparent 70%)}
+.pl-mvp-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;position:relative;z-index:1}
+.pl-mvp-foto{width:104px;height:128px;border-radius:12px;overflow:hidden;flex-shrink:0;
+  background:var(--pl-sup2);border:1px solid var(--pl-linea);display:grid;place-items:center;
+  color:rgba(var(--pl-club-rgb),.55);font-weight:900;font-size:40px;letter-spacing:-.02em}
+.pl-mvp-foto img{width:100%;height:100%;object-fit:cover}
 .pl-mvp-n{font-size:42px;font-weight:900;letter-spacing:-.02em;margin:6px 0 2px}
 .pl-chip{display:inline-flex;align-items:center;background:var(--pl-club);color:#04120C;
   font-family:var(--pl-mono);font-weight:800;font-size:34px;padding:5px 16px;border-radius:8px;margin-top:10px}

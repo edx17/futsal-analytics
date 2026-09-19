@@ -78,7 +78,7 @@ export default function PlacaPartido({ datos, formato }) {
               <span className="pl-guion" />
               <span className="pl-gv">{num(resultado.rival)}</span>
             </div>
-            {resultado.primerTiempo && <div className="pl-et">ENTRETIEMPO {resultado.primerTiempo}</div>}
+            {resultado.primerTiempo && <div className="pl-et">ET {resultado.primerTiempo}</div>}
           </div>
           <div className="pl-eq">
             <Escudo url={rival.escudo} iniciales={iniciales(rival.nombre)} lado="v" />
@@ -125,9 +125,20 @@ export default function PlacaPartido({ datos, formato }) {
 
 const BloqueFigura = ({ figura, grande, style }) => (
   <div className="pl-caja pl-mvp" style={style}>
-    <div className="pl-mini">FIGURA DEL PARTIDO</div>
-    <div className="pl-mvp-n" style={grande ? { fontSize: 58 } : undefined}>{figura.nombre}</div>
-    <div className="pl-mini">{[figura.dorsal ? `#${figura.dorsal}` : null, figura.rol].filter(Boolean).join(' · ')}</div>
+    {/* La foto va arriba a la derecha, donde el bloque ya tenía el halo de
+        color: le da cara al nombre sin robarle lugar a los números. */}
+    <div className="pl-mvp-cab">
+      <div style={{ minWidth: 0 }}>
+        <div className="pl-mini">FIGURA DEL PARTIDO</div>
+        <div className="pl-mvp-n" style={grande ? { fontSize: 58 } : undefined}>{figura.nombre}</div>
+        <div className="pl-mini">{[figura.dorsal ? `#${figura.dorsal}` : null, figura.rol].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div className="pl-mvp-foto" style={grande ? { width: 132, height: 160 } : undefined}>
+        {figura.foto
+          ? <img src={figura.foto} alt="" crossOrigin="anonymous" />
+          : <span style={grande ? { fontSize: 52 } : undefined}>{iniciales(figura.nombre)}</span>}
+      </div>
+    </div>
     <div className="pl-chip" style={grande ? { fontSize: 44 } : undefined}>{figura.rating}</div>
     <div className="pl-mvp-d" style={grande ? { gap: 44 } : undefined}>
       {figura.goles > 0 && <div>{figura.goles === 1 ? 'GOL' : 'GOLES'}<b>{figura.goles}</b></div>}
