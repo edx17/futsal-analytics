@@ -307,7 +307,7 @@ function Usuarios() {
           PANTALLA: GESTIÓN DE USUARIOS
       ========================================================= */}
       {(!esSuperUser || tabActiva === 'usuarios') && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px', animation: 'fadeIn 0.3s' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '30px', animation: 'fadeIn 0.3s' }}>
           
           {/* FORMULARIO CREAR USUARIO */}
           <div className="bento-card" style={{ height: 'fit-content' }}>
@@ -425,7 +425,7 @@ function Usuarios() {
           PANTALLA: GESTIÓN DE CLUBES (SOLO SUPERUSER)
       ========================================================= */}
       {esSuperUser && tabActiva === 'clubes' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px', animation: 'fadeIn 0.3s' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '30px', animation: 'fadeIn 0.3s' }}>
           
           {/* FORMULARIO CREAR CLUB */}
           <div className="bento-card" style={{ height: 'fit-content' }}>

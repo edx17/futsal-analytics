@@ -104,7 +104,7 @@ function PaymentSelector({ onMethodSelect, titulo = "Elegí cómo operar:" }) {
       {metodoGeneral === 'Banco' && (
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(90px, 100%), 1fr))', 
           gap: '10px', 
           padding: '15px', 
           background: '#0a0a0a', 

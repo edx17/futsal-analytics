@@ -612,7 +612,7 @@ export default function Disciplina() {
       )}
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: 12, marginBottom: 22 }}>
         <KPI label="Amarillas" valor={kpis.totAmar} color="#facc15" />
         <KPI label="Rojas" valor={kpis.totRoja} color="#ef4444" />
         <KPI label="Faltas cometidas" valor={kpis.totFaltas} color="#ec4899" />

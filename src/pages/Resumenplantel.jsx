@@ -695,7 +695,7 @@ export default function ResumenPlantel() {
         <>
           {/* DESTACADOS */}
           {destacados.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '25px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(170px, 100%), 1fr))', gap: '12px', marginBottom: '25px' }}>
               {destacados.map((d, i) => (
                 <div key={i} className="bento-card" style={{ padding: '14px', borderLeft: '3px solid var(--accent)' }}>
                   <div className="stat-label" style={{ fontSize: '0.6rem' }}>{d.ico} {d.t}</div>
@@ -746,7 +746,7 @@ export default function ResumenPlantel() {
             </div>
 
             {mostrarGlosario && (
-              <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px' }}>
+              <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', marginBottom: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: '16px' }}>
                 {GLOSARIO.map(sec => (
                   <div key={sec.g}>
                     <div style={{ fontSize: '0.68rem', fontWeight: 900, color: GRUPOS[sec.g] || '#a855f7', marginBottom: '7px', letterSpacing: '0.5px' }}>{GRUPO_LABEL[sec.g]}</div>

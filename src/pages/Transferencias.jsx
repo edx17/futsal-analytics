@@ -331,7 +331,7 @@ function Transferencias() {
       </div>
 
       {/* DASHBOARD DE PATRIMONIO */}
-      <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginBottom: '25px', textAlign: 'center', background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%)' }}>
+      <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '15px', marginBottom: '25px', textAlign: 'center', background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%)' }}>
         <div>
           <div style={{ fontSize: '1.7rem', fontWeight: 900, color: 'var(--accent)', fontFamily: MONO }}>{dashboard.cedidos}</div>
           <div className="stat-label" style={{ fontSize: '0.62rem' }}>CEDIDOS ACTIVOS</div>
@@ -375,7 +375,7 @@ function Transferencias() {
                 No hay préstamos activos. Cuando cedas o recibas un jugador, su tarjeta con la cuenta regresiva aparece acá.
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '15px' }}>
                 {prestamosActivos.map(t => {
                   const info = infoJugador(t);
                   const dias = diasHasta(t.fecha_retorno);

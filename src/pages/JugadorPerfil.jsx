@@ -1402,7 +1402,7 @@ function JugadorPerfil() {
               <div style={{ width: '3px', height: '18px', background: '#fbbf24', borderRadius: '2px' }} />
               <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#fbbf24', letterSpacing: '0.1em' }}>ARQUEROS</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '15px' }}>
               {arqueros.map(j => (
                 <div key={j.id} className="bento-card player-card player-card-arquero" onClick={() => setJugadorId(j.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}>
                   <div className="player-card-glow" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at top right, rgba(251,191,36,0.06), transparent 70%)', opacity: 0, transition: 'opacity 0.3s', pointerEvents: 'none' }} />
@@ -1433,7 +1433,7 @@ function JugadorPerfil() {
               <div style={{ width: '3px', height: '18px', background: 'var(--accent)', borderRadius: '2px' }} />
               <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--accent)', letterSpacing: '0.1em' }}>JUGADORES DE CAMPO</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '15px' }}>
               {jugadoresCampo.map(j => (
                 <div key={j.id} className="bento-card player-card" onClick={() => setJugadorId(j.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, border-color 0.2s', padding: '20px' }}>
                   <div className="player-card-glow" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at top right, rgba(0,255,136,0.05), transparent 70%)', opacity: 0, transition: 'opacity 0.3s', pointerEvents: 'none' }} />
@@ -1602,7 +1602,7 @@ function JugadorPerfil() {
           </div>
 
           {/* TABS DE NAVEGACIÓN */}
-          <div style={{ display: 'flex', gap: '4px', background: '#0a0a0a', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', background: '#0a0a0a', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
             {[
               { id: 'estadisticas', label: esArquero ? '🥅 RENDIMIENTO' : '⚽ ESTADÍSTICAS' },
               { id: 'mapas', label: '🗺️ MAPA' },
@@ -2170,7 +2170,7 @@ function JugadorPerfil() {
                       })}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', background: '#0a0a0a', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(120px, 100%), 1fr))', gap: '12px', background: '#0a0a0a', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
                       {[
                         { label: 'RATING', val: perfil.mejorQuinteto.rating.toFixed(1), color: perfil.mejorQuinteto.rating >= 6 ? accentColor : '#ef4444' },
                         { label: '+/- GOLES', val: `${perfil.mejorQuinteto.diffGoles > 0 ? '+' : ''}${perfil.mejorQuinteto.diffGoles}`, color: perfil.mejorQuinteto.diffGoles > 0 ? '#00ff88' : '#ef4444' },

@@ -515,7 +515,7 @@ export default function LoginKiosco() {
 
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(100px, 1fr))', 
+            gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(min(100px, 100%), 1fr))', 
             gap: esMovil ? '10px' : '20px', 
             overflowY: 'auto', 
             paddingBottom: '20px',

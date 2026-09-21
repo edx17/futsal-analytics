@@ -861,7 +861,7 @@ function Temporada() {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '15px' }}>
           <div>
             <div className="stat-label" style={{ fontSize: '0.65rem', marginBottom: '5px' }}>CATEGORÍA</div>
             <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={selectFilterStyle}>

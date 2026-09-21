@@ -253,7 +253,7 @@ export default function ModalVideoRival({ rival, clubId, categoria = null, onCer
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(110px, 100%), 1fr))',
                 gap: '10px',
                 marginBottom: '15px',
               }}

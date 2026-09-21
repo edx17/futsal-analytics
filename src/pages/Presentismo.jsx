@@ -450,7 +450,7 @@ function Presentismo() {
                 {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '15px', marginBottom: '30px' }}>
                 <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#3b82f6' }}>{stats.mes.promedio}%</div>
                   <div className="stat-label">PROMEDIO MES</div>
@@ -499,7 +499,7 @@ function Presentismo() {
           )}
 
           {vista === 'anual' && stats && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
               
               <div className="bento-card" style={{ display: 'flex', justifyContent: 'space-around', gridColumn: '1 / -1', textAlign: 'center', borderTop: '3px solid #a855f7' }}>
                 <div>

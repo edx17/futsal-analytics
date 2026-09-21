@@ -178,7 +178,7 @@ export default function Novedades() {
       <div className="bento-card" style={{ marginBottom: '20px' }}>
         <form onSubmit={enviarNovedad} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '12px' }}>
             <div>
               <label className="stat-label">PÚBLICO OBJETIVO</label>
               <select value={publico} onChange={(e) => setPublico(e.target.value)} style={inputBase}>

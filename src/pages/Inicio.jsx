@@ -856,7 +856,7 @@ export default function Inicio() {
       return (
         <Card key={id} id={id} index={index}>
           <Label>ACCESOS RÁPIDOS</Label>
-          <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(min(96px, 100%), 1fr))', gap: 8 }}>
             {links.map((l) => (
               <div key={l.ruta} onClick={() => !modoEdicion && navigate(l.ruta)} style={{ cursor: modoEdicion ? 'default' : 'pointer', border: `1px solid ${l.color}`, borderRadius: 10, padding: '12px 6px', textAlign: 'center', background: `linear-gradient(180deg, rgba(${hexToRgb(l.color)},0.06) 0%, rgba(0,0,0,0) 100%)` }}>
                 <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>{l.icon}</div>

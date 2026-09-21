@@ -125,7 +125,7 @@ export default function MiStaff() {
         <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Gestioná los accesos de tu cuerpo técnico.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
         {staff.map(usuario => {
           const esAdmin = ['superuser', 'manager', 'admin'].includes(usuario.rol);
           const cats = Array.isArray(usuario.categorias_asignadas) ? usuario.categorias_asignadas : [];
@@ -169,7 +169,7 @@ export default function MiStaff() {
         <div style={modalOverlay}>
           <div style={modalContent}>
             <h3 style={{ margin: '0 0 20px 0', color: 'var(--accent)' }}>Permisos: {usuarioEditando?.nombre_completo}</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(110px, 100%), 1fr))', gap: '10px' }}>
               {categoriasClub.map(cat => (
                 <button key={cat} onClick={() => toggleCategoria(cat)} style={categoriasSeleccionadas.includes(cat) ? catActive : catInactive}>
                   {cat}

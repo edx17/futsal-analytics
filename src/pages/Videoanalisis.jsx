@@ -1001,7 +1001,7 @@ export default function Videoanalisis() {
             Todavía no cargaste ningún video. Empezá con "+ NUEVO ANÁLISIS".
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(260px, 100%), 1fr))', gap: '18px' }}>
             {videos.map(v => {
               const nClips = v.video_clips?.[0]?.count ?? 0;
               return (
@@ -1319,7 +1319,7 @@ export default function Videoanalisis() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'minmax(0, 1.6fr) minmax(300px, 1fr)', gap: '18px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'minmax(0, 1.6fr) minmax(min(300px, 100%), 1fr)', gap: '18px', alignItems: 'start' }}>
 
           {/* ── COLUMNA PRINCIPAL: filtros + resultados ── */}
           <div style={{ minWidth: 0 }}>
@@ -1343,7 +1343,7 @@ export default function Videoanalisis() {
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', gap: '10px' }}>
                 <select value={filtroVideoExplor} onChange={(e) => setFiltroVideoExplor(e.target.value)} style={{ padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '0.8rem' }}>
                   <option value="">— Todos los videos —</option>
                   {videosDisponiblesExplor.map(v => <option key={v.id} value={v.id}>{v.titulo || 'Video sin título'}</option>)}
@@ -1497,7 +1497,7 @@ export default function Videoanalisis() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: (esMovil || modoCine) ? '1fr' : 'minmax(0, 1.6fr) minmax(280px, 1fr)', gap: '18px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: (esMovil || modoCine) ? '1fr' : 'minmax(0, 1.6fr) minmax(min(280px, 100%), 1fr)', gap: '18px', alignItems: 'start' }}>
 
         {/* ── COLUMNA PRINCIPAL: reproductor + botonera ── */}
         <div style={{ minWidth: 0 }}>
@@ -1599,7 +1599,7 @@ export default function Videoanalisis() {
                 ))}
               </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(130px, 100%), 1fr))', gap: '10px' }}>
               {etiquetas.map((et, index) => {
                 const n = conteoPorEtiqueta.get(et.t) || 0;
                 // Para mostrar visualmente el atajo (1 al 9, 0 para el décimo)

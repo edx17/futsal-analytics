@@ -477,7 +477,7 @@ function OrigenGoles() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
           {/* MACRO TÁCTICO */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center', padding: '15px', borderTop: '3px solid #3b82f6', background: 'linear-gradient(180deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%)' }}>
                 <div className="stat-label">ATAQUE POSICIONAL <InfoBox texto="Goles generados construyendo desde nuestra mitad o ataque de 5v4." /></div>
                 <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#3b82f6' }}>{dataAnalizada.macroTactico.Posicional}</div>
@@ -502,7 +502,7 @@ function OrigenGoles() {
           </div>
 
           {/* KPIs SUPERIORES */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '20px' }}>
              <div className="bento-card" style={{ textAlign: 'center', padding: '20px', borderTop: '2px solid var(--accent)' }}>
                 <div className="stat-label">GOLES TOTALES</div>
                 <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--text)' }}>{dataAnalizada.total}</div>
@@ -530,7 +530,7 @@ function OrigenGoles() {
              </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: '20px' }}>
             
             {/* GOLES VS xG POR ORIGEN */}
             <div className="bento-card">
@@ -579,7 +579,7 @@ function OrigenGoles() {
 
           {/* CONTEXTO NUMÉRICO + MODIFICADORES DE DEFINICIÓN */}
           {dataAnalizada.total > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
 
               {/* CONTEXTO NUMÉRICO (POWER PLAY / INFERIORIDAD) */}
               <div className="bento-card">
@@ -644,7 +644,7 @@ function OrigenGoles() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
             
             {/* ORIGEN DEL GOL - DONA */}
             <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -707,7 +707,7 @@ function OrigenGoles() {
             ) : (
               <>
                 {/* TRES TITULARES */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', marginBottom: '22px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))', gap: '12px', marginBottom: '22px' }}>
 
                   <div style={{ padding: '16px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.07)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
                     <div className="stat-label" style={{ color: '#10b981', marginBottom: '6px' }}>EMPEZAMOS GANANDO</div>
@@ -814,7 +814,7 @@ function OrigenGoles() {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
             
             {/* MAPA DE DISPERSIÓN DE GOLES INTELIGENTE */}
             <div className="bento-card">

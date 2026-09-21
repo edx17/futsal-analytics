@@ -1711,7 +1711,7 @@ const COLORS_ORIGEN = {
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO TÁCTICO <InfoBox texto="Visualización espacial de las acciones del equipo en este partido." /></div>
               
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
-                <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Ambos' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
                   <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Propio' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
                   <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Rival' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
@@ -1732,7 +1732,7 @@ const COLORS_ORIGEN = {
                   <option value="Falta" style={{ background: 'var(--panel)', color: 'var(--text)' }}>FALTAS</option>
                 </select>
 
-                <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setTipoMapa('tiros')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'tiros' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'tiros' ? 'var(--accent)' : 'var(--text-dim)' }}>TIROS (xG)</button>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>

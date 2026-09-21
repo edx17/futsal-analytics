@@ -48,8 +48,11 @@ export function TablaResponsive({
   const esMovil = useEsMovil();
   const [abiertas, setAbiertas] = useState(() => new Set());
 
-  // ── PC / tablet: tu tabla original, intacta ──
-  if (!esMovil) return children;
+  /* ── PC / tablet: la tabla original, con su propio scroll horizontal ──
+     Varias de estas tablas declaran minWidth de 700 a 1100px. En una tablet
+     angosta eso empujaba el ancho de la página entera y se desplazaba TODO de
+     costado, rótulos incluidos, en vez de desplazarse sólo la tabla. */
+  if (!esMovil) return <div className="tabla-ancha">{children}</div>;
 
   const toggle = (id) => setAbiertas((prev) => {
     const n = new Set(prev);
@@ -160,7 +163,7 @@ export function TablaResponsive({
                         <div style={{ fontSize: '0.6rem', fontWeight: 900, color: grupos[g] || 'var(--text-dim)', letterSpacing: '0.5px', marginBottom: '6px' }}>
                           {gruposLabel[g] || g}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '6px 10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(80px, 100%), 1fr))', gap: '6px 10px' }}>
                           {cols.map((col) => (
                             <div key={col.k} style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', fontSize: '0.72rem', borderBottom: '1px solid var(--border)', paddingBottom: '3px' }}>
                               <span style={{ color: 'var(--text-dim)' }}>{col.t}</span>

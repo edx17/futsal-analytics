@@ -108,7 +108,7 @@ export default function Registro() {
             <input type="text" placeholder="Ej: Boca Juniors Futsal" value={formData.nombreClub} onChange={(e) => setFormData({...formData, nombreClub: e.target.value})} style={inputStyle} required />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '10px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', letterSpacing: '1px' }}>TU NOMBRE</label>
               <input type="text" placeholder="Ej: Lionel" value={formData.nombreAdmin} onChange={(e) => setFormData({...formData, nombreAdmin: e.target.value})} style={inputStyle} required />

@@ -290,7 +290,7 @@ export default function LibroTactico() {
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Las jugadas guardadas en la categoría "Libro Táctico" aparecerán aquí.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '15px' }}>
           {jugadasVisibles.map(jugada => (
             <div 
               key={jugada.id}

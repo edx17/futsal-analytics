@@ -266,6 +266,32 @@ html, body, #root {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   NADA MÁS ANCHO QUE LA PANTALLA
+
+   `.app-content` tiene overflow-y:auto, y por regla de CSS eso convierte el
+   eje X en desplazable también. Bastaba con que un solo elemento midiera más
+   que el teléfono —la barra de solapas, sin ir más lejos— para que se
+   desplazara la página entera: los rótulos quedaban cortados a la izquierda y
+   la pantalla se volvía inusable, mientras la barra de abajo se quedaba
+   quieta porque vive fuera de ese contenedor.
+
+   La regla es: lo que legítimamente es ancho (una tabla de 18 columnas) se
+   desplaza DENTRO de su propia caja; la página, nunca. `clip` corta sin crear
+   un contenedor de scroll, así que no rompe los elementos pegajosos.
+   ═══════════════════════════════════════════════════════════════════════ */
+main {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+/* Una tabla más ancha que su hueco se desplaza sola. */
+.tabla-ancha {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* TABLAS Y FORMULARIOS */
 .table-wrapper {
   max-height: 60vh;
@@ -310,6 +336,12 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
   /* 2. Clases utilitarias para ocultar elementos no vitales en celu */
   .hide-on-mobile {
     display: none !important;
+  }
+
+  /* 3. Las solapas se reparten el ancho de su fila. Al envolver en dos o tres
+     filas, sin esto quedaban amontonadas a la izquierda con un hueco al final. */
+  .tab-btn {
+    flex: 1 1 auto;
   }
 }
 

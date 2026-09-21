@@ -480,7 +480,7 @@ function Landing() {
 // ESTILOS EN JS
 // ==========================================
 
-const planesGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '22px', maxWidth: '1100px', margin: '0 auto' };
+const planesGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(270px, 100%), 1fr))', gap: '22px', maxWidth: '1100px', margin: '0 auto' };
 const planCardStyle = { background: COLORS.bgCard, border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '30px 26px', display: 'flex', flexDirection: 'column', position: 'relative' };
 const planCardDestacadoStyle = { ...planCardStyle, border: `1px solid ${COLORS.accent}`, boxShadow: '0 0 0 1px rgba(0,255,136,0.2), 0 20px 60px rgba(0,255,136,0.07)' };
 const planTagStyle = { position: 'absolute', top: '-11px', left: '50%', transform: 'translateX(-50%)', background: COLORS.accent, color: '#000', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.1em', padding: '4px 12px', borderRadius: '20px', whiteSpace: 'nowrap' };
@@ -530,7 +530,7 @@ const dashboardResultWrapperStyle = { flex: 1, maxWidth: '600px', aspectRatio: '
 const dashboardImgStyle = { width: '100%', height: '100%', objectFit: 'cover' };
 
 const centralBadgeStyle = { display: 'block', textAlign: 'center', color: COLORS.accent, fontWeight: 700, fontSize: '0.9rem', textTransform: 'uppercase', marginBottom: '10px' };
-const featuresGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' };
+const featuresGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '30px' };
 const featureCardStyle = { background: COLORS.bgCard, padding: '30px', borderRadius: '8px', border: `1px solid ${COLORS.border}`, position: 'relative', overflow: 'hidden', height: '350px', display: 'flex', flexDirection: 'column' };
 const iconStyle = { fontSize: '2.5rem', marginBottom: '20px', color: COLORS.accent };
 const featureCardTitleStyle = { fontSize: '1.4rem', fontWeight: 800, marginBottom: '10px' };
@@ -557,7 +557,7 @@ const reportTextBlockStyle = { textAlign: 'left' };
 const reportImgWrapperStyle = { width: '100%', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${COLORS.accent}33`, boxShadow: `0 20px 60px rgba(0,0,0,0.5)`, background: 'var(--bg)' };
 const reportImgStyle = { width: '100%', height: 'auto', display: 'block' };
 
-const testimoniosGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' };
+const testimoniosGridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: '20px' };
 const testimonioCardStyle = { width: '100%', aspectRatio: '9/16', borderRadius: '12px', border: `2px solid ${COLORS.border}`, overflow: 'hidden', position: 'relative', background: 'var(--bg)' };
 const testimonioVideoStyle = { width: '100%', height: '100%', objectFit: 'cover', background: 'var(--bg)' };
 const testimonioOverlayStyle = { position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', padding: '30px 15px 15px 15px' };

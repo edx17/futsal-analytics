@@ -129,7 +129,7 @@ function Sponsors() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '20px' }}>
           {sponsors.map(s => {
             const estaVencido = s.fecha_vencimiento && new Date(s.fecha_vencimiento) < new Date();
             return (
