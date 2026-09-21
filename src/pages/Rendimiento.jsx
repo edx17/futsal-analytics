@@ -816,7 +816,7 @@ function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selI
       {!esJugador && (
         <div className="glass-panel" style={{ padding: 20 }}>
           <SecTitle color="#10b981">📋 Gabinete Kinésico — Plantel Completo</SecTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 9 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(200px, 100%),1fr))', gap: 9 }}>
             {ultimosDatosGlobal.filter(j => j.kin_t || j.kin_c || j.kin_u).map(j => {
               const isMe = j.id_jugador === selId;
               return (
@@ -837,7 +837,7 @@ function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selI
 
       <div className="glass-panel" style={{ padding: 20 }}>
         <SecTitle color="#8b5cf6">📚 Biblioteca Prevención & Rehab</SecTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 13 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(220px, 100%),1fr))', gap: 13 }}>
           {Object.entries(REHAB_LIB).map(([cat, vs]) => (
             <div key={cat} style={{ background: '#060a14', padding: 13, borderRadius: 10, border: '1px solid #0f172a' }}>
               <h4 style={{ textTransform: 'uppercase', color: '#1e293b', margin: '0 0 9px', fontSize: '0.68rem', fontWeight: 900, letterSpacing: 1 }}>{cat}</h4>
@@ -1189,7 +1189,7 @@ function TabVS({ datos, stats, selId, historial }) {
   return (
     <div className="rg">
       <div className="glass-panel" style={{ padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(120px, 100%), 1fr))', gap: 10 }}>
           {[0, 1, 2, 3].map(i => (
             <div key={i}>
               <div style={{ fontSize: '0.58rem', color: COLS[i], fontWeight: 900, textTransform: 'uppercase', marginBottom: 5, letterSpacing: 1 }}>Jugador {i + 1}</div>

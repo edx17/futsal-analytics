@@ -340,7 +340,7 @@ function ScoutingRivales() {
       )}
 
       {/* --- CARDS DE RIVALES --- */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '20px' }}>
         {rivales.map(rival => {
           const tacticoResumen = rival.datos_tacticos?.[catVista] || {};
           // En modo TODAS la card no muestra un sistema suelto (sería el de una
@@ -498,7 +498,7 @@ function ScoutingRivales() {
             ) : (
               <>
               {/* SECCIÓN TÁCTICA (ESPECÍFICA DE LA CATEGORÍA ACTIVA) */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '15px', marginBottom: '15px' }}>
                 <div style={{ gridColumn: 'span 2' }}>
                   <div className="section-title">SISTEMA TÁCTICO BASE ({catScouting})</div>
                   <select value={infoTactivaActiva.sistema_tactico || '3-1 Clásico'} onChange={e => handleTacticoChange('sistema_tactico', e.target.value)} style={inputIndustrial}>
@@ -572,7 +572,7 @@ function ScoutingRivales() {
                   </div>
                 ) : (
                   <>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '10px', textAlign: 'center', marginBottom: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(90px, 100%), 1fr))', gap: '10px', textAlign: 'center', marginBottom: '20px' }}>
                       <div style={{ background: 'var(--panel)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{statsH2H.pj}</div><div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800 }}>PJ</div></div>
                       <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid var(--accent)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent)' }}>{statsH2H.pg}</div><div style={{ fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 800 }}>PG</div></div>
                       <div style={{ background: 'var(--panel)', padding: '10px 5px', borderRadius: '4px' }}><div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fbbf24' }}>{statsH2H.pe}</div><div style={{ fontSize: '0.6rem', color: '#fbbf24', fontWeight: 800 }}>PE</div></div>

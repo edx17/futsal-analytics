@@ -86,7 +86,7 @@ function Empleados() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
           {empleados.map(emp => (
             <div key={emp.id} style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: `1px solid ${emp.estado === 'Activo' ? 'var(--border)' : '#ef4444'}`, position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -116,7 +116,7 @@ function Empleados() {
           <div className="bento-card" style={{ width: '600px', border: '1px solid #3b82f6', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0, color: '#3b82f6' }}>{form.id ? 'Editar Ficha Laboral' : 'Alta de Personal'}</h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '15px', marginTop: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))', gap: '15px', marginTop: '15px' }}>
               <div style={{ gridColumn: '1 / -1' }}><label style={lblStyle}>Nombre Completo</label><input type="text" value={form.nombre_completo} onChange={e => setForm({...form, nombre_completo: e.target.value})} style={inputStyle} /></div>
               
               <div><label style={lblStyle}>Rol / Cargo</label><input type="text" value={form.rol} onChange={e => setForm({...form, rol: e.target.value})} style={inputStyle} /></div>
@@ -129,7 +129,7 @@ function Empleados() {
 
               <div style={{ gridColumn: '1 / -1', background: 'var(--panel)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)', marginTop: '10px' }}>
                 <h4 style={{ margin: '0 0 10px 0', color: 'var(--text-dim)', fontSize: '0.8rem' }}>DATOS BANCARIOS</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '10px' }}>
                   <div><label style={lblStyle}>Banco</label><input type="text" value={form.banco} onChange={e => setForm({...form, banco: e.target.value})} style={inputStyle} placeholder="Ej: Galicia / MercadoPago" /></div>
                   <div><label style={lblStyle}>Alias</label><input type="text" value={form.alias} onChange={e => setForm({...form, alias: e.target.value})} style={inputStyle} /></div>
                   <div style={{ gridColumn: '1 / -1' }}><label style={lblStyle}>CBU / CVU</label><input type="text" value={form.cbu} onChange={e => setForm({...form, cbu: e.target.value})} style={inputStyle} /></div>

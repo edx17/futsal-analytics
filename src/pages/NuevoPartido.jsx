@@ -440,7 +440,7 @@ function NuevoPartido() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '15px' }}>
           <div>
             <div className="section-title">JORNADA / FASE</div>
             <input type="text" value={formData.jornada} onChange={e => setFormData({...formData, jornada: e.target.value})} style={isFixtureMatch ? inputDisabledStyle : inputIndustrial} placeholder="Ej: Fecha 5" disabled={isFixtureMatch} />
@@ -461,7 +461,7 @@ function NuevoPartido() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px dashed var(--accent)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '15px', background: 'rgba(0, 255, 136, 0.05)', padding: '15px', borderRadius: '6px', border: '1px dashed var(--accent)' }}>
           <div>
             <div className="section-title" style={{ color: 'var(--accent)' }}>HORARIO DEFINITIVO</div>
             <input type="time" value={formData.horario} onChange={e => setFormData({...formData, horario: e.target.value})} style={{...inputIndustrial, borderColor: 'var(--accent)'}} />
@@ -611,7 +611,7 @@ function NuevoPartido() {
         )}
 
         {vistaJugadores === 'grilla' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(180px, 100%), 1fr))', gap: '15px' }}>
             {jugadoresProcesados.map((j) => {
               const estado = seleccion[j.id] || { convocado: false, titular: false };
               

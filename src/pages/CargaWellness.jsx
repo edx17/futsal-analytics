@@ -395,7 +395,7 @@ const CargaWellness = () => {
           {cargandoReporte ? (
             <div style={{ textAlign: 'center', padding: '40px', color: 'var(--accent)' }}>Analizando datos... ⏳</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '15px' }}>
               {jugadoresFiltrados.map((j) => (
                 <div key={j.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '12px', padding: '15px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>

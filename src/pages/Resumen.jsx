@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import VisorPlaca from '../placas/VisorPlaca';
 import PlacaPartido from '../placas/PlacaPartido';
 import { ordenarGolesDelPartido } from '../utils/estadoGoles';
+import { fetchPorLotes } from '../utils/supaPaginado';
 import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
 import { fetchPaginado } from '../utils/supaPaginado';
@@ -396,8 +397,15 @@ return 'Todas';
           queryWellness = queryWellness.eq('club_id', club_id);
         }
 
-        const { data: p } = await queryPartidos;
-        
+        /* Las tres son independientes: partidos, jugadores y wellness no se
+           necesitan entre sí. Encadenadas eran tres esperas en fila antes de
+           poder mostrar siquiera la lista de partidos. */
+        const [
+          { data: p },
+          { data: j },
+          { data: w, error: wError },
+        ] = await Promise.all([queryPartidos, queryJugadores, queryWellness]);
+
         // --- INICIO DE CORRECCIÓN ---
         // Implementamos la misma lógica robusta que en Inicio.js para evitar ver partidos de otros equipos
         const _norm = (s) => String(s || '').trim().toLowerCase();
@@ -421,26 +429,30 @@ return 'Todas';
         setPartidos(misPartidos);
         // --- FIN DE CORRECCIÓN ---
 
-        const { data: j } = await queryJugadores;
         setJugadores(j || []);
-        
-        const { data: w, error: wError } = await queryWellness;
+
         if (wError) console.error("Error leyendo wellness:", wError);
         setWellness(w || []);
 
-        let todosLosEventos = [];
-        let rangoInicio = 0;
-        let limiteAlcanzado = false;
-
-        while (!limiteAlcanzado) {
-          const { data: evs, error } = await supabase.from('eventos').select('id_partido').range(rangoInicio, rangoInicio + 999);
-          if (error) break;
-          if (evs && evs.length > 0) {
-            todosLosEventos = [...todosLosEventos, ...evs];
-            rangoInicio += 1000;
-            if (evs.length < 1000) limiteAlcanzado = true;
-          } else { limiteAlcanzado = true; }
-        }
+        /* QUÉ PARTIDOS TIENEN DATOS CARGADOS
+         *
+         * Esto sólo necesita el conjunto de id_partido distintos, pero se
+         * resolvía recorriendo la tabla de eventos ENTERA, sin filtrar por
+         * club ni por partido, de a mil filas por viaje. Con una temporada
+         * cargada eso son decenas de viajes al servidor antes de poder
+         * dibujar la lista de partidos, y encima con `.range()` sin `.order()`,
+         * que puede repetir una fila en dos páginas y perder otra.
+         *
+         * Ahora se acota a los partidos del club y se pagina por cursor. Sigue
+         * trayendo una fila por evento: lo que lo resolvería de un viaje es un
+         * agregado del lado del servidor, que es un cambio de base de datos y
+         * no se hace por las nuestras. */
+        const idsDeMisPartidos = (p || []).map(part => part.id);
+        const todosLosEventos = await fetchPorLotes(idsDeMisPartidos, (lote) =>
+          supabase.from('eventos').select('id, id_partido')
+            .in('id_partido', lote)
+            .order('id', { ascending: true })
+        );
 
         const idsConDatos = [...new Set(todosLosEventos.map(e => e.id_partido))];
         setPartidosConDatos(idsConDatos);
@@ -1711,7 +1723,7 @@ const COLORS_ORIGEN = {
               <div className="stat-label" style={{ display: 'flex', alignItems: 'center' }}>MAPEO TÁCTICO <InfoBox texto="Visualización espacial de las acciones del equipo en este partido." /></div>
               
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
-                <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setFiltroEquipoMapa('Ambos')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Ambos' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Ambos' ? 'var(--accent)' : 'var(--text-dim)' }}>AMBOS</button>
                   <button onClick={() => setFiltroEquipoMapa('Propio')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Propio' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Propio' ? 'var(--accent)' : 'var(--text-dim)' }}>MI EQUIPO</button>
                   <button onClick={() => setFiltroEquipoMapa('Rival')} style={{ ...btnTab, flex: 1, background: filtroEquipoMapa === 'Rival' ? 'var(--hover)' : 'transparent', color: filtroEquipoMapa === 'Rival' ? 'var(--accent)' : 'var(--text-dim)' }}>RIVAL</button>
@@ -1732,7 +1744,7 @@ const COLORS_ORIGEN = {
                   <option value="Falta" style={{ background: 'var(--panel)', color: 'var(--text)' }}>FALTAS</option>
                 </select>
 
-                <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', background: 'var(--bg)', padding: '3px', borderRadius: '4px', border: '1px solid var(--border)', flex: esMovil ? '1 1 100%' : 'auto' }}>
                   <button onClick={() => setTipoMapa('tiros')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'tiros' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'tiros' ? 'var(--accent)' : 'var(--text-dim)' }}>TIROS (xG)</button>
                   <button onClick={() => setTipoMapa('puntos')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'puntos' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'puntos' ? 'var(--accent)' : 'var(--text-dim)' }}>PUNTOS</button>
                   <button onClick={() => setTipoMapa('calor')} style={{ ...btnTab, flex: 1, background: tipoMapa === 'calor' ? 'var(--hover)' : 'transparent', color: tipoMapa === 'calor' ? 'var(--accent)' : 'var(--text-dim)' }}>CALOR</button>

@@ -288,7 +288,8 @@ function Citacion() {
         const eventos = await traerPaginado(() => supabase.from('eventos').select('*')
           .in('id_partido', ids)
           .order('id_partido', { ascending: false })
-          .order('created_at', { ascending: true }));
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true }));
 
         /* Amarillas del año para la suspensión por acumulación. Consulta
            aparte y acotada: sólo las tarjetas, no todos los eventos del año. */

@@ -1344,7 +1344,7 @@ function Torneos() {
             </div>
           )}
 
-          <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '15px', marginBottom: '20px', textAlign: 'center' }}>
+          <div className="bento-card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100px, 100%), 1fr))', gap: '15px', marginBottom: '20px', textAlign: 'center' }}>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{ptsTotales}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>PUNTOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text)' }}>{stats.pj}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>JUGADOS</div></div>
             <div><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#00ff88' }}>{stats.pg}</div><div className="stat-label" style={{ fontSize: '0.65rem' }}>GANADOS</div></div>
@@ -1362,7 +1362,7 @@ function Torneos() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '20px', marginBottom: '30px' }}>
             <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', borderTop: '2px solid var(--accent)' }}>
                <div className="stat-label">ESTADO DE FORMA <InfoBox texto="Resultados de los últimos partidos finalizados, del más viejo (izquierda) al más reciente (derecha)."/></div>
 
@@ -1450,7 +1450,7 @@ function Torneos() {
 
           <div className="bento-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-              <div style={{ display: 'flex', gap: '5px', background: 'var(--bg)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', background: 'var(--bg)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                   <button 
                     onClick={() => setTabMisTorneos('posiciones')} 
                     className="tab-btn" 
@@ -1519,7 +1519,7 @@ function Torneos() {
                     {rondasLlave.map(({ ronda, cruces }) => (
                       <div key={ronda} className="bento-card">
                         <div className="stat-label" style={{ color: 'var(--accent)', marginBottom: '12px' }}>{String(ronda).toUpperCase()}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))', gap: '12px' }}>
                           {cruces.map(cruce => {
                             const gp = Number(cruce.goles_propios) || 0;
                             const gr = Number(cruce.goles_rival) || 0;
@@ -1938,7 +1938,7 @@ function Torneos() {
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     
                     {(proximoRival || proyeccion.pendientes > 0 || proyeccion.pj > 0) && (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '15px' }}>
 
                         {proximoRival && (
                           <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: '4px solid #a855f7' }}>
@@ -2057,7 +2057,7 @@ function Torneos() {
                       </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '15px' }}>
                       <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', borderLeft: '4px solid #00ff88' }}>
                          <div className="stat-label">MÁS GOLEADOR</div>
                          <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '8px', color: 'var(--text)' }}>{reporteLiga.masGoleador?.nombre.toUpperCase()}</div>
@@ -2083,7 +2083,7 @@ function Torneos() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '15px' }}>
                       {reporteLiga.mayorGoleada.dif > 0 && (
                          <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--accent)' }}>
                             <div className="stat-label">MAYOR GOLEADA</div>
@@ -2316,7 +2316,7 @@ function Torneos() {
                 ) : (
                   <>
                     <div className="bento-card" style={{ marginBottom: '20px', borderTop: '3px solid var(--accent)' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '18px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(120px, 100%), 1fr))', gap: '18px' }}>
                         <Kpi rotulo="PUESTO" valor={miEquipo.puesto ? `${miEquipo.puesto}º` : '—'}
                              pie={miEquipo.totalEquipos ? `de ${miEquipo.totalEquipos} equipos` : ''} color="var(--accent)" />
                         <Kpi rotulo="JUGADOS" valor={miEquipo.stats.pj} />

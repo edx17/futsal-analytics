@@ -852,7 +852,7 @@ function Tesoreria() {
           {/* ==================================================== */}
           {vista === 'egresos' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))', gap: '20px', marginBottom: '20px' }}>
                 <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: '1px solid #00ff88', textAlign: 'center' }}>
                   <div className="stat-label">INGRESOS DEL MES</div>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#00ff88' }}>+ ${balance.ingresos.toLocaleString()}</div>
@@ -945,7 +945,7 @@ function Tesoreria() {
           {/* VISTA 5: REPORTES                                    */}
           {/* ==================================================== */}
           {vista === 'reportes' && datosReporte && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
               <div className="bento-card" style={{ display: 'flex', justifyContent: 'space-around', gridColumn: '1 / -1', textAlign: 'center', borderTop: '3px solid #a855f7', flexWrap: 'wrap', gap: '15px' }}>
                 <div style={{ flex: 1, minWidth: '150px' }}>
                   <div style={{ fontSize: '2rem', fontWeight: 900, color: '#00ff88' }}>${datosReporte.ingresosTotal.toLocaleString()}</div>

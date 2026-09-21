@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { TablaResponsive } from '../components/TablaResponsive';
+import { fetchKeyset } from '../utils/supaPaginado';
 
 // ============================================================
 // CONFIG
@@ -106,24 +107,17 @@ export default function Disciplina() {
     if (!clubId) { setCargando(false); return; }
     setCargando(true);
 
-    // Lectura paginada de eventos disciplinarios (esquiva el tope de 1000 filas de Supabase)
-    const cargarEventosDisciplina = async () => {
-      const PAGE = 1000;
-      let desde = 0, acumulado = [];
-      while (true) {
-        const { data, error } = await supabase.from('eventos')
-          .select('id, id_jugador, accion, equipo, periodo, minuto, segundos, id_partido, etiqueta_tactica')
-          .eq('club_id', clubId)
-          .eq('equipo', 'Propio')
-          .in('accion', ACCIONES_DISCIPLINA)
-          .range(desde, desde + PAGE - 1);
-        if (error || !data) break;
-        acumulado = acumulado.concat(data);
-        if (data.length < PAGE) break;
-        desde += PAGE;
-      }
-      return acumulado;
-    };
+    /* Lectura paginada de eventos disciplinarios (esquiva el tope de 1000
+       filas de PostgREST). Por cursor y no por .range(): .range() es un
+       OFFSET y, sin un .order() estable, Postgres puede devolver la misma
+       fila en dos páginas y perder otra. */
+    const cargarEventosDisciplina = () => fetchKeyset(() =>
+      supabase.from('eventos')
+        .select('id, id_jugador, accion, equipo, periodo, minuto, segundos, id_partido, etiqueta_tactica')
+        .eq('club_id', clubId)
+        .eq('equipo', 'Propio')
+        .in('accion', ACCIONES_DISCIPLINA)
+    );
 
     const [evtData, jugRes, parRes, torRes, sanRes] = await Promise.all([
       cargarEventosDisciplina(),
@@ -612,7 +606,7 @@ export default function Disciplina() {
       )}
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: 12, marginBottom: 22 }}>
         <KPI label="Amarillas" valor={kpis.totAmar} color="#facc15" />
         <KPI label="Rojas" valor={kpis.totRoja} color="#ef4444" />
         <KPI label="Faltas cometidas" valor={kpis.totFaltas} color="#ec4899" />

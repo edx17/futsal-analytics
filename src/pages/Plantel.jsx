@@ -788,7 +788,7 @@ function Plantel() {
 
               <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '4px', border: '1px solid var(--border)' }}>
                 <div className="section-title" style={{ marginTop: 0 }}>FICHA MÉDICA Y FÍSICA</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(120px, 100%), 1fr))', gap: '15px', marginBottom: '15px' }}>
                   <div><div className="section-title">NACIMIENTO</div><input type="date" value={formData.fechanac} onChange={e => setFormData({...formData, fechanac: e.target.value})} style={inputIndustrial} /></div>
                   <div><div className="section-title">DNI</div><input type="number" value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} style={inputIndustrial} placeholder="Sin puntos" /></div>
                   <div><div className="section-title">PESO (KG)</div><input type="number" step="0.1" value={formData.peso} onChange={e => setFormData({...formData, peso: e.target.value})} style={inputIndustrial} placeholder="Ej: 75.5" /></div>

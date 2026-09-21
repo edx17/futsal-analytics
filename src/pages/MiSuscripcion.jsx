@@ -106,7 +106,7 @@ function MiSuscripcion() {
         </div>
 
         {/* DETALLES DEL PLAN */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: '15px', marginTop: '10px' }}>
           <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '6px', border: '1px solid var(--border)' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 800, marginBottom: '5px' }}>PLAN ACTUAL</div>
             <div style={{ fontSize: '1.3rem', fontWeight: 900, color: esPrueba ? '#facc15' : 'var(--accent)', textTransform: 'uppercase' }}>

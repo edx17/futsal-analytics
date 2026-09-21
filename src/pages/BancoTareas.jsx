@@ -34,7 +34,7 @@ const RenderRutinaFisica = ({ data }) => {
             {data.sub_modo === 'gimnasio' ? (
               <>
                 <div style={{ fontWeight: '900', color: 'var(--text)', fontSize: '1.1rem' }}>{i + 1}. {b.nombre}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(72px, 1fr))', gap: '10px', marginTop: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(72px, 100%), 1fr))', gap: '10px', marginTop: '10px' }}>
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>SERIES</span><strong style={{ color: 'var(--text)' }}>{b.series || '-'}</strong></div>
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>REPS</span><strong style={{ color: 'var(--text)' }}>{b.reps || '-'}</strong></div>
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>INTENSIDAD</span><strong style={{ color: 'var(--text)' }}>{b.rir || '-'}</strong></div>
@@ -45,7 +45,7 @@ const RenderRutinaFisica = ({ data }) => {
             ) : (
               <>
                 <div style={{ fontWeight: '900', color: 'var(--text)', fontSize: '1.1rem' }}>{b.nombreBloque}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '8px', marginTop: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(90px, 100%), 1fr))', gap: '8px', marginTop: '10px' }}>
                   <div style={{ background: 'var(--bg)', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: 'var(--text-dim)' }}>Dist:</span> <strong style={{ color: 'var(--text)' }}>{b.distancia}m</strong></div>
                   <div style={{ background: 'var(--bg)', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: 'var(--text-dim)' }}>Trabajo:</span> <strong style={{ color: 'var(--text)' }}>{b.tiempoTrabajo}s</strong></div>
                   <div style={{ background: 'var(--bg)', padding: '6px', borderRadius: '4px', fontSize: '0.8rem' }}><span style={{ color: 'var(--text-dim)' }}>Pausa:</span> <strong style={{ color: 'var(--text)' }}>{b.micropausa}s</strong></div>
@@ -659,7 +659,7 @@ const BancoTareas = () => {
 
               <div style={{ flex: '1 1 300px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(120px, 100%), 1fr))', gap: '10px' }}>
                   <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border)' }}>
                     <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 'bold' }}>DURACIÓN</span>
                     <span style={{ fontSize: '1.5rem', fontWeight: '900', color: 'var(--text)' }}>{tareaSeleccionada.duracion_estimada}'</span>

@@ -91,7 +91,7 @@ export default function FiltrosTareas({
 
       {abierto && (
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))',
           gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)',
         }}>
           {mostrarNaturaleza && (

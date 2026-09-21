@@ -229,7 +229,7 @@ const VideoTracingIA = () => {
         <div className="stat-label">Análisis de Video y Radar Táctico</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px', width: '100%' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '25px', width: '100%' }}>
         
         <section className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '15px', gridColumn: '1 / -1' }}>
           <div className="stat-label" style={{ color: '#00ff88' }}>1. CONTEXTO Y CALIBRACIÓN (Órden: Sup Izq, Sup Der, Inf Der, Inf Izq)</div>
@@ -291,7 +291,7 @@ const VideoTracingIA = () => {
             <div className="stat-label" style={{ color: '#00ff88' }}>2. MAPEO DE IDENTIDADES (CONGELADO EN FRAME INICIAL)</div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Asigná los dorsales a los puntos amarillos que ves en el radar para que el seguimiento sea preciso.</div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 100%), 1fr))', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
               {uniqueTrackerIds.map(tId => (
                 <div 
                   key={tId} 

@@ -401,7 +401,7 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
       </div>
 
       {/* FILTROS */}
-      <div style={{ ...tarjeta, margin: '10px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', alignItems: 'end' }}>
+      <div style={{ ...tarjeta, margin: '10px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '10px', alignItems: 'end' }}>
         <label>
           <div style={{ ...etiqueta, marginBottom: '4px' }}>TORNEO</div>
           <select value={fTorneo} onChange={e => setFTorneo(e.target.value)} style={inputStyle}>
