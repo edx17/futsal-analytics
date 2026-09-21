@@ -16,6 +16,7 @@ import ModalPlaca from '../placas/ModalPlaca';
 import PlacaTemporada from '../placas/PlacaTemporada';
 import { datosDelClub } from '../placas/club';
 import { TablaResponsive } from '../components/TablaResponsive';
+import { fetchPorLotes } from '../utils/supaPaginado';
 
 /* Analiza la secuencia completa de resultados (más viejo -> más reciente).
    Devuelve la racha actual y los récords históricos del período filtrado. */
@@ -341,13 +342,37 @@ function Temporada() {
         );
       }
       
-      let escudoMiClub = null;
-      if (clubId) {
-          const { data: c } = await supabase.from('clubes').select('escudo_url').eq('id', clubId).single();
-          if (c) escudoMiClub = c.escudo_url;
-      }
-      
-      const { data: r } = await supabase.from('rivales').select('id, escudo');
+      /* LO QUE SE TRAE, Y LO QUE NO
+       *
+       * Antes los eventos se pedían SIN un solo filtro —`.select('*')` a secas
+       * sobre toda la tabla— y recién con todo descargado se descartaban en el
+       * navegador los que no eran de los partidos filtrados. O sea que
+       * mirando una categoría se bajaba igual la temporada entera de todas.
+       * Ahora el filtro lo hace el servidor, que para eso tiene el índice.
+       *
+       * Y se pedían de a una página por vez con `.range()` SIN `.order()`:
+       * .range() es un OFFSET, y sin un orden estable Postgres puede devolver
+       * la misma fila en dos páginas y perder otra. `fetchPorLotes` ordena,
+       * parte la lista de ids para que no reviente el largo de la URL, y trae
+       * los lotes de a tres en paralelo.
+       *
+       * Las tres lecturas son independientes entre sí, así que van juntas: los
+       * ids de partido ya se conocen antes de resolver los escudos. */
+      const idsPartidosPermitidos = pFiltrados.map(part => part.id);
+
+      const [{ data: c }, { data: r }, todosLosEventos] = await Promise.all([
+        clubId
+          ? supabase.from('clubes').select('escudo_url').eq('id', clubId).single()
+          : Promise.resolve({ data: null }),
+        supabase.from('rivales').select('id, escudo'),
+        fetchPorLotes(idsPartidosPermitidos, (lote) =>
+          supabase.from('eventos').select('*')
+            .in('id_partido', lote)
+            .order('id', { ascending: true })
+        ),
+      ]);
+
+      const escudoMiClub = c?.escudo_url || null;
 
       const pConEscudos = pFiltrados.map(part => {
            const rivalInfo = (r || []).find(riv => riv.id === part.rival_id);
@@ -357,33 +382,6 @@ function Temporada() {
                escudo_rival: part.escudo_rival || rivalInfo?.escudo || null
            };
       });
-
-      let todosLosEventos = [];
-      let start = 0;
-      const step = 1000;
-
-      while (true) {
-        const { data: chunk, error } = await supabase
-          .from('eventos')
-          .select('*')
-          .range(start, start + step - 1);
-        
-        if (error) {
-          console.error("Error cargando eventos", error);
-          break;
-        }
-
-        if (chunk && chunk.length > 0) {
-          todosLosEventos = [...todosLosEventos, ...chunk];
-          if (chunk.length < step) break; 
-          start += step;
-        } else {
-          break;
-        }
-      }
-      
-      const idsPartidosPermitidos = pConEscudos.map(part => part.id);
-      todosLosEventos = todosLosEventos.filter(ev => idsPartidosPermitidos.includes(ev.id_partido));
 
       setPartidos(pConEscudos);
       setJugadores(jFiltrados); 

@@ -543,7 +543,8 @@ function JugadorPerfil() {
       const evsJugador = await traerPaginado(() => supabase
         .from('eventos').select('*')
         .or(`id_jugador.eq.${jugadorId},id_asistencia.eq.${jugadorId}`)
-        .order('id_partido', { ascending: false }));
+        .order('id_partido', { ascending: false })
+        .order('id', { ascending: true }));
 
       setEventos(evsJugador || []);
 
@@ -560,7 +561,8 @@ function JugadorPerfil() {
           const parcial = await traerPaginado(() => supabase.from('eventos').select('*')
             .in('id_partido', lote)
             .order('id_partido', { ascending: false })
-            .order('created_at', { ascending: true }));
+            .order('created_at', { ascending: true })
+            .order('id', { ascending: true }));
           evsFull = evsFull.concat(parcial);
         }
         setEventosCompletos(evsFull);

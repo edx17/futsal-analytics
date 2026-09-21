@@ -8,6 +8,7 @@ import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas } from '../utils/ruedas';
+import { fetchPorLotes } from '../utils/supaPaginado';
 
 const MONO = 'JetBrains Mono, monospace';
 const DUR_PARTIDO = 40; // minutos de un partido de futsal
@@ -93,42 +94,41 @@ export default function ResumenPlantel() {
     (async () => {
       setLoading(true);
       try {
-        // Partidos del club, SIN los cruces ajenos (Neutral)
-        const { data: partidos } = await supabase
-          .from('partidos').select('*')
-          .eq('club_id', clubId)
-          .or('condicion.is.null,condicion.neq.Neutral');
+        /* Las cuatro consultas de base no dependen entre sí, así que van
+           juntas. Encadenadas eran cuatro viajes de ida y vuelta al servidor
+           antes de empezar siquiera a pedir los eventos: en un teléfono con
+           4G eso es más de un segundo de pantalla en blanco por nada. */
+        const [
+          { data: partidos },
+          { data: jugadores },
+          { data: sanciones },
+          { data: torneos },
+        ] = await Promise.all([
+          // Partidos del club, SIN los cruces ajenos (Neutral)
+          supabase.from('partidos').select('*')
+            .eq('club_id', clubId)
+            .or('condicion.is.null,condicion.neq.Neutral'),
+          supabase.from('jugadores')
+            .select('id, nombre, apellido, posicion, dorsal, categoria, foto, fechanac, pierna, estado_ficha, vencimiento_apto')
+            .eq('club_id', clubId),
+          supabase.from('disciplina_sanciones').select('*').eq('club_id', clubId),
+          // Necesarios para saber dónde corta la Primera Rueda de cada torneo
+          supabase.from('torneos').select('*').eq('club_id', clubId),
+        ]);
 
-        const { data: jugadores } = await supabase
-          .from('jugadores')
-          .select('id, nombre, apellido, posicion, dorsal, categoria, foto, fechanac, pierna, estado_ficha, vencimiento_apto')
-          .eq('club_id', clubId);
-
-        const { data: sanciones } = await supabase
-          .from('disciplina_sanciones').select('*').eq('club_id', clubId);
-
-        // Necesarios para saber dónde corta la Primera Rueda de cada torneo
-        const { data: torneos } = await supabase
-          .from('torneos').select('*').eq('club_id', clubId);
-
+        /* Los eventos se traían con un `.in()` de TODOS los partidos y un
+           bucle de páginas una detrás de otra. Dos problemas: la lista de ids
+           viaja en la URL y con un club de muchos partidos el servidor la
+           rechaza por largo, y las páginas se pedían de a una.
+           `fetchPorLotes` parte la lista y trae los lotes de a tres en
+           paralelo, paginando cada uno por dentro. */
         const idsPartidos = (partidos || []).map(p => p.id);
-        let eventos = [];
-        if (idsPartidos.length > 0) {
-          const size = 1000; let page = 0;
-          while (true) {
-            const { data, error } = await supabase
-              .from('eventos').select('*')
-              .eq('club_id', clubId)
-              .in('id_partido', idsPartidos)
-              .order('id', { ascending: true })
-              .range(page * size, page * size + size - 1);
-            if (error || !data || data.length === 0) break;
-            eventos = eventos.concat(data);
-            if (data.length < size) break;
-            page++;
-            if (page > 50) break; // tope de seguridad
-          }
-        }
+        const eventos = await fetchPorLotes(idsPartidos, (lote) =>
+          supabase.from('eventos').select('*')
+            .eq('club_id', clubId)
+            .in('id_partido', lote)
+            .order('id', { ascending: true })
+        );
 
         if (!cancelado) setRaw({ partidos: partidos || [], jugadores: jugadores || [], eventos, sanciones: sanciones || [], torneos: torneos || [] });
       } catch (err) {

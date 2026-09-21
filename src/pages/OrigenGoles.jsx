@@ -8,6 +8,7 @@ import { calcularTabla, puestoDe } from '../utils/analisisTorneo';
 import ModalPlaca from '../placas/ModalPlaca';
 import PlacaGoles from '../placas/PlacaGoles';
 import { datosDelClub, claveDeTabla } from '../placas/club';
+import { fetchKeyset } from '../utils/supaPaginado';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ComposedChart, Line
@@ -79,36 +80,26 @@ function OrigenGoles() {
         setCargando(true);
         if (!clubId) { setPartidos([]); setJugadores([]); setEventos([]); setTorneos([]); setCargando(false); return; }
         
-        /* `condicion` y `nombre_propio` hacen falta para armar la tabla del
-           torneo: sin ellas no se distingue un partido nuestro de un cruce
-           entre terceros y el ranking sale mal. */
-        const { data: p } = await supabase.from('partidos').select('id, rival, competicion, categoria, torneo_id, estado, goles_propios, goles_rival, condicion, nombre_propio, escudo_propio, escudo_rival').eq('club_id', clubId);
-        const { data: j } = await supabase.from('jugadores').select('id, nombre, apellido, dorsal').eq('club_id', clubId);
-        const { data: t } = await supabase.from('torneos').select('id, nombre, categoria').eq('club_id', clubId);
-        
-        let todosLosGoles = [];
-        let start = 0;
-        const step = 1000;
+        /* Las cuatro lecturas son independientes —los goles se filtran por
+           acción, no por partido— así que van todas juntas. Encadenadas eran
+           cuatro esperas en fila antes de poder dibujar nada.
 
-        while (true) {
-          const { data: chunk, error } = await supabase
-            .from('eventos')
-            .select('*')
+           El paginado pasa a ser por cursor. Antes usaba .range() SIN .order():
+           .range() es un OFFSET, y sin un orden estable Postgres puede
+           devolver la misma fila en dos páginas y perder otra. Con pocos goles
+           no se notaba; pasando los mil, sí. */
+        const [{ data: p }, { data: j }, { data: t }, todosLosGoles] = await Promise.all([
+          /* `condicion` y `nombre_propio` hacen falta para armar la tabla del
+             torneo: sin ellas no se distingue un partido nuestro de un cruce
+             entre terceros y el ranking sale mal. */
+          supabase.from('partidos').select('id, rival, competicion, categoria, torneo_id, estado, goles_propios, goles_rival, condicion, nombre_propio, escudo_propio, escudo_rival').eq('club_id', clubId),
+          supabase.from('jugadores').select('id, nombre, apellido, dorsal').eq('club_id', clubId),
+          supabase.from('torneos').select('id, nombre, categoria').eq('club_id', clubId),
+          fetchKeyset(() => supabase.from('eventos').select('*')
             .eq('club_id', clubId)
-            .in('accion', ['Gol', 'Remate - Gol'])
-            .range(start, start + step - 1);
-          
-          if (error) break;
+            .in('accion', ['Gol', 'Remate - Gol'])),
+        ]);
 
-          if (chunk && chunk.length > 0) {
-            todosLosGoles = [...todosLosGoles, ...chunk];
-            if (chunk.length < step) break; 
-            start += step;
-          } else {
-            break;
-          }
-        }
-        
         setPartidos(p || []);
         setJugadores(j || []);
         setTorneos(t || []);
