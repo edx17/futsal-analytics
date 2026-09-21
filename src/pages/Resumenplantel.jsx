@@ -8,7 +8,7 @@ import { calcularRatingJugador } from '../analytics/rating';
 import { calcularXGEvento } from '../analytics/xg';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas } from '../utils/ruedas';
-import { fetchPorLotes } from '../utils/supaPaginado';
+import { fetchParalelo } from '../utils/supaPaginado';
 
 const MONO = 'JetBrains Mono, monospace';
 const DUR_PARTIDO = 40; // minutos de un partido de futsal
@@ -75,6 +75,8 @@ export default function ResumenPlantel() {
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
   const [loading, setLoading] = useState(true);
+  /* Cuántos eventos llegaron, para que la espera no sea un cartel quieto. */
+  const [avance, setAvance] = useState({ traidas: 0, total: 0 });
   const [raw, setRaw] = useState({ partidos: [], jugadores: [], eventos: [], sanciones: [], torneos: [] });
 
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
@@ -116,19 +118,30 @@ export default function ResumenPlantel() {
           supabase.from('torneos').select('*').eq('club_id', clubId),
         ]);
 
-        /* Los eventos se traían con un `.in()` de TODOS los partidos y un
-           bucle de páginas una detrás de otra. Dos problemas: la lista de ids
-           viaja en la URL y con un club de muchos partidos el servidor la
-           rechaza por largo, y las páginas se pedían de a una.
-           `fetchPorLotes` parte la lista y trae los lotes de a tres en
-           paralelo, paginando cada uno por dentro. */
-        const idsPartidos = (partidos || []).map(p => p.id);
-        const eventos = await fetchPorLotes(idsPartidos, (lote) =>
-          supabase.from('eventos').select('*')
+        /* LOS EVENTOS, QUE SON EL GRUESO DE LA ESPERA
+         *
+         * Acá hay decenas de miles de filas y antes se pedían de a mil, una
+         * página detrás de la otra. Son otras tantas idas y vueltas al
+         * servidor encadenadas: en un teléfono con 4G eso solo ya son varios
+         * segundos de reloj, antes de contar lo que tarda en bajar.
+         *
+         * `fetchParalelo` pide la primera página con el conteo incluido y con
+         * ese total dispara todas las demás a la vez. El `.order('id')` no es
+         * decorativo: las páginas se piden por OFFSET y en paralelo, así que
+         * sin un orden estable dos de ellas podrían traer la misma fila.
+         *
+         * Se filtra por club y no por la lista de id_partido: esa lista viaja
+         * en la URL y con un club de muchos partidos el servidor la rechaza
+         * por largo. Los cruces entre terceros no tienen eventos cargados, así
+         * que el conjunto es el mismo; por las dudas se acota después. */
+        const idsPartidos = new Set((partidos || []).map(p => String(p.id)));
+        const todos = await fetchParalelo(
+          (opts) => supabase.from('eventos').select('*', opts)
             .eq('club_id', clubId)
-            .in('id_partido', lote)
-            .order('id', { ascending: true })
+            .order('id', { ascending: true }),
+          { onProgreso: (traidas, total) => { if (!cancelado) setAvance({ traidas, total }); } }
         );
+        const eventos = todos.filter(ev => idsPartidos.has(String(ev.id_partido)));
 
         if (!cancelado) setRaw({ partidos: partidos || [], jugadores: jugadores || [], eventos, sanciones: sanciones || [], torneos: torneos || [] });
       } catch (err) {
@@ -690,7 +703,14 @@ export default function ResumenPlantel() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-dim)' }}>Procesando datos del plantel...</div>
+        <div style={{ textAlign: 'center', padding: '50px', color: 'var(--text-dim)' }}>
+          Procesando datos del plantel…
+          {avance.total > 0 && (
+            <div style={{ marginTop: '14px', fontSize: '0.75rem', fontFamily: MONO, letterSpacing: '0.08em' }}>
+              {avance.traidas.toLocaleString('es-AR')} de {avance.total.toLocaleString('es-AR')} acciones
+            </div>
+          )}
+        </div>
       ) : (
         <>
           {/* DESTACADOS */}
