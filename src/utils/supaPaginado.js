@@ -117,6 +117,97 @@ export async function fetchKeyset(construirQuery, opciones = {}) {
 }
 
 /**
+ * Trae TODAS las páginas en paralelo, en vez de una detrás de otra.
+ *
+ * `fetchPaginado` y `fetchKeyset` piden una página, esperan, piden la
+ * siguiente. Con 25.000 filas eso son 25 idas y vueltas encadenadas: en un
+ * teléfono con 4G, unos 7 segundos de reloj esperando, sin contar la descarga.
+ * Pero el tope de 1000 filas es del servidor, no un límite real: si se sabe
+ * cuántas filas hay, todas las páginas se pueden pedir de una.
+ *
+ * La primera página viene con `count: 'exact'`, que devuelve el total en la
+ * misma respuesta sin costar un viaje aparte. Con ese número se disparan las
+ * demás de a tandas.
+ *
+ * DOS CONDICIONES:
+ *
+ *  1. La query TIENE que llevar un `.order()` determinista (por `id`, o por lo
+ *     que sea más `id` de desempate). Las páginas se piden por OFFSET y en
+ *     paralelo: sin un orden estable, dos páginas pueden traer la misma fila.
+ *
+ *  2. `construirQuery` recibe las opciones del `.select()` y las tiene que
+ *     pasar tal cual, para que la primera página pueda pedir el conteo:
+ *
+ *       fetchParalelo((opts) =>
+ *         supabase.from('eventos').select('*', opts)
+ *           .in('id_partido', ids).order('id'))
+ *
+ * @param {(opcionesSelect?: object) => object} construirQuery
+ * @param {object} [opciones]
+ * @param {number} [opciones.tamPagina=1000]
+ * @param {number} [opciones.concurrencia=6]
+ * @param {number} [opciones.maxPaginas=200]
+ * @param {(traidas:number, total:number)=>void} [opciones.onProgreso]
+ * @returns {Promise<Array>}
+ */
+export async function fetchParalelo(construirQuery, opciones = {}) {
+  const {
+    tamPagina = TAM_PAGINA,
+    concurrencia = 6,
+    maxPaginas = 200,
+    onProgreso = null,
+  } = opciones;
+
+  const primera = await construirQuery({ count: 'exact' }).range(0, tamPagina - 1);
+  if (primera.error) throw primera.error;
+
+  const cabeza = primera.data || [];
+
+  // Entró todo en la primera página: no hay nada más que pedir.
+  if (cabeza.length < tamPagina) {
+    if (onProgreso) onProgreso(cabeza.length, cabeza.length);
+    return cabeza;
+  }
+
+  /* Sin conteo no se puede repartir el trabajo, y dar por terminado acá
+     recortaría la tabla en 1000 filas sin avisar —que es justo el error que
+     este módulo existe para evitar—. Se sigue de a una, que es lento pero
+     trae todo. */
+  if (primera.count == null) {
+    const resto = await fetchPaginado(construirQuery, { tamPagina, maxPaginas, onProgreso: null });
+    const filas = resto.length > cabeza.length ? resto : cabeza;
+    if (onProgreso) onProgreso(filas.length, filas.length);
+    return filas;
+  }
+
+  const total = primera.count;
+  if (onProgreso) onProgreso(cabeza.length, total);
+  if (total <= tamPagina) return cabeza;
+
+  const paginas = Math.min(Math.ceil(total / tamPagina), maxPaginas);
+  const porPagina = new Array(paginas);
+  porPagina[0] = cabeza;
+  let traidas = cabeza.length;
+
+  const pendientes = [];
+  for (let p = 1; p < paginas; p++) pendientes.push(p);
+
+  for (let i = 0; i < pendientes.length; i += concurrencia) {
+    const tanda = pendientes.slice(i, i + concurrencia);
+    await Promise.all(tanda.map(async (p) => {
+      const desde = p * tamPagina;
+      const { data, error } = await construirQuery().range(desde, desde + tamPagina - 1);
+      if (error) throw error;
+      porPagina[p] = data || [];
+      traidas += porPagina[p].length;
+      if (onProgreso) onProgreso(traidas, total);
+    }));
+  }
+
+  return porPagina.flat();
+}
+
+/**
  * Resuelve un `.in('col', ids)` grande partiéndolo en lotes.
  *
  * Dos límites distintos que conviene no confundir:
