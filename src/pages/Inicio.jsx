@@ -11,6 +11,7 @@ import { calcularCadenasValor } from '../analytics/posesiones';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { categoriaMasAlta } from '../utils/categorias';
 import { cargaDelPlantel, zonaDe, DIAS_CRONICA } from '../analytics/carga';
+import { construirAgenda, sumarDias, diasEntre, TIPOS } from '../analytics/agenda';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -104,6 +105,7 @@ const MODULOS = [
   { id: 'm_estado',        titulo: 'Estado del equipo',    span: 3, roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'm_triage',        titulo: 'Requiere tu atención', span: 2, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_proximo',       titulo: 'Próximo partido',      span: 2, roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_agenda',        titulo: 'Los próximos 7 días', span: 2, roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'm_forma',         titulo: 'Forma y xG',           span: 1, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_protagonistas', titulo: 'Figuras',              span: 1, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_pulso',         titulo: 'Pulso del plantel',    span: 1, roles: ['superuser', 'manager', 'ct'] },
@@ -117,10 +119,10 @@ const MODULOS = [
 const SPAN_DEF = Object.fromEntries(MODULOS.map((m) => [m.id, m.span || 1]));
 
 const DEFAULTS = {
-  ct:        ['m_estado', 'm_triage', 'm_proximo', 'm_forma', 'm_protagonistas', 'm_pulso', 'm_ultimo', 'm_novedades', 'm_accesos'],
-  manager:   ['m_estado', 'm_triage', 'm_proximo', 'm_forma', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  ct:        ['m_estado', 'm_triage', 'm_proximo', 'm_agenda', 'm_forma', 'm_protagonistas', 'm_pulso', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  manager:   ['m_estado', 'm_triage', 'm_proximo', 'm_agenda', 'm_forma', 'm_ultimo', 'm_novedades', 'm_accesos'],
   superuser: ['m_estado', 'm_triage', 'm_forma', 'm_protagonistas', 'm_ultimo', 'm_novedades', 'm_accesos'],
-  admin:     ['m_estado', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  admin:     ['m_estado', 'm_agenda', 'm_ultimo', 'm_novedades', 'm_accesos'],
   jugador:   ['m_jug_wellness', 'm_jug_perfil'],
 };
 
@@ -330,6 +332,7 @@ export default function Inicio() {
   const [triage, setTriage] = useState([]);
   const [pulso, setPulso] = useState({ score: null, registros: 0, enRojo: 0 });
   const [prep, setPrep] = useState(null);
+  const [semana, setSemana] = useState([]);
   const [datosWellness, setDatosWellness] = useState([]);
 
   /* ---- WIDGETS (editable, default fuerte) ---- */
@@ -417,12 +420,14 @@ export default function Inicio() {
         const hoyStr = new Date().toISOString().split('T')[0];
         // Ventana del ACWR: 28 dias hacia atras, contando hoy.
         const desdeCarga = new Date(Date.now() - (DIAS_CRONICA - 1) * 86400000).toISOString().split('T')[0];
+        // Ventana del bloque "lo que viene": hoy y los seis dias siguientes.
+        const hastaSemana = sumarDias(hoyStr, 6);
         const anio = new Date().getFullYear().toString();
 
         let qUlt = supabase.from('partidos').select('*').in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(40);
         let qPro = supabase.from('partidos').select('*').eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(15);
         let qAnual = supabase.from('partidos').select('id, categoria, goles_propios, goles_rival, fecha, nombre_propio, rival, condicion').gte('fecha', `${anio}-01-01`).in('estado', ['Finalizado', 'Jugado']);
-        let qJug = supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion, categoria');
+        let qJug = supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion, categoria, fechanac, vencimiento_apto');
         let qMapPar = supabase.from('partidos').select('id, categoria, fecha');
         if (club) { qUlt = qUlt.eq('club_id', club); qPro = qPro.eq('club_id', club); qAnual = qAnual.eq('club_id', club); qJug = qJug.eq('club_id', club); qMapPar = qMapPar.eq('club_id', club); }
         if (catEq) { qUlt = qUlt.eq('categoria', categoriaActiva); qPro = qPro.eq('categoria', categoriaActiva); qAnual = qAnual.eq('categoria', categoriaActiva); qJug = qJug.eq('categoria', categoriaActiva); }
@@ -464,7 +469,7 @@ export default function Inicio() {
            por eso `id` como criterio de desempate. */
         const idUltimo = partidosJug[0] ? partidosJug[0].id : null;
 
-        const [evsUltimo, tarjetas, sanciones, wellnessVentana] = await Promise.all([
+        const [evsUltimo, tarjetas, sanciones, wellnessVentana, sesionesSem, deudasSem, lesionesSem] = await Promise.all([
           idUltimo
             ? fetchPaginado(() => supabase.from('eventos').select('*')
                 .eq('id_partido', idUltimo)
@@ -497,6 +502,30 @@ export default function Inicio() {
                 .gte('fecha', desdeCarga)
                 .order('fecha', { ascending: true })
                 .order('jugador_id', { ascending: true }))
+            : Promise.resolve([]),
+
+          /* Las tres que siguen son para el bloque de los proximos 7 dias.
+             Van en la misma tanda: es una ventana de una semana, son pocas
+             filas, y sumarlas aca no cuesta un viaje mas. */
+          club
+            ? supabase.from('sesiones')
+                .select('id, fecha, tipo_sesion, objetivo, categoria_equipo, nivel_carga, tareas_ids')
+                .eq('club_id', club).gte('fecha', hoyStr).lte('fecha', hastaSemana)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
+
+          club
+            ? supabase.from('tesoreria_deudas')
+                .select('id, jugador_id, concepto, monto_original, monto_pagado, fecha_vencimiento')
+                .eq('club_id', club).gte('fecha_vencimiento', hoyStr).lte('fecha_vencimiento', hastaSemana)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
+
+          club
+            ? supabase.from('lesiones')
+                .select('id, jugador_id, fecha_alta_estimada, fecha_alta_real, estado, diagnostico, tipo_lesion')
+                .eq('club_id', club).gte('fecha_alta_estimada', hoyStr).lte('fecha_alta_estimada', hastaSemana)
+                .then((r) => r.data || [])
             : Promise.resolve([]),
         ]);
 
@@ -591,6 +620,20 @@ export default function Inicio() {
             ruta: '/rendimiento',
           });
         }
+        /* ===== LO QUE VIENE (7 DIAS) =====
+           Mismo armado que la pantalla Agenda, para que el tablon y la agenda
+           no puedan decir cosas distintas. Las consultas ya vienen recortadas
+           por club y por categoria activa, asi que aca no se vuelve a filtrar. */
+        setSemana(construirAgenda({
+          partidos: (rPro.data || []).filter(esMio),
+          sesiones: sesionesSem,
+          jugadores,
+          deudas: deudasSem,
+          lesiones: lesionesSem,
+          desde: hoyStr,
+          hasta: hastaSemana,
+        }));
+
         setTriage(alertas.slice(0, 6));
         setPulso(wHoy.length ? { score: (wHoy.reduce((a, r) => a + readinessDe(r), 0) / wHoy.length).toFixed(1), registros: wHoy.length, enRojo: enRojo.length } : { score: null, registros: 0, enRojo: 0 });
 
@@ -605,7 +648,7 @@ export default function Inicio() {
           const enDuda = enRojo.length;
           setPrep({ dias, plantel, susp, enDuda, disponibles: Math.max(0, plantel - susp - enDuda) });
         } else setPrep(null);
-      } else { setTriage([]); setPulso({ score: null, registros: 0, enRojo: 0 }); setPrep(null); }
+      } else { setTriage([]); setPulso({ score: null, registros: 0, enRojo: 0 }); setPrep(null); setSemana([]); }
 
         setCargando(false);
       } catch (err) { console.error('Error cargando dashboard:', err); setCargando(false); }
@@ -716,6 +759,56 @@ export default function Inicio() {
                   <span style={{ color: 'var(--text-dim)' }}>›</span>
                 </div>
               ))}
+            </div>
+          )}
+        </Card>
+      );
+    }
+    /* LO QUE VIENE */
+    if (id === 'm_agenda') {
+      /* Hasta seis renglones: el tablon es un vistazo, no la agenda entera.
+         Si hay mas, el pie lleva a /agenda, que es donde estan todos. */
+      const lista = semana.slice(0, 6);
+      const restan = semana.length - lista.length;
+      const rotuloDia = (f) => {
+        const n = diasEntre(new Date().toISOString().split('T')[0], f);
+        if (n <= 0) return 'HOY';
+        if (n === 1) return 'MAÑ';
+        const [, m, d] = f.split('-');
+        return `${d}/${m}`;
+      };
+      return (
+        <Card key={id} id={id} accent="#8b5cf6" index={index}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Label color="#8b5cf6">LOS PRÓXIMOS 7 DÍAS</Label>
+            {!modoEdicion && <span onClick={() => navigate('/agenda')} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>ver agenda ›</span>}
+          </div>
+          {lista.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, fontSize: '0.85rem' }}>Semana despejada. Nada agendado.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+              {lista.map((ev) => {
+                const def = TIPOS[ev.tipo];
+                return (
+                  <div key={ev.id} onClick={() => !modoEdicion && navigate(ev.ruta)}
+                       style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', cursor: modoEdicion ? 'default' : 'pointer' }}>
+                    <span style={{ ...mono, fontSize: '0.6rem', fontWeight: 800, color: def.color, width: 34, flexShrink: 0 }}>{rotuloDia(ev.fecha)}</span>
+                    <span style={{ flexShrink: 0 }}>{def.ico}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {ev.hora ? <span style={{ ...mono, color: 'var(--text-dim)', marginRight: 6 }}>{ev.hora}</span> : null}
+                        {ev.titulo}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', flexShrink: 0 }}>{ev.categoria}</span>
+                  </div>
+                );
+              })}
+              {restan > 0 && (
+                <div onClick={() => !modoEdicion && navigate('/agenda')} style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)', cursor: modoEdicion ? 'default' : 'pointer', paddingTop: 4 }}>
+                  y {restan} cosa{restan > 1 ? 's' : ''} más esta semana ›
+                </div>
+              )}
             </div>
           )}
         </Card>

@@ -61,6 +61,7 @@ const Disciplina          = lazy(() => import('./pages/Disciplina'));
 const Transferencias      = lazy(() => import('./pages/Transferencias'));
 const ResumenPlantel      = lazy(() => import('./pages/Resumenplantel'));
 const Comparar            = lazy(() => import('./pages/Comparar'));
+const Agenda              = lazy(() => import('./pages/Agenda'));
 const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
 const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 
@@ -160,6 +161,7 @@ function AppRoutes() {
       
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
+      <Route path="/agenda" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Agenda /></ProtectedRoute>} />
       <Route path="/temporada" element={<ProtectedRoute><Temporada /></ProtectedRoute>} />
       <Route path="/resumen" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
       <Route path="/resumen/:id" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
@@ -411,6 +413,7 @@ useEffect(() => {
             </div>
             {menusAbiertos.planificacion && !isCollapsed && (
               <>
+                <NavLink to="/agenda" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📆 <span>AGENDA</span></NavLink>
                 {permisos.puedeEscribirDeportivo && (
                   <>
                     <NavLink to="/citacion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📣 <span>CITACIÓN</span></NavLink>
