@@ -220,7 +220,7 @@ export function construirAgenda({
       fecha: dia,
       hora: null,
       titulo: `Alta estimada de ${j ? nombreDe(j) : 'un jugador'}`,
-      sub: l.diagnostico || l.tipo_lesion || 'Vuelve a estar disponible',
+      sub: [l.zona, l.tipo, l.gravedad].filter(Boolean).join(' · ') || 'Vuelve a estar disponible',
       categoria: j?.categoria || 'Sin categoría',
       ruta: '/enfermeria',
       prioridad: PRIORIDAD.alta,

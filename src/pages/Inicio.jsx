@@ -496,6 +496,10 @@ export default function Inicio() {
              mismas columnas, el mismo viaje, y el "en rojo hoy" sale filtrando
              por fecha en memoria. Va por fetchPaginado porque 28 dias x plantel
              puede pasar las 1000 filas que PostgREST recorta sin avisar. */
+          /* fetchPaginado tira excepcion si la consulta falla, y esta vive
+             dentro del Promise.all que arma todo el tablero: una sola columna
+             mal escrita dejaria el tablon entero en blanco. Se atrapa aca, el
+             pulso y el ACWR quedan vacios y lo demas se pinta igual. */
           club
             ? fetchPaginado(() => supabase.from('wellness')
                 .select('jugador_id, fecha, sueno, estres, fatiga, dolor_muscular, rpe, minutos_actividad')
@@ -503,6 +507,7 @@ export default function Inicio() {
                 .gte('fecha', desdeCarga)
                 .order('fecha', { ascending: true })
                 .order('jugador_id', { ascending: true }))
+                .catch((e) => { console.error('Tablon: fallo la lectura de wellness:', e); return []; })
             : Promise.resolve([]),
 
           /* Las tres que siguen son para el bloque de los proximos 7 dias.
@@ -524,7 +529,7 @@ export default function Inicio() {
 
           club
             ? supabase.from('lesiones')
-                .select('id, jugador_id, fecha_alta_estimada, fecha_alta_real, estado, diagnostico, tipo_lesion')
+                .select('id, jugador_id, fecha_alta_estimada, fecha_alta_real, estado, zona, tipo, gravedad')
                 .eq('club_id', club).gte('fecha_alta_estimada', hoyStr).lte('fecha_alta_estimada', hastaSemana)
                 .then((r) => r.data || [])
             : Promise.resolve([]),
