@@ -25,62 +25,62 @@ import { resumenClub } from '../analytics/tutores';
    VERSION_ACTUAL en localStorage y no vuelve hasta el próximo release.
    Para publicar novedades: subí VERSION_ACTUAL y editá NOVEDADES_VERSION.
 ============================================================================ */
-const VERSION_ACTUAL = 'v0.00202609141157';
+const VERSION_ACTUAL = 'v0.00202609221730';
 const LS_VERSION_VISTA = 'vc_version_novedades_vista';
 
-const NOVEDADES_TITULO = 'Quién Está y Quién No';
-const NOVEDADES_BAJADA = 'La citación al grupo se arma sola desde el fixture, las lesiones dejan de vivir en la cabeza del técnico, y el que se lesiona ya no lo paga con su presentismo.';
+const NOVEDADES_TITULO = 'La Semana en Una Pantalla';
+const NOVEDADES_BAJADA = 'Todo lo que tiene fecha dejó de vivir en cinco pantallas distintas, la carga de entrenamiento avisa antes de que alguien se rompa, y por fin hay dónde anotar a quién llamar si a un chico le pasa algo.';
 
 const NOVEDADES_VERSION = [
   {
-    grupo: 'Citación',
+    grupo: 'Agenda',
     color: '#00ff88',
     items: [
-      { t: 'La citación se arma sola', d: 'Pantalla nueva en Planificación. Elegís el próximo partido y trae todo del fixture: rival, fecha, hora, sede, categoría y si sos local o visitante. La hora de citación se propone 90 minutos antes del inicio.' },
-      { t: 'Te sugiere a quién citar', d: 'Cruza el presentismo de las últimas seis semanas, el rating de los últimos ocho partidos y la regularidad. El que siempre rinde parejo puntea más alto que el del 9 y tres 4. Cada jugador muestra por qué puntúa lo que puntúa.' },
-      { t: 'No te sugiere a un suspendido', d: 'El que tiene fechas pendientes, acumulación de amarillas, el apto médico vencido o está lesionado queda marcado y fuera de la sugerencia. Lo podés citar igual: la decisión sigue siendo tuya.' },
-      { t: 'Controla el límite y los arqueros', d: 'Avisa si te pasaste de 14 convocados (16 en amistoso) y si no tildaste ningún arquero.' },
-      { t: 'Bajar y subir jugadores entre categorías', d: 'Chips arriba de la lista para sumar jugadores de otras divisiones. El refuerzo queda marcado con su categoría para que no se te cuele sin verlo.' },
-      { t: 'El mensaje del club, igual que siempre', d: 'La plantilla usa el formato que ya mandás al grupo: negritas, arqueros primero y la lista por apellido. Se copia, se exporta a WhatsApp con el texto escrito, o se publica en el Tablón.' },
-      { t: 'Los citados llegan a Nuevo Partido', d: 'Lo que citaste viene ya tildado al iniciar el partido, para confirmarlo o cambiarlo si hubo una baja de último momento.' },
+      { t: 'Todo lo que tiene fecha, junto', d: 'Pantalla nueva en Planificación. El partido, el entrenamiento, el apto que vence, la cuota que se vence, el alta del lesionado y los cumpleaños, en una sola lista ordenada por día y hora. Antes eso eran cinco pantallas, y por eso se pasaban las cosas.' },
+      { t: 'Ves 7, 30 o 90 días', d: 'Con flechas para adelantar o volver. Filtrás por categoría y podés apagar los tipos que no te interesan; el número al lado de cada uno dice cuántos hay en el tramo que estás mirando.' },
+      { t: 'Cada cosa te lleva a donde se resuelve', d: 'Tocás la cuota y vas a Tesorería, tocás el apto y vas a Plantel. La agenda te dice qué pasa, no te deja a mitad de camino.' },
+      { t: 'Los próximos 7 días, en el tablón', d: 'Un bloque nuevo en el Inicio con lo que viene esta semana. Se acomoda y se saca como los demás módulos. Sale del mismo cálculo que la agenda, así que nunca te van a decir cosas distintas.' },
+      { t: 'Lo que ya se pagó no molesta', d: 'La cuota saldada no aparece, y el alta del jugador que ya volvió tampoco. La agenda es de lo pendiente.' },
     ],
   },
   {
-    grupo: 'Enfermería',
-    color: '#0ea5e9',
+    grupo: 'Carga y riesgo de lesión',
+    color: '#ef4444',
     items: [
-      { t: 'Las lesiones tienen su lugar', d: 'Pantalla nueva en Plantel: fecha, zona, tipo, gravedad, tratamiento, profesional a cargo y fecha estimada de vuelta. Cada lesión lleva su propio historial de partes de evolución.' },
-      { t: 'Se cruza con toda la app', d: 'El lesionado no se sugiere en la citación, aparece avisado si lo convocás en Nuevo Partido, y figura como no disponible en los días del microciclo.' },
-      { t: 'Para saber dónde nos lesionamos', d: 'Las zonas y los tipos son listas fijas y no texto libre. Con una temporada cargada vas a poder responder qué se lesiona más en el plantel y cuántos días perdés por eso.' },
-      { t: 'Si se lesionó jugando, queda linkeado al partido', d: 'Con el tiempo eso dice en qué partidos te lesionás y con qué carga previa.' },
-      { t: 'El alta no se da sola', d: 'Pasada la fecha estimada, la ficha queda marcada como vencida hasta que alguien confirme el alta a mano. El sistema no declara sano a nadie por calendario.' },
-      { t: 'Parte médico al Tablón', d: 'Un botón publica el estado del plantel para el cuerpo técnico, y el aviso de altas vencidas llega por notificación.' },
+      { t: 'El RPE que venís cargando por fin sirve para algo', d: 'Hace meses que se carga el esfuerzo percibido y los minutos de cada sesión, y no se usaban para nada. Con esos dos números sale la carga de cada entrenamiento (esfuerzo × minutos) y de ahí el indicador que más se asocia a las lesiones.' },
+      { t: 'Qué es el ACWR, en criollo', d: 'Compara lo que el jugador cargó esta semana contra lo que su cuerpo viene tolerando en el último mes. Si esta semana hizo mucho más de lo que está acostumbrado, el riesgo sube. Entre 0,80 y 1,30 está la zona buena; arriba de 1,50 es donde más se rompe la gente.' },
+      { t: 'La tabla del plantel, ordenada por riesgo', d: 'En Fisiología, sólo para el cuerpo técnico. El que está en riesgo va arriba de todo, con su barra, su zona y la monotonía (si entrena siempre igual de fuerte, sin días livianos, eso también suma riesgo).' },
+      { t: 'No te inventa un número', d: 'Si el jugador no tiene al menos siete días cargados, no muestra un ACWR: te dice cuántos días le faltan. Un indicador armado sobre tres registros sueltos es peor que no tener ninguno.' },
+      { t: 'Aviso en el tablón', d: 'Aparte del de wellness, y a propósito: el wellness dice cómo se siente el jugador hoy, el ACWR dice si la carga se le fue de las manos. Son dos cosas distintas.' },
     ],
   },
   {
-    grupo: 'Lo que ve el jugador',
-    color: '#a855f7',
-    items: [
-      { t: 'Su lesión y cuándo vuelve', d: 'Desde su perfil ve la zona, los días que lleva, la fecha estimada de vuelta y las indicaciones que le dejó el cuerpo técnico. Las notas internas no las ve.' },
-      { t: 'Sus ejercicios de rehabilitación', d: 'Según la zona de la lesión, salen solos de la biblioteca de Fisiología. El trabajo preventivo lo ve siempre, esté lesionado o no.' },
-      { t: 'Todos sus partidos, en su perfil', d: 'Al final del Resumen por Jugador está la lista de los partidos en los que estuvo convocado. Los que jugó se resaltan con el resultado y su aporte; los que fue citado y no entró quedan atenuados, y los que se perdió lesionado aparecen marcados. Tocando cualquiera se abre el resumen de ese partido.' },
-    ],
-  },
-  {
-    grupo: 'Presentismo',
+    grupo: 'Tutores y autorizaciones',
     color: '#fbbf24',
     items: [
-      { t: 'Estado nuevo: lesionado', d: 'Al pasar lista, si la Enfermería lo tiene de baja ese día ya viene marcado, sin tener que acordarse jugador por jugador.' },
-      { t: 'La lesión deja de contar como falta', d: 'Este es el cambio más importante de la versión. Los días de baja salen del cálculo: no cuentan como presente ni como ausente. Antes, dos meses de lesión hundían el porcentaje del jugador, y ese mismo número pesa 45% en la sugerencia de la citación, así que el que volvía quedaba sin convocatorias por algo que no eligió. Los porcentajes de los lesionados van a subir: los nuevos son los correctos.' },
+      { t: 'A quién llamar si pasa algo', d: 'Dentro de la ficha de cada jugador, en Plantel. Podés cargar varios tutores —madre, padre, el tío que lo lleva los martes— con su parentesco, teléfono y mail, y marcar cuál es el contacto principal. Cada uno tiene su botón de WhatsApp directo.' },
+      { t: 'Quién lo puede retirar del club', d: 'Se marca tutor por tutor. Si un menor no tiene a nadie que lo pueda retirar y tampoco tiene permiso para irse solo, la ficha te lo avisa.' },
+      { t: 'Los permisos de la familia', d: 'Viajar con el club, uso de imagen en las redes, atención médica de urgencia y retirarse solo. Queda registrado quién firmó y cuándo.' },
+      { t: 'Sin responder no es lo mismo que "no"', d: 'Los permisos tienen tres estados, no un tilde: sin responder, no autoriza y autoriza. Que la familia todavía no haya contestado es trabajo pendiente del club; que haya dicho que no es una decisión tomada. Pintarlos igual esconde una de las dos cosas.' },
+      { t: 'Aviso en el tablón', d: 'Si hay menores sin tutor a quién llamar, el Inicio te lo dice. Sólo lo grave: los permisos que faltan responder se ven en la ficha y no te ocupan el tablón.' },
     ],
   },
   {
-    grupo: 'Detalles',
+    grupo: 'Comparar jugadores',
+    color: '#a855f7',
+    items: [
+      { t: 'Dos jugadores, cara a cara', d: 'Pantalla nueva en Plantel. Elegís dos y salen las barras enfrentadas métrica por métrica, con el marcador de cuántas gana cada uno. Antes había que abrir dos pestañas y acordarse de los números de una mientras mirabas la otra.' },
+      { t: 'No gana el que jugó más', d: 'Por defecto compara cada 40 minutos jugados. Si no, el titular le gana siempre al suplente aunque rinda peor. Se puede apagar con un tilde para ver los totales crudos.' },
+      { t: 'Donde menos es mejor, se lee al revés', d: 'En pérdidas y faltas cometidas gana el número más bajo, como corresponde.' },
+      { t: 'Los mismos números de Resumen Plantel', d: 'Usa el mismo cálculo, así que no puede darte un número distinto al de esa pantalla.' },
+    ],
+  },
+  {
+    grupo: 'Por dentro',
     color: '#22d3ee',
     items: [
-      { t: 'La cancha del rival se recuerda', d: 'La segunda vez que vas a la cancha de un rival, la citación completa la sede y la dirección sola.' },
-      { t: 'Listas de partidos más cortas', d: 'Donde se elige un partido ya no aparecen los cruces entre otros equipos del fixture ni los de otras categorías. Sólo los tuyos, los que corresponden.' },
-      { t: 'Errores que se entienden', d: 'Cuando la base rechaza algo, la pantalla lo explica en castellano y dice qué falta, en vez de mostrar el error técnico crudo.' },
+      { t: 'La app ahora se prueba sola', d: 'Noventa y cuatro pruebas automáticas que corren antes de cada cambio y avisan si algo que funcionaba dejó de funcionar. Para mover el cálculo de Resumen Plantel se guardó una copia del código viejo y se exige que los dos den exactamente el mismo resultado: no se confía en la lectura, se compara contra lo que hacía antes.' },
+      { t: 'Una parte rota ya no rompe la pantalla entera', d: 'Si una consulta falla, la agenda y el tablón muestran lo que sí pudieron leer y un aviso diciendo qué falta, en vez de quedar en blanco.' },
     ],
   },
 ];
