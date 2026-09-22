@@ -151,7 +151,7 @@ function Presentismo() {
       }
 
       setJugadores(jugadoresLista);
-    } catch (err) {
+    } catch {
       showToast("Error al cargar datos", "error");
     } finally {
       setCargando(false);

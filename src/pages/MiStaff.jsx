@@ -107,7 +107,7 @@ export default function MiStaff() {
       showToast("Permisos actualizados", "success");
       setStaff(prev => prev.map(u => u.id === usuarioEditando.id ? { ...u, categorias_asignadas: categoriasSeleccionadas } : u));
       setModalAbierto(false);
-    } catch (error) {
+    } catch {
       showToast("Error al guardar", "error");
     } finally {
       setGuardando(false);

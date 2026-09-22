@@ -238,7 +238,7 @@ function OrigenGoles() {
       if (xgGol != null) statsPorOrigen[origen].xG += xgGol;
     });
 
-    const dataPieOrigen = Object.entries(conteoOrigen).filter((par) => par[1] > 0).map(([name, value]) => ({ name, value }));
+    const dataPieOrigen = Object.entries(conteoOrigen).filter(([, valor]) => valor > 0).map(([name, value]) => ({ name, value }));
     const dataEfectividadOrigen = Object.values(statsPorOrigen)
       .map(d => ({ ...d, xG: Number(d.xG.toFixed(2)) }))
       .sort((a, b) => b.Goles - a.Goles);

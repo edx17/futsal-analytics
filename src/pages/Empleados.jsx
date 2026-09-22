@@ -55,7 +55,7 @@ function Empleados() {
       }
       setModalVisible(false);
       fetchEmpleados();
-    } catch (error) {
+    } catch {
       showToast("Error al guardar.", "error");
     } finally {
       setCargando(false);

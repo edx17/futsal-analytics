@@ -373,7 +373,7 @@ export async function cargarDossierRival({
       q = q.or(`categoria.eq.${categoria},categoria.is.null`);
     }
     videosSueltos = await fetchPaginado(() => q.order('id'));
-  } catch (e) {
+  } catch {
     videosSueltos = []; // todavía no se corrió la migración de `rival_id`
   }
 

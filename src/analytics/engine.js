@@ -142,7 +142,7 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
       if (typeof ev.quinteto_activo === 'string') {
         try {
           idsEnCancha = JSON.parse(ev.quinteto_activo).map(String);
-        } catch (e) {
+        } catch {
           idsEnCancha = ev.quinteto_activo.split(',').map(id => String(id).trim());
         }
       } else if (Array.isArray(ev.quinteto_activo)) {
@@ -281,7 +281,7 @@ export function calcularMinutosPorJugador(eventos = []) {
   if (primerEvento) {
     let qa = primerEvento.quinteto_activo;
     if (typeof qa === 'string') {
-      try { qa = JSON.parse(qa); } catch(e) { qa = qa.split(',').map(id => id.trim()); }
+      try { qa = JSON.parse(qa); } catch { qa = qa.split(',').map(id => id.trim()); }
     }
     if (Array.isArray(qa)) titulares = qa.map(String);
   }
@@ -372,7 +372,7 @@ export function calcularParticipacion(eventos = [], duracionPartido = 40) {
       try {
         const j = JSON.parse(qa);
         return Array.isArray(j) ? j.map(String) : [];
-      } catch (e) {
+      } catch {
         return qa.split(',').map(id => String(id).trim()).filter(Boolean);
       }
     }

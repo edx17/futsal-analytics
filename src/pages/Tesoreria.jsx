@@ -182,7 +182,7 @@ function Tesoreria() {
       if (error) throw error;
       showToast("Datos bancarios actualizados.", "success");
       setModalConfig(false);
-    } catch (err) { showToast("Error al guardar datos bancarios.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al guardar datos bancarios.", "error"); } finally { setCargando(false); }
   };
 
   const enviarWhatsApp = (jugador, deudaTotal) => {
@@ -271,7 +271,7 @@ function Tesoreria() {
       ];
 
       setDatosReporte({ dataMeses, dataCat, deudaTotal: deudaTotalHistorica, ingresosTotal, egresosTotal, cajaReal, tasaCobrabilidad, topMorosos, dataTortaIngresos });
-    } catch (err) { showToast("Error al cargar reportes.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al cargar reportes.", "error"); } finally { setCargando(false); }
   };
 
   const cargarEgresosYBalance = async () => {
@@ -310,7 +310,7 @@ function Tesoreria() {
       const totalIngresos = movimientos.filter(m => m.tipo === 'entrada').reduce((acc, curr) => acc + curr.monto, 0);
 
       setCajaCompleta(movimientos); setBalance({ ingresos: totalIngresos, egresos: totalEgresos });
-    } catch (err) { showToast("Error al cargar libro mayor.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al cargar libro mayor.", "error"); } finally { setCargando(false); }
   };
 
   const registrarGastoGeneral = async () => {
@@ -324,7 +324,7 @@ function Tesoreria() {
       if (error) throw error;
       showToast("Gasto registrado.", "success");
       setModalGasto(false); setFormGasto({ categoria: 'Alquiler Cancha', monto: '', descripcion: '', cajaOrigen: 'Efectivo' }); cargarEgresosYBalance();
-    } catch (err) { showToast("Error al registrar gasto.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al registrar gasto.", "error"); } finally { setCargando(false); }
   };
 
   const registrarIngresoExtraordinario = async () => {
@@ -336,7 +336,7 @@ function Tesoreria() {
       if (error) throw error;
       showToast("Ingreso extra registrado.", "success");
       setModalIngresoExtra(false); setFormIngresoExtra({ categoria: 'Bufet / Cantina', monto: '', descripcion: '', metodo_pago: 'Efectivo' }); cargarEgresosYBalance();
-    } catch (err) { showToast("Error al registrar ingreso extra.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al registrar ingreso extra.", "error"); } finally { setCargando(false); }
   };
 
   const cargarEmpleados = async () => {
@@ -356,7 +356,7 @@ function Tesoreria() {
       setEmpleados(empleadosConEstado);
       const { data: jubs } = await supabase.from('jugadores').select('id, nombre, apellido').eq('club_id', clubId).order('apellido');
       setJugadoresInfo(jubs || []);
-    } catch (err) { showToast("Error al cargar nómina.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al cargar nómina.", "error"); } finally { setCargando(false); }
   };
 
   const guardarEmpleado = async () => {
@@ -367,7 +367,7 @@ function Tesoreria() {
       if (formEmpleado.id) await supabase.from('tesoreria_empleados').update(datosParaBD).eq('id', formEmpleado.id); else await supabase.from('tesoreria_empleados').insert([datosParaBD]);
       showToast(formEmpleado.id ? "Empleado actualizado." : "Empleado registrado.", "success");
       setModalEmpleado(false); setFormEmpleado({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' }); cargarEmpleados();
-    } catch (err) { showToast("Error al guardar.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al guardar.", "error"); } finally { setCargando(false); }
   };
 
   const abrirEdicionEmpleado = (emp) => { setFormEmpleado({ id: emp.id, nombre_completo: emp.nombre_completo, rol: emp.rol, sueldo_base: emp.sueldo_base, jugador_id: emp.jugador_id || '' }); setModalEmpleado(true); };
@@ -384,7 +384,7 @@ function Tesoreria() {
       if (error) throw error;
       showToast(`Liquidación registrada.`, "success");
       setModalSueldo({ visible: false, empleado: null }); setFormSueldo({ monto: '', cajaOrigen: 'Efectivo', descripcion: '' }); cargarEmpleados();
-    } catch (err) { showToast("Error al registrar egreso.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al registrar egreso.", "error"); } finally { setCargando(false); }
   };
 
   const cargarTableroCobros = async () => {
@@ -420,7 +420,7 @@ function Tesoreria() {
         return { ...j, porcAsistencia, sesionesValidas: sesionesValidas.length, misDeudas, deudaTotal, esBecado, pagoEsteMes };
       });
       setJugadoresInfo(infoCruzada);
-    } catch (error) { showToast("Error al cargar tablero.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al cargar tablero.", "error"); } finally { setCargando(false); }
   };
 
   const generarCuotasMasivas = async () => {
@@ -435,7 +435,7 @@ function Tesoreria() {
       const nuevasDeudas = jugadoresSinCuota.map(j => ({ club_id: clubId, jugador_id: j.id, concepto: formCuota.concepto, monto_original: montoNum, fecha_vencimiento: formCuota.vencimiento, mes_correspondiente: formCuota.mes, estado: 'Pendiente' }));
       await supabase.from('tesoreria_deudas').insert(nuevasDeudas);
       showToast(`Se generaron ${nuevasDeudas.length} cuotas nuevas.`, "success"); setModalGenerar(false); cargarTableroCobros();
-    } catch (err) { showToast("Error al generar cuotas.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al generar cuotas.", "error"); } finally { setCargando(false); }
   };
 
   const procesarPago = async () => {
@@ -448,14 +448,14 @@ function Tesoreria() {
       await supabase.from('tesoreria_pagos').insert([{ club_id: clubId, deuda_id: modalPago.deuda.id, jugador_id: modalPago.jugador.id, monto: pagoNum, metodo_pago: metodoPago, fecha_pago: new Date().toISOString().split('T')[0] }]);
       await supabase.from('tesoreria_deudas').update({ monto_pagado: nuevoPagado, estado: nuevoEstado }).eq('id', modalPago.deuda.id);
       showToast(`Pago registrado con éxito.`, "success"); setModalPago({ visible: false, deuda: null, jugador: null }); setMontoPagar(''); setMetodoPago('Efectivo'); cargarTableroCobros();
-    } catch (err) { showToast("Error al procesar pago.", "error"); } finally { setCargando(false); }
+    } catch { showToast("Error al procesar pago.", "error"); } finally { setCargando(false); }
   };
 
   const otorgarBeca = async (deudaId) => {
     if(!window.confirm("¿Confirmás la beca para esta cuota?")) return;
     setCargando(true);
     try { await supabase.from('tesoreria_deudas').update({ estado: 'Beca' }).eq('id', deudaId); showToast("Beca registrada.", "success"); cargarTableroCobros(); } 
-    catch (err) { showToast("Error al aplicar beca.", "error"); } finally { setCargando(false); }
+    catch { showToast("Error al aplicar beca.", "error"); } finally { setCargando(false); }
   };
 
   if (!accesoPermitido) {

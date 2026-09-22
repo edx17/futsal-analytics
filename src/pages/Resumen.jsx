@@ -598,7 +598,7 @@ return 'Todas';
         if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
         if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
         return 0;
-      } catch (e) { return 0; }
+      } catch { return 0; }
     };
 
     return filtrados.sort((a, b) => parseDateParaSort(b.fecha) - parseDateParaSort(a.fecha));
@@ -878,8 +878,8 @@ return 'Todas';
     const duelosPct = totalDuelosPartido > 0 ? ((datosProcesados.duelos.defensivos.ganados + datosProcesados.duelos.ofensivos.ganados) / totalDuelosPartido) * 100 : 50;
     const matchControl = ((xgDiff * 0.4) + (territoryPct * 0.3) + (duelosPct * 0.3)).toFixed(0);
 
-    const dataOrigenGol = Object.entries(origenGoles).filter(([_, valor]) => valor > 0).map(([nombre, valor]) => ({ name: nombre, value: valor }));
-    const dataOrigenGolRival = Object.entries(origenGolesRival).filter(([_, valor]) => valor > 0).map(([nombre, valor]) => ({ name: nombre, value: valor }));
+    const dataOrigenGol = Object.entries(origenGoles).filter(([, valor]) => valor > 0).map(([nombre, valor]) => ({ name: nombre, value: valor }));
+    const dataOrigenGolRival = Object.entries(origenGolesRival).filter(([, valor]) => valor > 0).map(([nombre, valor]) => ({ name: nombre, value: valor }));
 
     return { 
       evFiltrados, stats, abp, ranking, eficaciaTiro, shotRate, goalRate, lossDanger, chaosIndex, matchControl, territoryPct,
@@ -920,7 +920,7 @@ return 'Todas';
         if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
         if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
         return null;
-      } catch (e) { return null; }
+      } catch { return null; }
     };
 
     const fp = parseDateLocal(partidoSeleccionado.fecha);

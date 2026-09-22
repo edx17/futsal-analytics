@@ -711,7 +711,7 @@ const CreadorTareas = () => {
        un cálculo, no el fotograma: tocar ahí movería fichas que no son las
        que se están mostrando. */
     if (isPlaying || animSnapshot) return
-    try { e.currentTarget.setPointerCapture(e.pointerId) } catch(_){}
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* dato opcional: si falla, se sigue sin él */ }
     pointersRef.current.set(e.pointerId, rawFromEvent(e))
     if (pointersRef.current.size >= 2) {
       const ixg=ixRef.current
@@ -807,7 +807,7 @@ const CreadorTareas = () => {
 
   const onPointerUp = useCallback((e) => {
     pointersRef.current.delete(e.pointerId)
-    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch(_){}
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* dato opcional: si falla, se sigue sin él */ }
     if (pointersRef.current.size < 2) gestureRef.current=null
     if (pointersRef.current.size >= 1) return
     const p=getPos(e); const ix=ixRef.current
