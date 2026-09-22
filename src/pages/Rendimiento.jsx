@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import CargaYRiesgo from '../components/CargaYRiesgo';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
@@ -89,6 +90,7 @@ export default function Rendimiento() {
   const miJugadorId = isKiosco ? kioscoJugadorId : perfil?.jugador_id;
   
   const esStaff = !esJugador;
+  const [wellness, setWellness] = useState([]);
   const clubId = localStorage.getItem('club_id') || perfil?.club_id || localStorage.getItem('kiosco_club_id');
   const misCategorias = perfil?.categorias_asignadas || [];
 
@@ -114,6 +116,17 @@ export default function Rendimiento() {
     }
     const { data: j } = await qJugadores;
     setJugadoresBD(j || []);
+
+    /* Wellness alimenta el bloque de carga y riesgo. Se piden sólo los últimos
+       60 días y sólo las cuatro columnas que hacen falta: el ACWR mira 28 días
+       hacia atrás, traer la temporada entera sería bajar de más por gusto. */
+    const desde = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
+    const { data: w } = await supabase.from('wellness')
+      .select('jugador_id, fecha, rpe, minutos_actividad')
+      .eq('club_id', clubId)
+      .gte('fecha', desde)
+      .order('fecha', { ascending: true });
+    setWellness(w || []);
     
     const idsPermitidos = j ? j.map(jug => jug.id) : [];
 
@@ -226,6 +239,10 @@ export default function Rendimiento() {
         </div>
         {esStaff && <button onClick={() => setModalOpen(true)} className="btn-action" style={{ padding: '10px 20px', background: '#3b82f6', color: '#ffffff', fontWeight: 900 }}>+ NUEVA TOMA</button>}
       </div>
+
+      {/* Sólo para el cuerpo técnico: es una lectura del plantel entero, no del
+          jugador que entra a cargar su RPE desde el tótem. */}
+      {esStaff && <CargaYRiesgo wellness={wellness} jugadores={jugadoresBD} esMovil={esMovil} />}
 
       {/* ── LAYOUT: SIDEBAR + CONTENT ──────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '260px 1fr', gap: esMovil ? 15 : 24, alignItems: 'start' }} className="rend-layout-grid">

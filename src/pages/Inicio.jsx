@@ -10,6 +10,7 @@ import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { categoriaMasAlta } from '../utils/categorias';
+import { cargaDelPlantel, zonaDe, DIAS_CRONICA } from '../analytics/carga';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -414,6 +415,8 @@ export default function Inicio() {
 
         /* ===== STAFF ===== */
         const hoyStr = new Date().toISOString().split('T')[0];
+        // Ventana del ACWR: 28 dias hacia atras, contando hoy.
+        const desdeCarga = new Date(Date.now() - (DIAS_CRONICA - 1) * 86400000).toISOString().split('T')[0];
         const anio = new Date().getFullYear().toString();
 
         let qUlt = supabase.from('partidos').select('*').in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(40);
@@ -461,7 +464,7 @@ export default function Inicio() {
            por eso `id` como criterio de desempate. */
         const idUltimo = partidosJug[0] ? partidosJug[0].id : null;
 
-        const [evsUltimo, tarjetas, sanciones, wellnessHoy] = await Promise.all([
+        const [evsUltimo, tarjetas, sanciones, wellnessVentana] = await Promise.all([
           idUltimo
             ? fetchPaginado(() => supabase.from('eventos').select('*')
                 .eq('id_partido', idUltimo)
@@ -482,9 +485,18 @@ export default function Inicio() {
                 .then((r) => r.data || [])
             : Promise.resolve([]),
 
+          /* Antes se pedia solo el dia de hoy. El ACWR necesita mirar 28 dias
+             hacia atras, asi que se pide la ventana entera de una: son las
+             mismas columnas, el mismo viaje, y el "en rojo hoy" sale filtrando
+             por fecha en memoria. Va por fetchPaginado porque 28 dias x plantel
+             puede pasar las 1000 filas que PostgREST recorta sin avisar. */
           club
-            ? supabase.from('wellness').select('*').eq('club_id', club).eq('fecha', hoyStr)
-                .then((r) => r.data || [])
+            ? fetchPaginado(() => supabase.from('wellness')
+                .select('jugador_id, fecha, sueno, estres, fatiga, dolor_muscular, rpe, minutos_actividad')
+                .eq('club_id', club)
+                .gte('fecha', desdeCarga)
+                .order('fecha', { ascending: true })
+                .order('jugador_id', { ascending: true }))
             : Promise.resolve([]),
         ]);
 
@@ -546,9 +558,39 @@ export default function Inicio() {
         Object.entries(fechasRoja).forEach(([jid, f]) => { if (f > 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: '⛔', titulo: `${nombreJug(jid)}: ${f} fecha${f > 1 ? 's' : ''} de sanción`, sub: 'Tribunal de disciplina', ruta: '/disciplina' }); } });
 
         /* ===== WELLNESS HOY ===== */
-        const wHoy = wellnessHoy.filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
+        const wVentana = wellnessVentana.filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
+        const wHoy = wVentana.filter((r) => String(r.fecha).slice(0, 10) === hoyStr);
         const enRojo = wHoy.filter(enRojoWell);
         if (enRojo.length > 0) alertas.unshift({ nivel: 'warning', ico: '🔋', titulo: `${enRojo.length} ${enRojo.length === 1 ? 'jugador' : 'jugadores'} en rojo hoy`, sub: 'Fatiga, dolor o sueño en zona de alerta', ruta: '/wellness' });
+
+        /* ===== CARGA: ACWR =====
+           El wellness de hoy dice como se siente el jugador; el ACWR dice si la
+           carga de esta semana se le fue de las manos contra lo que su cuerpo
+           viene tolerando. Son cosas distintas y por eso son dos avisos.
+           Solo se listan los que tienen historia suficiente (metricasDeCarga
+           devuelve acwr en null si no la tienen): no se inventa un numero.
+           Detalle jugador por jugador en Rendimiento. */
+        const carga = cargaDelPlantel(wVentana, jugadores, hoyStr);
+        const enRiesgo = carga.filter((c) => c.acwr != null && zonaDe(c.acwr).id === 'riesgo');
+        const enPrecaucion = carga.filter((c) => c.acwr != null && zonaDe(c.acwr).id === 'precaucion');
+        if (enRiesgo.length > 0) {
+          const nombres = enRiesgo.slice(0, 3).map((c) => `${c.jugador.nombre || ''} ${c.jugador.apellido || ''}`.trim()).filter(Boolean).join(', ');
+          alertas.unshift({
+            nivel: 'danger',
+            ico: '📈',
+            titulo: `${enRiesgo.length} ${enRiesgo.length === 1 ? 'jugador' : 'jugadores'} con carga en riesgo`,
+            sub: `ACWR sobre 1.50${nombres ? ` · ${nombres}${enRiesgo.length > 3 ? ' y más' : ''}` : ''}`,
+            ruta: '/rendimiento',
+          });
+        } else if (enPrecaucion.length > 0) {
+          alertas.push({
+            nivel: 'warning',
+            ico: '📈',
+            titulo: `${enPrecaucion.length} ${enPrecaucion.length === 1 ? 'jugador' : 'jugadores'} con carga en precaución`,
+            sub: 'ACWR entre 1.30 y 1.50 · subí la carga más despacio',
+            ruta: '/rendimiento',
+          });
+        }
         setTriage(alertas.slice(0, 6));
         setPulso(wHoy.length ? { score: (wHoy.reduce((a, r) => a + readinessDe(r), 0) / wHoy.length).toFixed(1), registros: wHoy.length, enRojo: enRojo.length } : { score: null, registros: 0, enRojo: 0 });
 
