@@ -10,6 +10,9 @@ import { calcularRatingJugador } from '../analytics/rating';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { categoriaMasAlta } from '../utils/categorias';
+import { cargaDelPlantel, zonaDe, DIAS_CRONICA } from '../analytics/carga';
+import { construirAgenda, sumarDias, diasEntre, TIPOS } from '../analytics/agenda';
+import { resumenClub } from '../analytics/tutores';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -103,6 +106,7 @@ const MODULOS = [
   { id: 'm_estado',        titulo: 'Estado del equipo',    span: 3, roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'm_triage',        titulo: 'Requiere tu atención', span: 2, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_proximo',       titulo: 'Próximo partido',      span: 2, roles: ['superuser', 'manager', 'ct'] },
+  { id: 'm_agenda',        titulo: 'Los próximos 7 días', span: 2, roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'm_forma',         titulo: 'Forma y xG',           span: 1, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_protagonistas', titulo: 'Figuras',              span: 1, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_pulso',         titulo: 'Pulso del plantel',    span: 1, roles: ['superuser', 'manager', 'ct'] },
@@ -116,10 +120,10 @@ const MODULOS = [
 const SPAN_DEF = Object.fromEntries(MODULOS.map((m) => [m.id, m.span || 1]));
 
 const DEFAULTS = {
-  ct:        ['m_estado', 'm_triage', 'm_proximo', 'm_forma', 'm_protagonistas', 'm_pulso', 'm_ultimo', 'm_novedades', 'm_accesos'],
-  manager:   ['m_estado', 'm_triage', 'm_proximo', 'm_forma', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  ct:        ['m_estado', 'm_triage', 'm_proximo', 'm_agenda', 'm_forma', 'm_protagonistas', 'm_pulso', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  manager:   ['m_estado', 'm_triage', 'm_proximo', 'm_agenda', 'm_forma', 'm_ultimo', 'm_novedades', 'm_accesos'],
   superuser: ['m_estado', 'm_triage', 'm_forma', 'm_protagonistas', 'm_ultimo', 'm_novedades', 'm_accesos'],
-  admin:     ['m_estado', 'm_ultimo', 'm_novedades', 'm_accesos'],
+  admin:     ['m_estado', 'm_agenda', 'm_ultimo', 'm_novedades', 'm_accesos'],
   jugador:   ['m_jug_wellness', 'm_jug_perfil'],
 };
 
@@ -329,6 +333,7 @@ export default function Inicio() {
   const [triage, setTriage] = useState([]);
   const [pulso, setPulso] = useState({ score: null, registros: 0, enRojo: 0 });
   const [prep, setPrep] = useState(null);
+  const [semana, setSemana] = useState([]);
   const [datosWellness, setDatosWellness] = useState([]);
 
   /* ---- WIDGETS (editable, default fuerte) ---- */
@@ -414,12 +419,16 @@ export default function Inicio() {
 
         /* ===== STAFF ===== */
         const hoyStr = new Date().toISOString().split('T')[0];
+        // Ventana del ACWR: 28 dias hacia atras, contando hoy.
+        const desdeCarga = new Date(Date.now() - (DIAS_CRONICA - 1) * 86400000).toISOString().split('T')[0];
+        // Ventana del bloque "lo que viene": hoy y los seis dias siguientes.
+        const hastaSemana = sumarDias(hoyStr, 6);
         const anio = new Date().getFullYear().toString();
 
         let qUlt = supabase.from('partidos').select('*').in('estado', ['Finalizado', 'Jugado']).order('fecha', { ascending: false }).limit(40);
         let qPro = supabase.from('partidos').select('*').eq('estado', 'Pendiente').gte('fecha', hoyStr).order('fecha', { ascending: true }).limit(15);
         let qAnual = supabase.from('partidos').select('id, categoria, goles_propios, goles_rival, fecha, nombre_propio, rival, condicion').gte('fecha', `${anio}-01-01`).in('estado', ['Finalizado', 'Jugado']);
-        let qJug = supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion, categoria');
+        let qJug = supabase.from('jugadores').select('id, nombre, apellido, dorsal, posicion, categoria, fechanac, vencimiento_apto');
         let qMapPar = supabase.from('partidos').select('id, categoria, fecha');
         if (club) { qUlt = qUlt.eq('club_id', club); qPro = qPro.eq('club_id', club); qAnual = qAnual.eq('club_id', club); qJug = qJug.eq('club_id', club); qMapPar = qMapPar.eq('club_id', club); }
         if (catEq) { qUlt = qUlt.eq('categoria', categoriaActiva); qPro = qPro.eq('categoria', categoriaActiva); qAnual = qAnual.eq('categoria', categoriaActiva); qJug = qJug.eq('categoria', categoriaActiva); }
@@ -461,7 +470,7 @@ export default function Inicio() {
            por eso `id` como criterio de desempate. */
         const idUltimo = partidosJug[0] ? partidosJug[0].id : null;
 
-        const [evsUltimo, tarjetas, sanciones, wellnessHoy] = await Promise.all([
+        const [evsUltimo, tarjetas, sanciones, wellnessVentana, sesionesSem, deudasSem, lesionesSem, tutoresBD] = await Promise.all([
           idUltimo
             ? fetchPaginado(() => supabase.from('eventos').select('*')
                 .eq('id_partido', idUltimo)
@@ -482,8 +491,52 @@ export default function Inicio() {
                 .then((r) => r.data || [])
             : Promise.resolve([]),
 
+          /* Antes se pedia solo el dia de hoy. El ACWR necesita mirar 28 dias
+             hacia atras, asi que se pide la ventana entera de una: son las
+             mismas columnas, el mismo viaje, y el "en rojo hoy" sale filtrando
+             por fecha en memoria. Va por fetchPaginado porque 28 dias x plantel
+             puede pasar las 1000 filas que PostgREST recorta sin avisar. */
           club
-            ? supabase.from('wellness').select('*').eq('club_id', club).eq('fecha', hoyStr)
+            ? fetchPaginado(() => supabase.from('wellness')
+                .select('jugador_id, fecha, sueno, estres, fatiga, dolor_muscular, rpe, minutos_actividad')
+                .eq('club_id', club)
+                .gte('fecha', desdeCarga)
+                .order('fecha', { ascending: true })
+                .order('jugador_id', { ascending: true }))
+            : Promise.resolve([]),
+
+          /* Las tres que siguen son para el bloque de los proximos 7 dias.
+             Van en la misma tanda: es una ventana de una semana, son pocas
+             filas, y sumarlas aca no cuesta un viaje mas. */
+          club
+            ? supabase.from('sesiones')
+                .select('id, fecha, tipo_sesion, objetivo, categoria_equipo, nivel_carga, tareas_ids')
+                .eq('club_id', club).gte('fecha', hoyStr).lte('fecha', hastaSemana)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
+
+          club
+            ? supabase.from('tesoreria_deudas')
+                .select('id, jugador_id, concepto, monto_original, monto_pagado, fecha_vencimiento')
+                .eq('club_id', club).gte('fecha_vencimiento', hoyStr).lte('fecha_vencimiento', hastaSemana)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
+
+          club
+            ? supabase.from('lesiones')
+                .select('id, jugador_id, fecha_alta_estimada, fecha_alta_real, estado, diagnostico, tipo_lesion')
+                .eq('club_id', club).gte('fecha_alta_estimada', hoyStr).lte('fecha_alta_estimada', hastaSemana)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
+
+          /* Tutores, para el aviso de menores sin contacto cargado. Si la
+             migracion todavia no corrio, PostgREST devuelve error y no
+             excepcion, asi que `r.data || []` deja el aviso en cero y el
+             resto del tablon sigue funcionando. */
+          club
+            ? supabase.from('tutores')
+                .select('id, jugador_id, telefono, principal, puede_retirar')
+                .eq('club_id', club)
                 .then((r) => r.data || [])
             : Promise.resolve([]),
         ]);
@@ -546,9 +599,70 @@ export default function Inicio() {
         Object.entries(fechasRoja).forEach(([jid, f]) => { if (f > 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: '⛔', titulo: `${nombreJug(jid)}: ${f} fecha${f > 1 ? 's' : ''} de sanción`, sub: 'Tribunal de disciplina', ruta: '/disciplina' }); } });
 
         /* ===== WELLNESS HOY ===== */
-        const wHoy = wellnessHoy.filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
+        const wVentana = wellnessVentana.filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
+        const wHoy = wVentana.filter((r) => String(r.fecha).slice(0, 10) === hoyStr);
         const enRojo = wHoy.filter(enRojoWell);
         if (enRojo.length > 0) alertas.unshift({ nivel: 'warning', ico: '🔋', titulo: `${enRojo.length} ${enRojo.length === 1 ? 'jugador' : 'jugadores'} en rojo hoy`, sub: 'Fatiga, dolor o sueño en zona de alerta', ruta: '/wellness' });
+
+        /* ===== CARGA: ACWR =====
+           El wellness de hoy dice como se siente el jugador; el ACWR dice si la
+           carga de esta semana se le fue de las manos contra lo que su cuerpo
+           viene tolerando. Son cosas distintas y por eso son dos avisos.
+           Solo se listan los que tienen historia suficiente (metricasDeCarga
+           devuelve acwr en null si no la tienen): no se inventa un numero.
+           Detalle jugador por jugador en Rendimiento. */
+        const carga = cargaDelPlantel(wVentana, jugadores, hoyStr);
+        const enRiesgo = carga.filter((c) => c.acwr != null && zonaDe(c.acwr).id === 'riesgo');
+        const enPrecaucion = carga.filter((c) => c.acwr != null && zonaDe(c.acwr).id === 'precaucion');
+        if (enRiesgo.length > 0) {
+          const nombres = enRiesgo.slice(0, 3).map((c) => `${c.jugador.nombre || ''} ${c.jugador.apellido || ''}`.trim()).filter(Boolean).join(', ');
+          alertas.unshift({
+            nivel: 'danger',
+            ico: '📈',
+            titulo: `${enRiesgo.length} ${enRiesgo.length === 1 ? 'jugador' : 'jugadores'} con carga en riesgo`,
+            sub: `ACWR sobre 1.50${nombres ? ` · ${nombres}${enRiesgo.length > 3 ? ' y más' : ''}` : ''}`,
+            ruta: '/rendimiento',
+          });
+        } else if (enPrecaucion.length > 0) {
+          alertas.push({
+            nivel: 'warning',
+            ico: '📈',
+            titulo: `${enPrecaucion.length} ${enPrecaucion.length === 1 ? 'jugador' : 'jugadores'} con carga en precaución`,
+            sub: 'ACWR entre 1.30 y 1.50 · subí la carga más despacio',
+            ruta: '/rendimiento',
+          });
+        }
+        /* ===== TUTORES: MENORES SIN CONTACTO =====
+           No es un numero de rendimiento, es responsabilidad legal: si al
+           chico le pasa algo en un entrenamiento y no hay a quien llamar, el
+           problema es del club. Solo se avisa lo GRAVE (sin tutor, sin
+           telefono, sin principal); los permisos que faltan responder se ven
+           en la ficha del jugador y no merecen ocupar el triage. */
+        const tut = resumenClub(jugadores, tutoresBD, hoyStr);
+        if (tut.conGraves > 0) {
+          alertas.push({
+            nivel: 'warning',
+            ico: '👨‍👩‍👦',
+            titulo: `${tut.conGraves} ${tut.conGraves === 1 ? 'jugador' : 'jugadores'} sin tutor a quién llamar`,
+            sub: tut.sinTutor > 0 ? `${tut.sinTutor} sin ningún tutor cargado` : 'Falta el teléfono o el contacto principal',
+            ruta: '/plantel',
+          });
+        }
+
+        /* ===== LO QUE VIENE (7 DIAS) =====
+           Mismo armado que la pantalla Agenda, para que el tablon y la agenda
+           no puedan decir cosas distintas. Las consultas ya vienen recortadas
+           por club y por categoria activa, asi que aca no se vuelve a filtrar. */
+        setSemana(construirAgenda({
+          partidos: (rPro.data || []).filter(esMio),
+          sesiones: sesionesSem,
+          jugadores,
+          deudas: deudasSem,
+          lesiones: lesionesSem,
+          desde: hoyStr,
+          hasta: hastaSemana,
+        }));
+
         setTriage(alertas.slice(0, 6));
         setPulso(wHoy.length ? { score: (wHoy.reduce((a, r) => a + readinessDe(r), 0) / wHoy.length).toFixed(1), registros: wHoy.length, enRojo: enRojo.length } : { score: null, registros: 0, enRojo: 0 });
 
@@ -563,7 +677,7 @@ export default function Inicio() {
           const enDuda = enRojo.length;
           setPrep({ dias, plantel, susp, enDuda, disponibles: Math.max(0, plantel - susp - enDuda) });
         } else setPrep(null);
-      } else { setTriage([]); setPulso({ score: null, registros: 0, enRojo: 0 }); setPrep(null); }
+      } else { setTriage([]); setPulso({ score: null, registros: 0, enRojo: 0 }); setPrep(null); setSemana([]); }
 
         setCargando(false);
       } catch (err) { console.error('Error cargando dashboard:', err); setCargando(false); }
@@ -674,6 +788,56 @@ export default function Inicio() {
                   <span style={{ color: 'var(--text-dim)' }}>›</span>
                 </div>
               ))}
+            </div>
+          )}
+        </Card>
+      );
+    }
+    /* LO QUE VIENE */
+    if (id === 'm_agenda') {
+      /* Hasta seis renglones: el tablon es un vistazo, no la agenda entera.
+         Si hay mas, el pie lleva a /agenda, que es donde estan todos. */
+      const lista = semana.slice(0, 6);
+      const restan = semana.length - lista.length;
+      const rotuloDia = (f) => {
+        const n = diasEntre(new Date().toISOString().split('T')[0], f);
+        if (n <= 0) return 'HOY';
+        if (n === 1) return 'MAÑ';
+        const [, m, d] = f.split('-');
+        return `${d}/${m}`;
+      };
+      return (
+        <Card key={id} id={id} accent="#8b5cf6" index={index}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Label color="#8b5cf6">LOS PRÓXIMOS 7 DÍAS</Label>
+            {!modoEdicion && <span onClick={() => navigate('/agenda')} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>ver agenda ›</span>}
+          </div>
+          {lista.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, fontSize: '0.85rem' }}>Semana despejada. Nada agendado.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+              {lista.map((ev) => {
+                const def = TIPOS[ev.tipo];
+                return (
+                  <div key={ev.id} onClick={() => !modoEdicion && navigate(ev.ruta)}
+                       style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', cursor: modoEdicion ? 'default' : 'pointer' }}>
+                    <span style={{ ...mono, fontSize: '0.6rem', fontWeight: 800, color: def.color, width: 34, flexShrink: 0 }}>{rotuloDia(ev.fecha)}</span>
+                    <span style={{ flexShrink: 0 }}>{def.ico}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {ev.hora ? <span style={{ ...mono, color: 'var(--text-dim)', marginRight: 6 }}>{ev.hora}</span> : null}
+                        {ev.titulo}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.6rem', color: 'var(--text-dim)', flexShrink: 0 }}>{ev.categoria}</span>
+                  </div>
+                );
+              })}
+              {restan > 0 && (
+                <div onClick={() => !modoEdicion && navigate('/agenda')} style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)', cursor: modoEdicion ? 'default' : 'pointer', paddingTop: 4 }}>
+                  y {restan} cosa{restan > 1 ? 's' : ''} más esta semana ›
+                </div>
+              )}
             </div>
           )}
         </Card>

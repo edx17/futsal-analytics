@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext'; // <-- IMPORTAMOS EL CONTEXTO 
 import { estaActivo, textoBaja } from '../utils/plantelActivo';
 import { useCategorias } from '../utils/useCategorias';
 import { unirCategorias, LISTA_BASE } from '../utils/categorias';
+import TutoresJugador from '../components/TutoresJugador';
 
 /* Centinela del selector: no es una categoría, es "quiero escribir una". */
 const OTRA = '__otra__';
@@ -652,6 +653,15 @@ function Plantel() {
                 <div style={fichaRow}><span>Venc. Apto:</span> <strong style={{ color: 'var(--accent)' }}>{jugadorSeleccionado.vencimiento_apto || 'N/A'}</strong></div>
               </div>
             </div>
+
+            {/* Quién está a cargo del chico y qué tiene permitido el club.
+                Antes esto vivía en el WhatsApp del entrenador de turno. */}
+            <TutoresJugador
+              jugador={jugadorSeleccionado}
+              clubId={clubId}
+              puedeEditar={!esCT || misCategorias.includes(jugadorSeleccionado.categoria)}
+              onCambioPermisos={fetchJugadores}
+            />
 
             {/* SECCIÓN DE ACCESO RÁPIDO (KIOSCO) - REDISEÑADO CON BOTÓN WHATSAPP */}
             <div style={{ background: 'rgba(0, 255, 136, 0.05)', border: '1px solid var(--accent)', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
