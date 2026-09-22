@@ -153,7 +153,7 @@ function TomaDatos() {
       localStorage.setItem(cronoKey, JSON.stringify({
         acum: acumPeriodo, periodo, corriendo: relojCorriendo, ancla: anclaRef.current
       }));
-    } catch (e) { /* cuota llena: el reloj sigue funcionando en memoria */ }
+    } catch { /* cuota llena: el reloj sigue funcionando en memoria */ }
   }, [cronoKey, acumPeriodo, periodo, relojCorriendo, minuto]);
 
   /* Vuelve del segundo plano -> repintamos ya, sin esperar el próximo tick */
@@ -279,7 +279,7 @@ function TomaDatos() {
       setEventos(prev => [...prev.filter(e => !localIds.has(e.id)), ...data]);
       escribirCola([]);
       showToast(`${data.length} evento(s) sincronizado(s).`, 'success');
-    } catch (e) {
+    } catch {
       if (!silencioso) showToast('Todavía no hay conexión. Los eventos siguen guardados.', 'warning');
     } finally {
       setSincronizando(false);
@@ -319,7 +319,7 @@ function TomaDatos() {
       setEventos(prev => [...prev.filter(e => !localIds.has(e.id)), ...data]);
       if (mensajeOk) showToast(mensajeOk, 'success');
       return { ok: true, encolados: false };
-    } catch (e) {
+    } catch {
       // 3) Falló: a la cola. El evento YA está en pantalla, no se pierde.
       escribirCola([...leerCola(), ...marcados]);
       showToast('Sin conexión: el evento quedó guardado y se sube solo.', 'warning');
@@ -758,7 +758,7 @@ function TomaDatos() {
       setIsDeleting(true);
       const { error } = await supabase.from('eventos').delete().eq('id', idEvento);
       if (error) throw error;
-    } catch (error) {
+    } catch {
       setEventos(prev => [...prev, eventoBackup]);
       showToast("Error de red: No se pudo eliminar el evento.", "error");
     } finally {
@@ -782,7 +782,7 @@ function TomaDatos() {
       if (error) throw error;
       setEventos(prev => prev.map(e => e.id === eventoEditando.id ? { ...e, ...payload } : e));
       showToast("Evento modificado correctamente", "success");
-    } catch (error) {
+    } catch {
       showToast("Error de red: No se pudo modificar el evento.", "error");
     } finally {
       setEventoEditando(null); 

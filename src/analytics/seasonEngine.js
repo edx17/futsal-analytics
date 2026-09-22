@@ -106,7 +106,7 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
       let qIds = [];
       try {
           if (ev.quinteto_activo) qIds = typeof ev.quinteto_activo === 'string' ? JSON.parse(ev.quinteto_activo) : ev.quinteto_activo;
-      } catch(e) {}
+      } catch { /* dato opcional: si falla, se sigue sin él */ }
 
       if (qIds && qIds.length === 5) {
           const key = [...qIds].sort().join('-');

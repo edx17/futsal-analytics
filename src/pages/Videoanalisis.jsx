@@ -256,7 +256,7 @@ export default function Videoanalisis() {
   const volverALista = () => {
     detenerPolling();
     if (playerRef.current && playerRef.current.destroy) {
-      try { playerRef.current.destroy(); } catch (_) {}
+      try { playerRef.current.destroy(); } catch { /* dato opcional: si falla, se sigue sin él */ }
       playerRef.current = null;
     }
     setPlayerListo(false);
@@ -508,7 +508,7 @@ export default function Videoanalisis() {
 
     const crearPlayer = () => {
       if (playerRef.current && playerRef.current.destroy) {
-        try { playerRef.current.destroy(); } catch (_) {}
+        try { playerRef.current.destroy(); } catch { /* dato opcional: si falla, se sigue sin él */ }
       }
       playerRef.current = new window.YT.Player('yt-player-video-analisis', {
         videoId: videoActivo.video_id,
@@ -536,7 +536,7 @@ export default function Videoanalisis() {
       detenerPolling();
       if (tickRef.current) clearInterval(tickRef.current);
       if (playerRef.current && playerRef.current.destroy) {
-        try { playerRef.current.destroy(); } catch (_) {}
+        try { playerRef.current.destroy(); } catch { /* dato opcional: si falla, se sigue sin él */ }
         playerRef.current = null;
       }
     };
@@ -1803,7 +1803,7 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
   };
 
   const volverALista = () => {
-    if (playerRef.current) { try { playerRef.current.destroy(); } catch (e) {} playerRef.current = null; }
+    if (playerRef.current) { try { playerRef.current.destroy(); } catch { /* dato opcional: si falla, se sigue sin él */ } playerRef.current = null; }
     setPlaylistActiva(null);
     setClipsCola([]);
   };

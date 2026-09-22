@@ -141,7 +141,7 @@ const GraficoMomentumTemporada = ({ partidos, eventos }) => {
         if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
         if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
         return 0;
-      } catch (e) { return 0; }
+      } catch { return 0; }
     };
 
     const partidosOrdenados = [...partidos].sort((a, b) => parseDate(a.fecha) - parseDate(b.fecha));
@@ -452,7 +452,7 @@ function Temporada() {
         if (parts[0].length === 4) return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])).getTime();
         if (parts[2].length === 4) return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0])).getTime();
         return 0;
-      } catch (e) { return 0; }
+      } catch { return 0; }
     };
 
     pFiltrados.sort((a, b) => parseDate(a.fecha) - parseDate(b.fecha));
@@ -630,11 +630,11 @@ function Temporada() {
     const territoryPct = totalAccionesPropias > 0 ? ((accionesCampoRival / totalAccionesPropias) * 100).toFixed(0) : 50;
 
     const dataOrigenGol = Object.entries(origenGoles)
-      .filter(([_, valor]) => valor > 0)
+      .filter(([, valor]) => valor > 0)
       .map(([nombre, valor]) => ({ name: nombre, value: valor }));
       
     const dataOrigenGolRival = Object.entries(origenGolesRival)
-      .filter(([_, valor]) => valor > 0)
+      .filter(([, valor]) => valor > 0)
       .map(([nombre, valor]) => ({ name: nombre, value: valor }));
 
     return { 
@@ -1559,7 +1559,7 @@ function Temporada() {
                         const parsed = typeof p.plantilla === 'string' ? JSON.parse(p.plantilla) : p.plantilla;
                         if (Array.isArray(parsed)) convocados = parsed.length;
                       }
-                    } catch (e) {}
+                    } catch { /* dato opcional: si falla, se sigue sin él */ }
 
                     const partidoOriginal = partidosFiltrados.find(part => part.id === p.id);
                     const escudoPropio = partidoOriginal?.escudo_propio;

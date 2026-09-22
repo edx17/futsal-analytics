@@ -122,7 +122,7 @@ const MULT = {
 const xgDe = (ev) => {
   const v = Number(ev?.xg);
   if (Number.isFinite(v) && v > 0) return v;
-  try { return calcularXGEvento(ev) || 0; } catch (e) { return 0; }
+  try { return calcularXGEvento(ev) || 0; } catch { return 0; }
 };
 
 const zonaX = (ev) => {

@@ -911,7 +911,7 @@ function JugadorPerfil() {
               if (Array.isArray(quintetoArray)) {
                 jugadorEnCanchaExacta = quintetoArray.some(id => String(id) === String(jugadorId));
               }
-            } catch(e) {}
+            } catch { /* dato opcional: si falla, se sigue sin él */ }
           }
 
           const accionStr = (ev.accion || '').toLowerCase();
