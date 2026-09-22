@@ -60,6 +60,7 @@ const AceptarTerminos     = lazy(() => import('./pages/AceptarTerminos'));
 const Disciplina          = lazy(() => import('./pages/Disciplina'));
 const Transferencias      = lazy(() => import('./pages/Transferencias'));
 const ResumenPlantel      = lazy(() => import('./pages/Resumenplantel'));
+const Comparar            = lazy(() => import('./pages/Comparar'));
 const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
 const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 
@@ -158,6 +159,7 @@ function AppRoutes() {
       <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
       
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
+      <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
       <Route path="/temporada" element={<ProtectedRoute><Temporada /></ProtectedRoute>} />
       <Route path="/resumen" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
       <Route path="/resumen/:id" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
@@ -434,6 +436,7 @@ useEffect(() => {
               <>
                 {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👤 <span>MI PLANTEL</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/plantel-resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📋 <span>RESUMEN PLANTEL</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/comparar" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚖️ <span>COMPARAR</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/transferencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💸 <span>TRANSFERENCIAS</span></NavLink>}
                 {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
                 <NavLink to="/enfermeria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏥 <span>{permisos.esJugador ? 'MI ESTADO FÍSICO' : 'ENFERMERÍA'}</span></NavLink>
