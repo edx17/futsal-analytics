@@ -12,6 +12,7 @@ import { fetchPaginado } from '../utils/supaPaginado';
 import { categoriaMasAlta } from '../utils/categorias';
 import { cargaDelPlantel, zonaDe, DIAS_CRONICA } from '../analytics/carga';
 import { construirAgenda, sumarDias, diasEntre, TIPOS } from '../analytics/agenda';
+import { resumenClub } from '../analytics/tutores';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -469,7 +470,7 @@ export default function Inicio() {
            por eso `id` como criterio de desempate. */
         const idUltimo = partidosJug[0] ? partidosJug[0].id : null;
 
-        const [evsUltimo, tarjetas, sanciones, wellnessVentana, sesionesSem, deudasSem, lesionesSem] = await Promise.all([
+        const [evsUltimo, tarjetas, sanciones, wellnessVentana, sesionesSem, deudasSem, lesionesSem, tutoresBD] = await Promise.all([
           idUltimo
             ? fetchPaginado(() => supabase.from('eventos').select('*')
                 .eq('id_partido', idUltimo)
@@ -525,6 +526,17 @@ export default function Inicio() {
             ? supabase.from('lesiones')
                 .select('id, jugador_id, fecha_alta_estimada, fecha_alta_real, estado, diagnostico, tipo_lesion')
                 .eq('club_id', club).gte('fecha_alta_estimada', hoyStr).lte('fecha_alta_estimada', hastaSemana)
+                .then((r) => r.data || [])
+            : Promise.resolve([]),
+
+          /* Tutores, para el aviso de menores sin contacto cargado. Si la
+             migracion todavia no corrio, PostgREST devuelve error y no
+             excepcion, asi que `r.data || []` deja el aviso en cero y el
+             resto del tablon sigue funcionando. */
+          club
+            ? supabase.from('tutores')
+                .select('id, jugador_id, telefono, principal, puede_retirar')
+                .eq('club_id', club)
                 .then((r) => r.data || [])
             : Promise.resolve([]),
         ]);
@@ -620,6 +632,23 @@ export default function Inicio() {
             ruta: '/rendimiento',
           });
         }
+        /* ===== TUTORES: MENORES SIN CONTACTO =====
+           No es un numero de rendimiento, es responsabilidad legal: si al
+           chico le pasa algo en un entrenamiento y no hay a quien llamar, el
+           problema es del club. Solo se avisa lo GRAVE (sin tutor, sin
+           telefono, sin principal); los permisos que faltan responder se ven
+           en la ficha del jugador y no merecen ocupar el triage. */
+        const tut = resumenClub(jugadores, tutoresBD, hoyStr);
+        if (tut.conGraves > 0) {
+          alertas.push({
+            nivel: 'warning',
+            ico: '👨‍👩‍👦',
+            titulo: `${tut.conGraves} ${tut.conGraves === 1 ? 'jugador' : 'jugadores'} sin tutor a quién llamar`,
+            sub: tut.sinTutor > 0 ? `${tut.sinTutor} sin ningún tutor cargado` : 'Falta el teléfono o el contacto principal',
+            ruta: '/plantel',
+          });
+        }
+
         /* ===== LO QUE VIENE (7 DIAS) =====
            Mismo armado que la pantalla Agenda, para que el tablon y la agenda
            no puedan decir cosas distintas. Las consultas ya vienen recortadas
