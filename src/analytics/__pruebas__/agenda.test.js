@@ -24,8 +24,12 @@ const DEUDAS = [
   { id: 31, jugador_id: 2, concepto: 'Cuota abril', monto_original: 20000, monto_pagado: 20000, fecha_vencimiento: '2026-04-05' },
 ];
 
+/* Las columnas son las de la migracion 20260911170000_lesiones.sql, tal cual.
+   Un fixture que se inventa una columna no prueba nada: la primera version de
+   esto pedia `diagnostico` y `tipo_lesion`, que no existen, y la prueba pasaba
+   en verde mientras la pantalla se moria con un 400. */
 const LESIONES = [
-  { id: 40, jugador_id: 1, fecha_alta_estimada: '2026-04-06', estado: 'activa', diagnostico: 'Isquios' },
+  { id: 40, jugador_id: 1, fecha_alta_estimada: '2026-04-06', estado: 'activa', zona: 'Isquiosurales', tipo: 'Muscular', gravedad: 'Leve' },
   { id: 41, jugador_id: 2, fecha_alta_estimada: '2026-04-06', estado: 'alta', fecha_alta_real: '2026-04-01' },
 ];
 
@@ -112,6 +116,17 @@ describe('construirAgenda', () => {
   it('no trae el alta del que ya volvió', () => {
     const altas = todo().filter((e) => e.tipo === 'alta');
     expect(altas.map((e) => e.id)).toEqual(['alta-40']);
+  });
+
+  it('el alta describe la lesión con las columnas que existen', () => {
+    const alta = todo().find((e) => e.tipo === 'alta');
+    expect(alta.sub).toBe('Isquiosurales · Muscular · Leve');
+  });
+
+  it('si la lesión no tiene esos datos igual dice algo útil', () => {
+    const pelada = [{ id: 42, jugador_id: 1, fecha_alta_estimada: '2026-04-06', estado: 'activa' }];
+    const r = construirAgenda({ lesiones: pelada, jugadores: JUGS, desde: '2026-04-01', hasta: '2026-04-30' });
+    expect(r.find((e) => e.tipo === 'alta').sub).toBe('Vuelve a estar disponible');
   });
 
   it('deja afuera lo que cae fuera de la ventana', () => {

@@ -67,7 +67,8 @@ export default function Agenda() {
   /* Sin club no hay nada que esperar, y derivarlo evita tocar el estado antes
      del primer await (lo que dispara renders en cascada). */
   const cargando = !!clubId && cargandoBD;
-  const [error, setError] = useState(null);
+  /* Qué fuentes no se pudieron leer. La agenda igual se muestra con el resto. */
+  const [fallaron, setFallaron] = useState([]);
 
   const [dias, setDias] = useState(7);
   const [desplazamiento, setDesplazamiento] = useState(0);   // en ventanas, 0 = la actual
@@ -80,46 +81,60 @@ export default function Agenda() {
 
     (async () => {
       setCargandoBD(true);
-      setError(null);
-      try {
-        /* Una sola ventana ancha, y solo las columnas que la agenda usa. Todo
-           en paralelo: son cinco tablas que no dependen entre si. */
-        const bajo = sumarDias(hoyISO(), -DIAS_BAJADOS);
-        const alto = sumarDias(hoyISO(), DIAS_BAJADOS);
+      setFallaron([]);
 
-        const [partidos, sesiones, jugadores, deudas, lesiones] = await Promise.all([
-          fetchPaginado(() => supabase.from('partidos')
-            .select('id, fecha, horario, lugar, rival, categoria, condicion, competicion, jornada, estado')
-            .eq('club_id', clubId).gte('fecha', bajo).lte('fecha', alto)
-            .order('fecha', { ascending: true }).order('id', { ascending: true })),
+      const bajo = sumarDias(hoyISO(), -DIAS_BAJADOS);
+      const alto = sumarDias(hoyISO(), DIAS_BAJADOS);
 
-          fetchPaginado(() => supabase.from('sesiones')
-            .select('id, fecha, tipo_sesion, objetivo, categoria_equipo, nivel_carga, tareas_ids')
-            .eq('club_id', clubId).gte('fecha', bajo).lte('fecha', alto)
-            .order('fecha', { ascending: true }).order('id', { ascending: true })),
+      /* Una sola ventana ancha, y sólo las columnas que la agenda usa. Todo en
+         paralelo: son cinco tablas que no dependen entre sí.
 
-          fetchPaginado(() => supabase.from('jugadores')
-            .select('id, nombre, apellido, categoria, fechanac, vencimiento_apto')
-            .eq('club_id', clubId).order('id', { ascending: true })),
+         Cada una se pide POR SEPARADO y su error se atrapa acá adentro. Con un
+         Promise.all pelado, una sola consulta rota —una columna que no existe,
+         una tabla cuya migración todavía no corrió— dejaba la pantalla entera
+         en blanco. Ya pasó: el aviso de abajo dice qué falta y el resto de la
+         agenda se muestra igual. */
+      const fuentes = [
+        ['partidos', 'partidos', () => supabase.from('partidos')
+          .select('id, fecha, horario, lugar, rival, categoria, condicion, competicion, jornada, estado')
+          .eq('club_id', clubId).gte('fecha', bajo).lte('fecha', alto)
+          .order('fecha', { ascending: true }).order('id', { ascending: true })],
 
-          fetchPaginado(() => supabase.from('tesoreria_deudas')
-            .select('id, jugador_id, concepto, monto_original, monto_pagado, fecha_vencimiento')
-            .eq('club_id', clubId).gte('fecha_vencimiento', bajo).lte('fecha_vencimiento', alto)
-            .order('id', { ascending: true })),
+        ['sesiones', 'entrenamientos', () => supabase.from('sesiones')
+          .select('id, fecha, tipo_sesion, objetivo, categoria_equipo, nivel_carga, tareas_ids')
+          .eq('club_id', clubId).gte('fecha', bajo).lte('fecha', alto)
+          .order('fecha', { ascending: true }).order('id', { ascending: true })],
 
-          fetchPaginado(() => supabase.from('lesiones')
-            .select('id, jugador_id, fecha_alta_estimada, fecha_alta_real, estado, diagnostico, tipo_lesion')
-            .eq('club_id', clubId).gte('fecha_alta_estimada', bajo).lte('fecha_alta_estimada', alto)
-            .order('id', { ascending: true })),
-        ]);
+        ['jugadores', 'jugadores', () => supabase.from('jugadores')
+          .select('id, nombre, apellido, categoria, fechanac, vencimiento_apto')
+          .eq('club_id', clubId).order('id', { ascending: true })],
 
-        if (cancelado) return;
-        setRaw({ partidos, sesiones, jugadores, deudas, lesiones });
-      } catch (e) {
-        console.error('Error cargando la agenda:', e);
-        if (!cancelado) setError('No se pudo cargar la agenda. Proba de nuevo en un momento.');
-      }
-      if (!cancelado) setCargandoBD(false);
+        ['deudas', 'cuotas', () => supabase.from('tesoreria_deudas')
+          .select('id, jugador_id, concepto, monto_original, monto_pagado, fecha_vencimiento')
+          .eq('club_id', clubId).gte('fecha_vencimiento', bajo).lte('fecha_vencimiento', alto)
+          .order('id', { ascending: true })],
+
+        ['lesiones', 'altas médicas', () => supabase.from('lesiones')
+          .select('id, jugador_id, fecha_alta_estimada, fecha_alta_real, estado, zona, tipo, gravedad')
+          .eq('club_id', clubId).gte('fecha_alta_estimada', bajo).lte('fecha_alta_estimada', alto)
+          .order('id', { ascending: true })],
+      ];
+
+      const resultados = await Promise.all(fuentes.map(async ([clave, rotulo, query]) => {
+        try {
+          return { clave, filas: await fetchPaginado(query) };
+        } catch (e) {
+          console.error(`Agenda: falló la lectura de ${clave}:`, e);
+          return { clave, filas: [], rotulo };
+        }
+      }));
+
+      if (cancelado) return;
+      const nuevas = {};
+      resultados.forEach((r) => { nuevas[r.clave] = r.filas; });
+      setRaw(nuevas);
+      setFallaron(resultados.filter((r) => r.rotulo).map((r) => r.rotulo));
+      setCargandoBD(false);
     })();
 
     return () => { cancelado = true; };
@@ -187,9 +202,9 @@ export default function Agenda() {
         Partidos, entrenamientos, aptos, cuotas, altas y cumpleaños. Todo junto.
       </div>
 
-      {error && (
-        <div className="bento-card" style={{ marginBottom: 16, borderColor: '#ef4444', color: '#ef4444' }}>
-          {error}
+      {fallaron.length > 0 && (
+        <div className="bento-card" style={{ marginBottom: 16, borderColor: '#fbbf24', color: '#fbbf24', fontSize: '0.8rem' }}>
+          ⚠️ No se pudo leer: {fallaron.join(', ')}. Lo demás se muestra igual.
         </div>
       )}
 
