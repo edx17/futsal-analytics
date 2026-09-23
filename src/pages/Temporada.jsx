@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useEsMovil } from '../utils/useEsMovil';
+import DiasDeLaSemana from '../components/DiasDeLaSemana';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 import { 
@@ -1024,6 +1025,12 @@ function Temporada() {
             );
           })()}
           </div>
+
+          {/* En qué días jugamos y cómo nos fue. Recibe `partidosFiltrados`, la
+              misma lista que alimenta todo lo de arriba, así que respeta los
+              filtros de categoría, torneo, rival y condición que ya estén
+              puestos y sus totales no pueden discrepar con el resto. */}
+          <DiasDeLaSemana partidos={partidosFiltrados} esMovil={esMovil} />
 
           <GraficoMomentumTemporada partidos={partidosFiltrados} eventos={eventosFiltrados} />
 
