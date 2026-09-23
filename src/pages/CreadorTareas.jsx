@@ -12,7 +12,7 @@ import { trayectosEntre, tiradorEn, puntoEnTrayecto, bowDesdeTirador } from '../
    editor, el Banco de Tareas y el Libro Táctico. */
 import {
   PITCH_VARIANTS, TEAM_COLORS, ARROW_STYLES, MATERIAL_LABELS,
-  BASE_W, getBaseH, renderBoard, hitEl, hitArrow, getDPR, uid,
+  BASE_W, getBaseH, renderBoard, hitEl, hitArrow, getDPR, uid, PITCH_CFG_DEFAULT,
   convertOldEl, convertOldLine,
 } from '../tactica/pizarra'
 import { FORMACIONES, CLAVES_FORMACION, elementosDeFormacion } from '../tactica/formaciones'
@@ -266,14 +266,12 @@ const CreadorTareas = () => {
   const [board, dispatchBoard] = useReducer(boardReducer, INIT_BOARD)
   const [tool, setTool] = useState('select')
 
+  /* Los valores por defecto salen de PITCH_CFG_DEFAULT (tactica/pizarra) para
+     que el creador y las vistas previas no puedan divergir. Son exactamente
+     los mismos que estaban escritos acá. */
   const [pitchCfg, setPitchCfg] = useState({
+    ...PITCH_CFG_DEFAULT,
     variant:   'selected' in (tareaAEditar?.editor_data?.cancha || {}) ? tareaAEditar.editor_data.cancha.tamaño : '40x20',
-    material:  'azul',
-    lineColor: '#ffffff',
-    showZones: true,
-    showGrid:  false,
-    showDims:  true,
-    goals:     'both',
   })
 
   const [frames, setFrames] = useState([{ id:'frame-0', elements:[], arrows:[] }])
