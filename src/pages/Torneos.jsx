@@ -17,6 +17,9 @@ import PlacaTabla from '../placas/PlacaTabla';
 import PlacaCampana from '../placas/PlacaCampana';
 import { datosDelClub } from '../placas/club';
 
+/* Cuadros por fila en la tira de ESTADO DE FORMA. */
+const POR_FILA_RACHA = 5;
+
 /* Una fila de la comparación. `mayorEsMejor` decide a quién se le pinta el
    número: en goles en contra y en puesto, menos es mejor. En PJ no hay mejor
    ni peor —una rueda puede tener más fechas que la otra— así que va en null y
@@ -1383,24 +1386,44 @@ function Torneos() {
                   ))}
                </div>
 
-               <div style={{ display: 'flex', gap: '6px', marginTop: '15px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {resumenRacha.ventana.map((h, i) => {
-                     let bg = 'var(--border)'; let color = 'var(--text)';
-                     if(h.res === 'V') { bg = 'var(--accent)'; color = '#000'; }
-                     else if(h.res === 'D') { bg = '#ef4444'; color = 'var(--text)'; }
-                     const tam = ventanaRacha === 10 ? '28px' : '35px';
-                     return (
-                       <div
-                         key={i}
-                         title={`${h.jornada ? h.jornada.toUpperCase() + ' · ' : ''}vs ${h.rival} (${h.condicion}) ${h.gf}-${h.gc}`}
-                         style={{ width: tam, height: tam, borderRadius: '4px', background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: ventanaRacha === 10 ? '0.95rem' : '1.2rem', cursor: 'help' }}
-                       >
-                         {h.res}
-                       </div>
-                     );
-                  })}
-                  {resumenRacha.ventana.length === 0 && <span style={{ color: 'var(--text-dim)' }}>Aún sin partidos finalizados</span>}
-               </div>
+               {/* De a CINCO POR FILA, no con flex-wrap.
+                   Con ÚLT. 10 el wrap acomodaba los que entraran —ocho arriba
+                   y dos abajo, según el ancho—, que es lo que se veía mal.
+                   Partiendo la lista en filas de cinco quedan dos filas
+                   parejas con ÚLT. 10 y una sola con ÚLT. 5, en cualquier
+                   pantalla. Cada fila se centra aparte, así una fila
+                   incompleta (un club con siete partidos jugados) queda
+                   centrada y no pegada a la izquierda. */}
+               {resumenRacha.ventana.length === 0 ? (
+                 <div style={{ marginTop: '15px', textAlign: 'center' }}>
+                   <span style={{ color: 'var(--text-dim)' }}>Aún sin partidos finalizados</span>
+                 </div>
+               ) : (
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '15px', alignItems: 'center' }}>
+                   {Array.from(
+                     { length: Math.ceil(resumenRacha.ventana.length / POR_FILA_RACHA) },
+                     (_, f) => resumenRacha.ventana.slice(f * POR_FILA_RACHA, (f + 1) * POR_FILA_RACHA)
+                   ).map((fila, f) => (
+                     <div key={f} style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                       {fila.map((h, i) => {
+                         let bg = 'var(--border)'; let color = 'var(--text)';
+                         if(h.res === 'V') { bg = 'var(--accent)'; color = '#000'; }
+                         else if(h.res === 'D') { bg = '#ef4444'; color = 'var(--text)'; }
+                         const tam = ventanaRacha === 10 ? '28px' : '35px';
+                         return (
+                           <div
+                             key={i}
+                             title={`${h.jornada ? h.jornada.toUpperCase() + ' · ' : ''}vs ${h.rival} (${h.condicion}) ${h.gf}-${h.gc}`}
+                             style={{ width: tam, height: tam, borderRadius: '4px', background: bg, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: ventanaRacha === 10 ? '0.95rem' : '1.2rem', cursor: 'help' }}
+                           >
+                             {h.res}
+                           </div>
+                         );
+                       })}
+                     </div>
+                   ))}
+                 </div>
+               )}
 
                {resumenRacha.pj > 0 && (
                  <div style={{ display: 'flex', gap: '14px', marginTop: '14px', flexWrap: 'wrap', justifyContent: 'center', fontSize: '0.75rem', fontFamily: 'JetBrains Mono, monospace' }}>
