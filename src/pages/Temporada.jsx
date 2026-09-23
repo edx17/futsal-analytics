@@ -841,8 +841,13 @@ function Temporada() {
         eficacia: st.partidosJugados > 0 ? Math.round((pts / (st.partidosJugados * 3)) * 100) : 0,
       },
       goles: {
-        gf: analiticaGlobal.golesPropiosTotales,
-        gc: analiticaGlobal.golesRivalesTotales,
+        /* Del marcador de los partidos, NO de contar eventos: si no, la placa
+           de un torneo cargado a mano decía "0 goles" al lado de un balance
+           de 1-1-3. Los dos números salen ahora de la misma fuente.
+           `golesPropiosTotales` sigue existiendo para lo que se compara
+           contra eventos (xG, efectividad en remates, origen del gol). */
+        gf: st.golesFavor,
+        gc: st.golesContra,
         xgF: st.xgTotal, xgC: st.xgRival,
       },
       propio: {
@@ -1028,6 +1033,15 @@ function Temporada() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                   <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '0.08em' }}>
                     {hist.length} PARTIDO{hist.length === 1 ? '' : 'S'} EN EL FILTRO ACTUAL
+                    {/* Los partidos cargados a mano tienen resultado pero no
+                        tienen acciones, así que el xG, los remates y los duelos
+                        les dan cero. Decirlo acá evita que esos ceros parezcan
+                        un error de la app. */}
+                    {analiticaGlobal.partidosSinCaptura > 0 && (
+                      <span style={{ color: '#fbbf24', fontWeight: 700 }}>
+                        {' · '}{analiticaGlobal.partidosSinCaptura} sin datos de captura
+                      </span>
+                    )}
                   </span>
                   {rachas.actualLargo > 1 && (
                     <span style={{ fontSize: '0.65rem', fontWeight: 900, color: colorDe(rachas.actualTipo), letterSpacing: '0.05em' }}>

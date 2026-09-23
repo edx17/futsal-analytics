@@ -1,5 +1,6 @@
 import { calcularRatingJugador } from './rating';
 import { calcularXGPartido, calcularXGEvento } from './xg';
+import { marcadorDe, resultadoDeMarcador, tieneCaptura, eventosPorPartido } from './marcador';
 // import { generarPosesiones, calcularCadenasValor } from './posesiones';
 // import { detectarTransiciones } from './transiciones';
 // import { analizarPartido } from './engine';
@@ -33,22 +34,40 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
   };
 
   // 3. HISTORIAL DE PARTIDOS (RACHA)
+  /* EL MARCADOR SALE DE `partidos`, NO DE CONTAR EVENTOS.
+     Acá se contaban los goles filtrando eventos con accion 'Gol'. Un partido
+     cargado a mano desde el fixture no tiene un solo evento, así que daba
+     0 a 0 = EMPATE: una temporada entera cargada a mano se veía como una fila
+     de empates, con 0 goles a favor y 0 en contra, aunque el fixture mostrara
+     los resultados bien. El criterio completo está en `marcador.js`. */
+  const evsDe = eventosPorPartido(evFiltrados);
+  let partidosSinCaptura = 0;
+
   const historialPartidos = partidosFiltrados.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).map(p => {
-    let golesPropio = 0; let golesRival = 0;
-    evFiltrados.filter(e => e.id_partido === p.id && (e.accion === 'Gol' || e.accion === 'Remate - Gol')).forEach(e => {
-        if (e.equipo === 'Propio') golesPropio++; else golesRival++;
-    });
-    
-    let resultado = 'E';
-    if (golesPropio > golesRival) { resultado = 'V'; statsEquipo.victorias++; }
-    else if (golesRival > golesPropio) { resultado = 'D'; statsEquipo.derrotas++; }
-    else { statsEquipo.empates++; }
+    const misEventos = evsDe.get(p.id) || [];
+    const { gf: golesPropio, gc: golesRival, origen } = marcadorDe(p, misEventos);
+    const capturado = tieneCaptura(misEventos);
+    if (!capturado) partidosSinCaptura++;
+
+    const resultado = resultadoDeMarcador(golesPropio, golesRival);
+    if (resultado === 'V') statsEquipo.victorias++;
+    else if (resultado === 'D') statsEquipo.derrotas++;
+    else statsEquipo.empates++;
+
+    /* Los goles del equipo se acumulan acá, del marcador, por la misma razón.
+       Lo que SÍ sigue saliendo de los eventos es todo lo que no se puede
+       deducir de un resultado: el xG, los remates, los duelos y el reparto
+       entre primer y segundo tiempo. En un partido cargado a mano eso queda
+       en cero porque nunca existió, no porque se haya perdido. */
+    statsEquipo.golesFavor += golesPropio;
+    statsEquipo.golesContra += golesRival;
 
     return {
         id: p.id, rival: p.rival || 'Rival', fechaCorta: p.fecha?.substring(0,10) || '',
         categoria: p.categoria, competicion: p.competicion, jornada: p.jornada,
         golesPropio, golesRival, resultado, plantilla: p.plantilla,
-        xg: calcularXGPartido(evFiltrados.filter(e => e.id_partido === p.id && e.equipo === 'Propio'))
+        origenMarcador: origen, capturado,
+        xg: calcularXGPartido(misEventos.filter(e => e.equipo === 'Propio'))
     };
   });
 
@@ -70,8 +89,12 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
       
       // ACUMULACIÓN DE EQUIPO Y JUGADORES
       if (p) {
+          /* El total ya se sumó arriba desde el marcador del partido; acá
+             sólo se reparte entre primer y segundo tiempo, que es lo único
+             que los eventos saben y el marcador no. En un partido cargado a
+             mano este reparto queda vacío, a propósito: no se puede inventar
+             en qué tiempo se hicieron los goles. */
           if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
-              statsEquipo.golesFavor++;
               if (ev.periodo === 'PT') statsEquipo.golesFavorPT++; else statsEquipo.golesFavorST++;
           }
           if (ev.accion === 'Duelo DEF Ganado') { statsEquipo.duelosDefGanados++; statsEquipo.duelosDefTotales++; }
@@ -96,8 +119,8 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
               if (ev.accion === 'Pase Exitoso' || ev.accion === 'Recuperación') j.xgBuildup += (calcularXGEvento(ev) || 0.02);
           }
       } else {
+          // Ídem: el total ya salió del marcador, acá sólo el reparto por tiempo.
           if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
-              statsEquipo.golesContra++;
               if (ev.periodo === 'PT') statsEquipo.golesContraPT++; else statsEquipo.golesContraST++;
           }
       }
@@ -231,6 +254,7 @@ export function analizarTemporadaGlobal(partidos, eventos, jugadores, filtros) {
   return {
     statsEquipo,
     historialPartidos,
+    partidosSinCaptura,
     topQuintetos,
     peoresQuintetos,
     matrizTalento,
