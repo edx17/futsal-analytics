@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useEsMovil } from '../utils/useEsMovil';
 import DiasDeLaSemana from '../components/DiasDeLaSemana';
+import CargandoTemporada, { FalloTemporada } from '../components/CargandoTemporada';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
 import { 
@@ -17,7 +18,7 @@ import ModalPlaca from '../placas/ModalPlaca';
 import PlacaTemporada from '../placas/PlacaTemporada';
 import { datosDelClub } from '../placas/club';
 import { TablaResponsive } from '../components/TablaResponsive';
-import { fetchPorLotes } from '../utils/supaPaginado';
+import { fetchPorLotes, fetchPaginado } from '../utils/supaPaginado';
 
 /* Analiza la secuencia completa de resultados (más viejo -> más reciente).
    Devuelve la racha actual y los récords históricos del período filtrado. */
@@ -286,6 +287,15 @@ function Temporada() {
 
   const [mostrarReporte, setMostrarReporte] = useState(false);
 
+  /* Temporada no tenía ningún estado de carga: se dibujaba con las listas
+     vacías y de golpe saltaba a los números. El que la abría veía una
+     pantalla rota durante varios segundos sin saber si estaba cargando o si
+     se había roto de verdad. */
+  const [carga, setCarga] = useState({ paso: 'partidos', partidos: 0, lotesHechos: 0, lotesTotal: 0, filas: 0 });
+  const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState(null);
+  const [intento, setIntento] = useState(0);
+
   const esMovil = useEsMovil();
   const heatmapRef = useRef(null);
 
@@ -305,6 +315,8 @@ function Temporada() {
   }, [perfil]);
 
   useEffect(() => {
+    let cancelado = false;
+
     async function obtenerDatosGlobales() {
       const clubId = localStorage.getItem('club_id');
       let queryPartidos = supabase
@@ -316,7 +328,22 @@ function Temporada() {
       if (clubId) queryPartidos = queryPartidos.eq('club_id', clubId);
       const { data: p } = await queryPartidos;
         
-      const { data: j } = await supabase.from('jugadores').select('*');
+      setCarga((c) => ({ ...c, paso: 'plantel' }));
+
+      /* Esta consulta NO tenía filtro de club: se bajaba el plantel de todos
+         los clubes y recién después se descartaba en el navegador. Con el
+         mismo criterio que la de partidos, ahora lo recorta el servidor.
+         Va por fetchPaginado porque sin filtro (vista global del superuser)
+         puede pasar el techo de 1000 filas que PostgREST corta sin avisar.
+         Ojo: la consulta se arma de nuevo en cada llamada. Los builders de
+         supabase-js son thenables de un solo uso; reutilizar el mismo objeto
+         devuelve vacío en la segunda página. */
+      const armarJugadores = () => {
+        let q = supabase.from('jugadores').select('*').order('id', { ascending: true });
+        if (clubId) q = q.eq('club_id', clubId);
+        return q;
+      };
+      const j = await fetchPaginado(armarJugadores);
       
       let pFiltrados = p || [];
       let jFiltrados = j || [];
@@ -360,6 +387,7 @@ function Temporada() {
        * Las tres lecturas son independientes entre sí, así que van juntas: los
        * ids de partido ya se conocen antes de resolver los escudos. */
       const idsPartidosPermitidos = pFiltrados.map(part => part.id);
+      setCarga((c) => ({ ...c, paso: 'eventos', partidos: idsPartidosPermitidos.length }));
 
       const [{ data: c }, { data: r }, todosLosEventos] = await Promise.all([
         clubId
@@ -369,7 +397,8 @@ function Temporada() {
         fetchPorLotes(idsPartidosPermitidos, (lote) =>
           supabase.from('eventos').select('*')
             .in('id_partido', lote)
-            .order('id', { ascending: true })
+            .order('id', { ascending: true }),
+          { onProgreso: (a) => setCarga((c) => ({ ...c, ...a })) }
         ),
       ]);
 
@@ -387,12 +416,22 @@ function Temporada() {
       setPartidos(pConEscudos);
       setJugadores(jFiltrados); 
       setEventos(todosLosEventos);
+      setCarga((c) => ({ ...c, paso: 'listo' }));
     }
     
     if (perfil) {
-      obtenerDatosGlobales();
+      /* El error se tragaba en silencio: si la lectura fallaba, la pantalla
+         quedaba vacía para siempre, indistinguible de "este club todavía no
+         jugó nada". Ahora se muestra, y se puede reintentar. */
+      obtenerDatosGlobales()
+        .then(() => { if (!cancelado) setCargando(false); })
+        .catch((e) => {
+          console.error('Error cargando Temporada:', e);
+          if (!cancelado) { setFallo(e?.message || null); setCargando(false); }
+        });
     }
-  }, [perfil]);
+    return () => { cancelado = true; };
+  }, [perfil, intento]);
 
   // =========================================================================
   // LISTAS DESPLEGABLES ÚNICAS PARA LOS FILTROS
@@ -833,6 +872,22 @@ function Temporada() {
     'No Especificado': '#4b5563' 
   };
 
+  /* ESTOS TRES RETORNOS VAN DESPUÉS DE TODOS LOS HOOKS, a propósito. Un return
+     antes de un hook rompe la app entera con "Rendered more hooks than during
+     the previous render" la primera vez que la condición cambia. */
+
+  if (cargando) {
+    return <CargandoTemporada {...carga} esMovil={esMovil} />;
+  }
+
+  if (fallo) {
+    return <FalloTemporada mensaje={fallo} onReintentar={() => { setFallo(null); setCargando(true); setIntento((n) => n + 1); }} />;
+  }
+
+  /* Este cartel ya existía, pero se mostraba TAMBIÉN mientras cargaba, porque
+     `partidos` arranca vacío. O sea que durante varios segundos la pantalla
+     afirmaba que el club no había jugado nada. Ahora sólo aparece cuando la
+     carga terminó de verdad y efectivamente no hay partidos. */
   if (!partidos || partidos.length === 0) return <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-dim)' }}>AÚN NO HAY PARTIDOS CREADOS O FINALIZADOS.</div>;
 
   return (
