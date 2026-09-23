@@ -247,6 +247,19 @@ export function renderBoard(ctx, opts) {
 }
 
 export function renderElements(ctx, elements, arrows, selected, cW, tempArrow, tempZone, isMobile) {
+  /* Ocho argumentos posicionales son una trampa: saltearse `selected` corre
+     todo un lugar y `cW` llega undefined. Con eso playerRadius da NaN y
+     createRadialGradient lanza "The provided double value is non-finite",
+     que no dice nada del argumento que falta. Resultado: la cancha se dibuja
+     y las fichas no. Le pasó al Banco de Tareas y costó un rato entenderlo. */
+  if (!Number.isFinite(cW)) {
+    throw new Error(
+      'renderElements: cW tiene que ser un numero y llego ' + String(cW) + '. ' +
+      'La firma es (ctx, elements, arrows, selected, cW, tempArrow, tempZone, isMobile): ' +
+      'si no hay seleccion pasa null en selected y BASE_W en cW.'
+    );
+  }
+
   elements.filter(e => e.type?.startsWith('zone')).forEach(el => drawEl(ctx, el, selected, cW, isMobile))
   arrows.forEach(a => drawArrow(ctx, a, selected))
   if (tempArrow) drawTempArrow(ctx, tempArrow)
