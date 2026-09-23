@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import FiltrosTareas from '../components/FiltrosTareas';
 import { puntoEnTrayecto } from '../utils/trayectoria';
-import { BASE_W, getBaseH, renderPitch, renderElements } from '../tactica/pizarra';
+import { BASE_W, getBaseH, renderPitch, renderElements, normalizarCancha } from '../tactica/pizarra';
 import { etiquetaFase, etiquetaFormato, pasaFiltros, colorFase, leerFase, FILTROS_VACIOS,
          NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
 
@@ -72,7 +72,11 @@ const ReproductorLoop = ({ editorData }) => {
   const isMountedRef = useRef(true);
 
   const frames = editorData?.frames || [];
-  const pitchCfg = editorData?.cancha || { variant: '40x20', material: 'azul' };
+  /* Antes era `editorData?.cancha || { variant, material }`: cuando la tarea
+     tenía cancha guardada, el objeto llegaba con esas dos claves nada más y
+     showZones/goals quedaban undefined. Resultado: cancha sin áreas, sin
+     penales y sin arcos. `normalizarCancha` completa lo que falta. */
+  const pitchCfg = normalizarCancha(editorData?.cancha);
 
   /* El motor de dibujo es el mismo que usa el creador: antes había acá una
      copia con sus propias constantes, que se iba despegando de la original. */

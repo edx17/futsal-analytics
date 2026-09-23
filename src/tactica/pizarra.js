@@ -61,6 +61,37 @@ export const MATERIALS = {
 }
 export const MATERIAL_LABELS = { azul:'Azul TV', verde:'Verde', naranja:'Naranja', gris:'Gris', parquet:'Parquet', negro:'Oscuro' }
 
+/* LOS VALORES POR DEFECTO DE LA CANCHA, EN UN SOLO LUGAR.
+   El creador guarda en `editor_data.cancha` solamente `tamaño` y `material`.
+   Todo lo demás —las áreas, los puntos de penal, el círculo central, los
+   arcos— depende de banderas que NO se persisten, así que quien reconstruya
+   la config desde lo guardado las recibe en undefined y dibuja una cancha
+   pelada: nada más que el rectángulo de borde. Le pasaba a la vista previa
+   del Banco de Tareas.
+
+   Estaban escritos a mano adentro del creador. Ahora viven acá y los usan
+   los dos, para que no se vuelvan a despegar. */
+export const PITCH_CFG_DEFAULT = {
+  variant:   '40x20',
+  material:  'azul',
+  lineColor: '#ffffff',
+  showZones: true,
+  showGrid:  false,
+  showDims:  true,
+  goals:     'both',
+}
+
+/* Lo guardado viene con la clave `tamaño`, no `variant`, y a veces incompleto.
+   Esto le completa lo que falte sin pisar lo que el usuario sí eligió. */
+export function normalizarCancha(cancha) {
+  const c = cancha || {}
+  return {
+    ...PITCH_CFG_DEFAULT,
+    ...c,
+    variant: c.variant || c.tamaño || PITCH_CFG_DEFAULT.variant,
+  }
+}
+
 export const BASE_W = 800;
 export function getBaseH(variant) {
   const vrt = PITCH_VARIANTS[variant] || PITCH_VARIANTS['40x20']
