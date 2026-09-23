@@ -226,13 +226,22 @@ export async function fetchParalelo(construirQuery, opciones = {}) {
  * @param {number} [opciones.tamLote=60]
  * @param {number} [opciones.concurrencia=3]  Lotes en paralelo. Subirlo acelera,
  *                                            pero pega más fuerte contra el rate limit.
+ * @param {(avance:{lotesHechos:number,lotesTotal:number,filas:number})=>void} [opciones.onProgreso]
+ *        Se llama al terminar cada tanda. Sirve para que la pantalla muestre
+ *        un avance real en vez de un spinner que no dice nada: cuando la
+ *        espera son varios segundos, saber que van 3 de 8 es la diferencia
+ *        entre esperar y pensar que se colgó.
  * @returns {Promise<Array>}
  */
 export async function fetchPorLotes(ids, construirQuery, opciones = {}) {
-  const { tamLote = 60, concurrencia = 3, paginarLote = true } = opciones;
+  const { tamLote = 60, concurrencia = 3, paginarLote = true, onProgreso = null } = opciones;
 
   const unicos = [...new Set((ids || []).filter(Boolean))];
-  if (unicos.length === 0) return [];
+  if (unicos.length === 0) {
+    // Avisar igual, para que quien mire el avance no quede esperando en cero.
+    if (onProgreso) onProgreso({ lotesHechos: 0, lotesTotal: 0, filas: 0 });
+    return [];
+  }
 
   const lotes = [];
   for (let i = 0; i < unicos.length; i += tamLote) {
@@ -252,6 +261,13 @@ export async function fetchPorLotes(ids, construirQuery, opciones = {}) {
       })
     );
     resultados.forEach((filas) => acumulado.push(...filas));
+    if (onProgreso) {
+      onProgreso({
+        lotesHechos: Math.min(i + concurrencia, lotes.length),
+        lotesTotal: lotes.length,
+        filas: acumulado.length,
+      });
+    }
   }
 
   return acumulado;
