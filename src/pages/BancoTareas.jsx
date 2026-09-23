@@ -136,7 +136,15 @@ const ReproductorLoop = ({ editorData }) => {
           ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
           
           renderPitch(ctx, BASE_W, baseH, pitchCfg);
-          renderElements(ctx, f0.elements || f0.elementos || [], f0.arrows || f0.lineas || [], BASE_W);
+          /* OJO CON EL ORDEN: la firma es
+               renderElements(ctx, elements, arrows, selected, cW, ...)
+             Acá se pasaba BASE_W en la posición de `selected`, así que `cW`
+             quedaba undefined. Y `cW` es el que da el radio de las fichas:
+             playerRadius(undefined) da NaN, y createRadialGradient con un
+             valor no finito TIRA una excepción, que corta el dibujo de todas
+             las fichas justo después de pintar la cancha. Por eso se veía la
+             cancha vacía. En la vista previa no hay selección, por eso null. */
+          renderElements(ctx, f0.elements || f0.elementos || [], f0.arrows || f0.lineas || [], null, BASE_W);
           break; 
         }
 
@@ -175,7 +183,8 @@ const ReproductorLoop = ({ editorData }) => {
               ctx.scale(cvSize.w / BASE_W, cvSize.h / baseH);
               
               renderPitch(ctx, BASE_W, baseH, pitchCfg);
-              renderElements(ctx, interpolated, arrsA, BASE_W);
+              // Mismo arreglo de firma que arriba: selected = null, cW = BASE_W.
+              renderElements(ctx, interpolated, arrsA, null, BASE_W);
 
               if (progress < 1) animId = requestAnimationFrame(animate);
               else resolve();
