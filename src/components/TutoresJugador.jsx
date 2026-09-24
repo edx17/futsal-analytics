@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from './ToastContext';
 import { estadoDeJugador, PARENTESCOS } from '../analytics/tutores';
+import { telefonoWhatsApp } from '../utils/telefono';
 
 /* TUTORES Y AUTORIZACIONES DE UN JUGADOR
  *
@@ -195,7 +196,7 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
                   a un renglón aparte. */}
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                 {t.telefono && (
-                  <a href={`https://wa.me/${String(t.telefono).replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                  <a href={`https://wa.me/${telefonoWhatsApp(t.telefono) || String(t.telefono).replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
                      style={{ background: '#25D366', color: '#fff', padding: '5px 10px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 800, textDecoration: 'none' }}>
                     💬
                   </a>

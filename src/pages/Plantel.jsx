@@ -13,6 +13,7 @@ import SolicitudesCambio from '../components/plantel/SolicitudesCambio';
 import { useSolicitudesPendientes } from '../utils/useSolicitudesPendientes';
 import { descargarPlanilla } from '../utils/planillaExcel';
 import { coincideBusqueda } from '../utils/buscarJugador';
+import { linkWhatsApp } from '../utils/telefono';
 
 /* Centinela del selector: no es una categoría, es "quiero escribir una". */
 const OTRA = '__otra__';
@@ -304,7 +305,7 @@ function Plantel() {
   // 1. COPIAR TODOS (USO INTERNO DEL CUERPO TÉCNICO)
   // ==========================================
   const copiarTodosLosPINs = () => {
-    let texto = "🔐 *ACCESOS AL SISTEMA VIRTUAL.CLUB (INTERNO CT)*\n\n";
+    let texto = "🔐 *PINES DEL KIOSCO — SOLO STAFF, NO REENVIAR A LOS JUGADORES*\n\n";
     texto += `🌐 *ACCESO WEB:* ${URL_KIOSCO}\n`;
     texto += `📍 *CÓDIGO DE CLUB (UUID):* \n\`${clubId}\`\n\n`;
     texto += `--------------------------------------------\n\n`;
@@ -316,7 +317,7 @@ function Plantel() {
     });
 
     navigator.clipboard.writeText(texto)
-      .then(() => showToast("¡Lista interna copiada!", "success"))
+      .then(() => showToast(`Lista de PINes copiada (${jugadoresOrdenados.length} jugadores). Es sólo para el staff.`, "success"))
       .catch(err => showToast("Error al copiar", "error"));
   };
 
@@ -346,7 +347,7 @@ function Plantel() {
     });
 
     navigator.clipboard.writeText(textoGrande)
-      .then(() => showToast("¡Mensajes individuales concatenados y copiados!", "success"))
+      .then(() => showToast(`${jugadoresOrdenados.length} mensajes copiados: pegalos y mandale a cada uno el suyo.`, "success"))
       .catch(err => showToast("Error al copiar los mensajes", "error"));
   };
 
@@ -380,21 +381,10 @@ function Plantel() {
     texto += `🔢 *3. TU PIN PERSONAL:* \n\`${j.pin_kiosco || 'No generado'}\`\n\n`;
     texto += `_Copiá el código largo, pegalo en el inicio y luego ingresá tu PIN._`;
 
-    const textoFormateado = encodeURIComponent(texto);
-    
-    // 2. Tomamos el teléfono directo del campo "contacto" del jugador y le barremos cualquier caracter que no sea número
-    const numeroParaWhatsApp = j.contacto ? j.contacto.replace(/[^0-9]/g, "") : "";
-    
-    let url = "";
-    if (numeroParaWhatsApp) {
-      // Abre el chat de WhatsApp directo con ese número y el mensaje ya escrito
-      url = `https://api.whatsapp.com/send?phone=${numeroParaWhatsApp}&text=${textoFormateado}`;
-    } else {
-      // Si no tiene teléfono cargado en su ficha, abre WA para que el DT elija el contacto manualmente
-      url = `https://api.whatsapp.com/send?text=${textoFormateado}`;
-    }
-    
-    window.open(url, "_blank");
+    /* Con el celular cargado abre su chat directo; sin él, WhatsApp deja
+       elegir el contacto. linkWhatsApp completa el 549: con "11 5555-5555"
+       tal cual, WhatsApp decía que el número no existe. */
+    window.open(linkWhatsApp(j.contacto, texto), "_blank");
   };
 
   // Extraemos categorías únicas para los botones de filtro
@@ -508,8 +498,16 @@ function Plantel() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 320px', maxWidth: '640px' }}>
             <button onClick={abrirNuevo} className="btn-action" style={{ background: 'var(--accent)', color: '#000', minHeight: '46px', fontSize: '0.85rem', width: '100%' }}>+ NUEVO JUGADOR</button>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '8px' }}>
-              <button onClick={copiarTodosLosPINs} style={btnPlantel}>📋 COPIAR CT</button>
-              <button onClick={copiarTodosSeparados} style={btnPlantel}>📋 COPIAR WHATSAPP</button>
+              {/* Los dos copian los accesos al kiosco de los jugadores que se
+                  están viendo (respetan categoría y búsqueda). */}
+              <button onClick={copiarTodosLosPINs} style={btnPlantel}
+                title="Una sola lista con el PIN de cada jugador. Es para el cuerpo técnico: no la reenvíes a los jugadores.">
+                📋 LISTA DE PINES (STAFF)
+              </button>
+              <button onClick={copiarTodosSeparados} style={btnPlantel}
+                title="Un mensaje de acceso por jugador, uno abajo del otro, para ir mandándole a cada uno el suyo.">
+                📋 MENSAJES PARA CADA JUGADOR
+              </button>
               {puedeAdministrar && (
                 <>
                   <button

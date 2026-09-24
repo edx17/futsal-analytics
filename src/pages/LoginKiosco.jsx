@@ -15,6 +15,7 @@ import {
   ChipsJugador, TarjetaCumple, TarjetaWellness, TarjetaAgenda, TarjetaDisciplina,
   TarjetaNotificaciones, TarjetaReingresar,
 } from '../components/kiosco/TarjetasKiosco';
+import { telefonoWhatsApp } from '../utils/telefono';
 
 const IconWellness = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -407,7 +408,8 @@ export default function LoginKiosco() {
   const procesarEnvioComprobante = () => {
     if (!clubConfig?.whatsapp_tesoreria) return showToast('El club no configuró su WhatsApp de tesorería.', 'info');
     const msj = `Hola, te adjunto el comprobante de pago de mi cuota/deuda. Soy ${jugadorSeleccionado.nombre} ${jugadorSeleccionado.apellido}.`;
-    const url = `https://wa.me/${clubConfig.whatsapp_tesoreria}?text=${encodeURIComponent(msj)}`;
+    const tel = telefonoWhatsApp(clubConfig.whatsapp_tesoreria) || String(clubConfig.whatsapp_tesoreria).replace(/\D/g, '');
+    const url = `https://wa.me/${tel}?text=${encodeURIComponent(msj)}`;
     window.open(url, '_blank');
   };
 

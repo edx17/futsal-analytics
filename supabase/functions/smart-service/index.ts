@@ -156,15 +156,24 @@ function convocadosDe(p: any): string[] {
   return pl.map((x: any) => String(x?.id_jugador ?? x?.id ?? x)).filter(Boolean);
 }
 
-/* El contacto se carga a mano en el plantel ("11 5555-5555") o lo guarda el
-   bot ya en formato internacional ("5491155555555"). WhatsApp quiere sólo
-   dígitos con código de país; un celular argentino de 10 dígitos se completa
-   con 549. */
+/* El contacto se carga a mano en el plantel ("11 5555-5555", "011 15
+   5555-5555") o lo guarda el bot ya en formato internacional
+   ("5491155555555"). WhatsApp quiere sólo dígitos con 54 9 adelante.
+   Mismo criterio que src/utils/telefono.js (probado allá). */
 function telefonoWhatsApp(contacto: string | null) {
-  const d = String(contacto || "").replace(/\D/g, "");
+  let d = String(contacto ?? "").replace(/\D/g, "");
   if (!d) return null;
+  if (d.startsWith("549") && d.length === 13) return d;
+  if (d.startsWith("54") && d.length === 12) return `549${d.slice(2)}`;
+  if (d.startsWith("00")) d = d.slice(2);
+  if (d.startsWith("54") && d.length >= 12) return d.startsWith("549") ? d : `549${d.slice(2)}`;
+  if (d.startsWith("0")) d = d.slice(1);
+  if (d.length === 12) {
+    for (const pos of [2, 3, 4]) {
+      if (d.slice(pos, pos + 2) === "15") { d = d.slice(0, pos) + d.slice(pos + 2); break; }
+    }
+  }
   if (d.length === 10) return `549${d}`;
-  if (d.length === 11 && d.startsWith("0")) return `549${d.slice(1)}`;
   return d.length >= 11 ? d : null;
 }
 
