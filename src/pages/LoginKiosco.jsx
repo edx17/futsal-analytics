@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
+import { filtroNoVencidas } from '../utils/novedades';
 
 const IconWellness = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -115,6 +116,7 @@ export default function LoginKiosco() {
       .select('id, mensaje, publico_objetivo, categorias, fecha_creacion, perfiles(nombre_completo)')
       .eq('club_id', idClub)
       .in('publico_objetivo', ['Jugadores', 'Ambos'])
+      .or(filtroNoVencidas())
       .order('fecha_creacion', { ascending: false })
       .limit(5);
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
+import { filtroNoVencidas } from '../utils/novedades';
 
 const EMOJIS = ['⚽', '🏋️‍♂️', '🏆', '⚠️', '🗓️', '🏥', '📊', '🔥', '🚌', '🍔', '💪', '🧠', '✅', '❌', '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '😚', '🙂', '🤗', '🤩', '🤔', '🤨', '😐', '😑', '😶', '🙄', '😏', '😣', '😥', '😮', '🤐', '😯', '😪', '😫', '🥱', '😴', '😌', '😛', '😜', '😝', '🤤', '😒', '😓', '😔', '😕', '🙃', '🫠', '🤑', '😲', '☹️', '🙁', '😖', '😞', '😟', '😤', '😢', '😭', '😦','💀','☠️','👻','👽','🤖','🎃'];
 
@@ -81,15 +82,12 @@ export default function Novedades() {
       .from('novedades')
       .select('*, perfiles(nombre_completo, rol)')
       .eq('club_id', club_id)
+      .or(filtroNoVencidas())
       .order('fecha_creacion', { ascending: false })
       .limit(20);
     if (error) { console.error('fetchHistorial:', error); return; }
 
-    // Filtrar vencidas — las que tienen fecha_vencimiento pasada no se muestran
-    const ahora = new Date();
-    let resultado = (data || []).filter(h =>
-      !h.fecha_vencimiento || new Date(h.fecha_vencimiento) > ahora
-    );
+    let resultado = data || [];
 
     if (esCT && misCategorias.length > 0) {
       resultado = resultado.filter(h =>

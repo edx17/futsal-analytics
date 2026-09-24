@@ -16,6 +16,7 @@ import { construirAgenda, sumarDias, diasEntre, TIPOS } from '../analytics/agend
 import { resumenClub } from '../analytics/tutores';
 import { ordenarAlertas, franjaDeHoy, rankAccesos, leerUso, anotarUso, ACCESOS_VISIBLES } from '../analytics/tablero';
 import FranjaHoy from '../components/FranjaHoy';
+import { filtroNoVencidas } from '../utils/novedades';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -481,7 +482,7 @@ export default function Inicio() {
         // Novedades
         if (club && rol !== 'jugador') {
           const { data: nov } = await supabase.from('novedades').select('*, perfiles(nombre_completo, rol)')
-            .eq('club_id', club).in('publico_objetivo', ['CT', 'Ambos']).order('fecha_creacion', { ascending: false }).limit(4);
+            .eq('club_id', club).in('publico_objetivo', ['CT', 'Ambos']).or(filtroNoVencidas()).order('fecha_creacion', { ascending: false }).limit(4);
           if (nov) setNovedades(catEq ? nov.filter((n) => (n.categorias || []).includes(categoriaActiva)) : nov);
         }
 
