@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTablon } from '../utils/useTablon'; // vive junto a useEsMovil.js
 import { activarNotificaciones, estaSuscripto, pushSoportado, diagnosticarPush, MOTIVOS_PUSH } from '../utils/pushNotificaciones';
+import VisorManual from './VisorManual';
 
 const COLOR_PRIORIDAD = {
   bloqueante: '#ff5252',
@@ -27,6 +28,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
   const [pushMotivo, setPushMotivo] = useState(null);
   const [diagnostico, setDiagnostico] = useState(null);
   const [pushAviso, setPushAviso] = useState(null);
+  const [verManual, setVerManual] = useState(false);
 
   useEffect(() => {
     if (!pushSoportado()) { setPushEstado('no-soportado'); return; }
@@ -261,18 +263,21 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                     de siete condiciones con una marcada en rojo. Sin esto no
                     hay forma de saber si falta la clave VAPID, si el navegador
                     está bloqueado o si la fila no se guardó en la base. */}
-                {pushEstado !== 'activo' && (
-                  <button
-                    onClick={handleDiagnosticar}
-                    style={{
-                      width: '100%', marginTop: 6, background: 'transparent', border: 'none',
-                      color: 'var(--text-dim)', fontSize: '0.68rem', textDecoration: 'underline',
-                      cursor: 'pointer', padding: '4px',
-                    }}
-                  >
-                    Ver diagnóstico
+                {/* Al lado, la ayuda del manual: el diagnóstico dice QUÉ falla,
+                    el manual explica cómo se arregla (el paso de iPhone, el
+                    candado del navegador). También cuando ya están activas,
+                    porque "activadas y no me llega nada" es la consulta típica. */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                  {pushEstado !== 'activo' && (
+                    <>
+                      <button onClick={handleDiagnosticar} style={linkChico}>Ver diagnóstico</button>
+                      <span style={{ color: 'var(--text-dim)', fontSize: '0.68rem', padding: '4px 0' }}>·</span>
+                    </>
+                  )}
+                  <button onClick={() => { setAbierto(false); setVerManual(true); }} style={linkChico}>
+                    📖 ¿No te llegan? Ver ayuda
                   </button>
-                )}
+                </div>
 
                 {diagnostico?.chequeos && (
                   <div style={{
@@ -299,6 +304,14 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
           </div>
         </>
       )}
+      {verManual && (
+        <VisorManual seccion="avisos" titulo="Ayuda: avisos y notificaciones" onCerrar={() => setVerManual(false)} />
+      )}
     </div>
   );
 }
+
+const linkChico = {
+  background: 'transparent', border: 'none', color: 'var(--text-dim)', fontSize: '0.68rem',
+  textDecoration: 'underline', cursor: 'pointer', padding: '4px',
+};

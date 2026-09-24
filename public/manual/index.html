@@ -1,0 +1,1204 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Manual de uso de Virtual.Club, pantalla por pantalla.">
+<link rel="icon" type="image/png" href="/favicon-32x32.png">
+<!--
+  COPIA DEL MANUAL DENTRO DE LA APP. Se sirve en /manual/index.html y es la
+  que abren "¿Cómo funciona?" del kiosco, la campanita y Configuración.
+  Las secciones se abren con el ancla: /manual/index.html#kiosco, #avisos…
+  Si se cambia el manual, se cambia acá.
+-->
+<title>Manual de Virtual.Club</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root{
+    --ink:#0A0908; --surface:#141210; --surface2:#1C1917; --line:#2C2825;
+    --text:#F2EFEA; --dim:#9A9188; --faint:#6B635B;
+    --orange:#FC7806; --green:#00FF88; --warn:#FBBF24; --danger:#EF4444; --blue:#38BDF8;
+    --display:'Outfit',system-ui,sans-serif;
+    --body:'IBM Plex Sans',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ink);color:var(--text);font-family:var(--body);line-height:1.6;margin:0;
+       font-size:16px;-webkit-font-smoothing:antialiased}
+  img{max-width:100%;display:block}
+  a{color:var(--green)}
+  h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+
+  .shell{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1240px;margin:0 auto}
+  @media(max-width:900px){.shell{grid-template-columns:1fr}}
+
+  /* ── Índice lateral: replica los grupos del menú real de la app ── */
+  .side{border-right:1px solid var(--line);padding:28px 20px 60px;position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto}
+  @media(max-width:900px){.side{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);padding-bottom:24px}}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .brand-vf{width:34px;height:34px;border-radius:8px;background:var(--orange);color:#000;
+            font-family:var(--display);font-weight:900;font-size:15px;display:grid;place-items:center;letter-spacing:-.02em}
+  .brand-name{font-family:var(--display);font-weight:900;font-size:17px;letter-spacing:.01em}
+  .brand-name span{color:var(--green)}
+  .side-sub{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.14em;margin-bottom:26px}
+  .grp{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--orange);margin:22px 0 8px;font-weight:700}
+  .side a{display:block;color:var(--dim);text-decoration:none;font-size:14px;padding:5px 0;border-left:2px solid transparent;padding-left:10px}
+  .side a:hover,.side a:focus-visible{color:var(--text);border-left-color:var(--green);outline:none}
+
+  .main{padding:40px 28px 100px;min-width:0}
+  @media(max-width:600px){.main{padding:28px 16px 80px}}
+
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--orange);font-weight:700}
+  h1{font-size:clamp(2rem,5vw,2.9rem);font-weight:900;letter-spacing:-.025em;margin:10px 0 14px}
+  .lede{font-size:1.1rem;color:var(--dim);max-width:62ch}
+
+  section{padding-top:46px;scroll-margin-top:20px}
+  h2{font-size:clamp(1.4rem,3.2vw,1.85rem);font-weight:800;letter-spacing:-.02em;
+     padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .ruta{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-bottom:20px}
+  .ruta b{color:var(--green);font-weight:500}
+  h3{font-size:1.12rem;font-weight:800;margin:26px 0 8px;color:var(--text)}
+  p{max-width:65ch}
+  .main p{margin:0 0 14px}
+
+  /* Pasos: numerados sólo donde hay una secuencia real */
+  ol.pasos{list-style:none;counter-reset:p;padding:0;margin:16px 0;display:flex;flex-direction:column;gap:14px}
+  ol.pasos li{counter-increment:p;display:grid;grid-template-columns:30px 1fr;gap:14px;align-items:start}
+  ol.pasos li::before{content:counter(p,decimal-leading-zero);font-family:var(--mono);font-size:12px;font-weight:700;
+    color:var(--orange);background:var(--surface);border:1px solid var(--line);border-radius:6px;
+    width:30px;height:30px;display:grid;place-items:center}
+  ol.pasos li > div{padding-top:3px}
+  ul.lista{margin:12px 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+  ul.lista li{padding-left:18px;position:relative;max-width:65ch}
+  ul.lista li::before{content:"";position:absolute;left:4px;top:11px;width:5px;height:5px;border-radius:50%;background:var(--orange)}
+
+  figure{margin:22px 0}
+  figure img{border:1px solid var(--line);border-radius:10px}
+  figcaption{font-size:12.5px;color:var(--faint);margin-top:9px;font-family:var(--mono)}
+
+  .nota{border-left:3px solid var(--green);background:var(--surface);padding:14px 16px;margin:18px 0;border-radius:0 8px 8px 0;font-size:.94rem}
+  .nota.ojo{border-left-color:var(--warn)}
+  .nota.stop{border-left-color:var(--danger)}
+  .nota b{color:var(--text)}
+  .nota p:last-child{margin-bottom:0}
+
+  table{width:100%;border-collapse:collapse;margin:18px 0;font-size:14px}
+  .tabla-wrap{overflow-x:auto}
+  th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--faint);
+     font-weight:700;padding:0 12px 9px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:10px 12px 10px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{font-weight:600}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  .chip{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.06em;
+        padding:3px 8px;border-radius:999px;border:1px solid;white-space:nowrap}
+  .c-ok{color:var(--green);border-color:#0d5c39;background:#062e1e}
+  .c-warn{color:var(--warn);border-color:#5c4a0d;background:#2e2506}
+  .c-stop{color:var(--danger);border-color:#5c1d1d;background:#2e0a0a}
+  .c-info{color:var(--blue);border-color:#0d4a5c;background:#06252e}
+  .c-off{color:var(--faint);border-color:var(--line);background:var(--surface)}
+
+  .tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:14px;margin:18px 0}
+  .tarjeta{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .tarjeta h4{font-size:.95rem;font-weight:800;margin-bottom:6px}
+  .tarjeta p{font-size:.86rem;color:var(--dim);margin:0;max-width:none}
+
+  /* Atajos de teclado: se leen como teclas, no como código */
+  kbd{font-family:var(--mono);font-size:11px;font-weight:700;background:var(--surface2);
+      border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 6px;color:var(--text)}
+
+  code{font-family:var(--mono);font-size:.87em;background:var(--surface2);border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;color:var(--green)}
+
+  /* Capturas del celular: angostas, de a dos o tres por fila, sin estirarse */
+  .cels{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:16px;margin:22px 0;align-items:start}
+  .cels figure{margin:0}
+  figure.cel{max-width:300px}
+  .cels figure img,figure.cel img{border-radius:14px}
+  .nuevo{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;
+         color:#000;background:var(--green);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px}
+  .hero-img{margin:26px 0 0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--line);color:var(--faint);font-size:13px}
+
+  /* ── Para imprimir o guardar como PDF (Ctrl+P → Guardar como PDF) ──
+     En papel el fondo oscuro no se imprime y el texto claro quedaría
+     invisible: se pasa a tinta negra sobre blanco y se saca el índice. */
+  @media print{
+    :root{--ink:#fff;--surface:#f5f3f0;--surface2:#ece9e4;--line:#d6d1ca;--text:#111;--dim:#444;--faint:#666;
+          --orange:#b45309;--green:#047857;--warn:#92400e;--danger:#b91c1c;--blue:#0369a1}
+    body{background:#fff;color:#111;font-size:12pt}
+    .side,.solo-pantalla{display:none!important}
+    .shell{display:block;max-width:none}
+    .main{padding:0}
+    section{padding-top:24px}
+    h2,h3{break-after:avoid}
+    figure,.nota,.tarjeta,tr{break-inside:avoid}
+    figure.cel,.cels figure{max-width:220px}
+    .cels{grid-template-columns:repeat(3,1fr)}
+    a{color:inherit;text-decoration:none}
+  }
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="side">
+  <div class="brand">
+    <div class="brand-vf">VF</div>
+    <div class="brand-name">VIRTUAL<span>.CLUB</span></div>
+  </div>
+  <div class="side-sub">MANUAL DE USO</div>
+
+  <div class="grp">EMPEZAR</div>
+  <a href="#arranque">Tu primera semana</a>
+  <a href="#inicio">Centro de mando</a>
+  <a href="#avisos">Avisos y notificaciones</a>
+  <a href="#roles">Quién ve qué</a>
+  <a href="#categorias">Las categorías</a>
+
+  <div class="grp">OPERACIONES</div>
+  <a href="#partido">Nuevo partido</a>
+  <a href="#toma">Toma de datos en vivo</a>
+  <a href="#offline">Análisis offline</a>
+
+  <div class="grp">COMPETICIÓN</div>
+  <a href="#torneos">Mis torneos</a>
+  <a href="#rivales">Rivales</a>
+
+  <div class="grp">ANÁLISIS</div>
+  <a href="#match">Resumen por partido</a>
+  <a href="#jugador">Resumen por jugador</a>
+  <a href="#temporada">Resumen de temporada</a>
+  <a href="#resumenplantel">Resumen del plantel</a>
+  <a href="#comparar">Comparar jugadores</a>
+  <a href="#goles">Origen de goles</a>
+  <a href="#disciplina">Disciplina</a>
+  <a href="#reportes">Exportar gráficas</a>
+
+  <div class="grp">PLANIFICACIÓN</div>
+  <a href="#agenda">Agenda</a>
+  <a href="#citacion">Citación</a>
+  <a href="#microciclo">Microciclo</a>
+  <a href="#pizarra">Creador táctico</a>
+  <a href="#tareas">Banco de tareas</a>
+  <a href="#libro">Libro táctico</a>
+  <a href="#video">Videoanálisis</a>
+  <a href="#novedades">Novedades</a>
+
+  <div class="grp">PLANTEL</div>
+  <a href="#plantel">Mi plantel</a>
+  <a href="#planilla">Carga por planilla</a>
+  <a href="#pedidos">Cambios pedidos por jugadores</a>
+  <a href="#tutores">Tutores y autorizaciones</a>
+  <a href="#presentismo">Presentismo</a>
+  <a href="#enfermeria">Enfermería</a>
+  <a href="#wellness">Wellness</a>
+  <a href="#fisiologia">Fisiología</a>
+  <a href="#pases">Transferencias</a>
+
+  <div class="grp">ADMINISTRACIÓN</div>
+  <a href="#tesoreria">Tesorería</a>
+  <a href="#staff">Staff y empleados</a>
+  <a href="#config">Configuración del club</a>
+  <a href="#suscripcion">Mi suscripción</a>
+
+  <div class="grp">JUGADORES</div>
+  <a href="#kiosco">El acceso del jugador</a>
+  <a href="#kiosco-menu">Su menú</a>
+  <a href="#misdatos">Mis datos</a>
+  <a href="#kiosco-avisos">Avisos al celular</a>
+  <a href="#kiosco-link">Pasarles el acceso</a>
+
+  <div class="grp">AYUDA</div>
+  <a href="#dudas">Dudas frecuentes</a>
+</nav>
+
+<main class="main">
+  <div class="eyebrow">MANUAL DE USO · VERSIÓN 2026 · ACTUALIZADO EL 24/09</div>
+  <h1>Todo lo que hace Virtual.Club, pantalla por pantalla</h1>
+  <p class="lede">Una guía para el cuerpo técnico: qué hace cada módulo, en qué orden conviene usarlos
+  y cómo se conectan entre sí. No hace falta leerla entera — buscá el módulo en el índice de la izquierda.</p>
+
+  <div class="hero-img"><img src="key-visual.png" alt="Centro de mando y planificador de sesiones de Virtual.Club"></div>
+
+  <section id="arranque">
+    <h2>Tu primera semana</h2>
+    <p class="ruta">La app está organizada por lo que hace un club durante la semana, no por menús sueltos.
+    Si arrancás de cero, este es el orden que funciona.</p>
+
+    <ol class="pasos">
+      <li><div><b>Cargá el plantel.</b> <span class="ruta">PLANTEL → MI PLANTEL</span><br>
+        Nombre, apellido, dorsal, posición y categoría de cada jugador. La categoría es importante:
+        es la que después separa Primera de Tercera en todas las pantallas. Si son muchos, cargalos
+        de una sola vez con la <a href="#planilla">planilla</a>.</div></li>
+      <li><div><b>Cargá el torneo y el fixture.</b> <span class="ruta">COMPETICIÓN → MIS TORNEOS</span><br>
+        Podés pegar el fixture de la liga y la app lo interpreta sola.</div></li>
+      <li><div><b>Armá la citación del próximo partido.</b> <span class="ruta">PLANIFICACIÓN → CITACIÓN</span><br>
+        Sale el mensaje listo para pegar en el grupo de WhatsApp.</div></li>
+      <li><div><b>Pasá lista en los entrenamientos.</b> <span class="ruta">PLANTEL → PRESENTISMO</span><br>
+        Es lo que alimenta la sugerencia de convocatoria de la semana siguiente.</div></li>
+      <li><div><b>El día del partido, cargá los datos en vivo.</b> <span class="ruta">OPERACIONES → NUEVO PARTIDO</span></div></li>
+      <li><div><b>Mirá el análisis.</b> <span class="ruta">ANÁLISIS → RESUMEN POR PARTIDO</span><br>
+        Apenas termina el partido ya tenés el informe y la placa para redes.</div></li>
+      <li><div><b>Pasale a cada jugador su acceso.</b> <span class="ruta">PLANTEL → MI PLANTEL</span><br>
+        Con su PIN entra al Kiosco, carga su wellness y ve su agenda, su citación y sus números.
+        Ver <a href="#kiosco-link">cómo pasarles el acceso</a>.</div></li>
+    </ol>
+
+    <div class="nota">
+      <p><b>El plantel primero.</b> Casi todo lo demás depende de tener los jugadores cargados con su categoría:
+      sin eso, la citación no tiene a quién sugerir y el análisis no sabe a quién atribuir cada acción.</p>
+    </div>
+  </section>
+
+  <section id="inicio">
+    <h2>Centro de mando</h2>
+    <p class="ruta">🏠 <b>INICIO</b> · es la primera pantalla al entrar</p>
+    <p>Un tablero armado con módulos. Arriba va lo que hay que resolver hoy y más abajo el balance, que cambia
+    una vez por semana. Cada rol arranca con los suyos: el técnico con el equipo, tesorería con la plata.</p>
+
+    <div class="tarjetas">
+      <div class="tarjeta"><h4>Requiere tu atención</h4><p>Suspendidos, jugadores a una amarilla del corte, lesiones con el alta vencida, wellness en rojo. Tocando cada aviso vas a la pantalla donde se resuelve.</p></div>
+      <div class="tarjeta"><h4>Los próximos 7 días</h4><p>Partidos, entrenamientos, cumpleaños, aptos y cuotas que vencen. Es un resumen de la <a href="#agenda">Agenda</a>.</p></div>
+      <div class="tarjeta"><h4>Próximo partido y último resultado</h4><p>Rival, fecha y hora del que viene; marcador y figuras del que pasó.</p></div>
+      <div class="tarjeta"><h4>Wellness sin cargar y carga del plantel</h4><p>Quién no respondió hoy y quién viene sobrecargado según su carga de las últimas semanas.</p></div>
+      <div class="tarjeta"><h4>La plata del mes</h4><p>Ingresos, egresos y saldo. Sólo para manager y administración.</p></div>
+      <div class="tarjeta"><h4>Tablón</h4><p>Las <a href="#novedades">novedades</a> vigentes publicadas para el cuerpo técnico.</p></div>
+    </div>
+
+    <div class="nota">
+      <p><b>Se puede acomodar.</b> Con el ⚙️ elegís qué módulos ver y en qué orden. Arriba también está el selector de
+      categoría: si lo cambiás, todos los módulos pasan a mostrar esa categoría.</p>
+    </div>
+  </section>
+
+  <section id="avisos">
+    <h2>Avisos y notificaciones</h2>
+    <p class="ruta">La 🔔 <b>campanita</b> de arriba · y las notificaciones en el celular</p>
+    <p>La campanita junta lo mismo que "Requiere tu atención", más préstamos que vencen, sesiones sin tareas cargadas
+    y deudas vencidas. Cada aviso se puede descartar cuando ya lo resolviste.</p>
+
+    <h3>Recibirlos en el celular</h3>
+    <ol class="pasos">
+      <li><div>Abrí la campanita y tocá <b>Activar notificaciones</b>.</div></li>
+      <li><div>Aceptá el cartel del navegador.</div></li>
+      <li><div>Listo. Tres veces por día (8, 13 y 18 hs) te llega un resumen de lo pendiente, y un aviso cuando falta poco para el partido.</div></li>
+    </ol>
+
+    <div class="nota ojo">
+      <p><b>En iPhone hay que instalar la app primero.</b> Desde Safari: Compartir → <b>Agregar a inicio</b>, y activar las
+      notificaciones entrando desde ese ícono. Si no llegan, la campanita tiene un diagnóstico que dice qué falta.</p>
+    </div>
+  </section>
+
+  <section id="roles">
+    <h2>Quién ve qué</h2>
+    <p class="ruta">Cada persona del staff entra con su propio usuario y ve sólo lo que le corresponde. Los jugadores entran por el Kiosco.</p>
+
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Rol</th><th>Para quién es</th><th>Qué puede hacer</th></tr></thead>
+      <tbody>
+        <tr><td>Manager</td><td>El que dirige el club</td><td>Ve y edita todo, incluida la parte administrativa y la de dinero.</td></tr>
+        <tr><td>CT</td><td>Cuerpo técnico</td><td>Todo lo deportivo: partidos, análisis, planificación, plantel, presentismo y enfermería. No entra a Tesorería.</td></tr>
+        <tr><td>Admin</td><td>Tesorería y secretaría</td><td>Administración, cobros y sponsors. Ve el análisis pero no lo carga.</td></tr>
+        <tr><td>Jugador</td><td>El plantel</td><td>Entra por el <a href="#kiosco">Kiosco</a> con su PIN, sin usuario. Ve lo suyo: su agenda, su citación, sus tarjetas, su wellness, su estado físico y los resúmenes del equipo.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="nota ojo">
+      <p><b>Si sos CT de una categoría sola</b>, la app te muestra únicamente esa categoría en todas las pantallas.
+      Es automático: lo define el manager al crear tu usuario.</p>
+    </div>
+  </section>
+
+  <section id="categorias">
+    <h2>Las categorías</h2>
+    <p class="ruta">Cómo decide la app qué divisiones mostrarte, en cualquier pantalla.</p>
+    <p>Las categorías no son una lista fija de la app: <b>son las que tiene tu club</b>, y salen de los jugadores
+    que cargaste. Por eso conviene que estén escritas siempre igual.</p>
+
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Tipo</th><th>Qué es</th><th>Dónde aparece</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip c-ok">ACTIVA</span></td><td>Tiene al menos un jugador en el plantel.</td>
+            <td>En todas las pantallas, incluidas las de carga.</td></tr>
+        <tr><td><span class="chip c-off">HISTÓRICA</span></td><td>Ya no tiene plantel, pero tiene partidos jugados o jugadores dados de baja.</td>
+            <td>Sólo en las de consulta: torneos, transferencias y resúmenes.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>Pasar lista, por ejemplo, sólo ofrece las activas: una división sin jugadores no tiene a quién.
+    En cambio el resumen de temporada las muestra todas, porque se miran años anteriores.</p>
+
+    <div class="nota">
+      <p><b>Si sos CT con categorías asignadas, eso manda sobre todo lo demás.</b> Ves las tuyas y nada más,
+      aunque el club tenga diez divisiones. Y si tenés más de una, elegís cuál mirar con los chips de arriba.</p>
+    </div>
+
+    <div class="nota ojo">
+      <p><b>Crear una división nueva es un acto deliberado.</b> En la ficha del jugador la categoría se elige de una lista;
+      si de verdad necesitás una que no existe, está la opción <b>+ Otra categoría…</b>. Así se evita que convivan
+      "Primera", "1ra" y "Reserva" como si fueran tres cosas distintas — que es lo que después descuadra los listados.</p>
+    </div>
+  </section>
+
+  <section id="partido">
+    <h2>Nuevo partido</h2>
+    <p class="ruta">OPERACIONES → <b>NUEVO PARTIDO</b></p>
+    <p>Es la pantalla que arma el partido antes de empezar a cargar datos. Elegís el torneo, el rival y la fecha
+    —o tomás un partido que ya esté en el fixture— y armás la convocatoria.</p>
+
+    <h3>Las dos reglas que valida</h3>
+    <ul class="lista">
+      <li><b>Convocados:</b> hasta 14, o 16 si la competición es un amistoso.</li>
+      <li><b>Titulares:</b> exactamente 5. Si no, no deja arrancar.</li>
+    </ul>
+
+    <div class="nota">
+      <p><b>Si ya armaste la citación</b>, los convocados vienen tildados solos y aparece un cartel azul avisándolo.
+      Sólo tenés que confirmar o cambiar lo que haya cambiado a último momento. Los titulares se marcan acá, no en la citación.</p>
+    </div>
+
+    <div class="nota ojo">
+      <p><b>Un jugador lesionado aparece marcado con 🏥.</b> Es un aviso, no un bloqueo: si vos decís que está para jugar, seguís igual.</p>
+    </div>
+  </section>
+
+  <section id="toma">
+    <h2>Toma de datos en vivo</h2>
+    <p class="ruta">OPERACIONES → NUEVO PARTIDO → <b>INICIAR PARTIDO</b> · o CONTINUAR PARTIDO</p>
+    <p>La pantalla de cancha. Cada jugada se carga en pocos toques y queda con su ubicación en el campo,
+    que es lo que después arma los mapas de calor y el xG.</p>
+
+    <h3>Cómo se carga una acción</h3>
+    <ol class="pasos">
+      <li><div>Tocás <b>en la cancha</b> el lugar donde pasó la jugada.</div></li>
+      <li><div>Elegís <b>el jugador</b> (o el rival, si la acción fue de ellos).</div></li>
+      <li><div>Elegís <b>la acción</b>: remate, recuperación, pérdida, duelo, falta, pase clave o tarjeta.</div></li>
+      <li><div>Si fue un remate, elegís <b>cómo terminó</b>: gol, atajado, desviado o rebotado.</div></li>
+    </ol>
+
+    <p>El quinteto en cancha se actualiza con los cambios, y eso es lo que permite calcular después el rendimiento
+    de cada combinación de cinco.</p>
+
+    <div class="nota">
+      <p><b>Si se corta el partido</b> —se cierra la app, se queda sin batería— entrás por
+      <b>CONTINUAR PARTIDO</b> y seguís donde estabas. No se pierde nada.</p>
+    </div>
+
+    <div class="nota ojo">
+      <p><b>Cargá también los goles del rival.</b> Varios análisis necesitan reconstruir el partido gol a gol
+      —quién abrió el marcador, qué gol fue para empatar— y sin los de ellos el marcador no se puede reconstruir.
+      Cuando faltan, el reporte de goles lo avisa y deja ese partido afuera en vez de mostrar un número inventado.</p>
+    </div>
+  </section>
+
+  <section id="offline">
+    <h2>Análisis offline</h2>
+    <p class="ruta">OPERACIONES → <b>ANÁLISIS OFFLINE</b></p>
+    <p>Para analizar con calma sobre un partido que ya se cargó: cadenas de pases, pérdidas forzadas o no forzadas,
+    y el seguimiento posicional. Sirve para profundizar sin la presión del banco.</p>
+    <p>Funciona <b>sin conexión</b> y sincroniza cuando vuelve internet, así que se puede usar en una cancha sin señal.</p>
+  </section>
+
+  <section id="torneos">
+    <h2>Mis torneos</h2>
+    <p class="ruta">COMPETICIÓN → <b>MIS TORNEOS</b></p>
+    <p>Acá vive la competición: el fixture, la tabla de posiciones y el calendario de fechas.</p>
+
+    <h3>Importar el fixture sin cargarlo a mano</h3>
+    <ol class="pasos">
+      <li><div>Copiá el fixture como lo publica la liga.</div></li>
+      <li><div>Tocá <b>IMPORTAR FECHAS</b> y pegalo.</div></li>
+      <li><div>La app separa las jornadas y los cruces, y trata de reconocer a cada rival. Los que no reconoce te los marca para que los corrijas.</div></li>
+    </ol>
+
+    <div class="nota">
+      <p><b>Los partidos entre otros dos equipos también sirven.</b> Quedan en el fixture para armar la tabla
+      y, si les cargás video, alimentan el scouting de esos rivales.</p>
+    </div>
+  </section>
+
+  <section id="rivales">
+    <h2>Rivales</h2>
+    <p class="ruta">COMPETICIÓN → <b>RIVALES</b></p>
+    <p>La ficha de cada rival: sistema táctico, jugadores clave, notas del cuerpo técnico y su dossier de video.</p>
+    <ul class="lista">
+      <li><b>Enfrentamientos:</b> los partidos que jugaste contra él.</li>
+      <li><b>Scouting:</b> sus partidos contra terceros, los que están en el fixture.</li>
+    </ul>
+    <p>Nunca se mezclan, así que el historial contra ese rival cuenta sólo los partidos tuyos.</p>
+
+    <h3>El scouting es por categoría</h3>
+    <p>El 3-1 que juega su Primera no es el de su Cuarta, así que cada división tiene su propia ficha:
+    su sistema, sus jugadores clave, sus notas y su video. Arriba de la grilla elegís cuál estás mirando.</p>
+
+    <div class="nota">
+      <p><b>El chip TODAS es la vista de control.</b> Cada rival muestra entonces <i>"Scouting en 2 de 5 categorías"</i>
+      con las divisiones que ya tienen datos cargados: de un vistazo ves dónde te falta trabajo.
+      Tocando cualquiera entrás directo a esa ficha.</p>
+    </div>
+
+    <div class="nota ojo">
+      <p><b>En TODAS se mira, no se escribe.</b> Mezclar el scouting de Primera con el de Cuarta pisaría datos,
+      así que para cargar hay que elegir una categoría. Lo que sí suma esa vista es el
+      <b>historial cruzado</b>: cómo te fue contra ese rival en todas las divisiones, con el desglose de cada una.</p>
+    </div>
+  </section>
+
+  <section id="match">
+    <h2>Resumen por partido</h2>
+    <p class="ruta">ANÁLISIS → <b>RESUMEN POR PARTIDO</b></p>
+    <p>El informe completo de un partido: resultado, xG, remates, duelos, recuperaciones, disciplina y el rendimiento
+    de cada jugador y cada quinteto. Tiene una vista express para la charla del vestuario y una avanzada para el análisis fino.</p>
+
+    <figure>
+      <img src="resumen.png" alt="Informe de partido con xG, MVP, finalizadores y origen de goles">
+      <figcaption>La placa del partido: lista para compartir, sin diseñar nada. Los datos son de ejemplo.</figcaption>
+    </figure>
+
+    <figure>
+      <img src="quinteto.png" alt="Tabla de rendimiento por quintetos">
+      <figcaption>Rendimiento por quinteto — con qué cinco el equipo saca diferencia.</figcaption>
+    </figure>
+  </section>
+
+  <section id="jugador">
+    <h2>Resumen por jugador</h2>
+    <p class="ruta">ANÁLISIS → <b>RESUMEN POR JUGADOR</b> · el jugador lo ve como MI PERFIL</p>
+    <p>El perfil individual: su radar de rendimiento, sus mapas, su disciplina, su mejor quinteto y sus socios de gol.
+    Se puede filtrar por torneo o por un partido puntual.</p>
+
+    <figure>
+      <img src="mapa.png" alt="Mapa de calor de las acciones de un jugador">
+      <figcaption>Mapa de influencia: dónde interviene realmente.</figcaption>
+    </figure>
+
+    <h3>El listado de partidos, al final</h3>
+    <ul class="lista">
+      <li>Los partidos que <b>jugó</b> se resaltan, con el resultado y su aporte.</li>
+      <li>Los que fue <b>citado y no entró</b> quedan atenuados.</li>
+      <li>Los que se perdió <b>lesionado</b> aparecen marcados como tales.</li>
+    </ul>
+    <p>Tocando cualquiera se abre el resumen de ese partido.</p>
+  </section>
+
+  <section id="temporada">
+    <h2>Resumen de temporada</h2>
+    <p class="ruta">ANÁLISIS → <b>RESUMEN TEMPORADA</b></p>
+    <p>La foto del año: evolución de resultados, xG a favor y en contra, y las tendencias del equipo a lo largo del campeonato.</p>
+    <figure>
+      <img src="graf.png" alt="Evolución de xG, eficiencia y balón parado a lo largo de la temporada">
+      <figcaption>Evolución de xG, eficiencia y balón parado.</figcaption>
+    </figure>
+  </section>
+
+  <section id="resumenplantel">
+    <h2>Resumen del plantel</h2>
+    <p class="ruta">ANÁLISIS → <b>RESUMEN PLANTEL</b></p>
+    <p>Todos los jugadores de una categoría en una tabla: citaciones, partidos, titularidades y minutos; goles, xG, remates
+    y asistencias; duelos, disciplina e impacto, y una sección aparte para los arqueros.
+    Se ordena por cualquier columna y se filtra por torneo. Sirve para ver de un vistazo quién está sumando y quién no.</p>
+    <p>En el celular cada jugador es una tarjeta con sus tres números principales; <b>VER TODO</b> despliega el resto.</p>
+  </section>
+
+  <section id="comparar">
+    <h2>Comparar jugadores</h2>
+    <p class="ruta">ANÁLISIS → <b>COMPARAR</b></p>
+    <p>Dos jugadores lado a lado, con los mismos números del Resumen del plantel. Contesta preguntas como
+    <i>"¿a quién pongo de cierre?"</i> sin abrir dos pestañas.</p>
+    <div class="nota">
+      <p><b>Por defecto compara cada 40 minutos jugados</b>, lo que dura un partido. Así el que jugó 600 minutos y el que
+      jugó 200 se miden en la misma escala. Para ver los totales, destildá <i>Mostrar cada 40 minutos jugados</i>.</p>
+    </div>
+  </section>
+
+  <section id="goles">
+    <h2>Origen de goles</h2>
+    <p class="ruta">ANÁLISIS → <b>ORIGEN DE GOLES</b></p>
+    <p>De dónde salen los goles, a favor y en contra: ataque posicional, transición, balón parado o error no forzado.
+    Es la pantalla que responde <i>por dónde nos hacen daño</i>.</p>
+    <figure>
+      <img src="trans.png" alt="Mapa de transiciones del equipo">
+      <figcaption>Mapa de transiciones: de dónde arrancan los contraataques.</figcaption>
+    </figure>
+
+    <h3>Cómo se dan los partidos</h3>
+    <p>La otra mitad del reporte no mira de dónde salió el gol sino <b>cómo estaba el marcador un segundo antes</b>.
+    Es la diferencia entre saber que metiste veinte goles y saber cuándo los metiste.</p>
+
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Estado</th><th>Qué significa</th></tr></thead>
+      <tbody>
+        <tr><td>Abrimos el marcador</td><td>Gol con el partido 0-0. Pusimos el primero.</td></tr>
+        <tr><td>Para empatar</td><td>Igualó el partido estando uno abajo.</td></tr>
+        <tr><td>Para dar vuelta</td><td>Nos puso arriba después de haber estado perdiendo.</td></tr>
+        <tr><td>Para desempatar</td><td>Rompió una igualdad <b>sin</b> haber estado nunca abajo.</td></tr>
+        <tr><td>Para estirar</td><td>Marcado cuando ya íbamos ganando.</td></tr>
+        <tr><td>De descuento</td><td>Marcado perdiendo por dos o más. Acorta, pero no empata.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>Arriba de todo está el número que más se usa: <b>en cuántos partidos abrimos el marcador</b>, y con qué
+    resultado terminaron esos partidos. También cuántas veces remontaste y cuántas ventajas no supiste sostener.</p>
+
+    <div class="nota ojo">
+      <p><b>Un partido sólo entra si su cronología está completa.</b> Si los goles cargados no coinciden con el
+      resultado final —típicamente porque faltan los del rival— el marcador no se puede reconstruir, y el reporte
+      prefiere dejar ese partido afuera y avisártelo antes que mostrarte un número que no es.</p>
+    </div>
+  </section>
+
+  <section id="disciplina">
+    <h2>Disciplina</h2>
+    <p class="ruta">ANÁLISIS → <b>DISCIPLINA</b></p>
+    <p>Amarillas, rojas y sanciones de tribunal, por jugador y por categoría. Lleva la cuenta de la
+    <b>acumulación de amarillas</b> y avisa quién está a una del corte.</p>
+    <div class="nota">
+      <p>Lo que se carga acá <b>bloquea automáticamente</b> al jugador suspendido en la sugerencia de la citación.
+      No hay que acordarse.</p>
+    </div>
+  </section>
+
+  <section id="reportes">
+    <h2>Exportar gráficas</h2>
+    <p class="ruta">ANÁLISIS → <b>EXPORTAR GRÁFICAS</b></p>
+    <p>Un editor para armar placas con los datos del club y bajarlas como imagen: para redes, para la charla
+    o para el informe del partido. Se elige la plantilla, se acomodan los elementos y se exporta.</p>
+  </section>
+
+  <section id="agenda">
+    <h2>Agenda</h2>
+    <p class="ruta">PLANIFICACIÓN → <b>AGENDA</b></p>
+    <p>Todo lo que tiene fecha en el club, en una sola lista. Antes había que mirar cinco pantallas para
+    contestar <i>"¿qué pasa esta semana?"</i>.</p>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Qué aparece</th><th>De dónde sale</th></tr></thead>
+      <tbody>
+        <tr><td>Partidos</td><td>Mis torneos</td></tr>
+        <tr><td>Entrenamientos</td><td>Microciclo</td></tr>
+        <tr><td>Cumpleaños y aptos que vencen</td><td>Mi plantel</td></tr>
+        <tr><td>Cuotas que vencen</td><td>Tesorería</td></tr>
+        <tr><td>Altas médicas previstas</td><td>Enfermería</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Arriba elegís el rango (7 días, 30 días o 3 meses), avanzás o retrocedés, y filtrás por tipo o por categoría.</p>
+  </section>
+
+  <section id="citacion">
+    <h2>Citación</h2>
+    <p class="ruta">PLANIFICACIÓN → <b>CITACIÓN</b></p>
+    <p>Arma la convocatoria del próximo partido y el mensaje para el grupo. Reemplaza escribirlo a mano cada semana.</p>
+
+    <ol class="pasos">
+      <li><div><b>Elegí el partido.</b> Trae rival, fecha, hora, sede y categoría del fixture. La hora de citación se propone 90 minutos antes.</div></li>
+      <li><div><b>Completá los datos:</b> dirección, entrada e indumentaria. La dirección de la cancha del rival queda guardada para la próxima vez.</div></li>
+      <li><div><b>Tocá SUGERIR</b> y después ajustá a mano lo que quieras.</div></li>
+      <li><div><b>Copiá el mensaje o exportalo a WhatsApp</b>, y guardá la convocatoria.</div></li>
+      <li><div><b>Publicala en el Tablón</b> para que la vean en el Kiosco. A cada citado que tenga las notificaciones
+        activadas le llega un aviso <i>"📣 Estás citado vs…"</i> con la fecha y la hora de presentación.</div></li>
+    </ol>
+
+    <div class="nota">
+      <p><b>El jugador lo ve en su menú.</b> En la tarjeta <b>Mi agenda</b> del Kiosco aparece el próximo partido y, una vez
+      publicada la citación, si está citado y a qué hora presentarse. Mientras no la publicás, no dice nada de la lista.</p>
+    </div>
+
+    <h3>Cómo decide a quién sugerir</h3>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Señal</th><th class="num">Peso</th><th>De dónde sale</th></tr></thead>
+      <tbody>
+        <tr><td>Presentismo</td><td class="num">45%</td><td>Sus últimas seis semanas de entrenamientos.</td></tr>
+        <tr><td>Rendimiento</td><td class="num">35%</td><td>Su rating promedio de los últimos ocho partidos.</td></tr>
+        <tr><td>Regularidad</td><td class="num">20%</td><td>Qué tan parejo rinde.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Por eso el que rinde <b>6,5 siempre</b> puntúa más alto que el del 9 y tres 4: en un partido de campeonato
+    importa más saber con qué vas a contar que el techo de alguien.</p>
+
+    <div class="nota ojo">
+      <p><b>Si abajo de un jugador dice "Sin partidos analizados"</b>, es que no hay acciones suyas cargadas en los
+      últimos partidos <b>de esa categoría</b>. Su rendimiento queda neutro y el puntaje sale sólo del presentismo.
+      Pasa cuando el partido se cargó como resultado desde el fixture pero nunca se usó la toma de datos, o cuando
+      la categoría del partido está escrita distinto a la del jugador.</p>
+    </div>
+
+    <h3>A quién no sugiere</h3>
+    <p>Quedan marcados y fuera de la sugerencia, aunque los podés citar igual:</p>
+    <ul class="lista">
+      <li><span class="chip c-stop">SUSPENDIDO</span> por roja o por acumulación de amarillas.</li>
+      <li><span class="chip c-stop">LESIONADO</span> según la Enfermería, evaluado <b>a la fecha del partido</b>: al que le dan el alta el sábado se lo puede citar para el domingo.</li>
+      <li><span class="chip c-stop">APTO VENCIDO</span> si se le venció el apto médico.</li>
+      <li><span class="chip c-warn">EN DUDA</span> si viene en rojo en el wellness — este sí se sugiere, pero avisado.</li>
+    </ul>
+
+    <h3>Bajar o subir jugadores de otra categoría</h3>
+    <p>Arriba de la lista hay chips con las demás categorías del club. Los prendés y aparecen esos jugadores,
+    marcados con su categoría en azul para que no se te cuelen sin verlos. La sugerencia automática sigue saliendo
+    sólo de la categoría del partido: traer refuerzos es decisión tuya.</p>
+
+    <div class="nota ojo">
+      <p><b>El límite cuenta a los refuerzos.</b> Si bajás dos de Primera a jugar en Tercera, tenés que destildar dos de Tercera.</p>
+    </div>
+  </section>
+
+  <section id="microciclo">
+    <h2>Microciclo</h2>
+    <p class="ruta">PLANIFICACIÓN → <b>MICROCICLO</b></p>
+    <p>El planificador semanal. Cada día muestra los entrenamientos con su nivel de carga, los partidos oficiales
+    y <b>quiénes no están disponibles</b> ese día por lesión.</p>
+    <ul class="lista">
+      <li>Las sesiones se arrastran de un día a otro para reprogramar.</li>
+      <li>Se puede copiar una semana entera a la siguiente, con el tema de la semana incluido.</li>
+      <li>Cada sesión lleva su objetivo, sus tareas y un bloque físico opcional.</li>
+    </ul>
+  </section>
+
+  <section id="pizarra">
+    <h2>Creador táctico</h2>
+    <p class="ruta">PLANIFICACIÓN → <b>CREADOR TÁCTICO</b></p>
+    <p>La pizarra. Dibujás la jugada sobre la cancha —jugadores, movimientos, conos, zonas— y, si la armás en varios
+    fotogramas, <b>se reproduce como una animación</b>. Eso es lo que después se ve en el Libro Táctico y en el Banco.</p>
+
+    <h3>Armar una jugada animada</h3>
+    <ol class="pasos">
+      <li><div><b>Poné las fichas.</b> Una por una desde el menú, o de una sola vez con una
+        <b>formación</b>: 3-1, 4-0, 2-2, rombo o el power play 5v4. También podés poner el 3-1 del rival,
+        que se planta replegado en su propio campo.</div></li>
+      <li><div><b>Tocá ⏭ CONTINUAR.</b> Se duplica el fotograma y el anterior queda de fondo, en transparencia:
+        ese es el <b>fantasma</b>, y es lo que te deja ver de dónde venía cada jugador.</div></li>
+      <li><div><b>Movés las fichas</b> a su nueva posición. Aparece el camino que hicieron, punteado.</div></li>
+      <li><div><b>Curvá el recorrido</b> arrastrando el punto del medio del camino. La ficha va a seguir esa curva
+        al reproducirse — un desmarque en curva se ve como un desmarque en curva, no como una línea recta.</div></li>
+      <li><div><b>Repetí</b> por cada movimiento de la jugada, y dale ▶ para verla.</div></li>
+    </ol>
+
+    <h3>Lo que conviene conocer</h3>
+    <div class="tarjetas">
+      <div class="tarjeta"><h4>Duplicar</h4><p>Con <kbd>Ctrl</kbd>+<kbd>D</kbd> o el botón en propiedades. La copia sale con el número siguiente libre, así no hay que editar etiqueta por etiqueta.</p></div>
+      <div class="tarjeta"><h4>Espejar</h4><p>Da vuelta la jugada entera, de punta a punta o de lado a lado. La misma pelota parada por el otro costado, sin rehacerla.</p></div>
+      <div class="tarjeta"><h4>Barra de avance</h4><p>Parar la jugada en cualquier instante y mirarla ahí. Mientras la mirás no se edita: lo que ves es un momento calculado, no el fotograma.</p></div>
+      <div class="tarjeta"><h4>Duración por tramo</h4><p>Cada movimiento tarda lo que vos le pongas, de 0,3 a 3 segundos. Un pase corto y una corrida de 30 metros no duran lo mismo.</p></div>
+    </div>
+
+    <div class="nota">
+      <p><b>El fantasma y los caminos son ayudas para dibujar.</b> No salen en la imagen de la tarea ni en la
+      animación que ven los jugadores: ahí queda sólo la jugada.</p>
+    </div>
+  </section>
+
+  <section id="tareas">
+    <h2>Banco de tareas</h2>
+    <p class="ruta">PLANIFICACIÓN → <b>BANCO DE TAREAS</b> · <b>CREADOR FÍSICO</b></p>
+    <p>Todo lo que se dibuja en el creador táctico queda guardado acá, clasificado por fase de juego, para reutilizarlo
+    en cualquier sesión del microciclo. Las jugadas animadas se ven en movimiento en la misma tarjeta.</p>
+    <p>El <b>creador físico</b> arma el bloque de carga —series, tiempos, repeticiones— y también va a parar al banco.</p>
+  </section>
+
+  <section id="libro">
+    <h2>Libro táctico</h2>
+    <p class="ruta">PLANIFICACIÓN → <b>LIBRO TÁCTICO</b></p>
+    <p>El libro del equipo: balón parado, rotaciones, salidas y presiones, dibujadas y guardadas en un solo lugar
+    para que no vivan en la cabeza del entrenador ni en un cuaderno. Las pestañas de arriba separan las situaciones.</p>
+    <figure>
+      <img src="libro.png" alt="Libro táctico digital con jugadas dibujadas">
+      <figcaption>Cada jugada queda dibujada y disponible para la charla.</figcaption>
+    </figure>
+    <div class="nota">
+      <p><b>Es la pantalla para mostrarle al plantel.</b> Al abrir una jugada de varios fotogramas se reproduce sola,
+      en loop, con los mismos recorridos y tiempos que le pusiste en el creador.</p>
+    </div>
+  </section>
+
+  <section id="video">
+    <h2>Videoanálisis</h2>
+    <p class="ruta">PLANIFICACIÓN → <b>VIDEOANÁLISIS</b></p>
+    <p>Vinculás el video del partido —de YouTube— y <b>los cortes salen solos de los eventos que ya cargaste</b>:
+    cada gol, remate, falta, pérdida y recuperación se convierte en un clip. No hay que volver a mirar el partido entero.</p>
+
+    <figure>
+      <img src="video.png" alt="Videoanálisis con clips sincronizados a los eventos del partido">
+      <figcaption>Los clips salen de los eventos cargados en vivo.</figcaption>
+    </figure>
+
+    <ol class="pasos">
+      <li><div>Pegá el link del video del partido.</div></li>
+      <li><div><b>Sincronizá</b>: marcá en qué segundo del video arranca el primer tiempo y en cuál el segundo.</div></li>
+      <li><div>Listo: cada evento ya tiene su clip. La sincronización queda guardada.</div></li>
+    </ol>
+
+    <div class="nota">
+      <p><b>Los goles arrancan antes</b> que el resto de los cortes, para que se vea la construcción y no sólo la definición.</p>
+    </div>
+  </section>
+
+  <section id="novedades">
+    <h2>Novedades</h2>
+    <p class="ruta">PLANIFICACIÓN → <b>NOVEDADES</b></p>
+    <p>El centro de comunicaciones del club: avisos cortos para el cuerpo técnico, para los jugadores o para los dos.</p>
+    <ol class="pasos">
+      <li><div>Elegí <b>para quién es</b>: todos, sólo jugadores o sólo cuerpo técnico.</div></li>
+      <li><div>Elegí <b>las categorías</b> que lo van a ver.</div></li>
+      <li><div>Elegí <b>cuándo vence</b>: 1, 3, 7, 15 o 30 días, o sin vencimiento.</div></li>
+      <li><div>Escribí el mensaje y tocá <b>PUBLICAR</b>.</div></li>
+    </ol>
+    <p>Los jugadores lo ven en <b>Novedades del club</b>, en su menú del Kiosco. El cuerpo técnico, en el Tablón del Centro de mando.</p>
+    <div class="nota">
+      <p><b>Al vencer, desaparece solo</b> de todos lados: del Kiosco, del Tablón y de la lista de envíos.
+      Para sacarlo antes, tocá la ✕ del aviso.</p>
+    </div>
+  </section>
+
+  <section id="plantel">
+    <h2>Mi plantel</h2>
+    <p class="ruta">PLANTEL → <b>MI PLANTEL</b></p>
+    <p>La ficha de cada jugador: datos personales, apodo, dorsal, posición, categoría, foto, contacto, apto médico y talles.</p>
+
+    <h3>Buscar a alguien <span class="nuevo">NUEVO</span></h3>
+    <p>El buscador de arriba encuentra por <b>nombre, apellido o apodo</b>, sin importar acentos ni mayúsculas
+    ("gomez" encuentra a Gómez, "beni" al que le dicen Beni). Si escribís sólo un número, busca por dorsal.
+    Se combina con los chips de categoría.</p>
+
+    <figure class="cel">
+      <img src="plantel.png" alt="Mi plantel en el celular: botones de arriba, buscador y la tarjeta de un jugador abierta con sus seis acciones">
+      <figcaption>Mi plantel en el celular. Datos de ejemplo.</figcaption>
+    </figure>
+
+    <h3>Los botones de arriba</h3>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Botón</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td>+ NUEVO JUGADOR</td><td>Abre la ficha vacía. El PIN del Kiosco se genera solo al guardar.</td></tr>
+        <tr><td>📋 LISTA DE PINES (STAFF)</td><td>Copia una sola lista con el PIN de cada jugador, para el cuerpo técnico. <b>No la reenvíes a los jugadores</b>: cada uno vería el PIN de todos.</td></tr>
+        <tr><td>📋 MENSAJES PARA CADA JUGADOR</td><td>Copia un mensaje de acceso por jugador, uno abajo del otro, para ir mandándole a cada uno el suyo.</td></tr>
+        <tr><td>⬇ BAJAR PLANILLA</td><td>Baja un Excel con todo el plantel. Ver <a href="#planilla">carga por planilla</a>.</td></tr>
+        <tr><td>⬆ SUBIR PLANILLA</td><td>Sube ese Excel completo y muestra qué cambia antes de guardar.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Los dos "copiar" toman los jugadores que estás viendo: si filtraste una categoría o buscaste a alguien, copian sólo esos.
+    La planilla la ven sólo manager, administración y superuser.</p>
+
+    <h3>Los botones de cada jugador</h3>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Botón</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td>💬 WHATSAPP</td><td>Abre WhatsApp con su mensaje de acceso ya escrito. Si tiene celular cargado, va directo a su chat.</td></tr>
+        <tr><td>📋 PIN</td><td>Copia ese mismo mensaje para pegarlo donde quieras.</td></tr>
+        <tr><td>👁 VER</td><td>Abre la ficha completa, sin poder modificar nada.</td></tr>
+        <tr><td>✏️ EDITAR</td><td>Abre el formulario para cambiar sus datos.</td></tr>
+        <tr><td>⏸ BAJA</td><td>Lo saca de las listas del día a día y conserva su historial. Se reincorpora desde <b>VER BAJAS</b>.</td></tr>
+        <tr><td>✕ ELIMINAR</td><td>Lo borra con todo su historial. No se puede deshacer.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="tarjetas">
+      <div class="tarjeta"><h4>La categoría</h4><p>Se elige de la lista del club. Si de verdad hace falta una nueva, está <b>+ Otra categoría…</b>, pero conviene pensarlo dos veces.</p></div>
+      <div class="tarjeta"><h4>El apto médico</h4><p>Cargá el vencimiento: la citación avisa sola cuando se venció y el jugador lo ve en Mi estado físico.</p></div>
+      <div class="tarjeta"><h4>El celular</h4><p>Con código de área alcanza (11 5555-5555). La app le agrega el 54 9 al abrir WhatsApp.</p></div>
+      <div class="tarjeta"><h4>El apodo</h4><p>Opcional. Aparece entre comillas al lado del nombre y sirve para buscarlo.</p></div>
+    </div>
+  </section>
+
+  <section id="planilla">
+    <h2>Carga por planilla <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">PLANTEL → MI PLANTEL → <b>⬇ BAJAR PLANILLA</b> · <b>⬆ SUBIR PLANILLA</b></p>
+    <p>Para dar de alta un club entero de una vez, o para completar un dato que no se cargó al principio
+    (la obra social de todos, por ejemplo) sin entrar jugador por jugador.</p>
+
+    <ol class="pasos">
+      <li><div><b>Bajá la planilla.</b> Es un Excel con todos los jugadores y todos sus datos. Para un club nuevo sale vacía.
+        Trae una segunda hoja, INSTRUCCIONES, con los valores que se aceptan.</div></li>
+      <li><div><b>Completala</b> en Excel o en Google Sheets. Para sumar un jugador, agregá una fila con la columna ID vacía:
+        necesita apellido, nombre y categoría.</div></li>
+      <li><div><b>Subila.</b> Acepta el Excel (.xlsx) o un CSV.</div></li>
+      <li><div><b>Revisá lo que va a pasar</b> y tocá GUARDAR. Hasta ese momento no se guardó nada.</div></li>
+    </ol>
+
+    <div class="cels">
+      <figure>
+        <img src="planilla.png" alt="Vista previa de la planilla: 1 nuevo, 1 con cambios, 2 con errores y el detalle de cada uno">
+        <figcaption>Antes de guardar: qué se crea, qué cambia y qué está mal. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
+    <div class="nota">
+      <p><b>Una celda vacía no borra nada.</b> Significa "dejalo como está". La planilla tampoco elimina jugadores
+      ni cambia PINes o fotos: para eso está la app.</p>
+    </div>
+    <div class="nota ojo">
+      <p><b>No toques la columna ID.</b> Es la que dice a qué jugador corresponde cada fila. Si alguien la borra, la app
+      detecta que ese "jugador nuevo" se llama igual o tiene el mismo DNI que uno existente y lo frena, para no duplicarlo.</p>
+    </div>
+    <p>Las fechas van como DD/MM/AAAA. Las columnas que la app no conoce (una de comentarios, por ejemplo) se ignoran y se avisan.</p>
+  </section>
+
+  <section id="pedidos">
+    <h2>Cambios pedidos por jugadores <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">PLANTEL → MI PLANTEL → <b>📝 N jugadores pidieron corregir sus datos</b></p>
+    <p>Desde <a href="#misdatos">Mis datos</a> en el Kiosco, el jugador o su familia pueden corregir el celular, el contacto de
+    emergencia, la obra social y el grupo sanguíneo. Nada se guarda en la ficha hasta que alguien del club lo aprueba.</p>
+    <ol class="pasos">
+      <li><div>Cuando hay pedidos, arriba de la lista aparece el aviso azul. Tocá <b>REVISAR</b>.</div></li>
+      <li><div>Cada pedido muestra el dato de antes tachado y el nuevo al lado. Destildá lo que no quieras aceptar.</div></li>
+      <li><div>Tocá <b>APROBAR</b> o <b>RECHAZAR</b>. Podés dejarle una nota: el jugador la ve en su pantalla.</div></li>
+    </ol>
+    <figure class="cel">
+      <img src="pedidos.png" alt="Pedido de un jugador para cambiar el celular y la obra social, con aprobar y rechazar">
+      <figcaption>Se aprueba dato por dato. Datos de ejemplo.</figcaption>
+    </figure>
+    <div class="nota ojo">
+      <p><b>Aprueban manager, administración y superuser.</b> El cuerpo técnico no ve este aviso.</p>
+    </div>
+  </section>
+
+  <section id="tutores">
+    <h2>Tutores y autorizaciones</h2>
+    <p class="ruta">PLANTEL → MI PLANTEL → <b>👁 VER</b> (en la ficha del jugador)</p>
+    <p>Quién está a cargo de cada chico y qué tiene permitido el club: traslados, uso de imagen y atención médica.
+    Antes esto vivía en el WhatsApp del entrenador de turno y se perdía cuando el entrenador cambiaba.</p>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Estado</th><th>Qué significa</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip c-off">SIN RESPONDER</span></td><td>Todavía no se le preguntó a la familia. Es trabajo pendiente del club.</td></tr>
+        <tr><td><span class="chip c-stop">NO AUTORIZA</span></td><td>La familia dijo que no. Es una decisión tomada.</td></tr>
+        <tr><td><span class="chip c-ok">AUTORIZA</span></td><td>Permitido.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Se anota quién firmó y cuándo. El teléfono de cada tutor tiene su botón de WhatsApp.</p>
+  </section>
+
+  <section id="presentismo">
+    <h2>Presentismo</h2>
+    <p class="ruta">PLANTEL → <b>PRESENTISMO</b></p>
+    <p>Pasar lista de cada entrenamiento. Elegís la categoría y la fecha, marcás a cada uno y guardás la planilla.</p>
+
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Estado</th><th>Cuándo se usa</th><th>¿Cuenta en el porcentaje?</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip c-ok">PRESENTE</span></td><td>Entrenó normal.</td><td>Sí, suma.</td></tr>
+        <tr><td><span class="chip c-warn">TARDE</span></td><td>Llegó tarde pero entrenó.</td><td>Sí, suma.</td></tr>
+        <tr><td><span class="chip c-stop">AUSENTE</span></td><td>Faltó sin avisar.</td><td>Sí, resta.</td></tr>
+        <tr><td><span class="chip c-info">JUSTIF.</span></td><td>Faltó con aviso.</td><td>Sí, resta.</td></tr>
+        <tr><td><span class="chip c-off">LESIONADO</span></td><td>De baja según la Enfermería.</td><td><b>No.</b> Sale del cálculo.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="nota">
+      <p><b>El lesionado no paga su lesión.</b> Los días de baja no cuentan ni como presente ni como falta: salen de la cuenta.
+      Si la Enfermería lo tiene de baja ese día, ya viene marcado al pasar lista.</p>
+    </div>
+
+    <div class="nota ojo">
+      <p><b>Acá sólo aparecen las categorías con plantel.</b> Es a propósito: a una división sin jugadores no hay
+      a quién pasarle lista.</p>
+    </div>
+  </section>
+
+  <section id="enfermeria">
+    <h2>Enfermería</h2>
+    <p class="ruta">PLANTEL → <b>ENFERMERÍA</b> · el jugador la ve como MI ESTADO FÍSICO</p>
+    <p>El registro de lesiones del plantel, y la fuente de verdad de quién está disponible.</p>
+
+    <ol class="pasos">
+      <li><div>Tocá <b>+ NUEVA LESIÓN</b> y elegí el jugador.</div></li>
+      <li><div>Cargá <b>zona, tipo, lado y gravedad</b>. Al elegir la gravedad se propone una fecha de alta que podés corregir.</div></li>
+      <li><div>Si se lesionó jugando, elegí <b>en qué partido</b>: con el tiempo eso muestra en qué partidos te lesionás.</div></li>
+      <li><div>Escribí el <b>tratamiento</b> — eso es lo que ve el jugador en su pantalla — y las notas internas, que no ve.</div></li>
+    </ol>
+
+    <h3>Los tres estados</h3>
+    <ul class="lista">
+      <li><span class="chip c-stop">DE BAJA</span> no entrena ni juega.</li>
+      <li><span class="chip c-warn">READAPTACIÓN</span> entrena aparte. Se avisa, pero no se bloquea.</li>
+      <li><span class="chip c-ok">ALTA</span> disponible.</li>
+    </ul>
+
+    <div class="nota ojo">
+      <p><b>El alta no se da sola.</b> Cuando pasa la fecha estimada sin que nadie la confirme, la ficha queda marcada
+      como <b>ALTA VENCIDA</b> y el jugador sigue sin estar disponible. Ningún sistema debería declarar sano a alguien por calendario.</p>
+    </div>
+
+    <p>Cargar una lesión acá se refleja sola en la citación, en Nuevo Partido, en el microciclo y en el presentismo.
+    No hay que avisar en cada pantalla.</p>
+  </section>
+
+  <section id="wellness">
+    <h2>Wellness</h2>
+    <p class="ruta">PLANTEL → <b>WELLNESS</b></p>
+    <p>El cuestionario diario del jugador: sueño, estrés, fatiga, dolor muscular, ánimo, motivación, ansiedad y confianza.
+    Después del entrenamiento carga su RPE y los minutos, y de ahí sale la carga acumulada.</p>
+    <p>El que viene en rojo —mucha fatiga, mucho dolor, poco sueño— aparece avisado en el Centro de Mando y en la citación.</p>
+
+    <h3>Tres formas de cargarlo</h3>
+    <ul class="lista">
+      <li>Desde el <b>Kiosco</b>: si no lo cargó, es lo primero que ve al entrar, con un botón para hacerlo en un minuto.</li>
+      <li>Por <b>WhatsApp</b>: escribiéndole "Wellness" al número del club, el bot le hace las preguntas una por una.</li>
+      <li>El cuerpo técnico lo puede cargar a mano desde <b>INGRESAR DATOS MANUAL</b>.</li>
+    </ul>
+    <div class="nota">
+      <p><b>El recordatorio sale solo.</b> Al que tiene las notificaciones activadas y todavía no lo cargó le llega un aviso
+      a las 8, a las 13 y a las 18 hs. Si el club configuró el WhatsApp automático, también uno por WhatsApp desde el mediodía.</p>
+    </div>
+  </section>
+
+  <section id="fisiologia">
+    <h2>Fisiología</h2>
+    <p class="ruta">PLANTEL → <b>FISIOLOGÍA</b></p>
+    <p>Las evaluaciones físicas: saltos, velocidad, resistencia y composición corporal, con la comparación contra
+    valores de referencia y la evolución de cada jugador.</p>
+    <p>Incluye la <b>biblioteca de prevención y rehabilitación</b> — la misma de la que la Enfermería saca los ejercicios
+    que le muestra a cada lesionado según su zona.</p>
+    <div class="nota ojo">
+      <p><b>El déficit bilateral de salto</b> por encima del 10% se marca como factor de riesgo de lesión.
+      Es de los pocos números que anticipan un problema antes de que pase.</p>
+    </div>
+  </section>
+
+  <section id="pases">
+    <h2>Transferencias</h2>
+    <p class="ruta">PLANTEL → <b>TRANSFERENCIAS</b></p>
+    <p>Altas, bajas y préstamos del plantel, con su historial. Sirve para saber quién entró y quién salió en cada mercado.</p>
+  </section>
+
+  <section id="tesoreria">
+    <h2>Tesorería</h2>
+    <p class="ruta">ADMINISTRACIÓN → <b>TESORERÍA</b></p>
+    <p>Las cuotas del plantel, las deudas, los ingresos extra y los egresos del club. Cada jugador ve lo que debe
+    desde su acceso y puede mandar el comprobante por WhatsApp.</p>
+    <p>Se configuran el alias, el CBU y el WhatsApp de tesorería del club. El jugador ve su deuda en el Kiosco con dos botones:
+    <b>Pagar con MP</b> (copia el alias y abre Mercado Pago) y <b>Comprobante</b> (abre el WhatsApp de tesorería).</p>
+    <p>Desde la tabla de deudas, el botón de WhatsApp le manda al jugador un recordatorio con el saldo pendiente.</p>
+  </section>
+
+  <section id="staff">
+    <h2>Staff, empleados y sponsors</h2>
+    <p class="ruta">ADMINISTRACIÓN → <b>MI STAFF</b> · <b>EMPLEADOS</b> · <b>SPONSORS</b></p>
+    <p><b>Mi staff</b> son los usuarios del cuerpo técnico y qué categorías tiene asignada cada uno.
+    <b>Empleados</b> lleva los sueldos y pagos del personal. <b>Sponsors</b>, los contratos de los auspiciantes y sus vencimientos.</p>
+  </section>
+
+  <section id="config">
+    <h2>Configuración del club</h2>
+    <p class="ruta">ADMINISTRACIÓN → <b>CONFIG. DE CLUB</b></p>
+    <p>El nombre y el escudo del club, que salen en las placas, en los informes y en el Kiosco. También está el
+    <b>código del club</b>: es el que usa el Kiosco para saber de qué club son los jugadores.</p>
+    <div class="nota ojo">
+      <p><b>Escribí el nombre igual que en el fixture.</b> La app usa ese nombre para distinguir tus partidos de los cruces
+      entre otros equipos. Si en la liga figura "Juventud Unida", poné "Juventud Unida" y no "Juventud".</p>
+    </div>
+  </section>
+
+  <section id="suscripcion">
+    <h2>Mi suscripción</h2>
+    <p class="ruta">ADMINISTRACIÓN → <b>MI SUSCRIPCIÓN</b></p>
+    <p>El plan del club, cuándo vence y cuántas categorías usa sobre su tope.</p>
+
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Plan</th><th>Categorías</th><th>Para quién</th></tr></thead>
+      <tbody>
+        <tr><td>DT</td><td class="num">1</td><td>El técnico de un solo equipo o una escuelita.</td></tr>
+        <tr><td>CT</td><td class="num">3</td><td>El club con primera y las formativas de abajo.</td></tr>
+        <tr><td>Club</td><td class="num">sin tope</td><td>Toda la institución, masculino y femenino.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>Lo único que cambia entre planes es cuántas categorías se manejan: <b>ningún plan esconde funciones</b>.
+    El análisis, el video y los reportes están en los tres.</p>
+
+    <div class="nota">
+      <p><b>La prueba es de 30 días con todo desbloqueado y sin tarjeta.</b> Al terminar, los datos quedan guardados.</p>
+    </div>
+  </section>
+
+  <section id="kiosco">
+    <h2>El acceso del jugador</h2>
+    <p class="ruta">El <b>Kiosco</b>: los jugadores entran con un PIN, sin usuario ni contraseña.</p>
+
+    <ol class="pasos">
+      <li><div>El jugador abre el link del Kiosco del club, en su celular o en la tablet del club.</div></li>
+      <li><div><b>Toca su foto o su nombre</b> en la grilla del plantel. Arriba puede filtrar por categoría.</div></li>
+      <li><div>Pone su <b>PIN de 4 dígitos</b>.</div></li>
+    </ol>
+
+    <div class="nota">
+      <p><b>Lo que no ve:</b> las notas internas del cuerpo técnico, los datos personales de sus compañeros ni nada de administración.
+      Las lesiones, las tarjetas y los datos de cada uno los recorta el servidor: aunque la tablet sea compartida, cada jugador ve sólo lo suyo.</p>
+    </div>
+  </section>
+
+  <section id="kiosco-menu">
+    <h2>Su menú <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">Lo que ve el jugador después de poner el PIN, de arriba hacia abajo</p>
+
+    <div class="cels">
+      <figure>
+        <img src="kiosco-inicio.png" alt="Saludo con dorsal, posición y categoría, feliz cumple y el aviso de wellness pendiente">
+        <figcaption>Saludo, cumpleaños y wellness pendiente.</figcaption>
+      </figure>
+      <figure>
+        <img src="kiosco-agenda.png" alt="Tarjetas de agenda con el próximo partido y la citación, y de tarjetas amarillas">
+        <figcaption>Su agenda y sus tarjetas.</figcaption>
+      </figure>
+      <figure>
+        <img src="kiosco-menu.png" alt="Grilla de accesos: wellness, rendimiento, estado físico, stats, partidos, torneo, temporada, videos, libro táctico y mis datos">
+        <figcaption>Los accesos. Todas las capturas usan datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
+    <h3>Las tarjetas</h3>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Tarjeta</th><th>Qué muestra</th><th>Cuándo aparece</th></tr></thead>
+      <tbody>
+        <tr><td>Saludo</td><td>Su nombre, dorsal, posición y categoría.</td><td>Siempre.</td></tr>
+        <tr><td>🎂 Feliz cumple</td><td>El saludo del club, con los años que cumple.</td><td>El día de su cumpleaños.</td></tr>
+        <tr><td>Wellness de hoy</td><td>El botón para cargarlo y sus últimos 7 días en colores.</td><td>Arriba de todo si no lo cargó; más abajo, en verde, si ya lo hizo.</td></tr>
+        <tr><td>Estado de cuenta</td><td>Lo que debe, los conceptos y cómo pagar.</td><td>Sólo si tiene deuda.</td></tr>
+        <tr><td>Novedades del club</td><td>Los avisos vigentes para jugadores de su categoría.</td><td>Siempre.</td></tr>
+        <tr><td>Mi agenda</td><td>El próximo partido (rival, día, hora, sede, cómo llegar), si está citado y los entrenamientos de la semana.</td><td>Siempre.</td></tr>
+        <tr><td>Mis tarjetas</td><td>Amarillas y rojas del año, y si está suspendido o a una amarilla del corte.</td><td>Siempre.</td></tr>
+        <tr><td>Avisos en tu celular</td><td>El botón para activar las notificaciones.</td><td>Hasta que las activa.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>Los accesos</h3>
+    <div class="tarjetas">
+      <div class="tarjeta"><h4>Wellness</h4><p>El cuestionario del día y, después de entrenar, su RPE.</p></div>
+      <div class="tarjeta"><h4>Rendimiento</h4><p>Sus evaluaciones físicas comparadas con el plantel, sin nombres de compañeros.</p></div>
+      <div class="tarjeta"><h4>Mi estado físico</h4><p>Si está lesionado: la etapa, cuándo vuelve y su rehabilitación. El vencimiento del apto. El trabajo preventivo.</p></div>
+      <div class="tarjeta"><h4>Stats</h4><p>Su perfil de juego: estadísticas, mapas y quintetos.</p></div>
+      <div class="tarjeta"><h4>Partidos</h4><p>El resumen de cada partido de su categoría.</p></div>
+      <div class="tarjeta"><h4>Torneo</h4><p>La tabla de posiciones y el fixture de su categoría.</p></div>
+      <div class="tarjeta"><h4>Temporada</h4><p>El resumen del año, fijo en su categoría.</p></div>
+      <div class="tarjeta"><h4>Videos</h4><p>Las listas de video que el cuerpo técnico le compartió.</p></div>
+      <div class="tarjeta"><h4>Libro táctico</h4><p>Las jugadas de su categoría, animadas.</p></div>
+    </div>
+    <p>En cada pantalla, el botón <b>← MI MENÚ</b> lo trae de vuelta acá.</p>
+  </section>
+
+  <section id="misdatos">
+    <h2>Mis datos <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">KIOSCO → <b>MIS DATOS</b> (el botón ancho debajo de los accesos)</p>
+    <p>El jugador o su familia corrigen el celular, el contacto de emergencia, la obra social y el grupo sanguíneo.
+    El cambio queda <b>esperando aprobación</b> hasta que el club lo revisa en <a href="#pedidos">Mi plantel</a>.</p>
+    <figure class="cel">
+      <img src="kiosco-misdatos.png" alt="Pantalla Mis datos con un pedido esperando aprobación y el formulario">
+      <figcaption>Con un pedido pendiente. Datos de ejemplo.</figcaption>
+    </figure>
+    <p>Mientras espera, puede actualizar el pedido o cancelarlo. Cuando el club lo resuelve, ve si se aprobó y la nota que le dejaron.</p>
+  </section>
+
+  <section id="kiosco-avisos">
+    <h2>Avisos al celular del jugador <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">KIOSCO → tarjeta <b>AVISOS EN TU CELULAR</b> → ACTIVAR NOTIFICACIONES</p>
+    <p>Se activa una vez, desde el celular del jugador. A partir de ahí le llegan:</p>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Aviso</th><th>Cuándo</th></tr></thead>
+      <tbody>
+        <tr><td>📣 Estás citado</td><td>Cuando el cuerpo técnico publica la citación en la que figura.</td></tr>
+        <tr><td>⚖️ Te falta el wellness</td><td>A las 8, 13 y 18 hs, sólo si todavía no lo cargó.</td></tr>
+        <tr><td>🎂 ¡Feliz cumple!</td><td>El día de su cumpleaños.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="nota ojo">
+      <p><b>En iPhone, primero hay que instalar el Kiosco</b>: desde Safari, Compartir → Agregar a inicio, y entrar desde ese ícono.
+      Si lo activa en la tablet compartida del club, los avisos le llegan a la tablet: conviene activarlo en el celular propio.</p>
+    </div>
+  </section>
+
+  <section id="kiosco-link">
+    <h2>Pasarles el acceso</h2>
+    <p class="ruta">PLANTEL → MI PLANTEL</p>
+    <ul class="lista">
+      <li>A uno solo: <b>💬 WHATSAPP</b> en su tarjeta abre su chat con el link, el código del club y su PIN.</li>
+      <li>A todo el plantel: <b>📋 MENSAJES PARA CADA JUGADOR</b> copia un mensaje por jugador para ir mandándolos.</li>
+      <li>Para el staff: <b>📋 LISTA DE PINES (STAFF)</b> copia todos los PINes juntos. Esa no se reenvía a los jugadores.</li>
+    </ul>
+  </section>
+
+  <section id="dudas">
+    <h2>Dudas frecuentes</h2>
+
+    <h3>Cargué un jugador y no aparece en la citación</h3>
+    <p>Fijate que tenga <b>la misma categoría</b> que el partido. Si es de otra, prendé el chip de su categoría en la
+    pantalla de citación para que aparezca.</p>
+
+    <h3>Falta una categoría en el selector de una pantalla</h3>
+    <p>Las pantallas de carga muestran sólo las divisiones <b>con jugadores en el plantel</b>. Si una no aparece,
+    o no tiene a nadie cargado, o sos CT y no la tenés asignada. Las pantallas de consulta sí muestran las históricas.</p>
+
+    <h3>En la citación todos dicen "Sin partidos analizados"</h3>
+    <p>No hay acciones cargadas en los últimos partidos de esa categoría. Suele pasar cuando los partidos se cargaron
+    como resultado desde el fixture sin usar la toma de datos, o cuando la categoría del partido está escrita distinto
+    a la de los jugadores. Mientras tanto el puntaje sale sólo del presentismo.</p>
+
+    <h3>El porcentaje de presentismo de un jugador cambió solo</h3>
+    <p>Si estuvo lesionado, esos días salieron del cálculo. Es correcto: no son faltas suyas.</p>
+
+    <h3>No me deja cargar una categoría nueva</h3>
+    <p>Llegaste al tope de tu plan. Lo ves en MI SUSCRIPCIÓN, con cuántas categorías estás usando.</p>
+
+    <h3>Se cortó la carga del partido</h3>
+    <p>Entrá por <b>CONTINUAR PARTIDO</b>: lo cargado hasta ahí está guardado.</p>
+
+    <h3>Dibujé una jugada con varios fotogramas y no se mueve</h3>
+    <p>La animación necesita al menos <b>dos</b> fotogramas y que algo cambie de lugar entre uno y otro.
+    Si las fichas están en la misma posición, no hay movimiento que reproducir.</p>
+
+    <h3>Un jugador no puede entrar con su PIN</h3>
+    <p>El PIN se gestiona desde su ficha en MI PLANTEL, y desde ahí se le puede reenviar por WhatsApp.</p>
+
+    <h3>Un jugador tiene que volver a poner el PIN</h3>
+    <p>Pasa una sola vez después de una actualización, o si cerró su sesión. Con el PIN nuevo vuelve a ver su agenda, sus tarjetas y el torneo.</p>
+
+    <h3>Al jugador no le llegan los avisos</h3>
+    <p>Tiene que activarlos desde <b>su</b> celular, en la tarjeta Avisos en tu celular. En iPhone, además, el Kiosco tiene que estar
+    agregado a la pantalla de inicio. Si bloqueó las notificaciones, se desbloquean desde el candado de la barra de direcciones.</p>
+
+    <h3>El botón de WhatsApp dice que el número no existe</h3>
+    <p>Revisá el celular en la ficha: tiene que tener el código de área (11 5555-5555, 351 555-5555). La app le agrega el 54 9.
+    Si es de otro país, cargalo con su código (+598…).</p>
+
+    <h3>La planilla marca filas con error</h3>
+    <p>Esas filas no se guardan: el resto sí. La vista previa dice qué falla en cada una (una fecha que no existe, un DNI repetido,
+    una posición mal escrita). Corregilas en el Excel y volvé a subirlo: lo que ya se guardó aparece como "sin cambios".</p>
+
+    <h3>Una novedad sigue apareciendo después de vencer</h3>
+    <p>Desde el 24/09 las vencidas desaparecen solas de todos lados. Si ves una, recargá la página.</p>
+
+    <h3>El video no muestra los clips en el momento justo</h3>
+    <p>Falta sincronizarlo: hay que marcar en qué segundo del video arranca cada tiempo. Se hace una vez y queda guardado.</p>
+  </section>
+
+  <footer>
+    <p>Virtual.Club · El futsal también se gestiona<br>
+    ¿Algo no está claro o falta en este manual? Escribinos y lo agregamos.</p>
+    <p class="solo-pantalla"><a href="https://www.virtual-club.ar">Ir a Virtual.Club</a> · Para guardarlo como PDF: <kbd>Ctrl</kbd>+<kbd>P</kbd> → Guardar como PDF.</p>
+  </footer>
+</main>
+</div>
+</body>
+</html>

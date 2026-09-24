@@ -16,6 +16,7 @@ import {
   TarjetaNotificaciones, TarjetaReingresar,
 } from '../components/kiosco/TarjetasKiosco';
 import { telefonoWhatsApp } from '../utils/telefono';
+import VisorManual from '../components/VisorManual';
 
 const IconWellness = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -140,6 +141,8 @@ export default function LoginKiosco() {
   const [ficha, setFicha] = useState(null);
   const [estadoFicha, setEstadoFicha] = useState('cargando');
   const [push, setPush] = useState({ estado: 'inactivas', mensaje: null });
+  /* "¿Cómo funciona?": abre la parte del manual pensada para el jugador. */
+  const [ayuda, setAyuda] = useState(null); // null | ancla del manual
 
   const esMovil = useEsMovil();
 
@@ -524,6 +527,7 @@ export default function LoginKiosco() {
           </h1>
           <ChipsJugador jugador={vistaFicha?.jugador || jugadorSeleccionado} />
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: '12px 0 0' }}>¿Qué querés hacer hoy?</p>
+          <button onClick={() => setAyuda('kiosco-menu')} style={btnAyuda}>❓ ¿Cómo funciona?</button>
         </div>
 
         {vistaFicha?.cumple && <TarjetaCumple nombre={jugadorSeleccionado.nombre} edad={vistaFicha.edad} />}
@@ -635,6 +639,7 @@ export default function LoginKiosco() {
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconSalir /></span>
           <span style={{ paddingTop: '2px' }}>CERRAR MI SESIÓN</span>
         </button>
+        {ayuda && <VisorManual seccion={ayuda} titulo="Cómo funciona el Kiosco" onCerrar={() => setAyuda(null)} />}
       </div>
     );
   }
@@ -654,8 +659,12 @@ export default function LoginKiosco() {
           )}
           {!jugadorSeleccionado && <h2 style={{ fontFamily: 'Outfit', fontWeight: 900, margin: 0, fontSize: esMovil ? '1rem' : '1.2rem' }}>INGRESO <span style={{ color: 'var(--accent)' }}>RÁPIDO</span></h2>}
         </div>
-        <button onClick={() => { localStorage.removeItem('kiosco_club_id'); setClubId(null); }} style={btnDesvincular}>Desvincular</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={() => setAyuda('kiosco')} style={{ ...btnAyuda, marginTop: 0 }}>❓ ¿Cómo funciona?</button>
+          <button onClick={() => { localStorage.removeItem('kiosco_club_id'); setClubId(null); }} style={btnDesvincular}>Desvincular</button>
+        </div>
       </div>
+      {ayuda && <VisorManual seccion={ayuda} titulo="Cómo funciona el Kiosco" onCerrar={() => setAyuda(null)} />}
 
       {!jugadorSeleccionado ? (
         <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -728,6 +737,7 @@ const inputStyle = { padding: '15px', background: 'var(--bg)', border: '1px soli
 const btnSubmit = { padding: '15px', background: 'var(--accent)', color: '#000', fontWeight: 800, border: 'none', cursor: 'pointer', borderRadius: '4px', width: '100%', boxSizing: 'border-box' };
 const btnSecundario = { padding: '15px', background: 'transparent', color: 'var(--text-dim)', fontWeight: 800, border: '1px solid var(--border)', cursor: 'pointer', borderRadius: '4px', width: '100%', boxSizing: 'border-box', transition: 'all 0.2s' };
 const btnVolver = { background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 15px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer' };
+const btnAyuda = { marginTop: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '20px', padding: '6px 14px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', minHeight: '36px' };
 const btnDesvincular = { background: 'none', border: 'none', color: 'var(--text-dim)', fontSize: '0.7rem', textDecoration: 'underline', cursor: 'pointer' };
 
 const cardJugador = { background: 'var(--panel)', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', transition: 'transform 0.1s', display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box' };

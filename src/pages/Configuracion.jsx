@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase'; // IMPORTAMOS SUPABASE
 import { useToast } from '../components/ToastContext';
 import { useTheme } from '../context/ThemeContext';
+import VisorManual from '../components/VisorManual';
+import { linkManualAbsoluto } from '../utils/manual';
 
 function Configuracion() {
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ function Configuracion() {
   const [clubId, setClubId] = useState(localStorage.getItem('club_id') || '');
   const [escudoUrl, setEscudoUrl] = useState(localStorage.getItem('escudo_url') || '');
   const [subiendo, setSubiendo] = useState(false);
+  const [verManual, setVerManual] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
 
@@ -191,6 +194,35 @@ function Configuracion() {
           GUARDAR Y ENTRAR AL SISTEMA
         </button>
       </div>
+
+      {/* El manual es una página pública del mismo dominio: se puede ver acá,
+          pasar por link a alguien sin usuario o guardar como PDF. */}
+      <div className="bento-card" style={{ marginTop: '20px' }}>
+        <div className="stat-label" style={{ marginBottom: '8px' }}>📖 MANUAL DE USO</div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.5 }}>
+          Todo lo que hace Virtual.Club, pantalla por pantalla. Para ver acá, para pasarle el link a alguien
+          del club (no necesita usuario) o para guardarlo como PDF.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', gap: '10px' }}>
+          <button onClick={() => setVerManual(true)} className="btn-action" style={{ minHeight: '46px' }}>VER MANUAL</button>
+          <button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(linkManualAbsoluto());
+                showToast('Link del manual copiado ✅', 'success');
+              } catch {
+                showToast(linkManualAbsoluto(), 'info');
+              }
+            }}
+            className="btn-secondary"
+            style={{ minHeight: '46px' }}
+          >
+            🔗 COPIAR LINK PARA COMPARTIR
+          </button>
+        </div>
+      </div>
+
+      {verManual && <VisorManual onCerrar={() => setVerManual(false)} />}
     </div>
   );
 }

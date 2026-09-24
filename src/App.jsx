@@ -70,6 +70,7 @@ const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 import './App.css';
 import LimiteDeError from './components/LimiteDeError';
 import BarraKiosco from './components/BarraKiosco';
+import VisorManual from './components/VisorManual';
 
 // ==========================================
 // 🌍 CATÁLOGO OPERATIVO DE ACCIONES RÁPIDAS
@@ -199,6 +200,7 @@ function AppLayout() {
   const esMovil = useEsMovil();
   const [sidebarAbierta, setSidebarAbierta] = useState(true);
   const [drawerAbierto, setDrawerAbierto] = useState(false);
+  const [verManual, setVerManual] = useState(false);
   const [fabAbierto, setFabAbierto] = useState(false);
   
   // Estado para controlar el modo edición de los atajos desde el celular
@@ -495,12 +497,26 @@ useEffect(() => {
           </>
         )}
 
+        {/* El manual, para todos: el CT no entra a Configuración. */}
+        <button
+          onClick={() => { setDrawerAbierto(false); setVerManual(true); }}
+          className="nav-item"
+          title={isCollapsed ? "Manual de uso" : ""}
+          style={{
+            marginTop: 'auto', background: 'transparent', color: 'var(--text-dim)', border: 'none',
+            borderTop: '1px solid var(--border)', textAlign: 'left', cursor: 'pointer',
+            padding: isCollapsed ? '16px 0' : '16px 20px', display: 'flex', alignItems: 'center',
+            justifyContent: isCollapsed ? 'center' : 'flex-start', gap: isCollapsed ? '0' : '15px',
+          }}
+        >
+          <span style={{ fontSize: '1.2rem' }}>📖</span> {!isCollapsed && <span style={{ fontWeight: 'bold' }}>MANUAL DE USO</span>}
+        </button>
+
         <button 
           onClick={logout} 
           className="nav-item" 
           title={isCollapsed ? "Cerrar Sesión" : ""}
           style={{ 
-            marginTop: 'auto', 
             background: 'transparent', 
             color: '#ef4444', 
             borderTop: '1px solid var(--border)', 
@@ -695,6 +711,7 @@ useEffect(() => {
         </>
       )}
 
+      {verManual && <VisorManual onCerrar={() => setVerManual(false)} />}
     </div>
   );
 }
