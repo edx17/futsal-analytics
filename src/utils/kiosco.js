@@ -80,3 +80,28 @@ export async function cargarFichaKiosco() {
   }
   return { ficha: data };
 }
+
+/* ── MIS DATOS (migración 20260925120000) ─────────────────────────────── */
+
+/* Lo que el jugador puede proponer cambiar. La lista que manda es la de la
+   base (_campos_editables_jugador): esta es sólo para armar el formulario. */
+export const CAMPOS_MIS_DATOS = [
+  { k: 'contacto', t: 'Mi celular', ayuda: 'Con código de área, ej. 11 5555-5555', tipo: 'tel' },
+  { k: 'contacto_emergencia', t: 'Contacto de emergencia', ayuda: 'Nombre y teléfono, ej. Mamá 11 4444-4444', tipo: 'text' },
+  { k: 'obra_social', t: 'Obra social / prepaga', ayuda: 'Ej. OSDE 210', tipo: 'text' },
+  { k: 'grupo_sanguineo', t: 'Grupo sanguíneo', opciones: ['0+', '0-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'] },
+];
+
+const conToken = async (fn, params = {}) => {
+  const { data, error } = await supabase.rpc(fn, { p_token: tokenKiosco(), ...params });
+  if (error) {
+    if (error.code === '28000') return { vencida: true };
+    if (funcionInexistente(error)) return { noDisponible: true };
+    return { error };
+  }
+  return { data };
+};
+
+export const misDatosKiosco = () => conToken('kiosco_mis_datos');
+export const proponerCambiosKiosco = (cambios) => conToken('kiosco_proponer_cambios', { p_cambios: cambios });
+export const cancelarCambiosKiosco = () => conToken('kiosco_cancelar_cambios');

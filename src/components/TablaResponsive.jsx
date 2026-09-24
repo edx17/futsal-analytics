@@ -12,6 +12,8 @@ const MONO = 'JetBrains Mono, monospace';
  * Props:
  *   filas          array de filas (los objetos jugador).
  *   columnas       [{ k, t, g, r }]  (misma forma que tu COLS: clave, título, grupo, render).
+ *                  `bloque: true` pinta esa columna a todo el ancho y sin rótulo
+ *                  (para botones de acción, que no son un "dato: valor").
  *   colsClave      [k, k, k]         claves destacadas en la cara de la card (2-4).
  *   grupos         { g: color }      (tu GRUPOS).
  *   gruposLabel    { g: label }      (tu GRUPO_LABEL).
@@ -164,7 +166,9 @@ export function TablaResponsive({
                           {gruposLabel[g] || g}
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(80px, 100%), 1fr))', gap: '6px 10px' }}>
-                          {cols.map((col) => (
+                          {cols.map((col) => col.bloque ? (
+                            <div key={col.k} style={{ gridColumn: '1 / -1' }}>{col.r(fila)}</div>
+                          ) : (
                             <div key={col.k} style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', fontSize: '0.72rem', borderBottom: '1px solid var(--border)', paddingBottom: '3px' }}>
                               <span style={{ color: 'var(--text-dim)' }}>{col.t}</span>
                               <span style={{ fontFamily: MONO, fontWeight: 700, color: colorDe(fila, col) }}>{col.r(fila)}</span>

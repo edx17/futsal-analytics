@@ -25,10 +25,12 @@
     "react-konva": "^19.2.3",
     "react-player": "^3.4.0",
     "react-router-dom": "^7.13.1",
+    "read-excel-file": "^9.3.10",
     "recharts": "^3.7.0",
     "simpleheat": "^0.4.0",
     "use-image": "^1.1.4",
     "uuid": "^13.0.0",
+    "write-excel-file": "^4.1.1",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

@@ -9,6 +9,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie
 } from 'recharts';
+import { linkWhatsApp } from '../utils/telefono';
 
 function Tesoreria() {
   const { perfil } = useAuth();
@@ -187,9 +188,7 @@ function Tesoreria() {
 
   const enviarWhatsApp = (jugador, deudaTotal) => {
     const msj = `Hola ${jugador.nombre}, te escribimos de Tesorería del Club. Figuras con un saldo pendiente de $${deudaTotal.toLocaleString()}. Por favor, acercate para regularizarlo. ¡Abrazo!`;
-    const numeroLimpio = jugador.contacto ? String(jugador.contacto).replace(/[^0-9]/g, '') : '';
-    const url = numeroLimpio ? `https://api.whatsapp.com/send?phone=${numeroLimpio}&text=${encodeURIComponent(msj)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(msj)}`;
-    window.open(url, '_blank');
+    window.open(linkWhatsApp(jugador.contacto, msj), '_blank');
   };
 
   const cargarReportes = async () => {
