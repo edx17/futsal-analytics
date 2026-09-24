@@ -1,6 +1,7 @@
 {
+  "id": "/",
   "name": "Virtual.Club",
-  "short_name": "V.Club",
+  "short_name": "VirtualClub",
   "description": "Centro de mando para el cuerpo técnico",
   "start_url": "/",
   "scope": "/",

@@ -25,6 +25,16 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#000000">
 
+  <!-- El nombre que queda debajo del icono cuando la app se instala. Android lo
+       toma del "short_name" del manifest; iOS ignora el manifest y usa esta meta,
+       asi que las dos tienen que decir lo mismo o el icono se llama distinto
+       segun el telefono. -->
+  <meta name="application-name" content="VirtualClub">
+  <meta name="apple-mobile-web-app-title" content="VirtualClub">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Virtual.Club — La app de tu club de futsal</title>
 
