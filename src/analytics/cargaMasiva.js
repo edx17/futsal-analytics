@@ -32,6 +32,7 @@ export const COLUMNAS = [
   { k: 'id', t: 'ID (NO TOCAR)', tipo: 'id', ancho: 12, alias: ['id'] },
   { k: 'apellido', t: 'Apellido', ancho: 18 },
   { k: 'nombre', t: 'Nombre', ancho: 18 },
+  { k: 'apodo', t: 'Apodo', ancho: 14, alias: ['sobrenombre'] },
   { k: 'dorsal', t: 'Dorsal', tipo: 'entero', ancho: 8, alias: ['numero', 'camiseta'] },
   { k: 'posicion', t: 'Posición', opciones: POSICIONES, ancho: 12, alias: ['puesto'] },
   { k: 'categoria', t: 'Categoría', ancho: 14, alias: ['cat'] },

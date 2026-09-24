@@ -12,6 +12,7 @@ import CargaPlanilla from '../components/plantel/CargaPlanilla';
 import SolicitudesCambio from '../components/plantel/SolicitudesCambio';
 import { useSolicitudesPendientes } from '../utils/useSolicitudesPendientes';
 import { descargarPlanilla } from '../utils/planillaExcel';
+import { coincideBusqueda } from '../utils/buscarJugador';
 
 /* Centinela del selector: no es una categoría, es "quiero escribir una". */
 const OTRA = '__otra__';
@@ -27,6 +28,7 @@ function Plantel() {
 
   // --- NUEVO ESTADO PARA EL FILTRO ---
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
+  const [busqueda, setBusqueda] = useState('');
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
   /* Los dados de baja no se ven salvo que los pidas. El plantel es para
@@ -55,7 +57,7 @@ function Plantel() {
   const misCategorias = perfil?.categorias_asignadas || [];
 
   const estadoInicial = {
-    nombre: '', apellido: '', dorsal: '', posicion: 'Ala', categoria: 'Primera',
+    nombre: '', apellido: '', apodo: '', dorsal: '', posicion: 'Ala', categoria: 'Primera',
     pierna: 'Diestro', fechanac: '', dni: '', contacto: '',
     peso: '', altura: '', grupo_sanguineo: '', vencimiento_apto: '',
     obra_social: '', contacto_emergencia: '', talla_ropa: '', talla_calzado: '', foto: ''
@@ -169,6 +171,18 @@ function Plantel() {
     }
 
     let payload = { ...formData, club_id: clubId };
+
+    /* `apodo` es de la migración 20260925130000. Si todavía no se corrió, la
+       columna no existe y mandarla (aunque vacía) rompería el guardado. */
+    const hayColumnaApodo = jugadores.some(j => 'apodo' in j);
+    if (!hayColumnaApodo) {
+      if (payload.apodo) {
+        showToast('Para guardar apodos falta correr la migración 20260925130000 en Supabase.', 'warning');
+        return;
+      }
+      delete payload.apodo;
+    }
+    if (payload.apodo === '') payload.apodo = null;
 
     const camposEstrictos = ['fechanac', 'dni', 'contacto', 'peso', 'altura', 'vencimiento_apto', 'talla_calzado', 'user_id'];
     
@@ -394,6 +408,7 @@ function Plantel() {
        después convoques a alguien que ya no viene. */
     .filter(j => (verBajas ? !estaActivo(j) : estaActivo(j)))
     .filter(j => filtroCategoria === 'Todas' || j.categoria === filtroCategoria)
+    .filter(j => coincideBusqueda(j, busqueda))
     .sort((a, b) => {
       let valorA = a[ordenColumna] || '';
       let valorB = b[ordenColumna] || '';
@@ -532,6 +547,28 @@ function Plantel() {
           </button>
         )}
 
+        {/* --- BUSCADOR --- */}
+        <div style={{ position: 'relative', marginBottom: '14px' }}>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none' }}>🔍</span>
+          <input
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            placeholder="Buscar por nombre, apellido o apodo"
+            aria-label="Buscar jugador"
+            style={{ ...inputIndustrial, boxSizing: 'border-box', fontSize: '16px', marginTop: 0, paddingLeft: '40px', paddingRight: busqueda ? '44px' : '12px', minHeight: '46px' }}
+          />
+          {busqueda && (
+            <button onClick={() => setBusqueda('')} aria-label="Borrar búsqueda"
+              style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-dim)', fontSize: '1.2rem', cursor: 'pointer', width: '36px', height: '36px' }}>
+              ✕
+            </button>
+          )}
+        </div>
+
         {/* --- BOTONES DE FILTRO --- */}
         <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', marginBottom: '20px', paddingBottom: '5px' }}>
           {categoriasExistentes.map(cat => {
@@ -597,9 +634,9 @@ function Plantel() {
           grupos={GRUPOS_PLANTEL}
           gruposLabel={GRUPOS_PLANTEL_LABEL}
           titulo="PLANTEL"
-          vacio="No hay jugadores cargados en esta categoría."
+          vacio={busqueda ? `Nadie coincide con "${busqueda}".` : 'No hay jugadores cargados en esta categoría.'}
           getId={(j) => j.id}
-          getTitulo={(j) => `${j.apellido ? j.apellido.toUpperCase() + ' ' : ''}${(j.nombre || '').toUpperCase()}`}
+          getTitulo={(j) => `${j.apellido ? j.apellido.toUpperCase() + ' ' : ''}${(j.nombre || '').toUpperCase()}${j.apodo ? ` "${j.apodo}"` : ''}`}
           onRowClick={(j) => setJugadorSeleccionado(j)}
           renderBadges={(j) => (<div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--panel)', border: '1px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>{j.foto ? <img src={j.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '0.6rem', color: 'var(--accent)' }}>{j.apellido ? j.apellido.charAt(0) : ''}{j.nombre ? j.nombre.charAt(0) : ''}</span>}</div>)}
         >
@@ -629,6 +666,7 @@ function Plantel() {
                     <span style={{ textDecoration: 'underline', textUnderlineOffset: '4px' }}>
                       {j.apellido ? j.apellido.toUpperCase() + ' ' : ''}{j.nombre.toUpperCase()}
                     </span>
+                    {j.apodo && <span style={{ color: 'var(--text-dim)', fontWeight: 600, fontSize: '0.8rem' }}>"{j.apodo}"</span>}
                   </td>
                   <td style={{ color: 'var(--text-dim)' }}>{j.posicion?.toUpperCase()}</td>
                   <td style={{ color: 'var(--text-dim)' }}>{j.categoria?.toUpperCase()}</td>
@@ -671,7 +709,7 @@ function Plantel() {
                   </td>
                 </tr>
               ))}
-              {jugadoresOrdenados.length === 0 && <tr><td colSpan={verBajas ? 6 : 5} style={{ padding: '20px', color: 'var(--text-dim)' }}>{verBajas ? 'No hay jugadores dados de baja.' : 'No hay jugadores cargados en esta categoría.'}</td></tr>}
+              {jugadoresOrdenados.length === 0 && <tr><td colSpan={verBajas ? 6 : 5} style={{ padding: '20px', color: 'var(--text-dim)' }}>{busqueda ? `Nadie coincide con "${busqueda}".` : verBajas ? 'No hay jugadores dados de baja.' : 'No hay jugadores cargados en esta categoría.'}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -689,6 +727,7 @@ function Plantel() {
                 <div style={{ fontSize: 'clamp(2.2rem, 9vw, 3.5rem)', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 'clamp(1.1rem, 4.5vw, 1.5rem)', fontWeight: 800, color: 'var(--text)', wordBreak: 'break-word' }}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.toUpperCase() + ' ' : ''}{jugadorSeleccionado.nombre.toUpperCase()}</div>
+                  {jugadorSeleccionado.apodo && <div style={{ color: 'var(--accent)', fontWeight: 800, marginTop: '2px' }}>"{jugadorSeleccionado.apodo}"</div>}
                   <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginTop: '5px' }}>{jugadorSeleccionado.posicion?.toUpperCase()} // {jugadorSeleccionado.categoria?.toUpperCase()}</div>
                 </div>
               </div>
@@ -825,14 +864,18 @@ function Plantel() {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                  <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '15px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 140px' }}>
                      <div className="section-title">NOMBRE</div>
                      <input type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} style={inputIndustrial} placeholder="Ej: Lionel" />
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: '1 1 140px' }}>
                      <div className="section-title">APELLIDO</div>
                      <input type="text" value={formData.apellido} onChange={e => setFormData({...formData, apellido: e.target.value})} style={inputIndustrial} placeholder="Ej: Messi" />
+                  </div>
+                  <div style={{ flex: '1 1 140px' }}>
+                     <div className="section-title">APODO</div>
+                     <input type="text" value={formData.apodo || ''} onChange={e => setFormData({...formData, apodo: e.target.value})} style={inputIndustrial} placeholder="Opcional. Ej: Pulga" />
                   </div>
                   <div style={{ width: '100px' }}>
                      <div className="section-title">DORSAL</div>
