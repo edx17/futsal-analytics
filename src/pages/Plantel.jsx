@@ -422,6 +422,9 @@ function Plantel() {
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: 'var(--text)', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>💬 WhatsApp</button>
         <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>📋 PIN</button>
+        {/* VER abre la ficha completa en un modal, sin riesgo de tocar nada.
+            Tocar el nombre hacía lo mismo, pero en el celular no se notaba. */}
+        <button onClick={(e) => { e.stopPropagation(); setJugadorSeleccionado(j); }} style={{ ...btnGhost, color: 'var(--accent)', borderColor: 'var(--accent)', minHeight: '40px' }}>👁 VER</button>
         <button onClick={(e) => { e.stopPropagation(); abrirEdicion(j); }} style={{ ...btnGhost, minHeight: '40px' }}>EDITAR</button>
         {estaActivo(j) ? (
           <button onClick={(e) => { e.stopPropagation(); abrirBaja(j); }}
@@ -596,6 +599,7 @@ function Plantel() {
                         📋
                       </button>
                       <span style={{ color: 'var(--border)', fontSize: '0.85rem' }}>|</span>
+                      <button onClick={() => setJugadorSeleccionado(j)} title="Ver ficha completa" style={{ ...btnGhost, color: 'var(--accent)', borderColor: 'var(--accent)' }}>👁 VER</button>
                       <button onClick={() => abrirEdicion(j)} style={btnGhost}>EDITAR</button>
                       {estaActivo(j) ? (
                         <button onClick={() => abrirBaja(j)} title="Dar de baja (conserva su historial)"
@@ -617,23 +621,24 @@ function Plantel() {
       </div>
 
       {jugadorSeleccionado && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setJugadorSeleccionado(null); }}>
           <div className="bento-card modal-content" style={{ maxWidth: '600px', background: 'var(--panel)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: '20px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', borderBottom: '1px solid var(--border)', paddingBottom: '20px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
                 <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
                    {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="Foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span style={{fontSize:'1.2rem', fontWeight:800, color:'var(--accent)'}}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.charAt(0) : ''}{jugadorSeleccionado.nombre.charAt(0)}</span>}
                 </div>
-                <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
-                <div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.toUpperCase() + ' ' : ''}{jugadorSeleccionado.nombre.toUpperCase()}</div>
+                <div style={{ fontSize: 'clamp(2.2rem, 9vw, 3.5rem)', fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>{jugadorSeleccionado.dorsal}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 'clamp(1.1rem, 4.5vw, 1.5rem)', fontWeight: 800, color: 'var(--text)', wordBreak: 'break-word' }}>{jugadorSeleccionado.apellido ? jugadorSeleccionado.apellido.toUpperCase() + ' ' : ''}{jugadorSeleccionado.nombre.toUpperCase()}</div>
                   <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginTop: '5px' }}>{jugadorSeleccionado.posicion?.toUpperCase()} // {jugadorSeleccionado.categoria?.toUpperCase()}</div>
                 </div>
               </div>
               <button onClick={() => setJugadorSeleccionado(null)} className="close-btn">×</button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            {/* Dos columnas en pantalla ancha, una sola en el celular. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))', gap: '20px' }}>
               <div>
                 <div className="section-title">PERFIL TÉCNICO Y FÍSICO</div>
                 <div style={fichaRow}><span>Pierna Hábil:</span> <strong>{jugadorSeleccionado.pierna || 'N/A'}</strong></div>
@@ -667,7 +672,7 @@ function Plantel() {
             <div style={{ background: 'rgba(0, 255, 136, 0.05)', border: '1px solid var(--accent)', padding: '15px', borderRadius: '8px', marginTop: '20px' }}>
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
                  <div className="section-title" style={{ margin: 0, color: 'var(--accent)' }}>ACCESO RÁPIDO</div>
-                 <div style={{ display: 'flex', gap: '8px' }}>
+                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                    {/* WhatsApp Directo */}
                    <button 
                     onClick={() => enviarPorWhatsApp(jugadorSeleccionado)} 
@@ -689,7 +694,7 @@ function Plantel() {
                
                <div style={fichaRow}>
                 <span>Código de Club (UUID):</span> 
-                <strong style={{ color: 'var(--text)', fontSize: '0.75rem', fontFamily: 'monospace' }}>{clubId}</strong>
+                <strong style={{ color: 'var(--text)', fontSize: '0.75rem', fontFamily: 'monospace', wordBreak: 'break-all', textAlign: 'right' }}>{clubId}</strong>
                </div>
                
                <div style={fichaRow}>
@@ -834,7 +839,7 @@ function Plantel() {
       <style>{`
         .inputFiltro { padding: 12px 15px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); fontSize: 0.9rem; min-width: 250px; outline: none; }
         .inputIndustrial { background: transparent; border: 1px solid var(--border); width: 100%; padding: 12px; color: var(--text); border-radius: 4px; outline: none; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1020; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 20px; }
         .modal-content { width: 100%; border: 1px solid var(--accent); animation: scaleIn 0.2s; max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
         .close-btn { background: transparent; border: none; color: var(--text); font-size: 1.8rem; cursor: pointer; line-height: 1; }
@@ -848,6 +853,6 @@ function Plantel() {
 
 const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' };
 const btnGhost = { background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800 };
-const fichaRow = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px dashed var(--border)', color: 'var(--text-dim)', fontSize: '0.9rem' };
+const fichaRow = { display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderBottom: '1px dashed var(--border)', color: 'var(--text-dim)', fontSize: '0.9rem' };
 
 export default Plantel;
