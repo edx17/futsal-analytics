@@ -23,6 +23,28 @@ const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:soporte@virtualstats.com";
 const CRON_SECRET = Deno.env.get("CRON_SECRET"); // obligatorio, ver abajo
 
+/* WhatsApp (opcional). Son los mismos secretos que ya usa whatsapp-webhook.
+   Un mensaje que el club manda primero (no una respuesta) tiene que ser una
+   PLANTILLA aprobada por Meta: cada aviso usa la suya, y si su nombre no
+   está cargado ese aviso simplemente no sale por WhatsApp (el push sí). */
+const WA_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
+const WA_PHONE_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
+const WA_IDIOMA = Deno.env.get("WHATSAPP_IDIOMA") || "es_AR";
+const WA_PLANTILLA = {
+  wellness: Deno.env.get("WHATSAPP_PLANTILLA_WELLNESS"),   // {{1}} = nombre
+  cumple:   Deno.env.get("WHATSAPP_PLANTILLA_CUMPLE"),     // {{1}} = nombre
+  citacion: Deno.env.get("WHATSAPP_PLANTILLA_CITACION"),   // {{1}} nombre, {{2}} rival, {{3}} fecha, {{4}} hora de citación
+};
+
+/* Cada cuántas horas, como mínimo, se le vuelve a recordar el wellness a un
+   jugador que no lo cargó. El que dispara es el cron: con las corridas de
+   08, 13 y 18 y el default de 4, son hasta tres recordatorios por día. Por
+   WhatsApp va uno solo por día, desde el mediodía (cada plantilla se paga). */
+const RECORDATORIO_WELLNESS_HORAS = Math.max(1, Number(Deno.env.get("RECORDATORIO_WELLNESS_HORAS")) || 4);
+const RECORDATORIO_DESDE_HORA = 8;
+const RECORDATORIO_HASTA_HORA = 21;
+const WA_WELLNESS_DESDE_HORA = 12;
+
 /* Si falta un secreto, setVapidDetails tira una excepción. Estando en el
    cuerpo del módulo, esa excepción rompe la función ENTERA antes de atender
    el primer pedido: cada invocación devuelve un 500 opaco, para siempre, y
@@ -103,6 +125,47 @@ function horasHasta(fechaISO: string, horarioTexto: string | null) {
   const objetivo = new Date(fechaISO);
   objetivo.setHours(Number(hh), Number(mm), 0, 0);
   return (objetivo.getTime() - Date.now()) / 3_600_000;
+}
+
+/* La hora de Argentina (UTC-3, sin horario de verano). El Edge Function
+   corre en UTC, y el wellness se guarda con la fecha local del jugador. */
+function ahoraArgentina() {
+  const d = new Date(Date.now() - 3 * 3_600_000);
+  return { fecha: d.toISOString().slice(0, 10), hora: d.getUTCHours(), anio: d.getUTCFullYear() };
+}
+
+/* Mismo criterio que analytics/fichaKiosco.js: el del 29/2 lo festeja el
+   28/2 en los años no bisiestos. */
+function esCumpleHoy(fechanac: string | null, hoy: string) {
+  const n = String(fechanac || "").slice(0, 10).split("-");
+  const h = hoy.split("-");
+  if (n.length < 3) return false;
+  let [, mn, dn] = n;
+  const a = Number(h[0]);
+  const bisiesto = (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0;
+  if (mn === "02" && dn === "29" && !bisiesto) dn = "28";
+  return mn === h[1] && dn === h[2];
+}
+
+function convocadosDe(p: any): string[] {
+  let pl = p?.plantilla;
+  if (typeof pl === "string") {
+    try { pl = JSON.parse(pl); } catch { pl = []; }
+  }
+  if (!Array.isArray(pl)) return [];
+  return pl.map((x: any) => String(x?.id_jugador ?? x?.id ?? x)).filter(Boolean);
+}
+
+/* El contacto se carga a mano en el plantel ("11 5555-5555") o lo guarda el
+   bot ya en formato internacional ("5491155555555"). WhatsApp quiere sólo
+   dígitos con código de país; un celular argentino de 10 dígitos se completa
+   con 549. */
+function telefonoWhatsApp(contacto: string | null) {
+  const d = String(contacto || "").replace(/\D/g, "");
+  if (!d) return null;
+  if (d.length === 10) return `549${d}`;
+  if (d.length === 11 && d.startsWith("0")) return `549${d.slice(1)}`;
+  return d.length >= 11 ? d : null;
 }
 
 const nombreJug = (j: any) => {
@@ -478,6 +541,155 @@ async function enviarATodos(subs: any[], payload: object) {
   return parte;
 }
 
+/* Una plantilla de WhatsApp. Devuelve true si Meta la aceptó. */
+async function enviarPlantillaWhatsApp(telefono: string, plantilla: string, parametros: string[]) {
+  if (!WA_TOKEN || !WA_PHONE_ID) return { ok: false, error: "faltan WHATSAPP_ACCESS_TOKEN / WHATSAPP_PHONE_NUMBER_ID" };
+  try {
+    const res = await fetch(`https://graph.facebook.com/v20.0/${WA_PHONE_ID}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: telefono,
+        type: "template",
+        template: {
+          name: plantilla,
+          language: { code: WA_IDIOMA },
+          components: parametros.length
+            ? [{ type: "body", parameters: parametros.map((t) => ({ type: "text", text: t })) }]
+            : [],
+        },
+      }),
+    });
+    if (res.ok) return { ok: true };
+    return { ok: false, error: `${res.status} ${(await res.text()).slice(0, 200)}` };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || String(err) };
+  }
+}
+
+// ============================================================================
+// Avisos personales a cada JUGADOR
+//
+// Van a las suscripciones con jugador_id (las da de alta el jugador desde su
+// menú del kiosco) y, si hay plantilla cargada, a su WhatsApp (jugadores.
+// contacto). Nunca al staff, y el staff nunca recibe estos.
+// ============================================================================
+
+type Resumen = { push: number; whatsapp: number; errores: string[] };
+
+async function avisosAJugadores(clubId: string, subsJugadores: any[], sumar: (p: any) => void): Promise<Record<string, Resumen>> {
+  const { fecha: hoy, hora, anio } = ahoraArgentina();
+  const res: Record<string, Resumen> = {
+    cumple: { push: 0, whatsapp: 0, errores: [] },
+    wellness: { push: 0, whatsapp: 0, errores: [] },
+    citacion: { push: 0, whatsapp: 0, errores: [] },
+  };
+
+  const hayWhatsApp = !!(WA_TOKEN && WA_PHONE_ID && (WA_PLANTILLA.wellness || WA_PLANTILLA.cumple || WA_PLANTILLA.citacion));
+  if (subsJugadores.length === 0 && !hayWhatsApp) return res;
+
+  // select("*") a propósito: `activo` y `contacto` pueden no existir en un
+  // proyecto viejo, y pedirlas por nombre rompería la consulta entera.
+  const { data: jugadoresData } = await supabase.from("jugadores").select("*").eq("club_id", clubId);
+  const jugadores = (jugadoresData || []).filter((j: any) => j.activo !== false);
+
+  const subsDe = new Map<string, any[]>();
+  subsJugadores.forEach((s: any) => {
+    const k = String(s.jugador_id);
+    if (!subsDe.has(k)) subsDe.set(k, []);
+    subsDe.get(k)!.push(s);
+  });
+
+  /* Manda un aviso por push y/o WhatsApp, una sola vez por run_key. */
+  const avisar = async (
+    tipo: keyof typeof res, j: any, runKey: string,
+    push: { title: string; body: string; tag: string },
+    wa: { plantilla?: string | null; parametros: string[]; runKey?: string } | null,
+  ) => {
+    const subs = subsDe.get(String(j.id)) || [];
+    if (subs.length > 0 && !(await yaNotificado(clubId, runKey))) {
+      const parte = await enviarATodos(subs, { ...push, data: { url: "/kiosco" } });
+      sumar(parte);
+      res[tipo].push += parte.entregados;
+      await marcarNotificado(clubId, runKey);
+    }
+
+    const tel = telefonoWhatsApp(j.contacto);
+    const keyWa = wa?.runKey || `${runKey}-wa`;
+    if (wa?.plantilla && tel && WA_TOKEN && WA_PHONE_ID && !(await yaNotificado(clubId, keyWa))) {
+      const r = await enviarPlantillaWhatsApp(tel, wa.plantilla, wa.parametros);
+      if (r.ok) res[tipo].whatsapp++;
+      else res[tipo].errores.push(`${nombreJug(j)}: ${r.error}`);
+      // Se marca aunque falle: un número mal cargado no puede reintentarse
+      // en cada corrida del cron, todo el día.
+      await marcarNotificado(clubId, keyWa);
+    }
+  };
+
+  // --- 🎂 CUMPLEAÑOS ---
+  for (const j of jugadores) {
+    if (!esCumpleHoy(j.fechanac, hoy)) continue;
+    await avisar("cumple", j, `cumple-jug-${j.id}-${anio}`, {
+      title: `🎂 ¡Feliz cumple, ${j.nombre || "crack"}!`,
+      body: "Que tengas un gran día. Un abrazo de todo el club 💚",
+      tag: `cumple-${j.id}`,
+    }, { plantilla: WA_PLANTILLA.cumple, parametros: [j.nombre || ""] });
+  }
+
+  // --- ⚖️ RECORDATORIO DE WELLNESS ---
+  if (hora >= RECORDATORIO_DESDE_HORA && hora < RECORDATORIO_HASTA_HORA) {
+    const { data: wHoy } = await supabase.from("wellness").select("jugador_id, sueno, estres, fatiga, dolor_muscular")
+      .eq("club_id", clubId).eq("fecha", hoy);
+    // Cuenta como cargado si respondió el "cómo llego"; sólo el RPE no.
+    const cargaron = new Set((wHoy || [])
+      .filter((w: any) => ["sueno", "estres", "fatiga", "dolor_muscular"].some((c) => w[c] !== null && w[c] !== undefined))
+      .map((w: any) => String(w.jugador_id)));
+
+    const franja = Math.floor(hora / RECORDATORIO_WELLNESS_HORAS);
+    for (const j of jugadores) {
+      if (cargaron.has(String(j.id))) continue;
+      await avisar("wellness", j, `wellness-jug-${hoy}-f${franja}-${j.id}`, {
+        title: "⚖️ Te falta el wellness de hoy",
+        body: `${j.nombre ? `${j.nombre}, c` : "C"}argalo en un minuto: sueño, fatiga, dolor y cómo venís.`,
+        tag: `wellness-${hoy}`,
+      }, hora >= WA_WELLNESS_DESDE_HORA
+        ? { plantilla: WA_PLANTILLA.wellness, parametros: [j.nombre || ""], runKey: `wellness-jug-wa-${hoy}-${j.id}` }
+        : null);
+    }
+  }
+
+  // --- 📣 CITACIÓN: a cada convocado, cuando se publica ---
+  const { data: conCitacion, error: errCit } = await supabase
+    .from("partidos")
+    .select("id, fecha, rival, condicion, hora_citacion, plantilla")
+    .eq("club_id", clubId)
+    .eq("estado", "Pendiente")
+    .gte("fecha", hoy)
+    .not("citacion->>publicada_at", "is", null);
+
+  if (errCit) {
+    res.citacion.errores.push(`lectura: ${errCit.message}`);
+  } else {
+    const porId = new Map(jugadores.map((j: any) => [String(j.id), j]));
+    for (const p of conCitacion || []) {
+      const partes = String(p.fecha || "").slice(0, 10).split("-");
+      const cuando = partes.length === 3 ? `${partes[2]}/${partes[1]}` : String(p.fecha || "");
+      for (const id of convocadosDe(p)) {
+        const j = porId.get(id);
+        if (!j) continue;
+        await avisar("citacion", j, `citacion-jug-${p.id}-${id}`, {
+          title: `📣 Estás citado vs ${p.rival || "rival"}`,
+          body: [cuando, p.hora_citacion ? `presentarse ${p.hora_citacion}` : null, p.condicion].filter(Boolean).join(" · "),
+          tag: `citacion-${p.id}`,
+        }, { plantilla: WA_PLANTILLA.citacion, parametros: [j.nombre || "", p.rival || "rival", cuando, p.hora_citacion || "a confirmar"] });
+      }
+    }
+  }
+
+  return res;
+}
+
 // ============================================================================
 // Handler
 // ============================================================================
@@ -542,11 +754,37 @@ Deno.serve(async (req) => {
     entregas.errores.push(...p.errores);
   };
 
+  const avisosJugadores = {
+    cumple:   { push: 0, whatsapp: 0, errores: [] as string[] },
+    wellness: { push: 0, whatsapp: 0, errores: [] as string[] },
+    citacion: { push: 0, whatsapp: 0, errores: [] as string[] },
+  };
+
   for (const club of clubes || []) {
     const clubId = club.id;
 
-    const { data: subs } = await supabase.from("push_subscriptions").select("endpoint, p256dh, auth").eq("club_id", clubId);
-    if (!subs || subs.length === 0) continue;
+    /* select("*") y el reparto en JS, a propósito: si la migración que agrega
+       `jugador_id` no se corrió, filtrar por esa columna rompería la consulta
+       y el staff se quedaría sin ningún push. Sin la columna, todas son del
+       staff, como siempre. */
+    const { data: todas } = await supabase.from("push_subscriptions").select("*").eq("club_id", clubId);
+    const subs = (todas || []).filter((s: any) => s.jugador_id == null);
+    const subsJugadores = (todas || []).filter((s: any) => s.jugador_id != null);
+
+    /* Los avisos personales de los jugadores van primero y aparte: un club
+       sin staff suscripto igual les tiene que avisar a sus jugadores. */
+    try {
+      const r = await avisosAJugadores(clubId, subsJugadores, sumar);
+      (Object.keys(r) as (keyof typeof avisosJugadores)[]).forEach((k) => {
+        avisosJugadores[k].push += r[k].push;
+        avisosJugadores[k].whatsapp += r[k].whatsapp;
+        avisosJugadores[k].errores.push(...r[k].errores);
+      });
+    } catch (err: any) {
+      avisosJugadores.wellness.errores.push(`club ${clubId}: ${err?.message || err}`);
+    }
+
+    if (subs.length === 0) continue;
     clubesConPush++;
 
     // --- DIGEST: una vez por día, con TODO (bloqueante + importante + info) ---
@@ -634,7 +872,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ ok: true, clubesConPush, digestsEnviados, previasEnviadas, citacionesEnviadas, entregas }),
+    JSON.stringify({ ok: true, clubesConPush, digestsEnviados, previasEnviadas, citacionesEnviadas, avisosJugadores, entregas }),
     { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
   );
 });

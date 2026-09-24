@@ -21,6 +21,7 @@ import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { TablaResponsive } from '../components/TablaResponsive';
+import { esModoKiosco } from '../utils/kiosco';
 
 // Componente para la Malla de Microzonas Tácticas (Filtro ZONAS)
 const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
@@ -325,6 +326,20 @@ const COLS_RES_CAMPO = [
 function Resumen() {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  /* En el kiosco el jugador sólo puede abrir SU perfil: las demás filas y el
+     acceso al reporte de wellness del plantel llevaban a pantallas del staff,
+     que en modo kiosco no existen, y lo dejaban en un callejón. */
+  const isKiosco = esModoKiosco();
+  const irAJugador = (jugadorId, partidoFiltro) => {
+    if (isKiosco) {
+      if (String(jugadorId) === String(localStorage.getItem('kiosco_jugador_id'))) {
+        navigate('/kiosco/jugador-perfil', { state: { jugadorId, partidoFiltro } });
+      }
+      return;
+    }
+    navigate('/jugador', { state: { jugadorId, partidoFiltro } });
+  };
   const { perfil } = useAuth();
 
   const rol = (perfil?.rol || '').toLowerCase();
@@ -1491,7 +1506,7 @@ const COLORS_ORIGEN = {
               <div 
                 className="stat-label" 
                 style={{ marginBottom: '15px', color: '#10b981', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                onClick={() => navigate('/CargaWellness')}
+                onClick={() => { if (!isKiosco) navigate('/wellness'); }}
               >
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   🩺 CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios cruzados con la categoría o jugadores participantes." />
@@ -1870,7 +1885,7 @@ const COLORS_ORIGEN = {
               getId={(j) => j.id}
               getTitulo={(j) => `${j.nombre.toUpperCase()} ${j.apellido ? j.apellido.toUpperCase() : ''}`}
               getSubtitulo={(j) => `${j.dorsal} · ${j.rol}`}
-              onRowClick={(j) => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+              onRowClick={(j) => irAJugador(j.id, partidoSeleccionado?.id || 'Todos')}
               colorCelda={(j, col) => {
                 if (col.k === 'rat') return j.impacto === '-' ? 'var(--text-dim)' : (j.impacto >= 6.0 ? 'var(--accent)' : '#ef4444');
                 if (col.k === 'pm') return j.plusMinus > 0 ? '#00ff88' : (j.plusMinus < 0 ? '#ef4444' : '#fff');
@@ -1925,7 +1940,7 @@ const COLORS_ORIGEN = {
         <td className="mono-accent">{j.dorsal}</td>
         <td style={{ textAlign: 'left', fontWeight: 700 }}>
           <span 
-            onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+            onClick={() => irAJugador(j.id, partidoSeleccionado?.id || 'Todos')}
             style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
             onMouseOver={(e) => e.target.style.color = '#60a5fa'}
             onMouseOut={(e) => e.target.style.color = '#3b82f6'}
@@ -2007,7 +2022,7 @@ const COLORS_ORIGEN = {
                           <td className="mono-accent" style={{ color: '#3b82f6' }}>{j.dorsal}</td>
                           <td style={{ textAlign: 'left', fontWeight: 700 }}>
                             <span 
-                              onClick={() => navigate('/jugador', { state: { jugadorId: j.id, partidoFiltro: partidoSeleccionado?.id || 'Todos' } })}
+                              onClick={() => irAJugador(j.id, partidoSeleccionado?.id || 'Todos')}
                               style={{ cursor: 'pointer', color: '#3b82f6', transition: '0.2s' }}
                               onMouseOver={(e) => e.target.style.color = '#60a5fa'}
                               onMouseOut={(e) => e.target.style.color = '#3b82f6'}

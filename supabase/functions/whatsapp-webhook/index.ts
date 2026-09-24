@@ -64,7 +64,15 @@ Deno.serve(async (req) => {
     }
 
     const telefono = mensaje.from as string;
-    const textoRecibido: string = mensaje.text?.body?.trim() ?? "";
+    /* El recordatorio de wellness sale como plantilla con un botón de
+       respuesta rápida "Wellness": tocarlo no llega como texto sino como
+       `button` (o `interactive`), así que se lee de los tres lados. */
+    const textoRecibido: string = (
+      mensaje.text?.body ??
+      mensaje.button?.text ??
+      mensaje.interactive?.button_reply?.title ??
+      ""
+    ).trim();
     console.log(`[POST] mensaje de ${telefono}: "${textoRecibido}"`);
 
     await manejarMensaje(telefono, textoRecibido);

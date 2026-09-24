@@ -10,6 +10,7 @@ import {
   ResponsiveContainer, Legend, Cell, ReferenceLine, LineChart, Line,
 } from 'recharts';
 import { REHAB_LIB } from '../utils/rehab';
+import { volverDesde } from '../utils/kiosco';
 
 const ELITE = { musc: 48.5, adip: 9.0, sum6: 45.0, cmj: 55, abk: 62, broad: 2.60, yoyo: 21.0, visc: 4, imc: 23.0 };
 
@@ -221,7 +222,7 @@ export default function Rendimiento() {
 
       {/* --- BOTÓN VOLVER ATRÁS --- */}
       <button 
-        onClick={() => navigate(-1)} 
+        onClick={() => volverDesde(navigate)} 
         style={{ 
           background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', 
           display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', 

@@ -3,6 +3,18 @@ import { supabase } from '../supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
+import { filtroNoVencidas } from '../utils/novedades';
+import {
+  abrirSesionKiosco, cerrarSesionKiosco, cargarFichaKiosco, guardarTokenKiosco, tokenKiosco,
+} from '../utils/kiosco';
+import { activarNotificacionesJugador, navegadorSuscripto } from '../utils/pushNotificaciones';
+import {
+  disciplinaDe, proximoPartidoDe, wellnessDeHoy, historialWellness, esCumpleHoy, edadQueCumple,
+} from '../analytics/fichaKiosco';
+import {
+  ChipsJugador, TarjetaCumple, TarjetaWellness, TarjetaAgenda, TarjetaDisciplina,
+  TarjetaNotificaciones, TarjetaReingresar,
+} from '../components/kiosco/TarjetasKiosco';
 
 const IconWellness = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -40,6 +52,52 @@ const IconPartidos = () => (
   </svg>
 );
 
+const IconSalud = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path>
+    <line x1="12" y1="9" x2="12" y2="15"></line>
+    <line x1="9" y1="12" x2="15" y2="12"></line>
+  </svg>
+);
+
+const IconTemporada = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 17 9 11 13 15 21 7"></polyline>
+    <polyline points="14 7 21 7 21 14"></polyline>
+  </svg>
+);
+
+const IconLibro = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+  </svg>
+);
+
+const IconTorneo = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 21h8"></path>
+    <path d="M12 17v4"></path>
+    <path d="M7 4h10v5a5 5 0 0 1-10 0z"></path>
+    <path d="M17 5h3v2a3 3 0 0 1-3 3"></path>
+    <path d="M7 5H4v2a3 3 0 0 0 3 3"></path>
+  </svg>
+);
+
+/* Los accesos del menú. Mi estado físico, Temporada, Libro táctico y Torneo
+   ya existían como pantallas del kiosco pero no tenían botón. */
+const ACCESOS = [
+  { ruta: '/kiosco/wellness',       titulo: 'WELLNESS',     icono: IconWellness },
+  { ruta: '/kiosco/rendimiento',    titulo: 'RENDIMIENTO',  icono: IconRendimiento },
+  { ruta: '/kiosco/enfermeria',     titulo: 'MI ESTADO FÍSICO', icono: IconSalud },
+  { ruta: '/kiosco/jugador-perfil', titulo: 'STATS',        icono: IconStats },
+  { ruta: '/kiosco/resumen',        titulo: 'PARTIDOS',     icono: IconPartidos },
+  { ruta: '/kiosco/torneo',         titulo: 'TORNEO',       icono: IconTorneo },
+  { ruta: '/kiosco/temporada',      titulo: 'TEMPORADA',    icono: IconTemporada },
+  { ruta: '/kiosco/videoanalisis',  titulo: 'VIDEOS',       icono: IconVideos },
+  { ruta: '/kiosco/libro-tactico',  titulo: 'LIBRO TÁCTICO', icono: IconLibro },
+];
+
 const IconSalir = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -63,6 +121,12 @@ export default function LoginKiosco() {
 
   const [filtroCategoria, setFiltroCategoria] = useState('Todas');
   const [mostrarMenu, setMostrarMenu] = useState(false);
+
+  // La ficha del jugador (kiosco_ficha): agenda, tarjetas, wellness, etc.
+  // 'cargando' | 'ok' | 'sin-token' | 'error'
+  const [ficha, setFicha] = useState(null);
+  const [estadoFicha, setEstadoFicha] = useState('cargando');
+  const [push, setPush] = useState({ estado: 'inactivas', mensaje: null });
 
   const esMovil = useEsMovil();
 
@@ -104,7 +168,54 @@ export default function LoginKiosco() {
     iniciarKiosco();
   }, [clubId]);
 
-  const normalizar = (v) => String(v ?? '').trim().toLowerCase();
+  // 🧾 FICHA DEL JUGADOR: se pide cada vez que se muestra el menú.
+  const cargarFicha = async () => {
+    setEstadoFicha('cargando');
+    const r = await cargarFichaKiosco();
+    if (r.noDisponible) {
+      setFicha(null);
+      setEstadoFicha('no-disponible');
+      return;
+    }
+    if (r.vencida) {
+      guardarTokenKiosco(null);
+      setFicha(null);
+      setEstadoFicha('sin-token');
+      return;
+    }
+    if (r.error) {
+      console.error('kiosco_ficha:', r.error.message);
+      setFicha(null);
+      setEstadoFicha('error');
+      return;
+    }
+    setFicha(r.ficha);
+    setEstadoFicha('ok');
+  };
+
+  useEffect(() => {
+    if (!mostrarMenu) return;
+    cargarFicha();
+    navegadorSuscripto().then((si) => { if (si) setPush({ estado: 'activas', mensaje: null }); });
+  }, [mostrarMenu]);
+
+  const activarPush = async () => {
+    setPush({ estado: 'activando', mensaje: null });
+    const r = await activarNotificacionesJugador(tokenKiosco());
+    if (r.ok) {
+      setPush({ estado: 'activas', mensaje: null });
+      showToast('Listo, te van a llegar los avisos 🔔', 'success');
+    } else {
+      setPush({ estado: 'inactivas', mensaje: r.mensaje });
+    }
+  };
+
+  /* Sesión vieja (de antes del token) o vencida: se vuelve al PIN con el
+     jugador ya elegido, una sola vez. */
+  const reingresarPin = () => {
+    setPin('');
+    setMostrarMenu(false);
+  };
 
   // 📰 NOVEDADES KIOSCO
   const fetchNovedadesKiosco = async (idClub, categoriaJugador) => {
@@ -115,6 +226,7 @@ export default function LoginKiosco() {
       .select('id, mensaje, publico_objetivo, categorias, fecha_creacion, perfiles(nombre_completo)')
       .eq('club_id', idClub)
       .in('publico_objetivo', ['Jugadores', 'Ambos'])
+      .or(filtroNoVencidas())
       .order('fecha_creacion', { ascending: false })
       .limit(5);
 
@@ -189,6 +301,9 @@ export default function LoginKiosco() {
       const savedJugadorId = localStorage.getItem('kiosco_jugador_id');
       const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
 
+      /* Sin jugador activo no puede quedar el token del anterior. */
+      if (!isKioscoMode || !savedJugadorId) guardarTokenKiosco(null);
+
       if (isKioscoMode && savedJugadorId) {
         const jugador = ordenados.find(j => j.id == savedJugadorId);
 
@@ -220,6 +335,10 @@ export default function LoginKiosco() {
     setNovedadesJugador([]);
     setDeudaTotal(0);
     setDetallesDeuda([]);
+    setFicha(null);
+    setEstadoFicha('cargando');
+    setPush({ estado: 'inactivas', mensaje: null });
+    cerrarSesionKiosco();
 
     localStorage.removeItem('kiosco_jugador_id');
     localStorage.removeItem('kiosco_mode');
@@ -249,6 +368,10 @@ export default function LoginKiosco() {
     localStorage.setItem('kiosco_mode', 'true');
     localStorage.setItem('kiosco_jugador_id', data.id);
 
+    /* El token de la ficha. Si la migración 20260924120000 no se corrió,
+       vuelve null y el menú funciona como antes, sin las tarjetas nuevas. */
+    guardarTokenKiosco(await abrirSesionKiosco(data.id, data.club_id || clubId, pin));
+
     const categoriaFinal = jugadorSeleccionado?.categoria || data.categoria || localStorage.getItem('kiosco_categoria');
 
     if (categoriaFinal) localStorage.setItem('kiosco_categoria', categoriaFinal);
@@ -276,6 +399,26 @@ export default function LoginKiosco() {
     window.open(url, '_blank');
   };
 
+  /* Lo que el menú pinta, calculado una vez por ficha. */
+  const vistaFicha = useMemo(() => {
+    if (!ficha) return null;
+    const hoy = ficha.hoy;
+    const jug = ficha.jugador || {};
+    const proximo = proximoPartidoDe(ficha.partidos, {
+      miClub: ficha.club?.nombre || localStorage.getItem('mi_club'), jugadorId: jug.id, hoy,
+    });
+    return {
+      jugador: jug,
+      cumple: esCumpleHoy(jug.fechanac, hoy),
+      edad: edadQueCumple(jug.fechanac, hoy),
+      wellnessHoy: wellnessDeHoy(ficha.wellness, hoy),
+      historial: historialWellness(ficha.wellness, hoy, 7),
+      proximo,
+      sesiones: ficha.sesiones || [],
+      disciplina: disciplinaDe(ficha.tarjetas, ficha.sanciones),
+    };
+  }, [ficha]);
+
   const categoriasUnicas = useMemo(() => {
     return [...new Set(jugadores.map(j => j.categoria).filter(Boolean))].sort();
   }, [jugadores]);
@@ -302,13 +445,16 @@ export default function LoginKiosco() {
 
   if (mostrarMenu) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)', padding: esMovil ? '20px' : '30px', justifyContent: 'center', alignItems: 'center', animation: 'fadeIn 0.3s ease', boxSizing: 'border-box', overflowX: 'hidden', overflowY: 'auto' }}>
+      /* Arriba y con alto mínimo, no centrado con alto fijo: con todas las
+         tarjetas el menú es más alto que la pantalla, y un flex centrado que
+         desborda deja la parte de arriba (el saludo) fuera del scroll. */
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)', padding: esMovil ? '20px' : '30px', justifyContent: 'flex-start', alignItems: 'center', animation: 'fadeIn 0.3s ease', boxSizing: 'border-box', overflowX: 'hidden' }}>
         
         <style>{`
           .hub-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
             width: 100%;
             max-width: 380px;
             box-sizing: border-box;
@@ -317,7 +463,8 @@ export default function LoginKiosco() {
             background: linear-gradient(145deg, #161616 0%, #0a0a0a 100%);
             border: 1px solid rgba(255,255,255,0.06);
             border-radius: 16px;
-            padding: 25px 10px;
+            padding: 18px 6px;
+            min-height: 104px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -345,23 +492,34 @@ export default function LoginKiosco() {
           }
           .hub-title {
             color: #fff;
-            font-size: 0.85rem;
+            font-size: 0.68rem;
             font-weight: 900;
             text-transform: uppercase;
+            line-height: 1.15;
             letter-spacing: 0.05em;
             text-align: center;
           }
         `}</style>
 
-        <div style={{ textAlign: 'center', marginBottom: '25px', width: '100%', marginTop: '40px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '25px', width: '100%', marginTop: '20px' }}>
           <div style={avatarGigante}>
             {jugadorSeleccionado.foto ? <img src={jugadorSeleccionado.foto} alt="foto" style={{width:'100%', height:'100%', objectFit:'cover'}} /> : <span>{jugadorSeleccionado.nombre.charAt(0)}</span>}
           </div>
           <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text)', textTransform: 'uppercase', margin: '15px 0 5px 0', lineHeight: 1 }}>
             HOLA, <span style={{ color: 'var(--accent)' }}>{jugadorSeleccionado.nombre}</span>
           </h1>
-          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: 0 }}>¿Qué querés hacer hoy?</p>
+          <ChipsJugador jugador={vistaFicha?.jugador || jugadorSeleccionado} />
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: '12px 0 0' }}>¿Qué querés hacer hoy?</p>
         </div>
+
+        {vistaFicha?.cumple && <TarjetaCumple nombre={jugadorSeleccionado.nombre} edad={vistaFicha.edad} />}
+
+        {estadoFicha === 'sin-token' && <TarjetaReingresar onReingresar={reingresarPin} />}
+
+        {/* Arriba de todo, si todavía no lo cargó: es lo que más se olvida. */}
+        {vistaFicha && !vistaFicha.wellnessHoy.completo && (
+          <TarjetaWellness completo={false} historial={vistaFicha.historial} onCargar={() => navigate('/kiosco/wellness')} />
+        )}
 
         {/* 💳 MÓDULO FINANCIERO KIOSCO */}
         {deudaTotal > 0 && (
@@ -437,31 +595,25 @@ export default function LoginKiosco() {
           )}
         </div>
 
+        {vistaFicha && <TarjetaAgenda proximo={vistaFicha.proximo} sesiones={vistaFicha.sesiones} />}
+
+        {vistaFicha && <TarjetaDisciplina disciplina={vistaFicha.disciplina} />}
+
+        {vistaFicha?.wellnessHoy.completo && (
+          <TarjetaWellness completo historial={vistaFicha.historial} />
+        )}
+
+        {estadoFicha === 'ok' && (
+          <TarjetaNotificaciones estado={push.estado} mensaje={push.mensaje} onActivar={activarPush} />
+        )}
+
         <div className="hub-grid">
-          <div className="hub-card" onClick={() => navigate('/kiosco/wellness')}>
-            <span className="hub-icon"><IconWellness /></span>
-            <span className="hub-title">WELLNESS</span>
-          </div>
-
-          <div className="hub-card" onClick={() => navigate('/kiosco/rendimiento')}>
-            <span className="hub-icon"><IconRendimiento /></span>
-            <span className="hub-title">RENDIMIENTO</span>
-          </div>
-
-          <div className="hub-card" onClick={() => navigate('/kiosco/jugador-perfil')}>
-            <span className="hub-icon"><IconStats /></span>
-            <span className="hub-title">STATS</span>
-          </div>
-
-          <div className="hub-card" onClick={() => navigate('/kiosco/resumen')}>
-            <span className="hub-icon"><IconPartidos /></span>
-            <span className="hub-title">PARTIDOS</span>
-          </div>
-
-          <div className="hub-card" onClick={() => navigate('/kiosco/videoanalisis')}>
-            <span className="hub-icon"><IconVideos /></span>
-            <span className="hub-title">VIDEOS</span>
-          </div>
+          {ACCESOS.map(({ ruta, titulo, icono }) => (
+            <div key={ruta} className="hub-card" onClick={() => navigate(ruta)}>
+              <span className="hub-icon">{React.createElement(icono)}</span>
+              <span className="hub-title">{titulo}</span>
+            </div>
+          ))}
         </div>
 
         <button onClick={volverAtras} style={{ ...btnSecundario, width: '100%', maxWidth: '380px', marginTop: '30px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)', padding: '16px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '40px' }}>

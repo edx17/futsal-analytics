@@ -16,6 +16,7 @@ import { construirAgenda, sumarDias, diasEntre, TIPOS } from '../analytics/agend
 import { resumenClub } from '../analytics/tutores';
 import { ordenarAlertas, franjaDeHoy, rankAccesos, leerUso, anotarUso, ACCESOS_VISIBLES } from '../analytics/tablero';
 import FranjaHoy from '../components/FranjaHoy';
+import { filtroNoVencidas } from '../utils/novedades';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -300,14 +301,8 @@ export default function Inicio() {
   const navigate = useNavigate();
   const { perfil } = useAuth();
 
-  const isKiosco = localStorage.getItem('kiosco_mode') === 'true';
-  const kioscoNombre = localStorage.getItem('kiosco_nombre');
-
-  const salirKiosco = async () => {
-    ['kiosco_mode', 'kiosco_jugador_id', 'kiosco_nombre', 'kiosco_apellido'].forEach((k) => localStorage.removeItem(k));
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
+  /* El modo kiosco ya no pasa por acá: App.jsx manda cualquier ruta del staff
+     al menú del jugador (/kiosco). */
 
 
   /* ---- ESTADO BASE ---- */
@@ -481,7 +476,7 @@ export default function Inicio() {
         // Novedades
         if (club && rol !== 'jugador') {
           const { data: nov } = await supabase.from('novedades').select('*, perfiles(nombre_completo, rol)')
-            .eq('club_id', club).in('publico_objetivo', ['CT', 'Ambos']).order('fecha_creacion', { ascending: false }).limit(4);
+            .eq('club_id', club).in('publico_objetivo', ['CT', 'Ambos']).or(filtroNoVencidas()).order('fecha_creacion', { ascending: false }).limit(4);
           if (nov) setNovedades(catEq ? nov.filter((n) => (n.categorias || []).includes(categoriaActiva)) : nov);
         }
 
@@ -1345,42 +1340,6 @@ export default function Inicio() {
   /* ========================================================================
      LAYOUT
   ======================================================================== */
-  /* ---- KIOSCO: menú simple ----
-   *
-   * Este retorno temprano VA ACÁ ABAJO, después de todos los hooks, y no
-   * arriba donde estaba. React exige que en cada render se llamen los mismos
-   * hooks y en el mismo orden: cortando arriba, el render en modo kiosco no
-   * ejecutaba ninguno de los treinta que vienen después.
-   *
-   * Mientras `isKiosco` no cambiara, no se notaba. Pero cambia: "SALIR DEL
-   * KIOSCO" borra la marca de localStorage y recién después navega, así que
-   * entre el cierre de sesión y la navegación queda un render con `isKiosco`
-   * ya en false. Ese render ejecuta treinta hooks que el anterior no tenía, y
-   * eso React lo corta con "Rendered more hooks than during the previous
-   * render": pantalla negra justo al salir. */
-  if (isKiosco) {
-    const accesos = [
-      { ruta: '/wellness', icon: '⚖️', t: 'Cargar Wellness', s: 'Sueño, estrés, fatiga y dolor' },
-      { ruta: '/rendimiento', icon: '🏋️‍♂️', t: 'Rendimiento / Prevención', s: 'Cargar RPE y kinesiología' },
-      { ruta: '/perfil', icon: '📊', t: 'Mi Perfil de Juego', s: 'Estadísticas, videos y quintetos' },
-    ];
-    return (
-      <div style={{ padding: '30px 20px', maxWidth: 600, margin: '0 auto', textAlign: 'center', animation: 'fadeIn 0.3s' }}>
-        <h1 style={{ color: 'var(--accent)', fontSize: '2.2rem', marginBottom: 5, textTransform: 'uppercase' }}>¡Hola, {kioscoNombre}!</h1>
-        <p style={{ color: 'var(--text-dim)', marginBottom: 40 }}>¿Qué necesitás hacer hoy?</p>
-        <div style={{ display: 'grid', gap: 20 }}>
-          {accesos.map((a) => (
-            <button key={a.ruta} onClick={() => navigate(a.ruta)} className="bento-card" style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'var(--panel)', border: '1px solid var(--border)', padding: 20, borderRadius: 12, color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}>
-              <span style={{ fontSize: '2.5rem' }}>{a.icon}</span>
-              <div><strong style={{ display: 'block', fontSize: '1.2rem' }}>{a.t}</strong><span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{a.s}</span></div>
-            </button>
-          ))}
-        </div>
-        <button onClick={salirKiosco} style={{ marginTop: 50, background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '12px 25px', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>SALIR DEL KIOSCO</button>
-      </div>
-    );
-  }
-
   return (
     <div style={{ animation: 'fadeIn 0.3s', maxWidth: 1100, margin: '0 auto', position: 'relative' }}>
       {/* HEADER + SELECTORES (arriba de todo) */}

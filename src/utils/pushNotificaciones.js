@@ -61,12 +61,72 @@ const esIOS = () =>
   /iphone|ipad|ipod/i.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+const fallo = (motivo, detalle = null) =>
+  ({ ok: false, motivo, mensaje: MOTIVOS_PUSH[motivo] || MOTIVOS_PUSH.error, detalle });
+
+/* Permiso + suscripción del navegador. Devuelve { json } con endpoint y
+   claves, o un fallo con su motivo. Lo comparten el alta del staff y la del
+   jugador: lo único que cambia entre las dos es dónde se guarda. */
+async function suscribirNavegador() {
+  if (!pushSoportado()) {
+    if (esIOS() && !window.navigator.standalone) return fallo('ios-sin-instalar');
+    return fallo('no-soportado');
+  }
+  if (!window.isSecureContext) return fallo('sin-https');
+  if (!VAPID_PUBLIC_KEY) return fallo('falta-vapid-key');
+  if (Notification.permission === 'denied') return fallo('permiso-bloqueado');
+
+  const permiso = await Notification.requestPermission();
+  if (permiso !== 'granted') return fallo('permiso-denegado');
+
+  const registro = await serviceWorkerListo();
+  if (!registro) return fallo('sin-service-worker');
+
+  let suscripcion = await registro.pushManager.getSubscription();
+  if (!suscripcion) {
+    suscripcion = await registro.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+  return { ok: true, json: suscripcion.toJSON() };
+}
+
+/* Alta del teléfono de un JUGADOR desde el kiosco. No escribe la tabla
+   directo: la sesión del kiosco es compartida, así que pasa por
+   kiosco_guardar_push(), que ata la suscripción al jugador del token. */
+export async function activarNotificacionesJugador(tokenKiosco) {
+  if (!tokenKiosco) return fallo('sin-perfil');
+  try {
+    const r = await suscribirNavegador();
+    if (!r.ok) return r;
+    const { error } = await supabase.rpc('kiosco_guardar_push', {
+      p_token: tokenKiosco,
+      p_endpoint: r.json.endpoint,
+      p_p256dh: r.json.keys.p256dh,
+      p_auth: r.json.keys.auth,
+      p_user_agent: navigator.userAgent,
+    });
+    if (error) return fallo(error.code === '28000' ? 'sin-perfil' : 'error', error.message);
+    return { ok: true };
+  } catch (err) {
+    console.error('Error activando notificaciones del jugador:', err);
+    return fallo('error', err?.message || String(err));
+  }
+}
+
+/* ¿Este navegador ya tiene permiso y suscripción? Para el jugador alcanza con
+   eso: no puede leer push_subscriptions para confirmarlo. */
+export async function navegadorSuscripto() {
+  if (!pushSoportado() || Notification.permission !== 'granted') return false;
+  const registro = await navigator.serviceWorker.getRegistration();
+  const sus = registro ? await registro.pushManager.getSubscription() : null;
+  return !!sus;
+}
+
 // Llamar SIEMPRE desde un click/tap del usuario (no en un useEffect al cargar),
 // si no el navegador ignora el pedido de permiso o lo deniega directo.
 export async function activarNotificaciones(clubId, perfilId) {
-  const fallo = (motivo, detalle = null) =>
-    ({ ok: false, motivo, mensaje: MOTIVOS_PUSH[motivo] || MOTIVOS_PUSH.error, detalle });
-
   if (!pushSoportado()) {
     /* En iPhone el push existe recién con la app instalada en la pantalla de
        inicio: en Safari suelto ni siquiera aparece PushManager. */

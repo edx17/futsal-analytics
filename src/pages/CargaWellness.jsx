@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { volverDesde } from '../utils/kiosco';
 
 const CargaWellness = () => {
   const navigate = useNavigate();
@@ -331,7 +332,7 @@ const CargaWellness = () => {
       
       {/* --- BOTÓN VOLVER --- */}
       <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 15px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}>
+        <button onClick={() => volverDesde(navigate)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 15px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}>
           ← VOLVER
         </button>
       </div>

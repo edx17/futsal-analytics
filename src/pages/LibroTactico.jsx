@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { leerFase, subfasesDe } from '../utils/taxonomiaTareas';
 import { BASE_W, getBaseH, renderBoard, getDPR, convertOldEl, convertOldLine } from '../tactica/pizarra';
 import { puntoEnTrayecto } from '../utils/trayectoria';
+import { volverDesde, esModoKiosco } from '../utils/kiosco';
+import { mismaCategoria } from '../utils/categorias';
 
 // =======================================================
 // REPRODUCTOR DE JUGADAS
@@ -166,7 +168,11 @@ export default function LibroTactico() {
   const { perfil } = useAuth();
   
   const rolUsuario = perfil?.rol ? String(perfil.rol).toLowerCase() : '';
-  const esStaff = ['superuser', 'admin', 'ct'].includes(rolUsuario);
+  /* En el kiosco nunca hay staff (la sesión es del club, no de una persona),
+     y el jugador ve sólo las jugadas de su categoría o las de todas. */
+  const isKiosco = esModoKiosco();
+  const catKiosco = isKiosco ? localStorage.getItem('kiosco_categoria') : null;
+  const esStaff = !isKiosco && ['superuser', 'admin', 'ct'].includes(rolUsuario);
 
   useEffect(() => {
     cargarLibroTactico();
@@ -185,7 +191,9 @@ export default function LibroTactico() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTacticas(data || []);
+      const paraMi = (t) => !t.categoria_recomendada || t.categoria_recomendada === 'Todas'
+        || mismaCategoria(t.categoria_recomendada, catKiosco);
+      setTacticas(isKiosco && catKiosco ? (data || []).filter(paraMi) : (data || []));
     } catch (error) {
       console.error("Error al cargar libro táctico:", error.message);
     } finally {
@@ -213,7 +221,7 @@ export default function LibroTactico() {
       
       {/* BOTÓN VOLVER ATRÁS */}
       <button 
-        onClick={() => navigate(-1)} 
+        onClick={() => volverDesde(navigate)} 
         style={{ 
           background: 'transparent', 
           border: 'none', 
