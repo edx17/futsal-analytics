@@ -8,7 +8,10 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* El fondo del tema, no el gris de la plantilla de Vite: en las pantallas
+     más altas que el celular (el menú del kiosco) ese gris aparecía en los
+     costados al bajar, porque el body sólo pinta la primera pantalla. */
+  background-color: var(--bg, #000000);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
