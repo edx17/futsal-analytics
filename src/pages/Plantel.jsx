@@ -8,6 +8,10 @@ import { estaActivo, textoBaja } from '../utils/plantelActivo';
 import { useCategorias } from '../utils/useCategorias';
 import { unirCategorias, LISTA_BASE } from '../utils/categorias';
 import TutoresJugador from '../components/TutoresJugador';
+import CargaPlanilla from '../components/plantel/CargaPlanilla';
+import SolicitudesCambio from '../components/plantel/SolicitudesCambio';
+import { useSolicitudesPendientes } from '../utils/useSolicitudesPendientes';
+import { descargarPlanilla } from '../utils/planillaExcel';
 
 /* Centinela del selector: no es una categoría, es "quiero escribir una". */
 const OTRA = '__otra__';
@@ -32,7 +36,18 @@ function Plantel() {
 
   const [motivoBaja, setMotivoBaja] = useState('');
 
+  /* La planilla (bajar / subir el plantel entero) es del área administrativa:
+     un CT ve sólo sus categorías, y una planilla parcial subida por él se
+     prestaría a confusión. */
+  const [mostrarPlanilla, setMostrarPlanilla] = useState(false);
+  const [bajandoPlanilla, setBajandoPlanilla] = useState(false);
+  const puedeAdministrar = ['superuser', 'manager', 'admin'].includes(String(perfil?.rol || '').toLowerCase());
+
   const clubId = localStorage.getItem('club_id');
+
+  /* Correcciones que los jugadores mandaron desde "Mis datos" del kiosco. */
+  const { pendientes: solicitudes, recargar: recargarSolicitudes } = useSolicitudesPendientes(clubId, puedeAdministrar);
+  const [verSolicitudes, setVerSolicitudes] = useState(false);
   const { showToast } = useToast(); 
 
   // --- VARIABLES DEL GRAN FILTRO ---
@@ -404,8 +419,18 @@ function Plantel() {
     return <div style={{ color: '#ef4444', textAlign: 'center', marginTop: '50px' }}>Debes configurar tu club primero.</div>;
   }
 
-  const GRUPOS_PLANTEL = { gen: 'var(--text-dim)' };
-  const GRUPOS_PLANTEL_LABEL = { gen: 'DATOS' };
+  const GRUPOS_PLANTEL = { gen: 'var(--text-dim)', acc: 'var(--text-dim)' };
+  const GRUPOS_PLANTEL_LABEL = { gen: 'DATOS', acc: 'ACCIONES' };
+
+  /* Los botones de la tarjeta del celular: grilla de 3 × 2, todos del mismo
+     tamaño. Arriba lo de todos los días (avisar, PIN, mirar), abajo lo que
+     cambia la ficha, con lo destructivo al final. */
+  const btnAccion = (color, fondo = 'transparent') => ({
+    background: fondo, border: `1px solid ${color}`, color: fondo === 'transparent' ? color : '#000',
+    borderRadius: '8px', minHeight: '46px', padding: '6px 4px', cursor: 'pointer',
+    fontSize: '0.72rem', fontWeight: 900, letterSpacing: '0.3px', fontFamily: 'inherit',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', textAlign: 'center', lineHeight: 1.1,
+  });
   const COLS_PLANTEL = [
     { k: 'dorsal', t: 'DORSAL', g: 'gen', r: j => j.dorsal ?? '—' },
     /* Sólo cuando mirás las bajas: en el plantel activo esta columna estaría
@@ -418,27 +443,23 @@ function Plantel() {
     ) }] : []),
     { k: 'posicion', t: 'POSICIÓN', g: 'gen', r: j => j.posicion?.toUpperCase() || '—' },
     { k: 'categoria', t: 'CATEGORÍA', g: 'gen', r: j => j.categoria?.toUpperCase() || '—' },
-    { k: 'acciones', t: 'ACCIONES', g: 'gen', r: j => (
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: 'var(--text)', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>💬 WhatsApp</button>
-        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>📋 PIN</button>
+    { k: 'acciones', t: 'ACCIONES', g: 'acc', bloque: true, r: j => (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+        <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={btnAccion('#25D366', '#25D366')}>💬 WHATSAPP</button>
+        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={btnAccion('var(--border)')}><span style={{ color: 'var(--text)' }}>📋 PIN</span></button>
         {/* VER abre la ficha completa en un modal, sin riesgo de tocar nada.
             Tocar el nombre hacía lo mismo, pero en el celular no se notaba. */}
-        <button onClick={(e) => { e.stopPropagation(); setJugadorSeleccionado(j); }} style={{ ...btnGhost, color: 'var(--accent)', borderColor: 'var(--accent)', minHeight: '40px' }}>👁 VER</button>
-        <button onClick={(e) => { e.stopPropagation(); abrirEdicion(j); }} style={{ ...btnGhost, minHeight: '40px' }}>EDITAR</button>
+        <button onClick={(e) => { e.stopPropagation(); setJugadorSeleccionado(j); }} style={btnAccion('var(--accent)')}>👁 VER</button>
+        <button onClick={(e) => { e.stopPropagation(); abrirEdicion(j); }} style={btnAccion('var(--border)')}><span style={{ color: 'var(--text)' }}>✏️ EDITAR</span></button>
         {estaActivo(j) ? (
           <button onClick={(e) => { e.stopPropagation(); abrirBaja(j); }}
             title="Sale de las listas del día a día y conserva todo su historial"
-            style={{ ...btnGhost, color: 'var(--aviso)', borderColor: 'var(--aviso)', minHeight: '40px' }}>
-            ⏸ DAR DE BAJA
-          </button>
+            style={btnAccion('var(--aviso)')}>⏸ BAJA</button>
         ) : (
           <button onClick={(e) => { e.stopPropagation(); reactivarJugador(j.id); }}
-            style={{ ...btnGhost, color: 'var(--ok)', borderColor: 'var(--ok)', minHeight: '40px' }}>
-            ↩ REINCORPORAR
-          </button>
+            style={btnAccion('var(--ok)')}>↩ VOLVER</button>
         )}
-        <button onClick={(e) => { e.stopPropagation(); eliminarJugador(j.id); }} style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444', minHeight: '40px' }}>✕ ELIMINAR</button>
+        <button onClick={(e) => { e.stopPropagation(); eliminarJugador(j.id); }} style={btnAccion('#ef4444')}>✕ ELIMINAR</button>
       </div>
     ) },
   ];
@@ -467,12 +488,49 @@ function Plantel() {
               </button>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button onClick={copiarTodosLosPINs} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR CT</button>
-            <button onClick={copiarTodosSeparados} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 12px', fontSize: '0.8rem' }}>📋 COPIAR WHATSAPP</button>
-            <button onClick={abrirNuevo} className="btn-action" style={{ background: 'var(--accent)', color: '#000', padding: '8px 15px', fontSize: '0.8rem' }}>+ NUEVO JUGADOR</button>
+          {/* Acciones del plantel, ordenadas: la principal sola y ancha, las
+              demás en una grilla pareja (2 por fila en el celular). */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: '1 1 320px', maxWidth: '640px' }}>
+            <button onClick={abrirNuevo} className="btn-action" style={{ background: 'var(--accent)', color: '#000', minHeight: '46px', fontSize: '0.85rem', width: '100%' }}>+ NUEVO JUGADOR</button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '8px' }}>
+              <button onClick={copiarTodosLosPINs} style={btnPlantel}>📋 COPIAR CT</button>
+              <button onClick={copiarTodosSeparados} style={btnPlantel}>📋 COPIAR WHATSAPP</button>
+              {puedeAdministrar && (
+                <>
+                  <button
+                    onClick={async () => {
+                      setBajandoPlanilla(true);
+                      try {
+                        await descargarPlanilla(jugadores.filter(estaActivo), localStorage.getItem('mi_club') || 'club');
+                      } catch (err) {
+                        console.error('Bajando planilla:', err);
+                        showToast('No se pudo generar la planilla.', 'error');
+                      } finally {
+                        setBajandoPlanilla(false);
+                      }
+                    }}
+                    disabled={bajandoPlanilla}
+                    style={btnPlantel}
+                  >
+                    {bajandoPlanilla ? 'GENERANDO…' : '⬇ BAJAR PLANILLA'}
+                  </button>
+                  <button onClick={() => setMostrarPlanilla(true)} style={btnPlantel}>⬆ SUBIR PLANILLA</button>
+                </>
+              )}
+            </div>
           </div>
         </div>
+
+        {puedeAdministrar && solicitudes.length > 0 && (
+          <button onClick={() => setVerSolicitudes(true)} style={{
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+            padding: '12px 14px', marginBottom: '16px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left',
+            background: 'rgba(59,130,246,0.1)', border: '1px solid #3b82f6', color: 'var(--text)', fontWeight: 800, fontSize: '0.85rem',
+          }}>
+            <span>📝 {solicitudes.length} {solicitudes.length === 1 ? 'jugador pidió' : 'jugadores pidieron'} corregir sus datos</span>
+            <span style={{ color: '#3b82f6', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>REVISAR ›</span>
+          </button>
+        )}
 
         {/* --- BOTONES DE FILTRO --- */}
         <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', marginBottom: '20px', paddingBottom: '5px' }}>
@@ -714,6 +772,27 @@ function Plantel() {
         </div>
       )}
 
+      {verSolicitudes && (
+        <SolicitudesCambio
+          key={solicitudes.map((x) => x.id).join('-')}
+          pendientes={solicitudes}
+          jugadores={jugadores}
+          showToast={showToast}
+          onResuelta={() => { recargarSolicitudes(); fetchJugadores(); }}
+          onCerrar={() => setVerSolicitudes(false)}
+        />
+      )}
+
+      {mostrarPlanilla && (
+        <CargaPlanilla
+          jugadores={jugadores}
+          clubId={clubId}
+          showToast={showToast}
+          onGuardado={fetchJugadores}
+          onCerrar={() => setMostrarPlanilla(false)}
+        />
+      )}
+
       {mostrarModalAlta && (
         <div className="modal-overlay">
           <div className="bento-card modal-content" style={{ maxWidth: '800px' }}>
@@ -853,6 +932,10 @@ function Plantel() {
 
 const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' };
 const btnGhost = { background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 12px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800 };
+const btnPlantel = {
+  background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '6px',
+  minHeight: '44px', padding: '8px 10px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', letterSpacing: '0.03em',
+};
 const fichaRow = { display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '10px 0', borderBottom: '1px dashed var(--border)', color: 'var(--text-dim)', fontSize: '0.9rem' };
 
 export default Plantel;

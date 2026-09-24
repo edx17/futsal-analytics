@@ -84,6 +84,16 @@ const IconTorneo = () => (
   </svg>
 );
 
+const IconDatos = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+    <circle cx="9" cy="10" r="2.5"></circle>
+    <path d="M5.5 16.5c.8-1.8 2-2.5 3.5-2.5s2.7.7 3.5 2.5"></path>
+    <line x1="15" y1="9" x2="19" y2="9"></line>
+    <line x1="15" y1="13" x2="19" y2="13"></line>
+  </svg>
+);
+
 /* Los accesos del menú. Mi estado físico, Temporada, Libro táctico y Torneo
    ya existían como pantallas del kiosco pero no tenían botón. */
 const ACCESOS = [
@@ -96,6 +106,8 @@ const ACCESOS = [
   { ruta: '/kiosco/temporada',      titulo: 'TEMPORADA',    icono: IconTemporada },
   { ruta: '/kiosco/videoanalisis',  titulo: 'VIDEOS',       icono: IconVideos },
   { ruta: '/kiosco/libro-tactico',  titulo: 'LIBRO TÁCTICO', icono: IconLibro },
+  // Ancho, abajo de todo: son diez accesos y en tres columnas quedaba uno suelto.
+  { ruta: '/kiosco/mis-datos',      titulo: 'MIS DATOS · CORREGÍ TU CELULAR, EMERGENCIA U OBRA SOCIAL', icono: IconDatos, ancho: true },
 ];
 
 const IconSalir = () => (
@@ -608,10 +620,11 @@ export default function LoginKiosco() {
         )}
 
         <div className="hub-grid">
-          {ACCESOS.map(({ ruta, titulo, icono }) => (
-            <div key={ruta} className="hub-card" onClick={() => navigate(ruta)}>
+          {ACCESOS.map(({ ruta, titulo, icono, ancho }) => (
+            <div key={ruta} className="hub-card" onClick={() => navigate(ruta)}
+              style={ancho ? { gridColumn: '1 / -1', flexDirection: 'row', minHeight: '64px', padding: '12px 16px', justifyContent: 'flex-start', gap: '14px' } : undefined}>
               <span className="hub-icon">{React.createElement(icono)}</span>
-              <span className="hub-title">{titulo}</span>
+              <span className="hub-title" style={ancho ? { textAlign: 'left' } : undefined}>{titulo}</span>
             </div>
           ))}
         </div>
