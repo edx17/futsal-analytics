@@ -63,10 +63,12 @@ const ResumenPlantel      = lazy(() => import('./pages/Resumenplantel'));
 const Comparar            = lazy(() => import('./pages/Comparar'));
 const Agenda              = lazy(() => import('./pages/Agenda'));
 const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
+const KioscoTorneo        = lazy(() => import('./pages/KioscoTorneo'));
 const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 
 import './App.css';
 import LimiteDeError from './components/LimiteDeError';
+import BarraKiosco from './components/BarraKiosco';
 
 // ==========================================
 // 🌍 CATÁLOGO OPERATIVO DE ACCIONES RÁPIDAS
@@ -316,14 +318,17 @@ useEffect(() => {
     );
   }
 
-  if (isKioscoMode && !isKioscoPath) return <Navigate to="/kiosco/home" replace />;
+  /* En modo kiosco, cualquier ruta del staff (un link viejo, una fila que
+     navega a /jugador, una recarga) vuelve al menú del jugador. Antes caía en
+     /kiosco/home, una bienvenida vieja con botones que llevaban a sí misma. */
+  if (isKioscoMode && !isKioscoPath) return <Navigate to="/kiosco" replace />;
   if (isKioscoMode && isKioscoPath) {
     return (
       <main className="app-content-fullscreen">
+        <BarraKiosco />
         <LimiteDeError>
         <Suspense fallback={<CargandoPantalla />}>
           <Routes>
-            <Route path="/kiosco/home" element={<Inicio />} />
             <Route path="/kiosco/wellness" element={<CargaWellness />} />
             <Route path="/kiosco/enfermeria" element={<Enfermeria />} />
             <Route path="/kiosco/rendimiento" element={<Rendimiento />} />
@@ -334,7 +339,8 @@ useEffect(() => {
             <Route path="/kiosco/perfil-jugador" element={<JugadorPerfil />} />
             <Route path="/kiosco/libro-tactico" element={<LibroTactico />} />
             <Route path="/kiosco/videoanalisis" element={<Videoanalisis />} />
-            <Route path="/kiosco/*" element={<Navigate to="/kiosco/home" replace />} />
+            <Route path="/kiosco/torneo" element={<KioscoTorneo />} />
+            <Route path="/kiosco/*" element={<Navigate to="/kiosco" replace />} />
           </Routes>
         </Suspense>
         </LimiteDeError>

@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { soloActivos } from '../utils/plantelActivo';
 import { ejerciciosParaZona, REHAB_LIB } from '../utils/rehab';
+import { cargarFichaKiosco } from '../utils/kiosco';
 import {
   ZONAS, TIPOS, LATERALIDADES, MECANISMOS, CONTEXTOS, GRAVEDADES, ESTADOS,
   hoyISO, soloFecha, sumarDias, diasEntre, diasDeBaja, altaVencida, estaAbierta,
@@ -228,6 +229,18 @@ function Enfermeria() {
 
   /* ── CARGA ────────────────────────────────────────────────────────────── */
   const cargar = async () => {
+    /* En el kiosco la tabla `lesiones` no se lee directo (su RLS es sólo del
+       staff, y con razón: la sesión del kiosco es compartida). Lo del
+       jugador viene recortado del servidor en la ficha. */
+    if (isKiosco) {
+      setCargando(true);
+      const { ficha, vencida } = await cargarFichaKiosco();
+      if (vencida) showToast('Tu sesión venció: volvé a entrar con tu PIN.', 'warning');
+      setLesiones(ficha?.lesiones || []);
+      setJugadores(ficha?.jugador ? [ficha.jugador] : []);
+      setCargando(false);
+      return;
+    }
     if (!clubId) { setCargando(false); return; }
     setCargando(true);
     try {
@@ -450,8 +463,21 @@ function Enfermeria() {
     const preventivos = [...REHAB_LIB.pelvica, ...REHAB_LIB.movilidad].map(e => ({ ...e }));
     const estado = mia ? disponibilidadDe([mia], mia.jugador_id, hoy) : null;
 
+    /* El apto médico: sin él vigente no puede jugar, y es lo primero que
+       pide la liga. Se avisa con un mes de margen. */
+    const yo = jugadores.find(j => String(j.id) === String(miJugadorId)) || null;
+    const venceApto = soloFecha(yo?.vencimiento_apto);
+    const diasApto = venceApto ? diasEntre(hoy, venceApto) : null;
+    const apto = !venceApto
+      ? { color: 'var(--text-dim)', titulo: 'Sin apto médico cargado', texto: 'Acercale el certificado al cuerpo técnico.' }
+      : diasApto < 0
+        ? { color: '#ef4444', titulo: `Apto VENCIDO el ${venceApto.split('-').reverse().join('/')}`, texto: 'Renovalo cuanto antes: sin apto vigente no podés jugar.' }
+        : diasApto <= 30
+          ? { color: '#f59e0b', titulo: `Tu apto vence en ${diasApto} día${diasApto === 1 ? '' : 's'}`, texto: `Vence el ${venceApto.split('-').reverse().join('/')}. Sacá turno para renovarlo.` }
+          : { color: 'var(--accent)', titulo: 'Apto médico vigente', texto: `Hasta el ${venceApto.split('-').reverse().join('/')}.` };
+
     return (
-      <div style={{ animation: 'fadeIn 0.3s', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      <div style={{ animation: 'fadeIn 0.3s', display: 'flex', flexDirection: 'column', gap: '18px', padding: isKiosco ? '16px 16px 40px' : 0, maxWidth: isKiosco ? '640px' : 'none', margin: isKiosco ? '0 auto' : 0, boxSizing: 'border-box' }}>
         <h1 style={{ margin: 0, fontSize: esMovil ? '1.4rem' : '1.8rem', fontWeight: 900 }}>🏥 MI ESTADO FÍSICO</h1>
 
         {cargando ? (
@@ -489,6 +515,14 @@ function Enfermeria() {
           <div className="bento-card" style={{ borderLeft: '4px solid var(--accent)' }}>
             <div style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '6px' }}>✅ Sin lesiones registradas</div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Estás disponible para entrenar y jugar.</div>
+          </div>
+        )}
+
+        {!cargando && (
+          <div className="bento-card" style={{ borderLeft: `4px solid ${apto.color}` }}>
+            <span style={etiqueta}>🩺 Apto médico</span>
+            <div style={{ fontSize: '1rem', fontWeight: 900, color: apto.color === 'var(--text-dim)' ? 'var(--text)' : apto.color, marginBottom: '4px' }}>{apto.titulo}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{apto.texto}</div>
           </div>
         )}
 

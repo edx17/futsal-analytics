@@ -54,6 +54,7 @@ const analizarRachas = (historial = []) => {
   return r;
 };
 import { useAuth } from '../context/AuthContext'; 
+import { esModoKiosco } from '../utils/kiosco';
 
 const GRUPOS_QUINT = { q: 'var(--accent)' };
 const GRUPOS_QUINT_LABEL = { q: 'ESTADÍSTICAS DEL QUINTETO' };
@@ -274,8 +275,12 @@ function Temporada() {
   const [jugadores, setJugadores] = useState([]);
   const [eventos, setEventos] = useState([]);
   
+  /* En el kiosco el jugador ve toda la temporada, pero sólo de SU
+     categoría: el selector queda fijo en ella. */
+  const catKiosco = esModoKiosco() ? (localStorage.getItem('kiosco_categoria') || null) : null;
+
   // ESTADOS DE FILTROS AVANZADOS
-  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
+  const [filtroCategoria, setFiltroCategoria] = useState(catKiosco || 'Todas');
   const [filtroCompeticion, setFiltroCompeticion] = useState('Todas'); 
   const [filtroCondicion, setFiltroCondicion] = useState('Todas');
   const [filtroResultado, setFiltroResultado] = useState('Todos');
@@ -309,10 +314,14 @@ function Temporada() {
       cats = [perfil.categorias_asignadas];
     }
 
+    if (catKiosco) {
+      setFiltroCategoria(catKiosco);
+      return;
+    }
     if (rolStr === 'CT' && cats.length === 1) {
       setFiltroCategoria(cats[0]); 
     }
-  }, [perfil]);
+  }, [perfil, catKiosco]);
 
   useEffect(() => {
     let cancelado = false;
@@ -923,10 +932,16 @@ function Temporada() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(150px, 100%), 1fr))', gap: '15px' }}>
           <div>
             <div className="stat-label" style={{ fontSize: '0.65rem', marginBottom: '5px' }}>CATEGORÍA</div>
-            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={selectFilterStyle}>
-              <option value="Todas">Todas</option>
-              {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
-            </select>
+            {catKiosco ? (
+              <select value={catKiosco} disabled style={{ ...selectFilterStyle, opacity: 0.8 }}>
+                <option value={catKiosco}>{catKiosco.toUpperCase()}</option>
+              </select>
+            ) : (
+              <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={selectFilterStyle}>
+                <option value="Todas">Todas</option>
+                {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+              </select>
+            )}
           </div>
           <div>
             <div className="stat-label" style={{ fontSize: '0.65rem', marginBottom: '5px' }}>COMPETICIÓN</div>
