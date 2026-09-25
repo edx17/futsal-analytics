@@ -37,42 +37,22 @@
 --  · Clubes: admin, manager y tesorero actualizan su club; el tesorero sólo
 --    los datos de cobro, y nadie salvo el superuser el plan o la suscripción.
 --
---  Idempotente: se puede correr más de una vez. Al final muestra cómo
---  quedaron las políticas que mencionan al kiosco.
+--  CÓMO CORRE (para no trabarse con la app en uso)
+--  Cambiar una política bloquea su tabla un instante. Si se bloquean varias
+--  a la vez, un pedido de la app que usa dos de ellas puede quedar cruzado
+--  con la migración ("deadlock detected"). Por eso cada tabla va en su
+--  propia transacción corta: nunca hay más de una tabla bloqueada.
+--  Si una está ocupada más de 10 segundos, ese paso corta con "lock
+--  timeout": lo anterior ya quedó guardado y alcanza con volver a correr
+--  todo el archivo (cada paso se puede repetir sin problema).
+--
+--  Al final muestra cómo quedaron las políticas que mencionan al kiosco.
 -- ════════════════════════════════════════════════════════════════════════════
 
 set client_min_messages = warning;
 
--- ── ANTES QUE NADA: TODO O NADA, Y SIN TRABARSE CON LA APP ──────────────────
--- Corre entera en una transacción: si algo falla, no queda nada a medias.
--- Toma de entrada los bloqueos de las tablas que toca, todos juntos y con
--- perfiles al final (las políticas de la app leen perfiles después de la
--- tabla que consultan; tomarla última evita el "deadlock detected"). Si una
--- tabla está ocupada más de 10 segundos, corta con "lock timeout" en vez de
--- quedarse esperando: en ese caso, volver a correrla.
+-- ════ PARTE 1: FUNCIONES (no bloquean ninguna tabla en uso) ════════════════
 begin;
-set local lock_timeout = '10s';
-
-do $$
-declare v_tablas text;
-begin
-  select string_agg(format('public.%I', x.t), ', ' order by x.orden, x.t) into v_tablas
-    from (
-      select distinct p.tablename as t, case when p.tablename = 'perfiles' then 2 else 1 end as orden
-        from pg_policies p
-       where p.schemaname = 'public'
-         and (coalesce(p.qual, '') || coalesce(p.with_check, '')) like '%kiosco@virtualstats.com%'
-      union
-      select t, case when t = 'perfiles' then 2 else 1 end
-        from unnest(array['tesoreria_deudas', 'tesoreria_pagos', 'tesoreria_egresos', 'tesoreria_empleados',
-                          'tesoreria_ingresos_extra', 'tesoreria_cajas', 'sponsors', 'sponsors_pagos',
-                          'clubes', 'jugadores', 'perfiles']) t
-       where to_regclass('public.' || t) is not null
-    ) x;
-  execute 'lock table ' || v_tablas || ' in access exclusive mode';
-end $$;
-
--- ── 0. QUIÉN ES QUIÉN ─────────────────────────────────────────────────────
 
 -- El club de la sesión del kiosco que viene en el header. NULL si quien
 -- pregunta no es el usuario del kiosco, si no mandó token o si venció.
@@ -113,48 +93,6 @@ language sql stable security definer set search_path = public as $$
   );
 $$;
 
--- ── 1. TESORERÍA Y SPONSORS: CLUB + ROL ───────────────────────────────────
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'tesoreria_deudas', 'tesoreria_pagos', 'tesoreria_egresos', 'tesoreria_empleados',
-    'tesoreria_ingresos_extra', 'tesoreria_cajas', 'sponsors', 'sponsors_pagos'
-  ] loop
-    execute format('alter table public.%I enable row level security', t);
-    execute format('drop policy if exists %I on public.%I', 'Admin ALL ' || t, t);
-    execute format('drop policy if exists %I on public.%I', 'Plata ALL ' || t, t);
-    execute format(
-      'create policy %I on public.%I for all to authenticated
-         using ((select public.maneja_plata(club_id)))
-         with check ((select public.maneja_plata(club_id)))',
-      'Plata ALL ' || t, t);
-  end loop;
-end $$;
-
-drop policy if exists acceso_tesoreria on public.tesoreria_cajas;
--- El saldo del kiosco sale de kiosco_estado_cuenta().
-drop policy if exists "Kiosco_select_tesoreria_deudas" on public.tesoreria_deudas;
-
--- ── 2. CLUBES Y JUGADORES: CADA UNO EL SUYO ───────────────────────────────
--- "Lectura de clubes" dejaba a cualquier admin o manager leer todos los
--- clubes. El propio lo cubre "Staff SELECT clubes".
-drop policy if exists "Lectura de clubes" on public.clubes;
--- "ver_jugadores" y "Escritura de jugadores" abrían jugadores de otros
--- clubes. El propio lo cubren "Lectura de jugadores", "Staff SELECT
--- jugadores" y "CT/Admin ALL jugadores"; el superuser tiene lo suyo.
-drop policy if exists ver_jugadores on public.jugadores;
-drop policy if exists "Escritura de jugadores" on public.jugadores;
-
--- Actualizar el club propio (configuración, citación, datos de cobro).
-drop policy if exists "Staff UPDATE clubes" on public.clubes;
-create policy "Staff UPDATE clubes" on public.clubes for update to authenticated
-  using (id::text = (select public.get_user_club_id())
-         and (select public.get_user_rol()) in ('admin', 'manager', 'tesorero'))
-  with check (id::text = (select public.get_user_club_id())
-              and (select public.get_user_rol()) in ('admin', 'manager', 'tesorero'));
-
 -- Qué columnas puede cambiar cada uno. El plan y la suscripción, sólo el
 -- superuser (o el servidor).
 create or replace function public.proteger_columnas_club()
@@ -177,76 +115,6 @@ begin
   return new;
 end
 $$;
-
-drop trigger if exists proteger_columnas_club on public.clubes;
-create trigger proteger_columnas_club
-  before update on public.clubes
-  for each row execute function public.proteger_columnas_club();
-
--- ── 3. PERFILES: NADIE SE HACE SUPERUSER ──────────────────────────────────
-drop policy if exists "Admin ALL perfiles" on public.perfiles;
-create policy "Admin ALL perfiles" on public.perfiles for all to authenticated
-  using ((select public.get_user_rol()) in ('admin', 'manager')
-         and club_id::text = (select public.get_user_club_id())
-         and rol is distinct from 'superuser')
-  with check ((select public.get_user_rol()) in ('admin', 'manager')
-              and club_id::text = (select public.get_user_club_id())
-              and rol is distinct from 'superuser');
-
--- El kiosco no lee perfiles (sólo los usaba para el autor de las novedades).
-drop policy if exists "Lectura_Perfiles_Kiosco" on public.perfiles;
-drop policy if exists "Staff SELECT perfiles" on public.perfiles;
-create policy "Staff SELECT perfiles" on public.perfiles for select to authenticated
-  using (club_id::text = (select public.get_user_club_id()) or id = auth.uid());
-
--- ── 4. EL KIOSCO, SÓLO SU CLUB ────────────────────────────────────────────
--- Toda política que habilitaba al usuario del kiosco por su email pasa a
--- exigir, además, que la fila sea del club de su token. En las tablas sin
--- club_id alcanza con tener un token válido (hay que tener un PIN).
-do $$
-declare
-  r record;
-  v_cond_vieja constant text := '((auth.jwt() ->> ''email''::text) = ''kiosco@virtualstats.com''::text)';
-  v_cond text;
-  v_using text;
-  v_check text;
-  v_roles text;
-begin
-  for r in
-    select p.*
-      from pg_policies p
-     where p.schemaname = 'public'
-       and (coalesce(p.qual, '') || coalesce(p.with_check, '')) like '%kiosco@virtualstats.com%'
-       and (coalesce(p.qual, '') || coalesce(p.with_check, '')) not like '%kiosco_club()%'
-  loop
-    if r.tablename = 'clubes' then
-      v_cond := '(id::text = (select public.kiosco_club()))';
-    elsif exists (select 1 from information_schema.columns c
-                where c.table_schema = 'public' and c.table_name = r.tablename and c.column_name = 'club_id') then
-      v_cond := '(club_id::text = (select public.kiosco_club()))';
-    else
-      v_cond := '((select public.kiosco_club()) is not null)';
-    end if;
-
-    v_using := replace(r.qual, v_cond_vieja, v_cond);
-    v_check := replace(r.with_check, v_cond_vieja, v_cond);
-
-    -- Si la condición estaba escrita de otra forma, no se toca: se lista al final.
-    if (v_using is not null and v_using like '%kiosco@virtualstats.com%')
-       or (v_check is not null and v_check like '%kiosco@virtualstats.com%') then
-      raise notice 'Revisar a mano: % en %', r.policyname, r.tablename;
-      continue;
-    end if;
-
-    select string_agg(quote_ident(x), ', ') into v_roles from unnest(r.roles) x;
-
-    execute format('drop policy %I on public.%I', r.policyname, r.tablename);
-    execute format('create policy %I on public.%I as %s for %s to %s%s%s',
-      r.policyname, r.tablename, r.permissive, r.cmd, v_roles,
-      case when v_using is not null then ' using (' || v_using || ')' else '' end,
-      case when v_check is not null then ' with check (' || v_check || ')' else '' end);
-  end loop;
-end $$;
 
 -- ── 5. PIN: LISTA SIN DATOS, SESIÓN CON LÍMITE DE INTENTOS ────────────────
 
@@ -333,6 +201,7 @@ begin
 end
 $$;
 
+-- Estado de cuenta.
 -- ── 6. ESTADO DE CUENTA DEL JUGADOR (KIOSCO) ──────────────────────────────
 -- Lo que debe el jugador que entró y cómo pagarle al club. Nada de los demás.
 create or replace function public.kiosco_estado_cuenta(p_token uuid)
@@ -374,13 +243,271 @@ grant execute on function public.kiosco_estado_cuenta(uuid) to anon, authenticat
 grant execute on function public.kiosco_club() to anon, authenticated;
 grant execute on function public.maneja_plata(uuid) to authenticated;
 
+
+-- Ayudantes de esta migración (se borran al final).
+create or replace function public._vc_bloquear(p_tabla text)
+returns void language plpgsql as $$
+begin
+  if to_regclass('public.' || p_tabla) is not null then
+    execute format('lock table public.%I in access exclusive mode', p_tabla);
+  end if;
+end $$;
+
+create or replace function public._vc_plata(p_tabla text)
+returns void language plpgsql as $$
+begin
+  if to_regclass('public.' || p_tabla) is null then return; end if;
+  execute format('alter table public.%I enable row level security', p_tabla);
+  execute format('drop policy if exists %I on public.%I', 'Admin ALL ' || p_tabla, p_tabla);
+  execute format('drop policy if exists %I on public.%I', 'Plata ALL ' || p_tabla, p_tabla);
+  execute format(
+    'create policy %I on public.%I for all to authenticated
+       using ((select public.maneja_plata(club_id)))
+       with check ((select public.maneja_plata(club_id)))',
+    'Plata ALL ' || p_tabla, p_tabla);
+end $$;
+
+-- Toda política que habilitaba al usuario del kiosco por su email pasa a
+-- exigir, además, que la fila sea del club de su token. En las tablas sin
+-- club_id alcanza con tener un token válido (hay que tener un PIN).
+create or replace function public._vc_kiosco_a_su_club(p_tabla text)
+returns void
+language plpgsql set search_path = public as $$
+declare
+  r record;
+  v_cond_vieja constant text := '((auth.jwt() ->> ''email''::text) = ''kiosco@virtualstats.com''::text)';
+  v_cond text;
+  v_using text;
+  v_check text;
+  v_roles text;
+begin
+  for r in
+    select p.*
+      from pg_policies p
+     where p.schemaname = 'public'
+       and p.tablename = p_tabla
+       and (coalesce(p.qual, '') || coalesce(p.with_check, '')) like '%kiosco@virtualstats.com%'
+       and (coalesce(p.qual, '') || coalesce(p.with_check, '')) not like '%kiosco_club()%'
+  loop
+    if r.tablename = 'clubes' then
+      v_cond := '(id::text = (select public.kiosco_club()))';
+    elsif exists (select 1 from information_schema.columns c
+                where c.table_schema = 'public' and c.table_name = r.tablename and c.column_name = 'club_id') then
+      v_cond := '(club_id::text = (select public.kiosco_club()))';
+    else
+      v_cond := '((select public.kiosco_club()) is not null)';
+    end if;
+
+    v_using := replace(r.qual, v_cond_vieja, v_cond);
+    v_check := replace(r.with_check, v_cond_vieja, v_cond);
+
+    -- Si la condición estaba escrita de otra forma, no se toca: se lista al final.
+    if (v_using is not null and v_using like '%kiosco@virtualstats.com%')
+       or (v_check is not null and v_check like '%kiosco@virtualstats.com%') then
+      raise notice 'Revisar a mano: % en %', r.policyname, r.tablename;
+      continue;
+    end if;
+
+    select string_agg(quote_ident(x), ', ') into v_roles from unnest(r.roles) x;
+
+    execute format('drop policy %I on public.%I', r.policyname, r.tablename);
+    execute format('create policy %I on public.%I as %s for %s to %s%s%s',
+      r.policyname, r.tablename, r.permissive, r.cmd, v_roles,
+      case when v_using is not null then ' using (' || v_using || ')' else '' end,
+      case when v_check is not null then ' with check (' || v_check || ')' else '' end);
+  end loop;
+end $$;
+
+commit;
+
+-- ════ PARTE 2: TABLA POR TABLA (cada una, un instante) ══════════════════════
+
+-- ── Tesorería y sponsors: club + rol ──
+-- tesoreria_pagos
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('tesoreria_pagos');
+select public._vc_plata('tesoreria_pagos');
+commit;
+
+-- tesoreria_egresos
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('tesoreria_egresos');
+select public._vc_plata('tesoreria_egresos');
+commit;
+
+-- tesoreria_empleados
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('tesoreria_empleados');
+select public._vc_plata('tesoreria_empleados');
+commit;
+
+-- tesoreria_ingresos_extra
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('tesoreria_ingresos_extra');
+select public._vc_plata('tesoreria_ingresos_extra');
+commit;
+
+-- sponsors
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('sponsors');
+select public._vc_plata('sponsors');
+commit;
+
+-- sponsors_pagos
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('sponsors_pagos');
+select public._vc_plata('sponsors_pagos');
+commit;
+
+-- tesoreria_cajas
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('tesoreria_cajas');
+select public._vc_plata('tesoreria_cajas');
+drop policy if exists acceso_tesoreria on public.tesoreria_cajas;
+commit;
+
+-- tesoreria_deudas
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('tesoreria_deudas');
+select public._vc_plata('tesoreria_deudas');
+-- El saldo del kiosco sale de kiosco_estado_cuenta().
+drop policy if exists "Kiosco_select_tesoreria_deudas" on public.tesoreria_deudas;
+commit;
+
+-- ── Clubes: cada uno el suyo; admin, manager y tesorero actualizan el propio ──
+-- clubes
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('clubes');
+-- "Lectura de clubes" dejaba a cualquier admin o manager leer todos los
+-- clubes. El propio lo cubre "Staff SELECT clubes".
+drop policy if exists "Lectura de clubes" on public.clubes;
+drop policy if exists "Staff UPDATE clubes" on public.clubes;
+create policy "Staff UPDATE clubes" on public.clubes for update to authenticated
+  using (id::text = (select public.get_user_club_id())
+         and (select public.get_user_rol()) in ('admin', 'manager', 'tesorero'))
+  with check (id::text = (select public.get_user_club_id())
+              and (select public.get_user_rol()) in ('admin', 'manager', 'tesorero'));
+drop trigger if exists proteger_columnas_club on public.clubes;
+create trigger proteger_columnas_club
+  before update on public.clubes
+  for each row execute function public.proteger_columnas_club();
+select public._vc_kiosco_a_su_club('clubes');
+commit;
+
+-- ── Jugadores: cada club los suyos ──
+-- jugadores
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('jugadores');
+-- "ver_jugadores" y "Escritura de jugadores" abrían jugadores de otros
+-- clubes. El propio lo cubren "Lectura de jugadores", "Staff SELECT
+-- jugadores" y "CT/Admin ALL jugadores"; el superuser tiene lo suyo.
+drop policy if exists ver_jugadores on public.jugadores;
+drop policy if exists "Escritura de jugadores" on public.jugadores;
+select public._vc_kiosco_a_su_club('jugadores');
+commit;
+
+-- ── Perfiles: nadie se hace superuser; el kiosco no los lee ──
+-- perfiles
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('perfiles');
+drop policy if exists "Admin ALL perfiles" on public.perfiles;
+create policy "Admin ALL perfiles" on public.perfiles for all to authenticated
+  using ((select public.get_user_rol()) in ('admin', 'manager')
+         and club_id::text = (select public.get_user_club_id())
+         and rol is distinct from 'superuser')
+  with check ((select public.get_user_rol()) in ('admin', 'manager')
+              and club_id::text = (select public.get_user_club_id())
+              and rol is distinct from 'superuser');
+-- El kiosco sólo los usaba para el autor de las novedades.
+drop policy if exists "Lectura_Perfiles_Kiosco" on public.perfiles;
+drop policy if exists "Staff SELECT perfiles" on public.perfiles;
+create policy "Staff SELECT perfiles" on public.perfiles for select to authenticated
+  using (club_id::text = (select public.get_user_club_id()) or id = auth.uid());
+select public._vc_kiosco_a_su_club('perfiles');
+commit;
+
+-- ── El resto de las tablas que lee el kiosco: sólo su club ──
+-- eventos
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('eventos');
+select public._vc_kiosco_a_su_club('eventos');
+commit;
+
+-- novedades
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('novedades');
+select public._vc_kiosco_a_su_club('novedades');
+commit;
+
+-- partidos
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('partidos');
+select public._vc_kiosco_a_su_club('partidos');
+commit;
+
+-- rendimiento
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('rendimiento');
+select public._vc_kiosco_a_su_club('rendimiento');
+commit;
+
+-- video_analisis
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('video_analisis');
+select public._vc_kiosco_a_su_club('video_analisis');
+commit;
+
+-- video_clips
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('video_clips');
+select public._vc_kiosco_a_su_club('video_clips');
+commit;
+
+-- video_playlists
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('video_playlists');
+select public._vc_kiosco_a_su_club('video_playlists');
+commit;
+
+-- wellness
+begin;
+set local lock_timeout = '10s';
+select public._vc_bloquear('wellness');
+select public._vc_kiosco_a_su_club('wellness');
+commit;
+
+
+-- ════ PARTE 3: LIMPIEZA ════════════════════════════════════════════════════
+begin;
+drop function if exists public._vc_bloquear(text);
+drop function if exists public._vc_plata(text);
+drop function if exists public._vc_kiosco_a_su_club(text);
 commit;
 
 notify pgrst, 'reload schema';
 
 -- ── 7. CÓMO QUEDÓ ─────────────────────────────────────────────────────────
 -- Todas deberían mencionar kiosco_club(). Si alguna todavía dice
--- kiosco@virtualstats.com sin kiosco_club(), pasame esta lista.
+-- kiosco@virtualstats.com sin kiosco_club() (una tabla que no estaba en la
+-- lista de arriba), pasame esta lista.
 select tablename as tabla, policyname as politica, cmd as operacion, qual as condicion
   from pg_policies
  where schemaname = 'public'
