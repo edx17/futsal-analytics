@@ -21,13 +21,11 @@
 
 set client_min_messages = warning;
 
--- ── ANTES QUE NADA: TODO O NADA, Y SIN TRABARSE CON LA APP ──────────────────
--- Corre entera en una transacción: si algo falla, no queda nada a medias.
--- Toma de entrada los bloqueos de las tablas que toca, todos juntos y con
--- perfiles al final (las políticas de la app leen perfiles después de la
--- tabla que consultan; tomarla última evita el "deadlock detected"). Si una
--- tabla está ocupada más de 10 segundos, corta con "lock timeout" en vez de
--- quedarse esperando: en ese caso, volver a correrla.
+-- ── CÓMO CORRE ───────────────────────────────────────────────────────────────
+-- En una transacción: si algo falla, no queda nada a medias. De las tablas que
+-- ya usa la app sólo toca tesoreria_pagos (una sola: no se puede cruzar con
+-- la app). Si está ocupada más de 10 segundos corta con "lock timeout" y
+-- alcanza con volver a correrla.
 begin;
 set local lock_timeout = '10s';
 lock table public.tesoreria_pagos in access exclusive mode;

@@ -23,16 +23,32 @@
 
 set client_min_messages = warning;
 
--- ── ANTES QUE NADA: TODO O NADA, Y SIN TRABARSE CON LA APP ──────────────────
--- Corre entera en una transacción: si algo falla, no queda nada a medias.
--- Toma de entrada los bloqueos de las tablas que toca, todos juntos y con
--- perfiles al final (las políticas de la app leen perfiles después de la
--- tabla que consultan; tomarla última evita el "deadlock detected"). Si una
--- tabla está ocupada más de 10 segundos, corta con "lock timeout" en vez de
--- quedarse esperando: en ese caso, volver a correrla.
+-- ── CÓMO CORRE (para no trabarse con la app en uso) ─────────────────────────
+-- Cada tabla que ya usa la app se toca en su propia transacción corta, así
+-- nunca hay dos bloqueadas a la vez ("deadlock detected"). Si una está
+-- ocupada más de 10 segundos corta con "lock timeout": lo anterior quedó
+-- guardado y alcanza con volver a correr el archivo entero.
+
+-- Jugadores: la columna de hermanos.
 begin;
 set local lock_timeout = '10s';
-lock table public.tesoreria_deudas, public.jugadores in access exclusive mode;
+alter table public.jugadores add column if not exists grupo_familiar text;
+comment on column public.jugadores.grupo_familiar is
+  'Hermanos: los jugadores del club con el mismo texto (sin importar mayúsculas) son un grupo familiar para el descuento de la cuota.';
+commit;
+
+-- Deudas: mensual o extra.
+begin;
+set local lock_timeout = '10s';
+alter table public.tesoreria_deudas add column if not exists tipo text not null default 'extra';
+comment on column public.tesoreria_deudas.tipo is
+  '''mensual'' = cuota del mes generada por el sistema; ''extra'' = cargada a mano (cuota extraordinaria, rifa, indumentaria…).';
+create index if not exists tesoreria_deudas_mes_idx on public.tesoreria_deudas (club_id, mes_correspondiente, jugador_id);
+commit;
+
+-- Lo demás es nuevo (tablas y funciones que la app todavía no usa).
+begin;
+set local lock_timeout = '10s';
 
 -- ── 1. TABLAS Y COLUMNAS ──────────────────────────────────────────────────
 create table if not exists public.tesoreria_config (
@@ -52,16 +68,6 @@ create table if not exists public.tesoreria_tarifas (
   updated_at timestamptz not null default now(),
   unique (club_id, categoria)
 );
-
-alter table public.jugadores add column if not exists grupo_familiar text;
-comment on column public.jugadores.grupo_familiar is
-  'Hermanos: los jugadores del club con el mismo texto (sin importar mayúsculas) son un grupo familiar para el descuento de la cuota.';
-
-alter table public.tesoreria_deudas add column if not exists tipo text not null default 'extra';
-comment on column public.tesoreria_deudas.tipo is
-  '''mensual'' = cuota del mes generada por el sistema; ''extra'' = cargada a mano (cuota extraordinaria, rifa, indumentaria…).';
-
-create index if not exists tesoreria_deudas_mes_idx on public.tesoreria_deudas (club_id, mes_correspondiente, jugador_id);
 
 do $$
 declare t text;
