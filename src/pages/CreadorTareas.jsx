@@ -111,7 +111,11 @@ const CSS = `
   --frio:#22d3ee;--amarillo:#facc15;
   font-family:'Syne',sans-serif;color:var(--text);background:var(--bg);
   display:flex;flex-direction:column;overflow:hidden;user-select:none;
-  position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+  /* Queda al lado de la barra lateral en la compu y arriba de la barra de
+     abajo en el celular (App.jsx define --vc-barra y --vc-barra-abajo). Por
+     debajo de esas barras y de su menú (z-index 1000+), así se pueden abrir. */
+  position:fixed;top:0;left:var(--vc-barra,0px);right:0;bottom:var(--vc-barra-abajo,0px);z-index:900;
+  transition:left .3s cubic-bezier(0.4,0,0.2,1),bottom .3s;
 }
 .ct-header{height:50px;background:var(--s1);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 14px;flex-shrink:0;overflow-x:auto}
 .ct-header.edit-mode{border-bottom-color:var(--blue)}
@@ -142,7 +146,7 @@ const CSS = `
 .ct-tool-sel .ti{font-size:15px;line-height:1}
 .ct-canvas-area{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg);background-image:radial-gradient(ellipse at 30% 20%,rgba(0,229,255,.04) 0%,transparent 50%);overflow:hidden;position:relative}
 @media(max-width:768px){
-  .ct-canvas-area{padding-bottom:calc(62px + env(safe-area-inset-bottom,12px))}
+  .ct-canvas-area{padding-bottom:calc(62px + var(--vc-seguro-abajo,env(safe-area-inset-bottom,12px)))}
   .ct-root{padding-bottom:0}
 }
 .ct-canvas{border-radius:3px;cursor:crosshair;display:block;box-shadow:0 0 40px rgba(0,0,0,0.5)}
@@ -177,7 +181,7 @@ const CSS = `
 .ct-save-btn{padding:7px 18px;border:none;border-radius:7px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0}
 .ct-input{padding:7px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:'Syne',sans-serif;font-size:.85rem;outline:none}
 .ct-status{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-left:auto;white-space:nowrap}
-.ct-mob-bottom-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(14,15,20,.98);border-top:1px solid #2e3245;z-index:9000;display:flex;align-items:flex-start;justify-content:space-around;padding:6px 4px env(safe-area-inset-bottom,12px);min-height:62px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.ct-mob-bottom-bar{position:fixed;bottom:var(--vc-barra-abajo,0px);left:0;right:0;background:rgba(14,15,20,.98);border-top:1px solid #2e3245;z-index:9000;display:flex;align-items:flex-start;justify-content:space-around;padding:6px 4px var(--vc-seguro-abajo,env(safe-area-inset-bottom,12px));min-height:62px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 .ct-mob-tab{flex:1;height:52px;border:none;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.5px;cursor:pointer;border-radius:10px;transition:all .15s;padding:0 2px}
 .ct-mob-tab .tab-icon{font-size:1.35rem;line-height:1}
 .ct-mob-tab:hover{background:rgba(255,255,255,.04);color:var(--text)}
@@ -185,7 +189,7 @@ const CSS = `
 .ct-mob-tab.on .tab-icon{filter:drop-shadow(0 0 6px rgba(0,255,136,.5))}
 .ct-mob-tab.act{color:var(--accentb)}
 .ct-mob-sep{width:1px;height:32px;background:var(--border);flex-shrink:0;margin:0 2px}
-.ct-mob-sheet{position:fixed;bottom:calc(62px + env(safe-area-inset-bottom,12px));left:0;right:0;background:rgba(16,17,24,.99);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:8999;padding:0 14px 20px;max-height:55vh;overflow-y:auto;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 -12px 40px rgba(0,0,0,.7);animation:slideUp .2s ease-out}
+.ct-mob-sheet{position:fixed;bottom:calc(var(--vc-barra-abajo,0px) + 62px + var(--vc-seguro-abajo,env(safe-area-inset-bottom,12px)));left:0;right:0;background:rgba(16,17,24,.99);border-top:1px solid var(--border2);border-radius:18px 18px 0 0;z-index:8999;padding:0 14px 20px;max-height:55vh;overflow-y:auto;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 -12px 40px rgba(0,0,0,.7);animation:slideUp .2s ease-out}
 .ct-mob-sheet::-webkit-scrollbar{width:3px}.ct-mob-sheet::-webkit-scrollbar-thumb{background:var(--border2)}
 .ct-mob-sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 14px;flex-shrink:0}
 .ct-mob-sheet-title{font-size:9px;font-weight:700;letter-spacing:1.8px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}

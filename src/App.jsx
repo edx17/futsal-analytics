@@ -143,6 +143,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
+      <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
       <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
       <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
       <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
@@ -218,10 +219,32 @@ function AppLayout() {
     sistema: false
   });
 
-// Minimiza la barra lateral al entrar al dashboard, para que el resumen luzca mejor.
+/* LA BARRA DE LA APP
+   Se ve en todas las pantallas del staff menos en la toma de datos en vivo,
+   que va a pantalla completa (ver isTomaDatos, más abajo). En la compu, en
+   el Inicio aparece desplegada y en cualquier otra pantalla, achicada a
+   íconos al entrar (después cada uno la abre o la cierra).
+
+   HERRAMIENTAS: el análisis offline y el creador táctico ocupan todo el alto
+   del área de trabajo, sin el margen de las demás pantallas. */
+const RUTAS_HERRAMIENTA = ['/analisis-offline', '/creador-tareas'];
+const esHerramienta = RUTAS_HERRAMIENTA.includes(location.pathname);
+
 useEffect(() => {
-  if (!esMovil && location.pathname === '/inicio') setSidebarAbierta(false);
+  if (!esMovil) setSidebarAbierta(location.pathname === '/inicio');
+// eslint-disable-next-line react-hooks/exhaustive-deps
 }, [location.pathname, esMovil]);
+
+/* Dónde están las barras, para las pantallas que se dibujan con
+   position:fixed (el creador táctico): así quedan al lado de la barra
+   lateral en la compu y arriba de la barra de abajo en el celular. */
+useEffect(() => {
+  const raiz = document.documentElement.style;
+  raiz.setProperty('--vc-barra', esMovil ? '0px' : (sidebarAbierta ? '250px' : '70px'));
+  raiz.setProperty('--vc-barra-abajo', esMovil ? 'calc(70px + env(safe-area-inset-bottom, 0px))' : '0px');
+  // Con la barra de abajo, el borde seguro del iPhone ya lo cubre ella.
+  raiz.setProperty('--vc-seguro-abajo', esMovil ? '6px' : 'env(safe-area-inset-bottom, 12px)');
+}, [esMovil, sidebarAbierta]);
 
   useEffect(() => {
     if (esMovil) {
@@ -287,7 +310,8 @@ useEffect(() => {
   const isLanding = location.pathname === '/'; 
   const isLogin = location.pathname === '/login';
   const isRegistro = location.pathname === '/registro'; 
-  const isTomaDatos = location.pathname === '/toma-datos' || location.pathname === '/analisis-offline'; 
+  // La única pantalla del staff sin la barra de la app: la toma de datos en vivo.
+  const isTomaDatos = location.pathname === '/toma-datos';
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
@@ -316,7 +340,6 @@ useEffect(() => {
             <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
             <Route path="/kiosco" element={<LoginKiosco />} />
             <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
-            <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
           </Routes>
         </Suspense>
         </LimiteDeError>
@@ -566,7 +589,7 @@ useEffect(() => {
       )}
 
       {/* ÁREA PRINCIPAL DE CONTENIDO */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '0px 0px 85px 0px' : '40px', position: 'relative' }}>
+      <main style={{ flex: 1, overflowY: esHerramienta && !esMovil ? 'hidden' : 'auto', padding: esHerramienta && !esMovil ? 0 : (esMovil ? '0px 0px 85px 0px' : '40px'), position: 'relative' }}>
         <div style={{ padding: esMovil ? '20px 15px' : '0' }}>
           <LimiteDeError>
         <Suspense fallback={<CargandoPantalla />}>
