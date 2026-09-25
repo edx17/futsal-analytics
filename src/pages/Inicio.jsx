@@ -111,7 +111,7 @@ const MODULOS = [
   { id: 'm_triage',        titulo: 'Requiere tu atención', span: 2, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_proximo',       titulo: 'Próximo partido',      span: 2, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_agenda',        titulo: 'Los próximos 7 días', span: 2, roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'm_plata',         titulo: 'La plata del mes',     span: 2, roles: ['superuser', 'manager', 'admin'] },
+  { id: 'm_plata',         titulo: 'La plata del mes',     span: 2, roles: ['superuser', 'manager', 'admin', 'tesorero'] },
   { id: 'm_cumplimiento',  titulo: 'Qué falta cargar',     span: 1, roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'm_wellness_pend', titulo: 'Wellness sin cargar',  span: 1, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_carga',         titulo: 'Carga del plantel',    span: 1, roles: ['superuser', 'manager', 'ct'] },
@@ -120,7 +120,7 @@ const MODULOS = [
   { id: 'm_pulso',         titulo: 'Pulso del plantel',    span: 1, roles: ['superuser', 'manager', 'ct'] },
   { id: 'm_ultimo',        titulo: 'Último resultado',     span: 1, roles: ['superuser', 'manager', 'ct', 'admin'] },
   { id: 'm_novedades',     titulo: 'Tablón',               span: 2, roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { id: 'm_accesos',       titulo: 'Accesos rápidos',      span: 3, roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { id: 'm_accesos',       titulo: 'Accesos rápidos',      span: 3, roles: ['superuser', 'manager', 'ct', 'admin', 'tesorero'] },
   { id: 'm_jug_wellness',  titulo: 'Mi wellness',          span: 2, roles: ['jugador'] },
   { id: 'm_jug_perfil',    titulo: 'Mi perfil',            span: 1, roles: ['jugador'] },
 ];
@@ -139,6 +139,7 @@ const DEFAULTS = {
   manager:   ['m_triage', 'm_agenda', 'm_proximo', 'm_plata', 'm_cumplimiento', 'm_accesos', 'm_estado', 'm_forma', 'm_ultimo', 'm_novedades'],
   superuser: ['m_triage', 'm_agenda', 'm_plata', 'm_cumplimiento', 'm_accesos', 'm_estado', 'm_forma', 'm_protagonistas', 'm_ultimo', 'm_novedades'],
   admin:     ['m_plata', 'm_agenda', 'm_cumplimiento', 'm_accesos', 'm_estado', 'm_ultimo', 'm_novedades'],
+  tesorero:  ['m_plata', 'm_accesos'],
   jugador:   ['m_jug_wellness', 'm_jug_perfil'],
 };
 
@@ -150,9 +151,9 @@ const LINKS = [
   { titulo: 'Disciplina',    icon: '🟨', ruta: '/disciplina',       color: '#facc15', roles: ['superuser', 'manager', 'ct'] },
   { titulo: 'Plantel',       icon: '👥', ruta: '/plantel',          color: '#0ea5e9', roles: ['superuser', 'manager', 'ct', 'admin'] },
   { titulo: 'Transferencias', icon: '💸', ruta: '/transferencias', color: '#f43f5e', roles: ['superuser', 'manager', 'admin', 'ct'] },
-  { titulo: 'Tesorería',     icon: '💰', ruta: '/tesoreria',        color: '#eab308', roles: ['superuser', 'manager', 'admin'] },
+  { titulo: 'Tesorería',     icon: '💰', ruta: '/tesoreria',        color: '#eab308', roles: ['superuser', 'manager', 'admin', 'tesorero'] },
   { titulo: 'Torneos',       icon: '🏆', ruta: '/torneos',          color: '#fbbf24', roles: ['superuser', 'manager', 'admin'] },
-  { titulo: 'Sponsors',      icon: '🤝', ruta: '/sponsors',         color: '#0284c7', roles: ['superuser', 'manager', 'admin'] },
+  { titulo: 'Sponsors',      icon: '🤝', ruta: '/sponsors',         color: '#0284c7', roles: ['superuser', 'manager', 'admin', 'tesorero'] },
   { titulo: 'Usuarios',      icon: '👑', ruta: '/usuarios',         color: '#c084fc', roles: ['superuser'] },
 ];
 
@@ -314,7 +315,7 @@ export default function Inicio() {
   const esManager = rol === 'manager';
   const esCT = rol === 'ct';
   /* Quién ve la caja del club. Decide el módulo y también si se pide o no. */
-  const verPlata = ['superuser', 'manager', 'admin'].includes(rol);
+  const verPlata = ['superuser', 'manager', 'admin', 'tesorero'].includes(rol);
 
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 

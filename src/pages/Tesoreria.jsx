@@ -10,6 +10,10 @@ import {
   PieChart, Pie
 } from 'recharts';
 import { linkWhatsApp } from '../utils/telefono';
+import FichaEmpleado from '../components/FichaEmpleado';
+import {
+  manejaPlata, hoyLocal, pendientesPorAntiguedad, saldoDe, validarCobro, deudaSinCobro, liquidacionDelMes, faltaColumna, FICHA_VACIA, fichaDe,
+} from '../analytics/tesoreria';
 
 function Tesoreria() {
   const { perfil } = useAuth();
@@ -19,8 +23,7 @@ function Tesoreria() {
   // ==========================================
   // 1. SEGURIDAD Y ACCESO
   // ==========================================
-  const rol = perfil?.rol?.toLowerCase() || '';
-  const accesoPermitido = ['admin', 'tesorero', 'superuser'].includes(rol);
+  const accesoPermitido = manejaPlata(perfil?.rol);
 
   // ==========================================
   // 2. MÁQUINA DEL TIEMPO (PERIODO GLOBAL)
@@ -37,6 +40,7 @@ function Tesoreria() {
   // Estados UI
   const [vista, setVista] = useState('cobros'); 
   const [categoria, setCategoria] = useState('Primera');
+  const [categorias, setCategorias] = useState([]);
   const [cargando, setCargando] = useState(false);
 
   // Datos
@@ -56,7 +60,8 @@ function Tesoreria() {
   const [metodoPago, setMetodoPago] = useState('Efectivo');
 
   // 🚀 NUEVO MODAL: Gestión de Detalles de Deuda (Para poder eliminar)
-  const [modalDetalleDeuda, setModalDetalleDeuda] = useState({ visible: false, jugador: null, deudas: [] });
+  const [modalDetalleDeuda, setModalDetalleDeuda] = useState({ visible: false, jugador: null, deudas: [], pagos: [], todas: [] });
+  const cerrarDetalle = () => setModalDetalleDeuda({ visible: false, jugador: null, deudas: [], pagos: [], todas: [] });
 
   const [modalGenerar, setModalGenerar] = useState(false);
   const [formCuota, setFormCuota] = useState({
@@ -65,8 +70,8 @@ function Tesoreria() {
     mes: periodo
   });
 
-  const [modalEmpleado, setModalEmpleado] = useState(false);
-  const [formEmpleado, setFormEmpleado] = useState({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' });
+  // Ficha de empleado abierta (null = cerrada). La misma que usa Empleados.
+  const [ficha, setFicha] = useState(null);
 
   const [modalSueldo, setModalSueldo] = useState({ visible: false, empleado: null });
   const [formSueldo, setFormSueldo] = useState({ monto: '', cajaOrigen: 'Efectivo', descripcion: '' });
@@ -87,6 +92,17 @@ function Tesoreria() {
     }
   }, [categoria, vista, clubId, periodo, accesoPermitido]);
 
+  // Las categorías salen de los jugadores del club, no de una lista fija.
+  useEffect(() => {
+    if (!clubId || !accesoPermitido) return;
+    supabase.from('jugadores').select('categoria').eq('club_id', clubId).then(({ data }) => {
+      const lista = [...new Set((data || []).map((j) => j.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+      setCategorias(lista);
+      if (lista.length && !lista.includes(categoria)) setCategoria(lista.includes('Primera') ? 'Primera' : lista[0]);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clubId, accesoPermitido]);
+
   useEffect(() => {
     setFormCuota(prev => ({
       ...prev,
@@ -102,7 +118,7 @@ function Tesoreria() {
   const eliminarDeuda = async (deuda) => {
     // 🛡️ REGLA DE INTEGRIDAD: No eliminar si hay pagos parciales asociados.
     if (Number(deuda.monto_pagado) > 0) {
-      return showToast("La deuda tiene pagos parciales. No se puede eliminar directamente.", "error");
+      return showToast("Esta cuota tiene cobros. Anulalos primero (abajo, en Cobros registrados).", "error");
     }
 
     if (!window.confirm(`¿Confirmás la eliminación del concepto "${deuda.concepto}"?\n\nEsta acción no se puede deshacer y borrará la obligación de pago del jugador.`)) return;
@@ -115,10 +131,7 @@ function Tesoreria() {
       showToast("Deuda eliminada del sistema.", "success");
       
       // Actualizamos el modal local para que desaparezca la fila
-      setModalDetalleDeuda(prev => ({
-        ...prev,
-        deudas: prev.deudas.filter(d => d.id !== deuda.id)
-      }));
+      await abrirDetalle(modalDetalleDeuda.jugador);
       
       cargarTableroCobros();
     } catch (err) {
@@ -199,8 +212,8 @@ function Tesoreria() {
       const startDateYTD = new Date(selYear, 0, 1); 
       const fetchStartDate = startDateGrafico < startDateYTD ? startDateGrafico : startDateYTD;
       const endDate = new Date(selYear, selMonthIndex + 1, 0); 
-      const startStr = fetchStartDate.toISOString().split('T')[0];
-      const endStr = endDate.toISOString().split('T')[0];
+      const startStr = hoyLocal(fetchStartDate);
+      const endStr = hoyLocal(endDate);
 
       const { data: pagos } = await supabase.from('tesoreria_pagos').select('monto, fecha_pago, metodo_pago').eq('club_id', clubId).gte('fecha_pago', startStr).lte('fecha_pago', endStr);
       const { data: pagosSponsors } = await supabase.from('sponsors_pagos').select('monto, fecha_pago').eq('club_id', clubId).gte('fecha_pago', startStr).lte('fecha_pago', endStr);
@@ -319,7 +332,7 @@ function Tesoreria() {
     const descDetallada = formGasto.descripcion ? `${formGasto.descripcion} (Vía ${formGasto.cajaOrigen})` : `${formGasto.categoria} (Vía ${formGasto.cajaOrigen})`;
 
     try {
-      const { error } = await supabase.from('tesoreria_egresos').insert([{ club_id: clubId, categoria: formGasto.categoria, monto: montoNum, fecha: new Date().toISOString().split('T')[0], responsable: 'Tesorero/Admin', descripcion: descDetallada }]);
+      const { error } = await supabase.from('tesoreria_egresos').insert([{ club_id: clubId, categoria: formGasto.categoria, monto: montoNum, fecha: hoyLocal(), responsable: 'Tesorero/Admin', descripcion: descDetallada }]);
       if (error) throw error;
       showToast("Gasto registrado.", "success");
       setModalGasto(false); setFormGasto({ categoria: 'Alquiler Cancha', monto: '', descripcion: '', cajaOrigen: 'Efectivo' }); cargarEgresosYBalance();
@@ -331,7 +344,7 @@ function Tesoreria() {
     if (!montoNum || montoNum <= 0) return showToast("Ingresá un monto válido.", "error");
     setCargando(true);
     try {
-      const { error } = await supabase.from('tesoreria_ingresos_extra').insert([{ club_id: clubId, categoria: formIngresoExtra.categoria, monto: montoNum, fecha: new Date().toISOString().split('T')[0], descripcion: formIngresoExtra.descripcion || formIngresoExtra.categoria, metodo_pago: formIngresoExtra.metodo_pago }]);
+      const { error } = await supabase.from('tesoreria_ingresos_extra').insert([{ club_id: clubId, categoria: formIngresoExtra.categoria, monto: montoNum, fecha: hoyLocal(), descripcion: formIngresoExtra.descripcion || formIngresoExtra.categoria, metodo_pago: formIngresoExtra.metodo_pago }]);
       if (error) throw error;
       showToast("Ingreso extra registrado.", "success");
       setModalIngresoExtra(false); setFormIngresoExtra({ categoria: 'Bufet / Cantina', monto: '', descripcion: '', metodo_pago: 'Efectivo' }); cargarEgresosYBalance();
@@ -343,33 +356,31 @@ function Tesoreria() {
     try {
       const { data: emp } = await supabase.from('tesoreria_empleados').select('*').eq('club_id', clubId).eq('estado', 'Activo').order('rol');
       const primerDia = `${periodo}-01`; const ultimoDiaNum = new Date(añoSeleccionado, Number(mesSeleccionado), 0).getDate(); const ultimoDia = `${periodo}-${ultimoDiaNum}`;
-      const { data: pagosMes } = await supabase.from('tesoreria_egresos').select('responsable, fecha, monto, categoria, descripcion').eq('club_id', clubId).gte('fecha', primerDia).lte('fecha', ultimoDia);
+      // select('*') y no una lista: así funciona con o sin la columna empleado_id.
+      const { data: pagosMes } = await supabase.from('tesoreria_egresos').select('*').eq('club_id', clubId).gte('fecha', primerDia).lte('fecha', ultimoDia);
+      const { data: jubs } = await supabase.from('jugadores').select('id, nombre, apellido, activo').eq('club_id', clubId).order('apellido');
 
-      const empleadosConEstado = (emp || []).map(e => {
-        const nombreEmpleado = e.nombre_completo?.trim().toLowerCase();
-        const pagoSueldo = (pagosMes || []).find(p => (p.categoria === 'Sueldos y Viáticos' || p.categoria === 'Sueldos') && p.responsable?.trim().toLowerCase() === nombreEmpleado && !p.descripcion?.toLowerCase().includes('comisión'));
-        const bonosMes = (pagosMes || []).filter(p => p.responsable?.trim().toLowerCase() === nombreEmpleado && p.descripcion?.toLowerCase().includes('comisión')).reduce((acc, curr) => acc + Number(curr.monto), 0);
-        return { ...e, pagoEsteMes: pagoSueldo, bonosExtra: bonosMes };
-      });
-
-      setEmpleados(empleadosConEstado);
-      const { data: jubs } = await supabase.from('jugadores').select('id, nombre, apellido').eq('club_id', clubId).order('apellido');
-      setJugadoresInfo(jubs || []);
+      // El pago se reconoce por empleado_id; los viejos, por nombre (en cualquier orden).
+      setEmpleados((emp || []).map(e => {
+        const jugador = e.jugador_id ? (jubs || []).find(j => String(j.id) === String(e.jugador_id)) : null;
+        return { ...e, ...liquidacionDelMes(e, pagosMes || [], jugador) };
+      }));
+      setJugadoresInfo((jubs || []).filter(j => j.activo !== false));
     } catch { showToast("Error al cargar nómina.", "error"); } finally { setCargando(false); }
   };
 
-  const guardarEmpleado = async () => {
-    if (!formEmpleado.nombre_completo || !formEmpleado.rol || !formEmpleado.sueldo_base) return showToast("Completá todos los campos.", "error");
-    setCargando(true);
-    try {
-      const datosParaBD = { club_id: clubId, nombre_completo: formEmpleado.nombre_completo, rol: formEmpleado.rol, sueldo_base: parseFloat(formEmpleado.sueldo_base), jugador_id: formEmpleado.jugador_id ? Number(formEmpleado.jugador_id) : null };
-      if (formEmpleado.id) await supabase.from('tesoreria_empleados').update(datosParaBD).eq('id', formEmpleado.id); else await supabase.from('tesoreria_empleados').insert([datosParaBD]);
-      showToast(formEmpleado.id ? "Empleado actualizado." : "Empleado registrado.", "success");
-      setModalEmpleado(false); setFormEmpleado({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' }); cargarEmpleados();
-    } catch { showToast("Error al guardar.", "error"); } finally { setCargando(false); }
-  };
+  const abrirEdicionEmpleado = (emp) => setFicha(fichaDe(emp));
 
-  const abrirEdicionEmpleado = (emp) => { setFormEmpleado({ id: emp.id, nombre_completo: emp.nombre_completo, rol: emp.rol, sueldo_base: emp.sueldo_base, jugador_id: emp.jugador_id || '' }); setModalEmpleado(true); };
+  /* Inserta un egreso atado al empleado. Si la migración de empleado_id
+     todavía no corrió, lo guarda igual sin esa columna. */
+  const insertarEgreso = async (fila) => {
+    const r = await supabase.from('tesoreria_egresos').insert([fila]);
+    if (r.error && faltaColumna(r.error) && 'empleado_id' in fila) {
+      const { empleado_id: _sinColumna, ...resto } = fila;
+      return supabase.from('tesoreria_egresos').insert([resto]);
+    }
+    return r;
+  };
 
   const registrarPagoSueldo = async () => {
     const pagoNum = parseFloat(formSueldo.monto);
@@ -379,7 +390,8 @@ function Tesoreria() {
     const descDetallada = `${descBase} (Vía ${formSueldo.cajaOrigen})`;
 
     try {
-      const { error } = await supabase.from('tesoreria_egresos').insert([{ club_id: clubId, categoria: 'Sueldos y Viáticos', monto: pagoNum, fecha: new Date().toISOString().split('T')[0], responsable: modalSueldo.empleado.nombre_completo, descripcion: descDetallada }]);
+      const emp = modalSueldo.empleado;
+      const { error } = await insertarEgreso({ club_id: clubId, categoria: 'Sueldos y Viáticos', monto: pagoNum, fecha: hoyLocal(), responsable: emp.nombre_completo, empleado_id: emp.id, descripcion: descDetallada });
       if (error) throw error;
       showToast(`Liquidación registrada.`, "success");
       setModalSueldo({ visible: false, empleado: null }); setFormSueldo({ monto: '', cajaOrigen: 'Efectivo', descripcion: '' }); cargarEmpleados();
@@ -389,7 +401,7 @@ function Tesoreria() {
   const cargarTableroCobros = async () => {
     setCargando(true);
     try {
-      const { data: jubs, error: jError } = await supabase.from('jugadores').select('id, nombre, apellido, categoria, contacto').eq('club_id', clubId).eq('categoria', categoria).order('apellido');
+      const { data: jubs, error: jError } = await supabase.from('jugadores').select('id, nombre, apellido, categoria, contacto, activo').eq('club_id', clubId).eq('categoria', categoria).order('apellido');
       if (jError || !jubs || jubs.length === 0) { setJugadoresInfo([]); return; }
       const idsJugadores = jubs.map(j => { const n = Number(j.id); return Number.isNaN(n) ? String(j.id) : n; }).filter(id => id !== null && id !== undefined);
 
@@ -403,7 +415,7 @@ function Tesoreria() {
       }
 
       const hoyDate = new Date(); const hace30Dias = new Date(); hace30Dias.setDate(hoyDate.getDate() - 30);
-      const { data: asist } = await supabase.from('asistencias').select('jugador_id, estado, fecha').eq('club_id', clubId).gte('fecha', hace30Dias.toISOString().split('T')[0]);
+      const { data: asist } = await supabase.from('asistencias').select('jugador_id, estado, fecha').eq('club_id', clubId).gte('fecha', hoyLocal(hace30Dias));
 
       const infoCruzada = (jubs || []).map(j => {
         const misAsistencias = (asist || []).filter(a => String(a.jugador_id) === String(j.id));
@@ -416,9 +428,10 @@ function Tesoreria() {
         const esBecado = misDeudas.some(d => String(d.mes_correspondiente) === periodo && String(d.estado || '').toLowerCase() === 'beca');
         const pagoEsteMes = misDeudas.find(d => String(d.mes_correspondiente) === periodo && String(d.estado || '').toLowerCase() === 'pagada');
         
-        return { ...j, porcAsistencia, sesionesValidas: sesionesValidas.length, misDeudas, deudaTotal, esBecado, pagoEsteMes };
+        return { ...j, porcAsistencia, sesionesValidas: sesionesValidas.length, misDeudas, deudaTotal, esBecado, pagoEsteMes, pendientes: pendientesPorAntiguedad(misDeudas) };
       });
-      setJugadoresInfo(infoCruzada);
+      // Los dados de baja sólo aparecen si todavía deben algo.
+      setJugadoresInfo(infoCruzada.filter(j => j.activo !== false || j.deudaTotal > 0));
     } catch { showToast("Error al cargar tablero.", "error"); } finally { setCargando(false); }
   };
 
@@ -429,7 +442,7 @@ function Tesoreria() {
     try {
       const { data: deudasExistentes } = await supabase.from('tesoreria_deudas').select('jugador_id').eq('club_id', clubId).eq('mes_correspondiente', formCuota.mes).eq('concepto', formCuota.concepto);
       const idsConDeuda = new Set((deudasExistentes || []).map(d => String(d.jugador_id)));
-      const jugadoresSinCuota = jugadoresInfo.filter(j => !idsConDeuda.has(String(j.id)));
+      const jugadoresSinCuota = jugadoresInfo.filter(j => j.activo !== false && !idsConDeuda.has(String(j.id)));
       if (jugadoresSinCuota.length === 0) { showToast("Todos ya tienen esta cuota generada.", "info"); setModalGenerar(false); setCargando(false); return; }
       const nuevasDeudas = jugadoresSinCuota.map(j => ({ club_id: clubId, jugador_id: j.id, concepto: formCuota.concepto, monto_original: montoNum, fecha_vencimiento: formCuota.vencimiento, mes_correspondiente: formCuota.mes, estado: 'Pendiente' }));
       await supabase.from('tesoreria_deudas').insert(nuevasDeudas);
@@ -438,16 +451,50 @@ function Tesoreria() {
   };
 
   const procesarPago = async () => {
-    const pagoNum = parseFloat(montoPagar);
-    if (!pagoNum || pagoNum <= 0) return showToast("Ingresá un monto válido.", "error");
+    const v = validarCobro(modalPago.deuda, montoPagar);
+    if (!v.ok) return showToast(v.error, "error");
     setCargando(true);
     try {
-      const nuevoPagado = Number(modalPago.deuda.monto_pagado) + pagoNum;
-      const nuevoEstado = nuevoPagado >= modalPago.deuda.monto_original ? 'Pagada' : 'Parcial';
-      await supabase.from('tesoreria_pagos').insert([{ club_id: clubId, deuda_id: modalPago.deuda.id, jugador_id: modalPago.jugador.id, monto: pagoNum, metodo_pago: metodoPago, fecha_pago: new Date().toISOString().split('T')[0] }]);
-      await supabase.from('tesoreria_deudas').update({ monto_pagado: nuevoPagado, estado: nuevoEstado }).eq('id', modalPago.deuda.id);
+      const { error: e1 } = await supabase.from('tesoreria_pagos').insert([{ club_id: clubId, deuda_id: modalPago.deuda.id, jugador_id: modalPago.jugador.id, monto: v.monto, metodo_pago: metodoPago, fecha_pago: hoyLocal() }]);
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from('tesoreria_deudas').update({ monto_pagado: v.pagado, estado: v.estado }).eq('id', modalPago.deuda.id);
+      if (e2) throw e2;
       showToast(`Pago registrado con éxito.`, "success"); setModalPago({ visible: false, deuda: null, jugador: null }); setMontoPagar(''); setMetodoPago('Efectivo'); cargarTableroCobros();
     } catch { showToast("Error al procesar pago.", "error"); } finally { setCargando(false); }
+  };
+
+  /* Detalle del jugador: sus conceptos pendientes y los cobros registrados,
+     con la opción de anular un cobro cargado por error. */
+  const abrirDetalle = async (jugador) => {
+    const [{ data: deudas }, { data: pagos }] = await Promise.all([
+      supabase.from('tesoreria_deudas').select('*').eq('club_id', clubId).eq('jugador_id', jugador.id),
+      supabase.from('tesoreria_pagos').select('*').eq('club_id', clubId).eq('jugador_id', jugador.id).order('fecha_pago', { ascending: false }).limit(50),
+    ]);
+    setModalDetalleDeuda({ visible: true, jugador, deudas: pendientesPorAntiguedad(deudas || []), pagos: pagos || [], todas: deudas || [] });
+  };
+
+  const anularCobro = async (pago) => {
+    const concepto = modalDetalleDeuda.todas.find(d => String(d.id) === String(pago.deuda_id))?.concepto || 'la cuota';
+    if (!window.confirm(`¿Anular el cobro de $${Number(pago.monto).toLocaleString()} del ${pago.fecha_pago} (${concepto})?\n\nEl importe vuelve a figurar como deuda y sale de la caja.`)) return;
+    setCargando(true);
+    try {
+      const { error: e1 } = await supabase.from('tesoreria_pagos').delete().eq('id', pago.id);
+      if (e1) throw e1;
+      if (pago.deuda_id != null) {
+        // La deuda se lee de nuevo: puede haber cambiado desde que se abrió el detalle.
+        const { data: deuda } = await supabase.from('tesoreria_deudas').select('id, monto_pagado, estado').eq('id', pago.deuda_id).maybeSingle();
+        if (deuda && deuda.estado !== 'Beca') {
+          const { error: e2 } = await supabase.from('tesoreria_deudas').update(deudaSinCobro(deuda, pago.monto)).eq('id', deuda.id);
+          if (e2) throw e2;
+        }
+      }
+      showToast("Cobro anulado.", "success");
+      await abrirDetalle(modalDetalleDeuda.jugador);
+      cargarTableroCobros();
+    } catch (err) {
+      console.error(err);
+      showToast("No se pudo anular el cobro.", "error");
+    } finally { setCargando(false); }
   };
 
   const otorgarBeca = async (deudaId) => {
@@ -473,7 +520,7 @@ function Tesoreria() {
     { k: 'asistencia', t: 'ASISTENCIA', g: 'part', r: j => j.porcAsistencia !== null ? (
       <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', background: j.porcAsistencia < 50 ? '#7f1d1d' : 'transparent', color: j.porcAsistencia < 50 ? '#fff' : j.porcAsistencia < 75 ? '#f59e0b' : '#00ff88' }}>{j.porcAsistencia}%</span>
     ) : <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>Muestra insuf.</span> },
-    { k: 'deuda', t: 'DEUDA', g: 'eco', r: j => j.esBecado ? (
+    { k: 'deuda', t: 'DEUDA', g: 'eco', r: j => (j.esBecado && !(j.deudaTotal > 0)) ? (
       <span style={{ background: '#3b82f6', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO</span>
     ) : j.deudaTotal > 0 ? (
       <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.1rem' }}>${j.deudaTotal.toLocaleString()}</span>
@@ -483,13 +530,15 @@ function Tesoreria() {
       <span style={{ color: 'var(--text-dim)', fontWeight: 'bold', fontSize: '0.8rem' }}>AL DÍA</span>
     ) },
     { k: 'acciones', t: 'ACCIONES', g: 'acc', r: j => {
-      const misDeudasSeguras = j.misDeudas || [];
-      const pendientes = misDeudasSeguras.filter(d => ['Pendiente', 'Parcial'].includes(d.estado));
-      const deudaACobrar = pendientes[0];
-      if (!(j.deudaTotal > 0) || j.esBecado) return <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>—</span>;
+      // La más vieja primero: es la que se cobra o se beca.
+      const deudaACobrar = (j.pendientes || [])[0];
+      if (!(j.misDeudas || []).length) return <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>—</span>;
+      if (!(j.deudaTotal > 0)) return (
+        <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>🧾 COBROS</button>
+      );
       return (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button onClick={() => setModalDetalleDeuda({ visible: true, jugador: j, deudas: pendientes })} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>📋 DETALLE</button>
+          <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>📋 DETALLE</button>
           <button onClick={() => enviarWhatsApp(j, j.deudaTotal)} style={{ background: 'transparent', color: '#25D366', border: '1px solid #25D366', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💬 AVISAR</button>
           {deudaACobrar && (<>
             <button onClick={() => otorgarBeca(deudaACobrar.id)} style={{ background: 'transparent', color: '#3b82f6', border: '1px solid #3b82f6', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>🎓 BECAR</button>
@@ -579,7 +628,7 @@ function Tesoreria() {
         </div>
       </div>
 
-      {cargando && !modalSueldo.visible && !modalEmpleado && !modalGasto && !modalIngresoExtra && !modalGenerar && !modalPago.visible && !modalConfig && !modalDetalleDeuda.visible ? (
+      {cargando && !modalSueldo.visible && !ficha && !modalGasto && !modalIngresoExtra && !modalGenerar && !modalPago.visible && !modalConfig && !modalDetalleDeuda.visible ? (
         <div style={{ textAlign: 'center', padding: '50px', color: '#3b82f6' }}>Consultando registros... ⏳</div>
       ) : (
         <>
@@ -591,7 +640,7 @@ function Tesoreria() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <select value={categoria} onChange={(e) => setCategoria(e.target.value)} style={selectStyle}>
-                    <option value="Primera">Primera</option><option value="Tercera">Tercera</option><option value="Cuarta">Cuarta</option>
+                    {(categorias.length ? categorias : [categoria]).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                   <h3 style={{ margin: 0 }}>Estado de Cuenta</h3>
                 </div>
@@ -609,7 +658,7 @@ function Tesoreria() {
                 titulo="ESTADO DE CUENTA"
                 vacio="No hay jugadores en esta categoría."
                 getId={(j) => j.id}
-                getTitulo={(j) => `${j.apellido}, ${j.nombre}`}
+                getTitulo={(j) => `${j.apellido}, ${j.nombre}${j.activo === false ? ' (BAJA)' : ''}`}
               >
               <div className="table-wrapper">
                 <table style={{ width: '100%', textAlign: 'left' }}>
@@ -623,13 +672,12 @@ function Tesoreria() {
                   </thead>
                   <tbody>
                     {jugadoresInfo.map(j => {
-                      const misDeudasSeguras = j.misDeudas || [];
-                      const pendientes = misDeudasSeguras.filter(d => ['Pendiente', 'Parcial'].includes(d.estado));
+                      const pendientes = j.pendientes || [];
                       const deudaACobrar = pendientes[0];
 
                       return (
                         <tr key={j.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '15px 12px', fontWeight: 'bold' }}>{j.apellido}, {j.nombre}</td>
+                          <td style={{ padding: '15px 12px', fontWeight: 'bold' }}>{j.apellido}, {j.nombre}{j.activo === false && <span style={{ marginLeft: '6px', fontSize: '0.65rem', color: '#ef4444' }}>(BAJA)</span>}</td>
                           <td style={{ textAlign: 'center' }}>
                             {j.porcAsistencia !== null ? (
                               <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', background: j.porcAsistencia < 50 ? '#7f1d1d' : 'transparent', color: j.porcAsistencia < 50 ? '#fff' : j.porcAsistencia < 75 ? '#f59e0b' : '#00ff88' }}>
@@ -640,7 +688,7 @@ function Tesoreria() {
                             )}
                           </td>
                           <td style={{ padding: '12px' }}>
-                            {j.esBecado ? (
+                            {(j.esBecado && !(j.deudaTotal > 0)) ? (
                               <span style={{ background: '#3b82f6', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO / EXENTO</span>
                             ) : j.deudaTotal > 0 ? (
                               <div>
@@ -656,9 +704,14 @@ function Tesoreria() {
                             )}
                           </td>
                           <td style={{ textAlign: 'right', padding: '12px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                            {j.deudaTotal > 0 && !j.esBecado && (
+                            {!(j.deudaTotal > 0) && (j.misDeudas || []).length > 0 && (
+                              <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }} title="Ver y anular cobros">
+                                🧾 COBROS
+                              </button>
+                            )}
+                            {j.deudaTotal > 0 && (
                               <>
-                                <button onClick={() => setModalDetalleDeuda({ visible: true, jugador: j, deudas: pendientes })} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }} title="Gestionar / Eliminar Conceptos">
+                                <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }} title="Gestionar / Eliminar Conceptos">
                                   📋 DETALLE
                                 </button>
                                 <button onClick={() => enviarWhatsApp(j, j.deudaTotal)} style={{ background: 'transparent', color: '#25D366', border: '1px solid #25D366', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }} title="Reclamar por WhatsApp">
@@ -695,7 +748,7 @@ function Tesoreria() {
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                 <h3 style={{ margin: 0, color: '#f59e0b' }}>Liquidación Staff - {nombreMesVencido}</h3>
-                <button onClick={() => { setFormEmpleado({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' }); setModalEmpleado(true); }} style={{ background: '#f59e0b', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                <button onClick={() => { setFicha({ ...FICHA_VACIA }); }} style={{ background: '#f59e0b', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   + NUEVO EMPLEADO
                 </button>
               </div>
@@ -774,7 +827,7 @@ function Tesoreria() {
             <div className="bento-card" style={{ borderTop: '3px solid #a855f7' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                 <h3 style={{ margin: 0, color: '#a855f7' }}>Viáticos de Jugadores - {nombreMesVencido}</h3>
-                <button onClick={() => { setFormEmpleado({ id: null, nombre_completo: '', rol: '', sueldo_base: '', jugador_id: '' }); setModalEmpleado(true); }} style={{ background: '#a855f7', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                <button onClick={() => { setFicha({ ...FICHA_VACIA }); }} style={{ background: '#a855f7', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
                   + ASIGNAR VIÁTICO
                 </button>
               </div>
@@ -1042,10 +1095,10 @@ function Tesoreria() {
       {/* ==================================================== */}
       {modalDetalleDeuda.visible && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div className="bento-card" style={{ width: '450px', border: '1px solid #facc15' }}>
+          <div className="bento-card" style={{ width: '480px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', border: '1px solid #facc15' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <h3 style={{ marginTop: 0, color: '#facc15' }}>Detalle de Obligaciones</h3>
-              <button onClick={() => setModalDetalleDeuda({ visible: false, jugador: null, deudas: [] })} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+              <h3 style={{ marginTop: 0, color: '#facc15' }}>Cuotas y cobros</h3>
+              <button onClick={cerrarDetalle} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
             </div>
             
             <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '20px' }}>
@@ -1054,7 +1107,7 @@ function Tesoreria() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '5px' }}>
               {modalDetalleDeuda.deudas.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No hay deudas pendientes detectadas.</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No debe nada 👌</div>
               ) : (
                 modalDetalleDeuda.deudas.map(d => (
                   <div key={d.id} style={{ background: 'var(--panel)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1071,13 +1124,33 @@ function Tesoreria() {
                         background: 'transparent', border: '1px solid', borderColor: Number(d.monto_pagado) > 0 ? 'var(--border)' : '#ef4444', 
                         color: Number(d.monto_pagado) > 0 ? 'var(--text-dim)' : '#ef4444', padding: '8px', borderRadius: '6px', cursor: Number(d.monto_pagado) > 0 ? 'not-allowed' : 'pointer' 
                       }}
-                      title={Number(d.monto_pagado) > 0 ? 'No se puede borrar porque tiene pagos' : 'Eliminar concepto'}
+                      title={Number(d.monto_pagado) > 0 ? 'Tiene cobros: anulalos primero' : 'Eliminar concepto'}
                     >
                       🗑️
                     </button>
                   </div>
                 ))
               )}
+            </div>
+
+            <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.5px', margin: '20px 0 8px' }}>COBROS REGISTRADOS</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {modalDetalleDeuda.pagos.length === 0 ? (
+                <div style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Todavía no tiene cobros.</div>
+              ) : modalDetalleDeuda.pagos.map(p => {
+                const concepto = modalDetalleDeuda.todas.find(d => String(d.id) === String(p.deuda_id))?.concepto;
+                return (
+                  <div key={p.id} style={{ background: 'var(--panel)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#00ff88' }}>${Number(p.monto).toLocaleString()}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{p.fecha_pago} · {p.metodo_pago || 'Sin método'}{concepto ? ` · ${concepto}` : ''}</div>
+                    </div>
+                    <button onClick={() => anularCobro(p)} disabled={cargando} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem', minHeight: '38px', flexShrink: 0 }}>
+                      ↩ ANULAR
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1139,7 +1212,9 @@ function Tesoreria() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div><label style={lblStyle}>Restante ($)</label><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ef4444' }}>${(modalPago.deuda.monto_original - modalPago.deuda.monto_pagado).toLocaleString()}</div></div>
-              <div><label style={lblStyle}>¿Cuánto paga ahora?</label><input type="number" value={montoPagar} onChange={(e) => setMontoPagar(e.target.value)} style={{ ...inputFormStyle, borderColor: '#00ff88', fontSize: '1.2rem', padding: '15px' }} /></div>
+              <div><label style={lblStyle}>¿Cuánto paga ahora?</label><input type="number" inputMode="decimal" min="0" max={saldoDe(modalPago.deuda)} value={montoPagar} onChange={(e) => setMontoPagar(e.target.value)} style={{ ...inputFormStyle, borderColor: Number(montoPagar) > saldoDe(modalPago.deuda) ? '#ef4444' : '#00ff88', fontSize: '1.2rem', padding: '15px' }} />
+                {Number(montoPagar) > saldoDe(modalPago.deuda) && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '6px', fontWeight: 'bold' }}>Es más de lo que debe esta cuota (${saldoDe(modalPago.deuda).toLocaleString()}).</div>}
+                <button type="button" onClick={() => setMontoPagar(String(saldoDe(modalPago.deuda)))} style={{ marginTop: '6px', background: 'transparent', border: 'none', color: '#00ff88', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', padding: 0 }}>Paga todo</button></div>
               <div>
                 <label style={lblStyle}>Auditoría</label>
                 <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} style={inputFormStyle}>
@@ -1155,29 +1230,16 @@ function Tesoreria() {
         </div>
       )}
 
-      {modalEmpleado && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div className="bento-card" style={{ width: '450px', border: '1px solid #f59e0b' }}>
-            <h3 style={{ marginTop: 0, color: '#f59e0b' }}>{formEmpleado.id ? 'Modificar Empleado' : 'Alta de Personal'}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-              <div style={{ background: 'var(--panel)', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                <label style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 'bold' }}>¿Es jugador?</label>
-                <select value={formEmpleado.jugador_id} onChange={(e) => { const jId = e.target.value; const jSel = jugadoresInfo.find(j => String(j.id) === jId); setFormEmpleado({ ...formEmpleado, jugador_id: jId, nombre_completo: jSel ? `${jSel.nombre} ${jSel.apellido}` : formEmpleado.nombre_completo }); }} style={{ ...inputFormStyle, border: 'none', background: 'transparent', padding: '5px 0' }}>
-                  <option value="">No, es personal externo.</option>{jugadoresInfo.map(j => <option key={j.id} value={j.id}>{j.apellido}, {j.nombre}</option>)}
-                </select>
-              </div>
-              <div><label style={lblStyle}>Nombre</label><input type="text" value={formEmpleado.nombre_completo} onChange={(e) => setFormEmpleado({...formEmpleado, nombre_completo: e.target.value})} style={inputFormStyle} disabled={formEmpleado.jugador_id !== ''} /></div>
-              <div style={{ display: 'flex', gap: '15px' }}>
-                <div style={{ flex: 1 }}><label style={lblStyle}>Rol</label><input type="text" value={formEmpleado.rol} onChange={(e) => setFormEmpleado({...formEmpleado, rol: e.target.value})} style={inputFormStyle} /></div>
-                <div style={{ flex: 1 }}><label style={lblStyle}>Base ($)</label><input type="number" value={formEmpleado.sueldo_base} onChange={(e) => setFormEmpleado({...formEmpleado, sueldo_base: e.target.value})} style={inputFormStyle} /></div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '30px' }}>
-              <button onClick={() => setModalEmpleado(false)} style={{ flex: 1, padding: '12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', cursor: 'pointer' }}>CANCELAR</button>
-              <button onClick={guardarEmpleado} disabled={cargando} style={{ flex: 1, padding: '12px', background: '#f59e0b', border: 'none', color: '#000', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>GUARDAR</button>
-            </div>
-          </div>
-        </div>
+      {ficha && (
+        <FichaEmpleado
+          inicial={ficha}
+          clubId={clubId}
+          jugadores={jugadoresInfo}
+          color="#f59e0b"
+          onCerrar={() => setFicha(null)}
+          onGuardado={() => { setFicha(null); cargarEmpleados(); }}
+          showToast={showToast}
+        />
       )}
 
       {modalSueldo.visible && (

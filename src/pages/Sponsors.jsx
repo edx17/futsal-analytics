@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { manejaPlata, hoyLocal, faltaColumna } from '../analytics/tesoreria';
 
 function Sponsors() {
   const { perfil } = useAuth();
   const clubId = perfil?.club_id || localStorage.getItem('club_id');
   const { showToast } = useToast();
 
-  const rol = perfil?.rol?.toLowerCase() || '';
-  const puedeEditar = ['admin', 'tesorero', 'superuser'].includes(rol);
+  const puedeEditar = manejaPlata(perfil?.rol);
 
   const [sponsors, setSponsors] = useState([]);
   const [jugadores, setJugadores] = useState([]); 
+  const [empleados, setEmpleados] = useState([]);
   const [cargando, setCargando] = useState(false);
 
   // Modales
@@ -22,7 +23,7 @@ function Sponsors() {
   const [modalPago, setModalPago] = useState({ visible: false, sponsor: null });
   // Estados para la comisión (Añadido 'descripcion')
   const [formPago, setFormPago] = useState({ 
-    monto: '', metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], descripcion: '',
+    monto: '', metodo_pago: 'Transferencia', fecha_pago: hoyLocal(), descripcion: '',
     aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' 
   });
 
@@ -39,8 +40,12 @@ function Sponsors() {
   };
 
   const fetchJugadores = async () => {
-    const { data } = await supabase.from('jugadores').select('id, nombre, apellido').eq('club_id', clubId).order('apellido');
+    const [{ data }, { data: emps }] = await Promise.all([
+      supabase.from('jugadores').select('id, nombre, apellido').eq('club_id', clubId).neq('activo', false).order('apellido'),
+      supabase.from('tesoreria_empleados').select('id, nombre_completo, jugador_id').eq('club_id', clubId),
+    ]);
     setJugadores(data || []);
+    setEmpleados(emps || []);
   };
 
   const guardarSponsor = async () => {
@@ -93,20 +98,31 @@ function Sponsors() {
         const montoComision = (montoPagar * (parseFloat(formPago.porcentajeComision) / 100)).toFixed(2);
         let responsableNombre = '';
         let categoriaEgreso = '';
+        let empleadoId = null;
 
         if (formPago.tipoReferido === 'jugador') {
           const jug = jugadores.find(j => String(j.id) === String(formPago.jugadorReferidoId));
-          responsableNombre = jug ? `${jug.apellido}, ${jug.nombre}` : 'Jugador Desconocido';
+          // Si el jugador cobra viático, la comisión se ata a su ficha y suma en Tesorería.
+          const emp = empleados.find(e => e.jugador_id != null && String(e.jugador_id) === String(formPago.jugadorReferidoId));
+          empleadoId = emp?.id ?? null;
+          responsableNombre = emp?.nombre_completo || (jug ? `${jug.nombre} ${jug.apellido}` : 'Jugador Desconocido');
           categoriaEgreso = 'Sueldos y Viáticos'; 
         } else {
           responsableNombre = formPago.nombreReferidoExterno;
           categoriaEgreso = 'Comisiones / Terceros'; 
         }
 
-        await supabase.from('tesoreria_egresos').insert([{
+        const fila = {
           club_id: clubId, categoria: categoriaEgreso, monto: montoComision, fecha: formPago.fecha_pago,
-          responsable: responsableNombre, descripcion: `Comisión ${formPago.porcentajeComision}% por Sponsor: ${modalPago.sponsor.nombre}`
-        }]);
+          responsable: responsableNombre, descripcion: `Comisión ${formPago.porcentajeComision}% por Sponsor: ${modalPago.sponsor.nombre}`,
+          ...(empleadoId != null ? { empleado_id: empleadoId } : {}),
+        };
+        let { error: errComision } = await supabase.from('tesoreria_egresos').insert([fila]);
+        if (errComision && faltaColumna(errComision) && 'empleado_id' in fila) {
+          const { empleado_id: _sinColumna, ...resto } = fila;
+          ({ error: errComision } = await supabase.from('tesoreria_egresos').insert([resto]));
+        }
+        if (errComision) throw errComision;
       }
 
       showToast("Ingreso de sponsor registrado en Tesorería.", "success");
@@ -148,7 +164,7 @@ function Sponsors() {
                   <span style={{ color: estaVencido ? '#ef4444' : 'var(--text-dim)' }}>{s.fecha_vencimiento ? `Vence: ${s.fecha_vencimiento.split('-').reverse().join('/')}` : 'Sin vencimiento'}</span>
                 </div>
                 {puedeEditar && (
-                  <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: new Date().toISOString().split('T')[0], descripcion: '', aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: '#ffffff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
+                  <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: hoyLocal(), descripcion: '', aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: '#ffffff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
                     💸 REGISTRAR COBRO
                   </button>
                 )}
