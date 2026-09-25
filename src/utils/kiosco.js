@@ -33,18 +33,23 @@ export const volverDesde = (navigate) => {
   else navigate(-1);
 };
 
-/* Abre la sesión del jugador. Devuelve el token, o null si el PIN no es
-   válido o si la migración todavía no se corrió (en ese caso el kiosco
-   sigue funcionando como antes, sin la ficha). */
+/* Valida el PIN y abre la sesión del jugador.
+     { token }             PIN bueno
+     { pinIncorrecto }     PIN malo
+     { bloqueado }         5 PIN malos seguidos: hay que esperar unos minutos
+     { noDisponible }      la base todavía no tiene la función
+     { error }             cualquier otra cosa */
 export async function abrirSesionKiosco(jugadorId, clubId, pin) {
   const { data, error } = await supabase.rpc('kiosco_abrir_sesion', {
     p_jugador_id: String(jugadorId), p_club_id: String(clubId), p_pin: String(pin),
   });
   if (error) {
+    if (error.code === 'P0429') return { bloqueado: true };
+    if (funcionInexistente(error)) return { noDisponible: true };
     console.error('kiosco_abrir_sesion:', error.message);
-    return null;
+    return { error };
   }
-  return data || null;
+  return data ? { token: data } : { pinIncorrecto: true };
 }
 
 export async function cerrarSesionKiosco() {
@@ -103,5 +108,7 @@ const conToken = async (fn, params = {}) => {
 };
 
 export const misDatosKiosco = () => conToken('kiosco_mis_datos');
+/* Saldo, datos de cobro del club y pagos del jugador (migración 20260927120000). */
+export const estadoCuentaKiosco = () => conToken('kiosco_estado_cuenta');
 export const proponerCambiosKiosco = (cambios) => conToken('kiosco_proponer_cambios', { p_cambios: cambios });
 export const cancelarCambiosKiosco = () => conToken('kiosco_cancelar_cambios');

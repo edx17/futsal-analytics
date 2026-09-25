@@ -65,12 +65,14 @@ const Agenda              = lazy(() => import('./pages/Agenda'));
 const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
 const KioscoTorneo        = lazy(() => import('./pages/KioscoTorneo'));
 const KioscoMisDatos      = lazy(() => import('./pages/KioscoMisDatos'));
+const KioscoMisPagos      = lazy(() => import('./pages/KioscoMisPagos'));
 const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 
 import './App.css';
 import LimiteDeError from './components/LimiteDeError';
 import BarraKiosco from './components/BarraKiosco';
 import VisorManual from './components/VisorManual';
+import { ROLES_PLATA, manejaPlata } from './analytics/tesoreria';
 
 // ==========================================
 // 🌍 CATÁLOGO OPERATIVO DE ACCIONES RÁPIDAS
@@ -84,7 +86,7 @@ const CATALOGO_ACCIONES_FAB = [
   { id: 'torneos', label: 'Mis Torneos', path: '/torneos', icon: '🏆', roles: ['superuser', 'manager', 'admin'] },
   { id: 'rivales', label: 'Scouting Rivales', path: '/scouting-rivales', icon: '🕵️‍♂️', roles: ['superuser', 'manager', 'ct'] },
   { id: 'plantel', label: 'Gestionar Plantel', path: '/plantel', icon: '👥', roles: ['superuser', 'manager', 'admin', 'ct'] },
-  { id: 'tesoreria', label: 'Caja de Tesorería', path: '/tesoreria', icon: '💰', roles: ['superuser', 'manager', 'admin'] },
+  { id: 'tesoreria', label: 'Caja de Tesorería', path: '/tesoreria', icon: '💰', roles: ROLES_PLATA },
   { id: 'transferencias', label: 'Transferencias', path: '/transferencias', icon: '💸', roles: ['superuser', 'manager', 'admin', 'ct'] },
 ];
 
@@ -153,12 +155,12 @@ function AppRoutes() {
       <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
       <Route path="/videoanalisis" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Videoanalisis /></ProtectedRoute>} />
 
-      <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Tesoreria /></ProtectedRoute>} />
-      <Route path="/sponsors" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Sponsors /></ProtectedRoute>} />
+      <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={ROLES_PLATA}><Tesoreria /></ProtectedRoute>} />
+      <Route path="/sponsors" element={<ProtectedRoute allowedRoles={ROLES_PLATA}><Sponsors /></ProtectedRoute>} />
       <Route path="/configuracion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Configuracion /></ProtectedRoute>} /> 
       <Route path="/mi-suscripcion" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiSuscripcion /></ProtectedRoute>} />
       <Route path="/mi-staff" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><MiStaff /></ProtectedRoute>} />
-      <Route path="/empleados" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin']}><Empleados /></ProtectedRoute>} />
+      <Route path="/empleados" element={<ProtectedRoute allowedRoles={ROLES_PLATA}><Empleados /></ProtectedRoute>} />
       
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
       <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
@@ -238,6 +240,7 @@ useEffect(() => {
       puedeEscribirDeportivo: ['superuser', 'manager', 'ct'].includes(rol),
       puedeVerDeportivo: ['superuser', 'manager', 'admin', 'ct', 'jugador'].includes(rol),
       puedeControlarAdmin: ['superuser', 'manager', 'admin'].includes(rol),
+      manejaPlata: manejaPlata(rol),
       puedeConfigurar: ['superuser', 'manager', 'admin'].includes(rol),
     };
   }, [perfil]);
@@ -344,6 +347,7 @@ useEffect(() => {
             <Route path="/kiosco/videoanalisis" element={<Videoanalisis />} />
             <Route path="/kiosco/torneo" element={<KioscoTorneo />} />
             <Route path="/kiosco/mis-datos" element={<KioscoMisDatos />} />
+            <Route path="/kiosco/mis-pagos" element={<KioscoMisPagos />} />
             <Route path="/kiosco/*" element={<Navigate to="/kiosco" replace />} />
           </Routes>
         </Suspense>
@@ -461,14 +465,14 @@ useEffect(() => {
           </>
         )}
 
-        {!permisos.esJugador && permisos.puedeControlarAdmin && (
+        {!permisos.esJugador && (permisos.puedeControlarAdmin || permisos.manejaPlata) && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('administracion')} title={isCollapsed ? "Administración" : ""}>
               {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>💰</span> : <><span>ADMINISTRACIÓN</span> <span>{menusAbiertos.administracion ? '▼' : '▶'}</span></>}
             </div>
             {menusAbiertos.administracion && !isCollapsed && (
               <>
-                <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👥 <span>MI STAFF</span></NavLink>
+                {permisos.puedeControlarAdmin && <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👥 <span>MI STAFF</span></NavLink>}
                 <NavLink to="/empleados" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🧾 <span>EMPLEADOS</span></NavLink>
                 <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💰 <span>TESORERÍA</span></NavLink>
                 <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🤝 <span>SPONSORS</span></NavLink>

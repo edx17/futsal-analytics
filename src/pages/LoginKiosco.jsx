@@ -5,7 +5,7 @@ import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { filtroNoVencidas } from '../utils/novedades';
 import {
-  abrirSesionKiosco, cerrarSesionKiosco, cargarFichaKiosco, guardarTokenKiosco, tokenKiosco,
+  abrirSesionKiosco, cerrarSesionKiosco, cargarFichaKiosco, guardarTokenKiosco, tokenKiosco, estadoCuentaKiosco,
 } from '../utils/kiosco';
 import { activarNotificacionesJugador, navegadorSuscripto } from '../utils/pushNotificaciones';
 import {
@@ -96,6 +96,15 @@ const IconDatos = () => (
   </svg>
 );
 
+const IconPagos = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"></path>
+    <line x1="9" y1="7" x2="15" y2="7"></line>
+    <line x1="9" y1="11" x2="15" y2="11"></line>
+    <line x1="9" y1="15" x2="13" y2="15"></line>
+  </svg>
+);
+
 /* Los accesos del menú. Mi estado físico, Temporada, Libro táctico y Torneo
    ya existían como pantallas del kiosco pero no tenían botón. */
 const ACCESOS = [
@@ -110,6 +119,7 @@ const ACCESOS = [
   { ruta: '/kiosco/libro-tactico',  titulo: 'LIBRO TÁCTICO', icono: IconLibro },
   // Ancho, abajo de todo: son diez accesos y en tres columnas quedaba uno suelto.
   { ruta: '/kiosco/mis-datos',      titulo: 'MIS DATOS · CORREGÍ TU CELULAR, EMERGENCIA U OBRA SOCIAL', icono: IconDatos, ancho: true },
+  { ruta: '/kiosco/mis-pagos',      titulo: 'MIS PAGOS · SALDO Y RECIBOS', icono: IconPagos, ancho: true },
 ];
 
 const IconSalir = () => (
@@ -262,36 +272,33 @@ export default function LoginKiosco() {
   };
 
   // 💰 DATOS FINANCIEROS KIOSCO
+  /* El saldo sale de kiosco_estado_cuenta(token): sólo lo del jugador que
+     entró. Si la base todavía no tiene la función, se lee como antes. */
+  const aplicarEstadoCuenta = (club, deudas) => {
+    if (club) {
+      setClubConfig(club);
+      if (club.nombre) localStorage.setItem('mi_club', club.nombre);
+      if (club.escudo_url) localStorage.setItem('escudo_url', club.escudo_url);
+    }
+    const lista = deudas || [];
+    setDeudaTotal(lista.reduce((acc, d) => acc + Math.max(0, Number(d.monto_original) - Number(d.monto_pagado || 0)), 0));
+    setDetallesDeuda([...new Set(lista.map(d => d.concepto).filter(Boolean))]);
+  };
+
   const cargarDatosFinancieros = async (idClub, idJugador) => {
     if (!idClub || !idJugador) return;
-    
     try {
-      // Modificación: Traemos el nombre y escudo para sincronizar variables globales en modo Kiosco
-      const { data: cData } = await supabase.from('clubes').select('nombre, escudo_url, alias_cobro, cbu, cvu, whatsapp_tesoreria').eq('id', idClub).single();
-      if (cData) {
-        setClubConfig(cData);
-        if (cData.nombre) localStorage.setItem('mi_club', cData.nombre);
-        if (cData.escudo_url) localStorage.setItem('escudo_url', cData.escudo_url);
-      }
+      const r = await estadoCuentaKiosco();
+      if (r.data) { aplicarEstadoCuenta(r.data.club, r.data.deudas); return; }
+      if (!r.noDisponible) { aplicarEstadoCuenta(null, []); return; }
 
-      // Sumamos 'concepto' al select para darle transparencia al usuario
+      const { data: cData } = await supabase.from('clubes').select('nombre, escudo_url, alias_cobro, cbu, cvu, whatsapp_tesoreria').eq('id', idClub).single();
       const { data: dData } = await supabase.from('tesoreria_deudas')
         .select('monto_original, monto_pagado, concepto')
         .eq('club_id', idClub)
         .eq('jugador_id', idJugador)
         .in('estado', ['Pendiente', 'Parcial']);
-
-      if (dData && dData.length > 0) {
-        const total = dData.reduce((acc, curr) => acc + (Number(curr.monto_original) - Number(curr.monto_pagado)), 0);
-        setDeudaTotal(total);
-        
-        // Extraemos los conceptos únicos para mostrarlos en la UI
-        const conceptos = dData.map(d => d.concepto).filter(Boolean);
-        setDetallesDeuda([...new Set(conceptos)]);
-      } else {
-        setDeudaTotal(0);
-        setDetallesDeuda([]);
-      }
+      aplicarEstadoCuenta(cData, dData);
     } catch(err) {
       console.error("Error cargando deudas", err);
     }
@@ -368,25 +375,31 @@ export default function LoginKiosco() {
   const ejecutarLogin = async () => {
     setLoading(true);
 
-    const { data, error } = await supabase.rpc('verificar_pin_kiosco', {
-      p_jugador_id: jugadorSeleccionado.id,
-      p_club_id: clubId,
-      p_pin: pin
-    });
+    /* El PIN lo valida kiosco_abrir_sesion, que además devuelve el token de
+       la sesión (y bloquea un rato después de 5 intentos fallidos). */
+    let r = await abrirSesionKiosco(jugadorSeleccionado.id, clubId, pin);
+    let datos = { id: jugadorSeleccionado.id, club_id: clubId, categoria: jugadorSeleccionado.categoria };
 
-    if (error || !data) {
-      showToast('PIN incorrecto', 'error');
+    // Base vieja, sin kiosco_abrir_sesion: el PIN se valida como antes.
+    if (r.noDisponible) {
+      const { data, error } = await supabase.rpc('verificar_pin_kiosco', {
+        p_jugador_id: jugadorSeleccionado.id, p_club_id: clubId, p_pin: pin,
+      });
+      r = (error || !data) ? { pinIncorrecto: true } : { token: null };
+      if (data) datos = { ...datos, ...data };
+    }
+
+    if (!('token' in r)) {
+      showToast(r.bloqueado ? 'Demasiados intentos. Esperá unos minutos y probá de nuevo.' : r.error ? 'No se pudo entrar. Probá de nuevo.' : 'PIN incorrecto', 'error');
       setPin('');
       setLoading(false);
       return;
     }
 
+    const data = datos;
     localStorage.setItem('kiosco_mode', 'true');
     localStorage.setItem('kiosco_jugador_id', data.id);
-
-    /* El token de la ficha. Si la migración 20260924120000 no se corrió,
-       vuelve null y el menú funciona como antes, sin las tarjetas nuevas. */
-    guardarTokenKiosco(await abrirSesionKiosco(data.id, data.club_id || clubId, pin));
+    guardarTokenKiosco(r.token);
 
     const categoriaFinal = jugadorSeleccionado?.categoria || data.categoria || localStorage.getItem('kiosco_categoria');
 
@@ -587,6 +600,9 @@ export default function LoginKiosco() {
                 )}
               </>
             )}
+            <button onClick={() => navigate('/kiosco/mis-pagos')} style={{ width: '100%', marginTop: '10px', background: 'transparent', border: 'none', color: 'var(--accent)', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer', padding: '8px' }}>
+              VER DETALLE Y RECIBOS ›
+            </button>
           </div>
         )}
 
