@@ -83,11 +83,12 @@ function Configuracion() {
 
     try {
       // Guardamos o actualizamos (UPSERT) en la base de datos
-      const { error } = await supabase.from('clubes').upsert({
-        id: finalClubId,
-        nombre: clubName.toUpperCase(),
-        escudo_url: escudoUrl
-      }, { onConflict: 'id' });
+      /* El club ya existe: se actualiza (un upsert pide permiso de alta, que
+         sólo tiene el superuser). Sin club todavía, se crea como antes. */
+      const datos = { nombre: clubName.toUpperCase(), escudo_url: escudoUrl };
+      const { error } = clubId.trim()
+        ? await supabase.from('clubes').update(datos).eq('id', finalClubId)
+        : await supabase.from('clubes').upsert({ id: finalClubId, ...datos }, { onConflict: 'id' });
 
       if (error) throw error;
 
