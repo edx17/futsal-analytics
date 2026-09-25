@@ -25,6 +25,8 @@ export function posicionEnCancha(x, y, vertical) {
   return vertical ? { left: y, top: 100 - x } : { left: x, top: y };
 }
 
-/** ¿Es un teléfono? El lado corto de la pantalla, en cualquier orientación.
-    Las tablets (600 px o más) siguen con la vista de siempre. */
-export const esPantallaTelefono = (ancho, alto) => Math.min(ancho, alto) <= 500;
+/** ¿Es un teléfono? El lado corto de la pantalla, en cualquier orientación,
+    con el mismo corte que usa Android: desde 600 es tablet. Antes el corte
+    era 500 y dejaba afuera a los teléfonos con la letra o el "tamaño de
+    pantalla" achicados (trabajan con 480 a 560 de ancho). */
+export const esPantallaTelefono = (ancho, alto) => Math.min(ancho, alto) < 600;

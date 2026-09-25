@@ -27,6 +27,11 @@ describe('cancha del celular', () => {
   it('teléfono vs tablet', () => {
     expect(esPantallaTelefono(390, 844)).toBe(true);
     expect(esPantallaTelefono(844, 390)).toBe(true);
+    expect(esPantallaTelefono(500, 1110)).toBe(true);   // Android con tamaño de pantalla chico
+    expect(esPantallaTelefono(540, 1170)).toBe(true);
+    expect(esPantallaTelefono(1170, 540)).toBe(true);   // el mismo, acostado
+    expect(esPantallaTelefono(600, 960)).toBe(false);   // tablet chica
+    expect(esPantallaTelefono(744, 1133)).toBe(false);  // iPad mini
     expect(esPantallaTelefono(768, 1024)).toBe(false);
     expect(esPantallaTelefono(1440, 900)).toBe(false);
   });
