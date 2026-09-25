@@ -12,6 +12,7 @@ import {
 import { linkWhatsApp } from '../utils/telefono';
 import FichaEmpleado from '../components/FichaEmpleado';
 import Recibo from '../components/tesoreria/Recibo';
+import ConfigCuotas from '../components/tesoreria/ConfigCuotas';
 import {
   manejaPlata, hoyLocal, pendientesPorAntiguedad, saldoDe, validarCobro, deudaSinCobro, liquidacionDelMes, faltaColumna, FICHA_VACIA, fichaDe, rpcInexistente, mensajeError, numeroRecibo,
 } from '../analytics/tesoreria';
@@ -69,7 +70,7 @@ function Tesoreria() {
 
   const [modalGenerar, setModalGenerar] = useState(false);
   const [formCuota, setFormCuota] = useState({
-    concepto: `Cuota ${new Date(añoSeleccionado, Number(mesSeleccionado)-1, 1).toLocaleString('es-ES', { month: 'long' }).toUpperCase()} ${añoSeleccionado}`,
+    concepto: '',
     monto: '', vencimiento: `${periodo}-10`,
     mes: periodo
   });
@@ -110,11 +111,10 @@ function Tesoreria() {
   useEffect(() => {
     setFormCuota(prev => ({
       ...prev,
-      concepto: `Cuota ${new Date(añoSeleccionado, Number(mesSeleccionado)-1, 1).toLocaleString('es-ES', { month: 'long' }).toUpperCase()} ${añoSeleccionado}`,
       mes: periodo,
       vencimiento: `${periodo}-10`
     }));
-  }, [periodo, añoSeleccionado, mesSeleccionado]);
+  }, [periodo]);
 
   // ==========================================
   // LÓGICA: ELIMINACIÓN DE REGISTROS ERRÓNEOS
@@ -446,6 +446,7 @@ function Tesoreria() {
   };
 
   const generarCuotasMasivas = async () => {
+    if (!formCuota.concepto.trim()) return showToast("Escribí el concepto (ej. Indumentaria 2026).", "error");
     const montoNum = parseFloat(formCuota.monto);
     if (!montoNum || montoNum <= 0) return showToast("El monto debe ser mayor a 0.", "error");
     setCargando(true);
@@ -644,6 +645,7 @@ function Tesoreria() {
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '20px' }}>
              <button onClick={() => setVista('cobros')} style={{ ...tabBtn, background: vista === 'cobros' ? '#3b82f6' : 'transparent', color: vista === 'cobros' ? '#fff' : 'var(--text-dim)' }}>💰 COBROS DE CUOTAS</button>
+             <button onClick={() => setVista('cuotas')} style={{ ...tabBtn, background: vista === 'cuotas' ? '#14b8a6' : 'transparent', color: vista === 'cuotas' ? '#000' : 'var(--text-dim)' }}>💵 CUOTAS Y TARIFAS</button>
              <button onClick={() => setVista('staff')} style={{ ...tabBtn, background: vista === 'staff' ? '#f59e0b' : 'transparent', color: vista === 'staff' ? '#000' : 'var(--text-dim)' }}>👥 STAFF / EMPLEADOS</button>
              <button onClick={() => setVista('viaticos')} style={{ ...tabBtn, background: vista === 'viaticos' ? '#a855f7' : 'transparent', color: vista === 'viaticos' ? '#fff' : 'var(--text-dim)' }}>🏃‍♂️ JUGADORES (VIÁTICOS)</button>
              <button onClick={() => setVista('egresos')} style={{ ...tabBtn, background: vista === 'egresos' ? '#00ff88' : 'transparent', color: vista === 'egresos' ? '#000' : 'var(--text-dim)' }}>🏦 CAJA Y MAYOR</button>
@@ -658,6 +660,10 @@ function Tesoreria() {
           {/* ==================================================== */}
           {/* VISTA 1: COBRANZAS                                   */}
           {/* ==================================================== */}
+          {vista === 'cuotas' && (
+            <ConfigCuotas clubId={clubId} periodo={periodo} showToast={showToast} onGeneradas={() => setVista('cobros')} />
+          )}
+
           {vista === 'cobros' && (
              <div className="bento-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
@@ -668,7 +674,7 @@ function Tesoreria() {
                   <h3 style={{ margin: 0 }}>Estado de Cuenta</h3>
                 </div>
                 <button onClick={() => setModalGenerar(true)} style={{ background: '#a855f7', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span>⚙️</span> GENERAR CUOTAS MASIVAS
+                  <span>➕</span> CUOTA EXTRAORDINARIA
                 </button>
               </div>
 
@@ -1216,10 +1222,10 @@ function Tesoreria() {
       {modalGenerar && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="bento-card" style={{ width: '450px', border: '1px solid #a855f7' }}>
-            <h3 style={{ marginTop: 0, color: '#a855f7' }}>Generar Obligaciones Masivas</h3>
-            <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Para jugadores de <strong>{categoria}</strong>.</p>
+            <h3 style={{ marginTop: 0, color: '#a855f7' }}>Cuota extraordinaria</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Un cobro aparte de la cuota del mes (indumentaria, torneo, rifa…) para los jugadores activos de <strong>{categoria}</strong>. La cuota mensual se arma en <strong>💵 Cuotas y tarifas</strong>.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-              <div><label style={lblStyle}>Concepto</label><input type="text" value={formCuota.concepto} onChange={(e) => setFormCuota({...formCuota, concepto: e.target.value})} style={inputFormStyle} /></div>
+              <div><label style={lblStyle}>Concepto</label><input type="text" value={formCuota.concepto} onChange={(e) => setFormCuota({...formCuota, concepto: e.target.value})} style={inputFormStyle} placeholder="Ej: Indumentaria 2026" /></div>
               <div style={{ display: 'flex', gap: '15px' }}>
                 <div style={{ flex: 1 }}><label style={lblStyle}>Monto Total ($)</label><input type="number" value={formCuota.monto} onChange={(e) => setFormCuota({...formCuota, monto: e.target.value})} style={inputFormStyle} /></div>
                 <div style={{ flex: 1 }}><label style={lblStyle}>Mes Contable</label><input type="month" value={formCuota.mes} onChange={(e) => setFormCuota({...formCuota, mes: e.target.value})} style={inputFormStyle} /></div>

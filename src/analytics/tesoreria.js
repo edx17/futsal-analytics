@@ -129,3 +129,26 @@ export function mensajeError(error, porDefecto = 'No se pudo completar.') {
   if (['22023', 'P0002'].includes(error.code)) return error.message;
   return porDefecto;
 }
+
+/* ── Tarifas y hermanos (migración 20260927150000) ─────────────────────── */
+
+/** Clave de un grupo familiar: "Pérez", " pérez " y "PÉREZ" son el mismo.
+    (La base compara con lower(trim()), que respeta las tildes.) */
+export const claveGrupo = (g) => String(g || '').trim().toLowerCase();
+
+/** Los grupos de hermanos del club: sólo los que tienen 2 o más activos. */
+export function gruposFamiliares(jugadores = []) {
+  const grupos = new Map();
+  jugadores.filter((j) => j.activo !== false && claveGrupo(j.grupo_familiar)).forEach((j) => {
+    const k = claveGrupo(j.grupo_familiar);
+    if (!grupos.has(k)) grupos.set(k, { clave: k, nombre: String(j.grupo_familiar).trim(), miembros: [] });
+    grupos.get(k).miembros.push(j);
+  });
+  return [...grupos.values()]
+    .map((g) => ({ ...g, miembros: g.miembros.sort((a, b) => `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`, 'es')) }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+}
+
+/** Tabla no creada todavía (migración sin correr). */
+export const faltaTabla = (error) =>
+  !!error && (error.code === '42P01' || error.code === 'PGRST205' || /does not exist|Could not find the table/i.test(error.message || ''));

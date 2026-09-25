@@ -33,7 +33,8 @@ const WA_IDIOMA = Deno.env.get("WHATSAPP_IDIOMA") || "es_AR";
 const WA_PLANTILLA = {
   wellness: Deno.env.get("WHATSAPP_PLANTILLA_WELLNESS"),   // {{1}} = nombre
   cumple:   Deno.env.get("WHATSAPP_PLANTILLA_CUMPLE"),     // {{1}} = nombre
-  citacion: Deno.env.get("WHATSAPP_PLANTILLA_CITACION"),   // {{1}} nombre, {{2}} rival, {{3}} fecha, {{4}} hora de citación
+  citacion: Deno.env.get("WHATSAPP_PLANTILLA_CITACION"),
+  cuota:    Deno.env.get("WHATSAPP_PLANTILLA_CUOTA"),       // {{1}} nombre, {{2}} concepto, {{3}} monto, {{4}} vencimiento   // {{1}} nombre, {{2}} rival, {{3}} fecha, {{4}} hora de citación
 };
 
 /* Cada cuántas horas, como mínimo, se le vuelve a recordar el wellness a un
@@ -593,9 +594,24 @@ async function avisosAJugadores(clubId: string, subsJugadores: any[], sumar: (p:
     cumple: { push: 0, whatsapp: 0, errores: [] },
     wellness: { push: 0, whatsapp: 0, errores: [] },
     citacion: { push: 0, whatsapp: 0, errores: [] },
+    cuota: { push: 0, whatsapp: 0, errores: [] },
   };
 
-  const hayWhatsApp = !!(WA_TOKEN && WA_PHONE_ID && (WA_PLANTILLA.wellness || WA_PLANTILLA.cumple || WA_PLANTILLA.citacion));
+  /* --- 💵 CUOTA DEL MES (antes que nada: se genera aunque nadie tenga push) ---
+     generar_cuotas_mes() no duplica, así que se llama en cada corrida: si el
+     cron no corrió el día 1, las genera en la siguiente. Devuelve sólo las
+     que creó ahora, que son las que se avisan. */
+  let cuotasNuevas: any[] = [];
+  const { data: cfg, error: errCfg } = await supabase.from("tesoreria_config")
+    .select("cuota_automatica").eq("club_id", clubId).maybeSingle();
+  if (errCfg && !/does not exist|Could not find/i.test(errCfg.message)) res.cuota.errores.push(`config: ${errCfg.message}`);
+  if (cfg?.cuota_automatica) {
+    const { data, error } = await supabase.rpc("generar_cuotas_mes", { p_club_id: clubId, p_periodo: hoy.slice(0, 7) });
+    if (error) res.cuota.errores.push(`generar: ${error.message}`);
+    else cuotasNuevas = data || [];
+  }
+
+  const hayWhatsApp = !!(WA_TOKEN && WA_PHONE_ID && (WA_PLANTILLA.wellness || WA_PLANTILLA.cumple || WA_PLANTILLA.citacion || WA_PLANTILLA.cuota));
   if (subsJugadores.length === 0 && !hayWhatsApp) return res;
 
   // select("*") a propósito: `activo` y `contacto` pueden no existir en un
@@ -696,6 +712,23 @@ async function avisosAJugadores(clubId: string, subsJugadores: any[], sumar: (p:
     }
   }
 
+  // --- 💵 AVISO DE LA CUOTA NUEVA ---
+  if (cuotasNuevas.length > 0) {
+    const porId = new Map<string, any>(jugadores.map((j: any) => [String(j.id), j]));
+    for (const c of cuotasNuevas) {
+      const j = porId.get(String(c.jugador_id));
+      if (!j) continue;
+      const monto = `$${Number(c.monto).toLocaleString("es-AR")}`;
+      const [a, m, d] = String(c.fecha_vencimiento || "").split("-");
+      const vence = d ? `${d}/${m}` : "";
+      await avisar("cuota", j, `cuota-${c.deuda_id}`, {
+        title: `💵 ${c.concepto}`,
+        body: `${monto}${vence ? ` · vence el ${vence}` : ""}. Mirá cómo pagar en tu menú.`,
+        tag: `cuota-${String(c.concepto).replace(/\s+/g, "-")}`,
+      }, { plantilla: WA_PLANTILLA.cuota, parametros: [j.nombre || "", c.concepto, monto, vence || String(a || "")] });
+    }
+  }
+
   return res;
 }
 
@@ -767,6 +800,7 @@ Deno.serve(async (req) => {
     cumple:   { push: 0, whatsapp: 0, errores: [] as string[] },
     wellness: { push: 0, whatsapp: 0, errores: [] as string[] },
     citacion: { push: 0, whatsapp: 0, errores: [] as string[] },
+    cuota:    { push: 0, whatsapp: 0, errores: [] as string[] },
   };
 
   for (const club of clubes || []) {

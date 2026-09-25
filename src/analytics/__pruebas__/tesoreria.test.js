@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   manejaPlata, hoyLocal, ultimoDiaDelMes, pendientesPorAntiguedad, validarCobro, deudaSinCobro,
   claveNombre, esDelEmpleado, liquidacionDelMes, faltaColumna, fichaDe,
-  numeroRecibo, textoRecibo, mensajeError, rpcInexistente,
+  numeroRecibo, textoRecibo, mensajeError, rpcInexistente, gruposFamiliares, faltaTabla,
 } from '../tesoreria';
 
 describe('manejaPlata', () => {
@@ -130,5 +130,23 @@ describe('recibos', () => {
     expect(mensajeError({ code: '42501', message: 'permission denied' })).toBe('No tenés permiso para hacer esto.');
     expect(mensajeError({ code: 'XX', message: 'x' }, 'fallo')).toBe('fallo');
     expect(rpcInexistente({ code: 'PGRST202' })).toBe(true);
+  });
+});
+
+describe('grupos familiares', () => {
+  it('agrupa sin importar mayúsculas ni espacios, y deja afuera bajas y vacíos', () => {
+    const g = gruposFamiliares([
+      { id: 1, nombre: 'Ana', apellido: 'Pérez', grupo_familiar: 'Pérez' },
+      { id: 2, nombre: 'Beto', apellido: 'Pérez', grupo_familiar: ' pérez ' },
+      { id: 3, nombre: 'Ceci', apellido: 'Pérez', grupo_familiar: 'PÉREZ', activo: false },
+      { id: 4, nombre: 'Dani', apellido: 'Gómez', grupo_familiar: '' },
+      { id: 5, nombre: 'Eli', apellido: 'Luna', grupo_familiar: 'Luna' },
+    ]);
+    expect(g.map((x) => [x.clave, x.miembros.map((m) => m.id)])).toEqual([['luna', [5]], ['pérez', [1, 2]]]);
+  });
+  it('faltaTabla', () => {
+    expect(faltaTabla({ code: '42P01' })).toBe(true);
+    expect(faltaTabla({ code: 'PGRST205', message: "Could not find the table 'public.tesoreria_config'" })).toBe(true);
+    expect(faltaTabla({ code: '42501' })).toBe(false);
   });
 });
