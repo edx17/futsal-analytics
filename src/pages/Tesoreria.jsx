@@ -11,8 +11,9 @@ import {
 } from 'recharts';
 import { linkWhatsApp } from '../utils/telefono';
 import FichaEmpleado from '../components/FichaEmpleado';
+import Recibo from '../components/tesoreria/Recibo';
 import {
-  manejaPlata, hoyLocal, pendientesPorAntiguedad, saldoDe, validarCobro, deudaSinCobro, liquidacionDelMes, faltaColumna, FICHA_VACIA, fichaDe,
+  manejaPlata, hoyLocal, pendientesPorAntiguedad, saldoDe, validarCobro, deudaSinCobro, liquidacionDelMes, faltaColumna, FICHA_VACIA, fichaDe, rpcInexistente, mensajeError, numeroRecibo,
 } from '../analytics/tesoreria';
 
 function Tesoreria() {
@@ -53,6 +54,9 @@ function Tesoreria() {
   // Configuración Bancaria
   const [modalConfig, setModalConfig] = useState(false);
   const [formConfig, setFormConfig] = useState({ alias_cobro: '', cbu: '', cvu: '', whatsapp_tesoreria: '' });
+  const [clubInfo, setClubInfo] = useState({ nombre: localStorage.getItem('mi_club') || '', escudo_url: null });
+  // Recibo abierto: { jugador, pago, telefono } o null.
+  const [recibo, setRecibo] = useState(null);
 
   // Modales
   const [modalPago, setModalPago] = useState({ visible: false, deuda: null, jugador: null });
@@ -125,7 +129,9 @@ function Tesoreria() {
     
     setCargando(true);
     try {
-      const { error } = await supabase.from('tesoreria_deudas').delete().eq('id', deuda.id);
+      let { error } = await supabase.from('tesoreria_deudas').delete().eq('id', deuda.id);
+      // Tiene cobros anulados colgando (quedan como rastro): se da de baja en vez de borrarla.
+      if (error?.code === '23503') ({ error } = await supabase.from('tesoreria_deudas').update({ estado: 'Anulada' }).eq('id', deuda.id));
       if (error) throw error;
       
       showToast("Deuda eliminada del sistema.", "success");
@@ -180,8 +186,9 @@ function Tesoreria() {
   // ==========================================
   const cargarConfigBancaria = async () => {
     try {
-      const { data, error } = await supabase.from('clubes').select('alias_cobro, cbu, cvu, whatsapp_tesoreria').eq('id', clubId).single();
+      const { data, error } = await supabase.from('clubes').select('nombre, escudo_url, alias_cobro, cbu, cvu, whatsapp_tesoreria').eq('id', clubId).single();
       if (!error && data) {
+        setClubInfo({ nombre: data.nombre || '', escudo_url: data.escudo_url || null });
         setFormConfig({ alias_cobro: data.alias_cobro || '', cbu: data.cbu || '', cvu: data.cvu || '', whatsapp_tesoreria: data.whatsapp_tesoreria || '' });
       }
     } catch (err) { console.error("Error cargando config bancaria", err); }
@@ -215,7 +222,9 @@ function Tesoreria() {
       const startStr = hoyLocal(fetchStartDate);
       const endStr = hoyLocal(endDate);
 
-      const { data: pagos } = await supabase.from('tesoreria_pagos').select('monto, fecha_pago, metodo_pago').eq('club_id', clubId).gte('fecha_pago', startStr).lte('fecha_pago', endStr);
+      // select('*'): así funciona con o sin la columna anulado_at; los anulados no suman.
+      const { data: pagosTodos } = await supabase.from('tesoreria_pagos').select('*').eq('club_id', clubId).gte('fecha_pago', startStr).lte('fecha_pago', endStr);
+      const pagos = (pagosTodos || []).filter(p => !p.anulado_at);
       const { data: pagosSponsors } = await supabase.from('sponsors_pagos').select('monto, fecha_pago').eq('club_id', clubId).gte('fecha_pago', startStr).lte('fecha_pago', endStr);
       const { data: ingresosExtras } = await supabase.from('tesoreria_ingresos_extra').select('monto, fecha').eq('club_id', clubId).gte('fecha', startStr).lte('fecha', endStr);
       const { data: egresos } = await supabase.from('tesoreria_egresos').select('monto, fecha, categoria').eq('club_id', clubId).gte('fecha', startStr).lte('fecha', endStr);
@@ -294,7 +303,8 @@ function Tesoreria() {
       const ultimoDia = `${periodo}-${ultimoDiaNum}`;
 
       const { data: egresosMes } = await supabase.from('tesoreria_egresos').select('*').eq('club_id', clubId).gte('fecha', primerDia).lte('fecha', ultimoDia);
-      const { data: ingresosMes } = await supabase.from('tesoreria_pagos').select('*').eq('club_id', clubId).gte('fecha_pago', primerDia).lte('fecha_pago', ultimoDia);
+      const { data: pagosMes } = await supabase.from('tesoreria_pagos').select('*').eq('club_id', clubId).gte('fecha_pago', primerDia).lte('fecha_pago', ultimoDia);
+      const ingresosMes = (pagosMes || []).filter(p => !p.anulado_at);
       const { data: ingSponsorsMes } = await supabase.from('sponsors_pagos').select('*').eq('club_id', clubId).gte('fecha_pago', primerDia).lte('fecha_pago', ultimoDia);
       const { data: listaSponsors } = await supabase.from('sponsors').select('id, nombre').eq('club_id', clubId);
       const { data: ingExtraMes } = await supabase.from('tesoreria_ingresos_extra').select('*').eq('club_id', clubId).gte('fecha', primerDia).lte('fecha', ultimoDia);
@@ -306,7 +316,7 @@ function Tesoreria() {
         movimientos.push({ id: `eg-${e.id}`, fecha: e.fecha, tipo: 'salida', categoria: e.categoria, descripcion: textoDetalle, monto: Number(e.monto) });
       });
 
-      (ingresosMes || []).forEach(i => movimientos.push({ id: `cuota-${i.id}`, fecha: i.fecha_pago, tipo: 'entrada', categoria: 'Cuota Social', descripcion: 'Cobro registrado por sistema', monto: Number(i.monto) }));
+      ingresosMes.forEach(i => movimientos.push({ id: `cuota-${i.id}`, fecha: i.fecha_pago, tipo: 'entrada', categoria: 'Cuota Social', descripcion: i.recibo_numero ? `Cobro · recibo N° ${numeroRecibo(i.recibo_numero)}` : 'Cobro registrado por sistema', monto: Number(i.monto) }));
       
       (ingSponsorsMes || []).forEach(s => {
         const nombreSponsor = listaSponsors?.find(sp => sp.id === s.sponsor_id)?.nombre || 'Sponsor Desconocido';
@@ -454,12 +464,23 @@ function Tesoreria() {
     const v = validarCobro(modalPago.deuda, montoPagar);
     if (!v.ok) return showToast(v.error, "error");
     setCargando(true);
+    const { deuda, jugador } = modalPago;
     try {
-      const { error: e1 } = await supabase.from('tesoreria_pagos').insert([{ club_id: clubId, deuda_id: modalPago.deuda.id, jugador_id: modalPago.jugador.id, monto: v.monto, metodo_pago: metodoPago, fecha_pago: hoyLocal() }]);
-      if (e1) throw e1;
-      const { error: e2 } = await supabase.from('tesoreria_deudas').update({ monto_pagado: v.pagado, estado: v.estado }).eq('id', modalPago.deuda.id);
-      if (e2) throw e2;
-      showToast(`Pago registrado con éxito.`, "success"); setModalPago({ visible: false, deuda: null, jugador: null }); setMontoPagar(''); setMetodoPago('Efectivo'); cargarTableroCobros();
+      // Una sola transacción en la base: pago, número de recibo y deuda.
+      let { data, error } = await supabase.rpc('registrar_cobro', { p_deuda_id: deuda.id, p_monto: v.monto, p_metodo: metodoPago });
+      if (error && rpcInexistente(error)) {
+        // Base sin la migración de cobros: como antes, en dos pasos.
+        ({ error } = await supabase.from('tesoreria_pagos').insert([{ club_id: clubId, deuda_id: deuda.id, jugador_id: jugador.id, monto: v.monto, metodo_pago: metodoPago, fecha_pago: hoyLocal() }]));
+        if (!error) ({ error } = await supabase.from('tesoreria_deudas').update({ monto_pagado: v.pagado, estado: v.estado }).eq('id', deuda.id));
+        data = null;
+      }
+      if (error) return showToast(mensajeError(error, "Error al procesar pago."), "error");
+      showToast(`Pago registrado con éxito.`, "success");
+      setModalPago({ visible: false, deuda: null, jugador: null }); setMontoPagar(''); setMetodoPago('Efectivo'); cargarTableroCobros();
+      setRecibo({
+        jugador, telefono: jugador.contacto,
+        pago: { recibo_numero: data?.recibo_numero ?? null, fecha_pago: hoyLocal(), monto: v.monto, metodo_pago: metodoPago, concepto: deuda.concepto },
+      });
     } catch { showToast("Error al procesar pago.", "error"); } finally { setCargando(false); }
   };
 
@@ -475,19 +496,21 @@ function Tesoreria() {
 
   const anularCobro = async (pago) => {
     const concepto = modalDetalleDeuda.todas.find(d => String(d.id) === String(pago.deuda_id))?.concepto || 'la cuota';
-    if (!window.confirm(`¿Anular el cobro de $${Number(pago.monto).toLocaleString()} del ${pago.fecha_pago} (${concepto})?\n\nEl importe vuelve a figurar como deuda y sale de la caja.`)) return;
+    const motivo = window.prompt(`Anular el cobro de $${Number(pago.monto).toLocaleString()} del ${pago.fecha_pago} (${concepto}).\n\nEl importe vuelve a figurar como deuda y sale de la caja. El cobro queda registrado como anulado.\n\n¿Por qué se anula?`);
+    if (motivo === null) return;
+    if (motivo.trim().length < 3) return showToast("Escribí el motivo de la anulación.", "error");
     setCargando(true);
     try {
-      const { error: e1 } = await supabase.from('tesoreria_pagos').delete().eq('id', pago.id);
-      if (e1) throw e1;
-      if (pago.deuda_id != null) {
-        // La deuda se lee de nuevo: puede haber cambiado desde que se abrió el detalle.
-        const { data: deuda } = await supabase.from('tesoreria_deudas').select('id, monto_pagado, estado').eq('id', pago.deuda_id).maybeSingle();
-        if (deuda && deuda.estado !== 'Beca') {
-          const { error: e2 } = await supabase.from('tesoreria_deudas').update(deudaSinCobro(deuda, pago.monto)).eq('id', deuda.id);
-          if (e2) throw e2;
+      let { error } = await supabase.rpc('anular_cobro', { p_pago_id: pago.id, p_motivo: motivo.trim() });
+      if (error && rpcInexistente(error)) {
+        // Base sin la migración de cobros: como antes (se borra el pago).
+        ({ error } = await supabase.from('tesoreria_pagos').delete().eq('id', pago.id));
+        if (!error && pago.deuda_id != null) {
+          const { data: deuda } = await supabase.from('tesoreria_deudas').select('id, monto_pagado, estado').eq('id', pago.deuda_id).maybeSingle();
+          if (deuda && deuda.estado !== 'Beca') ({ error } = await supabase.from('tesoreria_deudas').update(deudaSinCobro(deuda, pago.monto)).eq('id', deuda.id));
         }
       }
+      if (error) return showToast(mensajeError(error, "No se pudo anular el cobro."), "error");
       showToast("Cobro anulado.", "success");
       await abrirDetalle(modalDetalleDeuda.jugador);
       cargarTableroCobros();
@@ -1139,15 +1162,25 @@ function Tesoreria() {
                 <div style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Todavía no tiene cobros.</div>
               ) : modalDetalleDeuda.pagos.map(p => {
                 const concepto = modalDetalleDeuda.todas.find(d => String(d.id) === String(p.deuda_id))?.concepto;
+                const anulado = !!p.anulado_at;
                 return (
-                  <div key={p.id} style={{ background: 'var(--panel)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                  <div key={p.id} style={{ background: 'var(--panel)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', opacity: anulado ? 0.6 : 1 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#00ff88' }}>${Number(p.monto).toLocaleString()}</div>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: anulado ? 'var(--text-dim)' : '#00ff88', textDecoration: anulado ? 'line-through' : 'none' }}>
+                        ${Number(p.monto).toLocaleString()}
+                        {p.recibo_numero != null && <span style={{ marginLeft: '8px', fontSize: '0.7rem', color: 'var(--text-dim)', fontFamily: 'monospace' }}>N° {numeroRecibo(p.recibo_numero)}</span>}
+                      </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{p.fecha_pago} · {p.metodo_pago || 'Sin método'}{concepto ? ` · ${concepto}` : ''}</div>
+                      {anulado && <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: '2px' }}>ANULADO{p.motivo_anulacion ? `: ${p.motivo_anulacion}` : ''}</div>}
                     </div>
-                    <button onClick={() => anularCobro(p)} disabled={cargando} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem', minHeight: '38px', flexShrink: 0 }}>
-                      ↩ ANULAR
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button onClick={() => setRecibo({ jugador: modalDetalleDeuda.jugador, telefono: modalDetalleDeuda.jugador?.contacto, pago: { ...p, concepto } })} title="Ver recibo" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', minHeight: '38px' }}>🧾</button>
+                      {!anulado && (
+                        <button onClick={() => anularCobro(p)} disabled={cargando} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem', minHeight: '38px' }}>
+                          ↩ ANULAR
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1228,6 +1261,10 @@ function Tesoreria() {
             </div>
           </div>
         </div>
+      )}
+
+      {recibo && (
+        <Recibo club={clubInfo} jugador={recibo.jugador} pago={recibo.pago} telefono={recibo.telefono} onCerrar={() => setRecibo(null)} />
       )}
 
       {ficha && (

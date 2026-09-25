@@ -628,8 +628,9 @@ export default function Inicio() {
              sentido bajarle la caja del club a un entrenador. */
           club && verPlata
             ? Promise.all([
-                supabase.from('tesoreria_pagos').select('monto, fecha_pago')
-                  .eq('club_id', club).gte('fecha_pago', mesDesde).lte('fecha_pago', mesHasta).then((r) => r.data || []),
+                // select('*') para ver anulado_at si existe: los cobros anulados no suman.
+                supabase.from('tesoreria_pagos').select('*')
+                  .eq('club_id', club).gte('fecha_pago', mesDesde).lte('fecha_pago', mesHasta).then((r) => (r.data || []).filter((p) => !p.anulado_at)),
                 supabase.from('sponsors_pagos').select('monto, fecha_pago')
                   .eq('club_id', club).gte('fecha_pago', mesDesde).lte('fecha_pago', mesHasta).then((r) => r.data || []),
                 supabase.from('tesoreria_ingresos_extra').select('monto, fecha')

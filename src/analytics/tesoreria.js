@@ -93,3 +93,39 @@ export const fichaDe = (emp) => ({
   ...Object.fromEntries(Object.entries(emp || {}).filter(([k]) => k in FICHA_VACIA).map(([k, v]) => [k, v ?? ''])),
   estado: emp?.estado || 'Activo',
 });
+
+/* ── Recibos y errores de la base (migración 20260927140000) ───────────── */
+
+/** Número de recibo con ceros adelante: 12 → "000012". Sin número, "s/n". */
+export const numeroRecibo = (n) => (n == null || n === '' ? 's/n' : String(n).padStart(6, '0'));
+
+const pesos = (n) => `$${Number(n || 0).toLocaleString('es-AR', { maximumFractionDigits: 2 })}`;
+const fechaAR = (iso) => {
+  const [a, m, d] = String(iso || '').slice(0, 10).split('-');
+  return a && m && d ? `${d}/${m}/${a}` : '';
+};
+
+/** El recibo como texto, para mandarlo por WhatsApp. */
+export function textoRecibo({ club, jugador, pago }) {
+  return [
+    `🧾 *Recibo N° ${numeroRecibo(pago.recibo_numero)}* — ${club?.nombre || 'Club'}`,
+    `Recibimos de ${[jugador?.nombre, jugador?.apellido].filter(Boolean).join(' ')} ${pesos(pago.monto)}`,
+    pago.concepto ? `en concepto de ${pago.concepto}.` : null,
+    `Fecha: ${fechaAR(pago.fecha_pago)} · ${pago.metodo_pago || 'Efectivo'}`,
+    pago.anulado_at ? '⚠️ ESTE COBRO FUE ANULADO.' : '¡Gracias!',
+  ].filter(Boolean).join('\n');
+}
+
+export { pesos as formatoPesos, fechaAR };
+
+/** La función no existe en la base (migración sin correr). */
+export const rpcInexistente = (error) =>
+  !!error && (error.code === 'PGRST202' || error.code === '42883' || /could not find the function/i.test(error.message || ''));
+
+/** Mensaje para mostrar de un error de la base al cobrar o anular. */
+export function mensajeError(error, porDefecto = 'No se pudo completar.') {
+  if (!error) return porDefecto;
+  if (error.code === '42501') return error.message?.startsWith('No ') ? error.message : 'No tenés permiso para hacer esto.';
+  if (['22023', 'P0002'].includes(error.code)) return error.message;
+  return porDefecto;
+}

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   manejaPlata, hoyLocal, ultimoDiaDelMes, pendientesPorAntiguedad, validarCobro, deudaSinCobro,
   claveNombre, esDelEmpleado, liquidacionDelMes, faltaColumna, fichaDe,
+  numeroRecibo, textoRecibo, mensajeError, rpcInexistente,
 } from '../tesoreria';
 
 describe('manejaPlata', () => {
@@ -108,5 +109,26 @@ describe('fichaDe', () => {
     const f = fichaDe({ id: 3, nombre_completo: 'Ana', dni: null, club_id: 'x', estado: null });
     expect(f).toMatchObject({ id: 3, nombre_completo: 'Ana', dni: '', estado: 'Activo', cbu: '' });
     expect(f.club_id).toBeUndefined();
+  });
+});
+
+describe('recibos', () => {
+  it('numeroRecibo', () => {
+    expect(numeroRecibo(12)).toBe('000012');
+    expect(numeroRecibo(null)).toBe('s/n');
+  });
+  it('textoRecibo', () => {
+    const t = textoRecibo({ club: { nombre: 'Club Ejemplo' }, jugador: { nombre: 'Ana', apellido: 'Uno' }, pago: { recibo_numero: 3, monto: 25000, concepto: 'Cuota agosto', fecha_pago: '2026-09-25', metodo_pago: 'Efectivo' } });
+    expect(t).toContain('N° 000003');
+    expect(t).toContain('Ana Uno');
+    expect(t).toContain('25.000');
+    expect(t).toContain('25/09/2026');
+    expect(textoRecibo({ club: {}, jugador: {}, pago: { monto: 1, anulado_at: 'x' } })).toContain('ANULADO');
+  });
+  it('mensajeError', () => {
+    expect(mensajeError({ code: '22023', message: 'Esa cuota debe $1.' })).toBe('Esa cuota debe $1.');
+    expect(mensajeError({ code: '42501', message: 'permission denied' })).toBe('No tenés permiso para hacer esto.');
+    expect(mensajeError({ code: 'XX', message: 'x' }, 'fallo')).toBe('fallo');
+    expect(rpcInexistente({ code: 'PGRST202' })).toBe(true);
   });
 });
