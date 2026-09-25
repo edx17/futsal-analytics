@@ -111,7 +111,10 @@ const CSS = `
   --frio:#22d3ee;--amarillo:#facc15;
   font-family:'Syne',sans-serif;color:var(--text);background:var(--bg);
   display:flex;flex-direction:column;overflow:hidden;user-select:none;
-  position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+  /* Arranca al lado de la barra lateral (App.jsx define --vc-barra; en el
+     celular es 0 y ocupa todo). */
+  position:fixed;top:0;left:var(--vc-barra,0px);right:0;bottom:0;z-index:9999;
+  transition:left .3s cubic-bezier(0.4,0,0.2,1);
 }
 .ct-header{height:50px;background:var(--s1);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 14px;flex-shrink:0;overflow-x:auto}
 .ct-header.edit-mode{border-bottom-color:var(--blue)}

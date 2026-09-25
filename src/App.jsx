@@ -143,6 +143,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
+      <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
+      <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
       <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
       <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
       <Route path="/presentismo" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><Presentismo /></ProtectedRoute>} />
@@ -218,10 +220,26 @@ function AppLayout() {
     sistema: false
   });
 
-// Minimiza la barra lateral al entrar al dashboard, para que el resumen luzca mejor.
+/* HERRAMIENTAS: pantallas de trabajo que ocupan todo el alto (la toma de
+   datos en vivo, el análisis offline y el creador táctico). En la compu se
+   ven con la barra lateral, achicada a íconos para dejarles lugar; en el
+   celular siguen a pantalla completa, porque sus botones van abajo, donde
+   estaría la barra del celular. */
+const RUTAS_HERRAMIENTA = ['/toma-datos', '/analisis-offline', '/creador-tareas'];
+const esHerramienta = RUTAS_HERRAMIENTA.includes(location.pathname);
+
+// Minimiza la barra lateral al entrar al dashboard y a las herramientas.
 useEffect(() => {
-  if (!esMovil && location.pathname === '/inicio') setSidebarAbierta(false);
+  if (!esMovil && (location.pathname === '/inicio' || RUTAS_HERRAMIENTA.includes(location.pathname))) setSidebarAbierta(false);
+// eslint-disable-next-line react-hooks/exhaustive-deps
 }, [location.pathname, esMovil]);
+
+/* El ancho de la barra, para las pantallas que se dibujan con position:fixed
+   (el creador táctico): así arrancan al lado de la barra y no encima. */
+useEffect(() => {
+  const ancho = esMovil ? '0px' : (sidebarAbierta ? '250px' : '70px');
+  document.documentElement.style.setProperty('--vc-barra', ancho);
+}, [esMovil, sidebarAbierta]);
 
   useEffect(() => {
     if (esMovil) {
@@ -305,7 +323,8 @@ useEffect(() => {
     return <Navigate to="/aceptar-terminos" replace />;
   }
 
-  if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
+  // La toma de datos y el análisis offline van sin marco sólo en el celular.
+  if (isLanding || isLogin || isRegistro || (isTomaDatos && esMovil) || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
         <LimiteDeError>
@@ -566,7 +585,7 @@ useEffect(() => {
       )}
 
       {/* ÁREA PRINCIPAL DE CONTENIDO */}
-      <main style={{ flex: 1, overflowY: 'auto', padding: esMovil ? '0px 0px 85px 0px' : '40px', position: 'relative' }}>
+      <main style={{ flex: 1, overflowY: esHerramienta && !esMovil ? 'hidden' : 'auto', padding: esHerramienta && !esMovil ? 0 : (esMovil ? '0px 0px 85px 0px' : '40px'), position: 'relative' }}>
         <div style={{ padding: esMovil ? '20px 15px' : '0' }}>
           <LimiteDeError>
         <Suspense fallback={<CargandoPantalla />}>
