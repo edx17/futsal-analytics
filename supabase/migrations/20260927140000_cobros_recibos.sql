@@ -174,12 +174,16 @@ declare
   v_club jsonb;
   v_deudas jsonb;
   v_pagos jsonb;
+  v_jug jsonb;
 begin
   select * into s from public.kiosco_sesiones
    where token = p_token and expira_at > now();
   if not found then
     raise exception 'kiosco: sesión vencida o inexistente' using errcode = '28000';
   end if;
+
+  select jsonb_build_object('nombre', j.nombre, 'apellido', j.apellido) into v_jug
+    from public.jugadores j where j.id::text = s.jugador_id and j.club_id::text = s.club_id;
 
   select jsonb_build_object(
            'nombre', c.nombre, 'escudo_url', c.escudo_url, 'alias_cobro', c.alias_cobro,
@@ -214,7 +218,8 @@ begin
        limit 36
     ) x;
 
-  return jsonb_build_object('club', coalesce(v_club, '{}'::jsonb), 'deudas', v_deudas, 'pagos', v_pagos);
+  return jsonb_build_object('club', coalesce(v_club, '{}'::jsonb), 'jugador', coalesce(v_jug, '{}'::jsonb),
+                            'deudas', v_deudas, 'pagos', v_pagos);
 end
 $$;
 

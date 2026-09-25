@@ -96,6 +96,15 @@ const IconDatos = () => (
   </svg>
 );
 
+const IconPagos = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"></path>
+    <line x1="9" y1="7" x2="15" y2="7"></line>
+    <line x1="9" y1="11" x2="15" y2="11"></line>
+    <line x1="9" y1="15" x2="13" y2="15"></line>
+  </svg>
+);
+
 /* Los accesos del menú. Mi estado físico, Temporada, Libro táctico y Torneo
    ya existían como pantallas del kiosco pero no tenían botón. */
 const ACCESOS = [
@@ -110,6 +119,7 @@ const ACCESOS = [
   { ruta: '/kiosco/libro-tactico',  titulo: 'LIBRO TÁCTICO', icono: IconLibro },
   // Ancho, abajo de todo: son diez accesos y en tres columnas quedaba uno suelto.
   { ruta: '/kiosco/mis-datos',      titulo: 'MIS DATOS · CORREGÍ TU CELULAR, EMERGENCIA U OBRA SOCIAL', icono: IconDatos, ancho: true },
+  { ruta: '/kiosco/mis-pagos',      titulo: 'MIS PAGOS · SALDO Y RECIBOS', icono: IconPagos, ancho: true },
 ];
 
 const IconSalir = () => (
@@ -590,6 +600,9 @@ export default function LoginKiosco() {
                 )}
               </>
             )}
+            <button onClick={() => navigate('/kiosco/mis-pagos')} style={{ width: '100%', marginTop: '10px', background: 'transparent', border: 'none', color: 'var(--accent)', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer', padding: '8px' }}>
+              VER DETALLE Y RECIBOS ›
+            </button>
           </div>
         )}
 

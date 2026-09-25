@@ -65,6 +65,7 @@ const Agenda              = lazy(() => import('./pages/Agenda'));
 const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
 const KioscoTorneo        = lazy(() => import('./pages/KioscoTorneo'));
 const KioscoMisDatos      = lazy(() => import('./pages/KioscoMisDatos'));
+const KioscoMisPagos      = lazy(() => import('./pages/KioscoMisPagos'));
 const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 
 import './App.css';
@@ -346,6 +347,7 @@ useEffect(() => {
             <Route path="/kiosco/videoanalisis" element={<Videoanalisis />} />
             <Route path="/kiosco/torneo" element={<KioscoTorneo />} />
             <Route path="/kiosco/mis-datos" element={<KioscoMisDatos />} />
+            <Route path="/kiosco/mis-pagos" element={<KioscoMisPagos />} />
             <Route path="/kiosco/*" element={<Navigate to="/kiosco" replace />} />
           </Routes>
         </Suspense>

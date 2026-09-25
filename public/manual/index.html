@@ -206,6 +206,7 @@
   <a href="#kiosco">El acceso del jugador</a>
   <a href="#kiosco-menu">Su menú</a>
   <a href="#misdatos">Mis datos</a>
+  <a href="#mispagos">Mis pagos</a>
   <a href="#kiosco-avisos">Avisos al celular</a>
   <a href="#kiosco-link">Pasarles el acceso</a>
 
@@ -301,7 +302,8 @@
       <tbody>
         <tr><td>Manager</td><td>El que dirige el club</td><td>Ve y edita todo, incluida la parte administrativa y la de dinero.</td></tr>
         <tr><td>CT</td><td>Cuerpo técnico</td><td>Todo lo deportivo: partidos, análisis, planificación, plantel, presentismo y enfermería. No entra a Tesorería.</td></tr>
-        <tr><td>Admin</td><td>Tesorería y secretaría</td><td>Administración, cobros y sponsors. Ve el análisis pero no lo carga.</td></tr>
+        <tr><td>Admin</td><td>Secretaría</td><td>Administración, cobros y sponsors. Ve el análisis pero no lo carga.</td></tr>
+        <tr><td>Tesorero</td><td>Tesorería</td><td>Sólo la plata: Tesorería, Empleados y Sponsors, y la caja del mes en el Inicio. En el club puede cambiar únicamente los datos de cobro (alias, CBU, WhatsApp).</td></tr>
         <tr><td>Jugador</td><td>El plantel</td><td>Entra por el <a href="#kiosco">Kiosco</a> con su PIN, sin usuario. Ve lo suyo: su agenda, su citación, sus tarjetas, su wellness, su estado físico y los resúmenes del equipo.</td></tr>
       </tbody>
     </table>
@@ -979,20 +981,52 @@
   </section>
 
   <section id="tesoreria">
-    <h2>Tesorería</h2>
+    <h2>Tesorería <span class="nuevo">NUEVO</span></h2>
     <p class="ruta">ADMINISTRACIÓN → <b>TESORERÍA</b></p>
-    <p>Las cuotas del plantel, las deudas, los ingresos extra y los egresos del club. Cada jugador ve lo que debe
-    desde su acceso y puede mandar el comprobante por WhatsApp.</p>
-    <p>Se configuran el alias, el CBU y el WhatsApp de tesorería del club. El jugador ve su deuda en el Kiosco con dos botones:
-    <b>Pagar con MP</b> (copia el alias y abre Mercado Pago) y <b>Comprobante</b> (abre el WhatsApp de tesorería).</p>
-    <p>Desde la tabla de deudas, el botón de WhatsApp le manda al jugador un recordatorio con el saldo pendiente.</p>
+    <p>Las cuotas del plantel, los cobros, los ingresos extra y los egresos del club. La manejan el superuser, el manager,
+    el admin y el tesorero, cada uno sólo la de su club.</p>
+
+    <h3>Cuotas y tarifas</h3>
+    <p>En la pestaña <b>💵 CUOTAS Y TARIFAS</b> se carga cuánto paga cada categoría por mes. Con <b>Generar la cuota sola cada mes</b>
+    prendido, el día 1 se crea la cuota de cada jugador activo y a cada uno le llega el aviso en el celular (si activó los avisos en el Kiosco).
+    Ahí mismo se elige qué día vence y cómo se llama el concepto.</p>
+    <ul>
+      <li><b>Hermanos:</b> los jugadores con el mismo <i>grupo familiar</i> son hermanos. Paga completo el de la tarifa más alta
+      y los demás tienen el descuento que ponga el club.</li>
+      <li><b>Ver qué se generaría:</b> muestra jugador por jugador lo que se crearía este mes. <b>Generar</b> lo crea ya, sin esperar al día 1.
+      No se duplica: a quien ya tiene la cuota del mes no se le vuelve a generar.</li>
+      <li><b>Cuota extraordinaria</b> (en Cobros de cuotas) es para lo que va aparte: indumentaria, un torneo, una rifa.</li>
+    </ul>
+
+    <h3>Cobrar</h3>
+    <p>En <b>💰 COBROS DE CUOTAS</b>, <b>COBRAR</b> toma la cuota pendiente más vieja del jugador. No deja cobrar más de lo que se debe
+    (el botón <b>Paga todo</b> completa el saldo). Al confirmar se abre el <b>recibo</b>, con el número correlativo del club y el escudo,
+    para compartir la imagen o mandarlo por WhatsApp.</p>
+    <figure class="cel">
+      <img src="recibo.png" alt="Recibo de pago con escudo, número de recibo, jugador, concepto, monto, fecha y medio de pago">
+      <figcaption>El recibo de un cobro. Datos de ejemplo.</figcaption>
+    </figure>
+    <p><b>DETALLE</b> (o <b>COBROS</b>, si está al día) muestra las cuotas pendientes y todos los cobros del jugador, con su recibo.
+    Un cobro cargado por error se <b>anula</b>: se pide el motivo, el importe vuelve a la deuda y deja de sumar en la caja,
+    pero el cobro queda registrado como anulado. Los cobros no se borran.</p>
+
+    <h3>Datos de cobro y avisos</h3>
+    <p>En <b>⚙️ CONFIG. BANCARIA</b> se cargan el alias, el CBU y el WhatsApp de tesorería. El jugador los ve en
+    <a href="#mispagos">Mis pagos</a>, en el Kiosco. Desde la tabla, <b>AVISAR</b> le manda al jugador por WhatsApp un recordatorio con el saldo.</p>
+
+    <h3>Staff y viáticos</h3>
+    <p>Las pestañas <b>STAFF / EMPLEADOS</b> y <b>JUGADORES (VIÁTICOS)</b> muestran quién cobró el sueldo o el viático del mes y quién no.
+    La ficha de cada persona es la misma que en <a href="#staff">Empleados</a>. Si una persona es jugador del club, cobra viático.</p>
   </section>
 
   <section id="staff">
     <h2>Staff, empleados y sponsors</h2>
     <p class="ruta">ADMINISTRACIÓN → <b>MI STAFF</b> · <b>EMPLEADOS</b> · <b>SPONSORS</b></p>
     <p><b>Mi staff</b> son los usuarios del cuerpo técnico y qué categorías tiene asignada cada uno.
-    <b>Empleados</b> lleva los sueldos y pagos del personal. <b>Sponsors</b>, los contratos de los auspiciantes y sus vencimientos.</p>
+    <b>Empleados</b> es la ficha de cada persona que cobra (DNI, teléfono, datos bancarios y el monto mensual); los jugadores
+    que cobran viático aparecen con su etiqueta. Cada sueldo o viático queda atado a la ficha, así que corregir un nombre
+    no lo hace figurar como impago. <b>Sponsors</b>, los contratos de los auspiciantes y sus aportes; si un aporte tiene comisión
+    para un jugador, se le suma a su viático.</p>
   </section>
 
   <section id="config">
@@ -1107,6 +1141,22 @@
       <figcaption>Con un pedido pendiente. Datos de ejemplo.</figcaption>
     </figure>
     <p>Mientras espera, puede actualizar el pedido o cancelarlo. Cuando el club lo resuelve, ve si se aprobó y la nota que le dejaron.</p>
+  </section>
+
+  <section id="mispagos">
+    <h2>Mis pagos <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">KIOSCO → <b>MIS PAGOS</b> (debajo de Mis datos)</p>
+    <p>El jugador ve lo que debe, cuándo vence cada cuota y cómo pagarle al club: copia el alias o manda el comprobante
+    por WhatsApp a tesorería. Abajo están los pagos que tesorería ya registró, cada uno con su <b>recibo</b> para verlo,
+    bajarlo o compartirlo.</p>
+    <figure class="cel">
+      <img src="kiosco-mispagos.png" alt="Mis pagos: saldo pendiente, alias para transferir, y la lista de pagos con su número de recibo">
+      <figcaption>Saldo, cómo pagar y los recibos. Datos de ejemplo.</figcaption>
+    </figure>
+    <div class="nota">
+    <p>Cada jugador ve sólo lo suyo. En el Kiosco, todo lo que se muestra después del PIN queda atado a su club, y si alguien
+    le erra al PIN cinco veces seguidas, ese jugador queda bloqueado quince minutos.</p>
+    </div>
   </section>
 
   <section id="kiosco-avisos">
