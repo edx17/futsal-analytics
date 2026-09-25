@@ -5,7 +5,7 @@ import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { soloActivos } from '../utils/plantelActivo';
 import { ejerciciosParaZona, REHAB_LIB } from '../utils/rehab';
-import { cargarFichaKiosco } from '../utils/kiosco';
+import { cargarFichaKiosco, tablaJugadores } from '../utils/kiosco';
 import {
   ZONAS, TIPOS, LATERALIDADES, MECANISMOS, CONTEXTOS, GRAVEDADES, ESTADOS,
   hoyISO, soloFecha, sumarDias, diasEntre, diasDeBaja, altaVencida, estaAbierta,
@@ -244,7 +244,7 @@ function Enfermeria() {
     if (!clubId) { setCargando(false); return; }
     setCargando(true);
     try {
-      let qJug = supabase.from('jugadores').select('*').eq('club_id', clubId).order('apellido', { ascending: true });
+      let qJug = supabase.from(tablaJugadores()).select('*').eq('club_id', clubId).order('apellido', { ascending: true });
       let qLes = supabase.from('lesiones').select('*').eq('club_id', clubId).order('fecha_lesion', { ascending: false });
       const qPar = supabase.from('partidos')
         .select('id, fecha, rival, categoria, condicion, nombre_propio, competicion')

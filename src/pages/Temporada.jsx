@@ -54,7 +54,7 @@ const analizarRachas = (historial = []) => {
   return r;
 };
 import { useAuth } from '../context/AuthContext'; 
-import { esModoKiosco } from '../utils/kiosco';
+import { esModoKiosco, tablaJugadores } from '../utils/kiosco';
 
 const GRUPOS_QUINT = { q: 'var(--accent)' };
 const GRUPOS_QUINT_LABEL = { q: 'ESTADÍSTICAS DEL QUINTETO' };
@@ -348,7 +348,7 @@ function Temporada() {
          supabase-js son thenables de un solo uso; reutilizar el mismo objeto
          devuelve vacío en la segunda página. */
       const armarJugadores = () => {
-        let q = supabase.from('jugadores').select('*').order('id', { ascending: true });
+        let q = supabase.from(tablaJugadores()).select('*').order('id', { ascending: true });
         if (clubId) q = q.eq('club_id', clubId);
         return q;
       };

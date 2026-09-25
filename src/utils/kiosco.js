@@ -25,6 +25,12 @@ export const guardarTokenKiosco = (token) => {
   } catch { /* sin storage no hay sesión persistente, y está bien */ }
 };
 
+/* De dónde leer el plantel. En el kiosco, la vista jugadores_kiosco
+   (migración 20260929120000): los compañeros sin datos personales y sólo del
+   club del token; la tabla jugadores le muestra al kiosco nada más que su
+   propia fila. Fuera del kiosco, la tabla de siempre. Sólo para leer. */
+export const tablaJugadores = () => (esModoKiosco() ? 'jugadores_kiosco' : 'jugadores');
+
 /* Volver: en el kiosco siempre al menú del jugador. Un navigate(-1) desde un
    link directo o una recarga saca al jugador de la app o lo deja en una
    pantalla del staff. */

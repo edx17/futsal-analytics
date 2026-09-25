@@ -3,7 +3,7 @@ import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { volverDesde } from '../utils/kiosco';
+import { volverDesde, tablaJugadores } from '../utils/kiosco';
 
 const CargaWellness = () => {
   const navigate = useNavigate();
@@ -68,7 +68,7 @@ const CargaWellness = () => {
         if (!club_id || club_id === 'club_default') return;
 
         // 1. Consulta base
-        let query = supabase.from('jugadores').select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id);
+        let query = supabase.from(tablaJugadores()).select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id);
         
         // 2. ¡EL GRAN FILTRO EN LA BASE DE DATOS!
         if (esCT && misCategorias.length > 0) {

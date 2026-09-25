@@ -21,7 +21,7 @@ import { calcularRatingJugador } from '../analytics/rating';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { TablaResponsive } from '../components/TablaResponsive';
-import { esModoKiosco } from '../utils/kiosco';
+import { esModoKiosco, tablaJugadores } from '../utils/kiosco';
 
 // Componente para la Malla de Microzonas Tácticas (Filtro ZONAS)
 const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
@@ -403,7 +403,7 @@ return 'Todas';
       try {
         const club_id = localStorage.getItem('club_id') || perfil?.club_id;
         let queryPartidos = supabase.from('partidos').select('*').order('id', { ascending: false });
-        let queryJugadores = supabase.from('jugadores').select('*');
+        let queryJugadores = supabase.from(tablaJugadores()).select('*');
         let queryWellness = supabase.from('wellness').select('*');
 
         if (club_id) {

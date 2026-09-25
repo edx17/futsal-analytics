@@ -10,7 +10,7 @@ import {
   ResponsiveContainer, Legend, Cell, ReferenceLine, LineChart, Line,
 } from 'recharts';
 import { REHAB_LIB } from '../utils/rehab';
-import { volverDesde } from '../utils/kiosco';
+import { volverDesde, tablaJugadores } from '../utils/kiosco';
 
 const ELITE = { musc: 48.5, adip: 9.0, sum6: 45.0, cmj: 55, abk: 62, broad: 2.60, yoyo: 21.0, visc: 4, imc: 23.0 };
 
@@ -111,7 +111,7 @@ export default function Rendimiento() {
     }
 
     // --- FILTRO JUGADORES ---
-    let qJugadores = supabase.from('jugadores').select('id,nombre,apellido,dorsal,posicion,categoria').eq('club_id', clubId).order('dorsal');
+    let qJugadores = supabase.from(tablaJugadores()).select('id,nombre,apellido,dorsal,posicion,categoria').eq('club_id', clubId).order('dorsal');
     if (misCategorias.length > 0) {
       qJugadores = qJugadores.in('categoria', misCategorias);
     }

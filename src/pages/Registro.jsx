@@ -20,73 +20,65 @@ export default function Registro() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const [pendienteConfirmar, setPendienteConfirmar] = useState(false);
+
+  /* El club y el perfil los crea la base al crearse la cuenta (trigger
+     zz_vc_registrar_club, migración 20260929120000), con los datos que van
+     en vc_registro. Desde el navegador no se puede crear un club ni darse un
+     rol a uno mismo: antes esta pantalla lo intentaba y el alta fallaba. */
   const handleRegistro = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      /* TODOS arrancan con la prueba completa, venga del plan que venga.
-      
-         Antes esto tenía dos fallas que se comían clientes:
-         · el trial daba 10 días y el landing promete 30;
-         · el que elegía un plan pago se creaba con suscripcion_activa en
-           false y vencimiento HOY, así que entraba y quedaba bloqueado al
-           instante en "Mi Suscripción" sin haber podido probar nada.
-      
-         El plan elegido se guarda aparte (plan_interes) para saber qué
-         venderle cuando se le termine la prueba. */
-      const fechaVencimiento = new Date(Date.now() + DIAS_TRIAL * 24 * 60 * 60 * 1000).toISOString();
-
-      // 2. Crear el usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: formData.email.trim(),
+        password: formData.password,
+        options: {
+          data: {
+            vc_registro: {
+              club: formData.nombreClub.trim(),
+              nombre_completo: `${formData.nombreAdmin} ${formData.apellidoAdmin}`.trim(),
+              plan_interes: planInteres ? planInteres.id : null,
+            },
+          },
+        },
       });
 
       if (authError) throw new Error(authError.message);
-      if (!authData.user) throw new Error("No se pudo crear el usuario. Intentá nuevamente.");
+      if (!data.user) throw new Error("No se pudo crear el usuario. Intentá nuevamente.");
 
-      // 3. Crear el Club en la base de datos
-      const { data: clubData, error: clubError } = await supabase
-        .from('clubes')
-        .insert([{
-          nombre: formData.nombreClub,
-          plan_actual: 'trial',
-          plan_interes: planInteres ? planInteres.id : null,
-          suscripcion_activa: true,
-          fecha_vencimiento: fechaVencimiento
-        }])
-        .select()
-        .single();
+      // Con confirmación por mail no hay sesión todavía: el club ya quedó
+      // creado y se entra después de confirmar.
+      if (!data.session) { setPendienteConfirmar(true); return; }
 
-      if (clubError) throw new Error("Error al crear el club: " + clubError.message);
-
-      // 4. Actualizar el perfil del Admin para vincularlo a su nuevo club
-      // Supabase suele crear el perfil automáticamente mediante un Trigger, así que lo actualizamos.
-      // Si no usás trigger, cambialo por .insert()
-      const { error: perfilError } = await supabase
-        .from('perfiles')
-        .upsert([{ 
-          id: authData.user.id, 
-          nombre: formData.nombreAdmin, 
-          apellido: formData.apellidoAdmin, 
-          rol: 'admin', 
-          club_id: clubData.id,
-          email: formData.email
-        }]);
-
-      if (perfilError) throw new Error("Error al configurar tu perfil: " + perfilError.message);
-
-      // 5. A usarlo. Nadie paga antes de probar.
+      // A usarlo. Nadie paga antes de probar.
       navigate('/inicio');
-
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  if (pendienteConfirmar) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100%', background: 'var(--bg)', padding: '20px' }}>
+        <div style={{ background: 'var(--panel)', padding: 'clamp(24px, 6vw, 40px)', borderRadius: '8px', border: '1px solid var(--border)', width: '100%', maxWidth: '450px', textAlign: 'center' }}>
+          <div style={{ fontSize: '2.5rem' }}>📬</div>
+          <h2 style={{ fontFamily: 'Outfit', fontWeight: 900 }}>REVISÁ TU MAIL</h2>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+            Te mandamos un link a <strong style={{ color: 'var(--text)' }}>{formData.email}</strong> para confirmar la cuenta.
+            Tu club <strong style={{ color: 'var(--text)' }}>{formData.nombreClub}</strong> ya está creado: confirmá y entrá con tu mail y contraseña.
+          </p>
+          <button type="button" onClick={() => navigate('/login')} style={{ padding: '15px', background: 'var(--accent)', color: '#000', fontWeight: 800, border: 'none', cursor: 'pointer', borderRadius: '4px', marginTop: '10px', width: '100%' }}>
+            IR A INICIAR SESIÓN
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100%', background: 'var(--bg)', padding: '20px' }}>
@@ -105,17 +97,17 @@ export default function Registro() {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', letterSpacing: '1px' }}>NOMBRE DEL CLUB</label>
-            <input type="text" placeholder="Ej: Boca Juniors Futsal" value={formData.nombreClub} onChange={(e) => setFormData({...formData, nombreClub: e.target.value})} style={inputStyle} required />
+            <input type="text" placeholder="Ej: Club Atlético Ejemplo" value={formData.nombreClub} onChange={(e) => setFormData({...formData, nombreClub: e.target.value})} style={inputStyle} required />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '10px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', letterSpacing: '1px' }}>TU NOMBRE</label>
-              <input type="text" placeholder="Ej: Lionel" value={formData.nombreAdmin} onChange={(e) => setFormData({...formData, nombreAdmin: e.target.value})} style={inputStyle} required />
+              <input type="text" placeholder="Ej: Juan" value={formData.nombreAdmin} onChange={(e) => setFormData({...formData, nombreAdmin: e.target.value})} style={inputStyle} required />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '0.7rem', color: 'var(--text-dim)', letterSpacing: '1px' }}>TU APELLIDO</label>
-              <input type="text" placeholder="Ej: Scaloni" value={formData.apellidoAdmin} onChange={(e) => setFormData({...formData, apellidoAdmin: e.target.value})} style={inputStyle} required />
+              <input type="text" placeholder="Ej: Pérez" value={formData.apellidoAdmin} onChange={(e) => setFormData({...formData, apellidoAdmin: e.target.value})} style={inputStyle} required />
             </div>
           </div>
 
