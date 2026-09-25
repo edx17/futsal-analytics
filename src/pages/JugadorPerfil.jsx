@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
+import { tablaJugadores } from '../utils/kiosco';
 import simpleheat from 'simpleheat';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
@@ -472,7 +473,7 @@ function JugadorPerfil() {
     if (cargandoAuth) return; 
     
     async function cargarCatalogos() {
-      let queryJugadores = supabase.from('jugadores').select('*').order('apellido', { ascending: true });
+      let queryJugadores = supabase.from(tablaJugadores()).select('*').order('apellido', { ascending: true });
       let queryPartidos = supabase.from('partidos').select('*').order('fecha', { ascending: false });
       let querySanciones = supabase.from('disciplina_sanciones').select('*');
 

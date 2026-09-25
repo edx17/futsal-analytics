@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
+import { tablaJugadores } from '../utils/kiosco';
 import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { fetchPaginado } from '../utils/supaPaginado';
@@ -778,7 +779,7 @@ export default function Videoanalisis() {
   const fetchJugadoresClub = useCallback(async () => {
     if (!clubId) return;
     const data = await fetchPaginado(() =>
-      supabase.from('jugadores').select('id, nombre, apellido, categoria').eq('club_id', clubId)
+      supabase.from(tablaJugadores()).select('id, nombre, apellido, categoria').eq('club_id', clubId)
         .order('apellido').order('id')
     ).catch(() => []);
     setJugadoresClub(data || []);
@@ -1741,7 +1742,7 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
       // y hacemos un fallback a la base de datos por las dudas.
       let miCategoria = localStorage.getItem('kiosco_categoria');
       if (!miCategoria && jugadorId) {
-        const { data: yo } = await supabase.from('jugadores').select('categoria').eq('id', jugadorId).maybeSingle();
+        const { data: yo } = await supabase.from(tablaJugadores()).select('categoria').eq('id', jugadorId).maybeSingle();
         miCategoria = yo?.categoria || null;
       }
 
