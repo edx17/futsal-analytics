@@ -115,6 +115,13 @@
   .cels figure{margin:0}
   figure.cel{max-width:300px}
   .cels figure img,figure.cel img{border-radius:14px}
+  /* Cada pantalla en la compu y en el celular, lado a lado */
+  .modos{display:grid;grid-template-columns:minmax(0,2.6fr) minmax(0,1fr);gap:16px;margin:22px 0;align-items:start}
+  .modos figure{margin:0}
+  .modos figure:nth-child(n+2) img{border-radius:14px}
+  .modos.acostado{grid-template-columns:1fr 1fr}
+  .modos.acostado figure:first-child{grid-column:1/-1}
+  @media(max-width:640px){.modos{grid-template-columns:1fr}.modos figure:nth-child(n+2){max-width:260px}.modos.acostado figure:nth-child(n+2){max-width:none}}
   .nuevo{display:inline-block;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;
          color:#000;background:var(--green);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px}
   .hero-img{margin:26px 0 0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
@@ -135,6 +142,8 @@
     figure,.nota,.tarjeta,tr{break-inside:avoid}
     figure.cel,.cels figure{max-width:220px}
     .cels{grid-template-columns:repeat(3,1fr)}
+    .modos{grid-template-columns:3fr 1fr}
+    .modos.acostado{grid-template-columns:1fr 1fr}
     a{color:inherit;text-decoration:none}
   }
   @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -258,6 +267,17 @@
     <p>Un tablero armado con módulos. Arriba va lo que hay que resolver hoy y más abajo el balance, que cambia
     una vez por semana. Cada rol arranca con los suyos: el técnico con el equipo, tesorería con la plata.</p>
 
+    <div class="modos">
+      <figure>
+        <img src="inicio-pc.jpg" alt="El tablero de Inicio con sus módulos y la barra lateral desplegada." loading="lazy">
+        <figcaption><b>En la compu.</b> El tablero de Inicio con sus módulos y la barra lateral desplegada. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="inicio-cel.jpg" alt="Los mismos módulos, uno debajo del otro." loading="lazy">
+        <figcaption><b>En el celular.</b> Los mismos módulos, uno debajo del otro. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
     <div class="tarjetas">
       <div class="tarjeta"><h4>Requiere tu atención</h4><p>Suspendidos, jugadores a una amarilla del corte, lesiones con el alta vencida, wellness en rojo. Tocando cada aviso vas a la pantalla donde se resuelve.</p></div>
       <div class="tarjeta"><h4>Los próximos 7 días</h4><p>Partidos, entrenamientos, cumpleaños, aptos y cuotas que vencen. Es un resumen de la <a href="#agenda">Agenda</a>.</p></div>
@@ -278,6 +298,17 @@
     <p class="ruta">La 🔔 <b>campanita</b> de arriba · y las notificaciones en el celular</p>
     <p>La campanita junta lo mismo que "Requiere tu atención", más préstamos que vencen, sesiones sin tareas cargadas
     y deudas vencidas. Cada aviso se puede descartar cuando ya lo resolviste.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="avisos-pc.jpg" alt="La campanita abierta con los avisos del día." loading="lazy">
+        <figcaption><b>En la compu.</b> La campanita abierta con los avisos del día. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="avisos-cel.jpg" alt="Los avisos en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
 
     <h3>Recibirlos en el celular</h3>
     <ol class="pasos">
@@ -354,6 +385,17 @@
     <p>Es la pantalla que arma el partido antes de empezar a cargar datos. Elegís el torneo, el rival y la fecha
     —o tomás un partido que ya esté en el fixture— y armás la convocatoria.</p>
 
+    <div class="modos">
+      <figure>
+        <img src="partido-pc.jpg" alt="El alta de un partido: rival, torneo, fecha y convocados." loading="lazy">
+        <figcaption><b>En la compu.</b> El alta de un partido: rival, torneo, fecha y convocados. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="partido-cel.jpg" alt="El mismo formulario en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
     <h3>Las dos reglas que valida</h3>
     <ul class="lista">
       <li><b>Convocados:</b> hasta 14, o 16 si la competición es un amistoso.</li>
@@ -375,6 +417,21 @@
     <p class="ruta">OPERACIONES → NUEVO PARTIDO → <b>INICIAR PARTIDO</b> · o CONTINUAR PARTIDO</p>
     <p>La pantalla de cancha. Cada jugada se carga en pocos toques y queda con su ubicación en el campo,
     que es lo que después arma los mapas de calor y el xG.</p>
+
+    <div class="modos acostado">
+      <figure>
+        <img src="toma-pc.jpg" alt="La cancha y el panel de registro al costado." loading="lazy">
+        <figcaption><b>En la compu.</b> La cancha y el panel de registro al costado. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="toma-cel.jpg" alt="En el celular: sólo la cancha, con el teléfono acostado." loading="lazy">
+        <figcaption><b>En el celular.</b> Sólo la cancha, con el teléfono acostado. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="toma-cel2.jpg" alt="Al tocar la cancha se abre la ventana para elegir la acción." loading="lazy">
+        <figcaption><b>En el celular.</b> Al tocar la cancha se abre la ventana para elegir la acción.</figcaption>
+      </figure>
+    </div>
 
     <h3>Cómo se carga una acción</h3>
     <ol class="pasos">
@@ -404,6 +461,17 @@
     <p class="ruta">OPERACIONES → <b>ANÁLISIS OFFLINE</b></p>
     <p>Para analizar con calma sobre un partido que ya se cargó: cadenas de pases, pérdidas forzadas o no forzadas,
     y el seguimiento posicional. Sirve para profundizar sin la presión del banco.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="offline-pc.jpg" alt="Análisis offline con la barra lateral a mano." loading="lazy">
+        <figcaption><b>En la compu.</b> Análisis offline con la barra lateral a mano. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="offline-cel.jpg" alt="Análisis offline en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <p>Funciona <b>sin conexión</b> y sincroniza cuando vuelve internet, así que se puede usar en una cancha sin señal.</p>
   </section>
 
@@ -411,6 +479,17 @@
     <h2>Mis torneos</h2>
     <p class="ruta">COMPETICIÓN → <b>MIS TORNEOS</b></p>
     <p>Acá vive la competición: el fixture, la tabla de posiciones y el calendario de fechas.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="torneos-pc.jpg" alt="Los torneos del club con su tabla y fixture." loading="lazy">
+        <figcaption><b>En la compu.</b> Los torneos del club con su tabla y fixture. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="torneos-cel.jpg" alt="Torneos en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
 
     <h3>Importar el fixture sin cargarlo a mano</h3>
     <ol class="pasos">
@@ -429,6 +508,17 @@
     <h2>Rivales</h2>
     <p class="ruta">COMPETICIÓN → <b>RIVALES</b></p>
     <p>La ficha de cada rival: sistema táctico, jugadores clave, notas del cuerpo técnico y su dossier de video.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="rivales-pc.jpg" alt="El scouting de rivales." loading="lazy">
+        <figcaption><b>En la compu.</b> El scouting de rivales. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="rivales-cel.jpg" alt="Rivales en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <ul class="lista">
       <li><b>Enfrentamientos:</b> los partidos que jugaste contra él.</li>
       <li><b>Scouting:</b> sus partidos contra terceros, los que están en el fixture.</li>
@@ -505,6 +595,17 @@
     <p>Todos los jugadores de una categoría en una tabla: citaciones, partidos, titularidades y minutos; goles, xG, remates
     y asistencias; duelos, disciplina e impacto, y una sección aparte para los arqueros.
     Se ordena por cualquier columna y se filtra por torneo. Sirve para ver de un vistazo quién está sumando y quién no.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="resumenplantel-pc.jpg" alt="El resumen del plantel con los números de cada jugador." loading="lazy">
+        <figcaption><b>En la compu.</b> El resumen del plantel con los números de cada jugador. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="resumenplantel-cel.jpg" alt="El resumen del plantel en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <p>En el celular cada jugador es una tarjeta con sus tres números principales; <b>VER TODO</b> despliega el resto.</p>
   </section>
 
@@ -513,6 +614,17 @@
     <p class="ruta">ANÁLISIS → <b>COMPARAR</b></p>
     <p>Dos jugadores lado a lado, con los mismos números del Resumen del plantel. Contesta preguntas como
     <i>"¿a quién pongo de cierre?"</i> sin abrir dos pestañas.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="comparar-pc.jpg" alt="Dos jugadores comparados lado a lado." loading="lazy">
+        <figcaption><b>En la compu.</b> Dos jugadores comparados lado a lado. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="comparar-cel.jpg" alt="La comparación en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <div class="nota">
       <p><b>Por defecto compara cada 40 minutos jugados</b>, lo que dura un partido. Así el que jugó 600 minutos y el que
       jugó 200 se miden en la misma escala. Para ver los totales, destildá <i>Mostrar cada 40 minutos jugados</i>.</p>
@@ -562,6 +674,17 @@
     <p class="ruta">ANÁLISIS → <b>DISCIPLINA</b></p>
     <p>Amarillas, rojas y sanciones de tribunal, por jugador y por categoría. Lleva la cuenta de la
     <b>acumulación de amarillas</b> y avisa quién está a una del corte.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="disciplina-pc.jpg" alt="Tarjetas, acumulación y suspensiones." loading="lazy">
+        <figcaption><b>En la compu.</b> Tarjetas, acumulación y suspensiones. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="disciplina-cel.jpg" alt="Disciplina en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <div class="nota">
       <p>Lo que se carga acá <b>bloquea automáticamente</b> al jugador suspendido en la sugerencia de la citación.
       No hay que acordarse.</p>
@@ -573,6 +696,17 @@
     <p class="ruta">ANÁLISIS → <b>EXPORTAR GRÁFICAS</b></p>
     <p>Un editor para armar placas con los datos del club y bajarlas como imagen: para redes, para la charla
     o para el informe del partido. Se elige la plantilla, se acomodan los elementos y se exporta.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="reportes-pc.jpg" alt="El armado de reportes." loading="lazy">
+        <figcaption><b>En la compu.</b> El armado de reportes. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="reportes-cel.jpg" alt="Reportes en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
   </section>
 
   <section id="agenda">
@@ -580,6 +714,17 @@
     <p class="ruta">PLANIFICACIÓN → <b>AGENDA</b></p>
     <p>Todo lo que tiene fecha en el club, en una sola lista. Antes había que mirar cinco pantallas para
     contestar <i>"¿qué pasa esta semana?"</i>.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="agenda-pc.jpg" alt="La agenda del club con partidos, entrenamientos y vencimientos." loading="lazy">
+        <figcaption><b>En la compu.</b> La agenda del club con partidos, entrenamientos y vencimientos. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="agenda-cel.jpg" alt="La agenda en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <div class="tabla-wrap">
     <table>
       <thead><tr><th>Qué aparece</th><th>De dónde sale</th></tr></thead>
@@ -599,6 +744,17 @@
     <h2>Citación</h2>
     <p class="ruta">PLANIFICACIÓN → <b>CITACIÓN</b></p>
     <p>Arma la convocatoria del próximo partido y el mensaje para el grupo. Reemplaza escribirlo a mano cada semana.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="citacion-pc.jpg" alt="La citación de un partido." loading="lazy">
+        <figcaption><b>En la compu.</b> La citación de un partido. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="citacion-cel.jpg" alt="La citación en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
 
     <ol class="pasos">
       <li><div><b>Elegí el partido.</b> Trae rival, fecha, hora, sede y categoría del fixture. La hora de citación se propone 90 minutos antes.</div></li>
@@ -659,6 +815,17 @@
     <p class="ruta">PLANIFICACIÓN → <b>MICROCICLO</b></p>
     <p>El planificador semanal. Cada día muestra los entrenamientos con su nivel de carga, los partidos oficiales
     y <b>quiénes no están disponibles</b> ese día por lesión.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="microciclo-pc.jpg" alt="El microciclo de la semana." loading="lazy">
+        <figcaption><b>En la compu.</b> El microciclo de la semana. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="microciclo-cel.jpg" alt="El microciclo en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <ul class="lista">
       <li>Las sesiones se arrastran de un día a otro para reprogramar.</li>
       <li>Se puede copiar una semana entera a la siguiente, con el tema de la semana incluido.</li>
@@ -671,6 +838,17 @@
     <p class="ruta">PLANIFICACIÓN → <b>CREADOR TÁCTICO</b></p>
     <p>La pizarra. Dibujás la jugada sobre la cancha —jugadores, movimientos, conos, zonas— y, si la armás en varios
     fotogramas, <b>se reproduce como una animación</b>. Eso es lo que después se ve en el Libro Táctico y en el Banco.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="pizarra-pc.jpg" alt="El creador táctico con la cancha para dibujar." loading="lazy">
+        <figcaption><b>En la compu.</b> El creador táctico con la cancha para dibujar. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="pizarra-cel.jpg" alt="El creador táctico en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
 
     <h3>Armar una jugada animada</h3>
     <ol class="pasos">
@@ -704,6 +882,17 @@
     <p class="ruta">PLANIFICACIÓN → <b>BANCO DE TAREAS</b> · <b>CREADOR FÍSICO</b></p>
     <p>Todo lo que se dibuja en el creador táctico queda guardado acá, clasificado por fase de juego, para reutilizarlo
     en cualquier sesión del microciclo. Las jugadas animadas se ven en movimiento en la misma tarjeta.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="tareas-pc.jpg" alt="El banco de tareas." loading="lazy">
+        <figcaption><b>En la compu.</b> El banco de tareas. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="tareas-cel.jpg" alt="El banco de tareas en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <p>El <b>creador físico</b> arma el bloque de carga —series, tiempos, repeticiones— y también va a parar al banco.</p>
   </section>
 
@@ -748,6 +937,17 @@
     <h2>Novedades</h2>
     <p class="ruta">PLANIFICACIÓN → <b>NOVEDADES</b></p>
     <p>El centro de comunicaciones del club: avisos cortos para el cuerpo técnico, para los jugadores o para los dos.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="novedades-pc.jpg" alt="El tablón de novedades." loading="lazy">
+        <figcaption><b>En la compu.</b> El tablón de novedades. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="novedades-cel.jpg" alt="Las novedades en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <ol class="pasos">
       <li><div>Elegí <b>para quién es</b>: todos, sólo jugadores o sólo cuerpo técnico.</div></li>
       <li><div>Elegí <b>las categorías</b> que lo van a ver.</div></li>
@@ -872,6 +1072,17 @@
     <p class="ruta">PLANTEL → MI PLANTEL → <b>👁 VER</b> (en la ficha del jugador)</p>
     <p>Quién está a cargo de cada chico y qué tiene permitido el club: traslados, uso de imagen y atención médica.
     Antes esto vivía en el WhatsApp del entrenador de turno y se perdía cuando el entrenador cambiaba.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="tutores-pc.jpg" alt="La ficha de un jugador con sus tutores." loading="lazy">
+        <figcaption><b>En la compu.</b> La ficha de un jugador con sus tutores. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="tutores-cel.jpg" alt="La ficha con tutores en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <div class="tabla-wrap">
     <table>
       <thead><tr><th>Estado</th><th>Qué significa</th></tr></thead>
@@ -889,6 +1100,17 @@
     <h2>Presentismo</h2>
     <p class="ruta">PLANTEL → <b>PRESENTISMO</b></p>
     <p>Pasar lista de cada entrenamiento. Elegís la categoría y la fecha, marcás a cada uno y guardás la planilla.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="presentismo-pc.jpg" alt="La toma de asistencia." loading="lazy">
+        <figcaption><b>En la compu.</b> La toma de asistencia. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="presentismo-cel.jpg" alt="El presentismo en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
 
     <div class="tabla-wrap">
     <table>
@@ -919,6 +1141,17 @@
     <p class="ruta">PLANTEL → <b>ENFERMERÍA</b> · el jugador la ve como MI ESTADO FÍSICO</p>
     <p>El registro de lesiones del plantel, y la fuente de verdad de quién está disponible.</p>
 
+    <div class="modos">
+      <figure>
+        <img src="enfermeria-pc.jpg" alt="Enfermería: lesiones y altas." loading="lazy">
+        <figcaption><b>En la compu.</b> Enfermería: lesiones y altas. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="enfermeria-cel.jpg" alt="Enfermería en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
     <ol class="pasos">
       <li><div>Tocá <b>+ NUEVA LESIÓN</b> y elegí el jugador.</div></li>
       <li><div>Cargá <b>zona, tipo, lado y gravedad</b>. Al elegir la gravedad se propone una fecha de alta que podés corregir.</div></li>
@@ -947,6 +1180,17 @@
     <p class="ruta">PLANTEL → <b>WELLNESS</b></p>
     <p>El cuestionario diario del jugador: sueño, estrés, fatiga, dolor muscular, ánimo, motivación, ansiedad y confianza.
     Después del entrenamiento carga su RPE y los minutos, y de ahí sale la carga acumulada.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="wellness-pc.jpg" alt="El wellness del plantel." loading="lazy">
+        <figcaption><b>En la compu.</b> El wellness del plantel. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="wellness-cel.jpg" alt="El wellness en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <p>El que viene en rojo —mucha fatiga, mucho dolor, poco sueño— aparece avisado en el Centro de Mando y en la citación.</p>
 
     <h3>Tres formas de cargarlo</h3>
@@ -966,6 +1210,17 @@
     <p class="ruta">PLANTEL → <b>FISIOLOGÍA</b></p>
     <p>Las evaluaciones físicas: saltos, velocidad, resistencia y composición corporal, con la comparación contra
     valores de referencia y la evolución de cada jugador.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="fisiologia-pc.jpg" alt="Rendimiento y cargas." loading="lazy">
+        <figcaption><b>En la compu.</b> Rendimiento y cargas. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="fisiologia-cel.jpg" alt="Rendimiento en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <p>Incluye la <b>biblioteca de prevención y rehabilitación</b> — la misma de la que la Enfermería saca los ejercicios
     que le muestra a cada lesionado según su zona.</p>
     <div class="nota ojo">
@@ -978,6 +1233,17 @@
     <h2>Transferencias</h2>
     <p class="ruta">PLANTEL → <b>TRANSFERENCIAS</b></p>
     <p>Altas, bajas y préstamos del plantel, con su historial. Sirve para saber quién entró y quién salió en cada mercado.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="pases-pc.jpg" alt="Préstamos y ventas de jugadores." loading="lazy">
+        <figcaption><b>En la compu.</b> Préstamos y ventas de jugadores. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="pases-cel.jpg" alt="Transferencias en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
   </section>
 
   <section id="tesoreria">
@@ -1027,6 +1293,17 @@
     que cobran viático aparecen con su etiqueta. Cada sueldo o viático queda atado a la ficha, así que corregir un nombre
     no lo hace figurar como impago. <b>Sponsors</b>, los contratos de los auspiciantes y sus aportes; si un aporte tiene comisión
     para un jugador, se le suma a su viático.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="staff-pc.jpg" alt="El staff del club con sus pagos." loading="lazy">
+        <figcaption><b>En la compu.</b> El staff del club con sus pagos. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="staff-cel.jpg" alt="El staff en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
   </section>
 
   <section id="config">
@@ -1034,6 +1311,17 @@
     <p class="ruta">ADMINISTRACIÓN → <b>CONFIG. DE CLUB</b></p>
     <p>El nombre y el escudo del club, que salen en las placas, en los informes y en el Kiosco. También está el
     <b>código del club</b>: es el que usa el Kiosco para saber de qué club son los jugadores.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="config-pc.jpg" alt="La configuración del club." loading="lazy">
+        <figcaption><b>En la compu.</b> La configuración del club. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="config-cel.jpg" alt="La configuración en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <div class="nota ojo">
       <p><b>Escribí el nombre igual que en el fixture.</b> La app usa ese nombre para distinguir tus partidos de los cruces
       entre otros equipos. Si en la liga figura "Unión Norte", poné "Unión Norte" y no "Unión".</p>
@@ -1044,6 +1332,17 @@
     <h2>Mi suscripción</h2>
     <p class="ruta">ADMINISTRACIÓN → <b>MI SUSCRIPCIÓN</b></p>
     <p>El plan del club, cuándo vence y cuántas categorías usa sobre su tope.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="suscripcion-pc.jpg" alt="El plan y el vencimiento de la suscripción." loading="lazy">
+        <figcaption><b>En la compu.</b> El plan y el vencimiento de la suscripción. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="suscripcion-cel.jpg" alt="La suscripción en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
 
     <div class="tabla-wrap">
     <table>
@@ -1077,6 +1376,17 @@
     <div class="nota">
       <p><b>Lo que no ve:</b> las notas internas del cuerpo técnico, los datos personales de sus compañeros ni nada de administración.
       Las lesiones, las tarjetas y los datos de cada uno los recorta el servidor: aunque la tablet sea compartida, cada jugador ve sólo lo suyo.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="kiosco-pc.jpg" alt="El ingreso rápido del kiosco: cada jugador toca su nombre y pone el PIN." loading="lazy">
+        <figcaption><b>En la compu.</b> El ingreso rápido del kiosco: cada jugador toca su nombre y pone el PIN. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="kiosco-cel.jpg" alt="El mismo ingreso en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     </div>
   </section>
 
@@ -1163,6 +1473,17 @@
     <h2>Avisos al celular del jugador <span class="nuevo">NUEVO</span></h2>
     <p class="ruta">KIOSCO → tarjeta <b>AVISOS EN TU CELULAR</b> → ACTIVAR NOTIFICACIONES</p>
     <p>Se activa una vez, desde el celular del jugador. A partir de ahí le llegan:</p>
+
+    <div class="modos">
+      <figure>
+        <img src="kiosco-avisos-pc.jpg" alt="La tarjeta para activar los avisos, en el menú del kiosco." loading="lazy">
+        <figcaption><b>En la compu.</b> La tarjeta para activar los avisos, en el menú del kiosco. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="kiosco-avisos-cel.jpg" alt="La misma tarjeta en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <div class="tabla-wrap">
     <table>
       <thead><tr><th>Aviso</th><th>Cuándo</th></tr></thead>
@@ -1181,6 +1502,17 @@
 
   <section id="kiosco-link">
     <h2>Pasarles el acceso</h2>
+
+    <div class="modos">
+      <figure>
+        <img src="kiosco-link-pc.jpg" alt="El link del kiosco para mandarle al plantel." loading="lazy">
+        <figcaption><b>En la compu.</b> El link del kiosco para mandarle al plantel. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="kiosco-link-cel.jpg" alt="El link del kiosco en el celular" loading="lazy">
+        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
     <p class="ruta">PLANTEL → MI PLANTEL</p>
     <ul class="lista">
       <li>A uno solo: <b>💬 WHATSAPP</b> en su tarjeta abre su chat con el link, el código del club y su PIN.</li>
