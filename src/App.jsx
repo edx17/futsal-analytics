@@ -143,7 +143,6 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/inicio" element={<ProtectedRoute><Inicio /></ProtectedRoute>} />
-      <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
       <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
       <Route path="/nuevo-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><NuevoPartido /></ProtectedRoute>} />
       <Route path="/continuar-partido" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><ContinuarPartido /></ProtectedRoute>} />
@@ -220,25 +219,31 @@ function AppLayout() {
     sistema: false
   });
 
-/* HERRAMIENTAS: pantallas de trabajo que ocupan todo el alto (la toma de
-   datos en vivo, el análisis offline y el creador táctico). En la compu se
-   ven con la barra lateral, achicada a íconos para dejarles lugar; en el
-   celular siguen a pantalla completa, porque sus botones van abajo, donde
-   estaría la barra del celular. */
-const RUTAS_HERRAMIENTA = ['/toma-datos', '/analisis-offline', '/creador-tareas'];
+/* LA BARRA DE LA APP
+   Se ve en todas las pantallas del staff menos en la toma de datos en vivo,
+   que va a pantalla completa (ver isTomaDatos, más abajo). En la compu, en
+   el Inicio aparece desplegada y en cualquier otra pantalla, achicada a
+   íconos al entrar (después cada uno la abre o la cierra).
+
+   HERRAMIENTAS: el análisis offline y el creador táctico ocupan todo el alto
+   del área de trabajo, sin el margen de las demás pantallas. */
+const RUTAS_HERRAMIENTA = ['/analisis-offline', '/creador-tareas'];
 const esHerramienta = RUTAS_HERRAMIENTA.includes(location.pathname);
 
-// Minimiza la barra lateral al entrar al dashboard y a las herramientas.
 useEffect(() => {
-  if (!esMovil && (location.pathname === '/inicio' || RUTAS_HERRAMIENTA.includes(location.pathname))) setSidebarAbierta(false);
+  if (!esMovil) setSidebarAbierta(location.pathname === '/inicio');
 // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [location.pathname, esMovil]);
 
-/* El ancho de la barra, para las pantallas que se dibujan con position:fixed
-   (el creador táctico): así arrancan al lado de la barra y no encima. */
+/* Dónde están las barras, para las pantallas que se dibujan con
+   position:fixed (el creador táctico): así quedan al lado de la barra
+   lateral en la compu y arriba de la barra de abajo en el celular. */
 useEffect(() => {
-  const ancho = esMovil ? '0px' : (sidebarAbierta ? '250px' : '70px');
-  document.documentElement.style.setProperty('--vc-barra', ancho);
+  const raiz = document.documentElement.style;
+  raiz.setProperty('--vc-barra', esMovil ? '0px' : (sidebarAbierta ? '250px' : '70px'));
+  raiz.setProperty('--vc-barra-abajo', esMovil ? 'calc(70px + env(safe-area-inset-bottom, 0px))' : '0px');
+  // Con la barra de abajo, el borde seguro del iPhone ya lo cubre ella.
+  raiz.setProperty('--vc-seguro-abajo', esMovil ? '6px' : 'env(safe-area-inset-bottom, 12px)');
 }, [esMovil, sidebarAbierta]);
 
   useEffect(() => {
@@ -305,7 +310,8 @@ useEffect(() => {
   const isLanding = location.pathname === '/'; 
   const isLogin = location.pathname === '/login';
   const isRegistro = location.pathname === '/registro'; 
-  const isTomaDatos = location.pathname === '/toma-datos' || location.pathname === '/analisis-offline'; 
+  // La única pantalla del staff sin la barra de la app: la toma de datos en vivo.
+  const isTomaDatos = location.pathname === '/toma-datos';
   const isKioscoAuth = location.pathname === '/kiosco';
   const isKioscoPath = location.pathname.startsWith('/kiosco/');
   const isSuscripcionPath = location.pathname === '/mi-suscripcion'; 
@@ -323,8 +329,7 @@ useEffect(() => {
     return <Navigate to="/aceptar-terminos" replace />;
   }
 
-  // La toma de datos y el análisis offline van sin marco sólo en el celular.
-  if (isLanding || isLogin || isRegistro || (isTomaDatos && esMovil) || isKioscoAuth) {
+  if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
     return (
       <main className="app-content-fullscreen">
         <LimiteDeError>
@@ -335,7 +340,6 @@ useEffect(() => {
             <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
             <Route path="/kiosco" element={<LoginKiosco />} />
             <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
-            <Route path="/analisis-offline" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatosOffline /></ProtectedRoute>} />
           </Routes>
         </Suspense>
         </LimiteDeError>
