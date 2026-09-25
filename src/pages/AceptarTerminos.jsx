@@ -11,21 +11,26 @@ export default function AceptarTerminos() {
   const handleAceptar = async () => {
     setLoading(true);
     // Guardamos la firma en la base de datos de forma silenciosa
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('perfiles')
       .update({ 
         terminos_aceptados: true, 
         fecha_aceptacion: new Date().toISOString()
       })
-      .eq('id', user.id);
+      .eq('id', user.id)
+      .select('id');
 
     setLoading(false);
     
-    if (!error) {
+    if (!error && data?.length) {
       // Recargamos forzosamente para que el AuthContext se entere del cambio de estado
       window.location.href = '/inicio'; 
+    } else if (!error) {
+      // Nada que actualizar: la cuenta no tiene perfil (el alta no terminó).
+      alert("Tu usuario todavía no tiene un perfil en ningún club. Escribinos a soporte para terminar el alta.");
     } else {
-      alert("Hubo un error al guardar la aceptación. Intenta nuevamente.");
+      console.error('AceptarTerminos:', error);
+      alert(`No se pudo guardar la aceptación: ${error.message}${error.code ? ` (${error.code})` : ''}`);
     }
   };
 
