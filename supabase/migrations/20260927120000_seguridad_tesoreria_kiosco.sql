@@ -43,6 +43,35 @@
 
 set client_min_messages = warning;
 
+-- ── ANTES QUE NADA: TODO O NADA, Y SIN TRABARSE CON LA APP ──────────────────
+-- Corre entera en una transacción: si algo falla, no queda nada a medias.
+-- Toma de entrada los bloqueos de las tablas que toca, todos juntos y con
+-- perfiles al final (las políticas de la app leen perfiles después de la
+-- tabla que consultan; tomarla última evita el "deadlock detected"). Si una
+-- tabla está ocupada más de 10 segundos, corta con "lock timeout" en vez de
+-- quedarse esperando: en ese caso, volver a correrla.
+begin;
+set local lock_timeout = '10s';
+
+do $$
+declare v_tablas text;
+begin
+  select string_agg(format('public.%I', x.t), ', ' order by x.orden, x.t) into v_tablas
+    from (
+      select distinct p.tablename as t, case when p.tablename = 'perfiles' then 2 else 1 end as orden
+        from pg_policies p
+       where p.schemaname = 'public'
+         and (coalesce(p.qual, '') || coalesce(p.with_check, '')) like '%kiosco@virtualstats.com%'
+      union
+      select t, case when t = 'perfiles' then 2 else 1 end
+        from unnest(array['tesoreria_deudas', 'tesoreria_pagos', 'tesoreria_egresos', 'tesoreria_empleados',
+                          'tesoreria_ingresos_extra', 'tesoreria_cajas', 'sponsors', 'sponsors_pagos',
+                          'clubes', 'jugadores', 'perfiles']) t
+       where to_regclass('public.' || t) is not null
+    ) x;
+  execute 'lock table ' || v_tablas || ' in access exclusive mode';
+end $$;
+
 -- ── 0. QUIÉN ES QUIÉN ─────────────────────────────────────────────────────
 
 -- El club de la sesión del kiosco que viene en el header. NULL si quien
@@ -344,6 +373,8 @@ $$;
 grant execute on function public.kiosco_estado_cuenta(uuid) to anon, authenticated;
 grant execute on function public.kiosco_club() to anon, authenticated;
 grant execute on function public.maneja_plata(uuid) to authenticated;
+
+commit;
 
 notify pgrst, 'reload schema';
 
