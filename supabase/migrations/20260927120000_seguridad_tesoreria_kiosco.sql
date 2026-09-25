@@ -156,14 +156,16 @@ begin
   end loop;
 end $$;
 
-create table if not exists public.kiosco_intentos (
+-- PIN mal ingresados, para el bloqueo. Nombre propio a propósito: algunos
+-- proyectos ya tienen una tabla kiosco_intentos de antes, con otras columnas.
+create table if not exists public.kiosco_pin_fallidos (
   id         bigserial primary key,
   jugador_id text not null,
   club_id    text not null,
   creado_at  timestamptz not null default now()
 );
-alter table public.kiosco_intentos enable row level security;
-create index if not exists kiosco_intentos_jugador_idx on public.kiosco_intentos (jugador_id, creado_at);
+alter table public.kiosco_pin_fallidos enable row level security;
+create index if not exists kiosco_pin_fallidos_jugador_idx on public.kiosco_pin_fallidos (jugador_id, creado_at);
 
 create or replace function public.kiosco_abrir_sesion(
   p_jugador_id text, p_club_id text, p_pin text
@@ -173,7 +175,7 @@ declare
   v_token uuid;
 begin
   -- 5 PIN mal en 15 minutos: ese jugador queda bloqueado un rato.
-  if (select count(*) from public.kiosco_intentos i
+  if (select count(*) from public.kiosco_pin_fallidos i
        where i.jugador_id = p_jugador_id and i.creado_at > now() - interval '15 minutes') >= 5 then
     raise exception 'kiosco: demasiados intentos, probá en unos minutos' using errcode = 'P0429';
   end if;
@@ -185,11 +187,11 @@ begin
        and j.pin_kiosco::text = p_pin
        and j.activo is not false
   ) then
-    insert into public.kiosco_intentos (jugador_id, club_id) values (p_jugador_id, p_club_id);
+    insert into public.kiosco_pin_fallidos (jugador_id, club_id) values (p_jugador_id, p_club_id);
     return null;
   end if;
 
-  delete from public.kiosco_intentos
+  delete from public.kiosco_pin_fallidos
    where jugador_id = p_jugador_id or creado_at < now() - interval '1 day';
   delete from public.kiosco_sesiones where expira_at < now();
 
