@@ -6,8 +6,8 @@ import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { soloActivos } from '../utils/plantelActivo';
 import { disponibilidadDe, cuentaParaPresentismo, cuentaComoPresente } from '../utils/disponibilidad';
-import { analizarPartido, calcularMinutosPorJugador } from '../analytics/engine';
-import { calcularRatingJugador } from '../analytics/rating';
+import { analizarPartido } from '../analytics/engine';
+import { prepararRatingsPartido } from '../analytics/ratingPartido';
 import {
   PLANTILLA_DEFAULT, INDUMENTARIA_DEFAULT, MINUTOS_ANTES_DEFAULT, PLACEHOLDERS,
   resolverPlantilla, restarMinutos, partesDeFecha,
@@ -317,21 +317,16 @@ function Citacion() {
         const acumulado = {};
         Object.values(porPartido).forEach(evs => {
           const analisis = analizarPartido(evs, 'Propio', false);
-          const minutos = calcularMinutosPorJugador(evs);
-          const evsRival = evs.filter(e => e.equipo === 'Rival' || e.is_rival);
+          const ratingsPartido = prepararRatingsPartido(evs, { plusMinus: analisis?.plusMinusJugador });
 
           jugadores.forEach(j => {
             const sid = String(j.id);
-            const propios = evs.filter(e => String(e.id_jugador) === sid);
-            // El asistidor también suma para su rating, como en Resumen Plantel.
-            const asistidos = evs
-              .filter(e => String(e.id_asistencia) === sid && (e.accion === 'Gol' || e.accion === 'Remate - Gol'))
-              .map(e => ({ ...e, id_jugador: j.id, tipoVirtual: 'Asistencia' }));
-            if (propios.length === 0 && asistidos.length === 0) return;
+            // Sólo los que participaron: con eventos propios o una asistencia.
+            const participo = evs.some(e => String(e.id_jugador) === sid
+              || (String(e.id_asistencia) === sid && (e.accion === 'Gol' || e.accion === 'Remate - Gol')));
+            if (!participo) return;
 
-            const mins = minutos[j.id] || minutos[sid] || 0;
-            const pm = analisis?.plusMinusJugador?.[j.id] ?? analisis?.plusMinusJugador?.[sid] ?? 0;
-            const rat = Number(calcularRatingJugador(j, [...propios, ...asistidos], evsRival, pm, mins));
+            const rat = Number(ratingsPartido.rating(j));
             if (Number.isFinite(rat)) {
               if (!acumulado[sid]) acumulado[sid] = [];
               acumulado[sid].push(rat);

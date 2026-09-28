@@ -11,7 +11,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { analizarPartido, calcularMinutosPorJugador, calcularParticipacion } from '../analytics/engine'; 
-import { calcularRatingJugador } from '../analytics/rating';
+import { prepararRatingsPartido } from '../analytics/ratingPartido';
 import { calcularXGEvento } from '../analytics/xg';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
@@ -895,7 +895,6 @@ function JugadorPerfil() {
         plusMinus += pmPartido;
         
         const evsParaRatingPartido = evsPartido.filter(e => e.id_jugador == jugadorId || e.id_asistencia == jugadorId);
-        const evsRivalCanchaPartido = evsPartido.filter(e => e.equipo === 'Rival' || e.is_rival || (e.accion || '').toLowerCase().includes('rival'));
 
         // Guardamos métricas exactas del arquero/rival
         let enCancha = false;
@@ -940,7 +939,8 @@ function JugadorPerfil() {
 
         // 🧠 CÁLCULO DE RATING ALINEADO 100% CON RESUMEN PLANTEL
         if (minsPartido > 0 || evsParaRatingPartido.length > 0) {
-           const rat = calcularRatingJugador(jugadorSeleccionado, evsParaRatingPartido, evsRivalCanchaPartido, pmPartido, minsPartido);
+           // Misma cuenta que el resto de la app (analytics/ratingPartido).
+           const rat = prepararRatingsPartido(evsPartido, { plusMinus: analisis?.plusMinusJugador }).rating(jugadorSeleccionado);
            if (rat && !Number.isNaN(Number(rat))) {
                ratingsDelJugador.push(Number(rat));
                ratingPorPartido.set(String(idPartido), Number(rat));

@@ -101,9 +101,19 @@ const escenarios = [
   }],
 ];
 
-describe('procesarPlantel da exactamente lo mismo que antes de moverlo', () => {
+/* El rating cambió a propósito (analytics/ratingPartido: misma cuenta en toda
+ * la app), así que se compara todo lo demás. El rating tiene sus pruebas en
+ * rating.test.js. */
+const sinRating = ({ jugadoresProc, arquerosProc }) => {
+  const limpiar = (lista) => lista
+    .map((j) => { const resto = { ...j }; delete resto.ratings; delete resto.ratingProm; return resto; })
+    .sort((x, y) => String(x.id).localeCompare(String(y.id)));
+  return { jugadoresProc: limpiar(jugadoresProc), arquerosProc: limpiar(arquerosProc) };
+};
+
+describe('procesarPlantel da exactamente lo mismo que antes de moverlo (salvo el rating)', () => {
   test.each(escenarios)('%s', (_nombre, entrada) => {
-    expect(procesarPlantel(entrada)).toEqual(procesarPlantelAntes(entrada));
+    expect(sinRating(procesarPlantel(entrada))).toEqual(sinRating(procesarPlantelAntes(entrada)));
   });
 });
 

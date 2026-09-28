@@ -7,7 +7,8 @@ import { useAncho, columnasQueEntran } from '../utils/useAncho';
 import Campanita from '../components/Campanita';
 
 import { analizarPartido } from '../analytics/engine';
-import { calcularRatingJugador } from '../analytics/rating';
+import { elegirMVP } from '../analytics/rating';
+import { prepararRatingsPartido } from '../analytics/ratingPartido';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { categoriaMasAlta } from '../utils/categorias';
@@ -269,28 +270,27 @@ function analizarUltimo(eventos, jugadores) {
     }
   });
 
+  const ratings = prepararRatingsPartido(eventos, { plusMinus: datos.plusMinusJugador });
   const ranking = Object.values(S)
     .filter((j) => j.eventos.length > 0)
     .map((j) => {
-      const pm = datos.plusMinusJugador ? (datos.plusMinusJugador[j.id] || 0) : 0;
       const mins = datos.minutosJugados ? (datos.minutosJugados[j.id] || 0) : 0;
-      const paraRating = [...j.eventos];
-      eventos.forEach((ev) => {
-        if (ev.id_asistencia == j.id && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) paraRating.push({ ...ev, id_jugador: j.id, tipoVirtual: 'Asistencia' });
-      });
-      const rivalEnCancha = eventos.filter((ev) => {
-        if (ev.equipo !== 'Rival' || !ev.quinteto_activo) return false;
-        try {
-          const qa = typeof ev.quinteto_activo === 'string' ? JSON.parse(ev.quinteto_activo) : ev.quinteto_activo;
-          return Array.isArray(qa) && qa.some((id) => String(id) === String(j.id));
-        } catch { return false; }
-      });
       let impacto = '-';
-      try { impacto = calcularRatingJugador(j, paraRating, rivalEnCancha, pm, mins); } catch { /* dato opcional: si falla, se sigue sin él */ }
-      return { ...j, impacto, minutos: mins };
+      let participacion = 0;
+      try { ({ rating: impacto, participacion } = ratings.detalle(j)); } catch { /* dato opcional: si falla, se sigue sin él */ }
+      return { ...j, impacto, participacion, minutos: mins };
     })
     .filter((j) => j.impacto !== '-' && !Number.isNaN(Number(j.impacto)))
-    .sort((a, b) => Number(b.impacto) - Number(a.impacto));
+    .sort((a, b) => Number(b.impacto) - Number(a.impacto)
+      || ((b.goles + b.asistencias) - (a.goles + a.asistencias)) || (b.goles - a.goles));
+
+  // La figura va primera aunque tenga una décima menos (ver elegirMVP).
+  const figura = elegirMVP(ranking.map((j) => ({ ...j, rating: Number(j.impacto) })),
+    { golesFavor: ratings.golesFavor, golesContra: ratings.golesContra });
+  if (figura) {
+    const i = ranking.findIndex((j) => j.id === figura.id);
+    if (i > 0) ranking.unshift(ranking.splice(i, 1)[0]);
+  }
 
   return { xgPropio: datos.xgPropio || 0, xgRival: datos.xgRival || 0, ranking };
 }
