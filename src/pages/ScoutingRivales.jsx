@@ -423,7 +423,7 @@ function ScoutingRivales() {
           <div className="bento-card modal-content" style={{ maxWidth: '600px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div className="stat-label" style={{ color: 'var(--text)' }}>{formData.id ? 'PERFIL Y SCOUTING DEL RIVAL' : 'NUEVO RIVAL'}</div>
-              <button onClick={() => setMostrarModal(false)} className="close-btn">×</button>
+              <button onClick={() => setMostrarModal(false)} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
             </div>
 
             {/* SECCIÓN CLUB (GLOBAL) */}

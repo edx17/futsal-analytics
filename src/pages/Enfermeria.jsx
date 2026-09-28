@@ -88,7 +88,7 @@ const ListaEjercicios = ({ ejercicios, titulo, color = 'var(--accent)' }) => (
             background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px',
             padding: '8px 12px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)',
           }}>
-          <span><Icono nombre="reproducir" size="1.2em" relleno="propio" /></span>{ej.t}
+          <span><Icono nombre="siguientePag" size="1em" /></span>{ej.t}
         </a>
       ))}
     </div>
@@ -177,7 +177,7 @@ notaNueva, setNotaNueva, onEditar, onReadaptacion, onAlta, onAgregarNota,
               onKeyDown={e => { if (e.key === 'Enter') onAgregarNota(lesion); }}
               placeholder="Agregar un parte de evolución…"
               style={{ ...input, fontSize: '0.78rem' }} />
-            <button onClick={() => onAgregarNota(lesion)} style={{ ...input, width: 'auto', cursor: 'pointer', fontWeight: 800, color: 'var(--accent)' }}>+</button>
+            <button onClick={() => onAgregarNota(lesion)} style={{ ...input, width: 'auto', cursor: 'pointer', fontWeight: 800, color: 'var(--accent)', display: 'flex', alignItems: 'center' }}><Icono nombre="agregar" size="1.1em" /></button>
           </div>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <button onClick={() => onEditar(lesion)} className="btn-secondary" style={{ fontSize: '0.68rem', padding: '7px 12px', cursor: 'pointer' }}><Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EDITAR</button>
@@ -746,7 +746,7 @@ function Enfermeria() {
         <div>
           <button onClick={() => setVerHistorial(v => !v)}
             style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px dashed var(--border)', borderRadius: '8px', color: 'var(--text-dim)', fontWeight: 800, fontSize: '0.72rem', letterSpacing: '0.05em', cursor: 'pointer' }}>
-            {verHistorial ? '▲ OCULTAR HISTORIAL' : `▼ VER HISTORIAL (${cerradas.length} lesiones con alta)`}
+            <Icono nombre={verHistorial ? 'contraer' : 'expandir'} size="1.1em" style={{ marginRight: 6 }} />{verHistorial ? 'OCULTAR HISTORIAL' : `VER HISTORIAL (${cerradas.length} lesiones con alta)`}
           </button>
           {verHistorial && (
             <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(2, 1fr)', gap: '14px', marginTop: '14px' }}>

@@ -64,7 +64,7 @@ const COLS_QUINT = [
   { k: 'rem', t: 'REMATES', g: 'q', r: q => `${q.rematesFavor || 0} - ${q.rematesContra || 0}` },
   { k: 'recperd', t: 'REC-PERD', g: 'q', r: q => `${q.recuperaciones || 0} - ${q.perdidas || 0}` },
   { k: 'faltas', t: 'FALTAS (R-C)', g: 'q', r: q => `${q.faltasRecibidas || 0} - ${q.faltasCometidas || 0}` },
-  { k: 'tarj', txt: 'Amarillas/Rojas', t: <><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></>, g: 'q', r: q => `${q.amarillas || 0}/${q.rojas || 0}` },
+  { k: 'tarj', txt: 'Amarillas/Rojas', t: <><Icono nombre="tarjeta" size={14} />/<Icono nombre="tarjeta" color="roja" size={14} /></>, g: 'q', r: q => `${q.amarillas || 0}/${q.rojas || 0}` },
   { k: 'rat', t: 'RATING', g: 'q', r: q => q.balanceRating.toFixed(1) },
 ];
 

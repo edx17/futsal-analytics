@@ -358,7 +358,7 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
           <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>ANÁLISIS OFFLINE</div>
         </div>
         <div style={{ ...etiqueta, color: enLinea ? 'var(--accent)' : '#f59e0b' }}>
-          {enLinea ? '● CONECTADO' : '○ SIN CONEXIÓN'}
+          <Icono nombre={enLinea ? 'conectado' : 'sinConexion'} size="1.1em" relleno="propio" style={{ marginRight: 4 }} />{enLinea ? 'CONECTADO' : 'SIN CONEXIÓN'}
           {espacio && ` · ${espacio.usadoMB.toFixed(1)} MB usados`}
         </div>
       </div>
@@ -487,7 +487,7 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
         {filtrados.map(p => (
           <FichaPartido key={p.id} partido={p} eventos={p._eventos}>
             <button onClick={() => bajar(p)} disabled={bajando === p.id} style={botonActivo('var(--accent)')}>
-              {bajando === p.id ? 'BAJANDO…' : '↓ DESCARGAR'}
+              {bajando === p.id ? 'BAJANDO…' : <><Icono nombre="descargar" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />DESCARGAR</>}
             </button>
           </FichaPartido>
         ))}
@@ -524,7 +524,7 @@ function MapaCalor({ puntos, alto = 200 }) {
     <div className="pitch-container" style={{ position: 'relative', width: '100%', height: `${alto}px`, background: '#060a08' }}>
       <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
       <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', background: '#1f3a2c55' }} />
-      <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '0.55rem', color: '#2f6b4f', fontWeight: 900 }}>ATACAMOS ▶</div>
+      <div style={{ position: 'absolute', bottom: '4px', right: '6px', fontSize: '0.55rem', color: '#2f6b4f', fontWeight: 900 }}>ATACAMOS <Icono nombre="avanzar" size="1em" /></div>
     </div>
   );
 }
@@ -1176,15 +1176,15 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
           <Icono nombre="bandera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{inicioMarcado ? `${periodo} MARCADO` : `INICIO ${periodo}`}
         </button>
 
-        <button onClick={() => setInvertida(v => !v)} style={boton} title="Invertir la cancha">⇄</button>
+        <button onClick={() => setInvertida(v => !v)} style={boton} title="Invertir la cancha"><Icono nombre="transferencias" size="1.1em" /></button>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ ...etiqueta, color: enLinea ? 'var(--accent)' : '#f59e0b' }}>
-            {enLinea ? '● ONLINE' : '○ OFFLINE'} · {pendientes.total} SIN SUBIR
+            <Icono nombre={enLinea ? 'conectado' : 'sinConexion'} size="1.1em" relleno="propio" style={{ marginRight: 4 }} />{enLinea ? 'ONLINE' : 'OFFLINE'} · {pendientes.total} SIN SUBIR
           </span>
           <button onClick={sincronizar} disabled={sincronizando || !enLinea}
                   style={{ ...botonActivo('var(--accent)'), opacity: enLinea ? 1 : 0.4 }}>
-            {sincronizando ? 'SUBIENDO…' : '↑ SINCRONIZAR'}
+            {sincronizando ? 'SUBIENDO…' : <><Icono nombre="subir" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />SINCRONIZAR</>}
           </button>
         </div>
       </div>
@@ -1213,7 +1213,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
               padding: '6px 12px', borderRadius: '4px', border: `2px solid ${colorEquipo}`,
               color: colorEquipo, fontWeight: 900, fontSize: '0.72rem', background: `${colorEquipo}18`,
             }}>
-              {equipoSel === 'Propio' ? '● NUESTRO' : '● RIVAL'} · {def?.label || accionSel}
+              <Icono nombre="camiseta" size="1.2em" style={{ marginRight: 4 }} />{equipoSel === 'Propio' ? 'NUESTRO' : 'RIVAL'} · {def?.label || accionSel}
             </div>
 
             {puntoOrigen && zonaDe(puntoOrigen.x, puntoOrigen.y) && (
@@ -1443,7 +1443,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
                 return (
                   <button key={eq} onClick={() => { setEquipoSel(eq); if (eq === 'Rival') setJugadorSel(null); }}
                           style={{ ...(activo ? botonActivo(c) : boton), flex: 1, padding: '11px', fontSize: '0.78rem' }}>
-                    {activo ? '● ' : '○ '}{eq === 'Propio' ? 'NUESTRO' : 'RIVAL'}
+                    <Icono nombre={activo ? 'ok' : 'circulo'} size="1.1em" relleno="propio" style={{ marginRight: 4 }} />{eq === 'Propio' ? 'NUESTRO' : 'RIVAL'}
                   </button>
                 );
               })}
@@ -1625,13 +1625,13 @@ function ListaEventos({ eventos, jugadorPorId, secuencias, golObjetivo, onApunta
               {ev.equipo === 'Rival' ? ' (riv)' : ''}
             </span>
             {sec && <span title="Pertenece a una cadena" style={{ color: 'var(--accent)' }}><Icono nombre="enlace" size="1.2em" relleno="propio" /></span>}
-            {ev._estado !== 'sincronizado' && <span title="Sin subir" style={{ color: '#f59e0b' }}>●</span>}
+            {ev._estado !== 'sincronizado' && <span title="Sin subir" style={{ color: '#f59e0b', display: 'flex' }}><Icono nombre="subir" size="1em" relleno="propio" /></span>}
             {esGol(ev.accion) && (
               <button onClick={() => onApuntarGol(ev)} title="Colgarle una cadena de pases a este gol"
                       style={{ ...(apuntado ? botonActivo('var(--accent)') : boton), padding: '3px 6px' }}><Icono nombre="enlace" size="1.2em" relleno="propio" /></button>
             )}
             {ev._estado !== 'sincronizado' && (
-              <button onClick={() => onBorrar(ev)} style={{ ...boton, padding: '3px 6px', borderColor: '#ef4444', color: '#ef4444' }}>×</button>
+              <button onClick={() => onBorrar(ev)} style={{ ...boton, padding: '3px 6px', borderColor: '#ef4444', color: '#ef4444', display: 'flex' }}><Icono nombre="borrar" size="1em" /></button>
             )}
           </div>
         );
@@ -1817,7 +1817,7 @@ function TabMinutos({ jugadores, stints, minutos, onEditar, onAgregar, onBorrar 
                 <input value={formatearTiempo(s.salida_ms ?? DURACION_PERIODO_MS)} onChange={editarCampo(s, 'salida_ms')}
                        style={{ ...inputStyle, width: '58px', padding: '3px', textAlign: 'center', fontSize: '0.63rem' }} />
                 {s.ajustado && <span title="Corregido a mano" style={{ color: 'var(--accent)' }}><Icono nombre="editar" size="1.2em" relleno="propio" /></span>}
-                <button onClick={() => onBorrar(s)} style={{ ...boton, padding: '2px 5px', borderColor: '#ef4444', color: '#ef4444', marginLeft: 'auto' }}>×</button>
+                <button onClick={() => onBorrar(s)} style={{ ...boton, padding: '2px 5px', borderColor: '#ef4444', color: '#ef4444', marginLeft: 'auto', display: 'flex' }}><Icono nombre="borrar" size="1em" /></button>
               </div>
             ))}
             <button onClick={() => onAgregar(j.id)} style={{ ...boton, padding: '3px 6px', marginTop: '6px', fontSize: '0.58rem' }}>+ TRAMO EN ESTE MINUTO</button>

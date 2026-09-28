@@ -2,6 +2,7 @@
 import React, { useRef, useState } from "react";
 import { exportarComoPNG } from "../engine/ExportPNG";
 import TemplateRenderer from "../engine/TemplateRenderer";
+import { Icono } from "../../iconos";
 
 /**
  * Barra superior: qué se está viendo y las dos acciones principales.
@@ -90,7 +91,7 @@ export default function Toolbar({
             style={{ ...estilos.miniatura, ...estilos.miniaturaNueva }}
             title="Crear una plantilla desde cero"
           >
-            <span style={estilos.mas}>+</span>
+            <span style={estilos.mas}><Icono nombre="agregar" size={24} /></span>
             <span style={estilos.miniaturaEtiqueta}>Nueva</span>
           </button>
         </div>

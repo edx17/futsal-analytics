@@ -602,7 +602,7 @@ export default function LoginKiosco() {
               </>
             )}
             <button onClick={() => navigate('/kiosco/mis-pagos')} style={{ width: '100%', marginTop: '10px', background: 'transparent', border: 'none', color: 'var(--accent)', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer', padding: '8px' }}>
-              VER DETALLE Y RECIBOS ›
+              VER DETALLE Y RECIBOS <Icono nombre="siguientePag" size="1em" />
             </button>
           </div>
         )}
@@ -670,9 +670,9 @@ export default function LoginKiosco() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: esMovil ? '20px' : '30px', flexWrap: 'wrap', gap: '10px', width: '100%' }}>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           {jugadorSeleccionado ? (
-            <button onClick={volverAtras} style={btnVolver}>← VOLVER</button>
+            <button onClick={volverAtras} style={btnVolver}><Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />VOLVER</button>
           ) : (
-            <button onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }} style={btnVolver}>← LOGIN</button>
+            <button onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }} style={btnVolver}><Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />LOGIN</button>
           )}
           {!jugadorSeleccionado && <h2 style={{ fontFamily: 'Outfit', fontWeight: 900, margin: 0, fontSize: esMovil ? '1rem' : '1.2rem' }}>INGRESO <span style={{ color: 'var(--accent)' }}>RÁPIDO</span></h2>}
         </div>
@@ -742,7 +742,7 @@ export default function LoginKiosco() {
             ))}
             <button onClick={volverAtras} style={{ ...estiloNumpadDinamico, background: '#ef4444' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             <button onClick={() => handleNumpad('0')} style={estiloNumpadDinamico}>0</button>
-            <button onClick={() => setPin('')} style={{ ...estiloNumpadDinamico, background: 'var(--border)' }}>⌫</button>
+            <button onClick={() => setPin('')} style={{ ...estiloNumpadDinamico, background: 'var(--border)' }}><Icono nombre="borrarTecla" size="1em" /></button>
           </div>
         </div>
       )}

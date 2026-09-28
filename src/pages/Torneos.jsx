@@ -1927,7 +1927,7 @@ function Torneos() {
                                     <span style={{ width: 14, fontSize: '0.7rem', color: guardadoGoles[f.id] === 'ok' ? 'var(--ok)' : 'var(--text-dim)' }}>
                                       {guardadoGoles[f.id] === 'guardando' ? <Icono nombre="cargando" size="1.1em" girar /> : guardadoGoles[f.id] === 'ok' ? <Icono nombre="listo" size="1.1em" /> : null}
                                     </span>
-                                    <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}>↺</button>
+                                    <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}><Icono nombre="deshacer" size="1em" /></button>
                                   </>
                                 )}
                               </div>

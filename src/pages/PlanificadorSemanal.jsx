@@ -2021,7 +2021,7 @@ const PlanificadorSemanal = () => {
                     {tareasOrdenadas.length > 0 && (
                       <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <span style={{ fontSize: '0.6rem', color: 'var(--accent)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          Orden de la sesión · {esMovil ? 'usá ▲▼ o escribí el número' : 'arrastrá, usá ▲▼ o escribí el número'}
+                          Orden de la sesión · {esMovil ? 'usá las flechas o escribí el número' : 'arrastrá, usá las flechas o escribí el número'}
                         </span>
 
                         {tareasOrdenadas.map((t, idx) => (
@@ -2048,8 +2048,8 @@ const PlanificadorSemanal = () => {
                               <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}><Icono nombre="cronometro" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{t.duracion_estimada}'{t.fase_juego ? ` • ${t.fase_juego}` : ''}</span>
                             </div>
                             <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                              <button onClick={() => moverTarea(t.id, -1)} disabled={idx === 0} title="Subir" style={{ ...btnOrdenStyle, opacity: idx === 0 ? 0.25 : 1, cursor: idx === 0 ? 'default' : 'pointer' }}>▲</button>
-                              <button onClick={() => moverTarea(t.id, 1)} disabled={idx === tareasOrdenadas.length - 1} title="Bajar" style={{ ...btnOrdenStyle, opacity: idx === tareasOrdenadas.length - 1 ? 0.25 : 1, cursor: idx === tareasOrdenadas.length - 1 ? 'default' : 'pointer' }}>▼</button>
+                              <button onClick={() => moverTarea(t.id, -1)} disabled={idx === 0} title="Subir" style={{ ...btnOrdenStyle, opacity: idx === 0 ? 0.25 : 1, cursor: idx === 0 ? 'default' : 'pointer' }}><Icono nombre="contraer" size="1em" /></button>
+                              <button onClick={() => moverTarea(t.id, 1)} disabled={idx === tareasOrdenadas.length - 1} title="Bajar" style={{ ...btnOrdenStyle, opacity: idx === tareasOrdenadas.length - 1 ? 0.25 : 1, cursor: idx === tareasOrdenadas.length - 1 ? 'default' : 'pointer' }}><Icono nombre="expandir" size="1em" /></button>
                               <button onClick={() => toggleTarea(t.id)} title="Quitar de la sesión" style={{ ...btnOrdenStyle, color: '#ef4444', borderColor: '#ef444455' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                             </div>
                           </div>

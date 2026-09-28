@@ -109,7 +109,7 @@ export default function CargaPlanilla({ jugadores, clubId, onCerrar, onGuardado,
       <div className="bento-card modal-content" style={{ maxWidth: '720px', background: 'var(--panel)' }}>
         <div className="modal-header">
           <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CARGA POR PLANILLA</h2>
-          <button onClick={onCerrar} disabled={guardando} className="close-btn">×</button>
+          <button onClick={onCerrar} disabled={guardando} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
         </div>
 
         {!resultado && (

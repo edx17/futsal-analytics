@@ -118,8 +118,8 @@ export default function ResumenPlantel() {
     { k: 'defi', t: 'DEF-i%', g: 'lu', num: p => p.defIndPct, r: p => p.duelDefIndTot ? p.defIndPct.toFixed(0) + '%' : '-' },
     { k: 'fc', t: 'FC', g: 'dis', num: p => p.faltasCom, r: p => p.faltasCom },
     { k: 'fr', t: 'FR', g: 'dis', num: p => p.faltasRec, r: p => p.faltasRec },
-    { k: 'am', txt: 'Amarillas', t: <Icono nombre="tarjeta" size="1.3em" />, g: 'dis', num: p => p.amarillas, r: p => p.amarillas },
-    { k: 'ro', txt: 'Rojas', t: <Icono nombre="tarjeta" color="roja" size="1.3em" />, g: 'dis', num: p => p.rojas, r: p => p.rojas },
+    { k: 'am', txt: 'Amarillas', t: <Icono nombre="tarjeta" size={14} />, g: 'dis', num: p => p.amarillas, r: p => p.amarillas },
+    { k: 'ro', txt: 'Rojas', t: <Icono nombre="tarjeta" color="roja" size={14} />, g: 'dis', num: p => p.rojas, r: p => p.rojas },
     { k: 'sanc', t: 'SANC', g: 'dis', num: p => p.sancPend, r: p => p.sancPend || '-' },
     { k: 'rat', t: 'RATING', g: 'imp', num: p => p.ratingProm, r: p => p.ratingCount ? p.ratingProm.toFixed(1) : '-' },
     { k: 'pm', t: '+/-', g: 'imp', num: p => p.pmProm, r: p => { const v = p.pmProm; return (v > 0 ? '+' : '') + v.toFixed(1); } },
@@ -420,7 +420,7 @@ export default function ResumenPlantel() {
               <span className="stat-label" style={{ color: 'var(--accent)' }}>JUGADORES DE CAMPO ({filasCampo.length})</span>
               <button onClick={() => setMostrarGlosario(v => !v)} title="Qué significa cada columna"
                 style={{ display: 'flex', alignItems: 'center', gap: '6px', background: mostrarGlosario ? 'var(--accent)' : 'transparent', color: mostrarGlosario ? 'var(--bg)' : 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '20px', padding: '5px 12px', cursor: 'pointer', fontWeight: 800, fontSize: '0.7rem' }}>
-                <span style={{ width: '16px', height: '16px', borderRadius: '50%', border: `1px solid ${mostrarGlosario ? 'var(--bg)' : 'var(--accent)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900 }}>!</span>
+                <Icono nombre="info" size={16} relleno="propio" />
                 {mostrarGlosario ? 'OCULTAR REFERENCIAS' : 'QUÉ SIGNIFICA CADA COLUMNA'}
               </button>
             </div>
@@ -455,7 +455,7 @@ export default function ResumenPlantel() {
                   {COLS.map((c, i) => (
                     <th key={c.k} onClick={() => setSort(c.k)} title="Ordenar"
                       style={{ ...thBase, color: GRUPOS[c.g], background: sortKey === c.k ? 'var(--panel)' : 'var(--bg)', borderLeft: (i > 0 && COLS[i - 1].g !== c.g) ? '1px solid var(--border)' : 'none' }}>
-                      {c.t}{sortKey === c.k ? (sortDir === 'desc' ? ' ▾' : ' ▴') : ''}
+                      {c.t}{sortKey === c.k && <Icono nombre={sortDir === 'desc' ? 'expandir' : 'contraer'} size="1em" style={{ marginLeft: 2 }} />}
                     </th>
                   ))}
                 </tr>

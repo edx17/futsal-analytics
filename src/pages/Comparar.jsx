@@ -4,6 +4,7 @@ import { useEsMovil } from '../utils/useEsMovil';
 import { useDatosPlantel } from '../utils/useDatosPlantel';
 import { procesarPlantel } from '../analytics/plantel';
 import { METRICAS, conPorcentajes, valorDe, ganador, reparto, resumen, DUR_PARTIDO } from '../analytics/comparar';
+import { Icono } from '../iconos';
 
 const MONO = 'JetBrains Mono, monospace';
 const VERDE = '#00ff88';
@@ -186,7 +187,7 @@ const Fila = ({ metrica, va, vb, gana, pa, pb, normalizado, esMovil }) => (
       <div>
         <div style={{ textAlign: 'center', fontFamily: MONO, fontSize: '0.6rem', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 5 }}>
           {metrica.t}{normalizado ? ` / ${DUR_PARTIDO}′` : ''}
-          {metrica.mejor === 'bajo' && <span title="Acá gana el que tiene menos"> ↓</span>}
+          {metrica.mejor === 'bajo' && <span title="Acá gana el que tiene menos"> <Icono nombre="bajarFlecha" size="1em" /></span>}
         </div>
         <div style={{ display: 'flex', height: 9, gap: 2 }}>
           <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', background: 'var(--bg)', borderRadius: '4px 0 0 4px', overflow: 'hidden' }}>

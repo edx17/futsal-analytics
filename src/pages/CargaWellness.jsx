@@ -334,7 +334,7 @@ const CargaWellness = () => {
       {/* --- BOTÓN VOLVER --- */}
       <div style={{ marginBottom: '20px' }}>
         <button onClick={() => volverDesde(navigate)} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 15px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}>
-          ← VOLVER
+          <Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />VOLVER
         </button>
       </div>
 

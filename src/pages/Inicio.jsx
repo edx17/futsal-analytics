@@ -182,8 +182,8 @@ const Card = ({ children, id, accent, index, scroll, ctx }) => {
           {Array.from({ length: Math.max(1, columnas) }, (_, k) => k + 1).map((n) => (
             <button key={n} onClick={() => cambiarTamano(id, n)} style={sizeBtn(span === n)} title={`${n} columna${n > 1 ? 's' : ''}`}>{n}</button>
           ))}
-          <button onClick={() => mover(index, 'up')} style={editBtn}>▲</button>
-          <button onClick={() => mover(index, 'down')} style={editBtn}>▼</button>
+          <button onClick={() => mover(index, 'up')} style={editBtn}><Icono nombre="contraer" size="1em" /></button>
+          <button onClick={() => mover(index, 'down')} style={editBtn}><Icono nombre="expandir" size="1em" /></button>
         </div>
       )}
       {children}
@@ -899,7 +899,7 @@ export default function Inicio() {
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.titulo}</div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{a.sub}</div>
                   </div>
-                  <span style={{ color: 'var(--text-dim)' }}>›</span>
+                  <Icono nombre="siguientePag" size="1em" style={{ color: 'var(--text-dim)' }} />
                 </div>
               ))}
             </div>
@@ -924,7 +924,7 @@ export default function Inicio() {
         <Card key={id} id={id} accent="#8b5cf6" index={index} ctx={ctx}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Label color="#8b5cf6">LOS PRÓXIMOS 7 DÍAS</Label>
-            {!modoEdicion && <span onClick={() => navigate('/agenda')} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>ver agenda ›</span>}
+            {!modoEdicion && <span onClick={() => navigate('/agenda')} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>ver agenda <Icono nombre="siguientePag" size="1em" /></span>}
           </div>
           {lista.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, fontSize: '0.85rem' }}>Semana despejada. Nada agendado.</div>
@@ -949,7 +949,7 @@ export default function Inicio() {
               })}
               {restan > 0 && (
                 <div onClick={() => !modoEdicion && navigate('/agenda')} style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)', cursor: modoEdicion ? 'default' : 'pointer', paddingTop: 4 }}>
-                  y {restan} cosa{restan > 1 ? 's' : ''} más esta semana ›
+                  y {restan} cosa{restan > 1 ? 's' : ''} más esta semana <Icono nombre="siguientePag" size="1em" />
                 </div>
               )}
             </div>
@@ -1114,7 +1114,7 @@ export default function Inicio() {
         <Card key={id} id={id} accent="#eab308" index={index} ctx={ctx}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Label color="#eab308">LA PLATA DEL MES</Label>
-            {!modoEdicion && <span onClick={() => navigate('/tesoreria')} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>tesorería ›</span>}
+            {!modoEdicion && <span onClick={() => navigate('/tesoreria')} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>tesorería <Icono nombre="siguientePag" size="1em" /></span>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {[
@@ -1230,7 +1230,7 @@ export default function Inicio() {
         <Card key={id} id={id} accent="#f97316" index={index} ctx={ctx}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Label color="#f97316">CARGA DEL PLANTEL</Label>
-            {!modoEdicion && <span onClick={() => navigate('/rendimiento')} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>detalle ›</span>}
+            {!modoEdicion && <span onClick={() => navigate('/rendimiento')} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>detalle <Icono nombre="siguientePag" size="1em" /></span>}
           </div>
           {filas.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, fontSize: '0.8rem' }}>
@@ -1283,7 +1283,7 @@ export default function Inicio() {
             <Label>ACCESOS RÁPIDOS</Label>
             {(ocultos > 0 || verTodosAccesos) && (
               <span onClick={() => setVerTodosAccesos((v) => !v)} style={{ fontSize: '0.65rem', color: 'var(--text-dim)', cursor: 'pointer' }}>
-                {verTodosAccesos ? 'ver menos' : `ver los ${todos.length} ›`}
+                {verTodosAccesos ? 'ver menos' : <>ver los {todos.length} <Icono nombre="siguientePag" size="1em" /></>}
               </span>
             )}
           </div>
@@ -1391,7 +1391,7 @@ export default function Inicio() {
       {/* PALETA EDICIÓN */}
       {modoEdicion && !sinClub && (
         <div style={{ background: 'var(--panel)', padding: 15, borderRadius: 8, border: '1px dashed var(--border)', marginBottom: 20, animation: 'fadeIn 0.2s' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--text)' }}>Mostrá/ocultá módulos · usá ▲▼ para reordenar · 1·2·3 para el ancho</h3>
+          <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem', color: 'var(--text)' }}>Mostrá/ocultá módulos · usá las flechas para reordenar · 1·2·3 para el ancho</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
             {/* La franja no es un módulo de la grilla, pero se prende y apaga
                 desde acá: es el único lugar donde alguien la va a buscar

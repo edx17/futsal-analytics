@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icono } from '../iconos';
 
 const InfoBox = ({ texto }) => (
   <div className="tooltip-container" tabIndex="0">
@@ -20,7 +21,7 @@ const InfoBox = ({ texto }) => (
       }
       .tooltip-container:hover .tooltip-text, .tooltip-container:focus .tooltip-text { visibility: visible; opacity: 1; }
     `}</style>
-    <div style={{ width: '15px', height: '15px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '11px', fontWeight: '900', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>!</div>
+    <Icono nombre="info" size={16} style={{ color: 'var(--accent)', display: 'block' }} />
     <div className="tooltip-text">
       {texto}
     </div>

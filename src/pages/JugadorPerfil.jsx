@@ -363,7 +363,7 @@ const FilaPartido = ({ fila, esMovil, accentColor, seleccionado, onAbrir, onFilt
             <Icono nombre="diana" size="1.2em" relleno="propio" />
           </button>
         )}
-        <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900 }}>›</span>
+        <Icono nombre="siguientePag" size="1em" style={{ color: 'rgba(255,255,255,0.25)' }} />
       </div>
     </div>
   );
@@ -1491,7 +1491,7 @@ function JugadorPerfil() {
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
           {!isKiosco && (
             <button onClick={() => setJugadorId('')} style={{ padding: '8px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', flex: esMovil ? '0 0 auto' : 'none' }}>
-              ← PLANTEL
+              <Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />PLANTEL
             </button>
           )}
           
@@ -2241,7 +2241,7 @@ function JugadorPerfil() {
                   <button
                     onClick={() => setVerTodoHistorial(v => !v)}
                     style={{ marginTop: '12px', width: '100%', padding: '10px', background: 'transparent', border: '1px dashed rgba(255,255,255,0.15)', borderRadius: '8px', color: 'rgba(255,255,255,0.5)', fontWeight: 800, fontSize: '0.7rem', letterSpacing: '0.05em', cursor: 'pointer' }}>
-                    {verTodoHistorial ? '▲ VER MENOS' : `▼ VER LOS ${historialPartidos.length} PARTIDOS`}
+                    <Icono nombre={verTodoHistorial ? 'contraer' : 'expandir'} size="1.1em" style={{ marginRight: 6 }} />{verTodoHistorial ? 'VER MENOS' : `VER LOS ${historialPartidos.length} PARTIDOS`}
                   </button>
                 )}
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useEsMovil } from '../utils/useEsMovil';
+import { Icono } from '../iconos';
 
 const MONO = 'JetBrains Mono, monospace';
 
@@ -98,7 +99,7 @@ export function TablaResponsive({
                 width: '38px', height: '34px', fontSize: '0.9rem', fontWeight: 900, cursor: 'pointer', flexShrink: 0,
               }}
             >
-              {sortDir === 'desc' ? '▾' : '▴'}
+              <Icono nombre={sortDir === 'desc' ? 'expandir' : 'contraer'} size="1em" />
             </button>
           )}
         </div>
@@ -140,7 +141,7 @@ export function TablaResponsive({
                       fontSize: '0.62rem', fontWeight: 900, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
                     }}
                   >
-                    {abierta ? 'CERRAR ▴' : 'VER TODO ▾'}
+                    {abierta ? 'CERRAR' : 'VER TODO'}<Icono nombre={abierta ? 'contraer' : 'expandir'} size="1em" style={{ marginLeft: 4 }} />
                   </button>
                 </div>
 

@@ -287,7 +287,7 @@ export default function CanchaTactica({
           position: 'absolute', top: '4px', [invertida ? 'left' : 'right']: '8px',
           fontSize: '0.58rem', color: '#2f6b4f', fontWeight: 900, letterSpacing: '1px', pointerEvents: 'none',
         }}>
-          {invertida ? '◀ ATACAMOS' : 'ATACAMOS ▶'}
+          {invertida ? <><Icono nombre="volver" size="1em" style={{ marginRight: 4 }} />ATACAMOS</> : <>ATACAMOS <Icono nombre="avanzar" size="1em" /></>}
         </div>
       </div>
     </div>

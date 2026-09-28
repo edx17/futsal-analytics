@@ -220,11 +220,11 @@ export default function Agenda() {
           </div>
 
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <button onClick={() => setDesplazamiento((d) => d - 1)} style={chip(false)} aria-label="Ventana anterior">◀</button>
+            <button onClick={() => setDesplazamiento((d) => d - 1)} style={chip(false)} aria-label="Ventana anterior"><Icono nombre="anteriorPag" size="1.2em" /></button>
             <div style={{ fontFamily: MONO, fontSize: '0.75rem', color: 'var(--text-dim)', minWidth: 118, textAlign: 'center' }}>
               {rotuloVentana}
             </div>
-            <button onClick={() => setDesplazamiento((d) => d + 1)} style={chip(false)} aria-label="Ventana siguiente"><Icono nombre="reproducir" size="1.2em" relleno="propio" /></button>
+            <button onClick={() => setDesplazamiento((d) => d + 1)} style={chip(false)} aria-label="Ventana siguiente"><Icono nombre="siguientePag" size="1.2em" /></button>
             {desplazamiento !== 0 && (
               <button onClick={() => setDesplazamiento(0)} style={chip(false)}>HOY</button>
             )}

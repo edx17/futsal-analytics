@@ -55,12 +55,12 @@ const GRUPOS_DISC = { gen: 'var(--text-dim)', dis: '#facc15' };
 const GRUPOS_DISC_LABEL = { gen: 'GENERAL', dis: 'DISCIPLINA' };
 const COLS_DISC = [
   { k: 'categoria', t: 'Cat.', g: 'gen', r: f => f.categoria },
-  { k: 'amarillas', txt: 'Amarillas', t: <><Icono nombre="tarjeta" size="1.1em" /> Amar.</>, g: 'dis', r: f => f.amarillas },
-  { k: 'rojas', txt: 'Rojas', t: <><Icono nombre="tarjeta" color="roja" size="1.1em" /> Rojas</>, g: 'dis', r: f => f.rojas },
+  { k: 'amarillas', txt: 'Amarillas', t: <><Icono nombre="tarjeta" size={14} /> Amar.</>, g: 'dis', r: f => f.amarillas },
+  { k: 'rojas', txt: 'Rojas', t: <><Icono nombre="tarjeta" color="roja" size={14} /> Rojas</>, g: 'dis', r: f => f.rojas },
   { k: 'faltas', t: 'Faltas', g: 'dis', r: f => f.faltas },
   { k: 'pj', t: 'PJ', g: 'gen', r: f => f.pj },
   { k: 'fpj', t: 'F/PJ', g: 'gen', r: f => f.faltasPorPartido.toFixed(1) },
-  { k: 'fechas', txt: 'Suspensiones', t: <>Susp. <Icono nombre="tarjeta" size="1.1em" /></>, g: 'dis', r: f => `${f.suspPendientes}${f.suspCumplidas > 0 ? ' /' + f.suspGanadas : ''}` },
+  { k: 'fechas', txt: 'Suspensiones', t: <>Susp. <Icono nombre="tarjeta" size={14} /></>, g: 'dis', r: f => `${f.suspPendientes}${f.suspCumplidas > 0 ? ' /' + f.suspGanadas : ''}` },
 ];
 
 export default function Disciplina() {
@@ -794,7 +794,7 @@ export default function Disciplina() {
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {jugadorDetalle.suspCumplidas > 0 && (
-                      <button onClick={() => revertirBajaAmarillas(jugadorDetalle)} style={{ ...btnMini, padding: '6px 10px' }} title="Revertir la última baja">↶</button>
+                      <button onClick={() => revertirBajaAmarillas(jugadorDetalle)} style={{ ...btnMini, padding: '6px 10px' }} title="Revertir la última baja"><Icono nombre="deshacer" size="1.1em" /></button>
                     )}
                     {jugadorDetalle.suspPendientes > 0 && (
                       <button onClick={() => darDeBajaAmarillas(jugadorDetalle)} style={{ ...btnMini, borderColor: 'var(--accent)', color: 'var(--accent)' }} title="Cumplió una fecha de la acumulación"><Icono nombre="listo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Dar de baja 1 fecha</button>
@@ -907,7 +907,7 @@ function Badge({ color, texto }) {
 
 function Th({ label, k, orden, onSort, center }) {
   const activo = orden.key === k;
-  const flecha = activo ? (orden.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const flecha = activo ? <Icono nombre={orden.dir === 'asc' ? 'contraer' : 'expandir'} size="1em" style={{ marginLeft: 3 }} /> : null;
   return (
     <th
       onClick={() => onSort(k)}
