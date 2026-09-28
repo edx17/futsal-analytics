@@ -73,21 +73,22 @@ import LimiteDeError from './components/LimiteDeError';
 import BarraKiosco from './components/BarraKiosco';
 import VisorManual from './components/VisorManual';
 import { ROLES_PLATA, manejaPlata } from './analytics/tesoreria';
+import { Icono } from './iconos';
 
 // ==========================================
 // 🌍 CATÁLOGO OPERATIVO DE ACCIONES RÁPIDAS
 // Desde acá el sistema sabe qué opciones mutables existen en la app
 // ==========================================
 const CATALOGO_ACCIONES_FAB = [
-  { id: 'nuevo-partido', label: 'Nuevo Partido', path: '/nuevo-partido', icon: '⚡', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'presentismo', label: 'Tomar Presentismo', path: '/presentismo', icon: '📅', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'wellness', label: 'Estado Wellness', path: '/wellness', icon: '🔋', roles: ['superuser', 'manager', 'ct', 'jugador'] },
-  { id: 'microciclo', label: 'Planificador Semanal', path: '/microciclo', icon: '🗓️', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'torneos', label: 'Mis Torneos', path: '/torneos', icon: '🏆', roles: ['superuser', 'manager', 'admin'] },
-  { id: 'rivales', label: 'Scouting Rivales', path: '/scouting-rivales', icon: '🕵️‍♂️', roles: ['superuser', 'manager', 'ct'] },
-  { id: 'plantel', label: 'Gestionar Plantel', path: '/plantel', icon: '👥', roles: ['superuser', 'manager', 'admin', 'ct'] },
-  { id: 'tesoreria', label: 'Caja de Tesorería', path: '/tesoreria', icon: '💰', roles: ROLES_PLATA },
-  { id: 'transferencias', label: 'Transferencias', path: '/transferencias', icon: '💸', roles: ['superuser', 'manager', 'admin', 'ct'] },
+  { id: 'nuevo-partido', label: 'Nuevo Partido', path: '/nuevo-partido', icon: 'nuevoPartido', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'presentismo', label: 'Tomar Presentismo', path: '/presentismo', icon: 'presentismo', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'wellness', label: 'Estado Wellness', path: '/wellness', icon: 'wellness', roles: ['superuser', 'manager', 'ct', 'jugador'] },
+  { id: 'microciclo', label: 'Planificador Semanal', path: '/microciclo', icon: 'microciclo', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'torneos', label: 'Mis Torneos', path: '/torneos', icon: 'torneos', roles: ['superuser', 'manager', 'admin'] },
+  { id: 'rivales', label: 'Scouting Rivales', path: '/scouting-rivales', icon: 'rivales', roles: ['superuser', 'manager', 'ct'] },
+  { id: 'plantel', label: 'Gestionar Plantel', path: '/plantel', icon: 'plantel', roles: ['superuser', 'manager', 'admin', 'ct'] },
+  { id: 'tesoreria', label: 'Caja de Tesorería', path: '/tesoreria', icon: 'tesoreria', roles: ROLES_PLATA },
+  { id: 'transferencias', label: 'Transferencias', path: '/transferencias', icon: 'transferencias', roles: ['superuser', 'manager', 'admin', 'ct'] },
 ];
 
 // ==========================================
@@ -393,19 +394,19 @@ useEffect(() => {
     return (
       <>
         <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle} title={isCollapsed ? "Inicio" : ""}>
-          <span style={{ fontSize: '1.2rem' }}>🏠</span> {!isCollapsed && <span>{permisos.esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}
+          <Icono nombre="inicio" size={22} /> {!isCollapsed && <span>{permisos.esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}
         </NavLink>
 
         {permisos.puedeEscribirDeportivo && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('operaciones')} title={isCollapsed ? "Operaciones" : ""}>
-              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>⚙️</span> : <><span>OPERACIONES</span> <span>{menusAbiertos.operaciones ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <Icono nombre="operaciones" size={22} /> : <><span>OPERACIONES</span> <Icono nombre={menusAbiertos.operaciones ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
             </div>
             {menusAbiertos.operaciones && !isCollapsed && (
               <>
-                <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚡ <span>NUEVO PARTIDO</span></NavLink>
-                <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⏯️ <span>CONTINUAR PARTIDO</span></NavLink>
-                <NavLink to="/analisis-offline" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🧭 <span>ANÁLISIS OFFLINE</span></NavLink>
+                <NavLink to="/nuevo-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="nuevoPartido" /> <span>NUEVO PARTIDO</span></NavLink>
+                <NavLink to="/continuar-partido" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="continuarPartido" /> <span>CONTINUAR PARTIDO</span></NavLink>
+                <NavLink to="/analisis-offline" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="analisisOffline" /> <span>ANÁLISIS OFFLINE</span></NavLink>
               </>
             )}
           </>
@@ -414,12 +415,12 @@ useEffect(() => {
         {!permisos.esJugador && permisos.puedeVerDeportivo && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('competicion')} title={isCollapsed ? "Competición" : ""}>
-              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>🏆</span> : <><span>COMPETICIÓN</span> <span>{menusAbiertos.competicion ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <Icono nombre="competicion" size={22} /> : <><span>COMPETICIÓN</span> <Icono nombre={menusAbiertos.competicion ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
             </div>
             {menusAbiertos.competicion && !isCollapsed && (
               <>
-                <NavLink to="/torneos" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏆 <span>MIS TORNEOS</span></NavLink>
-                <NavLink to="/scouting-rivales" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🕵️‍♂️ <span>RIVALES</span></NavLink>
+                <NavLink to="/torneos" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="torneos" /> <span>MIS TORNEOS</span></NavLink>
+                <NavLink to="/scouting-rivales" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="rivales" /> <span>RIVALES</span></NavLink>
               </>
             )}
           </>
@@ -428,16 +429,16 @@ useEffect(() => {
         {permisos.puedeVerDeportivo && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('analisis')} title={isCollapsed ? "Análisis" : ""}>
-              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>📊</span> : <><span>ANÁLISIS</span> <span>{menusAbiertos.analisis ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <Icono nombre="analisis" size={22} /> : <><span>ANÁLISIS</span> <Icono nombre={menusAbiertos.analisis ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
             </div>
             {menusAbiertos.analisis && !isCollapsed && (
               <>
-                {!permisos.esJugador && <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📈 <span>RESUMEN TEMPORADA</span></NavLink>}
-                <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📊 <span>RESUMEN POR PARTIDO</span></NavLink>
-                <NavLink to="/jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👁️ <span>{permisos.esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
-                {!permisos.esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚽ <span>ORIGEN DE GOLES</span></NavLink>}
-                {!permisos.esJugador && <NavLink to="/disciplina" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🟨 <span>DISCIPLINA</span></NavLink>}
-                {!permisos.esJugador && <NavLink to="/reportes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📸 <span>EXPORTAR GRÁFICAS</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/temporada" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="temporada" /> <span>RESUMEN TEMPORADA</span></NavLink>}
+                <NavLink to="/resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="resumenPartido" /> <span>RESUMEN POR PARTIDO</span></NavLink>
+                <NavLink to="/jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="jugador" /> <span>{permisos.esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
+                {!permisos.esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="origenGoles" /> <span>ORIGEN DE GOLES</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/disciplina" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="disciplina" /> <span>DISCIPLINA</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/reportes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="exportarGraficas" /> <span>EXPORTAR GRÁFICAS</span></NavLink>}
               </>
             )}
           </>
@@ -446,22 +447,22 @@ useEffect(() => {
         {permisos.puedeVerDeportivo && !permisos.esJugador && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('planificacion')} title={isCollapsed ? "Planificación" : ""}>
-              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>🗓️</span> : <><span>PLANIFICACIÓN</span> <span>{menusAbiertos.planificacion ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <Icono nombre="planificacion" size={22} /> : <><span>PLANIFICACIÓN</span> <Icono nombre={menusAbiertos.planificacion ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
             </div>
             {menusAbiertos.planificacion && !isCollapsed && (
               <>
-                <NavLink to="/agenda" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📆 <span>AGENDA</span></NavLink>
+                <NavLink to="/agenda" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="agenda" /> <span>AGENDA</span></NavLink>
                 {permisos.puedeEscribirDeportivo && (
                   <>
-                    <NavLink to="/citacion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📣 <span>CITACIÓN</span></NavLink>
-                    <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🗓️ <span>MICROCICLO</span></NavLink>
-                    <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎨 <span>CREADOR TÁCTICO</span></NavLink>
-                    <NavLink to="/creador-fisico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏋️‍♂️ <span>CREADOR FÍSICO</span></NavLink>
+                    <NavLink to="/citacion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="citacion" /> <span>CITACIÓN</span></NavLink>
+                    <NavLink to="/microciclo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="microciclo" /> <span>MICROCICLO</span></NavLink>
+                    <NavLink to="/creador-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="creadorTactico" /> <span>CREADOR TÁCTICO</span></NavLink>
+                    <NavLink to="/creador-fisico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="creadorFisico" /> <span>CREADOR FÍSICO</span></NavLink>
                   </>
                 )}
-                <NavLink to="/banco-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🗃️ <span>BANCO DE TAREAS</span></NavLink>
-                <NavLink to="/libro-tactico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📘 <span>LIBRO TÁCTICO</span></NavLink>
-                <NavLink to="/videoanalisis" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🎬 <span>VIDEOANÁLISIS</span></NavLink>
+                <NavLink to="/banco-tareas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="bancoTareas" /> <span>BANCO DE TAREAS</span></NavLink>
+                <NavLink to="/libro-tactico" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="libroTactico" /> <span>LIBRO TÁCTICO</span></NavLink>
+                <NavLink to="/videoanalisis" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="videoanalisis" /> <span>VIDEOANÁLISIS</span></NavLink>
               </>
             )}
           </>
@@ -470,19 +471,19 @@ useEffect(() => {
         {permisos.puedeVerDeportivo && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('plantel')} title={isCollapsed ? "Plantel" : ""}>
-              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>👥</span> : <><span>PLANTEL</span> <span>{menusAbiertos.plantel ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <Icono nombre="plantelGrupo" size={22} /> : <><span>PLANTEL</span> <Icono nombre={menusAbiertos.plantel ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
             </div>
             {menusAbiertos.plantel && !isCollapsed && (
               <>
-                {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👤 <span>MI PLANTEL</span></NavLink>}
-                {!permisos.esJugador && <NavLink to="/plantel-resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📋 <span>RESUMEN PLANTEL</span></NavLink>}
-                {!permisos.esJugador && <NavLink to="/comparar" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚖️ <span>COMPARAR</span></NavLink>}
-                {!permisos.esJugador && <NavLink to="/transferencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💸 <span>TRANSFERENCIAS</span></NavLink>}
-                {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📅 <span>PRESENTISMO</span></NavLink>}
-                <NavLink to="/enfermeria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏥 <span>{permisos.esJugador ? 'MI ESTADO FÍSICO' : 'ENFERMERÍA'}</span></NavLink>
-                <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🌡️ <span>WELLNESS</span></NavLink>
-                <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🏃‍♂️ <span>FISIOLOGÍA</span></NavLink>
-                <NavLink to="/novedades" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>📢 <span>NOVEDADES</span></NavLink>
+                {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="plantel" /> <span>MI PLANTEL</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/plantel-resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="resumenPlantel" /> <span>RESUMEN PLANTEL</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/comparar" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="comparar" /> <span>COMPARAR</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/transferencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="transferencias" /> <span>TRANSFERENCIAS</span></NavLink>}
+                {permisos.puedeEscribirDeportivo && <NavLink to="/presentismo" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="presentismo" /> <span>PRESENTISMO</span></NavLink>}
+                <NavLink to="/enfermeria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="enfermeria" /> <span>{permisos.esJugador ? 'MI ESTADO FÍSICO' : 'ENFERMERÍA'}</span></NavLink>
+                <NavLink to="/wellness" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="wellness" /> <span>WELLNESS</span></NavLink>
+                <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="fisiologia" /> <span>FISIOLOGÍA</span></NavLink>
+                <NavLink to="/novedades" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="novedades" /> <span>NOVEDADES</span></NavLink>
               </>
             )}
           </>
@@ -491,18 +492,18 @@ useEffect(() => {
         {!permisos.esJugador && (permisos.puedeControlarAdmin || permisos.manejaPlata) && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('administracion')} title={isCollapsed ? "Administración" : ""}>
-              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>💰</span> : <><span>ADMINISTRACIÓN</span> <span>{menusAbiertos.administracion ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <Icono nombre="administracion" size={22} /> : <><span>ADMINISTRACIÓN</span> <Icono nombre={menusAbiertos.administracion ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
             </div>
             {menusAbiertos.administracion && !isCollapsed && (
               <>
-                {permisos.puedeControlarAdmin && <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👥 <span>MI STAFF</span></NavLink>}
-                <NavLink to="/empleados" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🧾 <span>EMPLEADOS</span></NavLink>
-                <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💰 <span>TESORERÍA</span></NavLink>
-                <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>🤝 <span>SPONSORS</span></NavLink>
+                {permisos.puedeControlarAdmin && <NavLink to="/mi-staff" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="staff" /> <span>MI STAFF</span></NavLink>}
+                <NavLink to="/empleados" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="empleados" /> <span>EMPLEADOS</span></NavLink>
+                <NavLink to="/tesoreria" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="tesoreria" /> <span>TESORERÍA</span></NavLink>
+                <NavLink to="/sponsors" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="sponsors" /> <span>SPONSORS</span></NavLink>
                 {permisos.puedeConfigurar && (
                   <>
-                    <NavLink to="/mi-suscripcion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💳 <span>MI SUSCRIPCIÓN</span></NavLink>
-                    <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>⚙️ <span>CONFIG. DE CLUB</span></NavLink>
+                    <NavLink to="/mi-suscripcion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="suscripcion" /> <span>MI SUSCRIPCIÓN</span></NavLink>
+                    <NavLink to="/configuracion" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="configuracion" /> <span>CONFIG. DE CLUB</span></NavLink>
                   </>
                 )}
               </>
@@ -513,12 +514,12 @@ useEffect(() => {
         {permisos.esSuperUser && (
           <>
             <div style={titleStyle} onClick={() => toggleMenu('sistema')} title={isCollapsed ? "Sistema" : ""}>
-              {isCollapsed ? <span style={{ fontSize: '1.2rem' }}>👑</span> : <><span>SISTEMA</span> <span>{menusAbiertos.sistema ? '▼' : '▶'}</span></>}
+              {isCollapsed ? <Icono nombre="sistema" size={22} /> : <><span>SISTEMA</span> <Icono nombre={menusAbiertos.sistema ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
             </div>
             {menusAbiertos.sistema && !isCollapsed && (
               <>
-                <NavLink to="/usuarios" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>👑 <span>GESTIÓN MASTER</span></NavLink>
-                <NavLink to="/admin/suscripciones" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>💳 <span>SUSCRIPCIONES</span></NavLink>
+                <NavLink to="/usuarios" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="gestionMaster" /> <span>GESTIÓN MASTER</span></NavLink>
+                <NavLink to="/admin/suscripciones" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="suscripciones" /> <span>SUSCRIPCIONES</span></NavLink>
               </>
             )}
           </>
@@ -536,7 +537,7 @@ useEffect(() => {
             justifyContent: isCollapsed ? 'center' : 'flex-start', gap: isCollapsed ? '0' : '15px',
           }}
         >
-          <span style={{ fontSize: '1.2rem' }}>📖</span> {!isCollapsed && <span style={{ fontWeight: 'bold' }}>MANUAL DE USO</span>}
+          <Icono nombre="manual" size={22} /> {!isCollapsed && <span style={{ fontWeight: 'bold' }}>MANUAL DE USO</span>}
         </button>
 
         <button 
@@ -559,7 +560,7 @@ useEffect(() => {
             gap: isCollapsed ? '0' : '15px' 
           }}
         >
-          <span style={{ fontSize: '1.2rem' }}>🚪</span> {!isCollapsed && <span style={{fontWeight: 'bold'}}>CERRAR SESIÓN</span>}
+          <Icono nombre="cerrarSesion" size={22} /> {!isCollapsed && <span style={{fontWeight: 'bold'}}>CERRAR SESIÓN</span>}
         </button>
       </>
     );
@@ -579,7 +580,7 @@ useEffect(() => {
               </div>
             )}
             <button onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}>
-              {sidebarAbierta ? '◀' : '▶'}
+              <Icono nombre={sidebarAbierta ? 'barraAbierta' : 'barraCerrada'} size={18} />
             </button>
           </div>
           <nav style={{ display: 'flex', flexDirection: 'column', padding: '10px 0 0 0', gap: '2px', overflowY: 'auto', overflowX: 'hidden', flex: 1 }}>
@@ -603,13 +604,13 @@ useEffect(() => {
       {esMovil && (
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '70px', background: 'var(--panel)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 1000, paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <NavLink to="/inicio" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
-            <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>🏠</span>
+            <Icono nombre="inicio" size={24} style={{ marginBottom: '2px' }} />
             <span style={{fontSize: '0.65rem'}}>Inicio</span>
           </NavLink>
           
           {permisos.puedeVerDeportivo && !permisos.esJugador && (
             <NavLink to="/microciclo" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
-              <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>🗓️</span>
+              <Icono nombre="hoy" size={24} style={{ marginBottom: '2px' }} />
               <span style={{fontSize: '0.65rem'}}>Hoy</span>
             </NavLink>
           )}
@@ -619,17 +620,17 @@ useEffect(() => {
               onClick={() => { setFabAbierto(!fabAbierto); setDrawerAbierto(false); setModoEdicionFab(false); }}
               style={fabStyle}
             >
-              {fabAbierto ? '×' : '+'}
+              <Icono nombre={fabAbierto ? 'cerrar' : 'agregar'} size={20} />
             </button>
           </div>
 
           <NavLink to="/resumen" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
-            <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>📊</span>
+            <Icono nombre="analisis" size={24} style={{ marginBottom: '2px' }} />
             <span style={{fontSize: '0.65rem'}}>Stats</span>
           </NavLink>
 
           <div onClick={() => { setDrawerAbierto(true); setFabAbierto(false); }} style={{...navMobileStyle, color: drawerAbierto ? 'var(--accent)' : 'var(--text-dim)'}}>
-            <span style={{fontSize: '1.4rem', marginBottom: '2px'}}>☰</span>
+            <Icono nombre="menu" size={24} style={{ marginBottom: '2px' }} />
             <span style={{fontSize: '0.65rem'}}>Menú</span>
           </div>
         </nav>
@@ -665,7 +666,7 @@ useEffect(() => {
                       onClick={() => { navigate(acc.path); setFabAbierto(false); }} 
                       style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', padding: '12px', borderRadius: '8px', textAlign: 'left', fontWeight: 'bold', display: 'flex', gap: '10px', alignItems: 'center' }}
                     >
-                      <span>{acc.icon}</span> {acc.label}
+                      <Icono nombre={acc.icon} size={18} /> {acc.label}
                     </button>
                   ))
                 )}
@@ -674,7 +675,7 @@ useEffect(() => {
                   onClick={() => setModoEdicionFab(true)}
                   style={{ background: 'transparent', color: 'var(--accent)', border: '1px dashed var(--accent)', padding: '10px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.75rem', marginTop: '5px', cursor: 'pointer' }}
                 >
-                  ⚙️ Personalizar Atajos
+                  <Icono nombre="personalizar" size={14} style={{ verticalAlign: '-2px', marginRight: '6px' }} />Personalizar Atajos
                 </button>
               </>
             ) : (
@@ -692,7 +693,7 @@ useEffect(() => {
                         style={{ background: isActive ? 'rgba(0, 255, 136, 0.05)' : 'var(--bg)', color: isActive ? 'var(--text)' : 'var(--text-dim)', border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`, padding: '10px', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontSize: '0.8rem' }}
                       >
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span>{acc.icon}</span> <span>{acc.label}</span>
+                          <Icono nombre={acc.icon} size={18} /> <span>{acc.label}</span>
                         </div>
                         <span style={{ color: isActive ? 'var(--accent)' : 'var(--text-dim)', fontSize: '0.9rem' }}>
                           {isActive ? '●' : '○'}
@@ -706,7 +707,7 @@ useEffect(() => {
                   onClick={() => setModoEdicionFab(false)}
                   style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '10px', borderRadius: '8px', fontWeight: '900', fontSize: '0.75rem', marginTop: '5px', cursor: 'pointer' }}
                 >
-                  ✅ Listo, Guardar
+                  <Icono nombre="listo" size={14} style={{ verticalAlign: '-2px', marginRight: '6px' }} />Listo, Guardar
                 </button>
               </>
             )}
@@ -729,7 +730,7 @@ useEffect(() => {
           }}>
             <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 900, color: 'var(--accent)', letterSpacing: '1px' }}>VIRTUAL.CLUB</span>
-              <button onClick={() => setDrawerAbierto(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.5rem', padding: 0 }}>×</button>
+              <button onClick={() => setDrawerAbierto(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.5rem', padding: 0, display: 'flex' }}><Icono nombre="cerrar" size={22} /></button>
             </div>
             <nav style={{ flex: 1, paddingBottom: '20px', display: 'flex', flexDirection: 'column' }}>
               {renderNavLinks(false)}
