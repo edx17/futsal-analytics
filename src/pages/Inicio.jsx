@@ -18,6 +18,7 @@ import { resumenClub } from '../analytics/tutores';
 import { ordenarAlertas, franjaDeHoy, rankAccesos, leerUso, anotarUso, ACCESOS_VISIBLES } from '../analytics/tablero';
 import FranjaHoy from '../components/FranjaHoy';
 import { filtroNoVencidas } from '../utils/novedades';
+import { Icono } from '../iconos';
 
 /* ============================================================================
    CONFIG — Ajustá a tu realidad de datos.
@@ -129,7 +130,7 @@ const MODULOS = [
 const SPAN_DEF = Object.fromEntries(MODULOS.map((m) => [m.id, m.span || 1]));
 
 /* EL ORDEN IMPORTA MÁS QUE LA PERSONALIZACIÓN.
-   Casi nadie abre el ⚙️, así que lo que decide la experiencia es esta lista.
+   Casi nadie abre el Editar, así que lo que decide la experiencia es esta lista.
    Antes los cuatro roles arrancaban con `m_estado`: el balance anual, que se
    mueve una vez por semana, ocupando el lugar más caro de la pantalla. Ahora
    arriba va lo accionable —lo que hay que resolver hoy— y el balance queda
@@ -145,17 +146,17 @@ const DEFAULTS = {
 };
 
 const LINKS = [
-  { titulo: 'Nuevo Partido', icon: '⚡',  ruta: '/nuevo-partido',    color: '#10b981', roles: ['superuser', 'manager', 'ct'] },
-  { titulo: 'Microciclo',    icon: '🗓️', ruta: '/microciclo',       color: '#8b5cf6', roles: ['superuser', 'manager', 'ct'] },
-  { titulo: 'Wellness',      icon: '🔋', ruta: '/wellness',         color: '#14b8a6', roles: ['superuser', 'manager', 'ct'] },
-  { titulo: 'Scouting',      icon: '🕵️‍♂️', ruta: '/scouting-rivales', color: '#64748b', roles: ['superuser', 'manager', 'ct'] },
-  { titulo: 'Disciplina',    icon: '🟨', ruta: '/disciplina',       color: '#facc15', roles: ['superuser', 'manager', 'ct'] },
-  { titulo: 'Plantel',       icon: '👥', ruta: '/plantel',          color: '#0ea5e9', roles: ['superuser', 'manager', 'ct', 'admin'] },
-  { titulo: 'Transferencias', icon: '💸', ruta: '/transferencias', color: '#f43f5e', roles: ['superuser', 'manager', 'admin', 'ct'] },
-  { titulo: 'Tesorería',     icon: '💰', ruta: '/tesoreria',        color: '#eab308', roles: ['superuser', 'manager', 'admin', 'tesorero'] },
-  { titulo: 'Torneos',       icon: '🏆', ruta: '/torneos',          color: '#fbbf24', roles: ['superuser', 'manager', 'admin'] },
-  { titulo: 'Sponsors',      icon: '🤝', ruta: '/sponsors',         color: '#0284c7', roles: ['superuser', 'manager', 'admin', 'tesorero'] },
-  { titulo: 'Usuarios',      icon: '👑', ruta: '/usuarios',         color: '#c084fc', roles: ['superuser'] },
+  { titulo: 'Nuevo Partido', icon: 'nuevoPartido',  ruta: '/nuevo-partido',    color: '#10b981', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Microciclo',    icon: 'microciclo', ruta: '/microciclo',       color: '#8b5cf6', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Wellness',      icon: 'wellness', ruta: '/wellness',         color: '#14b8a6', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Scouting',      icon: 'rivales', ruta: '/scouting-rivales', color: '#64748b', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Disciplina',    icon: 'tarjetas', ruta: '/disciplina',       color: '#facc15', roles: ['superuser', 'manager', 'ct'] },
+  { titulo: 'Plantel',       icon: 'plantel', ruta: '/plantel',          color: '#0ea5e9', roles: ['superuser', 'manager', 'ct', 'admin'] },
+  { titulo: 'Transferencias', icon: 'transferencias', ruta: '/transferencias', color: '#f43f5e', roles: ['superuser', 'manager', 'admin', 'ct'] },
+  { titulo: 'Tesorería',     icon: 'tesoreria', ruta: '/tesoreria',        color: '#eab308', roles: ['superuser', 'manager', 'admin', 'tesorero'] },
+  { titulo: 'Torneos',       icon: 'torneos', ruta: '/torneos',          color: '#fbbf24', roles: ['superuser', 'manager', 'admin'] },
+  { titulo: 'Sponsors',      icon: 'sponsors', ruta: '/sponsors',         color: '#0284c7', roles: ['superuser', 'manager', 'admin', 'tesorero'] },
+  { titulo: 'Usuarios',      icon: 'gestionMaster', ruta: '/usuarios',         color: '#c084fc', roles: ['superuser'] },
 ];
 
 /* ============================================================================
@@ -693,18 +694,18 @@ export default function Inicio() {
           const pendientes = Math.max(0, ganadas - cumplidas);
           if (pendientes > 0) {
             suspendidosIds.add(jid);
-            alertas.push({ nivel: 'danger', ico: '🟥', titulo: `${nombreJug(jid)}: suspendido por amarillas`, sub: `${n} amarillas en ${cat} · ${pendientes} fecha${pendientes > 1 ? 's' : ''} pendiente${pendientes > 1 ? 's' : ''}`, ruta: '/disciplina' });
+            alertas.push({ nivel: 'danger', ico: 'tarjetaRoja', titulo: `${nombreJug(jid)}: suspendido por amarillas`, sub: `${n} amarillas en ${cat} · ${pendientes} fecha${pendientes > 1 ? 's' : ''} pendiente${pendientes > 1 ? 's' : ''}`, ruta: '/disciplina' });
           } else if (n % UMBRAL_AMARILLAS === UMBRAL_AMARILLAS - 1) {
-            alertas.push({ nivel: 'warning', ico: '🟨', titulo: `${nombreJug(jid)}, a una del corte`, sub: `${n} amarillas en ${cat}`, ruta: '/disciplina' });
+            alertas.push({ nivel: 'warning', ico: 'tarjeta', titulo: `${nombreJug(jid)}, a una del corte`, sub: `${n} amarillas en ${cat}`, ruta: '/disciplina' });
           }
         });
-        Object.entries(fechasRoja).forEach(([jid, f]) => { if (f > 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: '⛔', titulo: `${nombreJug(jid)}: ${f} fecha${f > 1 ? 's' : ''} de sanción`, sub: 'Tribunal de disciplina', ruta: '/disciplina' }); } });
+        Object.entries(fechasRoja).forEach(([jid, f]) => { if (f > 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: 'prohibido', titulo: `${nombreJug(jid)}: ${f} fecha${f > 1 ? 's' : ''} de sanción`, sub: 'Tribunal de disciplina', ruta: '/disciplina' }); } });
 
         /* ===== WELLNESS HOY ===== */
         const wVentana = wellVentana.filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
         const wHoy = wVentana.filter((r) => String(r.fecha).slice(0, 10) === hoyStr);
         const enRojo = wHoy.filter(enRojoWell);
-        if (enRojo.length > 0) alertas.unshift({ nivel: 'warning', ico: '🔋', titulo: `${enRojo.length} ${enRojo.length === 1 ? 'jugador' : 'jugadores'} en rojo hoy`, sub: 'Fatiga, dolor o sueño en zona de alerta', ruta: '/wellness' });
+        if (enRojo.length > 0) alertas.unshift({ nivel: 'warning', ico: 'bateriaBaja', titulo: `${enRojo.length} ${enRojo.length === 1 ? 'jugador' : 'jugadores'} en rojo hoy`, sub: 'Fatiga, dolor o sueño en zona de alerta', ruta: '/wellness' });
 
         /* ===== CARGA: ACWR =====
            El wellness de hoy dice como se siente el jugador; el ACWR dice si la
@@ -720,7 +721,7 @@ export default function Inicio() {
           const nombres = enRiesgo.slice(0, 3).map((c) => `${c.jugador.nombre || ''} ${c.jugador.apellido || ''}`.trim()).filter(Boolean).join(', ');
           alertas.unshift({
             nivel: 'danger',
-            ico: '📈',
+            ico: 'evolucion',
             titulo: `${enRiesgo.length} ${enRiesgo.length === 1 ? 'jugador' : 'jugadores'} con carga en riesgo`,
             sub: `ACWR sobre 1.50${nombres ? ` · ${nombres}${enRiesgo.length > 3 ? ' y más' : ''}` : ''}`,
             ruta: '/rendimiento',
@@ -728,7 +729,7 @@ export default function Inicio() {
         } else if (enPrecaucion.length > 0) {
           alertas.push({
             nivel: 'warning',
-            ico: '📈',
+            ico: 'evolucion',
             titulo: `${enPrecaucion.length} ${enPrecaucion.length === 1 ? 'jugador' : 'jugadores'} con carga en precaución`,
             sub: 'ACWR entre 1.30 y 1.50 · subí la carga más despacio',
             ruta: '/rendimiento',
@@ -769,7 +770,7 @@ export default function Inicio() {
         if (tut.conGraves > 0) {
           alertas.push({
             nivel: 'warning',
-            ico: '👨‍👩‍👦',
+            ico: 'familia',
             titulo: `${tut.conGraves} ${tut.conGraves === 1 ? 'jugador' : 'jugadores'} sin tutor a quién llamar`,
             sub: tut.sinTutor > 0 ? `${tut.sinTutor} sin ningún tutor cargado` : 'Falta el teléfono o el contacto principal',
             ruta: '/plantel',
@@ -832,7 +833,7 @@ export default function Inicio() {
   if (!cargando && !clubActivo && !esSuperUser) {
     if (esAdmin || esManager) return (
       <div style={{ animation: 'fadeIn 0.3s', padding: '50px 20px', textAlign: 'center', maxWidth: 600, margin: '0 auto' }}>
-        <div style={{ fontSize: '4rem', marginBottom: 20 }}>🏟️</div>
+        <div style={{ marginBottom: 20, color: 'var(--text-dim)' }}><Icono nombre="club" size={64} /></div>
         <h2 style={{ color: 'var(--accent)', fontWeight: 900 }}>¡BIENVENIDO A VIRTUAL.CLUB!</h2>
         <p style={{ color: 'var(--text-dim)', marginBottom: 30, lineHeight: 1.6 }}>Para empezar, creá el perfil de tu equipo.</p>
         <button onClick={() => navigate('/configuracion')} className="btn-action" style={{ width: '100%', padding: 20, fontSize: '1.1rem' }}>CONFIGURAR MI CLUB AHORA</button>
@@ -867,7 +868,7 @@ export default function Inicio() {
         <Card key={id} id={id} accent="var(--accent)" index={index} ctx={ctx}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 800, color: enRacha ? '#10b981' : 'var(--text-dim)', background: enRacha ? 'rgba(16,185,129,0.1)' : 'var(--panel)', border: `1px solid ${enRacha ? 'rgba(16,185,129,0.3)' : 'var(--border)'}`, padding: '5px 12px', borderRadius: 20 }}>
-              {enRacha ? `🔥 En racha · ${nInv} invicto` : forma.length ? 'Forma estable' : 'Sin partidos aún'}
+              {enRacha ? <><Icono nombre="fuego" size={15} relleno="propio" style={{ marginRight: 4, verticalAlign: '-2px' }} />En racha · {nInv} invicto</> : forma.length ? 'Forma estable' : 'Sin partidos aún'}
             </span>
             {forma.length > 1 && <svg width="80" height="30" viewBox="0 0 80 30"><polyline points={poly} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
           </div>
@@ -889,11 +890,11 @@ export default function Inicio() {
       return (
         <Card key={id} id={id} accent="#ef4444" index={index} ctx={ctx}>
           <Label color="#ef4444">REQUIERE TU ATENCIÓN</Label>
-          {triage.length === 0 ? <div style={{ textAlign: 'center', color: '#10b981', padding: 14, fontSize: '0.85rem' }}>✅ Todo en orden. Sin alertas.</div> : (
+          {triage.length === 0 ? <div style={{ textAlign: 'center', color: '#10b981', padding: 14, fontSize: '0.85rem' }}><Icono nombre="ok" size={16} relleno="propio" style={{ marginRight: 6, verticalAlign: '-3px' }} />Todo en orden. Sin alertas.</div> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {triage.map((a, i) => (
                 <div key={i} onClick={() => !modoEdicion && a.ruta && navigate(a.ruta)} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', cursor: modoEdicion ? 'default' : 'pointer' }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 8, background: bg[a.nivel], color: col[a.nivel], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{a.ico}</span>
+                  <span style={{ width: 30, height: 30, borderRadius: 8, background: bg[a.nivel], color: col[a.nivel], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{a.ico === 'tarjetaRoja' ? <Icono nombre="tarjeta" color="roja" size={18} /> : <Icono nombre={a.ico} size={18} relleno="propio" />}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.titulo}</div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>{a.sub}</div>
@@ -935,7 +936,7 @@ export default function Inicio() {
                   <div key={ev.id} onClick={() => !modoEdicion && navigate(ev.ruta)}
                        style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', cursor: modoEdicion ? 'default' : 'pointer' }}>
                     <span style={{ ...mono, fontSize: '0.6rem', fontWeight: 800, color: def.color, width: 34, flexShrink: 0 }}>{rotuloDia(ev.fecha)}</span>
-                    <span style={{ flexShrink: 0 }}>{def.ico}</span>
+                    <span style={{ flexShrink: 0, color: def.color, display: 'flex' }}><Icono nombre={def.ico} size={18} relleno="propio" /></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {ev.hora ? <span style={{ ...mono, color: 'var(--text-dim)', marginRight: 6 }}>{ev.hora}</span> : null}
@@ -981,8 +982,8 @@ export default function Inicio() {
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <button onClick={() => !modoEdicion && navigate('/scouting-rivales')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: 10 }}>🕵️‍♂️ Scouting rival</button>
-                <button onClick={() => !modoEdicion && navigate('/microciclo')} style={{ fontSize: '0.75rem', padding: 10, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>🗓️ Planificar sesión</button>
+                <button onClick={() => !modoEdicion && navigate('/scouting-rivales')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: 10 }}><Icono nombre="rivales" size={16} style={{ marginRight: 6 }} />Scouting rival</button>
+                <button onClick={() => !modoEdicion && navigate('/microciclo')} style={{ fontSize: '0.75rem', padding: 10, background: '#8b5cf6', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}><Icono nombre="microciclo" size={16} relleno="propio" style={{ marginRight: 6 }} />Planificar sesión</button>
               </div>
             </>
           ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 14, background: 'var(--panel)', borderRadius: 8, border: '1px dashed var(--border)', fontSize: '0.8rem' }}>Sin partidos pendientes</div>}
@@ -1160,23 +1161,23 @@ export default function Inicio() {
       const sinApto = jugadoresBD.filter((j) => !j.vencimiento_apto).length;
 
       const filas = [
-        { k: 'apto_venc', ico: '🩺', t: 'Apto vencido', n: aptoVencido, grave: true, ruta: '/plantel' },
-        { k: 'apto_prox', ico: '📅', t: 'Apto vence en 30 días', n: aptoPorVencer, grave: false, ruta: '/plantel' },
-        { k: 'sin_apto', ico: '❔', t: 'Sin apto cargado', n: sinApto, grave: false, ruta: '/plantel' },
-        { k: 'tutor', ico: '👨‍👩‍👦', t: 'Sin tutor a quién llamar', n: tut.conGraves, grave: true, ruta: '/plantel' },
+        { k: 'apto_venc', ico: 'medico', t: 'Apto vencido', n: aptoVencido, grave: true, ruta: '/plantel' },
+        { k: 'apto_prox', ico: 'calendario', t: 'Apto vence en 30 días', n: aptoPorVencer, grave: false, ruta: '/plantel' },
+        { k: 'sin_apto', ico: 'pregunta', t: 'Sin apto cargado', n: sinApto, grave: false, ruta: '/plantel' },
+        { k: 'tutor', ico: 'familia', t: 'Sin tutor a quién llamar', n: tut.conGraves, grave: true, ruta: '/plantel' },
       ].filter((f) => f.n > 0);
 
       return (
         <Card key={id} id={id} accent="#38bdf8" index={index} ctx={ctx}>
           <Label color="#38bdf8">QUÉ FALTA CARGAR</Label>
           {filas.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#10b981', padding: 14, fontSize: '0.85rem' }}>✅ Las fichas están completas.</div>
+            <div style={{ textAlign: 'center', color: '#10b981', padding: 14, fontSize: '0.85rem' }}><Icono nombre="ok" size={16} relleno="propio" style={{ marginRight: 6, verticalAlign: '-3px' }} />Las fichas están completas.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {filas.map((f) => (
                 <div key={f.k} onClick={() => !modoEdicion && navigate(f.ruta)}
                      style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', cursor: modoEdicion ? 'default' : 'pointer' }}>
-                  <span style={{ flexShrink: 0 }}>{f.ico}</span>
+                  <span style={{ flexShrink: 0, display: 'flex', color: f.grave ? 'var(--peligro)' : 'var(--text-dim)' }}><Icono nombre={f.ico} size={18} relleno="propio" /></span>
                   <span style={{ flex: 1, fontSize: '0.78rem', color: 'var(--text)', minWidth: 0 }}>{f.t}</span>
                   <span style={{ ...mono, fontSize: '1rem', fontWeight: 900, color: f.grave ? '#ef4444' : '#f59e0b' }}>{f.n}</span>
                 </div>
@@ -1289,7 +1290,7 @@ export default function Inicio() {
           <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(min(96px, 100%), 1fr))', gap: 8 }}>
             {links.map((l) => (
               <div key={l.ruta} onClick={() => irA(l)} style={{ cursor: modoEdicion ? 'default' : 'pointer', border: `1px solid ${l.color}`, borderRadius: 10, padding: '12px 6px', textAlign: 'center', background: `linear-gradient(180deg, rgba(${hexToRgb(l.color)},0.06) 0%, rgba(0,0,0,0) 100%)` }}>
-                <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>{l.icon}</div>
+                <div style={{ marginBottom: 4, color: l.color, display: 'flex', justifyContent: 'center' }}>{l.icon === 'tarjetas' ? <Icono nombre="tarjetas" size={28} /> : <Icono nombre={l.icon} size={28} relleno="propio" />}</div>
                 <div style={{ fontSize: '0.65rem', fontWeight: 700, color: l.color, lineHeight: 1.1 }}>{l.titulo}</div>
               </div>
             ))}
@@ -1313,7 +1314,7 @@ export default function Inicio() {
               ))}
             </div>
           ) : <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.8rem', padding: 10 }}>Todavía no cargaste wellness.</div>}
-          <button onClick={() => navigate('/wellness')} style={{ marginTop: 12, fontSize: '0.8rem', padding: 11, background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 6, fontWeight: 900, cursor: 'pointer' }}>🌡️ CARGAR WELLNESS DE HOY</button>
+          <button onClick={() => navigate('/wellness')} style={{ marginTop: 12, fontSize: '0.8rem', padding: 11, background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 6, fontWeight: 900, cursor: 'pointer' }}><Icono nombre="wellness" size={16} relleno="propio" style={{ marginRight: 6 }} /> CARGAR WELLNESS DE HOY</button>
         </Card>
       );
     }
@@ -1323,15 +1324,15 @@ export default function Inicio() {
         <Card key={id} id={id} accent="#3b82f6" index={index} ctx={ctx}>
           <Label color="#3b82f6">MI PERFIL</Label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🏃‍♂️</div>
+            <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}><Icono nombre="fisico" size={26} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text)' }}>{perfil?.nombre || 'Jugador'}</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Tus métricas, videos y evolución.</div>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-            <button onClick={() => navigate('/jugador-perfil')} className="btn-secondary" style={{ fontSize: '0.8rem', padding: 10 }}>📊 Mi juego</button>
-            <button onClick={() => navigate('/rendimiento')} style={{ fontSize: '0.8rem', padding: 10, background: '#f43f5e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}>🧬 Biomecánica</button>
+            <button onClick={() => navigate('/jugador-perfil')} className="btn-secondary" style={{ fontSize: '0.8rem', padding: 10 }}><Icono nombre="analisis" size={16} style={{ marginRight: 6 }} />Mi juego</button>
+            <button onClick={() => navigate('/rendimiento')} style={{ fontSize: '0.8rem', padding: 10, background: '#f43f5e', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer' }}><Icono nombre="adn" size={16} relleno="propio" style={{ marginRight: 6 }} />Biomecánica</button>
           </div>
         </Card>
       );
@@ -1348,7 +1349,7 @@ export default function Inicio() {
       <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'stretch' : 'center', marginBottom: 25, paddingBottom: 20, borderBottom: '1px solid var(--border)', gap: 15 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
           <div style={{ width: esMovil ? 50 : 60, height: esMovil ? 50 : 60, borderRadius: '50%', background: 'var(--panel)', border: '2px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontWeight: 800, fontSize: esMovil ? '1rem' : '1.5rem', overflow: 'hidden', flexShrink: 0 }}>
-            {esSuperUser && !clubActivo ? '👑' : escudoClub ? <img src={escudoClub} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : nombreClub.substring(0, 2).toUpperCase()}
+            {esSuperUser && !clubActivo ? <Icono nombre="corona" size={28} /> : escudoClub ? <img src={escudoClub} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : nombreClub.substring(0, 2).toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="stat-label" style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>CENTRO DE MANDO • {rol?.toUpperCase()}</div>
@@ -1358,20 +1359,20 @@ export default function Inicio() {
         <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: 10, width: esMovil ? '100%' : 'auto' }}>
           {mostrarSelectorCat && (
             <select value={categoriaActiva} onChange={handleCambioCategoria} style={selStyle(esMovil)}>
-              {!(esCT && misCategorias.length > 0) && <option value="Todas">👉 TODAS LAS CATEGORÍAS</option>}
+              {!(esCT && misCategorias.length > 0) && <option value="Todas">TODAS LAS CATEGORÍAS</option>}
               {categoriasDisponibles.map((c) => <option key={c} value={c}>{c.toUpperCase()}</option>)}
             </select>
           )}
           {esSuperUser && (
             <select value={clubActivo} onChange={handleCambioClub} style={{ ...selStyle(esMovil), borderColor: '#c084fc', color: '#c084fc' }}>
-              <option value="">🌍 VISIÓN GLOBAL (TODOS)</option>
-              {listaClubes.map((c) => <option key={c.id} value={c.id}>🏢 {c.nombre}</option>)}
+              <option value="">VISIÓN GLOBAL (TODOS)</option>
+              {listaClubes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
           )}
           {!sinClub && <Campanita clubId={clubActivo} misCategorias={misCategorias} perfilId={perfil?.id} />}
-          {!sinClub && <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : 'var(--panel)', color: modoEdicion ? '#000' : 'var(--text)', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>{modoEdicion ? '✅ Guardar' : '⚙️ Editar'}</button>}
+          {!sinClub && <button onClick={() => setModoEdicion(!modoEdicion)} style={{ background: modoEdicion ? 'var(--accent)' : 'var(--panel)', color: modoEdicion ? '#000' : 'var(--text)', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}><Icono nombre={modoEdicion ? 'listo' : 'ajustes'} size={16} relleno="propio" style={{ marginRight: 6 }} />{modoEdicion ? 'Guardar' : 'Editar'}</button>}
           {(esManager || esAdmin || esSuperUser) && clubActivo && (
-            <button onClick={() => setMostrarQR(true)} style={{ background: '#10b981', color: '#000', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}>📷 QR</button>
+            <button onClick={() => setMostrarQR(true)} style={{ background: '#10b981', color: '#000', border: 'none', padding: esMovil ? 12 : '8px 12px', borderRadius: 8, cursor: 'pointer', fontSize: esMovil ? '1rem' : '0.85rem', fontWeight: 'bold' }}><Icono nombre="qr" size={16} relleno="propio" style={{ marginRight: 6 }} />QR</button>
           )}
         </div>
       </div>
@@ -1397,13 +1398,13 @@ export default function Inicio() {
                 después de haberla cerrado con la ✕. */}
             <button onClick={() => cambiarFranja(!franjaVisible)}
                     style={{ background: franjaVisible ? 'var(--hover)' : 'transparent', border: `1px dashed ${franjaVisible ? 'var(--accent)' : 'var(--border)'}`, color: franjaVisible ? 'var(--text)' : 'var(--text-dim)', padding: '7px 12px', borderRadius: 20, cursor: 'pointer', fontSize: '0.8rem', fontWeight: franjaVisible ? 'bold' : 'normal' }}>
-              📌 Franja de hoy (arriba de todo){franjaVisible && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>✓</span>}
+              <Icono nombre="fijado" size={15} style={{ marginRight: 6 }} />Franja de hoy (arriba de todo){franjaVisible && <Icono nombre="listo" size={14} style={{ color: 'var(--accent)', marginLeft: 6 }} />}
             </button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {widgetsPermitidos.map((m) => {
               const on = layout.includes(m.id);
-              return <button key={m.id} onClick={() => toggleWidget(m.id)} style={{ background: on ? 'var(--hover)' : 'transparent', border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`, color: on ? 'var(--text)' : 'var(--text-dim)', padding: '7px 12px', borderRadius: 20, cursor: 'pointer', fontSize: '0.8rem', fontWeight: on ? 'bold' : 'normal' }}>{m.titulo}{on && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>✓</span>}</button>;
+              return <button key={m.id} onClick={() => toggleWidget(m.id)} style={{ background: on ? 'var(--hover)' : 'transparent', border: `1px solid ${on ? 'var(--accent)' : 'var(--border)'}`, color: on ? 'var(--text)' : 'var(--text-dim)', padding: '7px 12px', borderRadius: 20, cursor: 'pointer', fontSize: '0.8rem', fontWeight: on ? 'bold' : 'normal' }}>{m.titulo}{on && <Icono nombre="listo" size={14} style={{ color: 'var(--accent)', marginLeft: 6 }} />}</button>;
             })}
           </div>
         </div>
@@ -1412,7 +1413,7 @@ export default function Inicio() {
       {/* GRID */}
       {sinClub ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-dim)' }}>
-          <div style={{ fontSize: '3.2rem', marginBottom: 14 }}>👑</div>
+          <div style={{ marginBottom: 14, color: 'var(--accent)' }}><Icono nombre="corona" size={52} /></div>
           <h2 style={{ color: 'var(--accent)', fontWeight: 900, margin: '0 0 8px' }}>VISIÓN MASTER</h2>
           <p style={{ maxWidth: 440, margin: '0 auto', lineHeight: 1.6 }}>Elegí un club en el selector de arriba para ver su tablero. No se mezcla información entre clubes.</p>
         </div>
@@ -1428,7 +1429,7 @@ export default function Inicio() {
           <div ref={refGrilla} style={{ display: 'grid', gridTemplateColumns: `repeat(${columnas}, 1fr)`, gap: esMovil ? 12 : 16, alignItems: 'stretch', gridAutoFlow: 'dense' }}>
             {layout.map((id, index) => { const m = widgetsPermitidos.find((w) => w.id === id); return m ? renderModulo(id, index) : null; })}
           </div>
-          {layout.length === 0 && <div style={{ textAlign: 'center', padding: 40 }}><p style={{ color: 'var(--text-dim)' }}>No hay módulos activos. Tocá <strong>⚙️ Editar</strong> y prendé los que quieras.</p></div>}
+          {layout.length === 0 && <div style={{ textAlign: 'center', padding: 40 }}><p style={{ color: 'var(--text-dim)' }}>No hay módulos activos. Tocá <strong>Editar</strong> y prendé los que quieras.</p></div>}
         </>
       )}
 

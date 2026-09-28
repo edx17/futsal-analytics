@@ -16,6 +16,7 @@ import {
   fmtTiempo,
   colorEtiqueta,
 } from '../analytics/clipsRival';
+import { Icono } from '../iconos';
 
 const MONO = 'JetBrains Mono, monospace';
 
@@ -271,13 +272,13 @@ export default function ModalVideoRival({ rival, clubId, categoria = null, onCer
                 onClick={() => { setContexto('enfrentamiento'); setFiltroPartido(''); }}
                 style={tabContexto(contexto === 'enfrentamiento')}
               >
-                ⚔ ENFRENTAMIENTOS ({stats.enfrentamientos})
+                <Icono nombre="versus" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ENFRENTAMIENTOS ({stats.enfrentamientos})
               </button>
               <button
                 onClick={() => { setContexto('scouting'); setFiltroPartido(''); setFiltroLado('TODOS'); }}
                 style={tabContexto(contexto === 'scouting')}
               >
-                🔍 SCOUTING ({stats.scouting})
+                <Icono nombre="buscar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SCOUTING ({stats.scouting})
               </button>
             </div>
 
@@ -392,7 +393,7 @@ export default function ModalVideoRival({ rival, clubId, categoria = null, onCer
                       className="btn-secondary"
                       style={{ fontSize: '0.65rem', padding: '5px 10px' }}
                     >
-                      ⏹ CORTAR COLA ({indiceCola + 1}/{clipsFiltrados.filter((c) => c.reproducible).length})
+                      <Icono nombre="detener" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CORTAR COLA ({indiceCola + 1}/{clipsFiltrados.filter((c) => c.reproducible).length})
                     </button>
                   )}
                 </div>
@@ -503,7 +504,7 @@ export default function ModalVideoRival({ rival, clubId, categoria = null, onCer
                     fontWeight: 900,
                   }}
                 >
-                  ▶ VER LOS {clipsFiltrados.filter((c) => c.reproducible).length} CORTES
+                  <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER LOS {clipsFiltrados.filter((c) => c.reproducible).length} CORTES
                 </button>
                 <button
                   onClick={limpiarFiltros}
@@ -517,7 +518,7 @@ export default function ModalVideoRival({ rival, clubId, categoria = null, onCer
                   className="btn-secondary"
                   style={{ fontSize: '0.72rem', padding: '8px 14px' }}
                 >
-                  🎬 IR A VIDEOANÁLISIS
+                  <Icono nombre="video" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />IR A VIDEOANÁLISIS
                 </button>
               </div>
             </div>
@@ -692,7 +693,7 @@ function etiquetaOpcionPartido(p, contexto) {
   partes.push(`${local} vs ${visitante}`);
   partes.push(`${golesLocal}-${golesVisitante}`);
 
-  return `${partes.join(' · ')}${p.video_url ? ' 🎬' : ''}`;
+  return `${partes.join(' · ')}${p.video_url ? ' · con video' : ''}`;
 }
 
 function Kpi({ valor, label, destacado = false }) {
@@ -734,7 +735,7 @@ function Info({ children }) {
         color: '#3b82f6',
       }}
     >
-      ℹ {children}
+      <Icono nombre="info" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{children}
     </div>
   );
 }
@@ -752,7 +753,7 @@ function Aviso({ children }) {
         color: '#f59e0b',
       }}
     >
-      ⚠ {children}
+      <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{children}
     </div>
   );
 }

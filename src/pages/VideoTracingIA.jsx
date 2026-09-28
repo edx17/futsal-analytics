@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabase';
 import axios from 'axios';
+import { Icono } from '../iconos';
 
 const VideoTracingIA = () => {
   const clubId = localStorage.getItem('club_id');
@@ -274,7 +275,7 @@ const VideoTracingIA = () => {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
              <span style={{ fontSize: '0.8rem', color: points.length === 4 ? '#00ff88' : '#888' }}>
-               Puntos marcados: {points.length}/4 {points.length === 4 && '✓'}
+               Puntos marcados: {points.length}/4 {points.length === 4 && <Icono nombre="listo" size="1.2em" relleno="propio" />}
              </span>
              {points.length > 0 && !mappingMode && <button onClick={() => setPoints([])} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.7rem' }}>BORRAR CALIBRACIÓN</button>}
           </div>

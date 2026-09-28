@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { REHAB_LIB } from '../utils/rehab';
 import { volverDesde, tablaJugadores } from '../utils/kiosco';
+import { Icono } from '../iconos';
 
 const ELITE = { musc: 48.5, adip: 9.0, sum6: 45.0, cmj: 55, abk: 62, broad: 2.60, yoyo: 21.0, visc: 4, imc: 23.0 };
 
@@ -207,13 +208,13 @@ export default function Rendimiento() {
   );
 
   const TABS = [
-    { id: 'resumen', lbl: '📊 RESUMEN',  col: null },
-    { id: 'fisico',  lbl: '⚡ FÍSICO',   col: '#3b82f6' },
-    { id: 'kine',    lbl: '🩺 KINE',     col: '#10b981' },
-    { id: 'nutri',   lbl: '🥗 NUTRI',    col: '#f59e0b' },
+    { id: 'resumen', ico: 'grafico', lbl: 'RESUMEN',  col: null },
+    { id: 'fisico',  ico: 'rayo', lbl: 'FÍSICO',   col: '#3b82f6' },
+    { id: 'kine',    ico: 'medico', lbl: 'KINE',     col: '#10b981' },
+    { id: 'nutri',   ico: 'comida', lbl: 'NUTRI',    col: '#f59e0b' },
     ...(!esJugador ? [
-      { id: 'equipo',  lbl: '🏟️ EQUIPO',   col: '#8b5cf6' },
-      { id: 'vs',      lbl: '⚖️ VS',       col: '#ec4899' }
+      { id: 'equipo',  ico: 'club', lbl: 'EQUIPO',   col: '#8b5cf6' },
+      { id: 'vs',      ico: 'comparar', lbl: 'VS',       col: '#ec4899' }
     ] : []),
   ];
 
@@ -229,7 +230,7 @@ export default function Rendimiento() {
           marginBottom: '15px', padding: '5px 0', fontSize: '0.9rem', transition: 'color 0.2s' 
         }}
       >
-        ⬅ Volver atrás
+        <Icono nombre="volver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Volver atrás
       </button>
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
@@ -282,7 +283,7 @@ export default function Rendimiento() {
                 {TABS.map(t => (
                   <button key={t.id} onClick={() => setTab(t.id)}
                     style={{ flex: '0 0 auto', background: tab === t.id ? (t.col ? `${t.col}22` : '#1e293b') : '#0a0f1e', border: `1px solid ${tab === t.id ? (t.col || 'var(--accent)') : '#1e293b'}`, color: tab === t.id ? (t.col || '#fff') : '#475569', padding: '8px 14px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer', transition: '0.2s' }}>
-                    {t.lbl}
+                    <Icono nombre={t.ico} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{t.lbl}
                   </button>
                 ))}
               </nav>
@@ -348,7 +349,7 @@ export default function Rendimiento() {
                 {TABS.map(t => (
                   <button key={t.id} onClick={() => setTab(t.id)}
                     style={{ background: tab === t.id ? '#0a0f1e' : 'transparent', border: 'none', borderLeft: `3px solid ${tab === t.id ? (t.col || 'var(--accent)') : 'transparent'}`, color: tab === t.id ? (t.col || 'var(--accent)') : '#475569', padding: '10px 12px', textAlign: 'left', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer', borderRadius: '0 7px 7px 0', transition: '0.15s' }}>
-                    {t.lbl}
+                    <Icono nombre={t.ico} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{t.lbl}
                   </button>
                 ))}
               </nav>
@@ -417,7 +418,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
 
         {/* ── HUELLA ATLÉTICA — Bullet Chart ── */}
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#3b82f6">⚡ Huella Atlética vs Élite <Tip t="La barra muestra el valor real del jugador. La línea roja marca el estándar Élite Mundial." /></SecTitle>
+          <SecTitle color="#3b82f6"><Icono nombre="rayo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Huella Atlética vs Élite <Tip t="La barra muestra el valor real del jugador. La línea roja marca el estándar Élite Mundial." /></SecTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
             {[
               { lbl: 'CMJ',        val: jug.cmj,   elite: ELITE.cmj,   unit: 'cm', color: '#3b82f6', max: 75,  higher: true  },
@@ -473,7 +474,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
         </div>
 
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
-          <SecTitle color="#f59e0b">🧬 Composición Corporal</SecTitle>
+          <SecTitle color="#f59e0b"><Icono nombre="adn" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Composición Corporal</SecTitle>
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table">
               <thead><tr><th>Métrica</th><th style={{ textAlign: 'center', color: '#f59e0b' }}>Jugador</th><th style={{ textAlign: 'center' }}>Equipo</th><th style={{ textAlign: 'center', color: '#10b981' }}>Élite</th><th>Rank</th></tr></thead>
@@ -501,7 +502,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
 
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
-          <SecTitle color="#10b981">🏃 Yo-Yo — Contexto Equipo</SecTitle>
+          <SecTitle color="#10b981"><Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Yo-Yo — Contexto Equipo</SecTitle>
           <div className="c4" style={{ marginBottom: 12 }}>
             {[
               { lbl: '2025', val: jug.y25, c: '#334155' },
@@ -536,7 +537,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
         </div>
 
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle>⚡ Potencia y Asimetrías</SecTitle>
+          <SecTitle><Icono nombre="rayo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Potencia y Asimetrías</SecTitle>
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table" style={{ minWidth: 360 }}>
               <thead><tr><th>Métrica</th><th style={{ textAlign: 'center' }}>Total</th><th style={{ textAlign: 'center' }}>Der</th><th style={{ textAlign: 'center' }}>Izq</th><th style={{ textAlign: 'center' }}>Asim%</th><th style={{ textAlign: 'center' }}>Eq</th></tr></thead>
@@ -563,11 +564,11 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
           <div style={{ marginTop: 14, borderTop: '1px solid #0f172a', paddingTop: 12 }}>
             <div style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Estado Kinésico</div>
             <div className="c2" style={{ gap: 6 }}>
-              {[['🦶 Tob', jug.kin_t], ['🦴 Cad', jug.kin_c], ['⚖️ ZM', jug.kin_u], ['🏋️ Sent', jug.kin_s]].map(([l, v]) => {
+              {[['pisada', 'Tob', jug.kin_t], ['hueso', 'Cad', jug.kin_c], ['comparar', 'ZM', jug.kin_u], ['pesas', 'Sent', jug.kin_s]].map(([ico, l, v]) => {
                 const ok = v && (v.toLowerCase().includes('optim') || v.toLowerCase().includes('sin obs'));
                 return (
                   <div key={l} style={{ background: '#060a14', padding: '7px 9px', borderRadius: 6, borderLeft: `2px solid ${ok ? '#10b981' : v ? '#f59e0b' : '#1e293b'}` }}>
-                    <div style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900 }}>{l}</div>
+                    <div style={{ fontSize: '0.6rem', color: '#1e293b', fontWeight: 900 }}><Icono nombre={ico} size="1.1em" relleno="propio" style={{ marginRight: 4 }} />{l}</div>
                     <div style={{ fontSize: '0.7rem', color: ok ? '#10b981' : v ? '#f59e0b' : '#334155', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v || 'S/D'}</div>
                   </div>
                 );
@@ -578,7 +579,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
       </div>
 
       <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
-        <SecTitle color="#f59e0b">🥗 Plan Nutricional</SecTitle>
+        <SecTitle color="#f59e0b"><Icono nombre="comida" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Plan Nutricional</SecTitle>
         <div className="c2" style={{ alignItems: 'start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[['Peso', `${jug.peso ?? '—'} kg`], ['∑ 6 Pliegues', `${jug.sum6 ?? '—'} mm`], ['Músculo', `${jug.musc ?? '—'} %`], ['Adiposidad', `${jug.adip ?? '—'} %`]].map(([l, v]) => (
@@ -647,7 +648,7 @@ function TabFisico({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, se
         </div>
 
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#10b981">🏆 Ranking CMJ Plantel</SecTitle>
+          <SecTitle color="#10b981"><Icono nombre="trofeo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Ranking CMJ Plantel</SecTitle>
           <div style={{ fontSize: '0.7rem', color: '#1e293b', marginBottom: 10 }}>
             {jug.jugadores?.apellido}: posición <strong style={{ color: '#f59e0b' }}>{pos}/{cmjRank.length}</strong>
           </div>
@@ -673,11 +674,11 @@ function TabFisico({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, se
       </div>
 
       <div className="glass-panel" style={{ padding: 20 }}>
-        <SecTitle color="#ef4444">📊 Déficit Bilateral CMJ {esJugador ? '' : '— Plantel'} <Tip t=">10% = factor de riesgo lesional. Amarillo = jugador seleccionado." /></SecTitle>
+        <SecTitle color="#ef4444"><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Déficit Bilateral CMJ {esJugador ? '' : '— Plantel'} <Tip t=">10% = factor de riesgo lesional. Amarillo = jugador seleccionado." /></SecTitle>
         <div style={{ fontSize: '0.7rem', color: '#1e293b', marginBottom: 10 }}>
           {jug.jugadores?.apellido}: {jug.asym_cmj != null ? (
             <span style={{ color: asimColor(jug.asym_cmj), fontWeight: 900 }}>
-              {jug.asym_cmj.toFixed(1)}% — {Math.abs(jug.asym_cmj) > 15 ? '🔴 RIESGO ALTO' : Math.abs(jug.asym_cmj) > 10 ? '🟡 ATENCIÓN' : '🟢 OK'}
+              {jug.asym_cmj.toFixed(1)}% — <Icono nombre={Math.abs(jug.asym_cmj) > 15 ? 'aviso' : Math.abs(jug.asym_cmj) > 10 ? 'info' : 'ok'} size="1.1em" relleno="propio" style={{ marginRight: 4 }} />{Math.abs(jug.asym_cmj) > 15 ? 'RIESGO ALTO' : Math.abs(jug.asym_cmj) > 10 ? 'ATENCIÓN' : 'OK'}
             </span>
           ) : <span style={{ color: '#1e293b' }}>Sin datos unilaterales</span>}
         </div>
@@ -702,7 +703,7 @@ function TabFisico({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, se
       </div>
 
       <div className="glass-panel" style={{ padding: 20 }}>
-        <SecTitle color="#3b82f6">📊 CMJ Plantel — {jug.jugadores?.apellido} destacado</SecTitle>
+        <SecTitle color="#3b82f6"><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CMJ Plantel — {jug.jugadores?.apellido} destacado</SecTitle>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={cmjRank} margin={{ left: -20, right: 5 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
@@ -760,17 +761,17 @@ function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selI
     <div className="rg">
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
-          <SecTitle color="#10b981">🩺 Estado Kinésico — {jug.jugadores?.apellido}</SecTitle>
+          <SecTitle color="#10b981"><Icono nombre="medico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Estado Kinésico — {jug.jugadores?.apellido}</SecTitle>
           <div className="c2" style={{ marginBottom: 16 }}>
-            {[['🦶 Tobillo / Pie', jug.kin_t], ['🦴 Cadera (Jurdan)', jug.kin_c], ['⚖️ Zona Media', jug.kin_u], ['🏋️ Sentadilla', jug.kin_s]].map(([lbl, val]) => {
+            {[['pisada', 'Tobillo / Pie', jug.kin_t], ['hueso', 'Cadera (Jurdan)', jug.kin_c], ['comparar', 'Zona Media', jug.kin_u], ['pesas', 'Sentadilla', jug.kin_s]].map(([ico, lbl, val]) => {
               const ok = val && (val.toLowerCase().includes('optim') || val.toLowerCase().includes('sin obs') || val.toLowerCase().includes('+90'));
               const color = ok ? '#10b981' : val ? '#f59e0b' : '#1e293b';
               return (
                 <div key={lbl} style={{ background: '#060a14', border: `1px solid ${color}33`, borderLeft: `3px solid ${color}`, borderRadius: 8, padding: '11px 13px' }}>
-                  <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>{lbl}</div>
+                  <div style={{ fontSize: '0.62rem', color: '#1e293b', fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}><Icono nombre={ico} size="1.1em" relleno="propio" style={{ marginRight: 4 }} />{lbl}</div>
                   <div style={{ fontSize: '0.8rem', color, fontWeight: 700, lineHeight: 1.3 }}>{val || 'S/D'}</div>
                   <span style={{ fontSize: '0.58rem', padding: '2px 6px', background: color + '22', color, borderRadius: 3, fontWeight: 900, marginTop: 5, display: 'inline-block' }}>
-                    {ok ? '✓ OK' : val ? '⚠ ATENCIÓN' : 'SIN DATOS'}
+                    {ok ? <><Icono nombre="listo" size="1.1em" style={{ marginRight: 3 }} />OK</> : val ? <><Icono nombre="aviso" size="1.1em" relleno="propio" style={{ marginRight: 3 }} />ATENCIÓN</> : 'SIN DATOS'}
                   </span>
                 </div>
               );
@@ -790,16 +791,16 @@ function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selI
         </div>
 
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#ef4444">📊 Asimetría — {jug.jugadores?.apellido} {esJugador ? '' : 'vs Plantel'}</SecTitle>
+          <SecTitle color="#ef4444"><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Asimetría — {jug.jugadores?.apellido} {esJugador ? '' : 'vs Plantel'}</SecTitle>
           {jug.asym_cmj != null ? (
             <>
               <div style={{ background: '#060a14', borderRadius: 9, padding: 14, marginBottom: 14, border: `1px solid ${asimColor(jug.asym_cmj)}33` }}>
                 <div style={{ fontSize: '0.62rem', color: '#1e293b', textTransform: 'uppercase', fontWeight: 900 }}>Asimetría CMJ</div>
                 <div style={{ fontSize: '2rem', fontWeight: 900, color: asimColor(jug.asym_cmj), margin: '6px 0' }}>{jug.asym_cmj.toFixed(1)}%</div>
                 <div style={{ fontSize: '0.7rem', color: '#475569' }}>
-                  {Math.abs(jug.asym_cmj) > 15 ? '🔴 RIESGO ALTO — Protocolo urgente'
-                    : Math.abs(jug.asym_cmj) > 10 ? '🟡 ZONA ATENCIÓN — Seguimiento recomendado'
-                      : '🟢 RANGO ACEPTABLE'}
+                  <Icono nombre={Math.abs(jug.asym_cmj) > 15 ? 'aviso' : Math.abs(jug.asym_cmj) > 10 ? 'info' : 'ok'} size="1.1em" relleno="propio" style={{ marginRight: 4 }} />{Math.abs(jug.asym_cmj) > 15 ? 'RIESGO ALTO — Protocolo urgente'
+                    : Math.abs(jug.asym_cmj) > 10 ? 'ZONA ATENCIÓN — Seguimiento recomendado'
+                      : 'RANGO ACEPTABLE'}
                 </div>
                 <div style={{ marginTop: 8, display: 'flex', gap: 14, fontSize: '0.72rem' }}>
                   <span>Der: <strong style={{ color: '#3b82f6' }}>{jug.cmj_de ?? '—'} cm</strong></span>
@@ -833,13 +834,13 @@ function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selI
 
       {!esJugador && (
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#10b981">📋 Gabinete Kinésico — Plantel Completo</SecTitle>
+          <SecTitle color="#10b981"><Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Gabinete Kinésico — Plantel Completo</SecTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(200px, 100%),1fr))', gap: 9 }}>
             {ultimosDatosGlobal.filter(j => j.kin_t || j.kin_c || j.kin_u).map(j => {
               const isMe = j.id_jugador === selId;
               return (
                 <div key={j.id} style={{ background: isMe ? 'rgba(16,185,129,0.07)' : '#060a14', padding: 11, borderRadius: 8, border: isMe ? '1px solid #10b98133' : '1px solid #0f172a' }}>
-                  <strong style={{ color: isMe ? '#10b981' : '#475569', display: 'block', marginBottom: 5, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isMe ? '👤 ' : ''}{j.jugadores?.apellido}</strong>
+                  <strong style={{ color: isMe ? '#10b981' : '#475569', display: 'block', marginBottom: 5, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isMe && <Icono nombre="usuario" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />}{j.jugadores?.apellido}</strong>
                   {[['Tob', j.kin_t], ['Cad', j.kin_c], ['ZM', j.kin_u]].map(([l, v]) => v ? (
                     <div key={l} style={{ fontSize: '0.66rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       <span style={{ color: '#0f172a' }}>{l}: </span>
@@ -854,7 +855,7 @@ function TabKine({ jug, stats, ultimosDatos, ultimosDatosGlobal, esJugador, selI
       )}
 
       <div className="glass-panel" style={{ padding: 20 }}>
-        <SecTitle color="#8b5cf6">📚 Biblioteca Prevención & Rehab</SecTitle>
+        <SecTitle color="#8b5cf6"><Icono nombre="libroTactico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Biblioteca Prevención & Rehab</SecTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(220px, 100%),1fr))', gap: 13 }}>
           {Object.entries(REHAB_LIB).map(([cat, vs]) => (
             <div key={cat} style={{ background: '#060a14', padding: 13, borderRadius: 10, border: '1px solid #0f172a' }}>
@@ -899,7 +900,7 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
 
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #f59e0b' }}>
-          <SecTitle color="#f59e0b">📐 Perfil ISAK — Pliegues vs Promedio Equipo</SecTitle>
+          <SecTitle color="#f59e0b"><Icono nombre="regla" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Perfil ISAK — Pliegues vs Promedio Equipo</SecTitle>
           {tieneISAK ? (
             <ResponsiveContainer width="100%" height={340}>
               <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarISAK}>
@@ -918,7 +919,7 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
         </div>
 
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#f59e0b">🥗 Plan Nutricional</SecTitle>
+          <SecTitle color="#f59e0b"><Icono nombre="comida" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Plan Nutricional</SecTitle>
           {[['Peso', `${jug.peso ?? '—'} kg`], ['∑ 6 Pliegues', `${jug.sum6 ?? '—'} mm`], ['Altura', `${jug.altura ?? '—'} cm`], ['Adiposidad', `${jug.adip ?? '—'} %`]].map(([l, v]) => (
             <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 10px', background: '#060a14', borderRadius: 6, marginBottom: 5, border: '1px solid #0f172a' }}>
               <span style={{ color: '#1e293b', fontSize: '0.7rem' }}>{l}</span>
@@ -935,7 +936,7 @@ function TabNutri({ jug, stats, ultimosDatos, esJugador, selId }) {
 
       {!esJugador && (
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#ef4444">📊 Ranking Adiposidad Plantel (∑ 6 pliegues) — {jug.jugadores?.apellido} destacado</SecTitle>
+          <SecTitle color="#ef4444"><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Ranking Adiposidad Plantel (∑ 6 pliegues) — {jug.jugadores?.apellido} destacado</SecTitle>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={[...ultimosDatos].filter(d => d.sum6).sort((a, b) => b.sum6 - a.sum6)} margin={{ left: -20, right: 10 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
@@ -1011,7 +1012,7 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
 
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#10b981">🏃 Yo-Yo — Comparativa Plantel Completo</SecTitle>
+          <SecTitle color="#10b981"><Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Yo-Yo — Comparativa Plantel Completo</SecTitle>
           <div style={{ fontSize: '0.68rem', color: '#1e293b', marginBottom: 8 }}>
             {ultimosDatos.filter(d => d.y26 || d.y25).length} jugadores · Promedio: <strong style={{ color: '#10b981' }}>{fmtNum(stats.yoyo.mean)}</strong> · Élite: {ELITE.yoyo}
           </div>
@@ -1040,7 +1041,7 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
         </div>
 
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#10b981">📈 Evolución Yo-Yo — Promedio Equipo</SecTitle>
+          <SecTitle color="#10b981"><Icono nombre="evolucion" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Evolución Yo-Yo — Promedio Equipo</SecTitle>
           {yoyoEvol.length > 1 ? (
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={yoyoEvol} margin={{ left: -10, right: 20 }}>
@@ -1069,7 +1070,7 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
 
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#8b5cf6">📍 Promedios por Posición Táctica</SecTitle>
+          <SecTitle color="#8b5cf6"><Icono nombre="ubicacion" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Promedios por Posición Táctica</SecTitle>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={posData} margin={{ top: 10, left: -20, right: 5 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
@@ -1090,14 +1091,14 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
                 <span style={{ fontSize: '0.68rem', color: '#1e293b' }}>n={p.n}</span>
                 <span style={{ fontSize: '0.72rem' }}>CMJ <strong style={{ color: '#3b82f6' }}>{p.CMJ}</strong></span>
                 <span style={{ fontSize: '0.72rem' }}>YoYo <strong style={{ color: '#10b981' }}>{p.YoYo}</strong></span>
-                <span style={{ fontSize: '0.72rem' }}>💪 <strong style={{ color: '#f59e0b' }}>{p.Musc}%</strong></span>
+                <span style={{ fontSize: '0.72rem' }}><Icono nombre="pesas" size="1.2em" relleno="propio" /><strong style={{ color: '#f59e0b' }}>{p.Musc}%</strong></span>
               </div>
             ))}
           </div>
         </div>
 
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#3b82f6">📊 Distribución CMJ Plantel</SecTitle>
+          <SecTitle color="#3b82f6"><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Distribución CMJ Plantel</SecTitle>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={[...ultimosDatos].filter(d => d.cmj).sort((a, b) => b.cmj - a.cmj)} margin={{ left: -20 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" vertical={false} />
@@ -1117,7 +1118,7 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
       </div>
 
       <div className="glass-panel" style={{ padding: 20 }}>
-        <SecTitle>📋 Ranking General — Todos los Jugadores</SecTitle>
+        <SecTitle><Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Ranking General — Todos los Jugadores</SecTitle>
         <div style={{ overflowX: 'auto' }}>
           <table className="data-table" style={{ minWidth: 680 }}>
             <thead>
@@ -1139,7 +1140,7 @@ function TabEquipo({ stats, ultimosDatos, selId, historial }) {
                 return (
                   <tr key={d.id} style={{ background: isMe ? 'rgba(59,130,246,0.07)' : 'transparent' }}>
                     <td style={{ color: i < 3 ? '#f59e0b' : '#1e293b', fontWeight: 900 }}>{i + 1}</td>
-                    <td style={{ fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isMe ? '👤 ' : ''}{d.jugadores?.apellido}</td>
+                    <td style={{ fontWeight: isMe ? 900 : 600, color: isMe ? '#fff' : '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{isMe && <Icono nombre="usuario" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />}{d.jugadores?.apellido}</td>
                     <td style={{ color: '#1e293b', fontSize: '0.68rem' }}>{d.jugadores?.posicion || '—'}</td>
                     <td style={{ textAlign: 'center', color: '#3b82f6', fontWeight: 700 }}>{d.cmj ?? '—'}</td>
                     <td style={{ textAlign: 'center', color: '#8b5cf6' }}>{d.abk ?? '—'}</td>
@@ -1223,7 +1224,7 @@ function TabVS({ datos, stats, selId, historial }) {
 
       <div className="c2">
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle>⚖️ Perfil vs Élite Comparativo</SecTitle>
+          <SecTitle><Icono nombre="comparar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Perfil vs Élite Comparativo</SecTitle>
           <ResponsiveContainer width="100%" height={360}>
             <RadarChart cx="50%" cy="50%" outerRadius="62%" data={radarComp}>
               <PolarGrid stroke="#0f172a" />
@@ -1241,7 +1242,7 @@ function TabVS({ datos, stats, selId, historial }) {
         </div>
 
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#10b981">🏃 Yo-Yo — Comparativa Directa</SecTitle>
+          <SecTitle color="#10b981"><Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Yo-Yo — Comparativa Directa</SecTitle>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart
               data={active.map(id => getJug(id)).filter(Boolean).map((d, i) => ({ name: d.jugadores?.apellido?.slice(0, 10), y25: d.y25 || null, y26: d.y26 || null, id: d.id_jugador, col: COLS[i] }))}
@@ -1279,7 +1280,7 @@ function TabVS({ datos, stats, selId, historial }) {
                   );
                 })}
                 <tr style={{ borderTop: '1px solid #0f172a' }}>
-                  <td style={{ color: '#ef4444', fontWeight: 900, fontSize: '0.68rem' }}>🔴 ÉLITE</td>
+                  <td style={{ color: '#ef4444', fontWeight: 900, fontSize: '0.68rem' }}><Icono nombre="estrella" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />ÉLITE</td>
                   <td style={{ textAlign: 'center', color: '#ef4444' }}>{ELITE.cmj}</td>
                   <td style={{ textAlign: 'center', color: '#ef4444' }}>{ELITE.abk}</td>
                   <td style={{ textAlign: 'center', color: '#ef4444' }}>{ELITE.broad}</td>
@@ -1294,7 +1295,7 @@ function TabVS({ datos, stats, selId, historial }) {
 
       {yoyoHistComp.length > 1 && (
         <div className="glass-panel" style={{ padding: 20 }}>
-          <SecTitle color="#10b981">📈 Evolución Yo-Yo Histórica — Jugadores Seleccionados</SecTitle>
+          <SecTitle color="#10b981"><Icono nombre="evolucion" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Evolución Yo-Yo Histórica — Jugadores Seleccionados</SecTitle>
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={yoyoHistComp} margin={{ left: -10, right: 20 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#0f172a" />
@@ -1317,7 +1318,7 @@ function TabVS({ datos, stats, selId, historial }) {
       )}
 
       <div className="glass-panel" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
-        <SecTitle color="#10b981">🏟️ Yo-Yo — Plantel Completo (contexto)</SecTitle>
+        <SecTitle color="#10b981"><Icono nombre="club" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Yo-Yo — Plantel Completo (contexto)</SecTitle>
         <div style={{ fontSize: '0.68rem', color: '#1e293b', marginBottom: 8 }}>
           Jugadores seleccionados destacados en sus respectivos colores
         </div>
@@ -1414,7 +1415,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
       <div style={{ background: '#060a14', width: '100%', maxWidth: 650, padding: 24, maxHeight: '92vh', overflowY: 'auto', border: '1px solid #1e293b', borderRadius: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid #0f172a', paddingBottom: 14 }}>
           <h2 style={{ margin: 0, color: 'var(--accent)', fontWeight: 900, fontSize: '1.05rem' }}>NUEVA TOMA DE DATOS</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#334155', fontSize: '1.3rem', cursor: 'pointer' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#334155', fontSize: '1.3rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 15 }}>
           <div>
@@ -1512,7 +1513,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
 
         <button onClick={handleGuardar} disabled={loading} className="btn-action"
           style={{ width: '100%', padding: 13, marginTop: 18, background: '#3b82f6', color: '#ffffff', fontWeight: 900, opacity: loading ? 0.5 : 1, fontSize: '0.86rem', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-          {loading ? 'GUARDANDO...' : '💾 GUARDAR EN HISTORIAL'}
+          {loading ? 'GUARDANDO...' : <><Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR EN HISTORIAL</>}
         </button>
       </div>
     </div>

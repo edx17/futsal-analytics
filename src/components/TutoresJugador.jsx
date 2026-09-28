@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useToast } from './ToastContext';
 import { estadoDeJugador, PARENTESCOS } from '../analytics/tutores';
 import { telefonoWhatsApp } from '../utils/telefono';
+import { Icono } from '../iconos';
 
 /* TUTORES Y AUTORIZACIONES DE UN JUGADOR
  *
@@ -24,7 +25,7 @@ const ROJO = '#ef4444';
 const AMBAR = '#fbbf24';
 
 const COLOR_ESTADO = { si: VERDE, no: ROJO, pendiente: AMBAR };
-const ICONO_ESTADO = { si: '✓', no: '✗', pendiente: '?' };
+const ICONO_ESTADO = { si: 'listo', no: 'cerrar', pendiente: 'pregunta' };
 const ROTULO_ESTADO = { si: 'Autoriza', no: 'No autoriza', pendiente: 'Sin responder' };
 
 const vacio = {
@@ -107,7 +108,7 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
         : await supabase.from('tutores').insert([payload]);
       if (error) throw error;
 
-      showToast(form.id ? 'Tutor actualizado ✅' : 'Tutor agregado ✅', 'success');
+      showToast(form.id ? 'Tutor actualizado' : 'Tutor agregado', 'success');
       setForm(null);
       await recargar();
     } catch (e) {
@@ -144,7 +145,7 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
       console.error('Error guardando autorizaciones:', error);
       return showToast('No se pudieron guardar las autorizaciones: ' + error.message, 'error');
     }
-    showToast('Autorizaciones guardadas ✅', 'success');
+    showToast('Autorizaciones guardadas', 'success');
     if (onCambioPermisos) onCambioPermisos();
   };
 
@@ -156,7 +157,7 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
         <div className="section-title" style={{ margin: 0 }}>TUTORES Y AUTORIZACIONES</div>
         <div style={{ fontSize: '0.65rem', color: estado.completo ? VERDE : AMBAR, fontWeight: 800 }}>
           {estado.completo
-            ? '✓ COMPLETO'
+            ? <><Icono nombre="listo" size="1.1em" style={{ marginRight: 4 }} />COMPLETO</>
             : `${estado.faltantes.length} PENDIENTE${estado.faltantes.length > 1 ? 'S' : ''}`}
           {estado.edad != null && <span style={{ color: 'var(--text-dim)', marginLeft: 8 }}>{estado.edad} años</span>}
         </div>
@@ -167,7 +168,7 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {estado.faltantes.map((f) => (
             <div key={f.k} style={{ fontSize: '0.72rem', color: f.grave ? ROJO : AMBAR }}>
-              {f.grave ? '⚠️' : '•'} {f.rotulo}
+              {f.grave ? <Icono nombre="aviso" size="1.1em" relleno="propio" /> : '•'} {f.rotulo}
             </div>
           ))}
         </div>
@@ -198,13 +199,13 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
                 {t.telefono && (
                   <a href={`https://wa.me/${telefonoWhatsApp(t.telefono) || String(t.telefono).replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
                      style={{ background: '#25D366', color: '#fff', padding: '5px 10px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 800, textDecoration: 'none' }}>
-                    💬
+                    <Icono nombre="whatsapp" size="1.2em" relleno="propio" />
                   </a>
                 )}
                 {puedeEditar && (
                   <>
                     <button onClick={() => setForm({ ...vacio, ...t })} style={btnChico}>EDITAR</button>
-                    <button onClick={() => borrarTutor(t)} style={{ ...btnChico, borderColor: ROJO, color: ROJO }}>✕</button>
+                    <button onClick={() => borrarTutor(t)} style={{ ...btnChico, borderColor: ROJO, color: ROJO }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                   </>
                 )}
               </div>
@@ -270,7 +271,7 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
                       background: 'transparent', cursor: puedeEditar ? 'pointer' : 'default',
                       border: `1px solid ${COLOR_ESTADO[p.estado]}`, color: COLOR_ESTADO[p.estado],
                     }}>
-              {ICONO_ESTADO[p.estado]}
+              <Icono nombre={ICONO_ESTADO[p.estado]} size="1.1em" />
             </button>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{p.rotulo}</div>

@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { manejaPlata, hoyLocal, faltaColumna } from '../analytics/tesoreria';
+import { Icono } from '../iconos';
 
 function Sponsors() {
   const { perfil } = useAuth();
@@ -135,7 +136,7 @@ function Sponsors() {
       <div className="bento-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <div className="stat-label" style={{ color: '#a855f7' }}>🤝 Alianzas Comerciales</div>
+            <div className="stat-label" style={{ color: '#a855f7' }}><Icono nombre="sponsors" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Alianzas Comerciales</div>
             <h2 style={{ margin: 0, fontSize: '1.8rem' }}>SPONSORS Y SUBSIDIOS</h2>
           </div>
           {puedeEditar && (
@@ -152,9 +153,9 @@ function Sponsors() {
               <div key={s.id} style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: `1px solid ${estaVencido ? '#ef4444' : 'var(--border)'}`, position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <h3 style={{ margin: '0 0 5px 0', color: 'var(--text)' }}>{s.nombre.toUpperCase()}</h3>
-                  {puedeEditar && <button onClick={() => { setFormSponsor(s); setModalSponsor(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem' }} title="Editar">✏️</button>}
+                  {puedeEditar && <button onClick={() => { setFormSponsor(s); setModalSponsor(true); }} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem' }} title="Editar"><Icono nombre="editar" size="1.2em" relleno="propio" /></button>}
                 </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '15px' }}>👤 {s.contacto_nombre || 'Sin contacto'}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '15px' }}><Icono nombre="usuario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{s.contacto_nombre || 'Sin contacto'}</div>
                 <div style={{ background: 'var(--panel)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '15px' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>ACUERDO ({s.periodicidad.toUpperCase()})</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a855f7' }}>${Number(s.monto_aporte).toLocaleString()}</div>
@@ -165,7 +166,7 @@ function Sponsors() {
                 </div>
                 {puedeEditar && (
                   <button onClick={() => { setFormPago({ monto: s.monto_aporte, metodo_pago: 'Transferencia', fecha_pago: hoyLocal(), descripcion: '', aplicaComision: false, porcentajeComision: '', tipoReferido: 'jugador', jugadorReferidoId: '', nombreReferidoExterno: '' }); setModalPago({ visible: true, sponsor: s }); }} style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', color: '#ffffff', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer', transition: '0.2s' }}>
-                    💸 REGISTRAR COBRO
+                    <Icono nombre="transferencias" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REGISTRAR COBRO
                   </button>
                 )}
               </div>
@@ -211,9 +212,9 @@ function Sponsors() {
                 <div style={{ flex: 1 }}>
                   <label style={lblStyle}>Método de Recepción</label>
                   <select value={formPago.metodo_pago} onChange={e => setFormPago({...formPago, metodo_pago: e.target.value, aplicaComision: e.target.value === 'Especie' ? false : formPago.aplicaComision})} style={inputStyle}>
-                    <option value="Transferencia">🏦 Transferencia</option>
-                    <option value="Efectivo">💵 Efectivo</option>
-                    <option value="Especie">📦 En Especies / Canje</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Especie">En Especies / Canje</option>
                   </select>
                 </div>
               </div>

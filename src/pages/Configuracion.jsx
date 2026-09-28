@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastContext';
 import { useTheme } from '../context/ThemeContext';
 import VisorManual from '../components/VisorManual';
 import { linkManualAbsoluto } from '../utils/manual';
+import { Icono } from '../iconos';
 
 function Configuracion() {
   const navigate = useNavigate();
@@ -109,7 +110,7 @@ function Configuracion() {
     <div style={{ animation: 'fadeIn 0.3s', maxWidth: '600px', margin: '0 auto', paddingBottom: '80px' }}>
       
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <div style={{ fontSize: '4rem', marginBottom: '10px' }}>🏟️</div>
+        <div style={{ fontSize: '4rem', marginBottom: '10px' }}><Icono nombre="club" size="1.2em" relleno="propio" /></div>
         <h2 style={{ color: 'var(--accent)', fontWeight: 900, textTransform: 'uppercase' }}>Configuración Institucional</h2>
         <p style={{ color: 'var(--text-dim)' }}>Establecé los datos de tu equipo o vinculá este dispositivo a un club existente.</p>
       </div>
@@ -135,7 +136,7 @@ function Configuracion() {
             gap: '10px'
           }}
         >
-          {theme === 'dark' ? '☀️ Claro' : '🌙 Oscuro'}
+          <Icono nombre={theme === 'dark' ? 'sol' : 'sueno'} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{theme === 'dark' ? 'Claro' : 'Oscuro'}
         </button>
       </div>
 
@@ -151,7 +152,7 @@ function Configuracion() {
             ) : escudoUrl ? (
               <img src={escudoUrl} alt="Escudo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             ) : (
-              <span style={{ fontSize: '2.5rem' }}>🛡️</span>
+              <span style={{ fontSize: '2.5rem' }}><Icono nombre="escudo" size="1.2em" relleno="propio" /></span>
             )}
           </div>
           <input 
@@ -199,7 +200,7 @@ function Configuracion() {
       {/* El manual es una página pública del mismo dominio: se puede ver acá,
           pasar por link a alguien sin usuario o guardar como PDF. */}
       <div className="bento-card" style={{ marginTop: '20px' }}>
-        <div className="stat-label" style={{ marginBottom: '8px' }}>📖 MANUAL DE USO</div>
+        <div className="stat-label" style={{ marginBottom: '8px' }}><Icono nombre="libroTactico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MANUAL DE USO</div>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.5 }}>
           Todo lo que hace Virtual.Club, pantalla por pantalla. Para ver acá, para pasarle el link a alguien
           del club (no necesita usuario) o para guardarlo como PDF.
@@ -210,7 +211,7 @@ function Configuracion() {
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(linkManualAbsoluto());
-                showToast('Link del manual copiado ✅', 'success');
+                showToast('Link del manual copiado', 'success');
               } catch {
                 showToast(linkManualAbsoluto(), 'info');
               }
@@ -218,7 +219,7 @@ function Configuracion() {
             className="btn-secondary"
             style={{ minHeight: '46px' }}
           >
-            🔗 COPIAR LINK PARA COMPARTIR
+            <Icono nombre="enlace" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR LINK PARA COMPARTIR
           </button>
         </div>
       </div>

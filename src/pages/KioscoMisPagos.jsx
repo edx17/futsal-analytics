@@ -5,6 +5,7 @@ import Recibo from '../components/tesoreria/Recibo';
 import { estadoCuentaKiosco } from '../utils/kiosco';
 import { numeroRecibo, formatoPesos, fechaAR, saldoDe } from '../analytics/tesoreria';
 import { telefonoWhatsApp } from '../utils/telefono';
+import { Icono } from '../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIS PAGOS (KIOSCO)
@@ -48,7 +49,7 @@ export default function KioscoMisPagos() {
   const total = deudas.reduce((a, d) => a + saldoDe(d), 0);
 
   const copiarAlias = async () => {
-    try { await navigator.clipboard.writeText(club.alias_cobro); showToast('Alias copiado ✅', 'success'); }
+    try { await navigator.clipboard.writeText(club.alias_cobro); showToast('Alias copiado', 'success'); }
     catch { showToast(`Alias: ${club.alias_cobro}`, 'info'); }
   };
   const mandarComprobante = () => {
@@ -59,7 +60,7 @@ export default function KioscoMisPagos() {
 
   return (
     <div style={contenedor}>
-      <h1 style={{ margin: '0 0 4px', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}>🧾 MIS PAGOS</h1>
+      <h1 style={{ margin: '0 0 4px', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}><Icono nombre="recibo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MIS PAGOS</h1>
       <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>
         Lo que debés, cómo pagar y los recibos de lo que ya pagaste.
       </p>
@@ -68,7 +69,7 @@ export default function KioscoMisPagos() {
       <div style={{ ...tarjeta, borderColor: total > 0 ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
           <span style={rotulo}>{total > 0 ? 'TENÉS PENDIENTE' : 'ESTÁS AL DÍA'}</span>
-          <span style={{ fontSize: '1.6rem', fontWeight: 900, color: total > 0 ? '#ef4444' : '#10b981' }}>{total > 0 ? formatoPesos(total) : '✅'}</span>
+          <span style={{ fontSize: '1.6rem', fontWeight: 900, color: total > 0 ? '#ef4444' : '#10b981' }}>{total > 0 ? formatoPesos(total) : <Icono nombre="ok" size="1em" relleno="propio" />}</span>
         </div>
         {deudas.map((d) => (
           <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '0.85rem', padding: '6px 0', borderTop: '1px dashed var(--border)', marginTop: '6px' }}>
@@ -93,8 +94,8 @@ export default function KioscoMisPagos() {
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: club.alias_cobro && club.whatsapp_tesoreria ? '1fr 1fr' : '1fr', gap: '8px' }}>
-                {club.alias_cobro && <button onClick={copiarAlias} style={btn('#00b1ea', '#000')}>📋 COPIAR ALIAS</button>}
-                {club.whatsapp_tesoreria && <button onClick={mandarComprobante} style={btn('#25D366', '#000')}>📤 MANDAR COMPROBANTE</button>}
+                {club.alias_cobro && <button onClick={copiarAlias} style={btn('#00b1ea', '#000')}><Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR ALIAS</button>}
+                {club.whatsapp_tesoreria && <button onClick={mandarComprobante} style={btn('#25D366', '#000')}><Icono nombre="subir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MANDAR COMPROBANTE</button>}
               </div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '8px' }}>
                 Cuando tesorería registre tu pago, el recibo aparece acá abajo.

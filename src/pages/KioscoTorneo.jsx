@@ -4,6 +4,7 @@ import { cargarFichaKiosco } from '../utils/kiosco';
 import { torneoDe } from '../analytics/fichaKiosco';
 import { normalizarPartido } from '../utils/analisisTorneo';
 import { partesDeFecha, formatearHora } from '../utils/citacion';
+import { Icono } from '../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    TORNEO (KIOSCO)
@@ -75,7 +76,7 @@ export default function KioscoTorneo() {
     <div style={contenedor}>
       <div style={{ marginBottom: '14px' }}>
         <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '1px' }}>
-          🏆 {String(ficha.torneo.categoria || ficha.jugador?.categoria || '').toUpperCase()}
+          <Icono nombre="trofeo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{String(ficha.torneo.categoria || ficha.jugador?.categoria || '').toUpperCase()}
         </div>
         <h1 style={{ margin: '4px 0 0', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}>
           {ficha.torneo.nombre || 'Torneo'}

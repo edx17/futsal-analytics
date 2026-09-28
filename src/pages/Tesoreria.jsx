@@ -16,6 +16,7 @@ import ConfigCuotas from '../components/tesoreria/ConfigCuotas';
 import {
   manejaPlata, hoyLocal, pendientesPorAntiguedad, saldoDe, validarCobro, deudaSinCobro, liquidacionDelMes, faltaColumna, FICHA_VACIA, fichaDe, rpcInexistente, mensajeError, numeroRecibo,
 } from '../analytics/tesoreria';
+import { Icono } from '../iconos';
 
 function Tesoreria() {
   const { perfil } = useAuth();
@@ -531,7 +532,7 @@ function Tesoreria() {
   if (!accesoPermitido) {
     return (
       <div style={{ textAlign: 'center', padding: '100px 20px', animation: 'fadeIn 0.3s' }}>
-        <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🔒</div>
+        <div style={{ fontSize: '4rem', marginBottom: '20px' }}><Icono nombre="candado" size="1.2em" relleno="propio" /></div>
         <h2 style={{ color: '#ef4444' }}>ACCESO RESTRINGIDO</h2>
         <p style={{ color: 'var(--text-dim)' }}>Este módulo contiene información financiera sensible.<br/>Solo administradores o tesoreros pueden ingresar.</p>
       </div>
@@ -545,11 +546,11 @@ function Tesoreria() {
       <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', background: j.porcAsistencia < 50 ? '#7f1d1d' : 'transparent', color: j.porcAsistencia < 50 ? '#fff' : j.porcAsistencia < 75 ? '#f59e0b' : '#00ff88' }}>{j.porcAsistencia}%</span>
     ) : <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>Muestra insuf.</span> },
     { k: 'deuda', t: 'DEUDA', g: 'eco', r: j => (j.esBecado && !(j.deudaTotal > 0)) ? (
-      <span style={{ background: '#3b82f6', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO</span>
+      <span style={{ background: '#3b82f6', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="beca" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BECADO</span>
     ) : j.deudaTotal > 0 ? (
       <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.1rem' }}>${j.deudaTotal.toLocaleString()}</span>
     ) : j.pagoEsteMes ? (
-      <span style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '0.8rem' }}>✅ PAGADO</span>
+      <span style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '0.8rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PAGADO</span>
     ) : (
       <span style={{ color: 'var(--text-dim)', fontWeight: 'bold', fontSize: '0.8rem' }}>AL DÍA</span>
     ) },
@@ -558,15 +559,15 @@ function Tesoreria() {
       const deudaACobrar = (j.pendientes || [])[0];
       if (!(j.misDeudas || []).length) return <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>—</span>;
       if (!(j.deudaTotal > 0)) return (
-        <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>🧾 COBROS</button>
+        <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}><Icono nombre="recibo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COBROS</button>
       );
       return (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>📋 DETALLE</button>
-          <button onClick={() => enviarWhatsApp(j, j.deudaTotal)} style={{ background: 'transparent', color: '#25D366', border: '1px solid #25D366', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💬 AVISAR</button>
+          <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}><Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DETALLE</button>
+          <button onClick={() => enviarWhatsApp(j, j.deudaTotal)} style={{ background: 'transparent', color: '#25D366', border: '1px solid #25D366', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}><Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />AVISAR</button>
           {deudaACobrar && (<>
-            <button onClick={() => otorgarBeca(deudaACobrar.id)} style={{ background: 'transparent', color: '#3b82f6', border: '1px solid #3b82f6', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}>🎓 BECAR</button>
-            <button onClick={() => setModalPago({ visible: true, deuda: deudaACobrar, jugador: j })} style={{ background: '#00ff88', color: '#000', padding: '8px 15px', borderRadius: '4px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💸 COBRAR</button>
+            <button onClick={() => otorgarBeca(deudaACobrar.id)} style={{ background: 'transparent', color: '#3b82f6', border: '1px solid #3b82f6', padding: '8px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', minHeight: '38px' }}><Icono nombre="beca" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BECAR</button>
+            <button onClick={() => setModalPago({ visible: true, deuda: deudaACobrar, jugador: j })} style={{ background: '#00ff88', color: '#000', padding: '8px 15px', borderRadius: '4px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}><Icono nombre="transferencias" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COBRAR</button>
           </>)}
         </div>
       );
@@ -577,23 +578,23 @@ function Tesoreria() {
   const GRUPOS_STAFF_LABEL = { gen: 'LIQUIDACIÓN', eco: 'MONTO', acc: 'ACCIONES' };
   const colEmpAcciones = (color) => ({ k: 'acciones', t: 'ACCIONES', g: 'acc', r: emp => (
     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-      <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>✏️ EDITAR</button>
+      <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}><Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EDITAR</button>
       {emp.pagoEsteMes ? (
-        <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem', minHeight: '38px' }}>✅ LIQUIDADO</button>
+        <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem', minHeight: '38px' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />LIQUIDADO</button>
       ) : (
-        <button onClick={() => { setFormSueldo({ ...formSueldo, monto: emp.sueldo_base, descripcion: `${color === '#f59e0b' ? 'Sueldo' : 'Viático'} de ${nombreMesVencido}`, cajaOrigen: 'Efectivo' }); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: color, color: color === '#f59e0b' ? '#000' : '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}>💳 PAGAR</button>
+        <button onClick={() => { setFormSueldo({ ...formSueldo, monto: emp.sueldo_base, descripcion: `${color === '#f59e0b' ? 'Sueldo' : 'Viático'} de ${nombreMesVencido}`, cajaOrigen: 'Efectivo' }); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: color, color: color === '#f59e0b' ? '#000' : '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', minHeight: '38px' }}><Icono nombre="tarjetaCredito" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PAGAR</button>
       )}
     </div>
   ) });
   const colEmpLiq = (label) => ({ k: 'liq', t: 'LIQUIDACIÓN', g: 'gen', r: emp => emp.pagoEsteMes ? (
-    <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ {label}</span>
+    <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{label}</span>
   ) : (
-    <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
+    <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
   ) });
   const colEmpMonto = { k: 'monto', t: 'MONTO', g: 'eco', r: emp => (
     <div>
       <span style={{ fontWeight: 900, fontSize: '1.05rem' }}>${Number(emp.sueldo_base).toLocaleString()}</span>
-      {emp.bonosExtra > 0 && <div style={{ fontSize: '0.7rem', color: '#00ff88', fontWeight: 'bold' }}>🌟 +${emp.bonosExtra.toLocaleString()}</div>}
+      {emp.bonosExtra > 0 && <div style={{ fontSize: '0.7rem', color: '#00ff88', fontWeight: 'bold' }}><Icono nombre="destello" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />+${emp.bonosExtra.toLocaleString()}</div>}
     </div>
   ) };
   const COLS_STAFF = [colEmpLiq('LIQUIDADO'), colEmpMonto, colEmpAcciones('#f59e0b')];
@@ -603,13 +604,13 @@ function Tesoreria() {
   const GRUPOS_MOV_LABEL = { gen: 'DETALLE', eco: 'MONTO' };
   const COLS_MOV = [
     { k: 'tipo', t: 'TIPO', g: 'gen', r: mov => (
-      <span style={{ background: mov.tipo === 'entrada' ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: mov.tipo === 'entrada' ? '#00ff88' : '#ef4444', border: `1px solid ${mov.tipo === 'entrada' ? '#00ff88' : '#ef4444'}`, padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>{mov.tipo === 'entrada' ? '⬇️' : '⬆️'} {mov.categoria}</span>
+      <span style={{ background: mov.tipo === 'entrada' ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: mov.tipo === 'entrada' ? '#00ff88' : '#ef4444', border: `1px solid ${mov.tipo === 'entrada' ? '#00ff88' : '#ef4444'}`, padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}><Icono nombre={mov.tipo === 'entrada' ? 'bajarFlecha' : 'subirFlecha'} size="1.1em" style={{ marginRight: 4 }} />{mov.categoria}</span>
     ) },
     { k: 'monto', t: 'MONTO', g: 'eco', r: mov => (
       <span style={{ fontWeight: 900, fontSize: '1.05rem', color: mov.tipo === 'entrada' ? '#00ff88' : '#ef4444' }}>{mov.tipo === 'entrada' ? '+' : '-'} ${Number(mov.monto).toLocaleString()}</span>
     ) },
     { k: 'acciones', t: 'ACCIONES', g: 'gen', r: mov => (mov.id.startsWith('eg-') || mov.id.startsWith('ext-')) ? (
-      <button onClick={() => eliminarMovimientoLibroMayor(mov.id)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', padding: '8px 10px', borderRadius: '4px', minHeight: '38px' }}>🗑️ Eliminar</button>
+      <button onClick={() => eliminarMovimientoLibroMayor(mov.id)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', padding: '8px 10px', borderRadius: '4px', minHeight: '38px' }}><Icono nombre="borrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Eliminar</button>
     ) : <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Automático</span> },
   ];
 
@@ -629,7 +630,7 @@ function Tesoreria() {
               onClick={() => setModalConfig(true)} 
               style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}
             >
-              ⚙️ CONFIG. BANCARIA
+              <Icono nombre="ajustes" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CONFIG. BANCARIA
             </button>
             <div style={{ background: 'var(--panel)', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>PERÍODO ACTIVO</span>
@@ -644,17 +645,17 @@ function Tesoreria() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '20px' }}>
-             <button onClick={() => setVista('cobros')} style={{ ...tabBtn, background: vista === 'cobros' ? '#3b82f6' : 'transparent', color: vista === 'cobros' ? '#fff' : 'var(--text-dim)' }}>💰 COBROS DE CUOTAS</button>
-             <button onClick={() => setVista('cuotas')} style={{ ...tabBtn, background: vista === 'cuotas' ? '#14b8a6' : 'transparent', color: vista === 'cuotas' ? '#000' : 'var(--text-dim)' }}>💵 CUOTAS Y TARIFAS</button>
-             <button onClick={() => setVista('staff')} style={{ ...tabBtn, background: vista === 'staff' ? '#f59e0b' : 'transparent', color: vista === 'staff' ? '#000' : 'var(--text-dim)' }}>👥 STAFF / EMPLEADOS</button>
-             <button onClick={() => setVista('viaticos')} style={{ ...tabBtn, background: vista === 'viaticos' ? '#a855f7' : 'transparent', color: vista === 'viaticos' ? '#fff' : 'var(--text-dim)' }}>🏃‍♂️ JUGADORES (VIÁTICOS)</button>
-             <button onClick={() => setVista('egresos')} style={{ ...tabBtn, background: vista === 'egresos' ? '#00ff88' : 'transparent', color: vista === 'egresos' ? '#000' : 'var(--text-dim)' }}>🏦 CAJA Y MAYOR</button>
-             <button onClick={() => setVista('reportes')} style={{ ...tabBtn, background: vista === 'reportes' ? '#ef4444' : 'transparent', color: vista === 'reportes' ? '#fff' : 'var(--text-dim)' }}>📊 REPORTES</button>
+             <button onClick={() => setVista('cobros')} style={{ ...tabBtn, background: vista === 'cobros' ? '#3b82f6' : 'transparent', color: vista === 'cobros' ? '#fff' : 'var(--text-dim)' }}><Icono nombre="billetera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COBROS DE CUOTAS</button>
+             <button onClick={() => setVista('cuotas')} style={{ ...tabBtn, background: vista === 'cuotas' ? '#14b8a6' : 'transparent', color: vista === 'cuotas' ? '#000' : 'var(--text-dim)' }}><Icono nombre="efectivo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CUOTAS Y TARIFAS</button>
+             <button onClick={() => setVista('staff')} style={{ ...tabBtn, background: vista === 'staff' ? '#f59e0b' : 'transparent', color: vista === 'staff' ? '#000' : 'var(--text-dim)' }}><Icono nombre="usuarios" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />STAFF / EMPLEADOS</button>
+             <button onClick={() => setVista('viaticos')} style={{ ...tabBtn, background: vista === 'viaticos' ? '#a855f7' : 'transparent', color: vista === 'viaticos' ? '#fff' : 'var(--text-dim)' }}><Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />JUGADORES (VIÁTICOS)</button>
+             <button onClick={() => setVista('egresos')} style={{ ...tabBtn, background: vista === 'egresos' ? '#00ff88' : 'transparent', color: vista === 'egresos' ? '#000' : 'var(--text-dim)' }}><Icono nombre="banco" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CAJA Y MAYOR</button>
+             <button onClick={() => setVista('reportes')} style={{ ...tabBtn, background: vista === 'reportes' ? '#ef4444' : 'transparent', color: vista === 'reportes' ? '#fff' : 'var(--text-dim)' }}><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REPORTES</button>
         </div>
       </div>
 
       {cargando && !modalSueldo.visible && !ficha && !modalGasto && !modalIngresoExtra && !modalGenerar && !modalPago.visible && !modalConfig && !modalDetalleDeuda.visible ? (
-        <div style={{ textAlign: 'center', padding: '50px', color: '#3b82f6' }}>Consultando registros... ⏳</div>
+        <div style={{ textAlign: 'center', padding: '50px', color: '#3b82f6' }}><Icono nombre="cargando" size="1.2em" girar style={{ marginRight: 8 }} />Consultando registros...</div>
       ) : (
         <>
           {/* ==================================================== */}
@@ -674,7 +675,7 @@ function Tesoreria() {
                   <h3 style={{ margin: 0 }}>Estado de Cuenta</h3>
                 </div>
                 <button onClick={() => setModalGenerar(true)} style={{ background: '#a855f7', color: '#ffffff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span>➕</span> CUOTA EXTRAORDINARIA
+                  <span><Icono nombre="agregar" size="1.2em" relleno="propio" /></span> CUOTA EXTRAORDINARIA
                 </button>
               </div>
 
@@ -710,7 +711,7 @@ function Tesoreria() {
                           <td style={{ textAlign: 'center' }}>
                             {j.porcAsistencia !== null ? (
                               <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', background: j.porcAsistencia < 50 ? '#7f1d1d' : 'transparent', color: j.porcAsistencia < 50 ? '#fff' : j.porcAsistencia < 75 ? '#f59e0b' : '#00ff88' }}>
-                                {j.porcAsistencia}% {j.porcAsistencia < 50 && '⚠️ Riesgo'}
+                                {j.porcAsistencia}% {j.porcAsistencia < 50 && <><Icono nombre="aviso" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />Riesgo</>}
                               </span>
                             ) : (
                               <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }} title={`Sesiones registradas: ${j.sesionesValidas || 0}`}>Muestra insuficiente</span>
@@ -718,7 +719,7 @@ function Tesoreria() {
                           </td>
                           <td style={{ padding: '12px' }}>
                             {(j.esBecado && !(j.deudaTotal > 0)) ? (
-                              <span style={{ background: '#3b82f6', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>🎓 BECADO / EXENTO</span>
+                              <span style={{ background: '#3b82f6', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="beca" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BECADO / EXENTO</span>
                             ) : j.deudaTotal > 0 ? (
                               <div>
                                 <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.1rem' }}>${j.deudaTotal.toLocaleString()}</span>
@@ -727,7 +728,7 @@ function Tesoreria() {
                                 </div>
                               </div>
                             ) : j.pagoEsteMes ? (
-                              <span style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '0.8rem' }}>✅ PAGADO ESTE MES</span>
+                              <span style={{ color: '#00ff88', fontWeight: 'bold', fontSize: '0.8rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PAGADO ESTE MES</span>
                             ) : (
                               <span style={{ color: 'var(--text-dim)', fontWeight: 'bold', fontSize: '0.8rem' }}>AL DÍA (Sin deuda)</span>
                             )}
@@ -735,24 +736,24 @@ function Tesoreria() {
                           <td style={{ textAlign: 'right', padding: '12px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                             {!(j.deudaTotal > 0) && (j.misDeudas || []).length > 0 && (
                               <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }} title="Ver y anular cobros">
-                                🧾 COBROS
+                                <Icono nombre="recibo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COBROS
                               </button>
                             )}
                             {j.deudaTotal > 0 && (
                               <>
                                 <button onClick={() => abrirDetalle(j)} style={{ background: 'transparent', color: '#facc15', border: '1px solid #facc15', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }} title="Gestionar / Eliminar Conceptos">
-                                  📋 DETALLE
+                                  <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DETALLE
                                 </button>
                                 <button onClick={() => enviarWhatsApp(j, j.deudaTotal)} style={{ background: 'transparent', color: '#25D366', border: '1px solid #25D366', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }} title="Reclamar por WhatsApp">
-                                  💬 AVISAR
+                                  <Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />AVISAR
                                 </button>
                                 {deudaACobrar && (
                                   <>
                                     <button onClick={() => otorgarBeca(deudaACobrar.id)} style={{ background: 'transparent', color: '#3b82f6', border: '1px solid #3b82f6', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }} title="Eximir pago">
-                                      🎓 BECAR
+                                      <Icono nombre="beca" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BECAR
                                     </button>
                                     <button onClick={() => setModalPago({ visible: true, deuda: deudaACobrar, jugador: j })} style={{ background: '#00ff88', color: '#000', padding: '6px 15px', borderRadius: '4px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                      💸 COBRAR
+                                      <Icono nombre="transferencias" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COBRAR
                                     </button>
                                   </>
                                 )}
@@ -814,27 +815,27 @@ function Tesoreria() {
                         <td style={{ padding: '12px', textAlign: 'center' }}>
                           {emp.pagoEsteMes ? (
                             <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '6px', borderRadius: '6px', display: 'inline-block' }}>
-                              <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ LIQUIDADO</span>
+                              <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />LIQUIDADO</span>
                               <div style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                             </div>
                           ) : (
-                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
+                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right' }}>
                           <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>${Number(emp.sueldo_base).toLocaleString()}</div>
                           {emp.bonosExtra > 0 && (
                             <div style={{ fontSize: '0.75rem', color: '#00ff88', fontWeight: 'bold', background: 'rgba(0,255,136,0.1)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
-                              🌟 + ${emp.bonosExtra.toLocaleString()} (Bonos)
+                              <Icono nombre="destello" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />+ ${emp.bonosExtra.toLocaleString()} (Bonos)
                             </div>
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
+                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos"><Icono nombre="editar" size="1.2em" relleno="propio" /></button>
                           {emp.pagoEsteMes ? (
-                             <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
+                             <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />LIQUIDADO</button>
                           ) : (
-                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Sueldo de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR BASE</button>
+                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Sueldo de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}><Icono nombre="tarjetaCredito" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PAGAR BASE</button>
                           )}
                         </td>
                       </tr>
@@ -893,27 +894,27 @@ function Tesoreria() {
                         <td style={{ padding: '12px', textAlign: 'center' }}>
                           {emp.pagoEsteMes ? (
                              <div style={{ background: 'rgba(0, 255, 136, 0.1)', border: '1px solid #00ff88', padding: '6px', borderRadius: '6px', display: 'inline-block' }}>
-                               <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}>✅ VIÁTICO PAGADO</span>
+                               <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VIÁTICO PAGADO</span>
                                <div style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                              </div>
                           ) : (
-                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>❌ PENDIENTE</span>
+                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right' }}>
                           <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>${Number(emp.sueldo_base).toLocaleString()}</div>
                           {emp.bonosExtra > 0 && (
                             <div style={{ fontSize: '0.75rem', color: '#00ff88', fontWeight: 'bold', background: 'rgba(0,255,136,0.1)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '4px' }}>
-                              🌟 + ${emp.bonosExtra.toLocaleString()} (Comisión)
+                              <Icono nombre="destello" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />+ ${emp.bonosExtra.toLocaleString()} (Comisión)
                             </div>
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos">✏️</button>
+                          <button onClick={() => abrirEdicionEmpleado(emp)} style={{ background: 'transparent', color: 'var(--text)', border: '1px solid var(--border)', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} title="Editar Datos"><Icono nombre="editar" size="1.2em" relleno="propio" /></button>
                           {emp.pagoEsteMes ? (
-                             <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}>✅ LIQUIDADO</button>
+                             <button disabled style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--border)', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'not-allowed', fontSize: '0.8rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />LIQUIDADO</button>
                           ) : (
-                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Viático de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#a855f7', color: '#ffffff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>💳 PAGAR VIÁTICO</button>
+                             <button onClick={() => { setFormSueldo({...formSueldo, monto: emp.sueldo_base, descripcion: `Viático de ${nombreMesVencido}`, cajaOrigen: 'Efectivo'}); setModalSueldo({ visible: true, empleado: emp }); }} style={{ background: '#a855f7', color: '#ffffff', border: 'none', padding: '6px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}><Icono nombre="tarjetaCredito" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PAGAR VIÁTICO</button>
                           )}
                         </td>
                       </tr>
@@ -992,7 +993,7 @@ function Tesoreria() {
                           <td style={{ padding: '15px 12px', color: 'var(--text-dim)', fontSize: '0.85rem' }}>{mov.fecha.split('-').reverse().join('/')}</td>
                           <td style={{ padding: '12px' }}>
                             <span style={{ background: mov.tipo === 'entrada' ? 'rgba(0, 255, 136, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: mov.tipo === 'entrada' ? '#00ff88' : '#ef4444', border: `1px solid ${mov.tipo === 'entrada' ? '#00ff88' : '#ef4444'}`, padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                              {mov.tipo === 'entrada' ? '⬇️' : '⬆️'} {mov.categoria}
+                              <Icono nombre={mov.tipo === 'entrada' ? 'bajarFlecha' : 'subirFlecha'} size="1.1em" style={{ marginRight: 4 }} />{mov.categoria}
                             </span>
                           </td>
                           <td style={{ padding: '12px', fontSize: '0.85rem' }}>{mov.descripcion}</td>
@@ -1003,7 +1004,7 @@ function Tesoreria() {
                             {/* 🚀 BOTÓN DE ELIMINAR SOLO PARA EGRESOS O INGRESOS EXTRAS MANUALES */}
                             {(mov.id.startsWith('eg-') || mov.id.startsWith('ext-')) ? (
                               <button onClick={() => eliminarMovimientoLibroMayor(mov.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem' }} title="Eliminar registro">
-                                🗑️
+                                <Icono nombre="borrar" size="1.2em" relleno="propio" />
                               </button>
                             ) : (
                               <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }} title="Origen de sistema">Auto</span>
@@ -1081,7 +1082,7 @@ function Tesoreria() {
               <div className="bento-card" style={{ gridColumn: '1 / -1', display: 'flex', gap: '20px', flexWrap: 'wrap', background: 'transparent', border: 'none', padding: 0 }}>
                 <div style={{ flex: 1, minWidth: '300px', background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <div className="stat-label" style={{ color: '#ef4444' }}>🔴 TOP 5 DEUDORES (HISTÓRICO)</div>
+                    <div className="stat-label" style={{ color: '#ef4444' }}><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />TOP 5 DEUDORES (HISTÓRICO)</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ef4444' }}>${datosReporte.deudaTotal.toLocaleString()} <span style={{fontSize: '0.7rem', color:'var(--text-dim)'}}>en la calle</span></div>
                   </div>
                   {datosReporte.topMorosos.length === 0 ? (
@@ -1127,7 +1128,7 @@ function Tesoreria() {
           <div className="bento-card" style={{ width: '480px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', border: '1px solid #facc15' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <h3 style={{ marginTop: 0, color: '#facc15' }}>Cuotas y cobros</h3>
-              <button onClick={cerrarDetalle} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+              <button onClick={cerrarDetalle} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
             
             <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '20px' }}>
@@ -1136,7 +1137,7 @@ function Tesoreria() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto', paddingRight: '5px' }}>
               {modalDetalleDeuda.deudas.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No debe nada 👌</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No debe nada.</div>
               ) : (
                 modalDetalleDeuda.deudas.map(d => (
                   <div key={d.id} style={{ background: 'var(--panel)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1155,7 +1156,7 @@ function Tesoreria() {
                       }}
                       title={Number(d.monto_pagado) > 0 ? 'Tiene cobros: anulalos primero' : 'Eliminar concepto'}
                     >
-                      🗑️
+                      <Icono nombre="borrar" size="1.2em" relleno="propio" />
                     </button>
                   </div>
                 ))
@@ -1180,7 +1181,7 @@ function Tesoreria() {
                       {anulado && <div style={{ fontSize: '0.7rem', color: '#ef4444', marginTop: '2px' }}>ANULADO{p.motivo_anulacion ? `: ${p.motivo_anulacion}` : ''}</div>}
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                      <button onClick={() => setRecibo({ jugador: modalDetalleDeuda.jugador, telefono: modalDetalleDeuda.jugador?.contacto, pago: { ...p, concepto } })} title="Ver recibo" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', minHeight: '38px' }}>🧾</button>
+                      <button onClick={() => setRecibo({ jugador: modalDetalleDeuda.jugador, telefono: modalDetalleDeuda.jugador?.contacto, pago: { ...p, concepto } })} title="Ver recibo" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', minHeight: '38px' }}><Icono nombre="recibo" size="1.2em" relleno="propio" /></button>
                       {!anulado && (
                         <button onClick={() => anularCobro(p)} disabled={cargando} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem', minHeight: '38px' }}>
                           ↩ ANULAR
@@ -1223,7 +1224,7 @@ function Tesoreria() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div className="bento-card" style={{ width: '450px', border: '1px solid #a855f7' }}>
             <h3 style={{ marginTop: 0, color: '#a855f7' }}>Cuota extraordinaria</h3>
-            <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Un cobro aparte de la cuota del mes (indumentaria, torneo, rifa…) para los jugadores activos de <strong>{categoria}</strong>. La cuota mensual se arma en <strong>💵 Cuotas y tarifas</strong>.</p>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>Un cobro aparte de la cuota del mes (indumentaria, torneo, rifa…) para los jugadores activos de <strong>{categoria}</strong>. La cuota mensual se arma en <strong><Icono nombre="efectivo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Cuotas y tarifas</strong>.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
               <div><label style={lblStyle}>Concepto</label><input type="text" value={formCuota.concepto} onChange={(e) => setFormCuota({...formCuota, concepto: e.target.value})} style={inputFormStyle} placeholder="Ej: Indumentaria 2026" /></div>
               <div style={{ display: 'flex', gap: '15px' }}>
@@ -1247,7 +1248,7 @@ function Tesoreria() {
             <div style={{ background: 'var(--panel)', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid var(--border)' }}>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>De:</div>
               <div style={{ fontWeight: 900, fontSize: '1.1rem' }}>{modalPago.jugador.apellido}, {modalPago.jugador.nombre}</div>
-              <div style={{ fontSize: '0.8rem', color: '#3b82f6', marginTop: '5px' }}>📌 {modalPago.deuda.concepto}</div>
+              <div style={{ fontSize: '0.8rem', color: '#3b82f6', marginTop: '5px' }}><Icono nombre="fijado" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{modalPago.deuda.concepto}</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div><label style={lblStyle}>Restante ($)</label><div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ef4444' }}>${(modalPago.deuda.monto_original - modalPago.deuda.monto_pagado).toLocaleString()}</div></div>
@@ -1257,7 +1258,7 @@ function Tesoreria() {
               <div>
                 <label style={lblStyle}>Auditoría</label>
                 <select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} style={inputFormStyle}>
-                  <option value="Efectivo">💵 Efectivo</option><option value="Transferencia MP">📱 Transferencia MP</option><option value="Transferencia Banco">🏦 Transferencia Banco</option>
+                  <option value="Efectivo">Efectivo</option><option value="Transferencia MP">Transferencia MP</option><option value="Transferencia Banco">Transferencia Banco</option>
                 </select>
               </div>
             </div>
@@ -1312,7 +1313,7 @@ function Tesoreria() {
               <div>
                 <label style={lblStyle}>Categoría</label>
                 <select value={formGasto.categoria} onChange={(e) => setFormGasto({...formGasto, categoria: e.target.value})} style={inputFormStyle}>
-                  <option value="Alquiler Cancha">🏟️ Alquiler Cancha</option><option value="Arbitrajes">⚖️ Arbitrajes</option><option value="Materiales">⚽ Materiales</option><option value="Mantenimiento">🛠️ Mantenimiento</option><option value="Comisiones / Terceros">🤝 Comisiones</option><option value="Varios">🛒 Varios</option>
+                  <option value="Alquiler Cancha">Alquiler Cancha</option><option value="Arbitrajes">Arbitrajes</option><option value="Materiales">Materiales</option><option value="Mantenimiento">Mantenimiento</option><option value="Comisiones / Terceros">Comisiones</option><option value="Varios">Varios</option>
                 </select>
               </div>
               <div><label style={lblStyle}>Monto ($)</label><input type="number" value={formGasto.monto} onChange={(e) => setFormGasto({...formGasto, monto: e.target.value})} style={{ ...inputFormStyle, borderColor: '#ef4444', fontSize: '1.2rem', padding: '15px' }} /></div>
@@ -1337,14 +1338,14 @@ function Tesoreria() {
               <div>
                 <label style={lblStyle}>Origen</label>
                 <select value={formIngresoExtra.categoria} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, categoria: e.target.value})} style={inputFormStyle}>
-                  <option value="Bufet / Cantina">🍔 Bufet / Cantina</option><option value="Rifas / Eventos">🎟️ Rifas / Eventos</option><option value="Venta Indumentaria">👕 Indumentaria</option><option value="Donaciones">🎁 Donaciones</option><option value="Otros Ingresos">💰 Otros Ingresos</option>
+                  <option value="Bufet / Cantina">Bufet / Cantina</option><option value="Rifas / Eventos">Rifas / Eventos</option><option value="Venta Indumentaria">Indumentaria</option><option value="Donaciones">Donaciones</option><option value="Otros Ingresos">Otros Ingresos</option>
                 </select>
               </div>
               <div><label style={lblStyle}>Monto ($)</label><input type="number" value={formIngresoExtra.monto} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, monto: e.target.value})} style={{ ...inputFormStyle, borderColor: '#00ff88', fontSize: '1.2rem', padding: '15px' }} /></div>
               <div>
                 <label style={lblStyle}>Auditoría</label>
                 <select value={formIngresoExtra.metodo_pago} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, metodo_pago: e.target.value})} style={inputFormStyle}>
-                  <option value="Efectivo">💵 Efectivo</option><option value="Transferencia MP">📱 Transferencia MP</option><option value="Transferencia Banco">🏦 Transferencia Banco</option>
+                  <option value="Efectivo">Efectivo</option><option value="Transferencia MP">Transferencia MP</option><option value="Transferencia Banco">Transferencia Banco</option>
                 </select>
               </div>
               <div><label style={lblStyle}>Descripción</label><input type="text" value={formIngresoExtra.descripcion} onChange={(e) => setFormIngresoExtra({...formIngresoExtra, descripcion: e.target.value})} style={inputFormStyle} /></div>

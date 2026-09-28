@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import ModalVideoRival from '../components/ModalVideoRival';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { categoriasVisiblesPara, unirCategorias, mismaCategoria, ordenarCategorias } from '../utils/categorias';
+import { Icono } from '../iconos';
 
 /* Valor centinela del selector: "ver todas" no es una categoría real, así que
  * nunca puede viajar a datos_tacticos ni a un filtro de la base. */
@@ -406,7 +407,7 @@ function ScoutingRivales() {
                     className="btn-secondary"
                     style={{ marginTop: '12px', width: '100%', fontSize: '0.7rem', padding: '8px', fontWeight: 800 }}
                   >
-                    🎬 VER VIDEO ({catVista.toUpperCase()})
+                    <Icono nombre="video" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER VIDEO ({catVista.toUpperCase()})
                   </button>
                 </>
               )}
@@ -478,7 +479,7 @@ function ScoutingRivales() {
                         <div style={{ fontWeight: 900, fontSize: '0.7rem', letterSpacing: '0.05em', color: tieneAlgo ? 'var(--accent)' : 'var(--text-dim)' }}>{cat.toUpperCase()}</div>
                         <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>
                           {tieneAlgo ? (d.sistema_tactico || 'Sistema sin definir') : 'Sin scouting cargado'}
-                          {d.video_url ? ' · 🎬 con video' : ''}
+                          {d.video_url ? <> · <Icono nombre="video" size="1.1em" relleno="propio" /> con video</> : ''}
                         </div>
                       </div>
                       <button
@@ -557,7 +558,7 @@ function ScoutingRivales() {
                       className="btn-action"
                       style={{ background: 'var(--accent)', color: '#000', fontSize: '0.7rem', padding: '8px 14px', fontWeight: 900 }}
                     >
-                      🎬 DOSSIER DE VIDEO ({catScouting})
+                      <Icono nombre="video" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DOSSIER DE VIDEO ({catScouting})
                     </button>
                   )}
                 </div>
@@ -618,7 +619,7 @@ function ScoutingRivales() {
                               </div>
                             </div>
                             {/* CORRECCIÓN: Pasamos el ID del partido al resumen */}
-                            <button onClick={() => navigate(`/resumen/${p.id}`)} className="btn-secondary" style={{ fontSize: '0.65rem', padding: '6px 10px' }}>📊 REPORTE</button>
+                            <button onClick={() => navigate(`/resumen/${p.id}`)} className="btn-secondary" style={{ fontSize: '0.65rem', padding: '6px 10px' }}><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REPORTE</button>
                           </div>
                         )
                       })}

@@ -5,6 +5,7 @@ import { useToast } from '../components/ToastContext';
 // IMPORTAMOS AUTH para sacar las categorías del usuario
 import { useAuth } from '../context/AuthContext'; 
 import { useEsMovil } from '../utils/useEsMovil';
+import { Icono } from '../iconos';
 
 const CreadorFisico = () => {
   const navigate = useNavigate();
@@ -164,7 +165,7 @@ const CreadorFisico = () => {
       <div className="bento-card" style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: esMovil ? 'flex-start' : 'center', gap: '15px', marginBottom: '20px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '20px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '2rem' }}>🏋️‍♂️</span>
+            <span style={{ fontSize: '2rem' }}><Icono nombre="pesas" size="1.2em" relleno="propio" /></span>
             <div>
               <h1 className="stat-label" style={{ color: '#f59e0b', fontSize: '1.5rem', margin: 0, textTransform: 'uppercase' }}>CREADOR FÍSICO</h1>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Planificador de Cargas y Rutinas</p>
@@ -173,9 +174,9 @@ const CreadorFisico = () => {
         </div>
         
         <div style={{ display: 'flex', gap: '10px', width: esMovil ? '100%' : 'auto' }}>
-          <button onClick={() => navigate(-1)} style={{ ...btnSecundario, flex: esMovil ? 1 : 'none', textAlign: 'center' }}>⬅ Volver</button>
+          <button onClick={() => navigate(-1)} style={{ ...btnSecundario, flex: esMovil ? 1 : 'none', textAlign: 'center' }}><Icono nombre="volver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Volver</button>
           <button onClick={confirmarGuardado} className="btn-action" style={{ background: '#f59e0b', color: '#000', flex: esMovil ? 1 : 'none', padding: '10px 20px', fontWeight: '900' }}>
-            {tareaIdEditando ? '💾 ACTUALIZAR' : '💾 GUARDAR RUTINA'}
+            <Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{tareaIdEditando ? 'ACTUALIZAR' : 'GUARDAR RUTINA'}
           </button>
         </div>
       </div>
@@ -251,13 +252,13 @@ const CreadorFisico = () => {
               onClick={() => setModoFisico('gimnasio')} 
               style={{ ...toggleBtnMode, background: modoFisico === 'gimnasio' ? '#f59e0b' : 'var(--panel)', color: modoFisico === 'gimnasio' ? '#000' : 'var(--text-dim)' }}
             >
-              🏋️‍♂️ GIMNASIO / FUERZA
+              <Icono nombre="pesas" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GIMNASIO / FUERZA
             </button>
             <button 
               onClick={() => setModoFisico('cancha')} 
               style={{ ...toggleBtnMode, background: modoFisico === 'cancha' ? '#f59e0b' : 'var(--panel)', color: modoFisico === 'cancha' ? '#000' : 'var(--text-dim)' }}
             >
-              🏃‍♂️ CANCHA / METABÓLICO
+              <Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CANCHA / METABÓLICO
             </button>
           </div>
 
@@ -278,7 +279,7 @@ const CreadorFisico = () => {
                   {bloquesGimnasio.map((ej, index) => (
                     <div key={ej.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '15px', position: 'relative' }}>
                       <div style={{ position: 'absolute', top: '-10px', left: '-10px', background: '#f59e0b', color: '#000', width: '25px', height: '25px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '0.8rem' }}>{index + 1}</div>
-                      <button onClick={() => eliminarEjercicio(ej.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
+                      <button onClick={() => eliminarEjercicio(ej.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       
                       <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '2fr 1fr 1fr 1fr 1fr', gap: '10px', marginTop: '10px' }}>
                         <div>
@@ -330,7 +331,7 @@ const CreadorFisico = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {bloquesCancha.map((bloque, index) => (
                     <div key={bloque.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '20px', position: 'relative' }}>
-                      <button onClick={() => eliminarBloqueCancha(bloque.id)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
+                      <button onClick={() => eliminarBloqueCancha(bloque.id)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       
                       <input 
                         type="text" 

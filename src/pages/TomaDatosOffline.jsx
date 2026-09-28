@@ -23,6 +23,7 @@ import {
   balanceLineaPelota, balonDe, contextoLineaGol, cadenaDeSecuencia, resumenCadena,
   enCanchaEn, stintActivo, resumenPases, indicePerdidas,
 } from '../analytics/despliegue';
+import { Icono } from '../iconos';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ANÁLISIS OFFLINE
@@ -188,7 +189,7 @@ function FichaPartido({ partido, eventos, children }) {
 
         {(partido?.lugar || eventos != null) && (
           <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '2px' }}>
-            {partido?.lugar ? `📍 ${partido.lugar}` : ''}
+            {partido?.lugar ? <><Icono nombre="ubicacion" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />{partido.lugar}</> : ''}
             {partido?.lugar && eventos != null ? ' · ' : ''}
             {eventos != null && (
               <span style={{ color: eventos > 0 ? 'var(--accent)' : '#f59e0b' }}>
@@ -353,7 +354,7 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', paddingBottom: '60px', animation: 'fadeIn 0.3s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={onVolver} style={boton}>⬅ VOLVER</button>
+          <button onClick={onVolver} style={boton}><Icono nombre="volver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VOLVER</button>
           <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>ANÁLISIS OFFLINE</div>
         </div>
         <div style={{ ...etiqueta, color: enLinea ? 'var(--accent)' : '#f59e0b' }}>
@@ -436,12 +437,12 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
           <button onClick={() => setSoloMiEquipo(v => !v)}
                   style={{ ...(soloMiEquipo ? botonActivo('var(--accent)') : boton), padding: '8px 10px' }}
                   title="El fixture de un torneo trae también los cruces entre otros equipos. Con esto ves sólo los tuyos.">
-            {soloMiEquipo ? '✓ ' : ''}MI EQUIPO ({cantidadPropios})
+            {soloMiEquipo && <Icono nombre="listo" size="1.1em" style={{ marginRight: 4 }} />}MI EQUIPO ({cantidadPropios})
           </button>
           <button onClick={() => setSoloConEventos(v => !v)}
                   style={{ ...(soloConEventos ? botonActivo('var(--accent)') : boton), padding: '8px 10px' }}
                   title="Los partidos sin eventos no tienen nada para analizar todavía">
-            {soloConEventos ? '✓ ' : ''}CON DATOS
+            {soloConEventos && <Icono nombre="listo" size="1.1em" style={{ marginRight: 4 }} />}CON DATOS
           </button>
           {hayFiltro && (
             <button onClick={() => { setFTorneo('TODOS'); setFCategoria('TODAS'); setFCondicion('TODAS'); setSoloConEventos(false); setSoloMiEquipo(true); setBusqueda(''); }}
@@ -1137,7 +1138,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
 
       {/* ══ BARRA SUPERIOR: cronómetro y sincronización ══ */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '8px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <button onClick={onSalir} style={boton}>⬅ SALIR</button>
+        <button onClick={onSalir} style={boton}><Icono nombre="volver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SALIR</button>
         <div className="stat-label" style={{ fontSize: '0.72rem' }}>OFFLINE // vs {rival.toUpperCase()}</div>
 
         <select value={periodo} onChange={e => { setPeriodo(e.target.value); crono.pausar(); }} style={{ ...inputStyle, width: 'auto' }}>
@@ -1148,7 +1149,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
         <button onClick={crono.alternar}
                 title="Espacio"
                 style={{ ...boton, padding: '8px 14px', borderColor: crono.corriendo ? '#f59e0b' : 'var(--accent)', color: crono.corriendo ? '#f59e0b' : 'var(--accent)', fontSize: '0.85rem' }}>
-          {crono.corriendo ? '⏸ PAUSA' : '▶ CORRER'}
+          <Icono nombre={crono.corriendo ? 'pausa' : 'reproducir'} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{crono.corriendo ? 'PAUSA' : 'CORRER'}
         </button>
         <input
           value={formatearTiempo(tMs)}
@@ -1172,7 +1173,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
         <button onClick={marcarInicioPeriodo}
                 title={`Pone el reloj en 0:00, lo arranca y deja registrado el comienzo del ${periodo}`}
                 style={inicioMarcado ? botonActivo('#22d3ee') : { ...boton, borderColor: '#22d3ee', color: '#22d3ee' }}>
-          ⚑ {inicioMarcado ? `${periodo} MARCADO` : `INICIO ${periodo}`}
+          <Icono nombre="bandera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{inicioMarcado ? `${periodo} MARCADO` : `INICIO ${periodo}`}
         </button>
 
         <button onClick={() => setInvertida(v => !v)} style={boton} title="Invertir la cancha">⇄</button>
@@ -1203,9 +1204,9 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
           <div style={{ display: 'flex', gap: '8px', padding: '8px 10px', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', gap: '4px' }}>
               <button onClick={() => setTablero('marcar')} title="Tab"
-                      style={tablero === 'marcar' ? botonActivo('#22d3ee') : boton}>⚡ MARCAR</button>
+                      style={tablero === 'marcar' ? botonActivo('#22d3ee') : boton}><Icono nombre="rayo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MARCAR</button>
               <button onClick={() => { setTablero('mover'); setPuntoOrigen(null); }} title="Tab"
-                      style={tablero === 'mover' ? botonActivo('#facc15') : boton}>✋ MOVER FICHAS</button>
+                      style={tablero === 'mover' ? botonActivo('#facc15') : boton}><Icono nombre="mano" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MOVER FICHAS</button>
             </div>
 
             <div style={{
@@ -1239,14 +1240,14 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
               <button onClick={() => setReproduciendo(v => !v)} disabled={!rango}
                       title={rango ? 'Volver a pasar el movimiento grabado' : 'Todavía no hay movimiento grabado en este período'}
                       style={{ ...(reproduciendo ? botonActivo('#facc15') : boton), opacity: rango ? 1 : 0.4 }}>
-                {reproduciendo ? '⏹ PARAR' : '▶ REPRODUCIR'}
+                <Icono nombre={reproduciendo ? 'detener' : 'reproducir'} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{reproduciendo ? 'PARAR' : 'REPRODUCIR'}
               </button>
               <button onClick={exportar} disabled={!rango || exportando > 0 || !puedeExportar}
                       title={puedeExportar
                         ? 'Descarga un .webm con el movimiento de las fichas'
                         : 'Este navegador no puede grabar video desde la app. Probá con Chrome o Edge.'}
                       style={{ ...boton, opacity: rango && !exportando && puedeExportar ? 1 : 0.4 }}>
-                {exportando > 0 ? `EXPORTANDO ${exportando}%` : '⬇ EXPORTAR VIDEO'}
+                {exportando > 0 ? `EXPORTANDO ${exportando}%` : <><Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EXPORTAR VIDEO</>}
               </button>
               <select value={duracionVideo} onChange={e => setDuracionVideo(Number(e.target.value))}
                       title="Cuánto dura el video" style={{ ...inputStyle, width: 'auto', padding: '5px', fontSize: '0.62rem' }}>
@@ -1258,10 +1259,10 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
 
           {ayudaAbierta && (
             <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', background: 'var(--panel)', fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.7 }}>
-              <b style={{ color: 'var(--text)' }}>⚡ MARCAR</b> — tocás la cancha y se registra la acción elegida en el panel de la derecha.
+              <b style={{ color: 'var(--text)' }}><Icono nombre="rayo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MARCAR</b> — tocás la cancha y se registra la acción elegida en el panel de la derecha.
               Las acciones con dos toques (pase, recepción, conducción) piden primero el origen y después el destino;
               abajo a la izquierda de la cancha dice siempre cuál toque estás dando.<br />
-              <b style={{ color: 'var(--text)' }}>✋ MOVER FICHAS</b> — arrastrás a los jugadores y la pelota. Cada vez que soltás
+              <b style={{ color: 'var(--text)' }}><Icono nombre="mano" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MOVER FICHAS</b> — arrastrás a los jugadores y la pelota. Cada vez que soltás
               una ficha queda guardada su posición en ese minuto: así se arma el seguimiento y el mapa de calor de cada uno.<br />
               <b style={{ color: 'var(--text)' }}>Mío o del rival</b> — el botón NUESTRO/RIVAL de la derecha. Verde = nuestro,
               rojo = rival, y el cartel de arriba te lo repite. Las fichas siguen el mismo código de color.<br />
@@ -1270,7 +1271,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
               <b style={{ color: 'var(--text)' }}>Zonas</b> — la cancha se lee en cuatro zonas de 10 metros desde nuestro arco
               (Z1, Z2, Z3, Z4) por tres carriles: Izquierdo, Centro y Derecho, nombrados desde el que ataca.
               Doce cuadrados. Cada evento guarda su zona solo, así que después podés pedir "las pérdidas no forzadas en Z2-C".<br />
-              <b style={{ color: 'var(--text)' }}>▶ Reproducir / ⬇ Exportar</b> — vuelve a pasar todo el movimiento que grabaste
+              <b style={{ color: 'var(--text)' }}><Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Reproducir / <Icono nombre="descargar" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />Exportar</b> — vuelve a pasar todo el movimiento que grabaste
               moviendo fichas, y lo baja como archivo de video. Con APELLIDO puesto, cada ficha lleva el nombre encima.<br />
               <b style={{ color: 'var(--text)' }}>Atajos</b> — Espacio: cronómetro · Tab: cambiar de modo · Esc: cancelar ·
               {ACCIONES.filter(a => a.tecla).map(a => ` ${a.tecla}: ${a.label}`).join(' ·')}
@@ -1311,7 +1312,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
               )}
               {reproduciendo && (
                 <div style={{ position: 'absolute', left: '10px', bottom: '8px', fontSize: '0.7rem', color: '#facc15', fontWeight: 800, pointerEvents: 'none', zIndex: 16 }}>
-                  ▶ Reproduciendo el movimiento grabado · {periodo} {formatearTiempo(tMs)}
+                  <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Reproduciendo el movimiento grabado · {periodo} {formatearTiempo(tMs)}
                 </div>
               )}
             </CanchaTactica>
@@ -1329,8 +1330,8 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {pendiente.def.resultado ? (
                       <>
-                        <button onClick={() => responderPendiente(true)} style={{ ...botonActivo('var(--accent)'), flex: 1, padding: '14px' }}>✓ COMPLETADO</button>
-                        <button onClick={() => responderPendiente(false)} style={{ ...botonActivo('#ef4444'), flex: 1, padding: '14px' }}>✗ INCOMPLETO</button>
+                        <button onClick={() => responderPendiente(true)} style={{ ...botonActivo('var(--accent)'), flex: 1, padding: '14px' }}><Icono nombre="listo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COMPLETADO</button>
+                        <button onClick={() => responderPendiente(false)} style={{ ...botonActivo('#ef4444'), flex: 1, padding: '14px' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />INCOMPLETO</button>
                       </>
                     ) : (
                       <>
@@ -1381,7 +1382,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
               {Object.keys(FORMACIONES).map(f => <option key={f} value={f}>{f}</option>)}
             </select>
             <button onClick={alinearConQuinteto} style={{ ...boton, padding: '5px 8px' }}>QUINTETO DE ESTE MINUTO</button>
-            <button onClick={() => fijarSnapshot()} style={{ ...botonActivo('var(--accent)'), padding: '5px 10px' }}>📸 FIJAR FOTO</button>
+            <button onClick={() => fijarSnapshot()} style={{ ...botonActivo('var(--accent)'), padding: '5px 10px' }}><Icono nombre="camara" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />FIJAR FOTO</button>
 
             {/* Cómo se ven las fichas */}
             <div style={{ display: 'flex', gap: '3px' }}>
@@ -1513,7 +1514,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
                 <div style={{ fontSize: '0.66rem', color: 'var(--text-dim)' }}>
                   {golObjetivo
                     ? `Apuntado: ${golObjetivo.accion} del ${golObjetivo.minuto}'. Cargá la jugada y se le engancha sola.`
-                    : 'La cadena se abre sola al marcar la primera acción. Para colgarla de un gol ya cargado, buscalo en EVENTOS y tocá ⛓.'}
+                    : 'La cadena se abre sola al marcar la primera acción. Para colgarla de un gol ya cargado, buscalo en EVENTOS y tocá el botón de cadena.'}
                 </div>
               )}
             </div>
@@ -1618,16 +1619,16 @@ function ListaEventos({ eventos, jugadorPorId, secuencias, golObjetivo, onApunta
             )}
             <span style={{ color, fontWeight: 800, flex: 1 }}>
               {ev.accion}
-              {ev.pase_completado === false ? ' ✗' : ev.pase_completado === true ? ' ✓' : ''}
+              {ev.pase_completado === false ? <Icono nombre="cerrar" size="1em" style={{ marginLeft: 4, color: 'var(--peligro)' }} /> : ev.pase_completado === true ? <Icono nombre="listo" size="1em" style={{ marginLeft: 4, color: 'var(--ok)' }} /> : null}
               {ev.tipo_perdida ? ` (${ev.tipo_perdida.replace('_', ' ')})` : ''}
               {ev.id_jugador ? ` · ${nombreCorto(jugadorPorId[String(ev.id_jugador)])}` : ''}
               {ev.equipo === 'Rival' ? ' (riv)' : ''}
             </span>
-            {sec && <span title="Pertenece a una cadena" style={{ color: 'var(--accent)' }}>🔗</span>}
+            {sec && <span title="Pertenece a una cadena" style={{ color: 'var(--accent)' }}><Icono nombre="enlace" size="1.2em" relleno="propio" /></span>}
             {ev._estado !== 'sincronizado' && <span title="Sin subir" style={{ color: '#f59e0b' }}>●</span>}
             {esGol(ev.accion) && (
               <button onClick={() => onApuntarGol(ev)} title="Colgarle una cadena de pases a este gol"
-                      style={{ ...(apuntado ? botonActivo('var(--accent)') : boton), padding: '3px 6px' }}>⛓</button>
+                      style={{ ...(apuntado ? botonActivo('var(--accent)') : boton), padding: '3px 6px' }}><Icono nombre="enlace" size="1.2em" relleno="propio" /></button>
             )}
             {ev._estado !== 'sincronizado' && (
               <button onClick={() => onBorrar(ev)} style={{ ...boton, padding: '3px 6px', borderColor: '#ef4444', color: '#ef4444' }}>×</button>
@@ -1758,7 +1759,7 @@ function TabBalance({ pases, perdidas, jugadorPorId, snapshots }) {
         </div>
         {perdidas.noForzadasEnSalida > 0 && (
           <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '4px', fontWeight: 800 }}>
-            ⚠ {perdidas.noForzadasEnSalida} pérdida(s) no forzada(s) en zona de salida
+            <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{perdidas.noForzadasEnSalida} pérdida(s) no forzada(s) en zona de salida
           </div>
         )}
       </div>
@@ -1815,7 +1816,7 @@ function TabMinutos({ jugadores, stints, minutos, onEditar, onAgregar, onBorrar 
                 <span style={{ color: 'var(--text-dim)' }}>→</span>
                 <input value={formatearTiempo(s.salida_ms ?? DURACION_PERIODO_MS)} onChange={editarCampo(s, 'salida_ms')}
                        style={{ ...inputStyle, width: '58px', padding: '3px', textAlign: 'center', fontSize: '0.63rem' }} />
-                {s.ajustado && <span title="Corregido a mano" style={{ color: 'var(--accent)' }}>✎</span>}
+                {s.ajustado && <span title="Corregido a mano" style={{ color: 'var(--accent)' }}><Icono nombre="editar" size="1.2em" relleno="propio" /></span>}
                 <button onClick={() => onBorrar(s)} style={{ ...boton, padding: '2px 5px', borderColor: '#ef4444', color: '#ef4444', marginLeft: 'auto' }}>×</button>
               </div>
             ))}

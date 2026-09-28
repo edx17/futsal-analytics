@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../supabase';
+import { Icono } from '../../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    CAMBIOS PEDIDOS POR LOS JUGADORES
@@ -45,7 +46,7 @@ export default function SolicitudesCambio({ pendientes, jugadores, onCerrar, onR
       showToast?.(error.code === '42501' ? 'No tenés permiso para aprobar cambios.' : `No se pudo: ${error.message}`, 'error');
       return;
     }
-    showToast?.(data === 'rechazada' ? 'Pedido rechazado.' : 'Cambios aplicados a la ficha ✅', 'success');
+    showToast?.(data === 'rechazada' ? 'Pedido rechazado.' : 'Cambios aplicados a la ficha', 'success');
     onResuelta?.();
   };
 
@@ -53,12 +54,12 @@ export default function SolicitudesCambio({ pendientes, jugadores, onCerrar, onR
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !trabajando) onCerrar(); }}>
       <div className="bento-card modal-content" style={{ maxWidth: '640px', background: 'var(--panel)' }}>
         <div className="modal-header">
-          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}>📝 CAMBIOS PEDIDOS POR JUGADORES</h2>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}><Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CAMBIOS PEDIDOS POR JUGADORES</h2>
           <button onClick={onCerrar} disabled={!!trabajando} className="close-btn">×</button>
         </div>
 
         {pendientes.length === 0 ? (
-          <p style={{ color: 'var(--text-dim)', textAlign: 'center' }}>No hay pedidos pendientes 👌</p>
+          <p style={{ color: 'var(--text-dim)', textAlign: 'center' }}>No hay pedidos pendientes.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {pendientes.map((sol) => {
@@ -96,11 +97,11 @@ export default function SolicitudesCambio({ pendientes, jugadores, onCerrar, onR
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
                     <button onClick={() => resolver(sol, [])} disabled={trabajando === sol.id}
                       style={{ minHeight: '44px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '8px', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer' }}>
-                      ✕ RECHAZAR
+                      <Icono nombre="cerrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />RECHAZAR
                     </button>
                     <button onClick={() => resolver(sol, [...elegidos])} disabled={trabajando === sol.id || elegidos.size === 0}
                       style={{ minHeight: '44px', background: 'var(--accent)', border: 'none', color: '#000', borderRadius: '8px', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer', opacity: elegidos.size === 0 ? 0.5 : 1 }}>
-                      {trabajando === sol.id ? 'GUARDANDO…' : elegidos.size === campos.length ? '✓ APROBAR TODO' : `✓ APROBAR ${elegidos.size}`}
+                      {trabajando === sol.id ? 'GUARDANDO…' : <><Icono nombre="listo" size="1.1em" style={{ marginRight: 4 }} />{elegidos.size === campos.length ? 'APROBAR TODO' : `APROBAR ${elegidos.size}`}</>}
                     </button>
                   </div>
                 </div>

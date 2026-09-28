@@ -6,6 +6,7 @@ import { useEsMovil } from '../utils/useEsMovil';
 // CONFIGURACIÓN VISUAL
 // ==========================================
 import { PLANES, DIAS_TRIAL, formatARS, ahorroAnual, whatsappLink, WHATSAPP_MOSTRAR } from '../utils/planes';
+import { Icono } from '../iconos';
 
 const COLORS = {
   bg: '#050505', 
@@ -178,7 +179,7 @@ function Landing() {
         </div>
         
         <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={() => navigate('/kiosco')} style={secondaryNavLinkStyle}>📱 INGRESO JUGADORES</button>
+          <button onClick={() => navigate('/kiosco')} style={secondaryNavLinkStyle}><Icono nombre="celular" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />INGRESO JUGADORES</button>
           <MainButton onClick={() => navigate('/login')} style={{padding: '10px 20px', fontSize: '0.85rem'}}>INICIAR SESIÓN</MainButton>
         </div>
       </nav>
@@ -208,7 +209,7 @@ function Landing() {
           </p>
           <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <MainButton onClick={() => navigate('/registro?plan=trial')}>PROBAR GRATIS {DIAS_TRIAL} DÍAS</MainButton>
-            <MainButton onClick={() => window.location.href='#demo'} primary={false}>VER CÓMO FUNCIONA ⬇</MainButton>
+            <MainButton onClick={() => window.location.href='#demo'} primary={false}>VER CÓMO FUNCIONA <Icono nombre="bajarFlecha" size="1.2em" relleno="propio" /></MainButton>
           </div>
           <div style={{ marginTop: '18px', fontSize: '0.8rem', color: COLORS.textDim }}>
             Sin tarjeta · Configurás tu plantel en 10 minutos
@@ -267,7 +268,7 @@ function Landing() {
             <div style={videoLabelStyle}>Análisis en campo (Cancha)</div>
           </div>
 
-          <div style={flowArrowStyle}>➡</div>
+          <div style={flowArrowStyle}><Icono nombre="avanzar" size="1.2em" relleno="propio" /></div>
 
           <div style={dashboardResultWrapperStyle}>
             <img src="/assets/dashboard-generated.jpg" alt="Dashboard Generado" style={dashboardImgStyle} />
@@ -285,7 +286,7 @@ function Landing() {
 
         <div style={featuresGridStyle}>
           <div className="feature-card" style={featureCardStyle}>
-            <div style={iconStyle}>🎬</div>
+            <div style={iconStyle}><Icono nombre="video" size="1.2em" relleno="propio" /></div>
             <h3 style={featureTitleStyle}>Videotracking Interactivo</h3>
             <p style={featureDescStyle}>Vinculá eventos con YouTube. Repasá clips al instante.</p>
             <div style={featureImgWrapperStyle}>
@@ -294,7 +295,7 @@ function Landing() {
           </div>
 
           <div className="feature-card" style={featureCardStyle}>
-            <div style={iconStyle}>🔄</div>
+            <div style={iconStyle}><Icono nombre="actualizar" size="1.2em" relleno="propio" /></div>
             <h3 style={featureTitleStyle}>Rating de Quintetos PRO</h3>
             <p style={featureDescStyle}>Algoritmo exclusivo de eficiencia ajustada por volumen.</p>
             <div style={featureImgWrapperStyle}>
@@ -303,7 +304,7 @@ function Landing() {
           </div>
 
           <div className="feature-card" style={featureCardStyle}>
-            <div style={iconStyle}>📋</div>
+            <div style={iconStyle}><Icono nombre="lista" size="1.2em" relleno="propio" /></div>
             <h3 style={featureTitleStyle}>Libro Táctico Digital</h3>
             <p style={featureDescStyle}>Diseñá y centralizá ABP, rotaciones y presiones.</p>
             <div style={featureImgWrapperStyle}>
@@ -408,7 +409,7 @@ function Landing() {
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1 }}>
                 {plan.incluye.map((item) => (
                   <li key={item} style={{ fontSize: '0.82rem', padding: '6px 0', color: COLORS.text }}>
-                    <span style={{ color: COLORS.accent, fontWeight: 900, marginRight: '8px' }}>✓</span>{item}
+                    <span style={{ color: COLORS.accent, fontWeight: 900, marginRight: '8px' }}><Icono nombre="listo" size="1.2em" relleno="propio" /></span>{item}
                   </li>
                 ))}
               </ul>
@@ -459,7 +460,7 @@ function Landing() {
           <p style={{color: 'var(--text-dim)', maxWidth: '500px', margin: '0 auto'}}>La app que le ordena la semana a tu club.</p>
 
           <a href={whatsappLink()} target="_blank" rel="noreferrer" style={waButtonStyle}>
-            💬 Escribinos por WhatsApp
+            <Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Escribinos por WhatsApp
           </a>
           <div style={{ marginTop: '10px', fontSize: '0.8rem', color: COLORS.textDim }}>{WHATSAPP_MOSTRAR}</div>
 

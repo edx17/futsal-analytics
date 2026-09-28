@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { numeroRecibo, textoRecibo, formatoPesos, fechaAR } from '../../analytics/tesoreria';
 import { linkWhatsApp } from '../../utils/telefono';
+import { Icono } from '../../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    RECIBO DE UN COBRO
@@ -92,8 +93,8 @@ export default function Recibo({ club, jugador, pago, telefono, onCerrar }) {
         {aviso && <div style={{ color: 'var(--text)', fontSize: '0.8rem', textAlign: 'center', marginTop: '10px' }}>{aviso}</div>}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
-          <button onClick={compartir} disabled={trabajando} style={btn('#3b82f6', '#fff')}>{trabajando ? 'GENERANDO…' : '📤 COMPARTIR / BAJAR'}</button>
-          <button onClick={porWhatsApp} style={btn('#25D366', '#000')}>💬 MANDAR POR WHATSAPP</button>
+          <button onClick={compartir} disabled={trabajando} style={btn('#3b82f6', '#fff')}>{trabajando ? 'GENERANDO…' : <><Icono nombre="compartir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COMPARTIR / BAJAR</>}</button>
+          <button onClick={porWhatsApp} style={btn('#25D366', '#000')}><Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MANDAR POR WHATSAPP</button>
         </div>
         <button onClick={onCerrar} disabled={trabajando} style={{ ...btn('transparent', 'var(--text)'), border: '1px solid var(--border)', width: '100%', marginTop: '8px' }}>CERRAR</button>
       </div>

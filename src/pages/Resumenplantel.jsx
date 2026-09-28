@@ -6,6 +6,7 @@ import { useDatosPlantel } from '../utils/useDatosPlantel';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, tieneRuedasConfiguradas } from '../utils/ruedas';
 import { procesarPlantel, esArquero } from '../analytics/plantel';
+import { Icono } from '../iconos';
 
 const MONO = 'JetBrains Mono, monospace';
 
@@ -117,8 +118,8 @@ export default function ResumenPlantel() {
     { k: 'defi', t: 'DEF-i%', g: 'lu', num: p => p.defIndPct, r: p => p.duelDefIndTot ? p.defIndPct.toFixed(0) + '%' : '-' },
     { k: 'fc', t: 'FC', g: 'dis', num: p => p.faltasCom, r: p => p.faltasCom },
     { k: 'fr', t: 'FR', g: 'dis', num: p => p.faltasRec, r: p => p.faltasRec },
-    { k: 'am', t: '🟨', g: 'dis', num: p => p.amarillas, r: p => p.amarillas },
-    { k: 'ro', t: '🟥', g: 'dis', num: p => p.rojas, r: p => p.rojas },
+    { k: 'am', txt: 'Amarillas', t: <Icono nombre="tarjeta" size="1.3em" />, g: 'dis', num: p => p.amarillas, r: p => p.amarillas },
+    { k: 'ro', txt: 'Rojas', t: <Icono nombre="tarjeta" color="roja" size="1.3em" />, g: 'dis', num: p => p.rojas, r: p => p.rojas },
     { k: 'sanc', t: 'SANC', g: 'dis', num: p => p.sancPend, r: p => p.sancPend || '-' },
     { k: 'rat', t: 'RATING', g: 'imp', num: p => p.ratingProm, r: p => p.ratingCount ? p.ratingProm.toFixed(1) : '-' },
     { k: 'pm', t: '+/-', g: 'imp', num: p => p.pmProm, r: p => { const v = p.pmProm; return (v > 0 ? '+' : '') + v.toFixed(1); } },
@@ -180,15 +181,15 @@ export default function ResumenPlantel() {
     const pick = (arr, fn) => [...arr].sort((a, b) => fn(b) - fn(a))[0];
     const d = [];
     const goleador = pick(conMin, p => p.goles);
-    if (goleador && goleador.goles > 0) d.push({ ico: '⚽', t: 'GOLEADOR', n: goleador, v: `${goleador.goles} goles` });
+    if (goleador && goleador.goles > 0) d.push({ ico: 'pelota', t: 'GOLEADOR', n: goleador, v: `${goleador.goles} goles` });
     const minutos = pick(conMin, p => p.minutos);
-    if (minutos) d.push({ ico: '⏱️', t: 'MÁS MINUTOS', n: minutos, v: `${minutos.minutos}'` });
+    if (minutos) d.push({ ico: 'cronometro', t: 'MÁS MINUTOS', n: minutos, v: `${minutos.minutos}'` });
     const asist = pick(conMin, p => p.asistencias);
-    if (asist && asist.asistencias > 0) d.push({ ico: '🅰️', t: 'MÁS ASISTENCIAS', n: asist, v: `${asist.asistencias} asist.` });
+    if (asist && asist.asistencias > 0) d.push({ ico: 'asistencia', t: 'MÁS ASISTENCIAS', n: asist, v: `${asist.asistencias} asist.` });
     const muro = pick(conMin.filter(p => p.duelDefTot >= 5), p => p.defPct);
-    if (muro) d.push({ ico: '🛡️', t: 'MURO DEFENSIVO', n: muro, v: `${muro.defPct.toFixed(0)}% duelos` });
+    if (muro) d.push({ ico: 'escudo', t: 'MURO DEFENSIVO', n: muro, v: `${muro.defPct.toFixed(0)}% duelos` });
     const fig = pick(conMin.filter(p => p.ratingCount >= 2), p => p.ratingProm);
-    if (fig) d.push({ ico: '⭐', t: 'MEJOR RATING', n: fig, v: fig.ratingProm.toFixed(1) });
+    if (fig) d.push({ ico: 'estrella', t: 'MEJOR RATING', n: fig, v: fig.ratingProm.toFixed(1) });
     return d.slice(0, 5);
   }, [jugadoresProc]);
 
@@ -312,7 +313,7 @@ export default function ResumenPlantel() {
 
       {/* HEADER */}
       <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '2.5rem' }}>📋</div>
+        <div style={{ fontSize: '2.5rem' }}><Icono nombre="lista" size="1.2em" relleno="propio" /></div>
         <div style={{ flex: 1, minWidth: '200px' }}>
           <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>RESUMEN DE PLANTEL</div>
           <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Scouting interno · todo lo que captura el vivo, jugador por jugador.</div>
@@ -354,10 +355,10 @@ export default function ResumenPlantel() {
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Apellido o nombre..." style={inputIndustrial} />
         </div>
         <button onClick={() => setSoloConMinutos(v => !v)} className="btn-secondary" style={{ padding: '12px 16px', fontWeight: 800, fontSize: '0.8rem', borderColor: 'var(--border)', color: soloConMinutos ? 'var(--accent)' : 'var(--text-dim)' }}>
-          {soloConMinutos ? '✓ ' : ''}SOLO CON MINUTOS
+          {soloConMinutos && <Icono nombre="listo" size="1.1em" style={{ marginRight: 4 }} />}SOLO CON MINUTOS
         </button>
         <button onClick={exportarCSV} style={{ padding: '12px 16px', fontWeight: 800, fontSize: '0.8rem', backgroundColor: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-          📥 EXPORTAR CSV
+          <Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EXPORTAR CSV
         </button>
       </div>
 
@@ -377,7 +378,7 @@ export default function ResumenPlantel() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(170px, 100%), 1fr))', gap: '12px', marginBottom: '25px' }}>
               {destacados.map((d, i) => (
                 <div key={i} className="bento-card" style={{ padding: '14px', borderLeft: '3px solid var(--accent)' }}>
-                  <div className="stat-label" style={{ fontSize: '0.6rem' }}>{d.ico} {d.t}</div>
+                  <div className="stat-label" style={{ fontSize: '0.6rem' }}><Icono nombre={d.ico} size="1.3em" relleno="propio" style={{ marginRight: 5 }} />{d.t}</div>
                   <div style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text)', marginTop: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nombreCompleto(d.n)}</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 800, fontFamily: MONO }}>{d.v}</div>
                 </div>
@@ -402,8 +403,8 @@ export default function ResumenPlantel() {
             onSort={setSort}
             renderBadges={(p) => (<>
               {filtroCategoria !== 'Todas' && p.categoria !== filtroCategoria && <span title={`Invitado desde ${p.categoria || '-'}`} style={{ fontSize: '0.55rem', background: 'rgba(168,85,247,0.15)', color: '#a855f7', padding: '1px 5px', borderRadius: '3px', fontWeight: 800 }}>INV</span>}
-              {p.aptoVencido && <span title="Apto vencido">⚠️</span>}
-              {p.sancPend > 0 && <span title="Sancionado">⛔</span>}
+              {p.aptoVencido && <span title="Apto vencido"><Icono nombre="aviso" size="1.2em" relleno="propio" /></span>}
+              {p.sancPend > 0 && <span title="Sancionado"><Icono nombre="prohibido" size="1.2em" relleno="propio" /></span>}
             </>)}
             colorCelda={(p, col) => {
               if (col.k === 'rat') return colorRating(p.ratingProm);
@@ -430,7 +431,7 @@ export default function ResumenPlantel() {
                   <div key={sec.g}>
                     <div style={{ fontSize: '0.68rem', fontWeight: 900, color: GRUPOS[sec.g] || '#a855f7', marginBottom: '7px', letterSpacing: '0.5px' }}>{GRUPO_LABEL[sec.g]}</div>
                     {sec.items.map(([a, d]) => (
-                      <div key={a} style={{ display: 'flex', gap: '8px', fontSize: '0.72rem', marginBottom: '4px' }}>
+                      <div key={d} style={{ display: 'flex', gap: '8px', fontSize: '0.72rem', marginBottom: '4px' }}>
                         <span style={{ fontFamily: MONO, color: 'var(--text)', fontWeight: 800, minWidth: '54px', flexShrink: 0 }}>{a}</span>
                         <span style={{ color: 'var(--text-dim)' }}>{d}</span>
                       </div>
@@ -470,8 +471,8 @@ export default function ResumenPlantel() {
                         <span style={{ color: 'var(--text-dim)', fontFamily: MONO, fontSize: '0.7rem' }}>{p.dorsal ?? '-'}</span>
                         {nombreCompleto(p)}
                         {filtroCategoria !== 'Todas' && p.categoria !== filtroCategoria && <span title={`Invitado desde ${p.categoria || '-'}`} style={{ fontSize: '0.55rem', background: 'rgba(168,85,247,0.15)', color: '#a855f7', padding: '1px 5px', borderRadius: '3px', fontWeight: 800 }}>INV</span>}
-                        {p.aptoVencido && <span title="Apto vencido">⚠️</span>}
-                        {p.sancPend > 0 && <span title="Sancionado">⛔</span>}
+                        {p.aptoVencido && <span title="Apto vencido"><Icono nombre="aviso" size="1.2em" relleno="propio" /></span>}
+                        {p.sancPend > 0 && <span title="Sancionado"><Icono nombre="prohibido" size="1.2em" relleno="propio" /></span>}
                       </span>
                     </td>
                     {COLS.map(c => {
@@ -498,7 +499,7 @@ export default function ResumenPlantel() {
               colsClave={['rat', 'pataj', 'grec', 'ataj']}
               grupos={GRUPOS}
               gruposLabel={GRUPO_LABEL}
-              titulo="🧤 ARQUEROS"
+              titulo={<><Icono nombre="arquero" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ARQUEROS</>}
               getId={(p) => p.id}
               getTitulo={(p) => nombreCompleto(p)}
               getSubtitulo={(p) => `${p.dorsal ?? '-'} · ${(p.posicion || 'Arquero')}`}
@@ -514,7 +515,7 @@ export default function ResumenPlantel() {
               }}
             >
             <div className="bento-card" style={{ overflowX: 'auto', padding: '10px', marginTop: '25px' }}>
-              <div className="stat-label" style={{ padding: '8px 6px 14px', color: '#a855f7' }}>🧤 ARQUEROS ({filasArqueros.length})</div>
+              <div className="stat-label" style={{ padding: '8px 6px 14px', color: '#a855f7' }}><Icono nombre="arquero" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ARQUEROS ({filasArqueros.length})</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', minWidth: '700px' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--bg)', color: 'var(--text-dim)' }}>
@@ -568,7 +569,7 @@ const GLOSARIO = [
   { g: 'part', items: [['CIT', 'Partidos en los que fue citado (está en la planilla)'], ['PJ', 'Partidos jugados (tuvo minutos)'], ['TIT', 'Veces que arrancó de titular'], ['ING', 'Veces que ingresó de cambio'], ['MIN', 'Minutos totales jugados'], ['%MIN', '% de minutos sobre los partidos disponibles (citados × 40′)'], ['PART%', 'Participación: % promedio de las acciones del partido que ocurrieron con el jugador en cancha. No depende del cronómetro.']] },
   { g: 'of', items: [['G', 'Goles'], ['G/PJ', 'Goles por partido jugado'], ['xG', 'Goles esperados: la calidad de sus remates'], ['G-xG', 'Goles menos xG (+ define de más, − de menos)'], ['REM', 'Remates totales'], ['%ARCO', '% de remates que fueron al arco'], ['OC.F', 'Ocasiones falladas'], ['A', 'Asistencias'], ['A/PJ', 'Asistencias por partido jugado'], ['PC', 'Pases clave']] },
   { g: 'lu', items: [['REC', 'Recuperaciones'], ['PERD', 'Pérdidas'], ['OFE%', '% de duelos ofensivos ganados (con pelota)'], ['DEF%', '% de duelos defensivos ganados (con pelota)'], ['OFE-i%', '% de duelos ofensivos indirectos ganados (sin pelota)'], ['DEF-i%', '% de duelos defensivos indirectos ganados (sin pelota)']] },
-  { g: 'dis', items: [['FC', 'Faltas cometidas'], ['FR', 'Faltas recibidas'], ['🟨', 'Tarjetas amarillas'], ['🟥', 'Tarjetas rojas'], ['SANC', 'Fechas de sanción pendientes']] },
+  { g: 'dis', items: [['FC', 'Faltas cometidas'], ['FR', 'Faltas recibidas'], [<Icono key="am" nombre="tarjeta" size="1.2em" />, 'Tarjetas amarillas'], [<Icono key="ro" nombre="tarjeta" color="roja" size="1.2em" />, 'Tarjetas rojas'], ['SANC', 'Fechas de sanción pendientes']] },
   { g: 'imp', items: [['RATING', 'Rating promedio (motor de puntuación por partido)'], ['+/-', 'Diferencia de gol promedio con el jugador en cancha']] },
   { g: 'arq', items: [['G.REC', 'Goles recibidos'], ['ATAJ', 'Atajadas'], ['%ATAJ', '% de atajadas sobre remates al arco'], ['xG REC', 'xG recibido (peligro enfrentado)'], ['G.EVIT', 'Goles evitados: xG recibido − goles recibidos']] },
 ];

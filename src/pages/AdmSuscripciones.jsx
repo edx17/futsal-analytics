@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { PLANES, precioDe, renovar, esFundador } from '../utils/planes';
 import { useAuth } from '../context/AuthContext';
 import { TablaResponsive } from '../components/TablaResponsive';
+import { Icono } from '../iconos';
 
 function AdmSuscripciones() {
   const { perfil } = useAuth();
@@ -83,20 +84,20 @@ function AdmSuscripciones() {
   const COLS_CLUBES = [
     { k: 'plan', t: 'PLAN', g: 'gen', r: c => (c.plan_actual || 'Básico').toUpperCase() },
     { k: 'estado', t: 'ESTADO', g: 'gen', r: c => c.suscripcion_activa
-      ? <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}>✅ ACTIVA</span>
-      : <span style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}>🛑 SUSPENDIDA</span> },
+      ? <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ACTIVA</span>
+      : <span style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}><Icono nombre="prohibido" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SUSPENDIDA</span> },
     { k: 'venc', t: 'VENCIMIENTO', g: 'gen', r: c => {
       if (!c.fecha_vencimiento) return '-';
       const dias = Math.ceil((new Date(c.fecha_vencimiento) - new Date()) / (1000 * 60 * 60 * 24));
       return <>
         {new Date(c.fecha_vencimiento).toLocaleDateString('es-AR')}
-        {c.suscripcion_activa && dias <= 5 && dias > 0 && <span style={{ color: '#facc15', marginLeft: '8px', fontSize: '0.7rem' }}>⚠️ ({dias}d)</span>}
-        {c.suscripcion_activa && dias <= 0 && <span style={{ color: '#ef4444', marginLeft: '8px', fontSize: '0.7rem' }}>❌ Vencida</span>}
+        {c.suscripcion_activa && dias <= 5 && dias > 0 && <span style={{ color: '#facc15', marginLeft: '8px', fontSize: '0.7rem' }}><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />({dias}d)</span>}
+        {c.suscripcion_activa && dias <= 0 && <span style={{ color: '#ef4444', marginLeft: '8px', fontSize: '0.7rem' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Vencida</span>}
       </>;
     } },
     { k: 'acc', t: 'ACCIONES', g: 'gen', r: c => (
       <button onClick={() => abrirEdicion(c)} style={{ background: 'transparent', border: '1px solid #c084fc', color: '#c084fc', padding: '8px 12px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', minHeight: '38px' }}>
-        ⚙️ GESTIONAR
+        <Icono nombre="ajustes" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GESTIONAR
       </button>
     ) },
   ];
@@ -148,17 +149,17 @@ function AdmSuscripciones() {
                       </td>
                       <td style={{ padding: '15px 10px' }}>
                         {c.suscripcion_activa ? (
-                          <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}>✅ ACTIVA</span>
+                          <span style={{ background: 'rgba(0,255,136,0.1)', color: '#00ff88', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ACTIVA</span>
                         ) : (
-                          <span style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}>🛑 SUSPENDIDA</span>
+                          <span style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', padding: '4px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.7rem' }}><Icono nombre="prohibido" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SUSPENDIDA</span>
                         )}
                       </td>
                       <td style={{ padding: '15px 10px', color: 'var(--text-dim)' }}>
                         {c.fecha_vencimiento ? (
                           <>
                             {new Date(c.fecha_vencimiento).toLocaleDateString('es-AR')}
-                            {c.suscripcion_activa && diasRestantes <= 5 && diasRestantes > 0 && <span style={{ color: '#facc15', marginLeft: '10px', fontSize: '0.7rem' }}>⚠️ ({diasRestantes}d)</span>}
-                            {c.suscripcion_activa && diasRestantes <= 0 && <span style={{ color: '#ef4444', marginLeft: '10px', fontSize: '0.7rem' }}>❌ Vencida</span>}
+                            {c.suscripcion_activa && diasRestantes <= 5 && diasRestantes > 0 && <span style={{ color: '#facc15', marginLeft: '10px', fontSize: '0.7rem' }}><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />({diasRestantes}d)</span>}
+                            {c.suscripcion_activa && diasRestantes <= 0 && <span style={{ color: '#ef4444', marginLeft: '10px', fontSize: '0.7rem' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Vencida</span>}
                           </>
                         ) : '-'}
                       </td>
@@ -169,7 +170,7 @@ function AdmSuscripciones() {
                           onMouseOver={(e) => { e.currentTarget.style.background = '#c084fc'; e.currentTarget.style.color = '#000'; }}
                           onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#c084fc'; }}
                         >
-                          ⚙️ GESTIONAR
+                          <Icono nombre="ajustes" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GESTIONAR
                         </button>
                       </td>
                     </tr>
@@ -225,7 +226,7 @@ function AdmSuscripciones() {
 
                 {esFundador(clubSeleccionado) && (
                   <p style={{ fontSize: '0.75rem', color: '#facc15', marginTop: '6px', fontWeight: 700 }}>
-                    ⭐ Socio fundador: no paga y no tiene tope de categorías.
+                    <Icono nombre="estrella" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Socio fundador: no paga y no tiene tope de categorías.
                   </p>
                 )}
               </div>
@@ -237,8 +238,8 @@ function AdmSuscripciones() {
                   onChange={(e) => setFormData({...formData, suscripcion_activa: e.target.value === 'true'})}
                   style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: formData.suscripcion_activa ? '#00ff88' : '#ef4444', borderRadius: '4px', outline: 'none', fontWeight: 800 }}
                 >
-                  <option value="true">✅ ACTIVO (Con Acceso)</option>
-                  <option value="false">🛑 SUSPENDIDO (Sin Acceso)</option>
+                  <option value="true">ACTIVO (Con Acceso)</option>
+                  <option value="false">SUSPENDIDO (Sin Acceso)</option>
                 </select>
                 <p style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '5px' }}>Si lo suspendés, los usuarios de este club no podrán cargar datos ni ver reportes.</p>
               </div>
@@ -282,7 +283,7 @@ function AdmSuscripciones() {
                 disabled={guardando}
                 style={{ background: '#c084fc', color: '#000', padding: '15px', fontWeight: 900, border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '10px' }}
               >
-                {guardando ? 'GUARDANDO CAMBIOS...' : '💾 APLICAR CAMBIOS'}
+                {guardando ? 'GUARDANDO CAMBIOS...' : <><Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />APLICAR CAMBIOS</>}
               </button>
 
             </form>

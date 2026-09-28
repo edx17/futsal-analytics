@@ -1,5 +1,6 @@
 import React from 'react';
 import { partesDeFecha, formatearHora } from '../../utils/citacion';
+import { Icono } from '../../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    TARJETAS DEL MENÚ DEL JUGADOR (KIOSCO)
@@ -18,7 +19,7 @@ const caja = (color) => ({
 const Rotulo = ({ icono, color, children, derecha = null }) => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <span style={{ fontSize: '1.2rem' }}>{icono}</span>
+      <span style={{ color, display: 'flex' }}>{icono === 'tarjeta' ? <Icono nombre="tarjeta" size={20} /> : <Icono nombre={icono} size={20} relleno="propio" />}</span>
       <span style={{ fontSize: '0.75rem', fontWeight: 900, color, letterSpacing: '1px' }}>{children}</span>
     </div>
     {derecha}
@@ -96,7 +97,7 @@ export function TarjetaWellness({ completo, historial = [], onCargar }) {
   if (!completo) {
     return (
       <div style={caja('#f97316')}>
-        <Rotulo icono="⚠️" color="#f97316">WELLNESS DE HOY</Rotulo>
+        <Rotulo icono="aviso" color="#f97316">WELLNESS DE HOY</Rotulo>
         <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text)', marginBottom: '10px' }}>
           Todavía no completaste el wellness de hoy.
         </div>
@@ -110,7 +111,7 @@ export function TarjetaWellness({ completo, historial = [], onCargar }) {
 
   return (
     <div style={caja('#10b981')}>
-      <Rotulo icono="✅" color="#10b981">WELLNESS AL DÍA</Rotulo>
+      <Rotulo icono="ok" color="#10b981">WELLNESS AL DÍA</Rotulo>
       <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '10px' }}>Tus últimos 7 días:</div>
       {tira}
     </div>
@@ -120,7 +121,7 @@ export function TarjetaWellness({ completo, historial = [], onCargar }) {
 /* ── AGENDA Y PRÓXIMO PARTIDO ────────────────────────────────────────────── */
 
 const TEXTO_CITACION = {
-  citado:         { t: '✅ ESTÁS CITADO', c: '#10b981' },
+  citado:         { i: 'ok', t: 'ESTÁS CITADO', c: '#10b981' },
   'no-citado':    { t: 'No figurás en la citación', c: 'var(--text-dim)' },
   'sin-publicar': { t: 'La citación todavía no se publicó', c: 'var(--text-dim)' },
 };
@@ -134,7 +135,7 @@ export function TarjetaAgenda({ proximo, sesiones = [] }) {
 
   return (
     <div style={caja('#3b82f6')}>
-      <Rotulo icono="📅" color="#3b82f6">MI AGENDA</Rotulo>
+      <Rotulo icono="calendario" color="#3b82f6">MI AGENDA</Rotulo>
 
       {p ? (
         <div style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '10px', padding: '12px', marginBottom: '12px' }}>
@@ -147,13 +148,13 @@ export function TarjetaAgenda({ proximo, sesiones = [] }) {
           </div>
           {(proximo.sede || proximo.direccion) && (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-              🏟️ {[proximo.sede, proximo.direccion].filter(Boolean).join(' — ')}
+              <Icono nombre="club" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{[proximo.sede, proximo.direccion].filter(Boolean).join(' — ')}
               {mapa && <> · <a href={mapa} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', fontWeight: 800 }}>cómo llegar</a></>}
             </div>
           )}
           {cit && (
             <div style={{ marginTop: '10px', fontSize: '0.85rem', fontWeight: 900, color: cit.c }}>
-              {cit.t}
+              {cit.i && <Icono nombre={cit.i} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />}{cit.t}
               {proximo.citacion === 'citado' && proximo.horaCitacion && (
                 <span style={{ color: 'var(--text)' }}> · presentarse {formatearHora(proximo.horaCitacion)}</span>
               )}
@@ -203,7 +204,7 @@ export function TarjetaDisciplina({ disciplina }) {
 
   return (
     <div style={caja(color)}>
-      <Rotulo icono="🟨" color={color === '#a3a3a3' ? 'var(--text)' : color}>MIS TARJETAS</Rotulo>
+      <Rotulo icono="tarjeta" color={color === '#a3a3a3' ? 'var(--text)' : color}>MIS TARJETAS</Rotulo>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
         {[
           { l: 'AMARILLAS', v: disciplina.amarillas, c: '#facc15' },
@@ -231,7 +232,7 @@ export function TarjetaNotificaciones({ estado, mensaje, onActivar }) {
   if (estado === 'activas') return null;
   return (
     <div style={caja('#a855f7')}>
-      <Rotulo icono="🔔" color="#a855f7">AVISOS EN TU CELULAR</Rotulo>
+      <Rotulo icono="campana" color="#a855f7">AVISOS EN TU CELULAR</Rotulo>
       <div style={{ fontSize: '0.8rem', color: 'var(--text)', marginBottom: '10px', lineHeight: 1.4 }}>
         Enterate al toque cuando te citan, recordatorio del wellness y más.
       </div>
@@ -250,7 +251,7 @@ export function TarjetaNotificaciones({ estado, mensaje, onActivar }) {
 export function TarjetaReingresar({ onReingresar }) {
   return (
     <div style={caja('#3b82f6')}>
-      <Rotulo icono="🔐" color="#3b82f6">TU AGENDA, TARJETAS Y TORNEO</Rotulo>
+      <Rotulo icono="candado" color="#3b82f6">TU AGENDA, TARJETAS Y TORNEO</Rotulo>
       <div style={{ fontSize: '0.8rem', color: 'var(--text)', marginBottom: '10px' }}>
         Volvé a poner tu PIN una vez para ver tu agenda, tus tarjetas y activar los avisos.
       </div>

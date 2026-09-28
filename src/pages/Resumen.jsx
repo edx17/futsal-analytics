@@ -23,6 +23,7 @@ import { exportarEventosCSV } from '../utils/exportadorVideo';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { esModoKiosco, tablaJugadores } from '../utils/kiosco';
+import { Icono } from '../iconos';
 
 // Componente para la Malla de Microzonas Tácticas (Filtro ZONAS)
 const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
@@ -321,7 +322,7 @@ const COLS_RES_CAMPO = [
   { k: 'perd', t: 'PERD', g: 'lu', r: j => j.perdidas },
   { k: 'pinc', t: 'PASES INC.', g: 'lu', r: j => j.pasesIncompletos },
   { k: 'faltas', t: 'FALTAS (C/R)', g: 'dis', r: j => `${j.faltas || 0} / ${(j.eventos || []).filter(e => e.accion === 'Falta recibida' || e.accion === 'Penal a favor').length || 0}` },
-  { k: 'tarj', t: '🟨/🟥', g: 'dis', r: j => `${j.amarillas || 0}/${j.rojas || 0}` },
+  { k: 'tarj', txt: 'Amarillas/Rojas', t: <><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></>, g: 'dis', r: j => `${j.amarillas || 0}/${j.rojas || 0}` },
 ];
 
 function Resumen() {
@@ -1205,7 +1206,7 @@ return 'Todas';
                 onClick={() => setSoloAnalizados(!soloAnalizados)}
                 style={{ width: '100%', padding: '8px 12px', background: soloAnalizados ? 'rgba(0,255,136,0.1)' : 'var(--panel)', color: soloAnalizados ? 'var(--accent)' : 'var(--text)', border: `1px solid ${soloAnalizados ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '4px', cursor: 'pointer', outline: 'none', transition: '0.2s' }}
               >
-                {soloAnalizados ? 'SOLO ANALIZADOS ✓' : 'TODOS LOS PARTIDOS'}
+                {soloAnalizados ? <>SOLO ANALIZADOS <Icono nombre="listo" size="1.1em" /></> : 'TODOS LOS PARTIDOS'}
               </button>
             </div>
 
@@ -1277,7 +1278,7 @@ const COLORS_ORIGEN = {
 
       {/* HEADER PRINCIPAL CON BOTON VOLVER Y TOGGLE VISTA */}
       <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', gap: '15px' }}>
-        <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flex: esMovil ? '1 1 100%' : 'none', justifyContent: 'center' }}>⬅ VOLVER</button>
+        <button onClick={cerrarPartido} style={{ padding: '8px 15px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', flex: esMovil ? '1 1 100%' : 'none', justifyContent: 'center' }}><Icono nombre="volver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VOLVER</button>
         
         <div style={{ display: 'flex', background: 'var(--panel)', padding: '4px', borderRadius: '6px', border: '1px solid var(--border)', width: esMovil ? '100%' : 'auto' }}>
             <button onClick={() => setVistaActiva('express')} style={{ flex: 1, padding: '8px 20px', borderRadius: '4px', border: 'none', background: vistaActiva === 'express' ? 'var(--accent)' : 'transparent', color: vistaActiva === 'express' ? '#000' : 'var(--text-dim)', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', transition: '0.2s' }}>
@@ -1330,10 +1331,10 @@ const COLORS_ORIGEN = {
                 {/* GOLEADORES */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
                     <div style={{ flex: 1, textAlign: 'left', color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: '1.8' }}>
-                        {goleadores.propio.map((g, i) => <div key={i}>⚽ {g}</div>)}
+                        {goleadores.propio.map((g, i) => <div key={i}><Icono nombre="pelota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{g}</div>)}
                     </div>
                     <div style={{ flex: 1, textAlign: 'right', color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: '1.8' }}>
-                        {goleadores.rival.map((g, i) => <div key={i}>{g} ⚽</div>)}
+                        {goleadores.rival.map((g, i) => <div key={i}>{g} <Icono nombre="pelota" size="1em" relleno="propio" /></div>)}
                     </div>
                 </div>
             </div>
@@ -1506,7 +1507,7 @@ const COLORS_ORIGEN = {
                 onClick={() => { if (!isKiosco) navigate('/wellness'); }}
               >
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  🩺 CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios cruzados con la categoría o jugadores participantes." />
+                  <Icono nombre="medico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios cruzados con la categoría o jugadores participantes." />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '20px' }}>
@@ -1896,7 +1897,7 @@ const COLORS_ORIGEN = {
             <div className="bento-card">
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                  <div className="stat-label" style={{ color: 'var(--accent)' }}>RENDIMIENTO: JUGADORES DE CAMPO</div>
-                 {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
+                 {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}><Icono nombre="avanzar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Deslizá la tabla</span>}
               </div>
               <div className="table-wrapper custom-scroll">
 <table style={{ minWidth: '950px', width: '100%', textAlign: 'center' }}>
@@ -1928,7 +1929,7 @@ const COLORS_ORIGEN = {
       <th style={{ color: '#ef4444' }}>PASES INC.</th>
       <th style={{ color: '#f59e0b' }}>OC. FALLADAS</th>
       <th style={{ color: '#f97316' }}>FALTAS (C/R)</th>
-      <th style={{ color: '#fbbf24' }}>🟨/🟥</th>
+      <th style={{ color: '#fbbf24' }}><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></th>
     </tr>
   </thead>
   <tbody>
@@ -1992,7 +1993,7 @@ const COLORS_ORIGEN = {
               <div className="bento-card" style={{ borderTop: '2px solid #3b82f6' }}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                    <div className="stat-label" style={{ color: '#3b82f6' }}>RENDIMIENTO: ARQUEROS</div>
-                   {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
+                   {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}><Icono nombre="avanzar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Deslizá la tabla</span>}
                 </div>
                 <div className="table-wrapper custom-scroll">
                   <table style={{ minWidth: '700px', width: '100%', textAlign: 'center' }}>
@@ -2010,7 +2011,7 @@ const COLORS_ORIGEN = {
                         <th style={{ color: '#c084fc' }}>INICIO xG</th>
                         <th style={{ color: '#ef4444' }}>PASES INC.</th>
                         <th style={{ color: '#f97316' }}>FALTAS (C/R)</th> 
-                        <th style={{ color: '#fbbf24' }}>🟨/🟥</th> 
+                        <th style={{ color: '#fbbf24' }}><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></th> 
                       </tr>
                     </thead>
                     <tbody>
@@ -2078,7 +2079,7 @@ const COLORS_ORIGEN = {
                 RENDIMIENTO POR QUINTETOS 
                 <InfoBox texto="Rendimiento del equipo al jugar con estas combinaciones específicas de 5 jugadores en este partido." />
               </div>
-              {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
+              {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}><Icono nombre="avanzar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Deslizá la tabla</span>}
             </div>
             <div className="table-wrapper custom-scroll" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
@@ -2090,7 +2091,7 @@ const COLORS_ORIGEN = {
                     <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
                     <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
                     <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
-                    <th title="Amarillas / Rojas">🟨/🟥</th>
+                    <th title="Amarillas / Rojas"><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></th>
                     <th>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>+/-</div>
                     </th>
@@ -2175,7 +2176,7 @@ const COLORS_ORIGEN = {
           <div className="bento-card">
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
                <div className="stat-label" style={{ color: 'var(--accent)' }}>DETALLE DE REMATES</div>
-               {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
+               {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}><Icono nombre="avanzar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Deslizá la tabla</span>}
             </div>
             <div className="table-wrapper custom-scroll">
               <table style={{ minWidth: '500px', width: '100%', textAlign: 'center' }}>
@@ -2213,10 +2214,10 @@ const COLORS_ORIGEN = {
 
           <div className="bento-card" style={{ borderTop: '3px solid var(--accent)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem', margin: 0 }}>🎬 VIDEOTRACKING</div>
+              <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem', margin: 0 }}><Icono nombre="video" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VIDEOTRACKING</div>
               {partidoSeleccionado.video_url && (
                 <button onClick={desvincularVideo} style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem', padding: '4px 8px', fontWeight: 'bold' }}>
-                  🗑️ QUITAR VIDEO
+                  <Icono nombre="borrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />QUITAR VIDEO
                 </button>
               )}
             </div>
@@ -2268,18 +2269,18 @@ const COLORS_ORIGEN = {
 
                     <div style={{ display: 'flex', gap: '20px', padding: '15px', background: 'var(--panel)', borderRadius: '4px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                         <div style={{ flex: '1 1 120px' }}>
-                          <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO PT</label>
+                          <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}><Icono nombre="cronometro" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SEGUNDO INICIO PT</label>
                           <input type="number" value={offsetPT} onChange={(e) => setOffsetPT(Number(e.target.value))} onBlur={guardarOffsets} style={{ width: '100%', padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }} />
                         </div>
                         <div style={{ flex: '1 1 120px' }}>
-                          <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}>⏱️ SEGUNDO INICIO ST</label>
+                          <label style={{ fontSize: '0.65rem', color: 'var(--text-dim)', display: 'block', marginBottom: '5px' }}><Icono nombre="cronometro" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SEGUNDO INICIO ST</label>
                           <input type="number" value={offsetST} onChange={(e) => setOffsetST(Number(e.target.value))} onBlur={guardarOffsets} style={{ width: '100%', padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }} />
                         </div>
                         <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '8px' }}>
                           <button onClick={guardarOffsets} className="btn-secondary" style={{ fontSize: '0.65rem', padding: '8px 12px', fontWeight: 800 }}>
                             GUARDAR SINCRO
                           </button>
-                          {offsetsGuardados && <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 800 }}>✓ GUARDADO</span>}
+                          {offsetsGuardados && <span style={{ fontSize: '0.65rem', color: 'var(--accent)', fontWeight: 800 }}><Icono nombre="listo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDADO</span>}
                         </div>
                         <div style={{ flex: '1 1 100%', fontSize: '0.62rem', color: 'var(--text-dim)' }}>
                           Estos dos números son los que alimentan los cortes automáticos del dossier de video del rival en Scouting.
@@ -2333,7 +2334,7 @@ const COLORS_ORIGEN = {
               onClick={() => setMostrarReporte(false)} 
               style={{ background: '#ef4444', color: '#ffffff', border: 'none', padding: '10px 20px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '4px', marginBottom: '10px' }}
             >
-              CERRAR VISTA PREVIA ✖
+              CERRAR VISTA PREVIA <Icono nombre="cerrar" size="1.1em" />
             </button>
           </div>
           

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TIPOS } from '../analytics/agenda';
 import { cuandoEsElPartido } from '../analytics/tablero';
+import { Icono } from '../iconos';
 
 /* LA FRANJA DE HOY
  *
@@ -67,7 +68,7 @@ export default function FranjaHoy({ franja, hoy, esMovil, onIr, onApagar }) {
             const def = TIPOS[e.tipo];
             return (
               <button key={e.id} onClick={() => onIr && onIr(e.ruta)} style={chip(def.color)} title={e.sub || e.titulo}>
-                <span>{def.ico}</span>
+                <Icono nombre={def.ico} size={15} relleno="propio" />
                 {e.hora && <span style={{ ...MONO, opacity: 0.85 }}>{e.hora}</span>}
                 <span style={{ maxWidth: esMovil ? 150 : 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {e.titulo}
@@ -87,7 +88,7 @@ export default function FranjaHoy({ franja, hoy, esMovil, onIr, onApagar }) {
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
         {mostrarPartido && (
           <button onClick={() => onIr && onIr('/torneos')} style={chip('#00ff88')}>
-            <span>⚽</span>
+            <Icono nombre="pelota" size={15} relleno="propio" />
             <span style={{ maxWidth: esMovil ? 130 : 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {partido.titulo}
             </span>
@@ -97,7 +98,7 @@ export default function FranjaHoy({ franja, hoy, esMovil, onIr, onApagar }) {
 
         {avisos > 0 && (
           <button onClick={() => onIr && onIr('/agenda')} style={chip(graves > 0 ? '#ef4444' : '#f59e0b')}>
-            <span>{graves > 0 ? '⚠️' : '•'}</span>
+            {graves > 0 ? <Icono nombre="aviso" size={15} relleno="propio" /> : <span>•</span>}
             <span>{avisos} aviso{avisos > 1 ? 's' : ''}</span>
           </button>
         )}
@@ -109,10 +110,10 @@ export default function FranjaHoy({ franja, hoy, esMovil, onIr, onApagar }) {
 }
 
 const Cerrar = ({ onApagar }) => (
-  <button onClick={onApagar} title="Ocultar esta franja (se vuelve a prender desde ⚙️ Editar)"
+  <button onClick={onApagar} title="Ocultar esta franja (se vuelve a prender desde Editar)"
           aria-label="Ocultar la franja de hoy"
           style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', padding: '2px 4px', lineHeight: 1, flexShrink: 0 }}>
-    ✕
+    <Icono nombre="cerrar" size={16} />
   </button>
 );
 

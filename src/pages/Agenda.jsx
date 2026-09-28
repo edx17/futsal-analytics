@@ -9,6 +9,7 @@ import {
   construirAgenda, porDia, conteoPorTipo, sumarDias, diasEntre,
   TIPOS, ORDEN_TIPOS,
 } from '../analytics/agenda';
+import { Icono } from '../iconos';
 
 /* AGENDA ÚNICA
  *
@@ -204,7 +205,7 @@ export default function Agenda() {
 
       {fallaron.length > 0 && (
         <div className="bento-card" style={{ marginBottom: 16, borderColor: '#fbbf24', color: '#fbbf24', fontSize: '0.8rem' }}>
-          ⚠️ No se pudo leer: {fallaron.join(', ')}. Lo demás se muestra igual.
+          <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />No se pudo leer: {fallaron.join(', ')}. Lo demás se muestra igual.
         </div>
       )}
 
@@ -223,7 +224,7 @@ export default function Agenda() {
             <div style={{ fontFamily: MONO, fontSize: '0.75rem', color: 'var(--text-dim)', minWidth: 118, textAlign: 'center' }}>
               {rotuloVentana}
             </div>
-            <button onClick={() => setDesplazamiento((d) => d + 1)} style={chip(false)} aria-label="Ventana siguiente">▶</button>
+            <button onClick={() => setDesplazamiento((d) => d + 1)} style={chip(false)} aria-label="Ventana siguiente"><Icono nombre="reproducir" size="1.2em" relleno="propio" /></button>
             {desplazamiento !== 0 && (
               <button onClick={() => setDesplazamiento(0)} style={chip(false)}>HOY</button>
             )}
@@ -252,7 +253,7 @@ export default function Agenda() {
                         color: activo ? def.color : 'var(--text-dim)',
                         opacity: conteo[t] ? 1 : 0.45,
                       }}>
-                {def.ico} {def.rotulo} {conteo[t] || 0}
+                <Icono nombre={def.ico} size="1.2em" relleno="propio" style={{ marginRight: 4 }} />{def.rotulo} {conteo[t] || 0}
               </button>
             );
           })}
@@ -295,7 +296,7 @@ export default function Agenda() {
                          gap: 10, alignItems: 'center', cursor: 'pointer',
                          padding: '9px 0', borderTop: '1px solid var(--border)',
                        }}>
-                    <div style={{ fontSize: '1rem' }} title={def.rotulo}>{def.ico}</div>
+                    <div style={{ fontSize: '1rem', color: def.color, display: 'flex' }} title={def.rotulo}><Icono nombre={def.ico} size="1.2em" relleno="propio" /></div>
 
                     {!esMovil && (
                       <div style={{ fontFamily: MONO, fontSize: '0.75rem', color: e.hora ? def.color : 'var(--text-dim)' }}>

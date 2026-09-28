@@ -3,6 +3,7 @@ import { supabase } from '../../supabase';
 import {
   COLUMNAS, leerPlanilla, planDeCarga, parsearCSV, fechaArgentina,
 } from '../../analytics/cargaMasiva';
+import { Icono } from '../../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    PLANILLA DEL PLANTEL: BAJAR, COMPLETAR, SUBIR
@@ -96,7 +97,7 @@ export default function CargaPlanilla({ jugadores, clubId, onCerrar, onGuardado,
 
     setGuardando(false);
     setResultado({ actualizados, creados, fallas });
-    if (fallas.length === 0) showToast?.(`Planilla guardada: ${creados} altas, ${actualizados} actualizados ✅`, 'success');
+    if (fallas.length === 0) showToast?.(`Planilla guardada: ${creados} altas, ${actualizados} actualizados`, 'success');
     onGuardado?.();
   };
 
@@ -107,21 +108,21 @@ export default function CargaPlanilla({ jugadores, clubId, onCerrar, onGuardado,
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !guardando) onCerrar(); }}>
       <div className="bento-card modal-content" style={{ maxWidth: '720px', background: 'var(--panel)' }}>
         <div className="modal-header">
-          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}>📊 CARGA POR PLANILLA</h2>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CARGA POR PLANILLA</h2>
           <button onClick={onCerrar} disabled={guardando} className="close-btn">×</button>
         </div>
 
         {!resultado && (
           <>
             <ol style={{ margin: '0 0 16px', paddingLeft: '20px', fontSize: '0.85rem', color: 'var(--text-dim)', lineHeight: 1.6 }}>
-              <li>Bajá la planilla con <strong style={{ color: 'var(--text)' }}>⬇ BAJAR PLANILLA</strong> (trae todo lo que ya está cargado).</li>
+              <li>Bajá la planilla con <strong style={{ color: 'var(--text)' }}><Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BAJAR PLANILLA</strong> (trae todo lo que ya está cargado).</li>
               <li>Completala en Excel o Google Sheets. Para un jugador nuevo, agregá una fila con el ID vacío.</li>
               <li>Subila acá. Antes de guardar vas a ver exactamente qué cambia.</li>
             </ol>
 
             <input ref={inputRef} type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" onChange={elegir} style={{ display: 'none' }} />
             <button onClick={() => inputRef.current?.click()} disabled={leyendo || guardando} className="btn-action" style={{ width: '100%', marginBottom: '16px' }}>
-              {leyendo ? 'LEYENDO…' : archivo ? `📄 ${archivo.name} · ELEGIR OTRO` : '⬆ ELEGIR ARCHIVO (.xlsx o .csv)'}
+              {leyendo ? 'LEYENDO…' : archivo ? <><Icono nombre="archivo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{archivo.name} · ELEGIR OTRO</> : <><Icono nombre="subir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ELEGIR ARCHIVO (.xlsx o .csv)</>}
             </button>
           </>
         )}
@@ -146,7 +147,7 @@ export default function CargaPlanilla({ jugadores, clubId, onCerrar, onGuardado,
             )}
 
             {plan.errores.length > 0 && (
-              <Seccion titulo="⚠️ NO SE VAN A GUARDAR (corregilas y volvé a subir)" color="#ef4444">
+              <Seccion titulo={<><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />NO SE VAN A GUARDAR (corregilas y volvé a subir)</>} color="#ef4444">
                 {plan.errores.map((e) => (
                   <div key={e.nroFila} style={fila}>
                     <strong>Fila {e.nroFila} · {e.jugador}</strong>
@@ -157,7 +158,7 @@ export default function CargaPlanilla({ jugadores, clubId, onCerrar, onGuardado,
             )}
 
             {plan.nuevos.length > 0 && (
-              <Seccion titulo="➕ JUGADORES NUEVOS" color="var(--accent)">
+              <Seccion titulo={<><Icono nombre="agregar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />JUGADORES NUEVOS</>} color="var(--accent)">
                 {plan.nuevos.map((n) => (
                   <div key={n.nroFila} style={fila}>
                     <strong>{n.datos.apellido}, {n.datos.nombre}</strong>
@@ -168,7 +169,7 @@ export default function CargaPlanilla({ jugadores, clubId, onCerrar, onGuardado,
             )}
 
             {plan.cambios.length > 0 && (
-              <Seccion titulo="✏️ CAMBIOS" color="#3b82f6">
+              <Seccion titulo={<><Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CAMBIOS</>} color="#3b82f6">
                 {plan.cambios.map((c) => (
                   <div key={c.nroFila} style={fila}>
                     <strong>{c.jugador.apellido}, {c.jugador.nombre}</strong>
@@ -195,7 +196,7 @@ export default function CargaPlanilla({ jugadores, clubId, onCerrar, onGuardado,
           <div>
             <div style={caja(resultado.fallas.length ? '#f59e0b' : 'var(--accent)')}>
               <div style={{ fontWeight: 900, marginBottom: '6px' }}>
-                {resultado.fallas.length ? 'Se guardó una parte' : 'Listo ✅'}
+                {resultado.fallas.length ? 'Se guardó una parte' : <>Listo <Icono nombre="ok" size="1.2em" relleno="propio" /></>}
               </div>
               <div style={{ fontSize: '0.85rem' }}>{resultado.creados} jugadores nuevos · {resultado.actualizados} actualizados.</div>
               {resultado.creados > 0 && (

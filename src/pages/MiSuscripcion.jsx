@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase';
 import { planPorId, limiteDelClub, esFundador, categoriasDe, formatARS, whatsappLink,
          COBRO, hayTransferencia, linkMP, precioDe, mensajeDePago } from '../utils/planes';
+import { Icono } from '../iconos';
 
 /* Un alias se copia, no se transcribe: transcribirlo a mano es la forma más
    común de que una transferencia termine en la cuenta equivocada. */
@@ -21,7 +22,7 @@ const BotonCopiar = ({ etiqueta, valor }) => {
       <span style={{ fontSize: '0.62rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '0.06em', minWidth: '38px' }}>{etiqueta}</span>
       <strong style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.9rem', wordBreak: 'break-all' }}>{valor}</strong>
       <span style={{ fontSize: '0.7rem', color: copiado ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 800, whiteSpace: 'nowrap' }}>
-        {copiado ? '✓ COPIADO' : 'COPIAR'}
+        {copiado ? <><Icono nombre="listo" size="1.1em" style={{ marginRight: 4 }} />COPIADO</> : 'COPIAR'}
       </span>
     </div>
   );
@@ -95,11 +96,11 @@ function MiSuscripcion() {
             <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '1px' }}>ESTADO DE CUENTA</div>
             {suscripcion_activa ? (
               <div style={{ color: '#00ff88', fontWeight: 900, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.5rem' }}>✅</span> AL DÍA
+                <span style={{ fontSize: '1.5rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" /></span> AL DÍA
               </div>
             ) : (
               <div style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.5rem' }}>🛑</span> SUSPENDIDA
+                <span style={{ fontSize: '1.5rem' }}><Icono nombre="prohibido" size="1.2em" relleno="propio" /></span> SUSPENDIDA
               </div>
             )}
           </div>
@@ -114,7 +115,7 @@ function MiSuscripcion() {
             </div>
             {fundador && (
               <div style={{ marginTop: '8px', display: 'inline-block', background: 'rgba(0,255,136,0.12)', border: '1px solid rgba(0,255,136,0.35)', color: 'var(--accent)', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.06em', padding: '4px 9px', borderRadius: '20px' }}>
-                ⭐ SOCIO FUNDADOR · SIN CARGO
+                <Icono nombre="estrella" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SOCIO FUNDADOR · SIN CARGO
               </div>
             )}
             <div style={{ marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
@@ -132,10 +133,10 @@ function MiSuscripcion() {
               {fechaFormateada}
             </div>
             {suscripcion_activa && diasRestantes > 0 && diasRestantes <= 5 && (
-              <div style={{ color: '#facc15', fontSize: '0.8rem', marginTop: '5px', fontWeight: 'bold' }}>⚠️ Vence en {diasRestantes} días</div>
+              <div style={{ color: '#facc15', fontSize: '0.8rem', marginTop: '5px', fontWeight: 'bold' }}><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Vence en {diasRestantes} días</div>
             )}
             {!suscripcion_activa && (
-              <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '5px', fontWeight: 'bold' }}>⚠️ Pago atrasado</div>
+              <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '5px', fontWeight: 'bold' }}><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Pago atrasado</div>
             )}
           </div>
         </div>
@@ -158,7 +159,7 @@ function MiSuscripcion() {
               {hayTransferencia() && (
                 <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', padding: '16px' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--accent)', letterSpacing: '0.06em', marginBottom: '10px' }}>
-                    🏦 TRANSFERENCIA — SIN RECARGO
+                    <Icono nombre="banco" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />TRANSFERENCIA — SIN RECARGO
                   </div>
                   {COBRO.transferencia.alias && (
                     <BotonCopiar etiqueta="ALIAS" valor={COBRO.transferencia.alias} />
@@ -176,12 +177,12 @@ function MiSuscripcion() {
                       club, plan, monto y fecha, así se activa sin preguntar
                       nada y el club no tiene que escribir. */}
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-                    {[['mensual', '✅ YA TRANSFERÍ EL MES'], ['anual', '✅ YA TRANSFERÍ EL AÑO']].map(([ciclo, texto]) => (
+                    {[['mensual', 'YA TRANSFERÍ EL MES'], ['anual', 'YA TRANSFERÍ EL AÑO']].map(([ciclo, texto]) => (
                       <a key={ciclo}
                         href={whatsappLink(mensajeDePago({ club: nombre, planId: plan?.id, ciclo }))}
                         target="_blank" rel="noreferrer"
                         style={{ flex: 1, minWidth: '170px', textAlign: 'center', background: '#25D366', color: '#fff', padding: '12px', borderRadius: '6px', fontWeight: 900, fontSize: '0.78rem', textDecoration: 'none' }}>
-                        {texto}
+                        <Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{texto}
                       </a>
                     ))}
                   </div>
@@ -196,7 +197,7 @@ function MiSuscripcion() {
               {plan && (linkMP(plan.id, 'mensual') || linkMP(plan.id, 'anual')) && (
                 <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', padding: '16px' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 900, color: '#00b1ea', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                    💳 MERCADO PAGO — TARJETA Y CUOTAS
+                    <Icono nombre="tarjetaCredito" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MERCADO PAGO — TARJETA Y CUOTAS
                   </div>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     {[['mensual', 'PAGAR EL MES'], ['anual', 'PAGAR EL AÑO']].map(([ciclo, texto]) => (
@@ -213,7 +214,7 @@ function MiSuscripcion() {
 
               <button onClick={handlePagarSuscripcion}
                 style={{ background: hayTransferencia() ? 'transparent' : '#25D366', color: hayTransferencia() ? 'var(--text-dim)' : '#fff', border: hayTransferencia() ? '1px solid var(--border)' : 'none', padding: '14px', fontSize: '0.85rem', fontWeight: 900, borderRadius: '6px', cursor: 'pointer' }}>
-                {hayTransferencia() ? '💬 TENGO UNA CONSULTA' : '💬 ARREGLAR EL PAGO POR WHATSAPP'}
+                <Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{hayTransferencia() ? 'TENGO UNA CONSULTA' : 'ARREGLAR EL PAGO POR WHATSAPP'}
               </button>
             </div>
           </div>

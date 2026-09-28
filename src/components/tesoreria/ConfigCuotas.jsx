@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
 import { gruposFamiliares, faltaTabla, rpcInexistente, mensajeError, formatoPesos } from '../../analytics/tesoreria';
+import { Icono } from '../../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    CUOTAS: TARIFAS, HERMANOS Y GENERACIÓN DEL MES
@@ -178,7 +179,7 @@ export default function ConfigCuotas({ clubId, periodo, showToast, onGeneradas }
         </p>
         {grupos.map((g) => (
           <div key={g.clave} style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', marginBottom: '8px' }}>
-            <div style={{ fontWeight: 900, color: 'var(--text)', marginBottom: '6px' }}>👨‍👩‍👧 {g.nombre} {g.miembros.length < 2 && <span style={{ color: '#f59e0b', fontSize: '0.7rem', fontWeight: 'bold' }}>(falta el otro hermano)</span>}</div>
+            <div style={{ fontWeight: 900, color: 'var(--text)', marginBottom: '6px' }}><Icono nombre="familia" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{g.nombre} {g.miembros.length < 2 && <span style={{ color: '#f59e0b', fontSize: '0.7rem', fontWeight: 'bold' }}>(falta el otro hermano)</span>}</div>
             {g.miembros.map((m) => (
               <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '3px 0' }}>
                 <span style={{ color: 'var(--text)' }}>{m.apellido}, {m.nombre} <span style={{ color: 'var(--text-dim)' }}>· {m.categoria}</span></span>
@@ -211,7 +212,7 @@ export default function ConfigCuotas({ clubId, periodo, showToast, onGeneradas }
           Mirá qué se generaría y, si está bien, generalas ya. No se duplican: a quien ya tiene la cuota del mes no se le vuelve a generar.
         </p>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button onClick={() => generar(true)} disabled={!!trabajando} style={{ ...btn('transparent', 'var(--text)'), border: '1px solid var(--border)' }}>{trabajando === 'previa' ? 'CALCULANDO…' : '👁 VER QUÉ SE GENERARÍA'}</button>
+          <button onClick={() => generar(true)} disabled={!!trabajando} style={{ ...btn('transparent', 'var(--text)'), border: '1px solid var(--border)' }}>{trabajando === 'previa' ? 'CALCULANDO…' : <><Icono nombre="ver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER QUÉ SE GENERARÍA</>}</button>
           {previa && previa.length > 0 && (
             <button onClick={() => { if (window.confirm(`¿Generar ${previa.length} cuotas por ${formatoPesos(totalPrevia)}?`)) generar(false); }} disabled={!!trabajando} style={btn('#00ff88', '#000')}>
               {trabajando === 'generar' ? 'GENERANDO…' : `GENERAR ${previa.length} CUOTAS`}

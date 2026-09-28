@@ -14,6 +14,7 @@ import { useSolicitudesPendientes } from '../utils/useSolicitudesPendientes';
 import { descargarPlanilla } from '../utils/planillaExcel';
 import { coincideBusqueda } from '../utils/buscarJugador';
 import { linkWhatsApp } from '../utils/telefono';
+import { Icono } from '../iconos';
 
 /* Centinela del selector: no es una categoría, es "quiero escribir una". */
 const OTRA = '__otra__';
@@ -450,21 +451,21 @@ function Plantel() {
     { k: 'categoria', t: 'CATEGORÍA', g: 'gen', r: j => j.categoria?.toUpperCase() || '—' },
     { k: 'acciones', t: 'ACCIONES', g: 'acc', bloque: true, r: j => (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-        <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={btnAccion('#25D366', '#25D366')}>💬 WHATSAPP</button>
-        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={btnAccion('var(--border)')}><span style={{ color: 'var(--text)' }}>📋 PIN</span></button>
+        <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={btnAccion('#25D366', '#25D366')}><Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />WHATSAPP</button>
+        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={btnAccion('var(--border)')}><span style={{ color: 'var(--text)' }}><Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PIN</span></button>
         {/* VER abre la ficha completa en un modal, sin riesgo de tocar nada.
             Tocar el nombre hacía lo mismo, pero en el celular no se notaba. */}
-        <button onClick={(e) => { e.stopPropagation(); setJugadorSeleccionado(j); }} style={btnAccion('var(--accent)')}>👁 VER</button>
-        <button onClick={(e) => { e.stopPropagation(); abrirEdicion(j); }} style={btnAccion('var(--border)')}><span style={{ color: 'var(--text)' }}>✏️ EDITAR</span></button>
+        <button onClick={(e) => { e.stopPropagation(); setJugadorSeleccionado(j); }} style={btnAccion('var(--accent)')}><Icono nombre="ver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER</button>
+        <button onClick={(e) => { e.stopPropagation(); abrirEdicion(j); }} style={btnAccion('var(--border)')}><span style={{ color: 'var(--text)' }}><Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EDITAR</span></button>
         {estaActivo(j) ? (
           <button onClick={(e) => { e.stopPropagation(); abrirBaja(j); }}
             title="Sale de las listas del día a día y conserva todo su historial"
-            style={btnAccion('var(--aviso)')}>⏸ BAJA</button>
+            style={btnAccion('var(--aviso)')}><Icono nombre="pausa" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BAJA</button>
         ) : (
           <button onClick={(e) => { e.stopPropagation(); reactivarJugador(j.id); }}
             style={btnAccion('var(--ok)')}>↩ VOLVER</button>
         )}
-        <button onClick={(e) => { e.stopPropagation(); eliminarJugador(j.id); }} style={btnAccion('#ef4444')}>✕ ELIMINAR</button>
+        <button onClick={(e) => { e.stopPropagation(); eliminarJugador(j.id); }} style={btnAccion('#ef4444')}><Icono nombre="cerrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ELIMINAR</button>
       </div>
     ) },
   ];
@@ -502,11 +503,11 @@ function Plantel() {
                   están viendo (respetan categoría y búsqueda). */}
               <button onClick={copiarTodosLosPINs} style={btnPlantel}
                 title="Una sola lista con el PIN de cada jugador. Es para el cuerpo técnico: no la reenvíes a los jugadores.">
-                📋 LISTA DE PINES (STAFF)
+                <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />LISTA DE PINES (STAFF)
               </button>
               <button onClick={copiarTodosSeparados} style={btnPlantel}
                 title="Un mensaje de acceso por jugador, uno abajo del otro, para ir mandándole a cada uno el suyo.">
-                📋 MENSAJES PARA CADA JUGADOR
+                <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MENSAJES PARA CADA JUGADOR
               </button>
               {puedeAdministrar && (
                 <>
@@ -525,9 +526,9 @@ function Plantel() {
                     disabled={bajandoPlanilla}
                     style={btnPlantel}
                   >
-                    {bajandoPlanilla ? 'GENERANDO…' : '⬇ BAJAR PLANILLA'}
+                    {bajandoPlanilla ? 'GENERANDO…' : <><Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BAJAR PLANILLA</>}
                   </button>
-                  <button onClick={() => setMostrarPlanilla(true)} style={btnPlantel}>⬆ SUBIR PLANILLA</button>
+                  <button onClick={() => setMostrarPlanilla(true)} style={btnPlantel}><Icono nombre="subir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SUBIR PLANILLA</button>
                 </>
               )}
             </div>
@@ -540,14 +541,14 @@ function Plantel() {
             padding: '12px 14px', marginBottom: '16px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left',
             background: 'rgba(59,130,246,0.1)', border: '1px solid #3b82f6', color: 'var(--text)', fontWeight: 800, fontSize: '0.85rem',
           }}>
-            <span>📝 {solicitudes.length} {solicitudes.length === 1 ? 'jugador pidió' : 'jugadores pidieron'} corregir sus datos</span>
+            <span><Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{solicitudes.length} {solicitudes.length === 1 ? 'jugador pidió' : 'jugadores pidieron'} corregir sus datos</span>
             <span style={{ color: '#3b82f6', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>REVISAR ›</span>
           </button>
         )}
 
         {/* --- BUSCADOR --- */}
         <div style={{ position: 'relative', marginBottom: '14px' }}>
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none' }}>🔍</span>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '1rem', pointerEvents: 'none' }}><Icono nombre="buscar" size="1.2em" relleno="propio" /></span>
           <input
             type="text"
             inputMode="search"
@@ -562,7 +563,7 @@ function Plantel() {
           {busqueda && (
             <button onClick={() => setBusqueda('')} aria-label="Borrar búsqueda"
               style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-dim)', fontSize: '1.2rem', cursor: 'pointer', width: '36px', height: '36px' }}>
-              ✕
+              <Icono nombre="cerrar" size="1.2em" relleno="propio" />
             </button>
           )}
         </div>
@@ -619,7 +620,7 @@ function Plantel() {
               <div className="modal-acciones" style={{ display: 'flex', gap: '10px', marginTop: '12px', justifyContent: 'flex-end' }}>
                 <button onClick={() => setBajaEnCurso(null)} className="btn-fantasma">CANCELAR</button>
                 <button onClick={() => confirmarBaja(j.id)} className="btn-primario"
-                  style={{ background: 'var(--aviso)', color: '#000' }}>⏸ CONFIRMAR BAJA</button>
+                  style={{ background: 'var(--aviso)', color: '#000' }}><Icono nombre="pausa" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CONFIRMAR BAJA</button>
               </div>
             </div>
           );
@@ -682,7 +683,7 @@ function Plantel() {
                         title={j.contacto ? "Enviar directo por WhatsApp" : "Enviar (Elegir contacto en WhatsApp)"}
                         style={{ background: j.contacto ? '#25D366' : '#128C7E', border: 'none', color: 'var(--text)', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        💬
+                        <Icono nombre="whatsapp" size="1.2em" relleno="propio" />
                       </button>
                       {/* Copiar PIN individual */}
                       <button 
@@ -690,19 +691,19 @@ function Plantel() {
                         title="Copiar mensaje de acceso"
                         style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        📋
+                        <Icono nombre="lista" size="1.2em" relleno="propio" />
                       </button>
                       <span style={{ color: 'var(--border)', fontSize: '0.85rem' }}>|</span>
-                      <button onClick={() => setJugadorSeleccionado(j)} title="Ver ficha completa" style={{ ...btnGhost, color: 'var(--accent)', borderColor: 'var(--accent)' }}>👁 VER</button>
+                      <button onClick={() => setJugadorSeleccionado(j)} title="Ver ficha completa" style={{ ...btnGhost, color: 'var(--accent)', borderColor: 'var(--accent)' }}><Icono nombre="ver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER</button>
                       <button onClick={() => abrirEdicion(j)} style={btnGhost}>EDITAR</button>
                       {estaActivo(j) ? (
                         <button onClick={() => abrirBaja(j)} title="Dar de baja (conserva su historial)"
-                          style={{ ...btnGhost, color: 'var(--aviso)', borderColor: 'var(--aviso)' }}>⏸</button>
+                          style={{ ...btnGhost, color: 'var(--aviso)', borderColor: 'var(--aviso)' }}><Icono nombre="pausa" size="1.2em" relleno="propio" /></button>
                       ) : (
                         <button onClick={() => reactivarJugador(j.id)} title="Reincorporar al plantel"
                           style={{ ...btnGhost, color: 'var(--ok)', borderColor: 'var(--ok)' }}>↩</button>
                       )}
-                      <button onClick={() => eliminarJugador(j.id)} title="Eliminar definitivamente (borra su historial)" style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444' }}>✕</button>
+                      <button onClick={() => eliminarJugador(j.id)} title="Eliminar definitivamente (borra su historial)" style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                     </div>
                   </td>
                 </tr>
@@ -773,7 +774,7 @@ function Plantel() {
                     onClick={() => enviarPorWhatsApp(jugadorSeleccionado)} 
                     style={{ background: jugadorSeleccionado.contacto ? '#25D366' : '#128C7E', border: 'none', color: 'var(--text)', padding: '6px 12px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
                    >
-                    💬 ENVIAR WHATSAPP
+                    <Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ENVIAR WHATSAPP
                    </button>
                    {/* Copiar Portapapeles */}
                    <button 
@@ -782,7 +783,7 @@ function Plantel() {
                     onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
                     onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)'; }}
                    >
-                    📋 COPIAR TEXTO
+                    <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR TEXTO
                    </button>
                  </div>
                </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icono } from '../iconos';
 
 /* LA ESPERA DE TEMPORADA
  *
@@ -36,7 +37,7 @@ export default function CargandoTemporada({ paso = 'partidos', partidos = 0, lot
   return (
     <div style={{ animation: 'fadeIn 0.3s', padding: esMovil ? '40px 4px' : '60px 20px', maxWidth: 520, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 26 }}>
-        <div style={{ fontSize: '2.2rem', marginBottom: 10 }}>📈</div>
+        <div style={{ fontSize: '2.2rem', marginBottom: 10 }}><Icono nombre="evolucion" size="1.2em" relleno="propio" /></div>
         <div className="stat-label" style={{ fontSize: '1rem', color: 'var(--accent)' }}>
           ARMANDO LA TEMPORADA
         </div>
@@ -80,7 +81,7 @@ export default function CargandoTemporada({ paso = 'partidos', partidos = 0, lot
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '0.6rem', fontWeight: 900,
               }}>
-                {hecho ? '✓' : i + 1}
+                {hecho ? <Icono nombre="listo" size="1em" /> : i + 1}
               </span>
               <span style={{ fontSize: '0.85rem', color: actual ? 'var(--text)' : 'var(--text-dim)', fontWeight: actual ? 700 : 400 }}>
                 {p.rotulo}
@@ -102,7 +103,7 @@ export default function CargandoTemporada({ paso = 'partidos', partidos = 0, lot
 export function FalloTemporada({ mensaje, onReintentar }) {
   return (
     <div style={{ animation: 'fadeIn 0.3s', padding: '60px 20px', maxWidth: 480, margin: '0 auto', textAlign: 'center' }}>
-      <div style={{ fontSize: '2.2rem', marginBottom: 12 }}>📡</div>
+      <div style={{ marginBottom: 12, color: 'var(--accent)' }}><Icono nombre="cargando" size={36} girar /></div>
       <div className="stat-label" style={{ fontSize: '1rem', color: '#ef4444' }}>NO SE PUDO CARGAR</div>
       <div style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginTop: 10, lineHeight: 1.5 }}>
         {mensaje || 'Se cortó la conexión con el servidor mientras se traían los datos.'}

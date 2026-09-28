@@ -9,15 +9,16 @@ import { puntoEnTrayecto } from '../utils/trayectoria';
 import { BASE_W, getBaseH, renderPitch, renderElements, normalizarCancha } from '../tactica/pizarra';
 import { etiquetaFase, etiquetaFormato, pasaFiltros, colorFase, leerFase, FILTROS_VACIOS,
          NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
+import { Icono } from '../iconos';
 
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
 // =======================================================
 const getIconoTarea = (tarea) => {
   if (tarea.categoria_ejercicio === 'Físico') {
-    return tarea.espacio === 'Gimnasio' ? '🏋️‍♂️' : '🏃‍♂️';
+    return tarea.espacio === 'Gimnasio' ? 'pesas' : 'fisico';
   }
-  return '⚽';
+  return 'pelota';
 };
 
 const RenderRutinaFisica = ({ data }) => {
@@ -26,7 +27,7 @@ const RenderRutinaFisica = ({ data }) => {
   return (
     <div style={{ padding: '15px', width: '100%', height: '100%', overflowY: 'auto', background: 'var(--panel)', boxSizing: 'border-box', textAlign: 'left' }}>
       <h4 style={{ color: 'var(--aviso)', marginTop: 0, marginBottom: '15px', textTransform: 'uppercase', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
-        {data.sub_modo === 'gimnasio' ? '🏋️‍♂️ Circuito de Gimnasio / Fuerza' : '🏃‍♂️ Bloques de Acondicionamiento en Cancha'}
+        <Icono nombre={data.sub_modo === 'gimnasio' ? 'pesas' : 'fisico'} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{data.sub_modo === 'gimnasio' ? 'Circuito de Gimnasio / Fuerza' : 'Bloques de Acondicionamiento en Cancha'}
       </h4>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {data.bloques.map((b, i) => (
@@ -40,7 +41,7 @@ const RenderRutinaFisica = ({ data }) => {
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>INTENSIDAD</span><strong style={{ color: 'var(--text)' }}>{b.rir || '-'}</strong></div>
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>PAUSA</span><strong style={{ color: 'var(--text)' }}>{b.pausa || '-'}</strong></div>
                 </div>
-                {b.notas && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '10px', fontStyle: 'italic' }}>📌 {b.notas}</div>}
+                {b.notas && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '10px', fontStyle: 'italic' }}><Icono nombre="fijado" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{b.notas}</div>}
               </>
             ) : (
               <>
@@ -217,7 +218,7 @@ const ReproductorLoop = ({ editorData }) => {
       />
       {frames.length > 1 && (
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', animation: 'pulse 2s infinite' }}>
-          ▶ ANIMACIÓN
+          <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ANIMACIÓN
         </div>
       )}
     </div>
@@ -305,7 +306,7 @@ const BancoTareas = () => {
   const categoriasDisponibles = [...new Set([...misCategorias, ...categoriasClub])].sort();
 
   const eliminarTarea = async (id) => {
-    const confirmar = window.confirm("⚠️ ¿Estás seguro de que querés eliminar esta tarea definitivamente? Esta acción no se puede deshacer.");
+    const confirmar = window.confirm("¿Estás seguro de que querés eliminar esta tarea definitivamente? Esta acción no se puede deshacer.");
     if (!confirmar) return;
 
     try {
@@ -449,7 +450,7 @@ const BancoTareas = () => {
           ) : tarea.url_grafico ? (
             <img src={tarea.url_grafico} alt="Gráfico Tarea" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (
-            <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: '3rem' }}>{getIconoTarea(tarea)}</span>
+            <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: '3rem', display: 'flex' }}><Icono nombre={getIconoTarea(tarea)} size="1em" /></span>
           )}
           {tarea.formato_tarea && (
             <div style={{ position: 'absolute', top: '5px', left: '5px', background: 'rgba(8,145,178,0.85)', border: '1px solid #22d3ee', color: '#ffffff', fontSize: '0.6rem', fontWeight: '900', padding: '3px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>
@@ -492,7 +493,7 @@ const BancoTareas = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h1 className="stat-label" style={{ color: 'var(--accent)', fontSize: esMovil ? '1.15rem' : '1.5rem', margin: 0 }}>
-              🗃️ BANCO DE TAREAS
+              <Icono nombre="bancoTareas" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BANCO DE TAREAS
             </h1>
             <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
               {tareasFiltradas.length} de {tareas.length} ejercicios
@@ -513,10 +514,10 @@ const BancoTareas = () => {
       </div>
 
       {cargando ? (
-        <div style={{ textAlign: 'center', padding: '50px', color: 'var(--accent)' }}>Cargando el playbook... ⚽</div>
+        <div style={{ textAlign: 'center', padding: '50px', color: 'var(--accent)' }}>Cargando el playbook... <Icono nombre="pelota" size="1.2em" relleno="propio" /></div>
       ) : tareasFiltradas.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '50px', background: 'var(--hover)', borderRadius: '15px', border: '1px dashed var(--border)' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '10px' }}>📋</div>
+          <div style={{ fontSize: '3rem', marginBottom: '10px' }}><Icono nombre="lista" size="1.2em" relleno="propio" /></div>
           <h3 style={{ color: 'var(--text)', margin: 0 }}>No hay tareas aún.</h3>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Creá tu primer ejercicio en el Creador o subí un video para empezar.</p>
         </div>
@@ -539,17 +540,17 @@ const BancoTareas = () => {
           <div style={{ background: 'var(--panel)', width: '100%', maxWidth: '800px', borderWidth: '2px', borderStyle: 'solid', borderColor: 'var(--accent)', borderRadius: '12px', padding: esMovil ? '18px' : '28px', maxHeight: '95vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <h2 style={{ margin: 0, color: 'var(--accent)', fontSize: '1.4rem', textTransform: 'uppercase' }}>Subir Nueva Tarea Rápida</h2>
-              <button onClick={() => {setShowCrearModal(false); setVideoFile(null); setVideoPreview(null);}} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', minWidth: '44px', minHeight: '44px' }}>✖</button>
+              <button onClick={() => {setShowCrearModal(false); setVideoFile(null); setVideoPreview(null);}} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', minWidth: '44px', minHeight: '44px' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
               <button onClick={() => navigate('/creador-tareas')} style={{ flex: 1, padding: '15px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid var(--info)', borderRadius: '8px', color: 'var(--info)', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
-                <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '5px' }}>🎨</span>
+                <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '5px' }}><Icono nombre="creadorTactico" size="1.2em" relleno="propio" /></span>
                 Abrir Creador Táctico
               </button>
               
               <label style={{ flex: 1, padding: '15px', background: 'rgba(0, 255, 136, 0.1)', border: '1px dashed var(--accent)', borderRadius: '8px', color: 'var(--accent)', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}>
-                <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '5px' }}>📁</span>
+                <span style={{ fontSize: '1.5rem', display: 'block', marginBottom: '5px' }}><Icono nombre="carpeta" size="1.2em" relleno="propio" /></span>
                 {videoFile ? 'Cambiar Video MP4' : 'Subir Video MP4 (Corto)'}
                 <input type="file" accept="video/mp4,video/webm" style={{ display: 'none' }} onChange={handleVideoChange} />
               </label>
@@ -621,7 +622,7 @@ const BancoTareas = () => {
             </div>
 
             <button onClick={guardarNuevaTarea} disabled={isUploading} style={{ width: '100%', padding: 15, background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: '1.1rem', fontWeight: 700, cursor: isUploading ? 'not-allowed' : 'pointer', opacity: isUploading ? 0.7 : 1 }}>
-              {isUploading ? '⏳ SUBIENDO VIDEO Y GUARDANDO...' : '💾 GUARDAR EN EL BANCO'}
+              <Icono nombre={isUploading ? 'cargando' : 'guardar'} size="1.2em" relleno="propio" girar={isUploading} style={{ marginRight: 6 }} />{isUploading ? 'SUBIENDO VIDEO Y GUARDANDO...' : 'GUARDAR EN EL BANCO'}
             </button>
           </div>
         </div>
@@ -642,7 +643,7 @@ const BancoTareas = () => {
                 </h2>
                 <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', fontWeight: 'bold' }}>{tareaSeleccionada.objetivo_principal}</span>
               </div>
-              <button onClick={() => setTareaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'var(--text)', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
+              <button onClick={() => setTareaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'var(--text)', width: '40px', height: '40px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: '20px' }}>
@@ -658,13 +659,13 @@ const BancoTareas = () => {
                   ) : tareaSeleccionada.url_grafico ? (
                     <img src={tareaSeleccionada.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                   ) : (
-                    <span style={{ color: 'var(--text-dim)', fontSize: '4rem' }}>{getIconoTarea(tareaSeleccionada)}</span>
+                    <span style={{ color: 'var(--text-dim)', fontSize: '4rem', display: 'flex' }}><Icono nombre={getIconoTarea(tareaSeleccionada)} size="1em" /></span>
                   )}
                 </div>
                 {tareaSeleccionada.video_url && (
                   <div style={{ marginTop: '15px' }}>
                     <a href={tareaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#2563eb', color: '#ffffff', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' }}>
-                      ▶️ VER VIDEO DE REFERENCIA
+                      <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER VIDEO DE REFERENCIA
                     </a>
                   </div>
                 )}
@@ -703,14 +704,14 @@ const BancoTareas = () => {
                     onClick={() => eliminarTarea(tareaSeleccionada.id)}
                     style={{ flex: 1, background: 'var(--peligro)', border: 'none', color: '#ffffff', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
                   >
-                    🗑️ ELIMINAR
+                    <Icono nombre="borrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ELIMINAR
                   </button>
 
                   <button
                     onClick={() => navigate(tareaSeleccionada.categoria_ejercicio === 'Físico' ? '/creador-fisico' : '/creador-tareas', { state: { editando: tareaSeleccionada } })}
                     style={{ flex: 2, background: 'var(--accent)', border: 'none', color: '#000', padding: '12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', display: 'flex', justifyContent: 'center', gap: '10px' }}
                   >
-                    ✏️ Editar {tareaSeleccionada.categoria_ejercicio === 'Físico' ? 'Rutina' : 'en Pizarra'}
+                    <Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Editar {tareaSeleccionada.categoria_ejercicio === 'Físico' ? 'Rutina' : 'en Pizarra'}
                   </button>
                 </div>
 

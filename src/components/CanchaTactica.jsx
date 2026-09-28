@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useMemo } from 'react';
 import { BALON_ID, CELDAS, espejar } from '../offline/modelo';
+import { Icono } from '../iconos';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    EL TABLERO
@@ -211,7 +212,7 @@ export default function CanchaTactica({
       >
         {/* Flecha de ataque al fondo, como en el tracker */}
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '9rem', opacity: 0.05, pointerEvents: 'none' }}>
-          {invertida ? '⬅️' : '➡️'}
+          <Icono nombre={invertida ? 'volver' : 'avanzar'} size="1.2em" />
         </div>
 
         {/* Medio campo y círculo central */}

@@ -8,6 +8,7 @@ import { BASE_W, getBaseH, renderBoard, getDPR, convertOldEl, convertOldLine } f
 import { puntoEnTrayecto } from '../utils/trayectoria';
 import { volverDesde, esModoKiosco } from '../utils/kiosco';
 import { mismaCategoria } from '../utils/categorias';
+import { Icono } from '../iconos';
 
 // =======================================================
 // REPRODUCTOR DE JUGADAS
@@ -138,7 +139,7 @@ const ReproductorLoop = ({ editorData }) => {
       />
       {frames.length > 1 && (
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>
-          ▶ ANIMACIÓN
+          <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ANIMACIÓN
         </div>
       )}
     </div>
@@ -202,7 +203,7 @@ export default function LibroTactico() {
   };
 
   const eliminarJugada = async (id) => {
-    if (!window.confirm("⚠️ ¿Eliminar esta jugada del Libro Táctico?")) return;
+    if (!window.confirm("¿Eliminar esta jugada del Libro Táctico?")) return;
     try {
       const { error } = await supabase.from('tareas').delete().eq('id', id);
       if (error) throw error;
@@ -239,13 +240,13 @@ export default function LibroTactico() {
         onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text)'}
         onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-dim)'}
       >
-        ⬅ Volver atrás
+        <Icono nombre="volver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Volver atrás
       </button>
 
       <div className="bento-card" style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '25px', background: 'var(--panel)', border: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <div style={{ fontSize: '2.5rem' }}>📘</div>
+            <div style={{ fontSize: '2.5rem' }}><Icono nombre="libroTactico" size="1.2em" relleno="propio" /></div>
             <h1 className="stat-label" style={{ color: '#3b82f6', fontSize: '1.5rem', margin: 0 }}>LIBRO TÁCTICO</h1>
             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Playbook oficial del equipo: ABP, presiones y situaciones especiales.</p>
           </div>
@@ -290,10 +291,10 @@ export default function LibroTactico() {
       </div>
 
       {cargando ? (
-        <div style={{ textAlign: 'center', padding: '50px', color: '#3b82f6' }}>Abriendo el Playbook... ⚽</div>
+        <div style={{ textAlign: 'center', padding: '50px', color: '#3b82f6' }}>Abriendo el Playbook... <Icono nombre="pelota" size="1.2em" relleno="propio" /></div>
       ) : jugadasVisibles.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '50px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '15px', border: '1px dashed #3b82f6' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '10px' }}>❌</div>
+          <div style={{ fontSize: '3rem', marginBottom: '10px' }}><Icono nombre="error" size="1.2em" relleno="propio" /></div>
           <h3 style={{ color: 'var(--text)', margin: 0 }}>No hay jugadas diseñadas para esta situación.</h3>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Las jugadas guardadas en la categoría "Libro Táctico" aparecerán aquí.</p>
         </div>
@@ -314,7 +315,7 @@ export default function LibroTactico() {
                 ) : jugada.url_grafico ? (
                   <img src={jugada.url_grafico} alt="Táctica" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (
-                  <span style={{ fontSize: '3rem' }}>📋</span>
+                  <span style={{ fontSize: '3rem' }}><Icono nombre="lista" size="1.2em" relleno="propio" /></span>
                 )}
                 {jugada.editor_data?.frames?.length > 1 && !jugada.video_mp4_url && (
                   <span style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: '#ffffff', fontSize: '0.6rem', padding: '3px 6px', borderRadius: '4px', fontWeight: 'bold' }}>ANIMACIÓN</span>
@@ -346,7 +347,7 @@ export default function LibroTactico() {
                 </h2>
                 <span style={{ color: '#93c5fd', fontSize: '0.9rem', fontWeight: 'bold' }}>{jugadaSeleccionada.objetivo_principal}</span>
               </div>
-              <button onClick={() => setJugadaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'var(--text)', width: '36px', height: '36px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✖</button>
+              <button onClick={() => setJugadaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'var(--text)', width: '36px', height: '36px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: '15px', gap: '20px' }}>
@@ -375,7 +376,7 @@ export default function LibroTactico() {
 
                 {jugadaSeleccionada.video_url && (
                   <a href={jugadaSeleccionada.video_url} target="_blank" rel="noreferrer" style={{ display: 'block', background: '#ef4444', color: '#ffffff', textAlign: 'center', padding: '12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.85rem' }}>
-                    ▶️ Video de Ejemplo Externo
+                    <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Video de Ejemplo Externo
                   </a>
                 )}
 

@@ -16,6 +16,7 @@ import ModalPlaca from '../placas/ModalPlaca';
 import PlacaTabla from '../placas/PlacaTabla';
 import PlacaCampana from '../placas/PlacaCampana';
 import { datosDelClub } from '../placas/club';
+import { Icono } from '../iconos';
 
 /* Cuadros por fila en la tira de ESTADO DE FORMA. */
 const POR_FILA_RACHA = 5;
@@ -769,7 +770,7 @@ function Torneos() {
       return showToast(`BLOQUEO: Este partido tiene ${count} acciones. No podés borrarlo desde acá.`, "error");
     }
 
-    if (window.confirm("✅ Este partido está completamente vacío. ¿Estás seguro de que querés eliminarlo?")) {
+    if (window.confirm("Este partido está completamente vacío. ¿Estás seguro de que querés eliminarlo?")) {
       const { error } = await supabase.from('partidos').delete().eq('id', idPartido);
       if (!error) {
         fetchFixture(torneoActivo.id, torneoActivo.categoria);
@@ -1283,7 +1284,7 @@ function Torneos() {
     <div style={{ paddingBottom: '80px', maxWidth: '1000px', margin: '0 auto', animation: 'fadeIn 0.3s' }}>
       
       <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '30px' }}>
-        <div style={{ fontSize: '2.5rem' }}>🏆</div>
+        <div style={{ fontSize: '2.5rem' }}><Icono nombre="trofeo" size="1.2em" relleno="propio" /></div>
         <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>GESTOR DE COMPETICIÓN</div>
       </div>
 
@@ -1310,7 +1311,7 @@ function Torneos() {
                 title="Configurar cuántas fechas tiene la Primera Rueda"
                 style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}
               >
-                ⚙️
+                <Icono nombre="ajustes" size="1.2em" relleno="propio" />
               </button>
             </div>
             {hayRuedas ? (
@@ -1513,12 +1514,12 @@ function Torneos() {
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 {tabMisTorneos === 'posiciones' && !esCopa && tablaPosiciones.length > 0 && (
                   <button onClick={() => setPlacaAbierta('tabla')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: '10px 16px', fontWeight: 900 }}>
-                    🖼 PLACA DE LA TABLA
+                    <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA DE LA TABLA
                   </button>
                 )}
                 {tabMisTorneos === 'miequipo' && datosPlacaCampana && (
                   <button onClick={() => setPlacaAbierta('campana')} className="btn-secondary" style={{ fontSize: '0.75rem', padding: '10px 16px', fontWeight: 900 }}>
-                    🖼 PLACA DE LA CAMPAÑA
+                    <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA DE LA CAMPAÑA
                   </button>
                 )}
                 <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem', padding: '10px 20px', fontWeight: 800 }}>
@@ -1531,7 +1532,7 @@ function Torneos() {
             {tabMisTorneos === 'posiciones' && esCopa && (
               <div style={{ animation: 'fadeIn 0.3s' }}>
                 <div style={{ marginBottom: '15px' }}>
-                  <span className="stat-label" style={{ color: 'var(--accent)' }}>🏆 CUADRO DE LA COPA</span>
+                  <span className="stat-label" style={{ color: 'var(--accent)' }}><Icono nombre="trofeo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CUADRO DE LA COPA</span>
                 </div>
                 {rondasLlave.length === 0 ? (
                   <div className="bento-card" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-dim)' }}>
@@ -1561,7 +1562,7 @@ function Torneos() {
                                 <span style={{ flex: 1, fontWeight: gana ? 900 : 700, color: gana ? 'var(--accent)' : (nombre === miClubGlobal ? 'var(--text)' : 'var(--text-dim)'), fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {(nombre || '—').toUpperCase()} {nombre === miClubGlobal && <span style={{ fontSize: '0.55rem', background: 'var(--accent)', color: '#000', padding: '1px 4px', borderRadius: '3px' }}>YO</span>}
                                 </span>
-                                {gana && <span style={{ color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 900 }}>✓</span>}
+                                {gana && <span style={{ color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 900 }}><Icono nombre="listo" size="1.2em" relleno="propio" /></span>}
                                 <span style={{ fontWeight: 900, fontFamily: 'JetBrains Mono, monospace', fontSize: '1.1rem', color: gana ? 'var(--accent)' : 'var(--text)', minWidth: '20px', textAlign: 'center' }}>{fin ? goles : '-'}</span>
                               </div>
                             );
@@ -1604,9 +1605,9 @@ function Torneos() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <select value={modoTabla} onChange={(e) => setModoTabla(e.target.value)} style={{ padding: '8px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', fontWeight: 800, outline: 'none', cursor: 'pointer' }}>
-                      <option value="general">📊 TABLA GENERAL</option>
-                      <option value="local">🏠 SOLO LOCAL</option>
-                      <option value="visitante">✈️ SOLO VISITANTE</option>
+                      <option value="general">TABLA GENERAL</option>
+                      <option value="local">SOLO LOCAL</option>
+                      <option value="visitante">SOLO VISITANTE</option>
                     </select>
                   </div>
                 </div>
@@ -1724,7 +1725,7 @@ function Torneos() {
                       }}
                       title="Mostrar solo los partidos de mi equipo en este fixture"
                     >
-                      ⚡ SOLO MI EQUIPO ({cantidadMisPartidos})
+                      <Icono nombre="rayo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SOLO MI EQUIPO ({cantidadMisPartidos})
                     </button>
                   </div>
                   <div style={{ flex: 1, minWidth: '180px' }}>
@@ -1773,7 +1774,7 @@ function Torneos() {
                             </div>
 
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>📅 {f.fecha || 'A definir'}</span>
+                              <span><Icono nombre="calendario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{f.fecha || 'A definir'}</span>
                               <span style={{
                                 padding: '3px 6px', borderRadius: '4px',
                                 background: f.esTrackeado ? 'rgba(0, 255, 136, 0.1)' : (f.estado === 'Pendiente' ? 'var(--border)' : 'rgba(59, 130, 246, 0.1)'),
@@ -1793,7 +1794,7 @@ function Torneos() {
                                   fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.5px'
                                 }}
                               >
-                                {f.video_url ? '🎬 CON VIDEO' : '🎬 + VIDEO'}
+                                <Icono nombre="video" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{f.video_url ? 'CON VIDEO' : '+ VIDEO'}
                               </button>
                               <button
                                 onClick={() => (partidoEditando === f.id ? setPartidoEditando(null) : abrirReprogramar(f))}
@@ -1806,7 +1807,7 @@ function Torneos() {
                                   fontWeight: 800, fontSize: '0.6rem', letterSpacing: '0.5px'
                                 }}
                               >
-                                📅 REPROGRAMAR
+                                <Icono nombre="calendario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REPROGRAMAR
                               </button>
                             </div>
 
@@ -1888,7 +1889,7 @@ function Torneos() {
                               {esMiPartido && (
                                 <>
                                   <button onClick={() => irATrackear(f)} className="btn-action" style={{ fontSize: '0.75rem', padding: '8px 15px', display: 'flex', gap: '5px', alignItems: 'center' }}>
-                                    {f.esTrackeado ? '▶ CONTINUAR' : '⚡ TRACKEAR'}
+                                    <Icono nombre={f.esTrackeado ? 'reproducir' : 'rayo'} size="1.2em" relleno="propio" />{f.esTrackeado ? 'CONTINUAR' : 'TRACKEAR'}
                                   </button>
                                   <div style={{ height: '20px', width: '1px', background: 'var(--border)' }}></div>
                                 </>
@@ -1897,7 +1898,7 @@ function Torneos() {
                                 CARGA MANUAL
                               </button>
                               <button onClick={() => eliminarPartido(f.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1rem', cursor: 'pointer', marginLeft: '5px' }} title="Eliminar partido duplicado">
-                                🗑️
+                                <Icono nombre="borrar" size="1.2em" relleno="propio" />
                               </button>
                             </div>
                           ) : (
@@ -1908,7 +1909,7 @@ function Torneos() {
                                     <span style={{ color: 'var(--accent)', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_propios}</span>
                                     <span style={{ color: 'var(--text)', fontWeight: 900 }}>-</span>
                                     <span style={{ color: '#ef4444', fontWeight: 900, fontSize: '1.2rem' }}>{f.goles_rival}</span>
-                                    <span style={{ fontSize: '0.6rem', color: 'var(--accent)', marginLeft: '10px', fontWeight: 800 }}>✓ FINALIZADO</span>
+                                    <span style={{ fontSize: '0.6rem', color: 'var(--accent)', marginLeft: '10px', fontWeight: 800 }}><Icono nombre="listo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />FINALIZADO</span>
                                   </div>
                                 ) : (
                                   <>
@@ -1924,7 +1925,7 @@ function Torneos() {
                                     {/* Sin toast por partido: cargando diez resultados seguidos
                                         serían diez carteles. Un ✓ al lado alcanza. */}
                                     <span style={{ width: 14, fontSize: '0.7rem', color: guardadoGoles[f.id] === 'ok' ? 'var(--ok)' : 'var(--text-dim)' }}>
-                                      {guardadoGoles[f.id] === 'guardando' ? '⏳' : guardadoGoles[f.id] === 'ok' ? '✓' : ''}
+                                      {guardadoGoles[f.id] === 'guardando' ? <Icono nombre="cargando" size="1.1em" girar /> : guardadoGoles[f.id] === 'ok' ? <Icono nombre="listo" size="1.1em" /> : null}
                                     </span>
                                     <button onClick={() => actualizarResultado(f.id, 0, 0, 'Pendiente')} style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '0.9rem', marginLeft: '5px' }}>↺</button>
                                   </>
@@ -1935,10 +1936,10 @@ function Torneos() {
                                 {esMiPartido && (
                                   <>
                                     <button onClick={() => irATrackear(f)} className="btn-action" style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
-                                      ✏️ EDITAR
+                                      <Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EDITAR
                                     </button>
                                     <button onClick={() => navigate(`/resumen/${f.id}`)} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 10px', display: 'flex', gap: '5px' }}>
-                                      📊 REPORTE
+                                      <Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REPORTE
                                     </button>
                                   </>
                                 )}
@@ -1985,7 +1986,7 @@ function Torneos() {
                               <div style={{ minWidth: 0 }}>
                                 <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{proximoRival.rivalNombre.toUpperCase()}</div>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
-                                  {proximoRival.jornada ? `${proximoRival.jornada} · ` : ''}{proximoRival.fecha || 'Fecha a definir'} · {proximoRival.condicion === 'Visitante' ? '✈️ Visitante' : '🏠 Local'}
+                                  {proximoRival.jornada ? `${proximoRival.jornada} · ` : ''}{proximoRival.fecha || 'Fecha a definir'} · <Icono nombre={proximoRival.condicion === 'Visitante' ? 'avion' : 'inicio'} size="1.1em" relleno="propio" style={{ marginRight: 4 }} />{proximoRival.condicion === 'Visitante' ? 'Visitante' : 'Local'}
                                 </div>
                               </div>
                             </div>
@@ -2028,7 +2029,7 @@ function Torneos() {
                             )}
 
                             <button onClick={() => navigate('/scouting-rivales')} className="btn-secondary" style={{ marginTop: '14px', width: '100%', fontSize: '0.7rem', padding: '8px', fontWeight: 800 }}>
-                              🕵️‍♂️ VER SCOUTING DEL RIVAL
+                              <Icono nombre="rivales" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER SCOUTING DEL RIVAL
                             </button>
                           </div>
                         )}
@@ -2072,7 +2073,7 @@ function Torneos() {
                                 Vas <b style={{ color: 'var(--accent)' }}>{proyeccion.posicion}º</b> de {proyeccion.totalEquipos}.{' '}
                                 {proyeccion.brechaLider > 0
                                   ? <>A <b style={{ color: '#f59e0b' }}>{proyeccion.brechaLider} pts</b> del líder ({proyeccion.lider?.nombre?.toUpperCase()}).</>
-                                  : <span style={{ color: '#00ff88', fontWeight: 800 }}>¡Estás puntero! 🔝</span>}
+                                  : <span style={{ color: '#00ff88', fontWeight: 800 }}>¡Estás puntero! <Icono nombre="trofeo" size="1.2em" relleno="propio" /></span>}
                               </div>
                             )}
                           </div>
@@ -2464,7 +2465,7 @@ function Torneos() {
                     <div><strong style={{ color: '#0ea5e9' }}>Primera Rueda:</strong> fechas 1 a {n}</div>
                     <div><strong style={{ color: '#a855f7' }}>Segunda Rueda:</strong> fecha {n + 1} en adelante{total > n ? ` (hasta la ${total})` : ''}</div>
                     {total > 0 && n >= total && (
-                      <div style={{ color: '#fbbf24', marginTop: '6px' }}>⚠️ El corte iguala o supera las fechas cargadas: la Segunda Rueda va a quedar vacía por ahora.</div>
+                      <div style={{ color: '#fbbf24', marginTop: '6px' }}><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />El corte iguala o supera las fechas cargadas: la Segunda Rueda va a quedar vacía por ahora.</div>
                     )}
                   </>
                 );
@@ -2578,7 +2579,7 @@ function Torneos() {
                   className="btn-secondary"
                   style={{ width: '100%', padding: '10px', fontSize: '0.8rem', borderStyle: 'dashed', marginBottom: '12px' }}
                 >
-                  📋 IMPORTAR FECHAS
+                  <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />IMPORTAR FECHAS
                 </button>
 
                 {avisosImport.length > 0 && (
@@ -2597,25 +2598,25 @@ function Torneos() {
                          <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 800 }}>
                            PARTIDO #{index + 1}
                            {(p.local_id === ID_MI_CLUB || p.visitante_id === ID_MI_CLUB) && (
-                             <span style={{ color: 'var(--accent)', fontWeight: 900 }}> · ⭐ TU PARTIDO ({p.local_id === ID_MI_CLUB ? 'LOCAL' : 'VISITANTE'})</span>
+                             <span style={{ color: 'var(--accent)', fontWeight: 900 }}> · <Icono nombre="estrella" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />TU PARTIDO ({p.local_id === ID_MI_CLUB ? 'LOCAL' : 'VISITANTE'})</span>
                            )}
                            {p.jornada && <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}> · {p.jornada.toUpperCase()}</span>}
                            {p._crudo?.fecha && <span style={{ color: 'var(--text-dim)', fontWeight: 600 }}> · {p._crudo.fecha}</span>}
                          </span>
                          {formFixture.partidos_multiples.length > 1 && (
-                           <button onClick={() => removerPartidoMultiple(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900 }}>ELIMINAR 🗑️</button>
+                           <button onClick={() => removerPartidoMultiple(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 900 }}>ELIMINAR <Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
                          )}
                       </div>
                       
                       <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                         <select value={p.local_id} onChange={e => actualizarPartidoMultiple(index, 'local_id', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1, borderColor: (!p.local_id && p._crudo) ? '#ef4444' : 'var(--border)'}}>
                           <option value="">{p._crudo && !p.local_id ? `¿QUIÉN ES "${p._crudo.local.toUpperCase()}"?` : 'LOCAL...'}</option>
-                          <option value={ID_MI_CLUB}>⭐ {miClubGlobal.toUpperCase()} (MI CLUB)</option>
+                          <option value={ID_MI_CLUB}>{miClubGlobal.toUpperCase()} (MI CLUB)</option>
                           {rivales.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
                         </select>
                         <select value={p.visitante_id} onChange={e => actualizarPartidoMultiple(index, 'visitante_id', e.target.value)} style={{...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1, borderColor: (!p.visitante_id && p._crudo) ? '#ef4444' : 'var(--border)'}}>
                           <option value="">{p._crudo && !p.visitante_id ? `¿QUIÉN ES "${p._crudo.visitante.toUpperCase()}"?` : 'VISITANTE...'}</option>
-                          <option value={ID_MI_CLUB}>⭐ {miClubGlobal.toUpperCase()} (MI CLUB)</option>
+                          <option value={ID_MI_CLUB}>{miClubGlobal.toUpperCase()} (MI CLUB)</option>
                           {rivales.map(r => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
                         </select>
                       </div>

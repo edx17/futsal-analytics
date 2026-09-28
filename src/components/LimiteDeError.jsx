@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icono } from '../iconos';
 
 /* NINGUNA PANTALLA EN NEGRO
  *
@@ -76,7 +77,7 @@ export default class LimiteDeError extends React.Component {
     return (
       <div style={estilos.centro}>
         <div style={estilos.caja}>
-          <div style={{ fontSize: '2.2rem', marginBottom: '10px' }}>{deCarga ? '🔄' : '⚠️'}</div>
+          <div style={{ marginBottom: '10px' }}><Icono nombre={deCarga ? 'actualizar' : 'aviso'} size={36} relleno="propio" /></div>
           <h2 style={estilos.titulo}>
             {deCarga ? 'Hay una versión nueva de la app' : 'Esta pantalla no se pudo abrir'}
           </h2>

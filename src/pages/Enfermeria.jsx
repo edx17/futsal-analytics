@@ -11,6 +11,7 @@ import {
   hoyISO, soloFecha, sumarDias, diasEntre, diasDeBaja, altaVencida, estaAbierta,
   disponibilidadDe, resumenPlantel,
 } from '../utils/disponibilidad';
+import { Icono } from '../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    ENFERMERÍA
@@ -87,7 +88,7 @@ const ListaEjercicios = ({ ejercicios, titulo, color = 'var(--accent)' }) => (
             background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px',
             padding: '8px 12px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)',
           }}>
-          <span>▶</span>{ej.t}
+          <span><Icono nombre="reproducir" size="1.2em" relleno="propio" /></span>{ej.t}
         </a>
       ))}
     </div>
@@ -118,7 +119,7 @@ notaNueva, setNotaNueva, onEditar, onReadaptacion, onAlta, onAgregarNota,
         <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           {vencida && (
             <span style={{ background: '#7f1d1d', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.58rem', fontWeight: 900 }}>
-              ⚠️ ALTA VENCIDA
+              <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ALTA VENCIDA
             </span>
           )}
           <span style={{ background: info.color, color: '#000', padding: '4px 9px', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 900 }}>
@@ -143,7 +144,7 @@ notaNueva, setNotaNueva, onEditar, onReadaptacion, onAlta, onAgregarNota,
 
       {partido && (
         <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: '10px' }}>
-          🩹 Se lesionó vs <strong>{partido.rival}</strong> ({soloFecha(partido.fecha).split('-').reverse().join('/')})
+          <Icono nombre="lesion" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Se lesionó vs <strong>{partido.rival}</strong> ({soloFecha(partido.fecha).split('-').reverse().join('/')})
         </div>
       )}
       {lesion.tratamiento && (
@@ -179,14 +180,14 @@ notaNueva, setNotaNueva, onEditar, onReadaptacion, onAlta, onAgregarNota,
             <button onClick={() => onAgregarNota(lesion)} style={{ ...input, width: 'auto', cursor: 'pointer', fontWeight: 800, color: 'var(--accent)' }}>+</button>
           </div>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            <button onClick={() => onEditar(lesion)} className="btn-secondary" style={{ fontSize: '0.68rem', padding: '7px 12px', cursor: 'pointer' }}>✏️ EDITAR</button>
+            <button onClick={() => onEditar(lesion)} className="btn-secondary" style={{ fontSize: '0.68rem', padding: '7px 12px', cursor: 'pointer' }}><Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EDITAR</button>
             {lesion.estado !== 'readaptacion' && (
               <button onClick={() => onReadaptacion(lesion)} style={{ fontSize: '0.68rem', padding: '7px 12px', cursor: 'pointer', background: '#f59e0b', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 800 }}>
-                🏃 READAPTACIÓN
+                <Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />READAPTACIÓN
               </button>
             )}
             <button onClick={() => onAlta(lesion)} style={{ fontSize: '0.68rem', padding: '7px 12px', cursor: 'pointer', background: '#10b981', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 800 }}>
-              ✅ DAR DE ALTA
+              <Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DAR DE ALTA
             </button>
           </div>
         </>
@@ -388,7 +389,7 @@ function Enfermeria() {
     setGuardando(false);
     if (res.error) return showToast(mensajeDeError(res.error, 'guardar'), 'error');
 
-    showToast(form.id ? 'Lesión actualizada ✅' : 'Lesión registrada ✅', 'success');
+    showToast(form.id ? 'Lesión actualizada' : 'Lesión registrada', 'success');
     setEditando(false);
     setForm(FORM_VACIO);
     cargar();
@@ -399,7 +400,7 @@ function Enfermeria() {
       .update({ estado: 'alta', fecha_alta_real: hoyISO(), updated_at: new Date().toISOString() })
       .eq('id', lesion.id);
     if (error) return showToast(mensajeDeError(error, 'dar el alta de'), 'error');
-    showToast(`${nombreDe(lesion.jugador_id)} tiene el alta ✅`, 'success');
+    showToast(`${nombreDe(lesion.jugador_id)} tiene el alta`, 'success');
     cargar();
   };
 
@@ -451,7 +452,7 @@ function Enfermeria() {
     }]);
 
     if (error) return showToast(mensajeDeError(error, 'publicar el parte de'), 'error');
-    showToast('Parte médico publicado en el Tablón ✅', 'success');
+    showToast('Parte médico publicado en el Tablón', 'success');
   };
 
   /* ══════════════════════════════════════════════════════════════════════
@@ -478,7 +479,7 @@ function Enfermeria() {
 
     return (
       <div style={{ animation: 'fadeIn 0.3s', display: 'flex', flexDirection: 'column', gap: '18px', padding: isKiosco ? '16px 16px 40px' : 0, maxWidth: isKiosco ? '640px' : 'none', margin: isKiosco ? '0 auto' : 0, boxSizing: 'border-box' }}>
-        <h1 style={{ margin: 0, fontSize: esMovil ? '1.4rem' : '1.8rem', fontWeight: 900 }}>🏥 MI ESTADO FÍSICO</h1>
+        <h1 style={{ margin: 0, fontSize: esMovil ? '1.4rem' : '1.8rem', fontWeight: 900 }}><Icono nombre="botiquin" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MI ESTADO FÍSICO</h1>
 
         {cargando ? (
           <div className="bento-card" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>Cargando…</div>
@@ -509,25 +510,25 @@ function Enfermeria() {
                 <div style={{ fontSize: '0.85rem', whiteSpace: 'pre-wrap' }}>{mia.tratamiento}</div>
               </div>
             )}
-            {ejercicios.length > 0 && <ListaEjercicios ejercicios={ejercicios} titulo="🎯 TU TRABAJO DE REHAB" color={estado.color} />}
+            {ejercicios.length > 0 && <ListaEjercicios ejercicios={ejercicios} titulo={<><Icono nombre="objetivo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />TU TRABAJO DE REHAB</>} color={estado.color} />}
           </div>
         ) : (
           <div className="bento-card" style={{ borderLeft: '4px solid var(--accent)' }}>
-            <div style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '6px' }}>✅ Sin lesiones registradas</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '6px' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Sin lesiones registradas</div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Estás disponible para entrenar y jugar.</div>
           </div>
         )}
 
         {!cargando && (
           <div className="bento-card" style={{ borderLeft: `4px solid ${apto.color}` }}>
-            <span style={etiqueta}>🩺 Apto médico</span>
+            <span style={etiqueta}><Icono nombre="medico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Apto médico</span>
             <div style={{ fontSize: '1rem', fontWeight: 900, color: apto.color === 'var(--text-dim)' ? 'var(--text)' : apto.color, marginBottom: '4px' }}>{apto.titulo}</div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{apto.texto}</div>
           </div>
         )}
 
         <div className="bento-card">
-          <ListaEjercicios ejercicios={preventivos} titulo="🛡️ TRABAJO PREVENTIVO — HACELO SIEMPRE" color="#3b82f6" />
+          <ListaEjercicios ejercicios={preventivos} titulo={<><Icono nombre="escudo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />TRABAJO PREVENTIVO — HACELO SIEMPRE</>} color="#3b82f6" />
           <div style={{ marginTop: '12px', fontSize: '0.68rem', color: 'var(--text-dim)' }}>
             Core y movilidad: son los que bajan el riesgo de lesión muscular. Diez minutos, todos los días.
           </div>
@@ -545,7 +546,7 @@ function Enfermeria() {
     <div style={{ animation: 'fadeIn 0.3s', display: 'flex', flexDirection: 'column', gap: '18px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: esMovil ? '1.4rem' : '1.8rem', fontWeight: 900 }}>🏥 ENFERMERÍA</h1>
+          <h1 style={{ margin: 0, fontSize: esMovil ? '1.4rem' : '1.8rem', fontWeight: 900 }}><Icono nombre="botiquin" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ENFERMERÍA</h1>
           <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
             Quién está disponible, quién no y hasta cuándo.
           </p>
@@ -553,7 +554,7 @@ function Enfermeria() {
         {puedeEditar && (
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: esMovil ? '100%' : 'auto' }}>
             <button onClick={publicarParte} style={{ padding: '10px 16px', borderRadius: '8px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', background: '#3b82f6', color: '#fff', border: 'none' }}>
-              📌 PARTE AL TABLÓN
+              <Icono nombre="fijado" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PARTE AL TABLÓN
             </button>
             <button onClick={abrirNueva} className="btn-action" style={{ padding: '10px 16px', borderRadius: '8px', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', flex: esMovil ? 1 : 'none' }}>
               + NUEVA LESIÓN
@@ -567,7 +568,7 @@ function Enfermeria() {
           vista para que sepa con qué usuario tiene que entrar. */}
       {!puedeEditar && (
         <div className="bento-card" style={{ borderLeft: '4px solid #f59e0b', padding: '14px 16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.1rem' }}>🔒</span>
+          <span style={{ fontSize: '1.1rem' }}><Icono nombre="candado" size="1.2em" relleno="propio" /></span>
           <div style={{ fontSize: '0.82rem' }}>
             <strong>Estás entrando como {(perfil?.rol || 'sin rol').toUpperCase()}, y desde ese rol la Enfermería es de sólo lectura.</strong>
             <div style={{ color: 'var(--text-dim)', marginTop: '4px' }}>
@@ -692,7 +693,7 @@ function Enfermeria() {
 
           {ejerciciosForm.length > 0 && (
             <div style={{ marginTop: '16px', padding: '14px', background: 'var(--panel)', borderRadius: '8px' }}>
-              <ListaEjercicios ejercicios={ejerciciosForm} titulo={`🎯 REHAB SUGERIDO PARA ${form.zona.toUpperCase()}`} />
+              <ListaEjercicios ejercicios={ejerciciosForm} titulo={<><Icono nombre="objetivo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REHAB SUGERIDO PARA {form.zona.toUpperCase()}</>} />
               <div style={{ marginTop: '10px', fontSize: '0.65rem', color: 'var(--text-dim)' }}>
                 Sale de la biblioteca de FISIOLOGÍA. El jugador los ve en su pantalla.
               </div>
@@ -701,7 +702,7 @@ function Enfermeria() {
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
             <button onClick={guardar} disabled={guardando} className="btn-action" style={{ padding: '12px 22px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: guardando ? 'wait' : 'pointer' }}>
-              {guardando ? 'GUARDANDO…' : '💾 GUARDAR'}
+              {guardando ? 'GUARDANDO…' : <><Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR</>}
             </button>
             <button onClick={() => { setEditando(false); setForm(FORM_VACIO); }} style={{ padding: '12px 22px', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)' }}>
               CANCELAR
@@ -715,7 +716,7 @@ function Enfermeria() {
         <div className="bento-card" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-dim)' }}>Cargando…</div>
       ) : abiertas.length === 0 ? (
         <div className="bento-card" style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '10px' }}>✅</div>
+          <div style={{ fontSize: '2rem', marginBottom: '10px' }}><Icono nombre="ok" size="1.2em" relleno="propio" /></div>
           <div style={{ fontWeight: 900, fontSize: '1.05rem', marginBottom: '6px' }}>No hay lesiones abiertas</div>
           <div style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: puedeEditar ? '20px' : 0 }}>
             {lesiones.length === 0

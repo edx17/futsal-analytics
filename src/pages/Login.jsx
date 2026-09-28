@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
+import { Icono } from '../iconos';
 
 export default function Login() {
   const [userHandle, setUserHandle] = useState(''); // Username o mail
@@ -135,7 +136,7 @@ export default function Login() {
         ) : (
           // --- PANTALLA DE INGRESO DE PIN AL MAIL ---
           <form onSubmit={handleVerificarPIN} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ textAlign: 'center', color: 'var(--accent)', fontSize: '2rem' }}>✉️</div>
+            <div style={{ textAlign: 'center', color: 'var(--accent)', fontSize: '2rem' }}><Icono nombre="mail" size="1.2em" relleno="propio" /></div>
             <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-dim)', margin: 0 }}>
               Te enviamos un código de 6 dígitos a tu correo asociado.
             </p>
@@ -160,7 +161,7 @@ export default function Login() {
             onMouseOver={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
             onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-dim)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
           >
-            📱 KIOSCO / VESTUARIO
+            <Icono nombre="celular" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />KIOSCO / VESTUARIO
           </button>
         </div>
       </div>

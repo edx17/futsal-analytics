@@ -95,6 +95,10 @@ button:focus-visible {
    (opacity 0.2) va en el verde de acento en vez del color del trazo. */
 .vc-icono { flex-shrink: 0; }
 .vc-icono [opacity="0.2"] { fill: var(--accent); opacity: 0.3; }
+.vc-icono--propio [opacity="0.2"] { fill: currentColor; opacity: 0.25; }
+.vc-icono--girar { animation: vc-girar 0.9s linear infinite; }
+@keyframes vc-girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .vc-icono--girar { animation: none; } }
 
 /* BASE GLOBAL (obligatorio) */
 html, body, #root {

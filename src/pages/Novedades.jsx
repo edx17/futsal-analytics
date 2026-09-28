@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
 import { filtroNoVencidas } from '../utils/novedades';
+import { Icono } from '../iconos';
 
 const EMOJIS = ['⚽', '🏋️‍♂️', '🏆', '⚠️', '🗓️', '🏥', '📊', '🔥', '🚌', '🍔', '💪', '🧠', '✅', '❌', '😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '😚', '🙂', '🤗', '🤩', '🤔', '🤨', '😐', '😑', '😶', '🙄', '😏', '😣', '😥', '😮', '🤐', '😯', '😪', '😫', '🥱', '😴', '😌', '😛', '😜', '😝', '🤤', '😒', '😓', '😔', '😕', '🙃', '🫠', '🤑', '😲', '☹️', '🙁', '😖', '😞', '😟', '😤', '😢', '😭', '😦','💀','☠️','👻','👽','🤖','🎃'];
 
@@ -141,7 +142,7 @@ export default function Novedades() {
       return;
     }
 
-    showToast('Novedad publicada ✅', 'success');
+    showToast('Novedad publicada', 'success');
     setMensaje('');
     setCategoriasDestino([]);
     setDiasVencimiento(null);
@@ -238,8 +239,9 @@ export default function Novedades() {
               placeholder="Escribí la novedad acá..."
             />
             <button type="button" onClick={() => setMostrarEmojis(!mostrarEmojis)}
-              style={{ position: 'absolute', right: '10px', top: '35px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>
-              😀
+              style={{ position: 'absolute', right: '10px', top: '35px', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: 'var(--text-dim)' }}
+              aria-label="Agregar emoji">
+              <Icono nombre="animo" size={22} />
             </button>
             {mostrarEmojis && (
               <div style={{ position: 'absolute', right: '0', top: '70px', background: 'var(--panel)', border: '1px solid var(--border)', padding: '10px', borderRadius: '8px', display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '5px', zIndex: 10 }}>
@@ -255,7 +257,7 @@ export default function Novedades() {
 
           <button type="submit" disabled={loading || categoriasDisponibles.length === 0}
             style={{ background: 'var(--accent)', color: '#000', fontWeight: 900, padding: '15px', border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer', textTransform: 'uppercase', opacity: loading ? 0.7 : 1 }}>
-            {loading ? 'ENVIANDO...' : '📢 PUBLICAR NOVEDAD'}
+            {loading ? 'ENVIANDO...' : <><Icono nombre="novedades" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PUBLICAR NOVEDAD</>}
           </button>
         </form>
       </div>
@@ -280,7 +282,7 @@ export default function Novedades() {
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800 }}>
                       {h.perfiles?.nombre_completo || 'Desconocido'}
                       {' '}({h.perfiles?.rol?.toUpperCase() || 'N/A'})
-                      {' '}➔{' '}
+                      {' '}→{' '}
                       <span style={{ color: 'var(--accent)' }}>{h.publico_objetivo.toUpperCase()}</span>
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -292,7 +294,7 @@ export default function Novedades() {
                           color: labelVenc === 'Vence mañana' ? '#ef4444' : 'var(--text-dim)',
                           border: `1px solid ${labelVenc === 'Vence mañana' ? '#ef4444' : 'var(--border)'}`
                         }}>
-                          ⏱ {labelVenc}
+                          <Icono nombre="cronometro" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />{labelVenc}
                         </span>
                       )}
                       <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>
@@ -333,7 +335,7 @@ export default function Novedades() {
                       onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
                       onMouseLeave={e => e.currentTarget.style.color = 'var(--text-dim)'}
                     >
-                      {eliminando === h.id ? '...' : '✕'}
+                      {eliminando === h.id ? '...' : <Icono nombre="cerrar" size="1.1em" />}
                     </button>
                   )}
                 </div>

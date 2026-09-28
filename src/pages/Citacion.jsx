@@ -13,6 +13,7 @@ import {
   resolverPlantilla, restarMinutos, partesDeFecha,
   sugerirConvocatoria, limiteConvocados, esArquero,
 } from '../utils/citacion';
+import { Icono } from '../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    CITACIÓN AL PRÓXIMO PARTIDO
@@ -511,7 +512,7 @@ function Citacion() {
   const copiar = async () => {
     try {
       await navigator.clipboard.writeText(textoFinal);
-      showToast('Mensaje copiado ✅ Pegalo en el grupo.', 'success');
+      showToast('Mensaje copiado. Pegalo en el grupo.', 'success');
     } catch {
       showToast('El navegador no dejó copiar. Seleccioná el texto del preview a mano.', 'warning');
     }
@@ -572,12 +573,12 @@ function Citacion() {
 
     if (errorMarca) {
       return showToast(faltaLaColumna(errorMarca)
-        ? 'Publicado en el Tablón ✅ El push automático necesita la migración corrida.'
-        : 'Publicado en el Tablón ✅ (no se pudo marcar el partido para el push)', 'warning');
+        ? 'Publicado en el Tablón. El push automático necesita la migración corrida.'
+        : 'Publicado en el Tablón (no se pudo marcar el partido para el push)', 'warning');
     }
 
     setPartidos(ps => ps.map(p => p.id === partido.id ? { ...p, citacion: citacionActualizada } : p));
-    showToast('Publicado en el Tablón ✅ El push sale en la próxima corrida del cron.', 'success');
+    showToast('Publicado en el Tablón. El push sale en la próxima corrida del cron.', 'success');
   };
 
   const guardarCitacion = async () => {
@@ -620,7 +621,7 @@ function Citacion() {
     if (error) return showToast(`No se pudo guardar: ${error.message}`, 'error');
 
     setPartidos(ps => ps.map(p => p.id === partido.id ? { ...p, ...completo } : p));
-    showToast('Citación guardada y convocatoria cargada al partido ✅', 'success');
+    showToast('Citación guardada y convocatoria cargada al partido', 'success');
 
     // La dirección del rival queda recordada para la próxima visita.
     if (partido.rival_id && form.direccion) {
@@ -644,7 +645,7 @@ function Citacion() {
         ? 'Plantilla guardada en este dispositivo. Para compartirla con todo el cuerpo técnico hay que correr la migración.'
         : `Guardada en este dispositivo (la base rechazó: ${error.message})`, 'warning');
     }
-    showToast('Plantilla guardada para todo el club ✅', 'success');
+    showToast('Plantilla guardada para todo el club', 'success');
   };
 
   /* ── 7. RENDER ────────────────────────────────────────────────────────── */
@@ -660,7 +661,7 @@ function Citacion() {
       `}</style>
 
       <div>
-        <h1 style={{ margin: 0, fontSize: esMovil ? '1.4rem' : '1.8rem', fontWeight: 900 }}>📣 CITACIÓN</h1>
+        <h1 style={{ margin: 0, fontSize: esMovil ? '1.4rem' : '1.8rem', fontWeight: 900 }}><Icono nombre="novedades" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CITACIÓN</h1>
         <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
           Armá la convocatoria del próximo partido y mandá el mensaje al grupo.
         </p>
@@ -741,7 +742,7 @@ function Citacion() {
               <div className="stat-label" style={{ margin: 0 }}>3 · CONVOCATORIA</div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button onClick={aplicarSugerencia} className="btn-action" style={{ fontSize: '0.72rem', padding: '8px 14px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer' }}>
-                  ✨ SUGERIR {calculandoRatings && '…'}
+                  <Icono nombre="destello" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SUGERIR {calculandoRatings && '…'}
                 </button>
                 <button onClick={limpiar} style={{ fontSize: '0.72rem', padding: '8px 14px', borderRadius: '6px', fontWeight: 800, cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)' }}>
                   LIMPIAR
@@ -803,7 +804,7 @@ function Citacion() {
                         color: activa ? '#fff' : 'var(--text-dim)',
                         border: `1px solid ${activa ? '#3b82f6' : 'var(--border)'}`,
                       }}>
-                      {activa ? '✓ ' : '+ '}{cat.toUpperCase()}
+                      <Icono nombre={activa ? 'listo' : 'agregar'} size="1.1em" style={{ marginRight: 4 }} />{cat.toUpperCase()}
                     </button>
                   );
                 })}
@@ -825,7 +826,7 @@ function Citacion() {
                     <input type="checkbox" checked={tildado} readOnly style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', flexShrink: 0, pointerEvents: 'none' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.85rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {ev.esArquero && '🥅 '}
+                        {ev.esArquero && <Icono nombre="arco" size="1.1em" style={{ marginRight: 4 }} />}
                         {ev.jugador.apellido}, {ev.jugador.nombre}
                         <span style={{ color: 'var(--text-dim)', fontWeight: 600, marginLeft: '6px', fontFamily: 'monospace', fontSize: '0.7rem' }}>#{ev.jugador.dorsal}</span>
                         {/* El refuerzo de otra categoría se marca, para que no
@@ -839,8 +840,8 @@ function Citacion() {
                       <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {ev.motivos.join(' · ')}
                       </div>
-                      {ev.bloqueo && <div style={{ fontSize: '0.62rem', color: '#ef4444', fontWeight: 800, marginTop: '3px' }}>⛔ {ev.bloqueo}</div>}
-                      {ev.aviso && !ev.bloqueo && <div style={{ fontSize: '0.62rem', color: '#fbbf24', fontWeight: 800, marginTop: '3px' }}>⚠️ {ev.aviso}</div>}
+                      {ev.bloqueo && <div style={{ fontSize: '0.62rem', color: '#ef4444', fontWeight: 800, marginTop: '3px' }}><Icono nombre="prohibido" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{ev.bloqueo}</div>}
+                      {ev.aviso && !ev.bloqueo && <div style={{ fontSize: '0.62rem', color: '#fbbf24', fontWeight: 800, marginTop: '3px' }}><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{ev.aviso}</div>}
                     </div>
                     <div style={{ textAlign: 'center', flexShrink: 0 }}>
                       <div style={{ fontFamily: 'monospace', fontWeight: 900, fontSize: '1rem', color: ev.score >= 70 ? 'var(--accent)' : ev.score >= 50 ? 'var(--text)' : 'var(--text-dim)' }}>{ev.score}</div>
@@ -857,7 +858,7 @@ function Citacion() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
               <div className="stat-label" style={{ margin: 0 }}>4 · EL MENSAJE</div>
               <button onClick={() => setVerPlantilla(v => !v)} style={{ fontSize: '0.68rem', fontWeight: 800, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer' }}>
-                {verPlantilla ? 'OCULTAR PLANTILLA' : '✏️ EDITAR PLANTILLA'}
+                {verPlantilla ? 'OCULTAR PLANTILLA' : <><Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EDITAR PLANTILLA</>}
               </button>
             </div>
 
@@ -876,7 +877,7 @@ function Citacion() {
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button onClick={guardarPlantillaClub} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 14px', cursor: 'pointer' }}>
-                    💾 GUARDAR COMO PLANTILLA DEL CLUB
+                    <Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR COMO PLANTILLA DEL CLUB
                   </button>
                   <button onClick={() => { setPlantilla(PLANTILLA_DEFAULT); setMensajeManual(null); }}
                     style={{ fontSize: '0.7rem', padding: '8px 14px', cursor: 'pointer', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '6px' }}>
@@ -903,18 +904,18 @@ function Citacion() {
 
             <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(2, 1fr)', gap: '10px', marginTop: '16px' }}>
               <button onClick={copiar} className="btn-action" style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer' }}>
-                📋 COPIAR MENSAJE
+                <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR MENSAJE
               </button>
               <button onClick={exportarWhatsApp}
                 style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', background: '#25D366', color: '#fff', border: 'none' }}>
-                📤 EXPORTAR PARA WHATSAPP
+                <Icono nombre="subir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EXPORTAR PARA WHATSAPP
               </button>
               <button onClick={publicarEnTablon} disabled={publicando}
                 style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: publicando ? 'wait' : 'pointer', background: '#3b82f6', color: '#fff', border: 'none' }}>
-                {publicando ? 'PUBLICANDO…' : '📌 PUBLICAR EN EL TABLÓN'}
+                {publicando ? 'PUBLICANDO…' : <><Icono nombre="fijado" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PUBLICAR EN EL TABLÓN</>}
               </button>
               <button onClick={guardarCitacion} disabled={guardando} className="btn-secondary" style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: guardando ? 'wait' : 'pointer' }}>
-                {guardando ? 'GUARDANDO…' : '💾 GUARDAR CONVOCATORIA'}
+                {guardando ? 'GUARDANDO…' : <><Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR CONVOCATORIA</>}
               </button>
             </div>
             <div style={{ marginTop: '10px', fontSize: '0.65rem', color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6 }}>
