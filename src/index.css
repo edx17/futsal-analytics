@@ -91,6 +91,11 @@ button:focus-visible {
   --amarillo: #facc15;
 }
 
+/* ICONOS (src/iconos): Phosphor duotone. La capa de relleno suave
+   (opacity 0.2) va en el verde de acento en vez del color del trazo. */
+.vc-icono { flex-shrink: 0; }
+.vc-icono [opacity="0.2"] { fill: var(--accent); opacity: 0.3; }
+
 /* BASE GLOBAL (obligatorio) */
 html, body, #root {
   height: 100%;
