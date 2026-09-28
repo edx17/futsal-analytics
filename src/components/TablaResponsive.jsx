@@ -11,7 +11,8 @@ const MONO = 'JetBrains Mono, monospace';
  *
  * Props:
  *   filas          array de filas (los objetos jugador).
- *   columnas       [{ k, t, g, r }]  (misma forma que tu COLS: clave, título, grupo, render).
+ *   columnas       [{ k, t, g, r, txt? }]  (misma forma que tu COLS: clave, título, grupo, render;
+ *                  txt = título en texto plano cuando t es un icono, para el selector de orden).
  *                  `bloque: true` pinta esa columna a todo el ancho y sin rótulo
  *                  (para botones de acción, que no son un "dato: valor").
  *   colsClave      [k, k, k]         claves destacadas en la cara de la card (2-4).
@@ -85,7 +86,7 @@ export function TablaResponsive({
                 padding: '7px 10px', fontSize: '0.72rem', fontWeight: 800, outline: 'none', maxWidth: '55%',
               }}
             >
-              {columnas.map((c) => <option key={c.k} value={c.k}>Ordenar: {c.t}</option>)}
+              {columnas.map((c) => <option key={c.k} value={c.k}>Ordenar: {c.txt || c.t}</option>)}
             </select>
           )}
           {onSort && (

@@ -19,6 +19,7 @@ import { FORMACIONES, CLAVES_FORMACION, elementosDeFormacion } from '../tactica/
 import { useToast } from '../components/ToastContext'
 import { useAuth } from '../context/AuthContext' 
 import { NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
+import { Icono } from '../iconos';
 
 
 const INIT_BOARD = { elements:[], arrows:[], selected:null, history:[] }
@@ -994,29 +995,29 @@ const CreadorTareas = () => {
   const upPitch = (patch) => setPitchCfg(p=>({...p,...patch}))
 
   const TOOLS_PLAYERS = [
-    {id:'home',    icon:'🔵', label:'Local'},
-    {id:'away',    icon:'🔴', label:'Visit.'},
-    {id:'verde',   icon:'🟢', label:'Verde'},
-    {id:'blanco',    icon:'⚪', label:'Blanco'},
-    {id:'gk-ama',  icon:'🟡', label:'Arq. Ama'},
-    {id:'gk-vio',  icon:'🟣', label:'Arq. Vio'},
-    {id:'staff',   icon:'👔', label:'Staff'},
+    {id:'home',    icon:<Punto c={TEAM_COLORS['home']} />, label:'Local'},
+    {id:'away',    icon:<Punto c={TEAM_COLORS['away']} />, label:'Visit.'},
+    {id:'verde',   icon:<Punto c={TEAM_COLORS['verde']} />, label:'Verde'},
+    {id:'blanco',    icon:<Punto c={TEAM_COLORS['blanco']} />, label:'Blanco'},
+    {id:'gk-ama',  icon:<Punto c={TEAM_COLORS['gk-ama']} />, label:'Arq. Ama'},
+    {id:'gk-vio',  icon:<Punto c={TEAM_COLORS['gk-vio']} />, label:'Arq. Vio'},
+    {id:'staff',   icon:<Punto c={TEAM_COLORS['staff']} />, label:'Staff'},
   ]
   const TOOLS_MAT = [
-    {id:'ball',       icon:'⚽', label:'Pelota'},
-    {id:'cono_alto',  icon:'🔺', label:'Cono Alto'},
-    {id:'cono_plato', icon:'🟡', label:'Cono Plano'},
-    {id:'valla',      icon:'🚧', label:'Valla'},
-    {id:'mini_arco',  icon:'🥅', label:'Mini Arco'},
-    {id:'arco',       icon:'⬛', label:'Arco'},
+    {id:'ball',       icon:<Icono nombre="pelota" size="1em" />, label:'Pelota'},
+    {id:'cono_alto',  icon:<Icono nombre="triangulo" size="1em" style={{color:'#f97316'}} relleno="propio" />, label:'Cono Alto'},
+    {id:'cono_plato', icon:<Punto c={{fill:'#facc15',stroke:'#fde047'}} plano />, label:'Cono Plano'},
+    {id:'valla',      icon:<Icono nombre="valla" size="1em" />, label:'Valla'},
+    {id:'mini_arco',  icon:<Icono nombre="arco" size="0.85em" />, label:'Mini Arco'},
+    {id:'arco',       icon:<Icono nombre="arco" size="1em" />, label:'Arco'},
   ]
   const TOOLS_ANNOT = [
     {id:'arrow-pase',       icon:'⇢', label:'Pase',       color:ARROW_STYLES['arrow-pase'].color},
     {id:'arrow-conduccion', icon:'⇝', label:'Conducción', color:ARROW_STYLES['arrow-conduccion'].color},
     {id:'arrow-disparo',    icon:'⇉', label:'Disparo',    color:ARROW_STYLES['arrow-disparo'].color},
     {id:'arrow-presion',    icon:'⇻', label:'Presión',    color:ARROW_STYLES['arrow-presion'].color},
-    {id:'zone-rect',        icon:'⬜', label:'Zona Rect.'},
-    {id:'zone-ellipse',     icon:'⭕', label:'Zona Elipse'},
+    {id:'zone-rect',        icon:<Icono nombre="cuadrado" size="1em" />, label:'Zona Rect.'},
+    {id:'zone-ellipse',     icon:<Icono nombre="circulo" size="1em" />, label:'Zona Elipse'},
     {id:'text',             icon:'T',  label:'Texto'},
   ]
 
@@ -1063,7 +1064,7 @@ const CreadorTareas = () => {
           />
 
           <button className="ct-tbtn" onClick={()=>dispatchBoard({type:'UNDO'})} disabled={isPlaying}>↩ Deshacer</button>
-          <button className="ct-tbtn" style={{color:'var(--red)'}} onClick={()=>{if(confirm('¿Limpiar todo?'))dispatchBoard({type:'CLEAR'})}}>✕ Limpiar</button>
+          <button className="ct-tbtn" style={{color:'var(--red)'}} onClick={()=>{if(confirm('¿Limpiar todo?'))dispatchBoard({type:'CLEAR'})}}><Icono nombre="cerrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Limpiar</button>
 
           <div style={{flex:1}}/>
 
@@ -1072,7 +1073,7 @@ const CreadorTareas = () => {
             style={{background:tareaIdEditando?'var(--blue)':'var(--accent)',color:tareaIdEditando?'#fff':'#000'}}
             onClick={()=>setShowModal(true)}
           >
-            {tareaIdEditando?'💾 ACTUALIZAR':'💾 GUARDAR TAREA'}
+            <Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{tareaIdEditando?'ACTUALIZAR':'GUARDAR TAREA'}
           </button>
         </div>
       )}
@@ -1091,13 +1092,13 @@ const CreadorTareas = () => {
               <div className="ct-grid s1">
                 {CLAVES_FORMACION.map(k=>(
                   <div key={k} className="ct-tool wide" title={FORMACIONES[k].ayuda} onClick={()=>ponerFormacion(k,'propio')}>
-                    <span className="ti">⬢</span>{FORMACIONES[k].label}
+                    <span className="ti"><Icono nombre="formacion" size="1em" /></span>{FORMACIONES[k].label}
                   </div>
                 ))}
                 <div className="ct-tool wide" style={{color:'var(--red)',borderColor:'rgba(239,68,68,.35)'}}
                      title="Pone el 3-1 del rival, enfrentado y en su color"
                      onClick={()=>ponerFormacion('3-1','rival')}>
-                  <span className="ti">⬢</span>3-1 del rival
+                  <span className="ti"><Icono nombre="formacion" size="1em" /></span>3-1 del rival
                 </div>
               </div>
             </SeccionSidebar>
@@ -1145,7 +1146,7 @@ const CreadorTareas = () => {
               <button onClick={()=>navigate(-1)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',left:12,zIndex:20,background:'rgba(0,0,0,.7)',border:'1px solid #3a3f55',color:'#fff',width:38,height:38,borderRadius:'50%',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>←</button>
               {tareaIdEditando && <div style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 14px)',left:60,zIndex:20,background:'var(--blue)',color:'#fff',padding:'4px 8px',borderRadius:5,fontSize:'0.7rem',fontWeight:'bold'}}>EDICIÓN</div>}
               <button onClick={()=>setShowModal(true)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',right:12,zIndex:20,background:tareaIdEditando?'var(--blue)':'var(--accent)',color:tareaIdEditando?'#fff':'#000',border:'none',padding:'0 16px',height:38,borderRadius:18,fontSize:'.82rem',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
-                {tareaIdEditando?'💾 ACT.':'💾 GUARDAR'}
+                <Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{tareaIdEditando?'ACT.':'GUARDAR'}
               </button>
             </>
           )}
@@ -1310,7 +1311,7 @@ const CreadorTareas = () => {
                     <div className="ct-sopt" style={{flex:1,textAlign:'center'}} onClick={()=>dispatchBoard({type:'LAYER',dir:'back'})}>▼ Abajo</div>
                   </div>
                 </div>
-                <button className="ct-del-btn" onClick={()=>dispatchBoard({type:'DEL_SEL'})}>🗑 Eliminar Elemento</button>
+                <button className="ct-del-btn" onClick={()=>dispatchBoard({type:'DEL_SEL'})}><Icono nombre="borrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Eliminar Elemento</button>
               </>
             )}
           </aside>
@@ -1336,7 +1337,7 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>Jugadores &amp; Materiales</span>
-            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}>✕</button>
+            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div style={{fontSize:'9px',fontWeight:700,letterSpacing:'1.5px',color:'var(--muted2)',textTransform:'uppercase',marginBottom:8}}>Jugadores</div>
           <div className="ct-mob-tools-grid" style={{marginBottom:12}}>
@@ -1361,7 +1362,7 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>Anotaciones y Zonas</span>
-            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}>✕</button>
+            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div className="ct-mob-tools-grid">
             {TOOLS_ANNOT.map(t=>(
@@ -1377,24 +1378,24 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>Línea de Tiempo</span>
-            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}>✕</button>
+            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div className="ct-mob-anim-grid">
             {frames.map((f,i)=>(
               <div key={f.id} className={`ct-mob-frame-chip${i===frameIdx?' on':''}`} onClick={()=>{cambiarFrame(i);setPanelMovil(null)}}>
                 {i+1}
                 {i===frameIdx&&frames.length>1&&(
-                  <button className="del-x" onClick={e=>{e.stopPropagation();eliminarFrame(i)}}>✕</button>
+                  <button className="del-x" onClick={e=>{e.stopPropagation();eliminarFrame(i)}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                 )}
               </div>
             ))}
           </div>
           <div className="ct-mob-anim-actions">
-            <button className="ct-mob-anim-btn" style={{background:'rgba(59,130,246,.08)',borderColor:'var(--blue)',color:'var(--blue)'}} onClick={()=>{duplicarFrameActual();setPanelMovil(null)}}>⏭ Continuar</button>
-            <button className="ct-mob-anim-btn" onClick={()=>{agregarFrameVacio();setPanelMovil(null)}}>➕ Vacío</button>
+            <button className="ct-mob-anim-btn" style={{background:'rgba(59,130,246,.08)',borderColor:'var(--blue)',color:'var(--blue)'}} onClick={()=>{duplicarFrameActual();setPanelMovil(null)}}><Icono nombre="siguiente" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Continuar</button>
+            <button className="ct-mob-anim-btn" onClick={()=>{agregarFrameVacio();setPanelMovil(null)}}><Icono nombre="agregar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Vacío</button>
           </div>
           <button className="ct-mob-play-btn" style={{background:isPlaying?'#ef4444':'var(--accent)',color:isPlaying?'#fff':'#000'}} onClick={()=>{togglePlay();if(!isPlaying)setPanelMovil(null)}}>
-            {isPlaying?'🛑 Detener':'▶ Reproducir Jugada'}
+            <Icono nombre={isPlaying?'detener':'reproducir'} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{isPlaying?'Detener':'Reproducir Jugada'}
           </button>
         </div>
       )}
@@ -1403,7 +1404,7 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>Ajustes de Pista</span>
-            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}>✕</button>
+            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div className="ct-mob-config-row">
             <div className="ct-mob-config-lbl">Dimensiones</div>
@@ -1447,7 +1448,7 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>{isArrow?(ARROW_STYLES[selData.style]?.label||'Flecha'):selData.type.toUpperCase()}</span>
-            <button className="ct-mob-sheet-close" onClick={()=>dispatchBoard({type:'SELECT',sel:null})}>✕</button>
+            <button className="ct-mob-sheet-close" onClick={()=>dispatchBoard({type:'SELECT',sel:null})}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           {!isArrow && (
             <div className="ct-mob-prop-row">
@@ -1506,31 +1507,31 @@ const CreadorTareas = () => {
               <input type="range" min={-0.5} max={0.5} step={0.05} value={selData.curve||0} onChange={e=>upSel({curve:+e.target.value})} style={{width:100}} />
             </div>
           </>}
-          <button className="ct-mob-del-btn" onClick={()=>dispatchBoard({type:'DEL_SEL'})}>🗑 Eliminar Elemento</button>
+          <button className="ct-mob-del-btn" onClick={()=>dispatchBoard({type:'DEL_SEL'})}><Icono nombre="borrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Eliminar Elemento</button>
         </div>
       )}
 
       {esMovil && (
         <div className="ct-mob-bottom-bar">
           <button className={`ct-mob-tab${tool==='select'&&!panelMovil?' on':''}`} onClick={()=>{setTool('select');setPanelMovil(null);dispatchBoard({type:'SELECT',sel:null})}}>
-            <span className="tab-icon">🖐️</span>MOVER
+            <span className="tab-icon"><Icono nombre="mano" size="1.2em" relleno="propio" /></span>MOVER
           </button>
           <button className="ct-mob-tab" onClick={()=>dispatchBoard({type:'UNDO'})}>
             <span className="tab-icon">↩</span>DESHACER
           </button>
           <div className="ct-mob-sep"/>
           <button className={`ct-mob-tab${panelMovil==='elementos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='elementos'?null:'elementos')}>
-            <span className="tab-icon">🎒</span>FICHA
+            <span className="tab-icon"><Icono nombre="paquete" size="1.2em" relleno="propio" /></span>FICHA
           </button>
           <button className={`ct-mob-tab${panelMovil==='trazos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='trazos'?null:'trazos')}>
-            <span className="tab-icon">📐</span>TRAZOS
+            <span className="tab-icon"><Icono nombre="regla" size="1.2em" relleno="propio" /></span>TRAZOS
           </button>
           <button className={`ct-mob-tab${panelMovil==='anim'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='anim'?null:'anim')}>
-            <span className="tab-icon">{isPlaying?'🛑':'🎬'}</span>JUGADA
+            <span className="tab-icon"><Icono nombre={isPlaying?'detener':'video'} size="1em" /></span>JUGADA
           </button>
           <div className="ct-mob-sep"/>
           <button className={`ct-mob-tab${panelMovil==='config'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='config'?null:'config')}>
-            <span className="tab-icon">⚙️</span>PISTA
+            <span className="tab-icon"><Icono nombre="ajustes" size="1.2em" relleno="propio" /></span>PISTA
           </button>
         </div>
       )}
@@ -1559,7 +1560,7 @@ const CreadorTareas = () => {
                 <h2 className={tareaIdEditando?'blue':''}>{tareaIdEditando?'Actualizar Ficha Técnica':'Ficha Técnica de la Tarea'}</h2>
                 <span style={{color:'var(--muted)',fontSize:'0.8rem'}}>{vrtLabel}</span>
               </div>
-              <button onClick={() => {setShowModal(false); setVideoFile(null); setVideoPreview(tareaAEditar?.video_mp4_url || null)}} style={{background:'transparent',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer'}}>✖</button>
+              <button onClick={() => {setShowModal(false); setVideoFile(null); setVideoPreview(tareaAEditar?.video_mp4_url || null)}} style={{background:'transparent',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer'}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{marginBottom:20}}>
@@ -1661,7 +1662,7 @@ const CreadorTareas = () => {
             </div>
 
             <button onClick={confirmarGuardado} disabled={isUploading} className="ct-btn-primary" style={{width:'100%',padding:15,fontSize:'1.1rem',borderRadius:8, opacity: isUploading ? 0.7 : 1, cursor: isUploading ? 'not-allowed' : 'pointer'}}>
-              {isUploading ? '⏳ SUBIENDO VIDEO...' : (tareaIdEditando ? '💾 ACTUALIZAR TAREA' : (veniaDePlanificar ? '💾 GUARDAR Y VOLVER A LA SESIÓN' : '💾 GUARDAR EN EL BANCO'))}
+              <Icono nombre={isUploading ? 'cargando' : 'guardar'} girar={isUploading} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{isUploading ? 'SUBIENDO VIDEO...' : (tareaIdEditando ? 'ACTUALIZAR TAREA' : (veniaDePlanificar ? 'GUARDAR Y VOLVER A LA SESIÓN' : 'GUARDAR EN EL BANCO'))}
             </button>
           </div>
         </div>
@@ -1669,6 +1670,18 @@ const CreadorTareas = () => {
 
     </div>
   )
+}
+
+// Muestra de color de una ficha en la paleta: el mismo relleno y borde que la
+// ficha en la pizarra. `plano` es el cono plato, más ancho que alto.
+function Punto({ c, plano = false }) {
+  return (
+    <span style={{
+      display: 'inline-block', width: '0.9em', height: plano ? '0.45em' : '0.9em',
+      borderRadius: '50%', background: c.fill, border: `2px solid ${c.stroke}`,
+      boxSizing: 'border-box', verticalAlign: 'middle',
+    }} />
+  );
 }
 
 function SeccionSidebar({ titulo, abierta, onToggle, children }) {
@@ -1689,7 +1702,7 @@ function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, 
       <button className="ct-play-btn"
         style={{background:isPlaying?'#ef4444':'var(--accent)',color:isPlaying?'#fff':'#000'}}
         onClick={onPlay} title={isPlaying?'Detener':'Reproducir animación'}>
-        {isPlaying?'🛑':'▶'}
+        <Icono nombre={isPlaying?'detener':'reproducir'} size="1em" />
       </button>
       <div style={{width:1,height:30,background:'var(--border)',flexShrink:0}}/>
       <div style={{display:'flex',gap:8,alignItems:'center',opacity:isPlaying?.5:1,pointerEvents:isPlaying?'none':'auto'}}>
@@ -1697,21 +1710,21 @@ function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, 
           <div key={f.id} className={`ct-frame-chip${i===frameIdx?' on':''}`} onClick={()=>onGo(i)}>
             {i+1}
             {i===frameIdx&&frames.length>1&&(
-              <button className="del-x" onClick={e=>{e.stopPropagation();onDel(i)}}>✖</button>
+              <button className="del-x" onClick={e=>{e.stopPropagation();onDel(i)}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             )}
           </div>
         ))}
       </div>
       <div style={{width:1,height:30,background:'var(--border)',flexShrink:0}}/>
-      <button className="ct-tbtn" style={{background:'var(--blue)',color:'#fff',borderColor:'var(--blue)'}} onClick={onDup} title="Continuar jugada">⏭ Continuar</button>
-      <button className="ct-tbtn" style={{background:'#222',borderColor:'#333'}} onClick={onAdd}>➕ Vacío</button>
+      <button className="ct-tbtn" style={{background:'var(--blue)',color:'#fff',borderColor:'var(--blue)'}} onClick={onDup} title="Continuar jugada"><Icono nombre="siguiente" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Continuar</button>
+      <button className="ct-tbtn" style={{background:'#222',borderColor:'#333'}} onClick={onAdd}><Icono nombre="agregar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Vacío</button>
       <div style={{width:1,height:30,background:'var(--border)',flexShrink:0}}/>
       <button
         className={`ct-tbtn${verCebolla?' on':''}`}
         onClick={onToggleCebolla}
         title="Mostrar el fotograma anterior en transparencia, para ver de dónde viene cada ficha"
       >
-        👻 Fantasma
+        <Icono nombre="fantasma" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Fantasma
       </button>
       {/* Barra de avance: parar la jugada en cualquier instante y mirarla.
           Antes era play o nada. */}
@@ -1728,7 +1741,7 @@ function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, 
             {Math.round(avance*100)}%
           </span>
           {enScrub && (
-            <button className="ct-tbtn" onClick={onSalirScrub} title="Volver a editar el fotograma">✎ Editar</button>
+            <button className="ct-tbtn" onClick={onSalirScrub} title="Volver a editar el fotograma"><Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Editar</button>
           )}
         </>
       )}

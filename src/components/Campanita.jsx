@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTablon } from '../utils/useTablon'; // vive junto a useEsMovil.js
 import { activarNotificaciones, estaSuscripto, pushSoportado, diagnosticarPush, MOTIVOS_PUSH } from '../utils/pushNotificaciones';
 import VisorManual from './VisorManual';
+import { Icono } from '../iconos';
 
 const COLOR_PRIORIDAD = {
   bloqueante: '#ff5252',
@@ -84,7 +85,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
           flexShrink: 0,
         }}
       >
-        🔔
+        <Icono nombre="campana" size="1.2em" relleno="propio" />
         {alertas.length > 0 && (
           <span
             style={{
@@ -145,7 +146,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
             )}
             {!loading && alertas.length === 0 && (
               <p style={{ color: 'var(--text-dim, #888)', fontSize: '0.85rem', textAlign: 'center', padding: 16, margin: 0 }}>
-                No hay pendientes. 🎉
+                No hay pendientes. <Icono nombre="festejo" size="1.2em" relleno="propio" />
               </p>
             )}
             {!loading &&
@@ -213,7 +214,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                 {pushEstado === 'activo' ? (
                   <>
                     <p style={{ margin: 0, padding: '4px 8px', fontSize: '0.75rem', color: 'var(--accent, #00e676)', textAlign: 'center' }}>
-                      🔔 Notificaciones activadas en este dispositivo
+                      <Icono nombre="campana" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Notificaciones activadas en este dispositivo
                     </p>
                     {pushAviso && (
                       <div style={{
@@ -221,7 +222,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                         background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)',
                         color: 'var(--text-dim)', fontSize: '0.68rem', lineHeight: 1.5,
                       }}>
-                        ⚠️ {pushAviso}
+                        <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{pushAviso}
                       </div>
                     )}
                   </>
@@ -240,7 +241,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                       cursor: pushEstado === 'activando' ? 'default' : 'pointer',
                     }}
                   >
-                    {pushEstado === 'activando' ? 'Activando...' : pushEstado === 'error' ? '⚠️ No se pudo activar — reintentar' : '🔔 Activar notificaciones en este dispositivo'}
+                    {pushEstado === 'activando' ? 'Activando...' : pushEstado === 'error' ? <><Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />No se pudo activar — reintentar</> : <><Icono nombre="campana" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Activar notificaciones en este dispositivo</>}
                   </button>
                 )}
 
@@ -275,7 +276,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                     </>
                   )}
                   <button onClick={() => { setAbierto(false); setVerManual(true); }} style={linkChico}>
-                    📖 ¿No te llegan? Ver ayuda
+                    <Icono nombre="libroTactico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />¿No te llegan? Ver ayuda
                   </button>
                 </div>
 
@@ -287,7 +288,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                     {diagnostico.chequeos.map((c) => (
                       <div key={c.etiqueta} style={{ padding: '3px 0' }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                          <span>{c.estado === 'ok' ? '✅' : c.estado === 'aviso' ? '🟡' : '❌'}</span>
+                          <span style={{ color: c.estado === 'ok' ? 'var(--ok)' : c.estado === 'aviso' ? 'var(--aviso)' : 'var(--peligro)', alignSelf: 'center', display: 'flex' }}><Icono nombre={c.estado === 'ok' ? 'ok' : c.estado === 'aviso' ? 'aviso' : 'error'} size="1.2em" relleno="propio" /></span>
                           <span style={{ color: 'var(--text)' }}>{c.etiqueta}</span>
                         </div>
                         {c.detalle && (

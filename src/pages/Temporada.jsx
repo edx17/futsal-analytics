@@ -55,6 +55,7 @@ const analizarRachas = (historial = []) => {
 };
 import { useAuth } from '../context/AuthContext'; 
 import { esModoKiosco, tablaJugadores } from '../utils/kiosco';
+import { Icono } from '../iconos';
 
 const GRUPOS_QUINT = { q: 'var(--accent)' };
 const GRUPOS_QUINT_LABEL = { q: 'ESTADÍSTICAS DEL QUINTETO' };
@@ -63,7 +64,7 @@ const COLS_QUINT = [
   { k: 'rem', t: 'REMATES', g: 'q', r: q => `${q.rematesFavor || 0} - ${q.rematesContra || 0}` },
   { k: 'recperd', t: 'REC-PERD', g: 'q', r: q => `${q.recuperaciones || 0} - ${q.perdidas || 0}` },
   { k: 'faltas', t: 'FALTAS (R-C)', g: 'q', r: q => `${q.faltasRecibidas || 0} - ${q.faltasCometidas || 0}` },
-  { k: 'tarj', t: '🟨/🟥', g: 'q', r: q => `${q.amarillas || 0}/${q.rojas || 0}` },
+  { k: 'tarj', txt: 'Amarillas/Rojas', t: <><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></>, g: 'q', r: q => `${q.amarillas || 0}/${q.rojas || 0}` },
   { k: 'rat', t: 'RATING', g: 'q', r: q => q.balanceRating.toFixed(1) },
 ];
 
@@ -921,11 +922,11 @@ function Temporada() {
       <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '25px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
           <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            📊 FILTROS AVANZADOS DE TEMPORADA <InfoBox texto="Aislá contextos específicos. Las estadísticas de abajo se recalcularán al instante cruzando todas las opciones que elijas." />
+            <Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />FILTROS AVANZADOS DE TEMPORADA <InfoBox texto="Aislá contextos específicos. Las estadísticas de abajo se recalcularán al instante cruzando todas las opciones que elijas." />
           </div>
           <button onClick={() => setMostrarReporte(true)} disabled={!datosPlacaTemporada} className="btn-action"
             style={{ width: esMovil ? '100%' : 'auto', padding: '8px 15px', fontSize: '0.8rem', opacity: datosPlacaTemporada ? 1 : 0.45 }}>
-            🖼 EXPORTAR PLACA
+            <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EXPORTAR PLACA
           </button>
         </div>
 
@@ -1483,7 +1484,7 @@ function Temporada() {
                       <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
                       <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
                       <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
-                      <th title="Amarillas / Rojas">🟨/🟥</th>
+                      <th title="Amarillas / Rojas"><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></th>
                       <th>RATING</th>
                     </tr>
                   </thead>
@@ -1558,7 +1559,7 @@ function Temporada() {
                       <th style={{ color: '#3b82f6' }} title="Remates Realizados / Concedidos">REMATES</th>
                       <th style={{ color: '#f59e0b' }} title="Recuperaciones / Pérdidas">REC-PERD</th>
                       <th style={{ color: '#c084fc' }} title="Faltas Recibidas / Cometidas">FALTAS</th>
-                      <th title="Amarillas / Rojas">🟨/🟥</th>
+                      <th title="Amarillas / Rojas"><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></th>
                       <th>RATING</th>
                     </tr>
                   </thead>
@@ -1678,7 +1679,7 @@ function Temporada() {
                               </span>
                             </div>
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: '4px', fontWeight: 600 }}>
-                              👥 {convocados} CONVOCADOS
+                              <Icono nombre="usuarios" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{convocados} CONVOCADOS
                             </div>
                           </div>
                         </div>

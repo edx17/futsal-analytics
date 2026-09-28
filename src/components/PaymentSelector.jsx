@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { paymentsAR } from '../utils/paymentsAR';
+import { Icono } from '../iconos';
 
 // 🏗️ ARQUITECTURA: Constantes globales fuera del renderizado
 const SUPABASE_ICONS_URL = 'https://xwjskbhmwdeadgepsbns.supabase.co/storage/v1/object/public/icons/';
@@ -86,7 +87,7 @@ function PaymentSelector({ onMethodSelect, titulo = "Elegí cómo operar:" }) {
             color: '#fff' 
           }}
         >
-          💵 CAJA FÍSICA
+          <Icono nombre="efectivo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CAJA FÍSICA
         </button>
         <button 
           onClick={(e) => { e.preventDefault(); handleSelectGeneral('Banco'); }}
@@ -97,7 +98,7 @@ function PaymentSelector({ onMethodSelect, titulo = "Elegí cómo operar:" }) {
             color: '#fff' 
           }}
         >
-          🏦 BILLETERA / APP
+          <Icono nombre="banco" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BILLETERA / APP
         </button>
       </div>
 

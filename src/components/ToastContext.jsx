@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { Icono } from '../iconos';
 
 const ToastContext = createContext(null); // Empezamos en null para detectar errores
 
@@ -29,10 +30,10 @@ export const ToastProvider = ({ children }) => {
 
   const getToastStyle = (type) => {
     switch (type) {
-      case 'success': return { color: '#00ff88', icon: '✓', border: '#00ff88' };
-      case 'error': return { color: '#ef4444', icon: '✕', border: '#ef4444' };
-      case 'warning': return { color: '#f59e0b', icon: '⚠', border: '#f59e0b' };
-      case 'info': default: return { color: '#3b82f6', icon: 'ℹ', border: '#3b82f6' };
+      case 'success': return { color: '#00ff88', icon: 'listo', border: '#00ff88' };
+      case 'error': return { color: '#ef4444', icon: 'cerrar', border: '#ef4444' };
+      case 'warning': return { color: '#f59e0b', icon: 'aviso', border: '#f59e0b' };
+      case 'info': default: return { color: '#3b82f6', icon: 'info', border: '#3b82f6' };
     }
   };
 
@@ -84,7 +85,7 @@ export const ToastProvider = ({ children }) => {
               onClick={() => removeToast(t.id)}
             >
               <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: `${config.color}22`, color: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, flexShrink: 0 }}>
-                {config.icon}
+                <Icono nombre={config.icon} size={15} relleno="propio" />
               </div>
               <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
                 {t.message}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { disponibilidadDe } from '../utils/disponibilidad';
 import { soloActivos } from '../utils/plantelActivo';
+import { Icono } from '../iconos';
 
 /* Comparación de nombres de equipo tolerante a mayúsculas, espacios y acentos.
    Distintas pantallas resuelven el nombre del club por caminos distintos
@@ -408,7 +409,7 @@ function NuevoPartido() {
 
           {partidosTorneo.length > 0 && (
             <div style={{ animation: 'fadeIn 0.3s' }}>
-              <div className="section-title" style={{ color: 'var(--accent)' }}>✅ PARTIDO PROGRAMADO EN EL FIXTURE</div>
+              <div className="section-title" style={{ color: 'var(--accent)' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PARTIDO PROGRAMADO EN EL FIXTURE</div>
               <select 
                 value={formData.id || ''} 
                 onChange={handleSeleccionarPartidoProgramado} 
@@ -482,7 +483,7 @@ function NuevoPartido() {
           {rivalSeleccionado && (
             <div style={{ animation: 'fadeIn 0.3s', background: 'var(--bg)', padding: '15px', borderRadius: '4px', borderLeft: '3px solid var(--accent)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                <span style={{ fontSize: '1.2rem' }}>📋</span>
+                <span style={{ fontSize: '1.2rem' }}><Icono nombre="lista" size="1.2em" relleno="propio" /></span>
                 <span style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text)' }}>REPORTE RÁPIDO: {rivalSeleccionado.nombre.toUpperCase()}</span>
               </div>
               <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -506,7 +507,7 @@ function NuevoPartido() {
             background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.4)',
             borderRadius: '6px', padding: '12px 14px', marginBottom: '18px', fontSize: '0.8rem',
           }}>
-            <span style={{ fontSize: '1.1rem' }}>🏥</span>
+            <span style={{ fontSize: '1.1rem' }}><Icono nombre="botiquin" size="1.2em" relleno="propio" /></span>
             <span style={{ flex: 1, minWidth: '220px' }}>
               <strong>
                 Estás convocando a {convocadosLesionados.length} jugador{convocadosLesionados.length === 1 ? '' : 'es'} de baja:
@@ -525,7 +526,7 @@ function NuevoPartido() {
             background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.35)',
             borderRadius: '6px', padding: '12px 14px', marginBottom: '18px', fontSize: '0.8rem',
           }}>
-            <span style={{ fontSize: '1.1rem' }}>📣</span>
+            <span style={{ fontSize: '1.1rem' }}><Icono nombre="novedades" size="1.2em" relleno="propio" /></span>
             <span style={{ flex: 1, minWidth: '220px' }}>
               <strong>{citadosPrecargados} citados precargados desde la CITACIÓN.</strong>{' '}
               <span style={{ color: 'var(--text-dim)' }}>
@@ -557,8 +558,8 @@ function NuevoPartido() {
             </select>
 
             <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
-              <button onClick={() => setVistaJugadores('lista')} style={{ padding: '5px 10px', background: vistaJugadores === 'lista' ? 'var(--text)' : 'transparent', color: vistaJugadores === 'lista' ? 'var(--bg)' : 'var(--text-dim)', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>☰ LISTA</button>
-              <button onClick={() => setVistaJugadores('grilla')} style={{ padding: '5px 10px', background: vistaJugadores === 'grilla' ? 'var(--text)' : 'transparent', color: vistaJugadores === 'grilla' ? 'var(--bg)' : 'var(--text-dim)', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>⊞ GRILLA</button>
+              <button onClick={() => setVistaJugadores('lista')} style={{ padding: '5px 10px', background: vistaJugadores === 'lista' ? 'var(--text)' : 'transparent', color: vistaJugadores === 'lista' ? 'var(--bg)' : 'var(--text-dim)', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}><Icono nombre="menu" size="1.1em" style={{ marginRight: 4 }} />LISTA</button>
+              <button onClick={() => setVistaJugadores('grilla')} style={{ padding: '5px 10px', background: vistaJugadores === 'grilla' ? 'var(--text)' : 'transparent', color: vistaJugadores === 'grilla' ? 'var(--bg)' : 'var(--text-dim)', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}><Icono nombre="cancha" size="1.1em" style={{ marginRight: 4 }} />GRILLA</button>
             </div>
           </div>
         </div>
@@ -596,7 +597,7 @@ function NuevoPartido() {
                         {estadoFisico[String(j.id)] && (
                           <div title={estadoFisico[String(j.id)].detalle}
                             style={{ fontSize: '0.58rem', fontWeight: 900, color: estadoFisico[String(j.id)].color, marginTop: '2px' }}>
-                            🏥 {estadoFisico[String(j.id)].etiqueta}
+                            <Icono nombre="botiquin" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{estadoFisico[String(j.id)].etiqueta}
                           </div>
                         )}
                       </td>
@@ -628,7 +629,7 @@ function NuevoPartido() {
                   {estadoFisico[String(j.id)] && (
                     <div title={estadoFisico[String(j.id)].detalle}
                       style={{ position: 'absolute', top: '32px', right: '10px', fontSize: '0.55rem', fontWeight: 900, color: estadoFisico[String(j.id)].color }}>
-                      🏥 {estadoFisico[String(j.id)].etiqueta}
+                      <Icono nombre="botiquin" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{estadoFisico[String(j.id)].etiqueta}
                     </div>
                   )}
                   
@@ -649,7 +650,7 @@ function NuevoPartido() {
                     <button 
                       onClick={() => manejarTilde(j.id, 'convocado')} 
                       style={{ flex: 1, padding: '8px 5px', background: estado.convocado ? 'var(--text)' : 'transparent', border: estado.convocado ? '1px solid var(--text)' : '1px solid var(--border)', color: estado.convocado ? 'var(--bg)' : 'var(--text-dim)', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}>
-                      {estado.convocado ? '✔ CONV' : 'CONVOCAR'}
+                      {estado.convocado ? <><Icono nombre="listo" size="1.1em" style={{ marginRight: 4 }} />CONV</> : 'CONVOCAR'}
                     </button>
                     <button 
                       onClick={() => manejarTilde(j.id, 'titular')} 
@@ -671,7 +672,7 @@ function NuevoPartido() {
           className="btn-action" 
           style={{ width: '100%', marginTop: '30px', padding: '20px', fontSize: '1.1rem', opacity: isSubmitting ? 0.5 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer', background: totalConvocados > limiteConvocados || totalTitulares !== 5 ? 'var(--panel)' : 'var(--accent)', color: totalConvocados > limiteConvocados || totalTitulares !== 5 ? 'var(--text-dim)' : '#000' }}
         >
-          {isSubmitting ? 'GENERANDO ENTORNO...' : (totalConvocados > limiteConvocados || totalTitulares !== 5 ? 'REVISAR LÍMITES PARA CONTINUAR' : '⚡ INICIAR PARTIDO Y TOMA DE DATOS')}
+          {isSubmitting ? 'GENERANDO ENTORNO...' : (totalConvocados > limiteConvocados || totalTitulares !== 5 ? 'REVISAR LÍMITES PARA CONTINUAR' : <><Icono nombre="rayo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />INICIAR PARTIDO Y TOMA DE DATOS</>)}
         </button>
       </div>
 

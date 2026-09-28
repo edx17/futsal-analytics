@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DIAS_TRIAL, planPorId } from '../utils/planes';
+import { Icono } from '../iconos';
 
 export default function Registro() {
   const [searchParams] = useSearchParams();
@@ -66,7 +67,7 @@ export default function Registro() {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', width: '100%', background: 'var(--bg)', padding: '20px' }}>
         <div style={{ background: 'var(--panel)', padding: 'clamp(24px, 6vw, 40px)', borderRadius: '8px', border: '1px solid var(--border)', width: '100%', maxWidth: '450px', textAlign: 'center' }}>
-          <div style={{ fontSize: '2.5rem' }}>📬</div>
+          <div style={{ fontSize: '2.5rem' }}><Icono nombre="mail" size="1.2em" relleno="propio" /></div>
           <h2 style={{ fontFamily: 'Outfit', fontWeight: 900 }}>REVISÁ TU MAIL</h2>
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', lineHeight: 1.5 }}>
             Te mandamos un link a <strong style={{ color: 'var(--text)' }}>{formData.email}</strong> para confirmar la cuenta.

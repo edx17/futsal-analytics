@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useEsMovil } from '../utils/useEsMovil';
+import { Icono } from '../iconos';
 
 function ContinuarPartido() {
   const navigate = useNavigate();
@@ -122,7 +123,7 @@ function ContinuarPartido() {
                     vs {p.rival?.toUpperCase() || 'RIVAL DESCONOCIDO'}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '5px' }}>
-                    📅 {p.fecha} | 🕒 {p.horario} | 📍 {p.condicion}
+                    <Icono nombre="calendario" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />{p.fecha} | <Icono nombre="reloj" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />{p.horario} | <Icono nombre="ubicacion" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />{p.condicion}
                   </div>
                 </div>
                 
@@ -131,7 +132,7 @@ function ContinuarPartido() {
                   className="btn-action" 
                   style={{ padding: '10px 20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                 >
-                  <span>▶️</span> CONTINUAR
+                  <span><Icono nombre="reproducir" size="1.2em" relleno="propio" /></span> CONTINUAR
                 </button>
               </div>
             ))}

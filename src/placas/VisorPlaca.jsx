@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FORMATOS, CLAVES_FORMATO, FORMATO_POR_DEFECTO, formatoDe } from './formatos';
 import { exportarPlaca } from './exportar';
 import { asegurarEstilos, COLOR_CLUB, COLOR_RIVAL, aRGB } from './estilos';
+import { Icono } from '../iconos';
 
 /* EL MARCO DE TODAS LAS PLACAS
  *
@@ -84,9 +85,9 @@ export default function VisorPlaca({
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={descargar} disabled={exportando}
             style={{ ...btnBajar, background: colorClub, opacity: exportando ? .6 : 1 }}>
-            {exportando ? 'GENERANDO…' : '⬇ DESCARGAR PNG'}
+            {exportando ? 'GENERANDO…' : <><Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DESCARGAR PNG</>}
           </button>
-          {onCerrar && <button onClick={onCerrar} style={btnCerrar}>✕</button>}
+          {onCerrar && <button onClick={onCerrar} style={btnCerrar}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>}
         </div>
       </div>
 

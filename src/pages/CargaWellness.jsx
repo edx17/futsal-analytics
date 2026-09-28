@@ -4,6 +4,7 @@ import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { volverDesde, tablaJugadores } from '../utils/kiosco';
+import { Icono } from '../iconos';
 
 const CargaWellness = () => {
   const navigate = useNavigate();
@@ -340,10 +341,10 @@ const CargaWellness = () => {
       {!esJugador && (
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
           <button onClick={() => setVistaActiva('reporte')} style={{ ...mainTabBtn, background: vistaActiva === 'reporte' ? 'var(--accent)' : 'var(--panel)', color: vistaActiva === 'reporte' ? '#000' : 'var(--text-dim)' }}>
-            📊 REPORTE DEL PLANTEL
+            <Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REPORTE DEL PLANTEL
           </button>
           <button onClick={() => setVistaActiva('carga')} style={{ ...mainTabBtn, background: vistaActiva === 'carga' ? 'var(--accent)' : 'var(--panel)', color: vistaActiva === 'carga' ? '#000' : 'var(--text-dim)' }}>
-            📝 INGRESAR DATOS MANUAL
+            <Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />INGRESAR DATOS MANUAL
           </button>
         </div>
       )}
@@ -356,7 +357,7 @@ const CargaWellness = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <h1 style={{ fontSize: '1.5rem', color: 'var(--accent)', margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '2rem' }}>📈</span> MONITOREO
+                <span style={{ fontSize: '2rem' }}><Icono nombre="evolucion" size="1.2em" relleno="propio" /></span> MONITOREO
               </h1>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Análisis de Readiness y Cargas por Jugador.</p>
             </div>
@@ -382,11 +383,11 @@ const CargaWellness = () => {
 
               {/* NAVEGADOR DE FECHAS */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--bg)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)', height: '44px', boxSizing: 'border-box' }}>
-                <button onClick={() => navegarPeriodo(-1)} style={navBtn}>⬅</button>
+                <button onClick={() => navegarPeriodo(-1)} style={navBtn}><Icono nombre="volver" size="1.2em" relleno="propio" /></button>
                 <span style={{ fontWeight: '900', color: 'var(--text)', fontSize: '0.75rem', minWidth: '110px', textAlign: 'center' }}>
                   {getTextoPeriodo()}
                 </span>
-                <button onClick={() => navegarPeriodo(1)} style={navBtn}>➡</button>
+                <button onClick={() => navegarPeriodo(1)} style={navBtn}><Icono nombre="avanzar" size="1.2em" relleno="propio" /></button>
                 <button onClick={() => setFechaReferenciaReporte(new Date())} style={{...navBtn, fontSize: '0.6rem', width: 'auto', padding: '0 8px', background: '#3b82f6'}}>HOY</button>
               </div>
 
@@ -394,7 +395,7 @@ const CargaWellness = () => {
           </div>
 
           {cargandoReporte ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--accent)' }}>Analizando datos... ⏳</div>
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--accent)' }}><Icono nombre="cargando" size="1.2em" girar style={{ marginRight: 8 }} />Analizando datos...</div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(320px, 100%), 1fr))', gap: '15px' }}>
               {jugadoresFiltrados.map((j) => (
@@ -541,9 +542,9 @@ const CargaWellness = () => {
             <div style={{ background: 'var(--panel)', padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.3rem', textTransform: 'uppercase' }}>{detalleRegistro.jugador.apellido}, {detalleRegistro.jugador.nombre}</h3>
-                <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 'bold' }}>🗓️ Reporte del día: {detalleRegistro.dia}</span>
+                <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 'bold' }}><Icono nombre="calendario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Reporte del día: {detalleRegistro.dia}</span>
               </div>
-              <button onClick={() => setDetalleRegistro(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.5rem' }}>✖</button>
+              <button onClick={() => setDetalleRegistro(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.5rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '75vh', overflowY: 'auto' }}>
@@ -579,7 +580,7 @@ const CargaWellness = () => {
                 {detalleRegistro.registro.sueno && (
                   <div style={{ flex: '1 1 300px', background: 'var(--panel)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                     <h4 style={{ color: 'var(--accent)', margin: '0 0 15px 0', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      🌞 Pre-Físico
+                      <Icono nombre="sol" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Pre-Físico
                     </h4>
                     <RenderMetricaDetalle label="Calidad de Sueño" valor={detalleRegistro.registro.sueno} />
                     <RenderMetricaDetalle label="Nivel de Estrés" valor={detalleRegistro.registro.estres} invertido />
@@ -591,7 +592,7 @@ const CargaWellness = () => {
                 {detalleRegistro.registro.animo && (
                   <div style={{ flex: '1 1 300px', background: 'var(--panel)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                     <h4 style={{ color: '#c084fc', margin: '0 0 15px 0', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      🧠 Mindset
+                      <Icono nombre="cerebro" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Mindset
                     </h4>
                     <RenderMetricaDetalle label="Estado de Ánimo" valor={detalleRegistro.registro.animo} />
                     <RenderMetricaDetalle label="Motivación" valor={detalleRegistro.registro.motivacion} />
@@ -604,14 +605,14 @@ const CargaWellness = () => {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
                 {detalleRegistro.registro.notas_mentales && (
                   <div style={{ flex: 2, background: 'rgba(168, 85, 247, 0.1)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
-                    <h4 style={{ margin: '0 0 5px 0', color: '#c084fc', fontSize: '0.8rem', textTransform: 'uppercase' }}>💬 Notas / Novedades</h4>
+                    <h4 style={{ margin: '0 0 5px 0', color: '#c084fc', fontSize: '0.8rem', textTransform: 'uppercase' }}><Icono nombre="comentario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Notas / Novedades</h4>
                     <p style={{ margin: 0, color: '#e9d5ff', fontSize: '0.9rem', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>"{detalleRegistro.registro.notas_mentales}"</p>
                   </div>
                 )}
 
                 {detalleRegistro.registro.minutos_actividad && detalleRegistro.registro.rpe ? (
                   <div style={{ flex: 1, minWidth: '200px', background: getColorPorRPE(detalleRegistro.registro.rpe).bg, padding: '15px', borderRadius: '12px', border: `1px solid ${getColorPorRPE(detalleRegistro.registro.rpe).border}`, textAlign: 'center' }}>
-                    <h4 style={{ margin: '0 0 10px 0', color: getColorPorRPE(detalleRegistro.registro.rpe).text, fontSize: '0.8rem', textTransform: 'uppercase' }}>🔋 Post-Entrenamiento</h4>
+                    <h4 style={{ margin: '0 0 10px 0', color: getColorPorRPE(detalleRegistro.registro.rpe).text, fontSize: '0.8rem', textTransform: 'uppercase' }}><Icono nombre="bateria" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Post-Entrenamiento</h4>
                     <div style={{ fontSize: '2rem', fontWeight: '900', color: getColorPorRPE(detalleRegistro.registro.rpe).text, lineHeight: '1' }}>
                       RPE {detalleRegistro.registro.rpe}/10
                     </div>
@@ -675,7 +676,7 @@ const CargaWellness = () => {
               {esJugador && (
                 <div style={{ flex: 2, padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', textAlign: 'center' }}>
                   <span style={{ color: '#10b981', fontWeight: 'bold' }}>
-                    {jugadorSeleccionado ? '✅ Tu perfil está vinculado y listo para cargar' : '🔄 Conectando con tu ficha...'}
+                    <Icono nombre={jugadorSeleccionado ? 'ok' : 'cargando'} girar={!jugadorSeleccionado} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{jugadorSeleccionado ? 'Tu perfil está vinculado y listo para cargar' : 'Conectando con tu ficha...'}
                   </span>
                 </div>
               )}
@@ -689,13 +690,13 @@ const CargaWellness = () => {
 
           <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <button onClick={() => setModo('pre')} style={{ ...tabBtn, background: modo === 'pre' ? 'var(--accent)' : 'var(--panel)', color: modo === 'pre' ? '#000' : 'var(--text-dim)' }}>
-              🌞 PRE (Físico)
+              <Icono nombre="sol" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PRE (Físico)
             </button>
             <button onClick={() => setModo('mental')} style={{ ...tabBtn, background: modo === 'mental' ? '#a855f7' : 'var(--panel)', color: modo === 'mental' ? '#fff' : 'var(--text-dim)' }}>
-              🧠 MENTAL (Mindset)
+              <Icono nombre="cerebro" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MENTAL (Mindset)
             </button>
             <button onClick={() => setModo('post')} style={{ ...tabBtn, background: modo === 'post' ? '#3b82f6' : 'var(--panel)', color: modo === 'post' ? '#fff' : 'var(--text-dim)' }}>
-              🔋 POST (Carga)
+              <Icono nombre="bateria" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />POST (Carga)
             </button>
           </div>
 
@@ -792,7 +793,7 @@ const CargaWellness = () => {
             disabled={cargando || !jugadorSeleccionado}
             style={{ width: '100%', padding: '15px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '900', cursor: 'pointer', marginTop: '20px', transition: '0.2s', opacity: (cargando || !jugadorSeleccionado) ? 0.5 : 1 }}
           >
-            {cargando ? 'GUARDANDO...' : '💾 GUARDAR DATOS COMPLETOS'}
+            {cargando ? 'GUARDANDO...' : <><Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR DATOS COMPLETOS</>}
           </button>
         </>
       )}

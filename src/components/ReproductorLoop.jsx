@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Icono } from '../iconos';
 
 // =======================================================
 // COMPONENTE COMPARTIDO: Reproductor Automático de Tareas
@@ -360,7 +361,7 @@ const ReproductorLoop = ({ editorData }) => {
       <canvas ref={canvasRef} width={cvSize.w} height={cvSize.h} />
       {frames.length > 1 && (
         <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239, 68, 68, 0.9)', color: 'white', padding: '3px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', animation: 'pulse 2s infinite' }}>
-          ▶ ANIMACIÓN
+          <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ANIMACIÓN
         </div>
       )}
     </div>

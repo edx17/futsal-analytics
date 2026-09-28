@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { linkManual, linkManualAbsoluto } from '../utils/manual';
+import { Icono } from '../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    EL MANUAL, FLOTANDO ARRIBA DE LA APP
@@ -19,7 +20,7 @@ export default function VisorManual({ seccion = '', titulo = 'Manual de Virtual.
     const link = linkManualAbsoluto(seccion);
     try {
       await navigator.clipboard.writeText(link);
-      avisar('Link copiado ✅');
+      avisar('Link copiado');
     } catch {
       avisar(link);
     }
@@ -57,12 +58,12 @@ export default function VisorManual({ seccion = '', titulo = 'Manual de Virtual.
       }}>
         <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <strong style={{ flex: 1, fontSize: '0.9rem', color: 'var(--text)' }}>📖 {titulo}</strong>
-            <button onClick={onCerrar} aria-label="Cerrar manual" style={{ ...btn, borderColor: 'transparent', fontSize: '1.2rem', padding: '4px 10px' }}>✕</button>
+            <strong style={{ flex: 1, fontSize: '0.9rem', color: 'var(--text)' }}><Icono nombre="libroTactico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{titulo}</strong>
+            <button onClick={onCerrar} aria-label="Cerrar manual" style={{ ...btn, borderColor: 'transparent', fontSize: '1.2rem', padding: '4px 10px' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '6px', maxWidth: '480px' }}>
-            <button onClick={copiarLink} style={btn}>🔗 COPIAR LINK</button>
-            <button onClick={guardarPdf} style={btn}>⬇ PDF</button>
+            <button onClick={copiarLink} style={btn}><Icono nombre="enlace" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR LINK</button>
+            <button onClick={guardarPdf} style={btn}><Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PDF</button>
             <a href={linkManual(seccion)} target="_blank" rel="noreferrer" style={{ ...btn, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↗ PESTAÑA</a>
           </div>
         </div>

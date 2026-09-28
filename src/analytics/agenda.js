@@ -21,12 +21,12 @@
 ============================================================================ */
 
 export const TIPOS = {
-  partido:       { id: 'partido',       ico: '⚽',  rotulo: 'Partidos',       color: '#00ff88', ruta: '/torneos' },
-  entrenamiento: { id: 'entrenamiento', ico: '🏃',  rotulo: 'Entrenamientos', color: '#38bdf8', ruta: '/microciclo' },
-  alta:          { id: 'alta',          ico: '🏥',  rotulo: 'Altas médicas',  color: '#22d3ee', ruta: '/enfermeria' },
-  apto:          { id: 'apto',          ico: '🩺',  rotulo: 'Aptos físicos',  color: '#fbbf24', ruta: '/plantel' },
-  cuota:         { id: 'cuota',         ico: '💵',  rotulo: 'Cuotas',         color: '#f97316', ruta: '/tesoreria' },
-  cumple:        { id: 'cumple',        ico: '🎂',  rotulo: 'Cumpleaños',     color: '#c084fc', ruta: '/plantel' },
+  partido:       { id: 'partido',       ico: 'pelota', rotulo: 'Partidos',       color: '#00ff88', ruta: '/torneos' },
+  entrenamiento: { id: 'entrenamiento', ico: 'fisico', rotulo: 'Entrenamientos', color: '#38bdf8', ruta: '/microciclo' },
+  alta:          { id: 'alta',          ico: 'botiquin', rotulo: 'Altas médicas',  color: '#22d3ee', ruta: '/enfermeria' },
+  apto:          { id: 'apto',          ico: 'medico', rotulo: 'Aptos físicos',  color: '#fbbf24', ruta: '/plantel' },
+  cuota:         { id: 'cuota',         ico: 'efectivo', rotulo: 'Cuotas',         color: '#f97316', ruta: '/tesoreria' },
+  cumple:        { id: 'cumple',        ico: 'cumple', rotulo: 'Cumpleaños',     color: '#c084fc', ruta: '/plantel' },
 };
 
 export const ORDEN_TIPOS = ['partido', 'entrenamiento', 'alta', 'apto', 'cuota', 'cumple'];

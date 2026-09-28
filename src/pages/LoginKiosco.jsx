@@ -17,6 +17,7 @@ import {
 } from '../components/kiosco/TarjetasKiosco';
 import { telefonoWhatsApp } from '../utils/telefono';
 import VisorManual from '../components/VisorManual';
+import { Icono } from '../iconos';
 
 const IconWellness = () => (
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -230,7 +231,7 @@ export default function LoginKiosco() {
     const r = await activarNotificacionesJugador(tokenKiosco());
     if (r.ok) {
       setPush({ estado: 'activas', mensaje: null });
-      showToast('Listo, te van a llegar los avisos 🔔', 'success');
+      showToast('Listo, te van a llegar los avisos', 'success');
     } else {
       setPush({ estado: 'inactivas', mensaje: r.mensaje });
     }
@@ -540,7 +541,7 @@ export default function LoginKiosco() {
           </h1>
           <ChipsJugador jugador={vistaFicha?.jugador || jugadorSeleccionado} />
           <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', margin: '12px 0 0' }}>¿Qué querés hacer hoy?</p>
-          <button onClick={() => setAyuda('kiosco-menu')} style={btnAyuda}>❓ ¿Cómo funciona?</button>
+          <button onClick={() => setAyuda('kiosco-menu')} style={btnAyuda}><Icono nombre="pregunta" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />¿Cómo funciona?</button>
         </div>
 
         {vistaFicha?.cumple && <TarjetaCumple nombre={jugadorSeleccionado.nombre} edad={vistaFicha.edad} />}
@@ -557,7 +558,7 @@ export default function LoginKiosco() {
           <div style={{ width: '100%', maxWidth: '380px', marginBottom: '20px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '12px', padding: '15px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.2rem' }}>💳</span>
+                <span style={{ fontSize: '1.2rem' }}><Icono nombre="tarjetaCredito" size="1.2em" relleno="propio" /></span>
                 <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#ef4444', letterSpacing: '1px' }}>ESTADO DE CUENTA</span>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -577,19 +578,19 @@ export default function LoginKiosco() {
             {/* Lógica de renderizado condicional de botones */}
             {(!clubConfig?.alias_cobro && !clubConfig?.whatsapp_tesoreria) ? (
               <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', textAlign: 'center', borderRadius: '6px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                ⚠️ Acercate a Tesorería o hablá con tu técnico para regularizar tu saldo.
+                <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Acercate a Tesorería o hablá con tu técnico para regularizar tu saldo.
               </div>
             ) : (
               <>
                 <div style={{ display: 'flex', gap: '10px', flexDirection: esMovil ? 'column' : 'row' }}>
                   {clubConfig?.alias_cobro && (
                     <button onClick={procesarPagoMP} style={{ flex: 1, padding: '10px', background: '#00b1ea', color: '#000000', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                      🤝 PAGAR CON MP
+                      <Icono nombre="sponsors" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PAGAR CON MP
                     </button>
                   )}
                   {clubConfig?.whatsapp_tesoreria && (
                     <button onClick={procesarEnvioComprobante} style={{ flex: 1, padding: '10px', background: '#25D366', color: '#000', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                      📤 COMPROBANTE
+                      <Icono nombre="subir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COMPROBANTE
                     </button>
                   )}
                 </div>
@@ -608,12 +609,12 @@ export default function LoginKiosco() {
 
         <div style={{ width: '100%', maxWidth: '380px', marginBottom: '20px', background: 'rgba(250, 204, 21, 0.07)', border: '1px solid rgba(250, 204, 21, 0.25)', borderRadius: '12px', padding: '15px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-            <span style={{ fontSize: '1.2rem' }}>📢</span>
+            <span style={{ fontSize: '1.2rem' }}><Icono nombre="novedades" size="1.2em" relleno="propio" /></span>
             <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#facc15', letterSpacing: '1px' }}>NOVEDADES DEL CLUB</span>
           </div>
           {novedadesJugador.length === 0 ? (
             <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', margin: 0, textAlign: 'center', padding: '8px 0' }}>
-              Sin novedades por ahora 👌
+              Sin novedades por ahora.
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -676,7 +677,7 @@ export default function LoginKiosco() {
           {!jugadorSeleccionado && <h2 style={{ fontFamily: 'Outfit', fontWeight: 900, margin: 0, fontSize: esMovil ? '1rem' : '1.2rem' }}>INGRESO <span style={{ color: 'var(--accent)' }}>RÁPIDO</span></h2>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button onClick={() => setAyuda('kiosco')} style={{ ...btnAyuda, marginTop: 0 }}>❓ ¿Cómo funciona?</button>
+          <button onClick={() => setAyuda('kiosco')} style={{ ...btnAyuda, marginTop: 0 }}><Icono nombre="pregunta" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />¿Cómo funciona?</button>
           <button onClick={() => { localStorage.removeItem('kiosco_club_id'); setClubId(null); }} style={btnDesvincular}>Desvincular</button>
         </div>
       </div>
@@ -739,7 +740,7 @@ export default function LoginKiosco() {
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
               <button key={num} onClick={() => handleNumpad(num.toString())} style={estiloNumpadDinamico}>{num}</button>
             ))}
-            <button onClick={volverAtras} style={{ ...estiloNumpadDinamico, background: '#ef4444' }}>✕</button>
+            <button onClick={volverAtras} style={{ ...estiloNumpadDinamico, background: '#ef4444' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             <button onClick={() => handleNumpad('0')} style={estiloNumpadDinamico}>0</button>
             <button onClick={() => setPin('')} style={{ ...estiloNumpadDinamico, background: 'var(--border)' }}>⌫</button>
           </div>

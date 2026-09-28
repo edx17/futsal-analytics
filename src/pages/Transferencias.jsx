@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCategorias } from '../utils/useCategorias';
 import InfoBox from '../components/InfoBox';
 import { TablaResponsive } from '../components/TablaResponsive';
+import { Icono } from '../iconos';
 
 const MONO = 'JetBrains Mono, monospace';
 
@@ -298,10 +299,10 @@ function Transferencias() {
     { k: 'tipo', t: 'TIPO', g: 'gen', r: t => chipTipo(t) },
     { k: 'destino', t: 'DESTINO / ORIGEN', g: 'gen', r: t => `${t.direccion === 'Entrante' ? '← ' : '→ '}${t.club_destino || '—'}` },
     { k: 'fecha', t: 'FECHA', g: 'gen', r: t => t.fecha_movimiento || '—' },
-    { k: 'monto', t: 'MONTO', g: 'eco', r: t => (Number(t.monto) || 0) > 0 ? fmtMoney(t.monto) : (t.compensacion_extra ? '🤝' : '—') },
+    { k: 'monto', t: 'MONTO', g: 'eco', r: t => (Number(t.monto) || 0) > 0 ? fmtMoney(t.monto) : (t.compensacion_extra ? <Icono nombre="sponsors" size="1.2em" relleno="propio" /> : '—') },
     { k: 'pct', t: '% FUT.', g: 'eco', r: t => (Number(t.porcentaje_futura_venta) || 0) > 0 ? `${t.porcentaje_futura_venta}%` : '—' },
     { k: 'estado', t: 'ESTADO', g: 'gen', r: t => chipEstado(t.estado) },
-    { k: 'acc', t: 'ACCIÓN', g: 'gen', r: t => <button onClick={() => handleEliminar(t)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', padding: '5px 12px', borderRadius: '6px', minHeight: '40px' }}>🗑️ Eliminar</button> },
+    { k: 'acc', t: 'ACCIÓN', g: 'gen', r: t => <button onClick={() => handleEliminar(t)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', padding: '5px 12px', borderRadius: '6px', minHeight: '40px' }}><Icono nombre="borrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Eliminar</button> },
   ];
 
   return (
@@ -309,7 +310,7 @@ function Transferencias() {
 
       {/* HEADER */}
       <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '2.5rem' }}>💸</div>
+        <div style={{ fontSize: '2.5rem' }}><Icono nombre="transferencias" size="1.2em" relleno="propio" /></div>
         <div style={{ flex: 1 }}>
           <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>MERCADO DE PASES</div>
           <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Préstamos, ventas y patrimonio del club.</div>
@@ -417,10 +418,10 @@ function Transferencias() {
                           </button>
                           {t.opcion_compra && (
                             <button onClick={() => handleComprado(t)} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 12px', fontWeight: 800, borderColor: '#3b82f6', color: '#3b82f6' }}>
-                              ✓ COMPRADO
+                              <Icono nombre="listo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COMPRADO
                             </button>
                           )}
-                          <button onClick={() => handleEliminar(t)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem', marginLeft: 'auto' }} title="Eliminar">🗑️</button>
+                          <button onClick={() => handleEliminar(t)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem', marginLeft: 'auto' }} title="Eliminar"><Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
                         </div>
                       </div>
 
@@ -498,14 +499,14 @@ function Transferencias() {
                             </td>
                             <td style={{ padding: '12px', color: 'var(--text-dim)', fontSize: '0.8rem', fontFamily: MONO }}>{t.fecha_movimiento || '—'}</td>
                             <td style={{ padding: '12px', textAlign: 'right', fontWeight: 800, fontFamily: MONO, color: (Number(t.monto) || 0) > 0 ? '#00ff88' : 'var(--text-dim)' }}>
-                              {(Number(t.monto) || 0) > 0 ? fmtMoney(t.monto) : (t.compensacion_extra ? '🤝' : '—')}
+                              {(Number(t.monto) || 0) > 0 ? fmtMoney(t.monto) : (t.compensacion_extra ? <Icono nombre="sponsors" size="1.2em" relleno="propio" /> : '—')}
                             </td>
                             <td style={{ padding: '12px', textAlign: 'center', fontFamily: MONO, color: (Number(t.porcentaje_futura_venta) || 0) > 0 ? '#a855f7' : 'var(--text-dim)' }}>
                               {(Number(t.porcentaje_futura_venta) || 0) > 0 ? `${t.porcentaje_futura_venta}%` : '—'}
                             </td>
                             <td style={{ padding: '12px', textAlign: 'center' }}>{chipEstado(t.estado)}</td>
                             <td style={{ padding: '12px', textAlign: 'right' }}>
-                              <button onClick={() => handleEliminar(t)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }} title="Eliminar">🗑️</button>
+                              <button onClick={() => handleEliminar(t)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }} title="Eliminar"><Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
                             </td>
                           </tr>
                         );

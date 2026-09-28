@@ -4,6 +4,7 @@ import { tablaJugadores } from '../utils/kiosco';
 import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { fetchPaginado } from '../utils/supaPaginado';
+import { Icono } from '../iconos';
 
 const MONO = 'JetBrains Mono, monospace';
 const PREROLL_DEFAULT = 8; // segundos de colchón hacia atrás al marcar un clip
@@ -984,10 +985,10 @@ export default function Videoanalisis() {
           </div>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button onClick={abrirExplorador} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '12px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '44px' }}>
-              🔍 EXPLORAR CLIPS
+              <Icono nombre="buscar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EXPLORAR CLIPS
             </button>
             <button onClick={abrirModalConfig} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '12px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '44px' }}>
-              ⚙️ BOTONERA
+              <Icono nombre="ajustes" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BOTONERA
             </button>
             <button onClick={() => setModalNuevo(true)} className="btn-action" style={{ padding: '12px 22px', minHeight: '44px' }}>
               + NUEVO ANÁLISIS
@@ -1007,8 +1008,8 @@ export default function Videoanalisis() {
               const nClips = v.video_clips?.[0]?.count ?? 0;
               return (
                 <div key={v.id} onClick={() => abrirVideo(v)} className="bento-card" style={{ cursor: 'pointer', position: 'relative', padding: '18px' }}>
-                  <button onClick={(e) => eliminarVideo(v, e)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1rem', padding: '4px' }}>✕</button>
-                  <div style={{ fontSize: '1.6rem', marginBottom: '10px' }}>{v.fuente === 'youtube' ? '▶️' : v.fuente === 'upload' ? '📱' : '📁'}</div>
+                  <button onClick={(e) => eliminarVideo(v, e)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1rem', padding: '4px' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                  <div style={{ marginBottom: '10px' }}><Icono nombre={v.fuente === 'youtube' ? 'reproducir' : v.fuente === 'upload' ? 'celular' : 'carpeta'} size={28} /></div>
                   <div style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--text)', marginBottom: '6px', paddingRight: '20px' }}>
                     {v.titulo || (v.fuente === 'youtube' ? 'Video de YouTube' : 'Video')}
                   </div>
@@ -1026,13 +1027,13 @@ export default function Videoanalisis() {
             <div className="bento-card" style={{ width: '100%', maxWidth: '480px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '92dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>NUEVO ANÁLISIS DE VIDEO</div>
-                <button onClick={cerrarModalNuevo} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                <button onClick={cerrarModalNuevo} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
-                <button onClick={() => { setTabFuente('youtube'); setErrorForm(''); }} style={{ flex: 1, padding: '8px', textAlign: 'center', background: tabFuente === 'youtube' ? 'rgba(0,255,136,0.1)' : '#111', border: `1px solid ${tabFuente === 'youtube' ? 'var(--accent)' : '#333'}`, borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, color: tabFuente === 'youtube' ? 'var(--accent)' : '#888', cursor: 'pointer' }}>▶️ YOUTUBE</button>
-                <button onClick={() => { setTabFuente('upload'); setErrorForm(''); }} style={{ flex: 1, padding: '8px', textAlign: 'center', background: tabFuente === 'upload' ? 'rgba(0,255,136,0.1)' : '#111', border: `1px solid ${tabFuente === 'upload' ? 'var(--accent)' : '#333'}`, borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, color: tabFuente === 'upload' ? 'var(--accent)' : '#888', cursor: 'pointer' }}>📱 SUBIR ARCHIVO</button>
-                <button onClick={() => { setTabFuente('drive'); setErrorForm(''); }} style={{ flex: 1, padding: '8px', textAlign: 'center', background: tabFuente === 'drive' ? 'rgba(0,255,136,0.1)' : '#111', border: `1px solid ${tabFuente === 'drive' ? 'var(--accent)' : '#333'}`, borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, color: tabFuente === 'drive' ? 'var(--accent)' : '#888', cursor: 'pointer' }}>📁 DRIVE</button>
+                <button onClick={() => { setTabFuente('youtube'); setErrorForm(''); }} style={{ flex: 1, padding: '8px', textAlign: 'center', background: tabFuente === 'youtube' ? 'rgba(0,255,136,0.1)' : '#111', border: `1px solid ${tabFuente === 'youtube' ? 'var(--accent)' : '#333'}`, borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, color: tabFuente === 'youtube' ? 'var(--accent)' : '#888', cursor: 'pointer' }}><Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />YOUTUBE</button>
+                <button onClick={() => { setTabFuente('upload'); setErrorForm(''); }} style={{ flex: 1, padding: '8px', textAlign: 'center', background: tabFuente === 'upload' ? 'rgba(0,255,136,0.1)' : '#111', border: `1px solid ${tabFuente === 'upload' ? 'var(--accent)' : '#333'}`, borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, color: tabFuente === 'upload' ? 'var(--accent)' : '#888', cursor: 'pointer' }}><Icono nombre="celular" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SUBIR ARCHIVO</button>
+                <button onClick={() => { setTabFuente('drive'); setErrorForm(''); }} style={{ flex: 1, padding: '8px', textAlign: 'center', background: tabFuente === 'drive' ? 'rgba(0,255,136,0.1)' : '#111', border: `1px solid ${tabFuente === 'drive' ? 'var(--accent)' : '#333'}`, borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, color: tabFuente === 'drive' ? 'var(--accent)' : '#888', cursor: 'pointer' }}><Icono nombre="carpeta" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DRIVE</button>
               </div>
 
               {tabFuente === 'youtube' && (
@@ -1060,7 +1061,7 @@ export default function Videoanalisis() {
                     </div>
                   )}
                   <div style={{ fontSize: '0.68rem', color: '#facc15', marginBottom: '14px', background: 'rgba(250,204,21,0.08)', padding: '8px 10px', borderRadius: '6px' }}>
-                    ⚠️ Archivos grandes (partido completo) pueden tardar bastante en subir según tu conexión. Para clips cortos va rápido.
+                    <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Archivos grandes (partido completo) pueden tardar bastante en subir según tu conexión. Para clips cortos va rápido.
                   </div>
                 </>
               )}
@@ -1074,7 +1075,7 @@ export default function Videoanalisis() {
                     style={{ width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', marginBottom: '8px', boxSizing: 'border-box' }}
                   />
                   <div style={{ fontSize: '0.68rem', color: '#facc15', marginBottom: '14px', background: 'rgba(250,204,21,0.08)', padding: '8px 10px', borderRadius: '6px' }}>
-                    ⚠️ Compartilo como "Cualquiera con el enlace". Funciona bien para clips cortos; en partidos completos Drive a veces bloquea la reproducción directa por el tamaño del archivo — si falla, subilo directo o probá con YouTube.
+                    <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Compartilo como "Cualquiera con el enlace". Funciona bien para clips cortos; en partidos completos Drive a veces bloquea la reproducción directa por el tamaño del archivo — si falla, subilo directo o probá con YouTube.
                   </div>
                 </>
               )}
@@ -1094,7 +1095,7 @@ export default function Videoanalisis() {
                 <option value="">— Sin asociar —</option>
                 {partidos.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.esAjeno ? `[SCOUTING] ${p.nombre_propio} vs ${p.rival}` : `vs ${p.rival}`} · {p.fecha} · {p.categoria} {p.video_url ? '🎬' : ''}
+                    {p.esAjeno ? `[SCOUTING] ${p.nombre_propio} vs ${p.rival}` : `vs ${p.rival}`} · {p.fecha} · {p.categoria} {p.video_url ? <Icono nombre="video" size="1.1em" relleno="propio" /> : null}
                   </option>
                 ))}
               </select>
@@ -1120,7 +1121,7 @@ export default function Videoanalisis() {
 
               {partidoConVideo && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: 'rgba(0,255,136,0.06)', border: '1px solid var(--accent)', borderRadius: '6px', padding: '10px 12px', marginBottom: '18px' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--accent)' }}>🎬 Este partido ya tiene un video cargado</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--accent)' }}><Icono nombre="video" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Este partido ya tiene un video cargado</span>
                   <button onClick={usarVideoDelPartido} style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '7px 12px', borderRadius: '6px', fontSize: '0.68rem', fontWeight: 900, cursor: 'pointer', flexShrink: 0 }}>
                     USAR ESTE
                   </button>
@@ -1145,7 +1146,7 @@ export default function Videoanalisis() {
             <div className="bento-card" style={{ width: '100%', maxWidth: '520px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>CONFIGURAR BOTONERA</div>
-                <button onClick={() => setModalConfig(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                <button onClick={() => setModalConfig(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -1172,7 +1173,7 @@ export default function Videoanalisis() {
                         onClick={(e) => { e.stopPropagation(); eliminarPresetEdit(pr.id); }}
                         style={{ background: 'transparent', border: 'none', color: 'inherit', opacity: 0.6, cursor: 'pointer', fontSize: '0.8rem', padding: '0 4px' }}
                       >
-                        ✕
+                        <Icono nombre="cerrar" size="1.2em" relleno="propio" />
                       </button>
                     )}
                   </div>
@@ -1200,7 +1201,7 @@ export default function Videoanalisis() {
                           placeholder="Nombre de la etiqueta"
                           style={{ flex: 1, minWidth: 0, padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', boxSizing: 'border-box' }}
                         />
-                        <button onClick={() => eliminarEtiquetaEdit(i)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0, minWidth: '32px' }}>✕</button>
+                        <button onClick={() => eliminarEtiquetaEdit(i)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0, minWidth: '32px' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       </div>
                     ))}
                   </div>
@@ -1229,7 +1230,7 @@ export default function Videoanalisis() {
             <div className="bento-card" style={{ width: '100%', maxWidth: '480px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <div style={{ fontSize: '1.05rem', fontWeight: 900 }}>COMPARTIR CON JUGADORES</div>
-                <button onClick={() => setModalCompartir(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>✕</button>
+                <button onClick={() => setModalCompartir(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '18px' }}>
                 "{modalCompartir.nombre}" — elegí quién la puede ver desde el kiosco. Podés combinar categorías enteras con jugadores puntuales (para análisis individual).
@@ -1287,7 +1288,7 @@ export default function Videoanalisis() {
                     return (
                       <span key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 6px 5px 10px', borderRadius: '20px', border: '1px solid var(--accent)', background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 800 }}>
                         {j ? `${j.apellido}, ${j.nombre}` : `#${id}`}
-                        <button onClick={() => toggleJugCompartir(id)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}>✕</button>
+                        <button onClick={() => toggleJugCompartir(id)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       </span>
                     );
                   })}
@@ -1385,11 +1386,11 @@ export default function Videoanalisis() {
                           </div>
                           {clip.notas && (
                             <div style={{ fontSize: '0.7rem', color: 'var(--text)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              💬 {clip.notas}
+                              <Icono nombre="comentario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{clip.notas}
                             </div>
                           )}
                         </div>
-                        <button onClick={() => abrirVideo(clip.video)} title="Editar este clip" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}>✎</button>
+                        <button onClick={() => abrirVideo(clip.video)} title="Editar este clip" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: '6px', padding: '6px 10px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0 }}><Icono nombre="editar" size="1.2em" relleno="propio" /></button>
                       </div>
                     );
                   })}
@@ -1418,14 +1419,14 @@ export default function Videoanalisis() {
                       <span style={{ flex: 1, minWidth: 0, fontSize: '0.75rem', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clip.etiqueta}</span>
                       <button onClick={() => moverSeleccionExplor(clip.id, -1)} disabled={i === 0} style={{ ...btnAjuste, opacity: i === 0 ? 0.3 : 1 }}>↑</button>
                       <button onClick={() => moverSeleccionExplor(clip.id, 1)} disabled={i === itemsSeleccionExplor.length - 1} style={{ ...btnAjuste, opacity: i === itemsSeleccionExplor.length - 1 ? 0.3 : 1 }}>↓</button>
-                      <button onClick={() => toggleSeleccionExplor(clip.id)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer' }}>✕</button>
+                      <button onClick={() => toggleSeleccionExplor(clip.id)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                     </div>
                   ))}
                 </div>
               )}
 
               <button onClick={reproducirColaExplorador} disabled={itemsSeleccionExplor.length === 0} className="btn-action" style={{ width: '100%', padding: '13px', minHeight: '46px', opacity: itemsSeleccionExplor.length === 0 ? 0.5 : 1, marginBottom: '10px' }}>
-                ▶ REPRODUCIR PLAYLIST
+                <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REPRODUCIR PLAYLIST
               </button>
 
               <div style={{ display: 'flex', gap: '6px' }}>
@@ -1435,7 +1436,7 @@ export default function Videoanalisis() {
                   style={{ flex: 1, minWidth: 0, padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px' }}
                 />
                 <button onClick={guardarPlaylist} disabled={guardandoPlaylist || !nombreNuevaPlaylist.trim() || itemsSeleccionExplor.length === 0} style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '6px', padding: '10px 14px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0, opacity: (!nombreNuevaPlaylist.trim() || itemsSeleccionExplor.length === 0) ? 0.5 : 1 }}>
-                  💾
+                  <Icono nombre="guardar" size="1.2em" relleno="propio" />
                 </button>
               </div>
             </div>
@@ -1469,9 +1470,9 @@ export default function Videoanalisis() {
                           borderRadius: '6px', padding: '6px 8px', cursor: 'pointer', flexShrink: 0, fontSize: '0.85rem',
                         }}
                       >
-                        📱
+                        <Icono nombre="celular" size="1.2em" relleno="propio" />
                       </button>
-                      <button onClick={(e) => eliminarPlaylist(pl, e)} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                      <button onClick={(e) => eliminarPlaylist(pl, e)} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                     </div>
                     );
                   })}
@@ -1559,7 +1560,7 @@ export default function Videoanalisis() {
               title={modoCine ? 'Salir de Modo Cine' : 'Modo Cine (Pantalla Ancha)'}
               style={{ position: 'absolute', top: '10px', right: '50px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: '6px', padding: '8px 10px', fontSize: '0.9rem', cursor: 'pointer', zIndex: 5 }}
             >
-              {modoCine ? '🔳' : '🔲'}
+              <Icono nombre={modoCine ? 'contraerPantalla' : 'pantallaCompleta'} size="1.2em" />
             </button>
 
             <button
@@ -1567,7 +1568,7 @@ export default function Videoanalisis() {
               title={enPantallaCompleta ? 'Salir de pantalla completa' : 'Pantalla grande (para mostrarle a los jugadores)'}
               style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', borderRadius: '6px', padding: '8px 10px', fontSize: '0.9rem', cursor: 'pointer', zIndex: 5 }}
             >
-              {enPantallaCompleta ? '✕' : '⛶'}
+              <Icono nombre={enPantallaCompleta ? 'cerrar' : 'pantallaCompleta'} size="1.2em" />
             </button>
           </div>
 
@@ -1575,7 +1576,7 @@ export default function Videoanalisis() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div className="stat-label" style={{ color: 'var(--accent)' }}>MARCAR MOMENTO</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                <span style={{ fontFamily: MONO }}>▶ {fmtTiempo(tiempoActual)}</span>
+                <span style={{ fontFamily: MONO }}><Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{fmtTiempo(tiempoActual)}</span>
                 <span>· colchón</span>
                 <button onClick={() => setPreroll(p => Math.max(2, p - 2))} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}>-</button>
                 <span style={{ fontFamily: MONO, minWidth: '28px', textAlign: 'center' }}>{preroll}s</span>
@@ -1637,7 +1638,7 @@ export default function Videoanalisis() {
               <div className="stat-label" style={{ color: 'var(--accent)' }}>CLIPS ({clipsFiltrados.length})</div>
               {seleccionados.size > 0 && (
                 <button onClick={reproducirSeleccion} style={{ background: 'var(--accent)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 900, cursor: 'pointer' }}>
-                  ▶ REPRODUCIR ({seleccionados.size})
+                  <Icono nombre="reproducir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REPRODUCIR ({seleccionados.size})
                 </button>
               )}
             </div>
@@ -1664,7 +1665,7 @@ export default function Videoanalisis() {
                           value={clip.etiqueta} onChange={(e) => editarEtiqueta(clip, e.target.value)}
                           style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', color: 'var(--text)', fontWeight: 900, fontSize: '0.8rem', outline: 'none' }}
                         />
-                        <button onClick={() => eliminarClip(clip)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                        <button onClick={() => eliminarClip(clip)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', flexShrink: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
@@ -1692,7 +1693,7 @@ export default function Videoanalisis() {
 
                       <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
                         <button onClick={() => reproducirCola([{ clip, video: videoActivo }])} style={{ flex: 1, background: activo ? 'var(--accent)' : '#151515', color: activo ? '#000' : '#fff', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', minHeight: '36px' }}>
-                          {activo ? '⏸ REPRODUCIENDO' : '▶ VER CLIP'}
+                          <Icono nombre={activo ? 'pausa' : 'reproducir'} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{activo ? 'REPRODUCIENDO' : 'VER CLIP'}
                         </button>
                         <button onClick={() => moverClip(clip, -1)} disabled={i === 0 || filtroCategoria !== 'TODAS'} title={filtroCategoria !== 'TODAS' ? 'Reordenar solo con el filtro en TODAS' : ''} style={{ ...btnAjuste, opacity: (i === 0 || filtroCategoria !== 'TODAS') ? 0.3 : 1 }}>↑</button>
                         <button onClick={() => moverClip(clip, 1)} disabled={i === clipsFiltrados.length - 1 || filtroCategoria !== 'TODAS'} title={filtroCategoria !== 'TODAS' ? 'Reordenar solo con el filtro en TODAS' : ''} style={{ ...btnAjuste, opacity: (i === clipsFiltrados.length - 1 || filtroCategoria !== 'TODAS') ? 0.3 : 1 }}>↓</button>
@@ -1858,7 +1859,7 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
   if (!playlistActiva) {
     return (
       <div style={{ maxWidth: '700px', margin: '0 auto', padding: '10px 0 40px' }}>
-        <h2 style={{ color: 'var(--accent)', marginBottom: '20px', fontSize: '1.3rem' }}>🎬 VIDEOS PARA VOS</h2>
+        <h2 style={{ color: 'var(--accent)', marginBottom: '20px', fontSize: '1.3rem' }}><Icono nombre="video" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VIDEOS PARA VOS</h2>
         {playlists.length === 0 ? (
           <div className="bento-card" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '30px' }}>
             Tu CT todavía no te compartió ninguna playlist.
@@ -1913,7 +1914,7 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
 
       {clipActual?.notas && (
         <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', color: 'var(--text-dim)', fontSize: '0.85rem' }}>
-          💬 {clipActual.notas}
+          <Icono nombre="comentario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{clipActual.notas}
         </div>
       )}
 

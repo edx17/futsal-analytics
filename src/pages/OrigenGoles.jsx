@@ -13,6 +13,7 @@ import {
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ComposedChart, Line
 } from 'recharts';
+import { Icono } from '../iconos';
 
 const InfoBox = ({ texto }) => {
   const [abierto, setAbierto] = useState(false);
@@ -454,7 +455,7 @@ function OrigenGoles() {
             ? 'Hacen falta partidos con los goles cargados completos para armar la placa.'
             : 'Placa para feed e historias'}
         >
-          🖼 EXPORTAR PLACA
+          <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EXPORTAR PLACA
         </button>
       </div>
 
@@ -686,7 +687,7 @@ function OrigenGoles() {
 
             {estadoDelPartido.analizados === 0 ? (
               <div style={{ padding: '30px 20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.85rem', lineHeight: 1.6 }}>
-                <div style={{ fontSize: '1.8rem', marginBottom: '10px' }}>🧭</div>
+                <div style={{ fontSize: '1.8rem', marginBottom: '10px' }}><Icono nombre="brujula" size="1.2em" relleno="propio" /></div>
                 Todavía no hay partidos con la cronología completa para este filtro.<br />
                 Para reconstruir el marcador gol a gol hacen falta <strong>los goles del rival cargados</strong> y que el total coincida con el resultado final del partido.
                 {estadoDelPartido.descartados > 0 && (
@@ -798,7 +799,7 @@ function OrigenGoles() {
 
                 {estadoDelPartido.descartados > 0 && (
                   <div style={{ marginTop: '12px', fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.5 }}>
-                    ⚠️ {estadoDelPartido.descartados} de {estadoDelPartido.candidatos} partidos quedaron fuera de este análisis: los goles cargados no coinciden con el resultado final, así que el marcador no se puede reconstruir sin inventar. Se arregla completando los goles (propios y del rival) en la toma de datos.
+                    <Icono nombre="aviso" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{estadoDelPartido.descartados} de {estadoDelPartido.candidatos} partidos quedaron fuera de este análisis: los goles cargados no coinciden con el resultado final, así que el marcador no se puede reconstruir sin inventar. Se arregla completando los goles (propios y del rival) en la toma de datos.
                   </div>
                 )}
               </>
@@ -852,7 +853,7 @@ function OrigenGoles() {
 
             {/* CONEXIONES LETALES */}
             <div className="bento-card">
-              <div className="stat-label" style={{ marginBottom: '20px', color: '#c084fc', display: 'flex', alignItems: 'center' }}>CONEXIONES LETALES <InfoBox texto="Las duplas Asistidor ➔ Goleador más efectivas del equipo." /></div>
+              <div className="stat-label" style={{ marginBottom: '20px', color: '#c084fc', display: 'flex', alignItems: 'center' }}>CONEXIONES LETALES <InfoBox texto="Las duplas Asistidor → Goleador más efectivas del equipo." /></div>
               {dataAnalizada.topConexiones.length === 0 ? (
                  <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', marginTop: '30px' }}>No hay goles asistidos registrados.</div>
               ) : (
@@ -861,7 +862,7 @@ function OrigenGoles() {
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(192, 132, 252, 0.05)', border: '1px solid rgba(192, 132, 252, 0.2)', borderRadius: '6px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
                         <div style={{ flex: 1, textAlign: 'right', fontWeight: 800, fontSize: '0.8rem', color: 'var(--text)' }}>{getNombre(con.asistidor)}</div>
-                        <div style={{ color: '#c084fc', fontSize: '1rem' }}>➔</div>
+                        <div style={{ color: '#c084fc', fontSize: '1rem' }}><Icono nombre="avanzar" size="1.2em" relleno="propio" /></div>
                         <div style={{ flex: 1, textAlign: 'left', fontWeight: 800, fontSize: '0.8rem', color: '#00ff88' }}>{getNombre(con.definidor)}</div>
                       </div>
                       <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)', marginLeft: '20px', background: 'var(--bg)', padding: '2px 10px', borderRadius: '4px', border: '1px solid var(--border)' }}>

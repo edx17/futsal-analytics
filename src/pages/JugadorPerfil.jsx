@@ -20,6 +20,7 @@ import { disponibilidadDe } from '../utils/disponibilidad';
 import ModalPlaca from '../placas/ModalPlaca';
 import PlacaJugador from '../placas/PlacaJugador';
 import { datosDelClub } from '../placas/club';
+import { Icono } from '../iconos';
 
 /* Un número que se lee mejor con el signo adelante: +18 dice más que 18. */
 const fmtFirmado = (v, dec = 1) => {
@@ -122,61 +123,61 @@ const calcularPlaystyles = (ctx) => {
   const pctVict = record.pj > 0 ? (record.pg / record.pj) * 100 : 0;
 
   const candidatos = esArquero ? [
-    { id: 'muralla', label: 'MURALLA', icon: '🧱', color: '#fbbf24',
+    { id: 'muralla', label: 'MURALLA', icon: 'escudo', color: '#fbbf24',
       valor: Number(pctAtajadas) || 0, umbral: 70, req: 'Más del 70% de remates al arco atajados',
       detalle: `${Number(pctAtajadas).toFixed(0)}% de atajadas` },
-    { id: 'salvador', label: 'SALVADOR', icon: '🦸', color: '#00ff88',
+    { id: 'salvador', label: 'SALVADOR', icon: 'estrella', color: '#00ff88',
       valor: Math.max(0, Number(golesPrevenidos) || 0), umbral: 0.8, req: 'Recibe menos goles de los que dice el xG enfrentado',
       detalle: `${Number(golesPrevenidos).toFixed(2)} goles prevenidos` },
-    { id: 'arquero_jugador', label: 'ARQUERO-JUGADOR', icon: '🎮', color: '#c084fc',
+    { id: 'arquero_jugador', label: 'ARQUERO-JUGADOR', icon: 'juego', color: '#c084fc',
       valor: r(stats.asistencias * 2 + stats.pasesClave + xgBuildup * 3), umbral: 0.7, req: 'Participación real en la salida y la creación (por partido)',
       detalle: `${stats.pasesClave} pases clave · ${stats.asistencias} asist.` },
-    { id: 'libero', label: 'LÍBERO', icon: '🚀', color: '#0ea5e9',
+    { id: 'libero', label: 'LÍBERO', icon: 'cohete', color: '#0ea5e9',
       valor: r(stats.recuperaciones), umbral: 0.9, req: 'Sale a cortar fuera del área',
       detalle: `${r(stats.recuperaciones).toFixed(1)} recuperaciones por partido` },
-    { id: 'amuleto', label: 'AMULETO', icon: '🍀', color: '#22d3ee',
+    { id: 'amuleto', label: 'AMULETO', icon: 'destello', color: '#22d3ee',
       valor: record.pj >= 4 ? pctVict : 0, umbral: 60, req: 'El equipo gana mucho más cuando él juega',
       detalle: `${pctVict.toFixed(0)}% de victorias (${record.pg}G-${record.pe}E-${record.pp}P)` },
   ] : [
-    { id: 'goleador', label: 'GOLEADOR', icon: '⚽', color: '#00ff88',
+    { id: 'goleador', label: 'GOLEADOR', icon: 'pelota', color: '#00ff88',
       valor: r(stats.goles), umbral: 0.45, req: '0.45+ goles por partido jugado',
       detalle: `${r(stats.goles).toFixed(2)} goles por partido (${stats.goles} en total)` },
-    { id: 'finalizador', label: 'FINALIZADOR', icon: '🎯', color: '#facc15',
+    { id: 'finalizador', label: 'FINALIZADOR', icon: 'objetivo', color: '#facc15',
       valor: (stats.goles - stats.xG) >= 0 && stats.remates >= 5 ? (stats.goles - stats.xG) : 0, umbral: 0.8,
       req: 'Convierte por encima de lo que dice el xG',
       detalle: `G-xG: +${(stats.goles - stats.xG).toFixed(2)} · ${stats.pctArco.toFixed(0)}% al arco` },
-    { id: 'asistidor', label: 'ASISTIDOR', icon: '🅰️', color: '#c084fc',
+    { id: 'asistidor', label: 'ASISTIDOR', icon: 'asistencia', color: '#c084fc',
       valor: r(stats.asistencias), umbral: 0.3, req: '0.30+ asistencias por partido jugado',
       detalle: `${stats.asistencias} asistencias · ${r(stats.asistencias).toFixed(2)} por partido` },
-    { id: 'creador', label: 'CREADOR', icon: '🧠', color: '#a855f7',
+    { id: 'creador', label: 'CREADOR', icon: 'cerebro', color: '#a855f7',
       valor: r(stats.pasesClave + xgBuildup * 4), umbral: 0.8, req: 'Genera ocasiones sin necesidad de definirlas',
       detalle: `${stats.pasesClave} pases clave · xG buildup ${xgBuildup.toFixed(2)}` },
-    { id: 'recuperador', label: 'RECUPERADOR', icon: '🛡️', color: '#3b82f6',
+    { id: 'recuperador', label: 'RECUPERADOR', icon: 'escudo', color: '#3b82f6',
       valor: r(stats.recuperaciones), umbral: 1.8, req: '1.8+ recuperaciones por partido jugado',
       detalle: `${stats.recuperaciones} recuperaciones · ${r(stats.recuperaciones).toFixed(1)} por partido` },
-    { id: 'presion', label: 'PRESIÓN ALTA', icon: '🔥', color: '#f97316',
+    { id: 'presion', label: 'PRESIÓN ALTA', icon: 'fuego', color: '#f97316',
       valor: r(stats.recAltas), umbral: 0.6, req: 'Roba en campo rival de forma sistemática',
       detalle: `${stats.recAltas} robos en zona alta` },
-    { id: 'motor', label: 'MOTOR', icon: '⚙️', color: '#0ea5e9',
+    { id: 'motor', label: 'MOTOR', icon: 'ajustes', color: '#0ea5e9',
       valor: r(volumen), umbral: 7, req: 'Volumen total de acciones muy por encima de la media',
       detalle: `${r(volumen).toFixed(1)} acciones por partido` },
-    { id: 'muro', label: 'MURO', icon: '🚧', color: '#10b981',
+    { id: 'muro', label: 'MURO', icon: 'prohibido', color: '#10b981',
       valor: stats.duelosDefTotales >= 8 ? stats.defPct : 0, umbral: 60, req: '60%+ de duelos defensivos ganados (mín. 8)',
       detalle: `${stats.duelosDefGanados}/${stats.duelosDefTotales} duelos def. (${stats.defPct.toFixed(0)}%)` },
-    { id: 'duelista', label: 'DUELISTA', icon: '⚔️', color: '#e879f9',
+    { id: 'duelista', label: 'DUELISTA', icon: 'versus', color: '#e879f9',
       valor: stats.duelosOfeTotales >= 8 ? stats.ofePct : 0, umbral: 60, req: '60%+ de duelos ofensivos ganados (mín. 8)',
       detalle: `${stats.duelosOfeGanados}/${stats.duelosOfeTotales} duelos ofe. (${stats.ofePct.toFixed(0)}%)` },
-    { id: 'seguro', label: 'CUIDA-PELOTA', icon: '🔒', color: '#2dd4bf',
+    { id: 'seguro', label: 'CUIDA-PELOTA', icon: 'candado', color: '#2dd4bf',
       valor: (stats.recuperaciones + stats.perdidas) >= 10 ? segPelota : 0, umbral: 65,
       req: 'Recupera mucho más de lo que pierde',
       detalle: `${segPelota.toFixed(0)}% de saldo positivo · ${stats.perdidas} pérdidas` },
-    { id: 'transicion', label: 'VÉRTIGO', icon: '⚡', color: '#eab308',
+    { id: 'transicion', label: 'VÉRTIGO', icon: 'rayo', color: '#eab308',
       valor: r(transiciones), umbral: 0.6, req: 'Protagonista en transiciones rápidas',
       detalle: `${transiciones} transiciones con participación` },
-    { id: 'desequilibrio', label: 'DESEQUILIBRIO', icon: '🌀', color: '#f472b6',
+    { id: 'desequilibrio', label: 'DESEQUILIBRIO', icon: 'giro', color: '#f472b6',
       valor: r(stats.faltasRecibidas), umbral: 0.9, req: 'Lo tienen que frenar con falta',
       detalle: `${stats.faltasRecibidas} faltas recibidas · ${r(stats.faltasRecibidas).toFixed(1)} por partido` },
-    { id: 'amuleto', label: 'AMULETO', icon: '🍀', color: '#22d3ee',
+    { id: 'amuleto', label: 'AMULETO', icon: 'destello', color: '#22d3ee',
       valor: (record.pj >= 4 && plusMinus >= 0) ? pctVict : 0, umbral: 60,
       req: 'El equipo gana mucho más cuando él juega (y con +/- no negativo)',
       detalle: `${pctVict.toFixed(0)}% de victorias (${record.pg}G-${record.pe}E-${record.pp}P)` },
@@ -337,8 +338,8 @@ const FilaPartido = ({ fila, esMovil, accentColor, seleccionado, onAbrir, onFilt
       </div>
 
       <div style={{ display: 'flex', gap: '7px', alignItems: 'center', fontSize: '0.72rem', fontFamily: 'monospace', minWidth: esMovil ? 'auto' : '78px' }}>
-        {goles > 0 && <span style={{ color: '#00ff88' }} title="Goles">⚽{goles}</span>}
-        {asistencias > 0 && <span style={{ color: '#c084fc' }} title="Asistencias">🅰️{asistencias}</span>}
+        {goles > 0 && <span style={{ color: '#00ff88' }} title="Goles"><Icono nombre="pelota" size="1.2em" relleno="propio" />{goles}</span>}
+        {asistencias > 0 && <span style={{ color: '#c084fc' }} title="Asistencias"><Icono nombre="asistencia" size="1.2em" relleno="propio" />{asistencias}</span>}
         {amarillas > 0 && <span title="Amarillas">{'\u{1F7E8}'}{amarillas > 1 ? amarillas : ''}</span>}
         {rojas > 0 && <span title="Roja">{'\u{1F7E5}'}</span>}
         {sinAportes && <span style={{ color: 'rgba(255,255,255,0.18)' }}>–</span>}
@@ -359,7 +360,7 @@ const FilaPartido = ({ fila, esMovil, accentColor, seleccionado, onAbrir, onFilt
             onClick={(e) => { e.stopPropagation(); onFiltrar(); }}
             title="Filtrar este perfil por este partido"
             style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', borderRadius: '4px', padding: '2px 6px', fontSize: '0.68rem', cursor: 'pointer', lineHeight: 1.4 }}>
-            🎯
+            <Icono nombre="diana" size="1.2em" relleno="propio" />
           </button>
         )}
         <span style={{ color: 'rgba(255,255,255,0.25)', fontWeight: 900 }}>›</span>
@@ -1086,7 +1087,7 @@ function JugadorPerfil() {
   }, [eventos, eventosCompletos, eventosPartidoExtra, partidoFiltro, torneoFiltro, jugadorId, jugadorSeleccionado, partidosDelTorneo, jugadores, sanciones]);
 
   /* ══════════════════════════════════════════════════════════════════════
-     🗓️ HISTORIAL DE PARTIDOS DEL JUGADOR
+     HISTORIAL DE PARTIDOS DEL JUGADOR
      Todos los partidos donde entró en la convocatoria, jugados o no.
      A propósito NO mira partidoFiltro (si lo hiciera, la lista se reduciría
      a un solo partido); sí respeta el torneo elegido arriba.
@@ -1420,7 +1421,7 @@ function JugadorPerfil() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    <span style={{ background: 'rgba(251,191,36,0.12)', color: '#fbbf24', padding: '3px 8px', borderRadius: '3px', fontSize: '0.65rem', fontWeight: 700 }}>🥅 ARQUERO</span>
+                    <span style={{ background: 'rgba(251,191,36,0.12)', color: '#fbbf24', padding: '3px 8px', borderRadius: '3px', fontSize: '0.65rem', fontWeight: 700 }}><Icono nombre="arco" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ARQUERO</span>
                     <span style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)', padding: '3px 8px', borderRadius: '3px', fontSize: '0.65rem', fontWeight: 700 }}>#{j.dorsal}</span>
                     {j.categoria && <span style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.35)', padding: '3px 8px', borderRadius: '3px', fontSize: '0.65rem' }}>{j.categoria}</span>}
                   </div>
@@ -1502,7 +1503,7 @@ function JugadorPerfil() {
               }} 
               style={{ padding: '12px 20px', background: '#ef4444', color: '#ffffff', borderRadius: '8px', cursor: 'pointer', fontWeight: 900, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.3)', border: 'none', width: esMovil ? '100%' : 'auto', justifyContent: 'center' }}
             >
-              👋 SALIR / CERRAR MI PERFIL
+              <Icono nombre="saludo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SALIR / CERRAR MI PERFIL
             </button>
           )}
 
@@ -1526,10 +1527,10 @@ function JugadorPerfil() {
         {jugadorId && perfil && !perfil.vacio && (
           <div style={{ display: 'flex', gap: '8px', width: esMovil ? '100%' : 'auto', flexDirection: esMovil ? 'column' : 'row' }}>
             <button onClick={() => setMostrarPlaca('story')} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', background: '#c084fc', color: '#000000', border: 'none', boxShadow: '0 4px 15px rgba(192,132,252,0.2)', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
-              📱 HISTORIA
+              <Icono nombre="celular" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />HISTORIA
             </button>
             <button onClick={() => setMostrarPlaca('feed')} className="btn-action" style={{ width: esMovil ? '100%' : 'auto', fontSize: '0.75rem', padding: '9px 16px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>
-              🖼 PLACA
+              <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA
             </button>
           </div>
         )}
@@ -1565,7 +1566,7 @@ function JugadorPerfil() {
                     : <>{jugadorSeleccionado.apellido?.charAt(0)}{jugadorSeleccionado.nombre?.charAt(0)}</>}
                 </div>
                 {esArquero && (
-                  <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '22px', height: '22px', background: '#fbbf24', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #000' }}>🥅</div>
+                  <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '22px', height: '22px', background: '#fbbf24', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', border: '2px solid #000' }}><Icono nombre="arco" size="1.2em" relleno="propio" /></div>
                 )}
               </div>
 
@@ -1607,9 +1608,9 @@ function JugadorPerfil() {
           {/* TABS DE NAVEGACIÓN */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', background: '#0a0a0a', padding: '4px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
             {[
-              { id: 'estadisticas', label: esArquero ? '🥅 RENDIMIENTO' : '⚽ ESTADÍSTICAS' },
-              { id: 'mapas', label: '🗺️ MAPA' },
-              { id: 'quinteto', label: '👥 QUINTETO' },
+              { id: 'estadisticas', ico: esArquero ? 'arco' : 'pelota', label: esArquero ? 'RENDIMIENTO' : 'ESTADÍSTICAS' },
+              { id: 'mapas', ico: 'mapa', label: 'MAPA' },
+              { id: 'quinteto', ico: 'usuarios', label: 'QUINTETO' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1625,7 +1626,7 @@ function JugadorPerfil() {
                   borderBottom: tabActiva === tab.id ? `2px solid ${accentColor}` : '2px solid transparent',
                 }}
               >
-                {tab.label}
+                <Icono nombre={tab.ico} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{tab.label}
               </button>
             ))}
           </div>
@@ -1651,7 +1652,7 @@ function JugadorPerfil() {
                 </div>
 
                 <div className="bento-card jp-stat-card" style={{ display: 'flex', flexDirection: 'column' }}>
-                  <div className="stat-label" style={{ marginBottom: '14px', color: '#facc15' }}>⚖️ DISCIPLINA</div>
+                  <div className="stat-label" style={{ marginBottom: '14px', color: '#facc15' }}><Icono nombre="comparar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DISCIPLINA</div>
                   <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '18px', background: '#0a0a0a', padding: '16px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ width: '28px', height: '42px', background: '#facc15', borderRadius: '4px', margin: '0 auto 8px', boxShadow: '0 4px 12px rgba(250,204,21,0.3)' }} />
@@ -1674,7 +1675,7 @@ function JugadorPerfil() {
               {metricasWellness && (
                 <div className="bento-card jp-section" style={{ background: 'linear-gradient(135deg, #0a0a1a, #000)', border: '1px solid rgba(59,130,246,0.3)' }}>
                   <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '16px' }}>
-                    🩺 WELLNESS {partidoFiltro === 'Todos' ? '(PROMEDIO ACTUAL)' : '(SEMANA PREVIA AL PARTIDO)'}
+                    <Icono nombre="medico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />WELLNESS {partidoFiltro === 'Todos' ? '(PROMEDIO ACTUAL)' : '(SEMANA PREVIA AL PARTIDO)'}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr 1fr', gap: '16px', textAlign: 'center' }}>
                     {[
@@ -1694,7 +1695,7 @@ function JugadorPerfil() {
               {/* ────────── RESULTADOS DEL EQUIPO CON ESTE JUGADOR ────────── */}
               <div className="bento-card jp-section">
                 <div className="stat-label" style={{ color: '#22d3ee', marginBottom: '14px' }}>
-                  🏆 RESULTADOS CON ÉL EN CANCHA
+                  <Icono nombre="trofeo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />RESULTADOS CON ÉL EN CANCHA
                   <span style={{ marginLeft: '10px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
                     (sobre {perfil.record.pj} partidos finalizados que jugó)
                   </span>
@@ -1726,7 +1727,7 @@ function JugadorPerfil() {
                 {/* PLAYSTYLES */}
                 <div style={{ marginTop: '22px', paddingTop: '18px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   <div className="stat-label" style={{ color: '#a855f7', marginBottom: '14px' }}>
-                    🎭 ESTILO DE JUEGO
+                    <Icono nombre="animo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ESTILO DE JUEGO
                     <span style={{ marginLeft: '10px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
                       (rasgos detectados sobre sus promedios por partido jugado)
                     </span>
@@ -1753,7 +1754,7 @@ function JugadorPerfil() {
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '1.1rem' }}>{ps.icon}</span>
+                            <span style={{ color: ps.color, display: 'flex' }}><Icono nombre={ps.icon} size={20} relleno="propio" /></span>
                             <span style={{ fontWeight: 900, letterSpacing: '0.05em', fontSize: '0.8rem', color: ps.color }}>{ps.label}</span>
                           </div>
                           <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>{ps.detalle}</div>
@@ -1769,7 +1770,7 @@ function JugadorPerfil() {
 
               {/* ────────── NUEVA TARJETA DE PARTICIPACIÓN GLOBAL ────────── */}
               <div className="bento-card jp-section">
-                <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '14px' }}>⏱️ PARTICIPACIÓN Y TIEMPO</div>
+                <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '14px' }}><Icono nombre="cronometro" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PARTICIPACIÓN Y TIEMPO</div>
                 <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, 1fr)' : 'repeat(7, 1fr)', gap: '12px' }}>
                   {[
                     { label: 'CITADOS', val: perfil.stats.citados },
@@ -1794,13 +1795,13 @@ function JugadorPerfil() {
                   
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '14px' }}>
                     {[
-                      { label: 'EFECTIVIDAD', val: `${perfil.pctAtajadas}%`, sub: `${perfil.totalAtajadas}/${perfil.totalAtajadas + perfil.totalGolesRecibidos}`, color: '#00ff88', icon: '🛡️' },
-                      { label: 'GOLES PREVENIDOS', val: perfil.golesPrevenidos > 0 ? `+${perfil.golesPrevenidos}` : perfil.golesPrevenidos, sub: `vs ${perfil.xgEnContra.toFixed(2)} xG recibido`, color: Number(perfil.golesPrevenidos) > 0 ? '#00ff88' : '#ef4444', icon: '✨' },
-                      { label: 'REMATES RECIBIDOS', val: perfil.totalGolesRecibidos + perfil.totalAtajadas + (perfil.rivalStats?.Desviado || 0) + (perfil.rivalStats?.Rebatido || 0), sub: 'incl. desviados', color: 'var(--text)', icon: '⚡' },
-                      { label: 'GOLES RECIBIDOS', val: perfil.totalGolesRecibidos, sub: `xG recibido: ${perfil.xgEnContra.toFixed(2)}`, color: '#ef4444', icon: '❌' },
+                      { label: 'EFECTIVIDAD', val: `${perfil.pctAtajadas}%`, sub: `${perfil.totalAtajadas}/${perfil.totalAtajadas + perfil.totalGolesRecibidos}`, color: '#00ff88', icon: 'escudo' },
+                      { label: 'GOLES PREVENIDOS', val: perfil.golesPrevenidos > 0 ? `+${perfil.golesPrevenidos}` : perfil.golesPrevenidos, sub: `vs ${perfil.xgEnContra.toFixed(2)} xG recibido`, color: Number(perfil.golesPrevenidos) > 0 ? '#00ff88' : '#ef4444', icon: 'destello' },
+                      { label: 'REMATES RECIBIDOS', val: perfil.totalGolesRecibidos + perfil.totalAtajadas + (perfil.rivalStats?.Desviado || 0) + (perfil.rivalStats?.Rebatido || 0), sub: 'incl. desviados', color: 'var(--text)', icon: 'rayo' },
+                      { label: 'GOLES RECIBIDOS', val: perfil.totalGolesRecibidos, sub: `xG recibido: ${perfil.xgEnContra.toFixed(2)}`, color: '#ef4444', icon: 'error' },
                     ].map((m, i) => (
                       <div key={i} className="bento-card jp-stat-card" style={{ textAlign: 'center', padding: '18px 12px', borderTop: `2px solid ${m.color}` }}>
-                        <div style={{ fontSize: '1.4rem', marginBottom: '6px' }}>{m.icon}</div>
+                        <div style={{ marginBottom: '6px', color: m.color, display: 'flex', justifyContent: 'center' }}><Icono nombre={m.icon} size={24} relleno="propio" /></div>
                         <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', letterSpacing: '0.06em' }}>{m.label}</div>
                         <div style={{ fontSize: '2rem', fontWeight: 900, color: m.color, lineHeight: 1, fontFamily: 'monospace' }}>{m.val}</div>
                         <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>{m.sub}</div>
@@ -1859,7 +1860,7 @@ function JugadorPerfil() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr 1fr', gap: '18px' }}>
                     <div className="bento-card jp-section">
-                      <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '16px' }}>🦶 JUEGO DE PIES Y DISTRIBUCIÓN</div>
+                      <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '16px' }}><Icono nombre="pisada" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />JUEGO DE PIES Y DISTRIBUCIÓN</div>
                       <StatRow label="Inicio de jugada (xG buildup)" value={perfil.xgBuildup.toFixed(3)} color="#3b82f6" />
                       <StatRow label="Asistencias a gol" value={perfil.stats.asistencias} color="#00ff88" />
                       <StatRow label="Pases clave" value={perfil.stats.pasesClave} color="#c084fc" />
@@ -1868,7 +1869,7 @@ function JugadorPerfil() {
                     </div>
 
                     <div className="bento-card jp-section">
-                      <div className="stat-label" style={{ color: '#c084fc', marginBottom: '16px' }}>📍 CONTEXTO DE JUEGO</div>
+                      <div className="stat-label" style={{ color: '#c084fc', marginBottom: '16px' }}><Icono nombre="ubicacion" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CONTEXTO DE JUEGO</div>
                       <StatRow label="Transiciones finalizadas" value={perfil.transicionesInvolucrado} color="#c084fc" />
                       <StatRow label="Duelos def. ganados" value={`${perfil.stats.duelosDefGanados}/${perfil.stats.duelosDefTotales}`} color="#00ff88" />
                       <StatRow label="Duelos def. perdidos" value={perfil.stats.duelosDefPerdidos} color="#ef4444" />
@@ -1883,14 +1884,14 @@ function JugadorPerfil() {
                   
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)', gap: '12px' }}>
                     {[
-                      { label: 'GOLES', val: perfil.stats.goles, color: '#00ff88', icon: '⚽' },
-                      { label: 'ASISTENCIAS', val: perfil.stats.asistencias, color: '#c084fc', icon: '🎯' },
-                      { label: 'xG', val: perfil.stats.xG.toFixed(2), color: '#fbbf24', icon: '📊' },
-                      { label: 'RECUPERACIONES', val: perfil.stats.recuperaciones, color: '#3b82f6', icon: '💪' },
-                      { label: 'xG BUILDUP', val: perfil.xgBuildup.toFixed(3), color: '#f97316', icon: '🔗' },
+                      { label: 'GOLES', val: perfil.stats.goles, color: '#00ff88', icon: 'pelota' },
+                      { label: 'ASISTENCIAS', val: perfil.stats.asistencias, color: '#c084fc', icon: 'objetivo' },
+                      { label: 'xG', val: perfil.stats.xG.toFixed(2), color: '#fbbf24', icon: 'grafico' },
+                      { label: 'RECUPERACIONES', val: perfil.stats.recuperaciones, color: '#3b82f6', icon: 'pesas' },
+                      { label: 'xG BUILDUP', val: perfil.xgBuildup.toFixed(3), color: '#f97316', icon: 'enlace' },
                     ].map((m, i) => (
                       <div key={i} className="bento-card jp-stat-card" style={{ textAlign: 'center', padding: '16px 10px', background: `linear-gradient(135deg, #0d0d0d, #111)` }}>
-                        <div style={{ fontSize: '1.2rem', marginBottom: '4px' }}>{m.icon}</div>
+                        <div style={{ marginBottom: '4px', color: m.color, display: 'flex', justifyContent: 'center' }}><Icono nombre={m.icon} size={22} relleno="propio" /></div>
                         <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.06em', marginBottom: '4px' }}>{m.label}</div>
                         <div style={{ fontSize: '1.8rem', fontWeight: 900, color: m.color, lineHeight: 1, fontFamily: 'monospace' }}>{m.val}</div>
                       </div>
@@ -1899,7 +1900,7 @@ function JugadorPerfil() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr', gap: '18px' }}>
                     <div className="bento-card jp-section">
-                      <div className="stat-label" style={{ color: '#00ff88', marginBottom: '14px' }}>⚽ RADIOGRAFÍA OFENSIVA</div>
+                      <div className="stat-label" style={{ color: '#00ff88', marginBottom: '14px' }}><Icono nombre="pelota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />RADIOGRAFÍA OFENSIVA</div>
                       <StatRow label="Goles por partido (G/PJ)" value={perfil.stats.gPorPJ.toFixed(2)} color="#00ff88" />
                       <StatRow label="Expectativa de gol (xG)" value={perfil.stats.xG.toFixed(2)} color="#fbbf24" sub={`Eficacia: ${perfil.eficacia}%`} />
                       <StatRow label="Goles menos xG (G-xG)" value={(perfil.stats.goles - perfil.stats.xG).toFixed(1)} color={(perfil.stats.goles - perfil.stats.xG) >= 0 ? '#00ff88' : '#ef4444'} />
@@ -1921,7 +1922,7 @@ function JugadorPerfil() {
                     </div>
 
                     <div className="bento-card jp-section">
-                      <div className="stat-label" style={{ color: '#fbbf24', marginBottom: '14px' }}>⚔️ DUELOS Y DEFENSA</div>
+                      <div className="stat-label" style={{ color: '#fbbf24', marginBottom: '14px' }}><Icono nombre="versus" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DUELOS Y DEFENSA</div>
                       <StatRow label="Recuperaciones totales" value={perfil.stats.recuperaciones} color="var(--accent)" sub={`(${(perfil.stats.recuperaciones * factor40).toFixed(1)} p40)`} />
                       
                       <div style={{ padding: '10px', background: '#0a0a0a', borderRadius: '6px', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.04)' }}>
@@ -2011,7 +2012,7 @@ function JugadorPerfil() {
                     </div>
 
                     <div className="bento-card jp-section">
-                      <div className="stat-label" style={{ color: '#facc15', marginBottom: '14px' }}>🤝 SOCIOS DE GOL</div>
+                      <div className="stat-label" style={{ color: '#facc15', marginBottom: '14px' }}><Icono nombre="sponsors" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />SOCIOS DE GOL</div>
                       {perfil.topSocios.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {perfil.topSocios.map((socio, idx) => (
@@ -2063,8 +2064,8 @@ function JugadorPerfil() {
                   </select>
 
                   <div style={{ display: 'flex', gap: '4px', background: '#0a0a0a', padding: '3px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.08)', flex: esMovil ? '1 1 100%' : 'auto' }}>
-                    <button onClick={() => setTipoMapa('puntos')} style={{ flex: 1, padding: '7px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, fontSize: '0.7rem', background: tipoMapa === 'puntos' ? '#222' : 'transparent', color: tipoMapa === 'puntos' ? accentColor : 'rgba(255,255,255,0.35)', transition: '0.15s' }}>📍 PUNTOS</button>
-                    <button onClick={() => setTipoMapa('calor')} style={{ flex: 1, padding: '7px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, fontSize: '0.7rem', background: tipoMapa === 'calor' ? '#222' : 'transparent', color: tipoMapa === 'calor' ? accentColor : 'rgba(255,255,255,0.35)', transition: '0.15s' }}>🔥 CALOR</button>
+                    <button onClick={() => setTipoMapa('puntos')} style={{ flex: 1, padding: '7px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, fontSize: '0.7rem', background: tipoMapa === 'puntos' ? '#222' : 'transparent', color: tipoMapa === 'puntos' ? accentColor : 'rgba(255,255,255,0.35)', transition: '0.15s' }}><Icono nombre="ubicacion" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PUNTOS</button>
+                    <button onClick={() => setTipoMapa('calor')} style={{ flex: 1, padding: '7px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, fontSize: '0.7rem', background: tipoMapa === 'calor' ? '#222' : 'transparent', color: tipoMapa === 'calor' ? accentColor : 'rgba(255,255,255,0.35)', transition: '0.15s' }}><Icono nombre="fuego" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CALOR</button>
                   </div>
                 </div>
               </div>
@@ -2167,7 +2168,7 @@ function JugadorPerfil() {
                             }}>
                             <span style={{ opacity: esEl ? 1 : 0.45, fontFamily: 'monospace', fontSize: '0.75rem' }}>{j.dorsal}</span>
                             {j.apellido?.toUpperCase() || j.nombre?.toUpperCase()}
-                            {esEl && <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>★</span>}
+                            {esEl && <span style={{ fontSize: '0.6rem', opacity: 0.7 }}><Icono nombre="estrella" size="1.2em" relleno="propio" /></span>}
                           </div>
                         ) : null;
                       })}
@@ -2201,7 +2202,7 @@ function JugadorPerfil() {
           <div className="bento-card jp-section">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
               <div className="stat-label" style={{ color: accentColor, margin: 0 }}>
-                🗓️ PARTIDOS DEL JUGADOR
+                <Icono nombre="calendario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PARTIDOS DEL JUGADOR
                 <InfoBox texto="Todos los partidos en los que estuvo convocado. Los que jugó se resaltan; si fue citado y no ingresó, la fila queda atenuada. Tocá cualquier fila para abrir el resumen de ese partido." />
               </div>
               {historialPartidos.length > 0 && (
@@ -2245,7 +2246,7 @@ function JugadorPerfil() {
                 )}
 
                 <div style={{ marginTop: '12px', fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center' }}>
-                  Tocá una fila para ir al resumen del partido · 🎯 filtra este perfil por ese partido
+                  Tocá una fila para ir al resumen del partido · <Icono nombre="diana" size="1.1em" relleno="propio" /> filtra este perfil por ese partido
                 </div>
               </>
             )}

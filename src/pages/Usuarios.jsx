@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { createClient } from '@supabase/supabase-js';
 import { useCategorias } from '../utils/useCategorias';
+import { Icono } from '../iconos';
 
 function Usuarios() {
   const { perfil } = useAuth();
@@ -222,7 +223,7 @@ function Usuarios() {
   };
 
   const eliminarClub = async (idAEliminar, nombre) => {
-    const confirmar = window.confirm(`⚠️ ADVERTENCIA CRÍTICA ⚠️\n\n¿Estás a punto de borrar TODO el club "${nombre}"?\nEsto eliminará en cascada (si está configurado) jugadores, partidos y finanzas. ¿Continuar?`);
+    const confirmar = window.confirm(`ADVERTENCIA CRÍTICA\n\n¿Estás a punto de borrar TODO el club "${nombre}"?\nEsto eliminará en cascada (si está configurado) jugadores, partidos y finanzas. ¿Continuar?`);
     if (!confirmar) return;
 
     setLoadingClubes(true);
@@ -280,7 +281,7 @@ function Usuarios() {
         <div>
           <div className="stat-label" style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>CONFIGURACIÓN DEL SISTEMA</div>
           <h2 style={{ margin: 0, fontWeight: 900, color: esSuperUser ? '#c084fc' : 'var(--accent)' }}>
-            {esSuperUser ? '👑 GESTIÓN MASTER DEL SISTEMA' : '👥 GESTIÓN DE PLANTEL Y STAFF'}
+            <Icono nombre={esSuperUser ? 'corona' : 'usuarios'} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{esSuperUser ? 'GESTIÓN MASTER DEL SISTEMA' : 'GESTIÓN DE PLANTEL Y STAFF'}
           </h2>
         </div>
         
@@ -291,13 +292,13 @@ function Usuarios() {
               onClick={() => setTabActiva('usuarios')} 
               style={{ ...tabBtnStyle, background: tabActiva === 'usuarios' ? '#c084fc' : 'transparent', color: tabActiva === 'usuarios' ? '#000' : 'var(--text-dim)' }}
             >
-              👥 Usuarios ({usuarios.length})
+              <Icono nombre="usuarios" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Usuarios ({usuarios.length})
             </button>
             <button 
               onClick={() => setTabActiva('clubes')} 
               style={{ ...tabBtnStyle, background: tabActiva === 'clubes' ? '#c084fc' : 'transparent', color: tabActiva === 'clubes' ? '#000' : 'var(--text-dim)' }}
             >
-              🛡️ Clubes ({clubes.length})
+              <Icono nombre="escudo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Clubes ({clubes.length})
             </button>
           </div>
         )}
@@ -407,8 +408,8 @@ function Usuarios() {
                         )}
                         <td style={{ padding: '12px 10px' }}>
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                            <button onClick={() => abrirEdicionUsuario(u)} style={btnIconoClaro} title="Editar">✏️</button>
-                            <button onClick={() => eliminarUsuario(u.id, u.username || u.email)} style={{ ...btnIconoRojo, opacity: u.id === perfil.id ? 0.3 : 1, cursor: u.id === perfil.id ? 'not-allowed' : 'pointer' }} title="Eliminar">🗑️</button>
+                            <button onClick={() => abrirEdicionUsuario(u)} style={btnIconoClaro} title="Editar"><Icono nombre="editar" size="1.2em" relleno="propio" /></button>
+                            <button onClick={() => eliminarUsuario(u.id, u.username || u.email)} style={{ ...btnIconoRojo, opacity: u.id === perfil.id ? 0.3 : 1, cursor: u.id === perfil.id ? 'not-allowed' : 'pointer' }} title="Eliminar"><Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
                           </div>
                         </td>
                       </tr>
@@ -470,7 +471,7 @@ function Usuarios() {
               </div>
 
               <button type="submit" style={{ background: '#c084fc', color: '#000', padding: '15px', fontWeight: 900, border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '15px' }} disabled={procesandoClub}>
-                {procesandoClub ? 'CREANDO...' : '🛡️ REGISTRAR CLUB'}
+                {procesandoClub ? 'CREANDO...' : <><Icono nombre="escudo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />REGISTRAR CLUB</>}
               </button>
             </form>
           </div>
@@ -524,8 +525,8 @@ function Usuarios() {
                           </td>
                           <td style={{ padding: '12px 10px' }}>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                              <button onClick={() => abrirEdicionClub(c)} style={btnIconoClaro} title="Editar">✏️</button>
-                              <button onClick={() => eliminarClub(c.id, c.nombre)} style={btnIconoRojo} title="Eliminar Club">🗑️</button>
+                              <button onClick={() => abrirEdicionClub(c)} style={btnIconoClaro} title="Editar"><Icono nombre="editar" size="1.2em" relleno="propio" /></button>
+                              <button onClick={() => eliminarClub(c.id, c.nombre)} style={btnIconoRojo} title="Eliminar Club"><Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
                             </div>
                           </td>
                         </tr>
@@ -610,7 +611,7 @@ function Usuarios() {
               )}
 
               <button type="submit" disabled={procesando} style={{ background: 'var(--accent)', color: '#000', padding: '15px', fontWeight: 900, border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '10px' }}>
-                {procesando ? 'GUARDANDO CAMBIOS...' : '💾 APLICAR CAMBIOS'}
+                {procesando ? 'GUARDANDO CAMBIOS...' : <><Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />APLICAR CAMBIOS</>}
               </button>
             </form>
           </div>
@@ -667,7 +668,7 @@ function Usuarios() {
               </div>
 
               <button type="submit" disabled={procesandoClub} style={{ background: '#c084fc', color: '#000', padding: '15px', fontWeight: 900, border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '10px' }}>
-                {procesandoClub ? 'GUARDANDO CAMBIOS...' : '💾 GUARDAR DATOS DEL CLUB'}
+                {procesandoClub ? 'GUARDANDO CAMBIOS...' : <><Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR DATOS DEL CLUB</>}
               </button>
             </form>
           </div>

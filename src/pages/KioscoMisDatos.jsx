@@ -4,6 +4,7 @@ import { useToast } from '../components/ToastContext';
 import {
   CAMPOS_MIS_DATOS, misDatosKiosco, proponerCambiosKiosco, cancelarCambiosKiosco,
 } from '../utils/kiosco';
+import { Icono } from '../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    MIS DATOS (KIOSCO)
@@ -14,9 +15,9 @@ import {
    ══════════════════════════════════════════════════════════════════════════ */
 
 const ESTADO_ULTIMA = {
-  aprobada:  { t: '✅ El club aprobó tus últimos cambios.', c: '#10b981' },
-  parcial:   { t: '☑️ El club aprobó una parte de tus últimos cambios.', c: '#f59e0b' },
-  rechazada: { t: '✖️ El club no aprobó tus últimos cambios.', c: '#ef4444' },
+  aprobada:  { i: 'ok', t: 'El club aprobó tus últimos cambios.', c: '#10b981' },
+  parcial:   { i: 'listo', t: 'El club aprobó una parte de tus últimos cambios.', c: '#f59e0b' },
+  rechazada: { i: 'error', t: 'El club no aprobó tus últimos cambios.', c: '#ef4444' },
 };
 
 const tituloDe = (k) => CAMPOS_MIS_DATOS.find((c) => c.k === k)?.t || k;
@@ -56,10 +57,10 @@ export default function KioscoMisDatos() {
       return;
     }
     if (r.data === null) {
-      showToast('No cambiaste nada 👌', 'info');
+      showToast('No cambiaste nada', 'info');
       return;
     }
-    showToast('Listo, el club lo va a revisar ✅', 'success');
+    showToast('Listo, el club lo va a revisar', 'success');
     cargar();
   };
 
@@ -90,14 +91,14 @@ export default function KioscoMisDatos() {
 
   return (
     <div style={contenedor}>
-      <h1 style={{ margin: '0 0 4px', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}>📝 MIS DATOS</h1>
+      <h1 style={{ margin: '0 0 4px', fontSize: '1.4rem', fontWeight: 900, color: 'var(--text)' }}><Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MIS DATOS</h1>
       <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: 'var(--text-dim)', lineHeight: 1.4 }}>
         Si algo está mal o cambió, corregilo acá. El club lo revisa y lo aprueba antes de que quede en tu ficha.
       </p>
 
       {pendiente && (
         <div style={aviso('#3b82f6')}>
-          <div style={{ fontWeight: 900, marginBottom: '6px' }}>⏳ Tenés cambios esperando aprobación</div>
+          <div style={{ fontWeight: 900, marginBottom: '6px' }}><Icono nombre="espera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Tenés cambios esperando aprobación</div>
           {Object.entries(pendiente.cambios || {}).map(([k, v]) => (
             <div key={k} style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
               {tituloDe(k)}: <span style={{ textDecoration: 'line-through' }}>{v.antes || '—'}</span> → <strong style={{ color: 'var(--text)' }}>{v.despues || '(vacío)'}</strong>
@@ -109,7 +110,7 @@ export default function KioscoMisDatos() {
 
       {ultima && (
         <div style={aviso(ultima.c)}>
-          <div style={{ fontWeight: 800 }}>{ultima.t}</div>
+          <div style={{ fontWeight: 800 }}><Icono nombre={ultima.i} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{ultima.t}</div>
           {info.ultima.nota && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '4px' }}>Nota del club: {info.ultima.nota}</div>}
         </div>
       )}

@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { getColorAccion } from '../../utils/helpers';
 import { toqueEnCancha, posicionEnCancha } from '../../analytics/canchaTelefono';
+import { Icono } from '../../iconos';
 
 /* ══════════════════════════════════════════════════════════════════════════
    CANCHA DE LA TOMA DE DATOS EN EL CELULAR
@@ -58,7 +59,7 @@ export default function CanchaTelefono({ vertical, direccionAtaque, eventos, mar
     >
       {/* flecha de ataque */}
       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '7rem', opacity: 0.06, pointerEvents: 'none' }}>
-        {vertical ? (atacaAlFinal ? '⬆️' : '⬇️') : (atacaAlFinal ? '➡️' : '⬅️')}
+        <Icono nombre={vertical ? (atacaAlFinal ? 'subirFlecha' : 'bajarFlecha') : (atacaAlFinal ? 'avanzar' : 'volver')} size="1.2em" />
       </div>
 
       {/* mitad de cancha y círculo central */}

@@ -12,6 +12,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
+import { Icono } from '../iconos';
 
 function Presentismo() {
   const { perfil } = useAuth();
@@ -273,7 +274,7 @@ function Presentismo() {
     [historial, fecha]
   );
 
-  if (esJugador) return <div style={{ textAlign: 'center', padding: '50px' }}>🚫 ACCESO RESTRINGIDO</div>;
+  if (esJugador) return <div style={{ textAlign: 'center', padding: '50px' }}><Icono nombre="prohibido" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ACCESO RESTRINGIDO</div>;
 
 
   return (
@@ -304,14 +305,14 @@ function Presentismo() {
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px', background: 'var(--bg)', padding: '5px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-          <button onClick={() => setVista('tomar')} style={{ ...tabBtn, background: vista === 'tomar' ? 'var(--accent)' : 'transparent', color: vista === 'tomar' ? '#000' : 'var(--text-dim)' }}>📝 PASAR LISTA</button>
-          <button onClick={() => setVista('mensual')} style={{ ...tabBtn, background: vista === 'mensual' ? '#3b82f6' : 'transparent', color: vista === 'mensual' ? '#fff' : 'var(--text-dim)' }}>📅 RESUMEN</button>
-          <button onClick={() => setVista('anual')} style={{ ...tabBtn, background: vista === 'anual' ? '#a855f7' : 'transparent', color: vista === 'anual' ? '#fff' : 'var(--text-dim)' }}>📊 DASHBOARD</button>
+          <button onClick={() => setVista('tomar')} style={{ ...tabBtn, background: vista === 'tomar' ? 'var(--accent)' : 'transparent', color: vista === 'tomar' ? '#000' : 'var(--text-dim)' }}><Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PASAR LISTA</button>
+          <button onClick={() => setVista('mensual')} style={{ ...tabBtn, background: vista === 'mensual' ? '#3b82f6' : 'transparent', color: vista === 'mensual' ? '#fff' : 'var(--text-dim)' }}><Icono nombre="calendario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />RESUMEN</button>
+          <button onClick={() => setVista('anual')} style={{ ...tabBtn, background: vista === 'anual' ? '#a855f7' : 'transparent', color: vista === 'anual' ? '#fff' : 'var(--text-dim)' }}><Icono nombre="grafico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DASHBOARD</button>
         </div>
       </div>
 
       {cargando ? (
-        <div style={{ textAlign: 'center', padding: '50px', color: 'var(--accent)' }}>Sincronizando datos... ⏳</div>
+        <div style={{ textAlign: 'center', padding: '50px', color: 'var(--accent)' }}><Icono nombre="cargando" size="1.2em" girar style={{ marginRight: 8 }} />Sincronizando datos...</div>
       ) : (
         <>
           {vista === 'tomar' && (
@@ -345,11 +346,11 @@ function Presentismo() {
                             background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : asistenciasHoy[j.id] === 'lesionado' ? '#4c1d95' : '#1e3a8a' 
                           }}
                         >
-                          <option value="presente">✅ PRESENTE</option>
-                          <option value="ausente">❌ AUSENTE</option>
-                          <option value="tarde">⏳ TARDE</option>
-                          <option value="justificado">📝 JUSTIF.</option>
-                          <option value="lesionado">🏥 LESIONADO</option>
+                          <option value="presente">PRESENTE</option>
+                          <option value="ausente">AUSENTE</option>
+                          <option value="tarde">TARDE</option>
+                          <option value="justificado">JUSTIF.</option>
+                          <option value="lesionado">LESIONADO</option>
                         </select>
                       </div>
                       
@@ -394,11 +395,11 @@ function Presentismo() {
                                 background: asistenciasHoy[j.id] === 'presente' ? '#064e3b' : asistenciasHoy[j.id] === 'ausente' ? '#7f1d1d' : asistenciasHoy[j.id] === 'tarde' ? '#854d0e' : asistenciasHoy[j.id] === 'lesionado' ? '#4c1d95' : '#1e3a8a' 
                               }}
                             >
-                              <option value="presente">✅ PRESENTE</option>
-                              <option value="ausente">❌ AUSENTE</option>
-                              <option value="tarde">⏳ TARDE</option>
-                              <option value="justificado">📝 JUSTIF.</option>
-                              <option value="lesionado">🏥 LESIONADO</option>
+                              <option value="presente">PRESENTE</option>
+                              <option value="ausente">AUSENTE</option>
+                              <option value="tarde">TARDE</option>
+                              <option value="justificado">JUSTIF.</option>
+                              <option value="lesionado">LESIONADO</option>
                             </select>
                           </td>
                           <td style={{ padding: '5px 10px' }}>
@@ -425,7 +426,7 @@ function Presentismo() {
               )}
 
               <button onClick={guardarAsistencia} className="btn-action" style={{ marginTop: '20px', width: '100%', padding: '15px', fontSize: '1.1rem' }}>
-                💾 GUARDAR PLANILLA DEL DÍA
+                <Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR PLANILLA DEL DÍA
               </button>
             </div>
           )}
@@ -447,7 +448,7 @@ function Presentismo() {
             <div className="bento-card" style={{ borderTop: '3px solid #3b82f6' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ margin: 0, color: '#3b82f6' }}>JUGADOR POR JUGADOR ({fecha.substring(5,7)}/{fecha.substring(0,4)})</h3>
-                {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}>👉 Deslizá la tabla</span>}
+                {esMovil && <span style={{fontSize: '0.65rem', color: 'var(--text-dim)'}}><Icono nombre="avanzar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Deslizá la tabla</span>}
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: '15px', marginBottom: '30px' }}>
@@ -483,9 +484,9 @@ function Presentismo() {
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {j.estadoGral === 'desertor' ? (
-                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>🚩 DESERCIÓN (+3 FALTAS)</span>
+                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}><Icono nombre="bandera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DESERCIÓN (+3 FALTAS)</span>
                           ) : j.porc === 100 && j.total > 0 ? (
-                            <span style={{ background: 'rgba(0, 255, 136, 0.1)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, border: '1px solid rgba(0, 255, 136, 0.3)' }}>⭐ PERFECTA</span>
+                            <span style={{ background: 'rgba(0, 255, 136, 0.1)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800, border: '1px solid rgba(0, 255, 136, 0.3)' }}><Icono nombre="estrella" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PERFECTA</span>
                           ) : (
                             <span style={{ color: 'var(--text-dim)', fontSize: '0.7rem' }}>Activo</span>
                           )}
