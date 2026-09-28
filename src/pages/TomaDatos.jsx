@@ -1020,7 +1020,7 @@ function TomaDatos() {
                       {pasoRegistro === 4 && 'CONFIRMAR EQUIPO'}
                       {pasoRegistro === 5 && '4. CONTEXTO TÁCTICO (xG)'}
                     </div>
-                    <button onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
+                    <button onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.2rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
                   </div>
 
                   {pasoRegistro === 1 && (
@@ -1440,17 +1440,17 @@ function TomaDatos() {
               Si no gira, revisá que no esté bloqueada la rotación.
             </div>
             <button onClick={girarYPantallaCompleta} style={{ ...itemMenu, background: 'var(--accent)', color: '#000', border: 'none', maxWidth: '280px' }}>⤢ PANTALLA COMPLETA</button>
-            <button onClick={() => navigate(-1)} style={{ ...itemMenu, maxWidth: '280px' }}>← VOLVER</button>
+            <button onClick={() => navigate(-1)} style={{ ...itemMenu, maxWidth: '280px' }}><Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />VOLVER</button>
           </div>
         )}
 
         {/* Barra de arriba */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 8px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-          <button onClick={() => navigate(-1)} style={tBtn} aria-label="Volver">←</button>
+          <button onClick={() => navigate(-1)} style={tBtn} aria-label="Volver"><Icono nombre="volver" size="1.1em" /></button>
           <div style={{ ...tBtn, fontFamily: 'JetBrains Mono', fontSize: '1.1rem', gap: '6px', cursor: 'default' }}>
             <span style={{ color: 'var(--accent)' }}>{statsEnVivo.golesMios}</span><span style={{ color: '#555' }}>-</span><span style={{ color: '#ef4444' }}>{statsEnVivo.golesRival}</span>
           </div>
-          <button onClick={deshacerUltimaAccion} disabled={eventos.length === 0 || isDeleting} style={{ ...tBtn, color: '#ef4444', borderColor: '#ef4444', opacity: eventos.length === 0 ? 0.35 : 1 }} aria-label="Deshacer">↩</button>
+          <button onClick={deshacerUltimaAccion} disabled={eventos.length === 0 || isDeleting} style={{ ...tBtn, color: '#ef4444', borderColor: '#ef4444', opacity: eventos.length === 0 ? 0.35 : 1 }} aria-label="Deshacer"><Icono nombre="deshacer" size="1.1em" /></button>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontWeight: 800, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
             vs {partido.rivales?.nombre || partido.rival || 'Rival'} · {contextoJuego}
           </div>
@@ -1487,7 +1487,7 @@ function TomaDatos() {
                   entran casi sin desplazar. */}
               <style>{'.td-hoja .td-grupos{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px !important;align-items:start}.td-hoja .btn-action{padding:10px 4px !important;min-height:42px}'}</style>
               {pasoRegistro > 1 && (
-                <button onClick={pasoAtras} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 900, fontSize: '0.85rem', padding: '4px 0 10px', cursor: 'pointer' }}>‹ ATRÁS</button>
+                <button onClick={pasoAtras} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 900, fontSize: '0.85rem', padding: '4px 0 10px', cursor: 'pointer' }}><Icono nombre="anteriorPag" size="1em" style={{ marginRight: 2 }} />ATRÁS</button>
               )}
               {pasosRegistro}
               {pasoRegistro === 1 && (
@@ -1508,7 +1508,7 @@ function TomaDatos() {
             <div style={hoja}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div className="stat-label">PARTIDO</div>
-                <button onClick={() => setMenuTel(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.3rem', cursor: 'pointer' }}>×</button>
+                <button onClick={() => setMenuTel(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.3rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
               </div>
 
               <div style={{ ...relojContainer, marginBottom: '12px', justifyContent: 'space-between' }}>
@@ -1571,7 +1571,7 @@ function TomaDatos() {
             <div style={hoja}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div className="stat-label">TIMELINE ({eventos.length})</div>
-                <button onClick={() => setTimelineTel(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.3rem', cursor: 'pointer' }}>×</button>
+                <button onClick={() => setTimelineTel(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.3rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
               </div>
               {contenidoTimeline}
             </div>
@@ -1624,7 +1624,7 @@ function TomaDatos() {
                     opacity: eventos.length === 0 ? 0.3 : 1
                   }}
                 >
-                  ↩
+                  <Icono nombre="deshacer" size="1.1em" />
                 </button>
               </div>
             </div>

@@ -322,7 +322,7 @@ const COLS_RES_CAMPO = [
   { k: 'perd', t: 'PERD', g: 'lu', r: j => j.perdidas },
   { k: 'pinc', t: 'PASES INC.', g: 'lu', r: j => j.pasesIncompletos },
   { k: 'faltas', t: 'FALTAS (C/R)', g: 'dis', r: j => `${j.faltas || 0} / ${(j.eventos || []).filter(e => e.accion === 'Falta recibida' || e.accion === 'Penal a favor').length || 0}` },
-  { k: 'tarj', txt: 'Amarillas/Rojas', t: <><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></>, g: 'dis', r: j => `${j.amarillas || 0}/${j.rojas || 0}` },
+  { k: 'tarj', txt: 'Amarillas/Rojas', t: <><Icono nombre="tarjeta" size={14} />/<Icono nombre="tarjeta" color="roja" size={14} /></>, g: 'dis', r: j => `${j.amarillas || 0}/${j.rojas || 0}` },
 ];
 
 function Resumen() {

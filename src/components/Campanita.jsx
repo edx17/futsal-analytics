@@ -204,7 +204,7 @@ export default function Campanita({ clubId, misCategorias, perfilId }) {
                       lineHeight: 1,
                     }}
                   >
-                    ×
+                    <Icono nombre="cerrar" size="1em" />
                   </button>
                 </a>
               ))}

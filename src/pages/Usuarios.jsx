@@ -505,7 +505,7 @@ function Usuarios() {
                             {c.escudo_url ? (
                               <img src={c.escudo_url} alt="Escudo" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                             ) : (
-                              <div style={{ width: '24px', height: '24px', background: 'var(--border)', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.6rem' }}>?</div>
+                              <div style={{ width: '24px', height: '24px', background: 'var(--border)', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.6rem', color: 'var(--text-dim)' }}><Icono nombre="escudo" size={14} /></div>
                             )}
                             <div style={{ fontWeight: 800, color: 'var(--text)' }}>{c.nombre}</div>
                           </td>
@@ -548,7 +548,7 @@ function Usuarios() {
           <div className="bento-card custom-scroll" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--accent)', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>EDITAR USUARIO</div>
-              <button onClick={() => setUsuarioEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+              <button onClick={() => setUsuarioEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
             </div>
             
             <form onSubmit={guardarEdicionUsuario} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -626,7 +626,7 @@ function Usuarios() {
           <div className="bento-card custom-scroll" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #c084fc', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#c084fc' }}>EDITAR CLUB</div>
-              <button onClick={() => setClubEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+              <button onClick={() => setClubEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
             </div>
             
             <form onSubmit={guardarEdicionClub} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>

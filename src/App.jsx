@@ -696,7 +696,7 @@ useEffect(() => {
                           <Icono nombre={acc.icon} size={18} /> <span>{acc.label}</span>
                         </div>
                         <span style={{ color: isActive ? 'var(--accent)' : 'var(--text-dim)', fontSize: '0.9rem' }}>
-                          {isActive ? '●' : '○'}
+                          <Icono nombre={isActive ? 'ok' : 'circulo'} size={16} relleno="propio" />
                         </span>
                       </div>
                     );

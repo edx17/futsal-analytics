@@ -121,7 +121,7 @@ export default function KioscoMisPagos() {
               </span>
               <span style={{ textAlign: 'right', flexShrink: 0 }}>
                 <strong style={{ display: 'block', color: '#10b981' }}>{formatoPesos(p.monto)}</strong>
-                <span style={{ fontSize: '0.7rem', color: 'var(--accent)' }}>ver recibo ›</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--accent)' }}>ver recibo <Icono nombre="siguientePag" size="1em" /></span>
               </span>
             </button>
           ))}

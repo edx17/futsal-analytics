@@ -1184,7 +1184,7 @@ function Tesoreria() {
                       <button onClick={() => setRecibo({ jugador: modalDetalleDeuda.jugador, telefono: modalDetalleDeuda.jugador?.contacto, pago: { ...p, concepto } })} title="Ver recibo" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', minHeight: '38px' }}><Icono nombre="recibo" size="1.2em" relleno="propio" /></button>
                       {!anulado && (
                         <button onClick={() => anularCobro(p)} disabled={cargando} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem', minHeight: '38px' }}>
-                          ↩ ANULAR
+                          <Icono nombre="deshacer" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />ANULAR
                         </button>
                       )}
                     </div>

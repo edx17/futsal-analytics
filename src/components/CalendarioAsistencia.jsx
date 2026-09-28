@@ -1,5 +1,6 @@
 import React from 'react';
 import { DIAS_SEMANA, ESCALA, moverMes } from '../utils/resumenMensual';
+import { Icono } from '../iconos';
 
 const NOMBRE_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -35,7 +36,7 @@ export default function CalendarioAsistencia({ resumen, mesISO, fechaActiva, onE
   const encabezado = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 }}>
       <button onClick={() => onCambiarMes(moverMes(fechaActiva, -1))} className="btn-fantasma"
-              aria-label="Mes anterior" style={{ minWidth: 44, padding: '0 12px' }}>←</button>
+              aria-label="Mes anterior" style={{ minWidth: 44, padding: '0 12px' }}><Icono nombre="anteriorPag" size="1.1em" /></button>
       <div style={{ textAlign: 'center', flex: 1 }}>
         <div style={{ fontWeight: 900, fontSize: '1.05rem' }}>{NOMBRE_MES[mes - 1]} {anio}</div>
         {resumen && (
@@ -47,7 +48,7 @@ export default function CalendarioAsistencia({ resumen, mesISO, fechaActiva, onE
         )}
       </div>
       <button onClick={() => onCambiarMes(moverMes(fechaActiva, 1))} className="btn-fantasma"
-              aria-label="Mes siguiente" style={{ minWidth: 44, padding: '0 12px' }}>→</button>
+              aria-label="Mes siguiente" style={{ minWidth: 44, padding: '0 12px' }}><Icono nombre="siguientePag" size="1.1em" /></button>
     </div>
   );
 

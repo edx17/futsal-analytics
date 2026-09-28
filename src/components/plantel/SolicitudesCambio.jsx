@@ -55,7 +55,7 @@ export default function SolicitudesCambio({ pendientes, jugadores, onCerrar, onR
       <div className="bento-card modal-content" style={{ maxWidth: '640px', background: 'var(--panel)' }}>
         <div className="modal-header">
           <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}><Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CAMBIOS PEDIDOS POR JUGADORES</h2>
-          <button onClick={onCerrar} disabled={!!trabajando} className="close-btn">×</button>
+          <button onClick={onCerrar} disabled={!!trabajando} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
         </div>
 
         {pendientes.length === 0 ? (

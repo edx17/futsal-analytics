@@ -329,7 +329,7 @@ function NuevoPartido() {
 
   const renderSortIcon = (criterio) => {
     if (ordenCriterio !== criterio) return null;
-    return <span style={{ color: 'var(--accent)', marginLeft: '5px', fontSize: '0.7rem' }}>{ordenDireccion === 'asc' ? '▲' : '▼'}</span>;
+    return <span style={{ color: 'var(--accent)', marginLeft: '5px', fontSize: '0.7rem' }}><Icono nombre={ordenDireccion === 'asc' ? 'contraer' : 'expandir'} size="1em" /></span>;
   };
 
   const categoriasDisponibles = useMemo(() => {

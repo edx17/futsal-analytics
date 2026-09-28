@@ -64,7 +64,7 @@ export default function VisorManual({ seccion = '', titulo = 'Manual de Virtual.
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '6px', maxWidth: '480px' }}>
             <button onClick={copiarLink} style={btn}><Icono nombre="enlace" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR LINK</button>
             <button onClick={guardarPdf} style={btn}><Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PDF</button>
-            <a href={linkManual(seccion)} target="_blank" rel="noreferrer" style={{ ...btn, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>↗ PESTAÑA</a>
+            <a href={linkManual(seccion)} target="_blank" rel="noreferrer" style={{ ...btn, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icono nombre="abrirAfuera" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />PESTAÑA</a>
           </div>
         </div>
         {aviso && (

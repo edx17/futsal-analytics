@@ -1314,7 +1314,7 @@ export default function Videoanalisis() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
             <button onClick={() => setVista('lista')} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px', marginBottom: '10px' }}>
-              ← Mis videos
+              <Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />Mis videos
             </button>
             <div className="stat-label" style={{ color: 'var(--accent)' }}>EXPLORADOR DE CLIPS</div>
             <div style={{ fontSize: esMovil ? '1.2rem' : '1.5rem', fontWeight: 900 }}>Cruzá clips de todos tus videos</div>
@@ -1417,8 +1417,8 @@ export default function Videoanalisis() {
                     <div key={clip.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0a0a0a', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px' }}>
                       <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: MONO, minWidth: '18px' }}>{i + 1}</span>
                       <span style={{ flex: 1, minWidth: 0, fontSize: '0.75rem', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clip.etiqueta}</span>
-                      <button onClick={() => moverSeleccionExplor(clip.id, -1)} disabled={i === 0} style={{ ...btnAjuste, opacity: i === 0 ? 0.3 : 1 }}>↑</button>
-                      <button onClick={() => moverSeleccionExplor(clip.id, 1)} disabled={i === itemsSeleccionExplor.length - 1} style={{ ...btnAjuste, opacity: i === itemsSeleccionExplor.length - 1 ? 0.3 : 1 }}>↓</button>
+                      <button onClick={() => moverSeleccionExplor(clip.id, -1)} disabled={i === 0} style={{ ...btnAjuste, opacity: i === 0 ? 0.3 : 1 }}><Icono nombre="subirFlecha" size="1em" /></button>
+                      <button onClick={() => moverSeleccionExplor(clip.id, 1)} disabled={i === itemsSeleccionExplor.length - 1} style={{ ...btnAjuste, opacity: i === itemsSeleccionExplor.length - 1 ? 0.3 : 1 }}><Icono nombre="bajarFlecha" size="1em" /></button>
                       <button onClick={() => toggleSeleccionExplor(clip.id)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                     </div>
                   ))}
@@ -1492,7 +1492,7 @@ export default function Videoanalisis() {
     <div style={{ maxWidth: '1300px', margin: '0 auto', paddingBottom: '80px', animation: 'fadeIn 0.3s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
         <button onClick={volverALista} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800, minHeight: '40px' }}>
-          ← Mis videos
+          <Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />Mis videos
         </button>
         <div style={{ fontWeight: 900, fontSize: esMovil ? '0.9rem' : '1.1rem', textAlign: 'right' }}>
           {videoActivo?.titulo || 'Video'}
@@ -1670,7 +1670,7 @@ export default function Videoanalisis() {
 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <button onClick={() => ajustarClip(clip, 'inicio', -2)} style={btnAjuste}>◀-2</button>
+                          <button onClick={() => ajustarClip(clip, 'inicio', -2)} style={btnAjuste}><Icono nombre="anteriorPag" size="1em" />-2</button>
                           <span style={{ fontFamily: MONO, fontSize: '0.72rem', color: 'var(--text-dim)' }}>{fmtTiempo(clip.inicio)}</span>
                           <button onClick={() => ajustarClip(clip, 'inicio', 2)} style={btnAjuste}>+2</button>
                         </div>
@@ -1678,7 +1678,7 @@ export default function Videoanalisis() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <button onClick={() => ajustarClip(clip, 'fin', -2)} style={btnAjuste}>-2</button>
                           <span style={{ fontFamily: MONO, fontSize: '0.72rem', color: 'var(--text-dim)' }}>{fmtTiempo(clip.fin)}</span>
-                          <button onClick={() => ajustarClip(clip, 'fin', 2)} style={btnAjuste}>+2▶</button>
+                          <button onClick={() => ajustarClip(clip, 'fin', 2)} style={btnAjuste}>+2<Icono nombre="siguientePag" size="1em" /></button>
                         </div>
                         <span style={{ fontSize: '0.65rem', color: '#555', fontFamily: MONO }}>({Math.round(clip.fin - clip.inicio)}s)</span>
                       </div>
@@ -1695,8 +1695,8 @@ export default function Videoanalisis() {
                         <button onClick={() => reproducirCola([{ clip, video: videoActivo }])} style={{ flex: 1, background: activo ? 'var(--accent)' : '#151515', color: activo ? '#000' : '#fff', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', minHeight: '36px' }}>
                           <Icono nombre={activo ? 'pausa' : 'reproducir'} size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{activo ? 'REPRODUCIENDO' : 'VER CLIP'}
                         </button>
-                        <button onClick={() => moverClip(clip, -1)} disabled={i === 0 || filtroCategoria !== 'TODAS'} title={filtroCategoria !== 'TODAS' ? 'Reordenar solo con el filtro en TODAS' : ''} style={{ ...btnAjuste, opacity: (i === 0 || filtroCategoria !== 'TODAS') ? 0.3 : 1 }}>↑</button>
-                        <button onClick={() => moverClip(clip, 1)} disabled={i === clipsFiltrados.length - 1 || filtroCategoria !== 'TODAS'} title={filtroCategoria !== 'TODAS' ? 'Reordenar solo con el filtro en TODAS' : ''} style={{ ...btnAjuste, opacity: (i === clipsFiltrados.length - 1 || filtroCategoria !== 'TODAS') ? 0.3 : 1 }}>↓</button>
+                        <button onClick={() => moverClip(clip, -1)} disabled={i === 0 || filtroCategoria !== 'TODAS'} title={filtroCategoria !== 'TODAS' ? 'Reordenar solo con el filtro en TODAS' : ''} style={{ ...btnAjuste, opacity: (i === 0 || filtroCategoria !== 'TODAS') ? 0.3 : 1 }}><Icono nombre="subirFlecha" size="1em" /></button>
+                        <button onClick={() => moverClip(clip, 1)} disabled={i === clipsFiltrados.length - 1 || filtroCategoria !== 'TODAS'} title={filtroCategoria !== 'TODAS' ? 'Reordenar solo con el filtro en TODAS' : ''} style={{ ...btnAjuste, opacity: (i === clipsFiltrados.length - 1 || filtroCategoria !== 'TODAS') ? 0.3 : 1 }}><Icono nombre="bajarFlecha" size="1em" /></button>
                       </div>
                     </div>
                   );
@@ -1874,7 +1874,7 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
                 style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <div style={{ fontWeight: 800, color: 'var(--text)' }}>{pl.nombre}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: MONO }}>{(pl.clip_ids || []).length} clips ▶</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontFamily: MONO }}>{(pl.clip_ids || []).length} clips <Icono nombre="reproducir" size="1em" /></div>
               </div>
             ))}
           </div>
@@ -1887,7 +1887,7 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '10px 0 40px' }}>
       <button onClick={volverALista} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', marginBottom: '12px', fontSize: '0.85rem' }}>
-        ← Volver a mis playlists
+        <Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />Volver a mis playlists
       </button>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -1924,14 +1924,14 @@ function VideoanalisisJugador({ clubId, jugadorId }) {
           disabled={indice === 0}
           style={{ flex: 1, padding: '14px', background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '8px', fontWeight: 800, cursor: indice === 0 ? 'not-allowed' : 'pointer', opacity: indice === 0 ? 0.4 : 1 }}
         >
-          ◀ ANTERIOR
+          <Icono nombre="anteriorPag" size="1.1em" style={{ marginRight: 4 }} />ANTERIOR
         </button>
         <button
           onClick={avanzar}
           disabled={indice >= clipsCola.length - 1}
           style={{ flex: 1, padding: '14px', background: 'var(--accent)', border: 'none', color: '#000', borderRadius: '8px', fontWeight: 900, cursor: indice >= clipsCola.length - 1 ? 'not-allowed' : 'pointer', opacity: indice >= clipsCola.length - 1 ? 0.4 : 1 }}
         >
-          SIGUIENTE ▶
+          SIGUIENTE <Icono nombre="siguientePag" size="1.1em" />
         </button>
       </div>
     </div>

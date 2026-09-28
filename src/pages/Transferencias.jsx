@@ -297,7 +297,7 @@ function Transferencias() {
   const GRUPOS_TRANS_LABEL = { gen: 'DATOS', eco: 'ECONÓMICO' };
   const COLS_TRANS = [
     { k: 'tipo', t: 'TIPO', g: 'gen', r: t => chipTipo(t) },
-    { k: 'destino', t: 'DESTINO / ORIGEN', g: 'gen', r: t => `${t.direccion === 'Entrante' ? '← ' : '→ '}${t.club_destino || '—'}` },
+    { k: 'destino', t: 'DESTINO / ORIGEN', g: 'gen', r: t => <><Icono nombre={t.direccion === 'Entrante' ? 'volver' : 'avanzar'} size="1em" style={{ marginRight: 4 }} />{t.club_destino || '—'}</> },
     { k: 'fecha', t: 'FECHA', g: 'gen', r: t => t.fecha_movimiento || '—' },
     { k: 'monto', t: 'MONTO', g: 'eco', r: t => (Number(t.monto) || 0) > 0 ? fmtMoney(t.monto) : (t.compensacion_extra ? <Icono nombre="sponsors" size="1.2em" relleno="propio" /> : '—') },
     { k: 'pct', t: '% FUT.', g: 'eco', r: t => (Number(t.porcentaje_futura_venta) || 0) > 0 ? `${t.porcentaje_futura_venta}%` : '—' },
@@ -414,7 +414,7 @@ function Transferencias() {
 
                         <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
                           <button onClick={() => handleRetornar(t)} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 12px', fontWeight: 800 }}>
-                            ↩ RETORNÓ
+                            <Icono nombre="deshacer" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />RETORNÓ
                           </button>
                           {t.opcion_compra && (
                             <button onClick={() => handleComprado(t)} className="btn-secondary" style={{ fontSize: '0.7rem', padding: '8px 12px', fontWeight: 800, borderColor: '#3b82f6', color: '#3b82f6' }}>
@@ -494,7 +494,7 @@ function Transferencias() {
                             </td>
                             <td style={{ padding: '12px' }}>{chipTipo(t)}</td>
                             <td style={{ padding: '12px', color: 'var(--text)', fontSize: '0.85rem' }}>
-                              <span style={{ color: 'var(--text-dim)', marginRight: '5px' }}>{t.direccion === 'Entrante' ? '←' : '→'}</span>
+                              <span style={{ color: 'var(--text-dim)', marginRight: '5px' }}><Icono nombre={t.direccion === 'Entrante' ? 'volver' : 'avanzar'} size="1em" /></span>
                               {t.club_destino}
                             </td>
                             <td style={{ padding: '12px', color: 'var(--text-dim)', fontSize: '0.8rem', fontFamily: MONO }}>{t.fecha_movimiento || '—'}</td>

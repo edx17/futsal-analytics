@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RUTA_KIOSCO } from '../utils/kiosco';
+import { Icono } from '../iconos';
 
 /* Barra fija arriba de cada pantalla del kiosco, para volver al menú del
    jugador. En el kiosco no hay menú lateral: sin esto, Partidos, Videos,
@@ -31,7 +32,7 @@ export default function BarraKiosco() {
           minHeight: '40px',
         }}
       >
-        ← MI MENÚ
+        <Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />MI MENÚ
       </button>
     </div>
   );

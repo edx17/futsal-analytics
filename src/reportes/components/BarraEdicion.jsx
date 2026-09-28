@@ -1,5 +1,6 @@
 // src/reportes/components/BarraEdicion.jsx
 import React, { useState } from "react";
+import { Icono } from "../../iconos";
 
 const CAPAS = [
   { valor: "club", etiqueta: "Todo el club", ayuda: "El diseño base para cualquier jugador" },
@@ -93,8 +94,8 @@ export default function BarraEdicion({
       <div style={estilos.divisor} />
 
       <div style={estilos.grupoChips}>
-        <button type="button" style={estilos.chip} onClick={onDeshacer} title="Ctrl+Z">↺</button>
-        <button type="button" style={estilos.chip} onClick={onRehacer} title="Ctrl+Shift+Z">↻</button>
+        <button type="button" style={estilos.chip} onClick={onDeshacer} title="Ctrl+Z"><Icono nombre="deshacer" size="1.1em" /></button>
+        <button type="button" style={estilos.chip} onClick={onRehacer} title="Ctrl+Shift+Z"><Icono nombre="rehacer" size="1.1em" /></button>
       </div>
 
       <div style={estilos.divisor} />

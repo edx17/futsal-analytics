@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { NATURALEZAS, FASES, FORMATOS, subfasesDe, colorFase, FILTROS_VACIOS, contarFiltros } from '../utils/taxonomiaTareas';
+import { Icono } from '../iconos';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    FILTROS DE TAREAS
@@ -78,7 +79,7 @@ export default function FiltrosTareas({
             color: activos ? 'var(--accent)' : 'var(--text-dim)',
           }}
         >
-          {abierto ? '▾' : '▸'} FILTROS{activos ? ` (${activos})` : ''}
+          <Icono nombre={abierto ? 'expandir' : 'grupoCerrado'} size="1em" style={{ marginRight: 4 }} />FILTROS{activos ? ` (${activos})` : ''}
         </button>
         {activos > 0 && (
           <button type="button" onClick={limpiar}

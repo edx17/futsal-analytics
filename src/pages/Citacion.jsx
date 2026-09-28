@@ -898,7 +898,7 @@ function Citacion() {
             {mensajeManual !== null && (
               <button onClick={() => setMensajeManual(null)}
                 style={{ marginTop: '8px', fontSize: '0.65rem', background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontWeight: 800 }}>
-                ↺ Volver al mensaje automático
+                <Icono nombre="deshacer" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />Volver al mensaje automático
               </button>
             )}
 

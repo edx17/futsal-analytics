@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import { componer, esElementoDeDatos } from "../engine/documento";
 import { nombreLegible } from "../engine/campos";
+import { Icono } from "../../iconos";
 
 const FILTROS = [
   { valor: "todos", etiqueta: "Todo" },
@@ -141,7 +142,7 @@ export default function PanelCapas({
                 title={el.oculto ? "Mostrar" : "Ocultar"}
                 style={{ ...estilos.ojo, color: el.oculto ? "rgba(255,255,255,0.3)" : "#00e676" }}
               >
-                {el.oculto ? "○" : "●"}
+                <Icono nombre={el.oculto ? 'ocultar' : 'ver'} size="1.1em" />
               </button>
 
               <div style={{ ...estilos.textos, opacity: el.oculto ? 0.45 : 1 }}>

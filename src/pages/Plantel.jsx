@@ -417,8 +417,8 @@ function Plantel() {
     });
 
   const getSortIcon = (columna) => {
-    if (ordenColumna !== columna) return <span style={{ opacity: 0.3 }}>↕</span>;
-    return ordenAscendente ? <span style={{ color: 'var(--accent)' }}>↑</span> : <span style={{ color: 'var(--accent)' }}>↓</span>;
+    if (ordenColumna !== columna) return <Icono nombre="ordenar" size="1em" style={{ opacity: 0.3 }} />;
+    return <Icono nombre={ordenAscendente ? 'subirFlecha' : 'bajarFlecha'} size="1em" style={{ color: 'var(--accent)' }} />;
   };
 
   if (!clubId) {
@@ -463,7 +463,7 @@ function Plantel() {
             style={btnAccion('var(--aviso)')}><Icono nombre="pausa" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BAJA</button>
         ) : (
           <button onClick={(e) => { e.stopPropagation(); reactivarJugador(j.id); }}
-            style={btnAccion('var(--ok)')}>↩ VOLVER</button>
+            style={btnAccion('var(--ok)')}><Icono nombre="deshacer" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />VOLVER</button>
         )}
         <button onClick={(e) => { e.stopPropagation(); eliminarJugador(j.id); }} style={btnAccion('#ef4444')}><Icono nombre="cerrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />ELIMINAR</button>
       </div>
@@ -490,7 +490,7 @@ function Plantel() {
                   fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.04em',
                 }}
               >
-                {verBajas ? '← VOLVER AL PLANTEL' : `VER BAJAS (${cantidadBajas})`}
+                {verBajas ? <><Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />VOLVER AL PLANTEL</> : `VER BAJAS (${cantidadBajas})`}
               </button>
             )}
           </div>
@@ -542,7 +542,7 @@ function Plantel() {
             background: 'rgba(59,130,246,0.1)', border: '1px solid #3b82f6', color: 'var(--text)', fontWeight: 800, fontSize: '0.85rem',
           }}>
             <span><Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{solicitudes.length} {solicitudes.length === 1 ? 'jugador pidió' : 'jugadores pidieron'} corregir sus datos</span>
-            <span style={{ color: '#3b82f6', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>REVISAR ›</span>
+            <span style={{ color: '#3b82f6', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>REVISAR <Icono nombre="siguientePag" size="1em" /></span>
           </button>
         )}
 
@@ -701,7 +701,7 @@ function Plantel() {
                           style={{ ...btnGhost, color: 'var(--aviso)', borderColor: 'var(--aviso)' }}><Icono nombre="pausa" size="1.2em" relleno="propio" /></button>
                       ) : (
                         <button onClick={() => reactivarJugador(j.id)} title="Reincorporar al plantel"
-                          style={{ ...btnGhost, color: 'var(--ok)', borderColor: 'var(--ok)' }}>↩</button>
+                          style={{ ...btnGhost, color: 'var(--ok)', borderColor: 'var(--ok)' }}><Icono nombre="deshacer" size="1.1em" /></button>
                       )}
                       <button onClick={() => eliminarJugador(j.id)} title="Eliminar definitivamente (borra su historial)" style={{ ...btnGhost, color: '#ef4444', borderColor: '#ef4444' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                     </div>
@@ -730,7 +730,7 @@ function Plantel() {
                   <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginTop: '5px' }}>{jugadorSeleccionado.posicion?.toUpperCase()} // {jugadorSeleccionado.categoria?.toUpperCase()}</div>
                 </div>
               </div>
-              <button onClick={() => setJugadorSeleccionado(null)} className="close-btn">×</button>
+              <button onClick={() => setJugadorSeleccionado(null)} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
             </div>
 
             {/* Dos columnas en pantalla ancha, una sola en el celular. */}
@@ -838,7 +838,7 @@ function Plantel() {
               <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--text)' }}>
                 {formData.id ? 'EDITAR FICHA MÉDICA Y TÉCNICA' : 'NUEVA FICHA DE JUGADOR'}
               </div>
-              <button onClick={() => setMostrarModalAlta(false)} className="close-btn">×</button>
+              <button onClick={() => setMostrarModalAlta(false)} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

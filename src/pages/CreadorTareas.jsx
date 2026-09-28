@@ -1012,10 +1012,10 @@ const CreadorTareas = () => {
     {id:'arco',       icon:<Icono nombre="arco" size="1em" />, label:'Arco'},
   ]
   const TOOLS_ANNOT = [
-    {id:'arrow-pase',       icon:'⇢', label:'Pase',       color:ARROW_STYLES['arrow-pase'].color},
-    {id:'arrow-conduccion', icon:'⇝', label:'Conducción', color:ARROW_STYLES['arrow-conduccion'].color},
-    {id:'arrow-disparo',    icon:'⇉', label:'Disparo',    color:ARROW_STYLES['arrow-disparo'].color},
-    {id:'arrow-presion',    icon:'⇻', label:'Presión',    color:ARROW_STYLES['arrow-presion'].color},
+    {id:'arrow-pase',       icon:<MuestraFlecha estilo="arrow-pase" />, label:'Pase',       color:ARROW_STYLES['arrow-pase'].color},
+    {id:'arrow-conduccion', icon:<MuestraFlecha estilo="arrow-conduccion" />, label:'Conducción', color:ARROW_STYLES['arrow-conduccion'].color},
+    {id:'arrow-disparo',    icon:<MuestraFlecha estilo="arrow-disparo" />, label:'Disparo',    color:ARROW_STYLES['arrow-disparo'].color},
+    {id:'arrow-presion',    icon:<MuestraFlecha estilo="arrow-presion" />, label:'Presión',    color:ARROW_STYLES['arrow-presion'].color},
     {id:'zone-rect',        icon:<Icono nombre="cuadrado" size="1em" />, label:'Zona Rect.'},
     {id:'zone-ellipse',     icon:<Icono nombre="circulo" size="1em" />, label:'Zona Elipse'},
     {id:'text',             icon:'T',  label:'Texto'},
@@ -1052,7 +1052,7 @@ const CreadorTareas = () => {
 
       {!esMovil && (
         <div className={`ct-header${tareaIdEditando?' edit-mode':''}`}>
-          <button className="ct-tbtn" onClick={()=>navigate(-1)} title="Volver a la pantalla anterior" style={{flexShrink:0}}>← Volver</button>
+          <button className="ct-tbtn" onClick={()=>navigate(-1)} title="Volver a la pantalla anterior" style={{flexShrink:0}}><Icono nombre="volver" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />Volver</button>
           <div style={{width:1,height:26,background:'var(--border)',flexShrink:0}}/>
 
           {tareaIdEditando && <div style={{background:'var(--blue)',color:'#fff',padding:'4px 10px',borderRadius:'6px',fontSize:'0.75rem',fontWeight:'bold',flexShrink:0}}>MODO EDICIÓN</div>}
@@ -1063,7 +1063,7 @@ const CreadorTareas = () => {
             disabled={isPlaying} style={{width:250}}
           />
 
-          <button className="ct-tbtn" onClick={()=>dispatchBoard({type:'UNDO'})} disabled={isPlaying}>↩ Deshacer</button>
+          <button className="ct-tbtn" onClick={()=>dispatchBoard({type:'UNDO'})} disabled={isPlaying}><Icono nombre="deshacer" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />Deshacer</button>
           <button className="ct-tbtn" style={{color:'var(--red)'}} onClick={()=>{if(confirm('¿Limpiar todo?'))dispatchBoard({type:'CLEAR'})}}><Icono nombre="cerrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Limpiar</button>
 
           <div style={{flex:1}}/>
@@ -1085,7 +1085,7 @@ const CreadorTareas = () => {
             {/* Seleccionar es la herramienta que más se usa y estaba al fondo
                 de todo, bajo un título "Modos". Ahora abre el menú. */}
             <div className={`ct-tool-sel${tool==='select'?' on':''}`} onClick={()=>setTool('select')}>
-              <span className="ti">↖</span> Seleccionar / Mover
+              <span className="ti"><Icono nombre="seleccionar" size="1em" /></span> Seleccionar / Mover
             </div>
 
             <SeccionSidebar titulo="Formaciones" abierta={seccionesAbiertas.formaciones} onToggle={()=>toggleSeccion('formaciones')}>
@@ -1143,7 +1143,7 @@ const CreadorTareas = () => {
           {esMovil && (
             <>
               <div style={{position:'absolute',top:0,left:0,right:0,height:'calc(env(safe-area-inset-top, 0px) + 60px)',background:'linear-gradient(to bottom,rgba(0,0,0,.85),transparent)',zIndex:10,pointerEvents:'none'}}/>
-              <button onClick={()=>navigate(-1)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',left:12,zIndex:20,background:'rgba(0,0,0,.7)',border:'1px solid #3a3f55',color:'#fff',width:38,height:38,borderRadius:'50%',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>←</button>
+              <button onClick={()=>navigate(-1)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',left:12,zIndex:20,background:'rgba(0,0,0,.7)',border:'1px solid #3a3f55',color:'#fff',width:38,height:38,borderRadius:'50%',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}><Icono nombre="volver" size="1.1em" /></button>
               {tareaIdEditando && <div style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 14px)',left:60,zIndex:20,background:'var(--blue)',color:'#fff',padding:'4px 8px',borderRadius:5,fontSize:'0.7rem',fontWeight:'bold'}}>EDICIÓN</div>}
               <button onClick={()=>setShowModal(true)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',right:12,zIndex:20,background:tareaIdEditando?'var(--blue)':'var(--accent)',color:tareaIdEditando?'#fff':'#000',border:'none',padding:'0 16px',height:38,borderRadius:18,fontSize:'.82rem',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
                 <Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{tareaIdEditando?'ACT.':'GUARDAR'}
@@ -1164,7 +1164,7 @@ const CreadorTareas = () => {
           {view.zoom > 1.01 && (
             <button onClick={resetVista} title="Restablecer zoom"
               style={{position:'absolute',bottom:esMovil?'96px':'16px',left:12,zIndex:20,background:'rgba(0,0,0,.72)',border:'1px solid #3a3f55',color:'#fff',height:38,padding:'0 12px',borderRadius:19,fontSize:'.78rem',fontWeight:'bold',display:'flex',alignItems:'center',gap:6,backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
-              ⊙ {view.zoom.toFixed(1)}× · Reset
+              <Icono nombre="buscar" size="1.1em" relleno="propio" />{view.zoom.toFixed(1)}× · Reset
             </button>
           )}
 
@@ -1225,8 +1225,8 @@ const CreadorTareas = () => {
                 <div className="ct-prop-row">
                   <span className="ct-prop-lbl">Este fotograma</span>
                   <div className="ct-seg">
-                    <div className="ct-sopt" title="La misma jugada por la otra punta de la cancha" onClick={()=>espejarJugada('horizontal')}>⇄</div>
-                    <div className="ct-sopt" title="La misma jugada por el otro lado" onClick={()=>espejarJugada('vertical')}>⇅</div>
+                    <div className="ct-sopt" title="La misma jugada por la otra punta de la cancha" onClick={()=>espejarJugada('horizontal')}><Icono nombre="espejarH" size="1.2em" /></div>
+                    <div className="ct-sopt" title="La misma jugada por el otro lado" onClick={()=>espejarJugada('vertical')}><Icono nombre="espejarV" size="1.2em" /></div>
                   </div>
                 </div>
 
@@ -1307,8 +1307,8 @@ const CreadorTareas = () => {
                 <div className="ct-psec">
                   <div className="ct-psec-title">Capas</div>
                   <div style={{display:'flex',gap:3,paddingBottom:4}}>
-                    <div className="ct-sopt" style={{flex:1,textAlign:'center'}} onClick={()=>dispatchBoard({type:'LAYER',dir:'front'})}>▲ Arriba</div>
-                    <div className="ct-sopt" style={{flex:1,textAlign:'center'}} onClick={()=>dispatchBoard({type:'LAYER',dir:'back'})}>▼ Abajo</div>
+                    <div className="ct-sopt" style={{flex:1,textAlign:'center'}} onClick={()=>dispatchBoard({type:'LAYER',dir:'front'})}><Icono nombre="subirFlecha" size="1em" style={{ marginRight: 4 }} />Arriba</div>
+                    <div className="ct-sopt" style={{flex:1,textAlign:'center'}} onClick={()=>dispatchBoard({type:'LAYER',dir:'back'})}><Icono nombre="bajarFlecha" size="1em" style={{ marginRight: 4 }} />Abajo</div>
                   </div>
                 </div>
                 <button className="ct-del-btn" onClick={()=>dispatchBoard({type:'DEL_SEL'})}><Icono nombre="borrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Eliminar Elemento</button>
@@ -1517,7 +1517,7 @@ const CreadorTareas = () => {
             <span className="tab-icon"><Icono nombre="mano" size="1.2em" relleno="propio" /></span>MOVER
           </button>
           <button className="ct-mob-tab" onClick={()=>dispatchBoard({type:'UNDO'})}>
-            <span className="tab-icon">↩</span>DESHACER
+            <span className="tab-icon"><Icono nombre="deshacer" size="1em" /></span>DESHACER
           </button>
           <div className="ct-mob-sep"/>
           <button className={`ct-mob-tab${panelMovil==='elementos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='elementos'?null:'elementos')}>
@@ -1570,7 +1570,7 @@ const CreadorTareas = () => {
 
             {veniaDePlanificar && !tareaIdEditando && (
               <div style={{marginBottom:18,padding:'12px 14px',borderRadius:8,background:'rgba(0,230,118,0.08)',border:'1px solid rgba(0,230,118,0.4)',display:'flex',alignItems:'center',gap:10}}>
-                <span style={{fontSize:'1.2rem'}}>↩️</span>
+                <Icono nombre="deshacer" size={20} relleno="propio" style={{ color: 'var(--accent)' }} />
                 <span style={{color:'var(--accent)',fontSize:'0.82rem',fontWeight:'bold'}}>Al guardar, esta tarea se agrega a la sesión y volvés al Planificador.</span>
               </div>
             )}
@@ -1672,6 +1672,19 @@ const CreadorTareas = () => {
   )
 }
 
+// Muestra de una flecha de anotación en la paleta: el mismo color, grosor y
+// punteado que la flecha en la pizarra (la conducción va ondulada).
+function MuestraFlecha({ estilo }) {
+  const st = ARROW_STYLES[estilo];
+  const d = estilo === 'arrow-conduccion' ? 'M2 7c2.5-4 4.5 4 7 0s4.5 4 7 0' : 'M2 7h14';
+  return (
+    <svg width="1.4em" height="0.8em" viewBox="0 0 24 14" fill="none" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d={d} stroke={st.color} strokeWidth={st.width} strokeDasharray={st.dash.length ? st.dash.map((x) => x / 2).join(' ') : undefined} strokeLinecap="round" />
+      <path d="M16 3l6 4-6 4z" fill={st.color} />
+    </svg>
+  );
+}
+
 // Muestra de color de una ficha en la paleta: el mismo relleno y borde que la
 // ficha en la pizarra. `plano` es el cono plato, más ancho que alto.
 function Punto({ c, plano = false }) {
@@ -1688,7 +1701,7 @@ function SeccionSidebar({ titulo, abierta, onToggle, children }) {
   return (
     <>
       <button className="ct-sbh" onClick={onToggle} aria-expanded={abierta}>
-        {titulo}<span className={`caret${abierta?'':' cerrado'}`}>▼</span>
+        {titulo}<span className={`caret${abierta?'':' cerrado'}`}><Icono nombre="expandir" size={11} /></span>
       </button>
       {abierta && <div className="ct-sbb">{children}</div>}
     </>

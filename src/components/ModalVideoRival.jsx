@@ -223,7 +223,7 @@ export default function ModalVideoRival({ rival, clubId, categoria = null, onCer
             </div>
           </div>
           <button onClick={onCerrar} className="close-btn">
-            ×
+            <Icono nombre="cerrar" size="1em" />
           </button>
         </div>
 

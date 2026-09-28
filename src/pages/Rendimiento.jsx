@@ -38,7 +38,7 @@ const getEmbedUrl = url => {
 // ─── SHARED UI ───────────────────────────────────────────────────────────────
 const Tip = ({ t }) => (
   <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 5, cursor: 'help', verticalAlign: 'middle' }} className="tip-wrap">
-    <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: 9, fontWeight: 900, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>!</span>
+    <Icono nombre="info" size={15} style={{ color: 'var(--accent)' }} />
     <span className="tip-box">{t}</span>
   </span>
 );
@@ -295,7 +295,7 @@ export default function Rendimiento() {
                 onClick={() => setPerfilExpandido(!perfilExpandido)} 
                 style={{ width: '100%', background: '#060a14', border: '1px solid #1e293b', color: '#94a3b8', padding: '10px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer' }}
               >
-                {perfilExpandido ? 'Ocultar Resumen Atlético ▴' : 'Ver Resumen Atlético ▾'}
+                {perfilExpandido ? 'Ocultar Resumen Atlético' : 'Ver Resumen Atlético'}<Icono nombre={perfilExpandido ? 'contraer' : 'expandir'} size="1em" style={{ marginLeft: 4 }} />
               </button>
             )}
 
@@ -440,7 +440,7 @@ function TabResumen({ jug, stats, historial, ultimosDatos, esJugador, selId }) {
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
                       {gap != null && (
                         <span style={{ fontSize: '0.62rem', color: gapColor, fontWeight: 900 }}>
-                          {ok ? '▲' : '▼'} {Math.abs(gap).toFixed(lbl === 'Broad Jump' ? 2 : 1)}{unit} vs élite
+                          <Icono nombre={ok ? 'contraer' : 'expandir'} size="1em" style={{ marginRight: 2 }} />{Math.abs(gap).toFixed(lbl === 'Broad Jump' ? 2 : 1)}{unit} vs élite
                         </span>
                       )}
                       <span style={{ fontSize: '1rem', fontWeight: 900, color: val != null ? color : '#334155' }}>
