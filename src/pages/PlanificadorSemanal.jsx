@@ -515,6 +515,17 @@ const PlanificadorSemanal = () => {
   const [copiaIncluirTareas, setCopiaIncluirTareas] = useState(true);
   const [copiaIncluirFisico, setCopiaIncluirFisico] = useState(true);
   const [copiaIncluirTema, setCopiaIncluirTema] = useState(true);
+
+  /* El bloque físico ocupa media pantalla en el celular. Para mirar solo las
+     tareas de cancha se pliega a una línea de resumen; la elección se
+     recuerda, así el que no lo usa no tiene que plegarlo en cada sesión. */
+  const [fisicoAbierto, setFisicoAbierto] = useState(() => {
+    try { return localStorage.getItem('planif_fisico_abierto') !== 'no'; } catch { return true; }
+  });
+  const alternarFisico = () => setFisicoAbierto((abierto) => {
+    try { localStorage.setItem('planif_fisico_abierto', abierto ? 'no' : 'si'); } catch { /* storage bloqueado */ }
+    return !abierto;
+  });
   const [copiaModo, setCopiaModo] = useState('agregar');
   const [copiando, setCopiando] = useState(false);
   
@@ -1739,7 +1750,15 @@ const PlanificadorSemanal = () => {
                   
                   {nuevaSesion.bloque_fisico && (
                     <div style={{ background: '#f59e0b20', padding: '15px', borderRadius: '8px', border: '1px solid #f59e0b50' }}>
-                      <h4 style={{ color: '#f59e0b', margin: '0 0 10px 0', fontSize: '0.8rem', textTransform: 'uppercase' }}><Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Bloque de Preparación Física</h4>
+                      <button type="button" onClick={alternarFisico} aria-expanded={fisicoAbierto}
+                        style={{ ...botonPlegarFisico, marginBottom: fisicoAbierto ? '10px' : 0 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                          <Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Bloque de Preparación Física
+                        </span>
+                        <Icono nombre={fisicoAbierto ? 'contraer' : 'expandir'} size="1.1em" />
+                      </button>
+                      {!fisicoAbierto && <ResumenFisico sesion={nuevaSesion} />}
+                      {fisicoAbierto && (<>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem' }}>
                         <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#fcd34d'}}>Enfoque:</span> <strong style={{color: 'var(--text)', textAlign: 'right'}}>{nuevaSesion.enfoque_fisico}</strong></div>
                         <div style={{display: 'flex', justifyContent: 'space-between'}}><span style={{color: '#fcd34d'}}>Duración:</span> <strong style={{color: 'var(--text)'}}>{nuevaSesion.duracion_fisico} min</strong></div>
@@ -1765,6 +1784,7 @@ const PlanificadorSemanal = () => {
                           ))}
                         </div>
                       )}
+                      </>)}
                     </div>
                   )}
 
@@ -1890,20 +1910,36 @@ const PlanificadorSemanal = () => {
 
                     {/* SECCIÓN PREPARADOR FÍSICO */}
                     <div style={{ background: 'rgba(245, 158, 11, 0.05)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: nuevaSesion.bloque_fisico ? '15px' : '0' }}>
-                        <label style={{ ...labelStyle, color: '#f59e0b', margin: 0, fontSize: '0.75rem' }}><Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BLOQUE FÍSICO</label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: nuevaSesion.bloque_fisico && fisicoAbierto ? '15px' : '0' }}>
+                        {nuevaSesion.bloque_fisico ? (
+                          <button type="button" onClick={alternarFisico} aria-expanded={fisicoAbierto}
+                            style={{ ...botonPlegarFisico, flex: 1, width: 'auto', fontSize: '0.75rem' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+                              <Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BLOQUE FÍSICO
+                            </span>
+                            <Icono nombre={fisicoAbierto ? 'contraer' : 'expandir'} size="1.1em" />
+                          </button>
+                        ) : (
+                          <label style={{ ...labelStyle, color: '#f59e0b', margin: 0, fontSize: '0.75rem' }}><Icono nombre="fisico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />BLOQUE FÍSICO</label>
+                        )}
                         <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '5px' }}>
                           <input 
                             type="checkbox" 
                             checked={nuevaSesion.bloque_fisico} 
-                            onChange={(e) => setNuevaSesion({...nuevaSesion, bloque_fisico: e.target.checked})} 
+                            onChange={(e) => {
+                              setNuevaSesion({...nuevaSesion, bloque_fisico: e.target.checked});
+                              // Recién incluido está vacío: se abre para cargarlo aunque se haya dejado plegado.
+                              if (e.target.checked && !fisicoAbierto) alternarFisico();
+                            }} 
                             style={{ marginRight: '8px', accentColor: '#f59e0b', width: '18px', height: '18px' }}
                           />
                           <span style={{ fontSize: '0.8rem', color: 'var(--text)', fontWeight: 'bold' }}>Incluir</span>
                         </label>
                       </div>
 
-                      {nuevaSesion.bloque_fisico && (
+                      {nuevaSesion.bloque_fisico && !fisicoAbierto && <ResumenFisico sesion={nuevaSesion} />}
+
+                      {nuevaSesion.bloque_fisico && fisicoAbierto && (
                         <div style={{ animation: 'fadeIn 0.3s' }}>
                           {/* Cabecera: enfoque general + duración total */}
                           <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: '12px' }}>
@@ -2223,6 +2259,28 @@ const labelStyle = { display: 'block', fontSize: '0.75rem', color: 'var(--text-d
    porque hay treinta usos que le agregan cosas con spread. */
 const inputStyle = { width: '100%', minHeight: '44px', padding: '11px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
 const pillStyle = { fontSize: '0.65rem', background: 'var(--panel)', color: 'var(--text-dim)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)' };
+
+// Cabecera del bloque físico: toda la fila pliega y despliega el bloque.
+const botonPlegarFisico = {
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%',
+  background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left',
+  color: '#f59e0b', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase',
+};
+
+// Lo que se ve con el bloque físico plegado: una línea para saber que está.
+function ResumenFisico({ sesion }) {
+  const cantidad = (sesion.detalle_fisico || []).length;
+  const partes = [
+    sesion.enfoque_fisico,
+    sesion.duracion_fisico ? `${sesion.duracion_fisico} min` : null,
+    cantidad ? `${cantidad} ejercicio${cantidad > 1 ? 's' : ''}` : null,
+  ].filter(Boolean);
+  return (
+    <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#fcd34d' }}>
+      {partes.length ? partes.join(' · ') : 'Sin detalle cargado'}
+    </div>
+  );
+}
 const btnOrdenStyle = { width: '30px', height: '30px', borderRadius: '6px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 };
 const chipStyle = { fontSize: '0.7rem', fontWeight: 'bold', padding: '6px 10px', borderRadius: '20px', border: '1px solid var(--border)', cursor: 'pointer', whiteSpace: 'nowrap', transition: '0.15s' };
 
