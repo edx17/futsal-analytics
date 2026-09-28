@@ -585,7 +585,7 @@ export default function LoginKiosco() {
                 <div style={{ display: 'flex', gap: '10px', flexDirection: esMovil ? 'column' : 'row' }}>
                   {clubConfig?.alias_cobro && (
                     <button onClick={procesarPagoMP} style={{ flex: 1, padding: '10px', background: '#00b1ea', color: '#000000', border: 'none', borderRadius: '6px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                      <Icono nombre="sponsors" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PAGAR CON MP
+                      <Icono nombre="tarjetaCredito" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PAGAR CON MP
                     </button>
                   )}
                   {clubConfig?.whatsapp_tesoreria && (
@@ -740,9 +740,9 @@ export default function LoginKiosco() {
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
               <button key={num} onClick={() => handleNumpad(num.toString())} style={estiloNumpadDinamico}>{num}</button>
             ))}
-            <button onClick={volverAtras} style={{ ...estiloNumpadDinamico, background: '#ef4444' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+            <button aria-label="Volver" onClick={volverAtras} style={{ ...estiloNumpadDinamico, background: '#ef4444' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             <button onClick={() => handleNumpad('0')} style={estiloNumpadDinamico}>0</button>
-            <button onClick={() => setPin('')} style={{ ...estiloNumpadDinamico, background: 'var(--border)' }}><Icono nombre="borrarTecla" size="1em" /></button>
+            <button aria-label="Borrar el PIN" onClick={() => setPin('')} style={{ ...estiloNumpadDinamico, background: 'var(--border)' }}><Icono nombre="borrarTecla" size="1em" /></button>
           </div>
         </div>
       )}

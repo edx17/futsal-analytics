@@ -99,15 +99,25 @@ export function Camiseta({ dorsal = '10', ...props }) {
 
 // Las tarjetas son la única excepción al color único: rellenas de amarillo
 // o de rojo, porque en línea no se distinguen entre sí.
-const COLOR_TARJETA = { amarilla: 'var(--amarillo)', roja: 'var(--peligro)' };
+// Colores fijos, iguales en los dos temas: son el color de la tarjeta, no un
+// color de texto (--amarillo en modo claro es un dorado oscuro para leerse
+// sobre blanco, y la tarjeta se vería marrón). El borde fino hace que la
+// amarilla se despegue del fondo blanco.
+const COLOR_TARJETA = {
+  amarilla: { relleno: '#facc15', borde: '#ca8a04' },
+  roja: { relleno: '#ef4444', borde: '#b91c1c' },
+};
 
-const unaTarjeta = (x, giro, color) => (
-  <rect
-    x={x} y="3.5" width="10" height="15" rx="1.6"
-    transform={`rotate(${giro} ${x + 5} 11)`}
-    fill={COLOR_TARJETA[color]} stroke="none"
-  />
-);
+const unaTarjeta = (x, giro, color) => {
+  const c = COLOR_TARJETA[color] || COLOR_TARJETA.amarilla;
+  return (
+    <rect
+      x={x} y="3.5" width="10" height="15" rx="1.6"
+      transform={`rotate(${giro} ${x + 5} 11)`}
+      fill={c.relleno} stroke={c.borde} strokeWidth="1"
+    />
+  );
+};
 
 export function Tarjeta({ color = 'amarilla', ...props }) {
   return <Base {...props}>{unaTarjeta(7, 10, color)}</Base>;

@@ -50,7 +50,7 @@ const RenderRutinaFisica = ({ data }) => {
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>INTENSIDAD</span><strong style={{ color: 'var(--text)' }}>{b.rir || '-'}</strong></div>
                   <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: '4px', textAlign: 'center' }}><span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-dim)' }}>PAUSA</span><strong style={{ color: 'var(--text)' }}>{b.pausa || '-'}</strong></div>
                 </div>
-                {b.notas && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '10px', fontStyle: 'italic' }}><Icono nombre="fijado" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{b.notas}</div>}
+                {b.notas && <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '10px', fontStyle: 'italic' }}><Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{b.notas}</div>}
               </>
             ) : (
               <>
@@ -1225,12 +1225,12 @@ const PlanificadorSemanal = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '5px', background: 'var(--bg)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-            <button onClick={() => navegarTiempo(-1)} style={navBtn}><Icono nombre="volver" size="1.2em" relleno="propio" /></button>
+            <button aria-label="Anterior" onClick={() => navegarTiempo(-1)} style={navBtn}><Icono nombre="anteriorPag" size="1.2em" relleno="propio" /></button>
             <span style={{ fontWeight: '900', color: 'var(--text)', fontSize: esMovil ? '0.8rem' : '0.9rem', minWidth: modoVista === 'semanal' && !esMovil ? '180px' : 'auto', textAlign: 'center', textTransform: 'uppercase', flex: esMovil ? 1 : 'none' }}>
               {diasCalendario.length > 0 && modoVista === 'semanal' && `Semana ${diasCalendario[0].numero}/${String(diasCalendario[0].fechaStr).split('-')[1]} al ${diasCalendario[6].numero}/${String(diasCalendario[6].fechaStr).split('-')[1]}`}
               {diasCalendario.length > 0 && modoVista === 'mensual' && `${mesesNombres[fechaReferencia.getMonth()]} ${fechaReferencia.getFullYear()}`}
             </span>
-            <button onClick={() => navegarTiempo(1)} style={navBtn}><Icono nombre="avanzar" size="1.2em" relleno="propio" /></button>
+            <button aria-label="Siguiente" onClick={() => navegarTiempo(1)} style={navBtn}><Icono nombre="siguientePag" size="1.2em" relleno="propio" /></button>
             <button onClick={() => setFechaReferencia(new Date())} style={{...navBtn, fontSize: '0.7rem', width: 'auto', padding: '0 10px', background: 'var(--border)'}}>HOY</button>
           </div>
 
@@ -1240,7 +1240,7 @@ const PlanificadorSemanal = () => {
               title="Copiar la planificación de esta semana a otra"
               style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '8px', padding: '10px 14px', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap', minHeight: '40px' }}
             >
-              <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR SEMANA
+              <Icono nombre="copiar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR SEMANA
             </button>
           )}
         </div>
@@ -1265,7 +1265,7 @@ const PlanificadorSemanal = () => {
                     borderRadius: '8px', padding: '10px 14px', color: 'var(--text)', minHeight: '48px'
                   }}
                 >
-                  <span style={{ fontSize: '1.1rem' }}><Icono nombre="comentario" size="1.2em" relleno="propio" /></span>
+                  <span style={{ fontSize: '1.1rem' }}><Icono nombre="objetivo" size="1.2em" relleno="propio" /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: 'block', fontSize: '0.6rem', letterSpacing: '0.5px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-dim)' }}>
                       Tema de la semana · {filtroCategoria}
@@ -1283,7 +1283,7 @@ const PlanificadorSemanal = () => {
                 </button>
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px' }}>
-                  <span style={{ fontSize: '0.6rem', letterSpacing: '0.5px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-dim)' }}><Icono nombre="comentario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Tema de la semana</span>
+                  <span style={{ fontSize: '0.6rem', letterSpacing: '0.5px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-dim)' }}><Icono nombre="objetivo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Tema de la semana</span>
 
                   {temasDeLaSemana.map(t => (
                     <button
@@ -1392,7 +1392,7 @@ const PlanificadorSemanal = () => {
                             onDragStart={(e) => { e.dataTransfer.setData('sesionId', sesion.id); }}
                             style={{ background: 'var(--bg)', borderLeft: `4px solid ${colorNivel}`, padding: '10px', borderRadius: '6px', position: 'relative', cursor: 'grab', transition: '0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.3)' }}
                           >
-                            <button onClick={(e) => eliminarSesion(sesion.id, e)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: '5px', zIndex: 2 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                            <button aria-label="Eliminar" onClick={(e) => eliminarSesion(sesion.id, e)} style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: '5px', zIndex: 2 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                             <div style={{ fontSize: '0.75rem', fontWeight: '900', color: 'var(--text)', marginBottom: '2px', paddingRight: '25px' }}>{sesion.tipo_sesion.toUpperCase()}</div>
                             <div style={{ fontSize: '0.65rem', color: colorNivel, fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase' }}>CARGA: {sesion.nivel_carga || 'MEDIA'}</div>
                             
@@ -1497,7 +1497,7 @@ const PlanificadorSemanal = () => {
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--panel)', borderTop: '2px solid var(--accent)', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', width: '100%', maxHeight: '75vh', overflowY: 'auto', padding: '16px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))', animation: 'fadeIn 0.2s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <span className="stat-label" style={{ color: 'var(--accent)' }}>{diaSheet.dia.numero} · {(mesesNombres[fechaReferencia.getMonth()] || '').toUpperCase()}</span>
-              <button onClick={() => setDiaSheet(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', lineHeight: 1 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Cerrar" onClick={() => setDiaSheet(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', lineHeight: 1 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             {diaSheet.partidos.map(partido => (
@@ -1537,12 +1537,12 @@ const PlanificadorSemanal = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
               <h3 style={{ margin: 0, color: 'var(--accent)', textTransform: 'uppercase', fontSize: '1.1rem' }}>
-                <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Copiar semana<br />
+                <Icono nombre="copiar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Copiar semana<br />
                 <span style={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 'normal' }}>
                   {sesiones.length} sesión/es · semana del {diasCalendario[0].fechaStr.split('-').reverse().slice(0, 2).join('/')}
                 </span>
               </h3>
-              <button onClick={() => setMostrarModalCopiar(false)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '1rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Cerrar" onClick={() => setMostrarModalCopiar(false)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '1rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1602,7 +1602,7 @@ const PlanificadorSemanal = () => {
               </div>
 
               <button onClick={copiarSemana} disabled={copiando} className="btn-action" style={{ width: '100%', padding: '14px', fontSize: '0.95rem', fontWeight: 900, opacity: copiando ? 0.6 : 1 }}>
-                {copiando ? 'COPIANDO…' : <><Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR PLANIFICACIÓN</>}
+                {copiando ? 'COPIANDO…' : <><Icono nombre="copiar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR PLANIFICACIÓN</>}
               </button>
             </div>
           </div>
@@ -1616,12 +1616,12 @@ const PlanificadorSemanal = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
               <h3 style={{ margin: 0, color: modalTema.color || 'var(--accent)', textTransform: 'uppercase', fontSize: '1.1rem' }}>
-                <Icono nombre="comentario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Tema de la semana<br />
+                <Icono nombre="objetivo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Tema de la semana<br />
                 <span style={{ color: 'var(--text)', fontSize: '0.8rem', fontWeight: 'normal' }}>
                   {modalTema.categoria_equipo} · semana del {String(modalTema.fecha_inicio).split('-').reverse().slice(0, 2).join('/')}
                 </span>
               </h3>
-              <button onClick={() => setModalTema(null)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '1rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Cerrar" onClick={() => setModalTema(null)} style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '34px', height: '34px', borderRadius: '50%', cursor: 'pointer', fontSize: '1rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -1674,7 +1674,7 @@ const PlanificadorSemanal = () => {
 
               <div style={{ display: 'flex', gap: '10px' }}>
                 {modalTema.id && (
-                  <button onClick={eliminarTema} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}><Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
+                  <button aria-label="Eliminar" onClick={eliminarTema} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}><Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
                 )}
                 <button onClick={guardarTema} className="btn-action" style={{ flex: 1, padding: '14px', fontSize: '0.95rem', fontWeight: 900 }}>
                   <Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR TEMA
@@ -1711,7 +1711,7 @@ const PlanificadorSemanal = () => {
                     </button>
                   )}
                 </div>
-                <button onClick={() => setMostrarModal(false)} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: esMovil ? 'absolute' : 'relative', top: esMovil ? '0' : 'auto', right: esMovil ? '0' : 'auto' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                <button aria-label="Cerrar" onClick={() => setMostrarModal(false)} style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: esMovil ? 'absolute' : 'relative', top: esMovil ? '0' : 'auto', right: esMovil ? '0' : 'auto' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
               </div>
             </div>
 
@@ -1755,12 +1755,12 @@ const PlanificadorSemanal = () => {
                               </div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {item.tipo && <span style={{ ...pillStyle, color: '#fcd34d', borderColor: '#f59e0b40' }}>{item.tipo}</span>}
-                                {item.series && <span style={pillStyle}><Icono nombre="actualizar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{item.series} series</span>}
+                                {item.series && <span style={pillStyle}><Icono nombre="microciclo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{item.series} series</span>}
                                 {item.reps && <span style={pillStyle}><Icono nombre="numero" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{item.reps}</span>}
                                 {item.peso && <span style={pillStyle}><Icono nombre="pesas" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{item.peso}</span>}
                                 {item.pausa && <span style={pillStyle}><Icono nombre="pausa" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{item.pausa}</span>}
                               </div>
-                              {item.notas && <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '6px', fontStyle: 'italic' }}><Icono nombre="fijado" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{item.notas}</div>}
+                              {item.notas && <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '6px', fontStyle: 'italic' }}><Icono nombre="nota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{item.notas}</div>}
                             </div>
                           ))}
                         </div>
@@ -1944,7 +1944,7 @@ const PlanificadorSemanal = () => {
                                     onChange={e => actualizarItemFisico(item.id, 'ejercicio', e.target.value)}
                                     style={{ ...inputStyle, flex: 1, minHeight: '38px', padding: '8px 10px', fontSize: '0.85rem', fontWeight: 'bold' }}
                                   />
-                                  <button onClick={() => eliminarItemFisico(item.id)} style={{ background: '#3a1212', border: '1px solid #7f1d1d', color: '#ef4444', width: '34px', height: '34px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0, fontSize: '0.9rem' }}><Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
+                                  <button aria-label="Eliminar" onClick={() => eliminarItemFisico(item.id)} style={{ background: '#3a1212', border: '1px solid #7f1d1d', color: '#ef4444', width: '34px', height: '34px', borderRadius: '6px', cursor: 'pointer', flexShrink: 0, fontSize: '0.9rem' }}><Icono nombre="borrar" size="1.2em" relleno="propio" /></button>
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '8px' }}>
@@ -2146,7 +2146,7 @@ const PlanificadorSemanal = () => {
                 <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', fontWeight: 'bold', display: 'block', marginTop: '5px' }}>{tareaSeleccionadaDetalle.objetivo_principal}</span>
               </div>
               {/* BOTÓN CERRAR FIJO ARRIBA A LA DERECHA */}
-              <button onClick={() => setTareaSeleccionadaDetalle(null)} style={{ position: 'absolute', top: esMovil ? '10px' : '15px', right: esMovil ? '10px' : '15px', background: 'rgba(0,0,0,0.7)', border: '1px solid #444', color: 'var(--text)', width: '38px', height: '38px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Cerrar" onClick={() => setTareaSeleccionadaDetalle(null)} style={{ position: 'absolute', top: esMovil ? '10px' : '15px', right: esMovil ? '10px' : '15px', background: 'rgba(0,0,0,0.7)', border: '1px solid #444', color: 'var(--text)', width: '38px', height: '38px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: esMovil ? '15px' : '20px' }}>

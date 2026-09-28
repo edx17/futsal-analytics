@@ -295,7 +295,7 @@ function Landing() {
           </div>
 
           <div className="feature-card" style={featureCardStyle}>
-            <div style={iconStyle}><Icono nombre="actualizar" size="1.2em" relleno="propio" /></div>
+            <div style={iconStyle}><Icono nombre="usuarios" size="1.2em" relleno="propio" /></div>
             <h3 style={featureTitleStyle}>Rating de Quintetos PRO</h3>
             <p style={featureDescStyle}>Algoritmo exclusivo de eficiencia ajustada por volumen.</p>
             <div style={featureImgWrapperStyle}>

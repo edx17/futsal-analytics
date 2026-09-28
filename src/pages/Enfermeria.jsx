@@ -177,7 +177,7 @@ notaNueva, setNotaNueva, onEditar, onReadaptacion, onAlta, onAgregarNota,
               onKeyDown={e => { if (e.key === 'Enter') onAgregarNota(lesion); }}
               placeholder="Agregar un parte de evolución…"
               style={{ ...input, fontSize: '0.78rem' }} />
-            <button onClick={() => onAgregarNota(lesion)} style={{ ...input, width: 'auto', cursor: 'pointer', fontWeight: 800, color: 'var(--accent)', display: 'flex', alignItems: 'center' }}><Icono nombre="agregar" size="1.1em" /></button>
+            <button aria-label="Agregar" onClick={() => onAgregarNota(lesion)} style={{ ...input, width: 'auto', cursor: 'pointer', fontWeight: 800, color: 'var(--accent)', display: 'flex', alignItems: 'center' }}><Icono nombre="agregar" size="1.1em" /></button>
           </div>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <button onClick={() => onEditar(lesion)} className="btn-secondary" style={{ fontSize: '0.68rem', padding: '7px 12px', cursor: 'pointer' }}><Icono nombre="editar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EDITAR</button>

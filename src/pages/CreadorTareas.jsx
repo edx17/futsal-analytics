@@ -1143,7 +1143,7 @@ const CreadorTareas = () => {
           {esMovil && (
             <>
               <div style={{position:'absolute',top:0,left:0,right:0,height:'calc(env(safe-area-inset-top, 0px) + 60px)',background:'linear-gradient(to bottom,rgba(0,0,0,.85),transparent)',zIndex:10,pointerEvents:'none'}}/>
-              <button onClick={()=>navigate(-1)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',left:12,zIndex:20,background:'rgba(0,0,0,.7)',border:'1px solid #3a3f55',color:'#fff',width:38,height:38,borderRadius:'50%',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}><Icono nombre="volver" size="1.1em" /></button>
+              <button aria-label="Volver" onClick={()=>navigate(-1)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',left:12,zIndex:20,background:'rgba(0,0,0,.7)',border:'1px solid #3a3f55',color:'#fff',width:38,height:38,borderRadius:'50%',fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}><Icono nombre="volver" size="1.1em" /></button>
               {tareaIdEditando && <div style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 14px)',left:60,zIndex:20,background:'var(--blue)',color:'#fff',padding:'4px 8px',borderRadius:5,fontSize:'0.7rem',fontWeight:'bold'}}>EDICIÓN</div>}
               <button onClick={()=>setShowModal(true)} style={{position:'absolute',top:'calc(env(safe-area-inset-top, 0px) + 10px)',right:12,zIndex:20,background:tareaIdEditando?'var(--blue)':'var(--accent)',color:tareaIdEditando?'#fff':'#000',border:'none',padding:'0 16px',height:38,borderRadius:18,fontSize:'.82rem',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
                 <Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{tareaIdEditando?'ACT.':'GUARDAR'}
@@ -1337,7 +1337,7 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>Jugadores &amp; Materiales</span>
-            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+            <button aria-label="Cerrar" className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div style={{fontSize:'9px',fontWeight:700,letterSpacing:'1.5px',color:'var(--muted2)',textTransform:'uppercase',marginBottom:8}}>Jugadores</div>
           <div className="ct-mob-tools-grid" style={{marginBottom:12}}>
@@ -1362,7 +1362,7 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>Anotaciones y Zonas</span>
-            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+            <button aria-label="Cerrar" className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div className="ct-mob-tools-grid">
             {TOOLS_ANNOT.map(t=>(
@@ -1378,14 +1378,14 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>Línea de Tiempo</span>
-            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+            <button aria-label="Cerrar" className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div className="ct-mob-anim-grid">
             {frames.map((f,i)=>(
               <div key={f.id} className={`ct-mob-frame-chip${i===frameIdx?' on':''}`} onClick={()=>{cambiarFrame(i);setPanelMovil(null)}}>
                 {i+1}
                 {i===frameIdx&&frames.length>1&&(
-                  <button className="del-x" onClick={e=>{e.stopPropagation();eliminarFrame(i)}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                  <button aria-label="Eliminar" className="del-x" onClick={e=>{e.stopPropagation();eliminarFrame(i)}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                 )}
               </div>
             ))}
@@ -1404,7 +1404,7 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>Ajustes de Pista</span>
-            <button className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+            <button aria-label="Cerrar" className="ct-mob-sheet-close" onClick={()=>setPanelMovil(null)}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           <div className="ct-mob-config-row">
             <div className="ct-mob-config-lbl">Dimensiones</div>
@@ -1448,7 +1448,7 @@ const CreadorTareas = () => {
           <div className="ct-mob-sheet-handle"/>
           <div className="ct-mob-sheet-title">
             <span>{isArrow?(ARROW_STYLES[selData.style]?.label||'Flecha'):selData.type.toUpperCase()}</span>
-            <button className="ct-mob-sheet-close" onClick={()=>dispatchBoard({type:'SELECT',sel:null})}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+            <button aria-label="Cerrar" className="ct-mob-sheet-close" onClick={()=>dispatchBoard({type:'SELECT',sel:null})}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
           </div>
           {!isArrow && (
             <div className="ct-mob-prop-row">
@@ -1524,7 +1524,7 @@ const CreadorTareas = () => {
             <span className="tab-icon"><Icono nombre="paquete" size="1.2em" relleno="propio" /></span>FICHA
           </button>
           <button className={`ct-mob-tab${panelMovil==='trazos'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='trazos'?null:'trazos')}>
-            <span className="tab-icon"><Icono nombre="regla" size="1.2em" relleno="propio" /></span>TRAZOS
+            <span className="tab-icon"><Icono nombre="jugada" size="1.2em" relleno="propio" /></span>TRAZOS
           </button>
           <button className={`ct-mob-tab${panelMovil==='anim'?' on':''}`} onClick={()=>setPanelMovil(p=>p==='anim'?null:'anim')}>
             <span className="tab-icon"><Icono nombre={isPlaying?'detener':'video'} size="1em" /></span>JUGADA
@@ -1560,7 +1560,7 @@ const CreadorTareas = () => {
                 <h2 className={tareaIdEditando?'blue':''}>{tareaIdEditando?'Actualizar Ficha Técnica':'Ficha Técnica de la Tarea'}</h2>
                 <span style={{color:'var(--muted)',fontSize:'0.8rem'}}>{vrtLabel}</span>
               </div>
-              <button onClick={() => {setShowModal(false); setVideoFile(null); setVideoPreview(tareaAEditar?.video_mp4_url || null)}} style={{background:'transparent',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer'}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Cerrar" onClick={() => {setShowModal(false); setVideoFile(null); setVideoPreview(tareaAEditar?.video_mp4_url || null)}} style={{background:'transparent',border:'none',color:'#fff',fontSize:'1.5rem',cursor:'pointer'}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{marginBottom:20}}>
@@ -1723,7 +1723,7 @@ function TimelineBar({ frames, frameIdx, isPlaying, onPlay, onGo, onDup, onAdd, 
           <div key={f.id} className={`ct-frame-chip${i===frameIdx?' on':''}`} onClick={()=>onGo(i)}>
             {i+1}
             {i===frameIdx&&frames.length>1&&(
-              <button className="del-x" onClick={e=>{e.stopPropagation();onDel(i)}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Eliminar" className="del-x" onClick={e=>{e.stopPropagation();onDel(i)}}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             )}
           </div>
         ))}

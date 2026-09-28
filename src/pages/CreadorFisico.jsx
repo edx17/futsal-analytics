@@ -279,7 +279,7 @@ const CreadorFisico = () => {
                   {bloquesGimnasio.map((ej, index) => (
                     <div key={ej.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '15px', position: 'relative' }}>
                       <div style={{ position: 'absolute', top: '-10px', left: '-10px', background: '#f59e0b', color: '#000', width: '25px', height: '25px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '0.8rem' }}>{index + 1}</div>
-                      <button onClick={() => eliminarEjercicio(ej.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                      <button aria-label="Eliminar" onClick={() => eliminarEjercicio(ej.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       
                       <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '2fr 1fr 1fr 1fr 1fr', gap: '10px', marginTop: '10px' }}>
                         <div>
@@ -331,7 +331,7 @@ const CreadorFisico = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {bloquesCancha.map((bloque, index) => (
                     <div key={bloque.id} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '8px', padding: '20px', position: 'relative' }}>
-                      <button onClick={() => eliminarBloqueCancha(bloque.id)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                      <button aria-label="Eliminar" onClick={() => eliminarBloqueCancha(bloque.id)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: '#ef4444', fontSize: '1.2rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       
                       <input 
                         type="text" 

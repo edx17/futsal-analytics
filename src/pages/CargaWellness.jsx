@@ -383,11 +383,11 @@ const CargaWellness = () => {
 
               {/* NAVEGADOR DE FECHAS */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'var(--bg)', padding: '5px', borderRadius: '8px', border: '1px solid var(--border)', height: '44px', boxSizing: 'border-box' }}>
-                <button onClick={() => navegarPeriodo(-1)} style={navBtn}><Icono nombre="volver" size="1.2em" relleno="propio" /></button>
+                <button aria-label="Anterior" onClick={() => navegarPeriodo(-1)} style={navBtn}><Icono nombre="anteriorPag" size="1.2em" relleno="propio" /></button>
                 <span style={{ fontWeight: '900', color: 'var(--text)', fontSize: '0.75rem', minWidth: '110px', textAlign: 'center' }}>
                   {getTextoPeriodo()}
                 </span>
-                <button onClick={() => navegarPeriodo(1)} style={navBtn}><Icono nombre="avanzar" size="1.2em" relleno="propio" /></button>
+                <button aria-label="Siguiente" onClick={() => navegarPeriodo(1)} style={navBtn}><Icono nombre="siguientePag" size="1.2em" relleno="propio" /></button>
                 <button onClick={() => setFechaReferenciaReporte(new Date())} style={{...navBtn, fontSize: '0.6rem', width: 'auto', padding: '0 8px', background: '#3b82f6'}}>HOY</button>
               </div>
 
@@ -544,7 +544,7 @@ const CargaWellness = () => {
                 <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.3rem', textTransform: 'uppercase' }}>{detalleRegistro.jugador.apellido}, {detalleRegistro.jugador.nombre}</h3>
                 <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem', fontWeight: 'bold' }}><Icono nombre="calendario" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Reporte del día: {detalleRegistro.dia}</span>
               </div>
-              <button onClick={() => setDetalleRegistro(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.5rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Cerrar" onClick={() => setDetalleRegistro(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.5rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '75vh', overflowY: 'auto' }}>

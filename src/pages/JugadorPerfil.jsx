@@ -1675,7 +1675,7 @@ function JugadorPerfil() {
               {metricasWellness && (
                 <div className="bento-card jp-section" style={{ background: 'linear-gradient(135deg, #0a0a1a, #000)', border: '1px solid rgba(59,130,246,0.3)' }}>
                   <div className="stat-label" style={{ color: '#3b82f6', marginBottom: '16px' }}>
-                    <Icono nombre="medico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />WELLNESS {partidoFiltro === 'Todos' ? '(PROMEDIO ACTUAL)' : '(SEMANA PREVIA AL PARTIDO)'}
+                    <Icono nombre="wellness" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />WELLNESS {partidoFiltro === 'Todos' ? '(PROMEDIO ACTUAL)' : '(SEMANA PREVIA AL PARTIDO)'}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : '1fr 1fr 1fr', gap: '16px', textAlign: 'center' }}>
                     {[

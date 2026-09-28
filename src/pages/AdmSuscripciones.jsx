@@ -189,7 +189,7 @@ function AdmSuscripciones() {
           <div className="bento-card" style={{ maxWidth: '500px', width: '100%', border: '1px solid #c084fc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>EDITAR CLUB: <span style={{ color: '#c084fc' }}>{clubSeleccionado.nombre}</span></div>
-              <button onClick={() => setClubSeleccionado(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
+              <button aria-label="Cerrar" onClick={() => setClubSeleccionado(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
             </div>
 
             <form onSubmit={handleGuardar} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

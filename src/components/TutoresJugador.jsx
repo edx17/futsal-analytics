@@ -197,7 +197,7 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
                   a un renglón aparte. */}
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                 {t.telefono && (
-                  <a href={`https://wa.me/${telefonoWhatsApp(t.telefono) || String(t.telefono).replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                  <a aria-label="Abrir WhatsApp" href={`https://wa.me/${telefonoWhatsApp(t.telefono) || String(t.telefono).replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
                      style={{ background: '#25D366', color: '#fff', padding: '5px 10px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 800, textDecoration: 'none' }}>
                     <Icono nombre="whatsapp" size="1.2em" relleno="propio" />
                   </a>
@@ -205,7 +205,7 @@ export default function TutoresJugador({ jugador, clubId, puedeEditar = true, on
                 {puedeEditar && (
                   <>
                     <button onClick={() => setForm({ ...vacio, ...t })} style={btnChico}>EDITAR</button>
-                    <button onClick={() => borrarTutor(t)} style={{ ...btnChico, borderColor: ROJO, color: ROJO }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                    <button aria-label="Eliminar" onClick={() => borrarTutor(t)} style={{ ...btnChico, borderColor: ROJO, color: ROJO }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                   </>
                 )}
               </div>

@@ -1204,7 +1204,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
           <div style={{ display: 'flex', gap: '8px', padding: '8px 10px', flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', gap: '4px' }}>
               <button onClick={() => setTablero('marcar')} title="Tab"
-                      style={tablero === 'marcar' ? botonActivo('#22d3ee') : boton}><Icono nombre="rayo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MARCAR</button>
+                      style={tablero === 'marcar' ? botonActivo('#22d3ee') : boton}><Icono nombre="mira" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MARCAR</button>
               <button onClick={() => { setTablero('mover'); setPuntoOrigen(null); }} title="Tab"
                       style={tablero === 'mover' ? botonActivo('#facc15') : boton}><Icono nombre="mano" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MOVER FICHAS</button>
             </div>
@@ -1259,7 +1259,7 @@ function MesaTrabajo({ idPartido, onSalir, showToast }) {
 
           {ayudaAbierta && (
             <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', background: 'var(--panel)', fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.7 }}>
-              <b style={{ color: 'var(--text)' }}><Icono nombre="rayo" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MARCAR</b> — tocás la cancha y se registra la acción elegida en el panel de la derecha.
+              <b style={{ color: 'var(--text)' }}><Icono nombre="mira" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MARCAR</b> — tocás la cancha y se registra la acción elegida en el panel de la derecha.
               Las acciones con dos toques (pase, recepción, conducción) piden primero el origen y después el destino;
               abajo a la izquierda de la cancha dice siempre cuál toque estás dando.<br />
               <b style={{ color: 'var(--text)' }}><Icono nombre="mano" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MOVER FICHAS</b> — arrastrás a los jugadores y la pelota. Cada vez que soltás
@@ -1631,7 +1631,7 @@ function ListaEventos({ eventos, jugadorPorId, secuencias, golObjetivo, onApunta
                       style={{ ...(apuntado ? botonActivo('var(--accent)') : boton), padding: '3px 6px' }}><Icono nombre="enlace" size="1.2em" relleno="propio" /></button>
             )}
             {ev._estado !== 'sincronizado' && (
-              <button onClick={() => onBorrar(ev)} style={{ ...boton, padding: '3px 6px', borderColor: '#ef4444', color: '#ef4444', display: 'flex' }}><Icono nombre="borrar" size="1em" /></button>
+              <button aria-label="Eliminar" onClick={() => onBorrar(ev)} style={{ ...boton, padding: '3px 6px', borderColor: '#ef4444', color: '#ef4444', display: 'flex' }}><Icono nombre="borrar" size="1em" /></button>
             )}
           </div>
         );
@@ -1817,7 +1817,7 @@ function TabMinutos({ jugadores, stints, minutos, onEditar, onAgregar, onBorrar 
                 <input value={formatearTiempo(s.salida_ms ?? DURACION_PERIODO_MS)} onChange={editarCampo(s, 'salida_ms')}
                        style={{ ...inputStyle, width: '58px', padding: '3px', textAlign: 'center', fontSize: '0.63rem' }} />
                 {s.ajustado && <span title="Corregido a mano" style={{ color: 'var(--accent)' }}><Icono nombre="editar" size="1.2em" relleno="propio" /></span>}
-                <button onClick={() => onBorrar(s)} style={{ ...boton, padding: '2px 5px', borderColor: '#ef4444', color: '#ef4444', marginLeft: 'auto', display: 'flex' }}><Icono nombre="borrar" size="1em" /></button>
+                <button aria-label="Eliminar" onClick={() => onBorrar(s)} style={{ ...boton, padding: '2px 5px', borderColor: '#ef4444', color: '#ef4444', marginLeft: 'auto', display: 'flex' }}><Icono nombre="borrar" size="1em" /></button>
               </div>
             ))}
             <button onClick={() => onAgregar(j.id)} style={{ ...boton, padding: '3px 6px', marginTop: '6px', fontSize: '0.58rem' }}>+ TRAMO EN ESTE MINUTO</button>

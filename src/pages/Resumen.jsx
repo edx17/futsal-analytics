@@ -1507,7 +1507,7 @@ const COLORS_ORIGEN = {
                 onClick={() => { if (!isKiosco) navigate('/wellness'); }}
               >
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <Icono nombre="medico" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios cruzados con la categoría o jugadores participantes." />
+                  <Icono nombre="wellness" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CONTEXTO DE CARGAS Y WELLNESS <InfoBox texto="Calcula los valores promedios cruzados con la categoría o jugadores participantes." />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '20px' }}>
