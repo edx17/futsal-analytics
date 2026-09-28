@@ -15,7 +15,7 @@
  */
 
 import { calcularMinutosPorJugador, calcularParticipacion } from './engine';
-import { calcularRatingJugador } from './rating';
+import { prepararRatingsPartido } from './ratingPartido';
 import { calcularXGEvento } from './xg';
 import { ruedaDePartido } from '../utils/ruedas';
 
@@ -137,7 +137,6 @@ export function procesarPlantel({
     partidos.forEach(p => {
       const evMatch = (evPorPartido.get(p.id) || []).slice().sort(ordenEv);
       const evPropio = evMatch.filter(e => e.equipo === 'Propio');
-      const evRival = evMatch.filter(e => e.equipo === 'Rival');
 
       const minsMap = evMatch.length ? calcularMinutosPorJugador(evMatch) : {};
 
@@ -155,6 +154,8 @@ export function procesarPlantel({
           ids.forEach(id => { pmMap[id] = (pmMap[id] || 0) + signo; });
         }
       });
+
+      const ratingsPartido = evMatch.length ? prepararRatingsPartido(evMatch, { plusMinus: pmMap }) : null;
 
       // titulares = quinteto del primer evento con quinteto
       const primerQ = evMatch.find(e => e.quinteto_activo);
@@ -262,14 +263,8 @@ export function procesarPlantel({
           }
         }
 
-        // rating del partido (con asistencias virtuales)
-        const paraRating = [...evJug];
-        evPropio.forEach(e => {
-          if (mismoId(e.id_asistencia, j.id) && (e.accion === 'Gol' || e.accion === 'Remate - Gol')) {
-            paraRating.push({ ...e, id_jugador: j.id, tipoVirtual: 'Asistencia' });
-          }
-        });
-        const rat = calcularRatingJugador(j, paraRating, evRival, pmMap[sid] || 0, mins);
+        // rating del partido: misma cuenta que el resto de la app
+        const rat = ratingsPartido ? ratingsPartido.rating(j) : null;
         if (rat && !Number.isNaN(Number(rat))) a.ratings.push(Number(rat));
       });
     });

@@ -17,7 +17,8 @@ import VisorPlaca from '../placas/VisorPlaca';
 import PlacaPartido from '../placas/PlacaPartido';
 import { ordenarGolesDelPartido } from '../utils/estadoGoles';
 import { fetchPorLotes } from '../utils/supaPaginado';
-import { calcularRatingJugador } from '../analytics/rating';
+import { elegirMVP } from '../analytics/rating';
+import { prepararRatingsPartido } from '../analytics/ratingPartido';
 import { exportarEventosCSV } from '../utils/exportadorVideo';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { TablaResponsive } from '../components/TablaResponsive';
@@ -832,6 +833,7 @@ return 'Todas';
       }
     });
 
+    const ratings = prepararRatingsPartido(evFiltrados, { plusMinus: datosProcesados.plusMinusJugador });
     const ranking = Object.values(statsJugadores)
       .filter(j => j.eventos.length > 0 || j.xgChain > 0 || (datosProcesados.plusMinusJugador && datosProcesados.plusMinusJugador[j.id]))
       .map(j => {
@@ -841,21 +843,8 @@ return 'Todas';
         const minsReloj = datosProcesados.minutosJugados ? (datosProcesados.minutosJugados[j.id] || 0) : 0;
         const partJ = datosProcesados.participacion ? datosProcesados.participacion[String(j.id)] : null;
         const mins = minsReloj > 0 ? minsReloj : (partJ?.minutosEquivalentes || 0);
-        const eventosParaRating = [...j.eventos];
-        evFiltrados.forEach(ev => {
-          if (ev.id_asistencia == j.id && (ev.accion === 'Remate - Gol' || ev.accion === 'Gol')) {
-            eventosParaRating.push({ ...ev, id_jugador: j.id, tipoVirtual: 'Asistencia' });
-          }
-        });
-        const eventosRivalEnCancha = evFiltrados.filter(ev => {
-          if (ev.equipo !== 'Rival') return false;
-          if (!ev.quinteto_activo) return false;
-          try {
-            const qa = typeof ev.quinteto_activo === 'string' ? JSON.parse(ev.quinteto_activo) : ev.quinteto_activo;
-            return Array.isArray(qa) && qa.some(id => String(id) === String(j.id));
-          } catch { return false; }
-        });
-        const ratingFinal = calcularRatingJugador(j, eventosParaRating, eventosRivalEnCancha, pm, mins);
+        // Misma cuenta que en el resto de la app (analytics/ratingPartido).
+        const { rating: ratingFinal, participacion: partRating } = ratings.detalle(j);
         
         let rol = 'MIXTO';
         const esArqueroFijo = j.posicion && j.posicion.toLowerCase().includes('arquero');
@@ -868,10 +857,11 @@ return 'Todas';
             else if (j.rec >= 3 && ratioDefensivo > 2) rol = 'MURO DEFENSIVO';
             else rol = 'MIXTO';
         }
-        return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, rol } 
+        return { ...j, plusMinus: pm, minutos: mins, impacto: ratingFinal, participacion: partRating, rol } 
       }).sort((a, b) => {
         const valA = a.impacto === '-' ? 0 : a.impacto; const valB = b.impacto === '-' ? 0 : b.impacto;
-        return valB - valA;
+        // A igual nota, primero el que más goles y asistencias tuvo (como elegirMVP).
+        return valB - valA || ((b.goles + b.asistencias) - (a.goles + a.asistencias)) || (b.goles - a.goles);
       });
 
     const posesionesTotales = datosProcesados.posesiones.length;
@@ -1110,7 +1100,10 @@ return 'Todas';
     const dGan = analitica.duelos.defensivos.ganados + analitica.duelos.ofensivos.ganados;
     const dTot = analitica.duelos.defensivos.total + analitica.duelos.ofensivos.total;
 
-    const mejor = analitica.ranking.find(j => j.impacto !== '-');
+    const mejor = elegirMVP(
+      analitica.ranking.filter(j => j.impacto !== '-').map(j => ({ ...j, rating: j.impacto })),
+      { golesFavor: p.goles, golesContra: r.goles }
+    );
 
     /* Los goles salen en el orden en que se dieron: primero el período y
        después el minuto. Antes salían en el orden en que el Map iba viendo a
@@ -1159,6 +1152,7 @@ return 'Todas';
         foto: jugadores.find(x => String(x.id) === String(mejor.id))?.foto || null,
         dorsal: mejor.dorsal, rol: mejor.rol,
         rating: Number(mejor.impacto).toFixed(1),
+        etiqueta: mejor.etiqueta,
         goles: mejor.goles || 0, remates: mejor.remates || 0,
         recuperaciones: mejor.rec || 0, plusMinus: mejor.plusMinus ?? 0,
       } : null,
@@ -1185,7 +1179,10 @@ return 'Todas';
   const topJugadoresExpress = useMemo(() => {
     if (!analitica) return { mvp: null, goleador: null, asistidor: null };
     const r = analitica.ranking;
-    const mvp = r.filter(j => j.impacto !== '-' && j.impacto > 0).sort((a,b) => b.impacto - a.impacto)[0];
+    const mvp = elegirMVP(
+      r.filter(j => j.impacto !== '-' && j.impacto > 0).map(j => ({ ...j, rating: j.impacto })),
+      { golesFavor: analitica.stats.propio.goles, golesContra: analitica.stats.rival.goles }
+    );
     const goleador = [...r].filter(j => j.goles > 0).sort((a,b) => b.goles - a.goles)[0];
     const asistidor = [...r].filter(j => j.asistencias > 0).sort((a,b) => b.asistencias - a.asistencias)[0];
     return { mvp, goleador, asistidor };
@@ -1369,7 +1366,7 @@ const COLORS_ORIGEN = {
             {/* JUGADORES DESTACADOS (TARJETAS) */}
             <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
                 {topJugadoresExpress.mvp && (
-                    <TopCard titulo="MVP" nombre={topJugadoresExpress.mvp.nombre} valor={Number(topJugadoresExpress.mvp.impacto).toFixed(1)} subtexto="RATING" foto_url={topJugadoresExpress.mvp.foto_url} />
+                    <TopCard titulo={topJugadoresExpress.mvp.diferenciaGol < 0 ? topJugadoresExpress.mvp.etiqueta : "MVP"} nombre={topJugadoresExpress.mvp.nombre} valor={Number(topJugadoresExpress.mvp.impacto).toFixed(1)} subtexto="RATING" foto_url={topJugadoresExpress.mvp.foto_url} />
                 )}
                 {topJugadoresExpress.goleador && (
                     <TopCard titulo="GOLEADOR" nombre={topJugadoresExpress.goleador.nombre} valor={topJugadoresExpress.goleador.goles} subtexto="GOLES" foto_url={topJugadoresExpress.goleador.foto_url} />

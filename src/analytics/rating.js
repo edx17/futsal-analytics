@@ -44,6 +44,7 @@ export const PARAMS = {
   REMATE_ARCO: 0.25,          // crédito por rematar al arco
   PENAL_OCASION: 1.0,         // castigo por no convertir, proporcional al xG
   REMATE_FUERA: 0.8,          // castigo por errar el arco, proporcional al xG
+  REMATE_REBATIDO: 0.4,       // el que tapa un defensor castiga menos que el que se va afuera
   ASISTENCIA_BASE: 1.2,
   ASISTENCIA_XG: 2.5,         // asistencia = BASE + XG * xG_generado
   PASE_CLAVE_BASE: 0.5,
@@ -181,9 +182,28 @@ export function calcularRatingDetallado(jugador, eventosJugador = [], arg3 = [],
     amarillas: 0, rojas: 0, xgAcumulado: 0,
   };
 
+  /* Las pantallas le suman a cada jugador una copia "virtual" de los goles
+     que asistió (tipoVirtual: 'Asistencia'). Esa copia conserva la acción del
+     gol, así que sólo cuenta como asistencia: antes también se sumaba como
+     gol propio y como remate. Y como la toma de datos además guarda una fila
+     "Asistencia" del mismo pase, esa fila se saltea cuando ya está la
+     virtual del mismo gol, para no contar la asistencia dos veces. */
+  const claveGol = (ev) => `${ev?.periodo ?? ''}|${ev?.minuto ?? ''}`;
+  const golesAsistidos = new Set(evs.filter(ev => ev?.tipoVirtual === 'Asistencia').map(claveGol));
+
   evs.forEach(ev => {
     const acc = ev?.accion || '';
-    const necesitaXG = acc.includes('Remate') || acc === 'Gol' || acc === 'Asistencia' || acc === 'Pase Clave' || ev?.tipoVirtual;
+
+    if (ev?.tipoVirtual) {
+      if (ev.tipoVirtual === 'Asistencia') {
+        fam.creacion += P.ASISTENCIA_BASE + P.ASISTENCIA_XG * xgDe(ev);
+        conteo.asistencias++;
+      }
+      return;
+    }
+    if (acc === 'Asistencia' && golesAsistidos.has(claveGol(ev))) return;
+
+    const necesitaXG = acc.includes('Remate') || acc === 'Gol' || acc === 'Asistencia' || acc === 'Pase Clave';
     const xg = necesitaXG ? xgDe(ev) : 0;
     const x = zonaX(ev);
 
@@ -194,6 +214,9 @@ export function calcularRatingDetallado(jugador, eventosJugador = [], arg3 = [],
     } else if (acc === 'Remate - Atajado') {
       fam.finalizacion += P.REMATE_ARCO - P.PENAL_OCASION * xg;
       conteo.remates++; conteo.rematesArco++;
+    } else if (acc === 'Remate - Rebatido') {
+      fam.finalizacion -= P.REMATE_FUERA * P.REMATE_REBATIDO * xg;
+      conteo.remates++;
     } else if (acc.includes('Remate')) {
       fam.finalizacion -= P.REMATE_FUERA * xg;
       conteo.remates++;
@@ -202,10 +225,10 @@ export function calcularRatingDetallado(jugador, eventosJugador = [], arg3 = [],
     }
 
     /* Creación — vale más el pase que genera la ocasión clara */
-    if (acc === 'Asistencia' || ev?.tipoVirtual === 'Asistencia') {
+    if (acc === 'Asistencia') {
       fam.creacion += P.ASISTENCIA_BASE + P.ASISTENCIA_XG * xg;
       conteo.asistencias++;
-    } else if (acc === 'Pase Clave' || ev?.tipoVirtual === 'Pase Clave') {
+    } else if (acc === 'Pase Clave') {
       fam.creacion += P.PASE_CLAVE_BASE + P.PASE_CLAVE_XG * xg;
       conteo.pasesClave++;
     }
@@ -355,24 +378,39 @@ export function calcularRatingDetallado(jugador, eventosJugador = [], arg3 = [],
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MVP — regla aparte del rating.
-   Exige muestra mínima y no corona a nadie en una goleada en contra.
+
+   La nota más alta no alcanza: arriba suelen quedar varios a una o dos
+   décimas, y ahí la nota no distingue. Entre los que quedan a MARGEN_EMPATE
+   o menos del primero gana el que más goles y asistencias tuvo, después el
+   que más goles, y recién después la nota. Calibrado contra las figuras que
+   eligió el cuerpo técnico en 7 partidos: con la nota sola acertaba 5, con
+   el desempate acierta los 7 (y da igual con márgenes de 0.1 a 0.8).
+
+   Exige muestra mínima y en las derrotas no lo llama "figura".
+
+   candidatos: [{ rating, participacion (0-1), goles, asistencias, ... }]
    ═══════════════════════════════════════════════════════════════════════════ */
+export const MARGEN_EMPATE = 0.3;
+
 export function elegirMVP(candidatos = [], contextoPartido = {}) {
   const MIN_PARTICIPACION = 0.25;
 
-  const elegibles = candidatos.filter(c =>
-    (Number(c.participacion) || 0) >= MIN_PARTICIPACION && Number.isFinite(Number(c.rating))
-  );
-  const pool = elegibles.length > 0 ? elegibles : candidatos;
+  const validos = candidatos.filter(c => Number.isFinite(Number(c.rating)));
+  const elegibles = validos.filter(c => (Number(c.participacion) || 0) >= MIN_PARTICIPACION);
+  const pool = elegibles.length > 0 ? elegibles : validos;
   if (pool.length === 0) return null;
 
-  const mejor = [...pool].sort((a, b) => b.rating - a.rating)[0];
+  const tope = Math.max(...pool.map(c => Number(c.rating)));
+  const ga = c => (Number(c.goles) || 0) + (Number(c.asistencias) || 0);
+  const mejor = pool
+    .filter(c => tope - Number(c.rating) <= MARGEN_EMPATE + 1e-9)
+    .sort((a, b) => ga(b) - ga(a) || (Number(b.goles) || 0) - (Number(a.goles) || 0) || Number(b.rating) - Number(a.rating))[0];
 
   const gf = Number(contextoPartido.golesFavor);
   const gc = Number(contextoPartido.golesContra);
   const dif = Number.isFinite(gf) && Number.isFinite(gc) ? gf - gc : 0;
 
-  let etiqueta = 'MVP';
+  let etiqueta = 'FIGURA DEL PARTIDO';
   if (dif <= -3) etiqueta = 'LO MÁS RESCATABLE';
   else if (dif < 0) etiqueta = 'EL MEJOR DE LOS NUESTROS';
 

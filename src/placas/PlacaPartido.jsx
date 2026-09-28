@@ -129,7 +129,7 @@ const BloqueFigura = ({ figura, grande, style }) => (
         color: le da cara al nombre sin robarle lugar a los números. */}
     <div className="pl-mvp-cab">
       <div style={{ minWidth: 0 }}>
-        <div className="pl-mini">FIGURA DEL PARTIDO</div>
+        <div className="pl-mini">{figura.etiqueta || 'FIGURA DEL PARTIDO'}</div>
         <div className="pl-mvp-n" style={grande ? { fontSize: 58 } : undefined}>{figura.nombre}</div>
         <div className="pl-mini">{[figura.dorsal ? `#${figura.dorsal}` : null, figura.rol].filter(Boolean).join(' · ')}</div>
       </div>

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 import { useAuth } from '../../context/AuthContext';
 import { calcularMinutosPorJugador } from '../../analytics/engine';
-import { calcularRatingJugador } from '../../analytics/rating';
+import { prepararRatingsPartido } from '../../analytics/ratingPartido';
 
 const mismoId = (a, b) => String(a) === String(b);
 const parseQuinteto = (qa) => {
@@ -233,15 +233,9 @@ export default function useReportData() {
             }
           }
 
-          const paraRating = [...evJug];
-          evPropio.forEach(e => {
-            if (mismoId(e.id_asistencia, jugadorSeleccionadoId) && (e.accion === 'Gol' || e.accion === 'Remate - Gol')) {
-              paraRating.push({ ...e, id_jugador: jugadorSeleccionadoId, tipoVirtual: 'Asistencia' });
-            }
-          });
-
           if (minsJugador > 0 || evJug.length > 0) {
-            const rat = calcularRatingJugador(jugadorTarget, paraRating, evRival, pmPartido, minsJugador);
+            // Misma cuenta que el resto de la app (analytics/ratingPartido).
+            const rat = prepararRatingsPartido(evMatch).rating(jugadorTarget);
             if (rat && !Number.isNaN(Number(rat))) ratingsJugador.push(Number(rat));
           }
         });
