@@ -998,6 +998,13 @@ return 'Todas';
       }).sort((a,b) => a.minuto - b.minuto);
   }, [analitica, jugadores]);
 
+  // La tabla de remates va por tiempo: rematesDetalle está ordenado solo por
+  // minuto (lo necesita así la curva de xG del reporte) y mezclaba el minuto
+  // 3 del ST con el 15 del PT.
+  const rematesPorTiempo = useMemo(() => ['PT', 'ST']
+    .map((p) => ({ p, lista: rematesDetalle.filter((r) => (r.periodo === 'ST' ? 'ST' : 'PT') === p) }))
+    .filter((g) => g.lista.length > 0), [rematesDetalle]);
+
   const evMapa = analitica?.evFiltrados.filter(ev => {
     const pasaAccion = filtroAccionMapa === 'Todas' ? true : coincideAccionMapa(ev.accion, filtroAccionMapa);
     const pasaEquipo = filtroEquipoMapa === 'Ambos' ? true : ev.equipo === filtroEquipoMapa;
@@ -1161,17 +1168,23 @@ return 'Todas';
     };
   }, [partidoSeleccionado, analitica, eventosPartido, jugadores, miClubGlobal, miEscudoGlobal]);
 
-  // ---- LISTA DE GOLEADORES PARA LA VISTA EXPRESS ----
-  const goleadores = useMemo(() => {
+  // ---- GOLES Y TARJETAS PARA LA VISTA EXPRESS ----
+  // En el orden del partido (evFiltrados ya viene PT antes que ST), cada una
+  // con su icono: pelota para el gol, tarjeta amarilla o roja.
+  const incidencias = useMemo(() => {
     if (!analitica) return { propio: [], rival: [] };
     const p = [];
     const r = [];
     analitica.evFiltrados.forEach(ev => {
-      if (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') {
-        const nombreJugador = ev.equipo === 'Propio' ? getNombreJugador(ev.id_jugador) : 'RIVAL';
-        const str = `${nombreJugador.split(' - ')[1] || nombreJugador} ${ev.minuto}'`;
-        if (ev.equipo === 'Propio') p.push(str); else r.push(str);
-      }
+      const accion = (ev.accion || '').toLowerCase();
+      const tipo = (ev.accion === 'Gol' || ev.accion === 'Remate - Gol') ? 'gol'
+        : accion.includes('roja') ? 'roja'
+        : accion.includes('amarilla') ? 'amarilla'
+        : null;
+      if (!tipo) return;
+      const nombreJugador = ev.equipo === 'Propio' ? getNombreJugador(ev.id_jugador) : 'RIVAL';
+      const texto = `${nombreJugador.split(' - ')[1] || nombreJugador} ${ev.minuto}'`;
+      (ev.equipo === 'Propio' ? p : r).push({ tipo, texto });
     });
     return { propio: p, rival: r };
   }, [analitica, getNombreJugador]);
@@ -1328,13 +1341,13 @@ const COLORS_ORIGEN = {
                     </div>
                 </div>
 
-                {/* GOLEADORES */}
+                {/* GOLES Y TARJETAS */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px', borderTop: '1px solid var(--border)', paddingTop: '15px' }}>
                     <div style={{ flex: 1, textAlign: 'left', color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: '1.8' }}>
-                        {goleadores.propio.map((g, i) => <div key={i}><Icono nombre="pelota" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{g}</div>)}
+                        {incidencias.propio.map((x, i) => <div key={i}><IconoIncidencia tipo={x.tipo} style={{ marginRight: 6 }} />{x.texto}</div>)}
                     </div>
                     <div style={{ flex: 1, textAlign: 'right', color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: '1.8' }}>
-                        {goleadores.rival.map((g, i) => <div key={i}>{g} <Icono nombre="pelota" size="1em" relleno="propio" /></div>)}
+                        {incidencias.rival.map((x, i) => <div key={i}>{x.texto} <IconoIncidencia tipo={x.tipo} /></div>)}
                     </div>
                 </div>
             </div>
@@ -2085,6 +2098,11 @@ const COLORS_ORIGEN = {
               <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.7rem' }}>
+                    <th style={{ padding: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                        RATING <InfoBox texto="Cálculo diferencial avanzado (Goles, Remates y Transiciones) filtrado por tiempo en cancha. Base: 6.0" />
+                      </div>
+                    </th>
                     <th style={{ textAlign: 'left', padding: '10px' }}>QUINTETO</th>
                     <th title="Minutos Jugados">MIN</th>
                     <th style={{ color: '#00ff88' }} title="Goles a Favor / En Contra">GOL</th>
@@ -2094,11 +2112,6 @@ const COLORS_ORIGEN = {
                     <th title="Amarillas / Rojas"><Icono nombre="tarjeta" size="1.1em" />/<Icono nombre="tarjeta" color="roja" size="1.1em" /></th>
                     <th>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>+/-</div>
-                    </th>
-                    <th>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-                        RATING <InfoBox texto="Cálculo diferencial avanzado (Goles, Remates y Transiciones) filtrado por tiempo en cancha. Base: 6.0" />
-                      </div>
                     </th>
                   </tr>
                 </thead>
@@ -2132,6 +2145,17 @@ const COLORS_ORIGEN = {
 
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td>
+                          {ratingQuinteto === '-' ? (
+                            <div style={{ display: 'inline-block', padding: '4px 8px', color: 'var(--text-dim)', fontWeight: 800 }}>
+                              -
+                            </div>
+                          ) : (
+                            <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: ratingQuinteto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: ratingQuinteto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
+                              {Number(ratingQuinteto).toFixed(1)}
+                            </div>
+                          )}
+                        </td>
                         <td style={{ textAlign: 'left', padding: '12px 10px', fontWeight: 800, color: 'var(--text)', fontSize: '0.75rem' }}>
                           [{nombresQuinteto}]
                         </td>
@@ -2150,17 +2174,6 @@ const COLORS_ORIGEN = {
                           }}>
                             {diffGoles > 0 ? '+' : ''}{diffGoles}
                           </div>
-                        </td>
-                        <td>
-                          {ratingQuinteto === '-' ? (
-                            <div style={{ display: 'inline-block', padding: '4px 8px', color: 'var(--text-dim)', fontWeight: 800 }}>
-                              -
-                            </div>
-                          ) : (
-                            <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: '4px', background: ratingQuinteto >= 6.0 ? 'rgba(0,255,136,0.1)' : 'rgba(239,68,68,0.1)', color: ratingQuinteto >= 6.0 ? 'var(--accent)' : '#ef4444', fontWeight: 800 }}>
-                              {Number(ratingQuinteto).toFixed(1)}
-                            </div>
-                          )}
                         </td>
                       </tr>
                     )
@@ -2191,7 +2204,15 @@ const COLORS_ORIGEN = {
                   </tr>
                 </thead>
                 <tbody>
-                  {rematesDetalle.map(r => (
+                  {rematesPorTiempo.map(({ p, lista }) => (
+                    <React.Fragment key={p}>
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'left', padding: '14px 10px 6px', fontSize: '0.68rem', fontWeight: 900, letterSpacing: '0.8px', color: 'var(--accent)', borderBottom: '1px solid var(--border)' }}>
+                        {p === 'PT' ? 'PRIMER TIEMPO' : 'SEGUNDO TIEMPO'}
+                        <span style={{ color: 'var(--text-dim)', fontWeight: 700, marginLeft: '8px' }}>{lista.length} remate{lista.length === 1 ? '' : 's'}</span>
+                      </td>
+                    </tr>
+                  {lista.map(r => (
                     <tr key={r.id} style={{ textAlign: 'center', background: (r.accion === 'Remate - Gol' || r.accion === 'Gol') ? 'rgba(0,255,136,0.05)' : 'transparent' }}>
                       <td style={{ color: 'var(--text-dim)' }}>{r.minuto}'</td>
                       <td>
@@ -2206,6 +2227,8 @@ const COLORS_ORIGEN = {
                       <td style={{ color: 'var(--text-dim)' }}>{r.distanciaMetros}m</td>
                       <td>{r.xgCalculado}</td>
                     </tr>
+                  ))}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
@@ -2355,5 +2378,11 @@ const escudoFallback = { borderRadius: '50%', background: 'var(--panel)', border
 const kpiFila = { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)', fontSize: '0.9rem', alignItems: 'center' };
 const zonePill = { flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 5px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-dim)' };
 const btnTab = { border: 'none', padding: '8px 15px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, borderRadius: '2px', transition: '0.2s' };
+
+// Icono de cada incidencia de la vista express: gol o tarjeta.
+function IconoIncidencia({ tipo, style }) {
+  if (tipo === 'gol') return <Icono nombre="pelota" size="1.2em" relleno="propio" style={style} />;
+  return <Icono nombre="tarjeta" color={tipo === 'roja' ? 'roja' : 'amarilla'} size="1.2em" style={style} />;
+}
 
 export default Resumen;
