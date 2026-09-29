@@ -14,6 +14,8 @@ import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import VisorPlaca from '../placas/VisorPlaca';
+import ModalPlaca from '../placas/ModalPlaca';
+import PlacaFigura from '../placas/PlacaFigura';
 import PlacaPartido from '../placas/PlacaPartido';
 import { ordenarGolesDelPartido } from '../utils/estadoGoles';
 import { fetchPorLotes } from '../utils/supaPaginado';
@@ -391,6 +393,7 @@ return 'Todas';
   const [filtroVideoAcciones, setFiltroVideoAcciones] = useState([]);
   
   const [mostrarReporte, setMostrarReporte] = useState(false);
+  const [placaFigura, setPlacaFigura] = useState(false);
 
   useEffect(() => {
     if (esCT && misCategorias.length > 0) {
@@ -1389,6 +1392,22 @@ const COLORS_ORIGEN = {
                     <TopCard titulo="ASISTIDOR" nombre={topJugadoresExpress.asistidor.nombre} valor={topJugadoresExpress.asistidor.asistencias} subtexto="ASISTENCIAS" foto_url={topJugadoresExpress.asistidor.foto_url} />
                 )}
             </div>
+
+            {/* PLACAS PARA REDES */}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
+                <button onClick={() => setMostrarReporte(true)} className="btn-action">
+                    <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA DEL PARTIDO
+                </button>
+                {datosPlaca?.figura && (
+                    <button onClick={() => setPlacaFigura(true)} className="btn-secondary">
+                        <Icono nombre="estrella" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA DE LA FIGURA
+                    </button>
+                )}
+            </div>
+            <ModalPlaca abierto={placaFigura} onCerrar={() => setPlacaFigura(false)}
+                nombreArchivo={`figura-${datosPlaca?.figura?.nombre || 'partido'}`}>
+                {(formato) => <PlacaFigura datos={datosPlaca} formato={formato} />}
+            </ModalPlaca>
         </div>
       )}
 
@@ -1434,7 +1453,7 @@ const COLORS_ORIGEN = {
                 CSV VIDEO
                 </button>
                 <button onClick={() => setMostrarReporte(true)} className="btn-action">
-                EXPORTAR PDF
+                <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA DEL PARTIDO
                 </button>
             </div>
           </div>

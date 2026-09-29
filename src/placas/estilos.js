@@ -246,6 +246,74 @@ export const CSS_PLACAS = `
 .pl-tp .r{font-family:var(--pl-mono);font-weight:800;font-size:27px;padding:9px 0;border-radius:8px;margin-top:9px;color:#04120C}
 .pl-tp .o{font-family:var(--pl-mono);font-size:13px;color:var(--pl-dim);margin-top:8px;letter-spacing:.08em;
   overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+/* ── figura del partido ── */
+.pl-fg-foto{position:relative;border-radius:18px;overflow:hidden;background:var(--pl-sup2);
+  border:1px solid var(--pl-linea);display:grid;place-items:center}
+.pl-fg-foto img{width:100%;height:100%;object-fit:cover}
+.pl-fg-foto .ini{font-size:260px;font-weight:900;color:rgba(var(--pl-club-rgb),.24);letter-spacing:-.05em}
+.pl-fg-foto .velo{position:absolute;left:0;right:0;bottom:0;height:45%;
+  background:linear-gradient(180deg,transparent 0%,rgba(0,0,0,.72) 100%)}
+.pl-fg-foto .nota{position:absolute;right:24px;bottom:22px;background:var(--pl-club);color:#04120C;
+  font-family:var(--pl-mono);font-weight:800;font-size:58px;line-height:1;padding:12px 22px;border-radius:12px}
+.pl-fg-foto .rol{position:absolute;left:26px;bottom:26px;font-family:var(--pl-mono);font-size:20px;
+  font-weight:700;letter-spacing:.18em;color:#fff}
+.pl-fg-et{font-family:var(--pl-mono);font-size:20px;font-weight:800;letter-spacing:.24em;color:var(--pl-club)}
+.pl-fg-n{font-size:92px;font-weight:900;letter-spacing:-.04em;line-height:.95;margin-top:10px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pl-fg-g{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.pl-fg-g>div{background:var(--pl-sup);border:1px solid var(--pl-linea);border-radius:12px;padding:18px 10px;text-align:center}
+.pl-fg-g b{display:block;font-weight:900;font-size:52px;line-height:1;font-variant-numeric:tabular-nums}
+.pl-fg-g span{display:block;font-family:var(--pl-mono);font-size:14px;letter-spacing:.16em;color:var(--pl-dim);margin-top:10px}
+.pl-fg-res{display:flex;align-items:center;justify-content:center;gap:18px;
+  font-family:var(--pl-mono);font-size:22px;font-weight:700;letter-spacing:.14em;color:var(--pl-dim)}
+.pl-fg-res b{font-family:'Archivo',sans-serif;font-size:34px;font-weight:900;letter-spacing:-.01em;color:var(--pl-tx)}
+
+/* ── próximo partido ── */
+.pl-px-vs{font-weight:900;font-size:96px;letter-spacing:-.04em;color:var(--pl-tenue);line-height:1}
+.pl-px-cuando{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:14px}
+.pl-px-cuando>div{background:var(--pl-sup);border:1px solid var(--pl-linea);border-radius:12px;padding:20px 22px}
+.pl-px-cuando>div:first-child{background:linear-gradient(135deg,rgba(var(--pl-club-rgb),.24),rgba(var(--pl-club-rgb),.06));
+  border-color:var(--pl-club)}
+.pl-px-cuando span{display:block;font-family:var(--pl-mono);font-size:14px;letter-spacing:.18em;color:var(--pl-dim)}
+.pl-px-cuando b{display:block;font-weight:900;font-size:50px;line-height:1;letter-spacing:-.02em;margin-top:10px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-px-lugar{display:flex;flex-direction:column;gap:6px}
+.pl-px-lugar b{font-size:34px;font-weight:800;letter-spacing:-.01em}
+.pl-px-lugar span{font-family:var(--pl-mono);font-size:19px;color:var(--pl-dim);letter-spacing:.04em}
+.pl-px-cit{display:grid;grid-template-columns:1fr 1fr;gap:10px 30px}
+.pl-px-cit div{display:flex;align-items:baseline;gap:14px;padding:9px 0;border-bottom:1px solid var(--pl-linea);
+  font-size:27px;font-weight:800;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pl-px-cit i{font-style:normal;font-family:var(--pl-mono);font-size:20px;color:var(--pl-club);width:38px;flex-shrink:0;text-align:right}
+
+/* ── cumpleaños ── */
+.pl-cu-foto{border-radius:50%;overflow:hidden;background:var(--pl-sup2);border:6px solid var(--pl-club);
+  display:grid;place-items:center;margin:0 auto}
+.pl-cu-foto img{width:100%;height:100%;object-fit:cover}
+.pl-cu-foto .ini{font-weight:900;color:rgba(var(--pl-club-rgb),.4);letter-spacing:-.04em}
+.pl-cu-t{font-weight:900;letter-spacing:-.05em;line-height:1.02;text-align:center;color:var(--pl-club)}
+.pl-cu-n{font-weight:900;letter-spacing:-.03em;line-height:1;text-align:center}
+.pl-cu-a{display:flex;justify-content:center}
+.pl-cu-a>div{font-family:var(--pl-mono);font-weight:800;letter-spacing:.2em;border:2px solid var(--pl-linea);
+  border-radius:40px;padding:12px 30px;color:var(--pl-tx)}
+.pl-cu-m{text-align:center;font-family:var(--pl-mono);letter-spacing:.16em;color:var(--pl-dim)}
+
+/* ── ESTILOS ──────────────────────────────────────────────────────────────
+ * Los tres estilos cambian la paleta y el fondo; la maqueta de cada placa es
+ * la misma. Noche es el original. Todo son colores planos, rgba() y
+ * gradientes lineales o radiales, que html2canvas sí dibuja. */
+.pl.pl-e-claro{--pl-ink:#F2F5F3;--pl-sup:#FFFFFF;--pl-sup2:#E3E9E5;--pl-linea:#D2DBD6;
+  --pl-tx:#0A120E;--pl-dim:#55665E;--pl-tenue:#A3B0A9}
+.pl.pl-e-claro .pl-trama{opacity:.3}
+.pl.pl-e-claro .pl-cancha{background:#0B1410}
+.pl.pl-e-estadio{--pl-ink:#030605;--pl-sup:rgba(255,255,255,.045);--pl-sup2:rgba(255,255,255,.085);
+  --pl-linea:rgba(255,255,255,.11)}
+.pl.pl-e-estadio .pl-aura{background:
+  linear-gradient(155deg,rgba(var(--pl-club-rgb),.60) 0%,rgba(var(--pl-club-rgb),.16) 28%,transparent 52%),
+  linear-gradient(335deg,rgba(var(--pl-club-rgb),.22) 0%,transparent 34%)}
+.pl.pl-e-estadio .pl-trama{opacity:1;-webkit-mask-image:none;mask-image:none;
+  background-image:linear-gradient(135deg,rgba(255,255,255,.03) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.03) 50%,rgba(255,255,255,.03) 75%,transparent 75%);
+  background-size:44px 44px}
 `;
 
 
@@ -272,4 +340,13 @@ export function aRGB(hex) {
 }
 
 export const COLOR_CLUB = '#00E676';
+
+/* Los estilos de placa. `club` es el verde que usa cada uno: sobre blanco el
+ * verde de la marca no se lee, así que Claro usa uno más oscuro. */
+export const ESTILOS_PLACA = {
+  noche: { id: 'noche', label: 'Noche', club: COLOR_CLUB },
+  claro: { id: 'claro', label: 'Claro', club: '#00A35C' },
+  estadio: { id: 'estadio', label: 'Estadio', club: COLOR_CLUB },
+};
+export const CLAVES_ESTILO = Object.keys(ESTILOS_PLACA);
 export const COLOR_RIVAL = '#FF4D5E';
