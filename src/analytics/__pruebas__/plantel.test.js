@@ -1,5 +1,5 @@
-import { describe, test, expect } from 'vitest';
-import { procesarPlantel } from '../plantel';
+import { describe, test, it, expect } from 'vitest';
+import { procesarPlantel, minimoPartidosDestacado } from '../plantel';
 import { procesarPlantelAntes } from './plantelAntes';
 
 /* ¿QUÉ PRUEBA ESTO?
@@ -152,5 +152,21 @@ describe('y además calcula lo que tiene que calcular', () => {
   test('un jugador sin minutos no inventa rating', () => {
     const sinJugar = jugadoresProc.find(j => j.apellido === 'WIEMEYER');
     expect(sinJugar.minutos).toBe(0);
+  });
+});
+
+describe('minimoPartidosDestacado', () => {
+  it('temporada o torneo largo: 10 partidos', () => {
+    expect(minimoPartidosDestacado(28)).toBe(10);
+    expect(minimoPartidosDestacado(20)).toBe(10);
+  });
+  it('torneo mediano: 5 partidos', () => {
+    expect(minimoPartidosDestacado(19)).toBe(5);
+    expect(minimoPartidosDestacado(10)).toBe(5);
+  });
+  it('torneo corto: la mitad, nunca menos de 2', () => {
+    expect(minimoPartidosDestacado(7)).toBe(4);
+    expect(minimoPartidosDestacado(1)).toBe(2);
+    expect(minimoPartidosDestacado(0)).toBe(2);
   });
 });
