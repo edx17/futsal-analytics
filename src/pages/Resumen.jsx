@@ -1580,7 +1580,8 @@ const COLORS_ORIGEN = {
           )}
 
           {/* Diez tarjetas: van de a 5, de a 2 o de a 1 para que ninguna fila
-              quede renga (ver .vc-grilla-pareja en index.css). */}
+              quede renga (ver .vc-grilla-pareja en index.css). Si se agrega o
+              se saca una, hay que volver a llegar a 10. */}
           <div className="vc-grilla-pareja-caja">
           <div className="vc-grilla-pareja">
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
@@ -1637,15 +1638,14 @@ const COLORS_ORIGEN = {
               </div>
             </div>
 
-            <div className="bento-card">
-              <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--accent)' }}>CARA A CARA OFENSIVO</div>
+            {/* Cara a cara y desglose de remates iban en dos tarjetas de tres
+                renglones cada una: juntas dejan la grilla en 10 tarjetas, que
+                se reparten parejo de a 5 (con 11 quedaba una sola abajo). */}
+            <div className="bento-card" style={{ borderTop: '3px solid #3b82f6' }}>
+              <div className="stat-label" style={{ marginBottom: '5px', color: '#3b82f6' }}>REMATES: CARA A CARA</div>
               <div style={kpiFila}><span>REMATES TOTALES</span><strong><span style={{color: 'var(--accent)'}}>{analitica.stats.propio.remates}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.remates}</span></strong></div>
               <div style={kpiFila}><span>REMATES AL ARCO</span><strong><span style={{color: 'var(--accent)'}}>{analitica.stats.propio.goles + analitica.stats.propio.atajados}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.goles + analitica.stats.rival.atajados}</span></strong></div>
               <div style={kpiFila}><span>xG TOTAL</span><strong><span style={{color: '#c084fc'}}>{analitica.xgPropio.toFixed(2)}</span> - <span style={{color: '#ef4444'}}>{analitica.xgRival.toFixed(2)}</span></strong></div>
-            </div>
-
-            <div className="bento-card" style={{ borderTop: '3px solid #3b82f6' }}>
-              <div className="stat-label" style={{ marginBottom: '5px', color: '#3b82f6' }}>DESGLOSE DE REMATES</div>
               <div style={kpiFila}><span>GOLES</span><strong><span style={{color: '#00ff88'}}>{analitica.stats.propio.goles}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.goles}</span></strong></div>
               <div style={kpiFila}><span>ATAJADOS</span><strong><span style={{color: '#3b82f6'}}>{analitica.stats.propio.atajados}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.atajados}</span></strong></div>
               <div style={kpiFila}><span>DESVIADOS</span><strong><span style={{color: 'var(--text-dim)'}}>{analitica.stats.propio.desviados}</span> - <span style={{color: '#ef4444'}}>{analitica.stats.rival.desviados}</span></strong></div>

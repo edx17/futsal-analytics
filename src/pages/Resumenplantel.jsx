@@ -5,7 +5,7 @@ import { useCategorias } from '../utils/useCategorias';
 import { useDatosPlantel } from '../utils/useDatosPlantel';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, tieneRuedasConfiguradas } from '../utils/ruedas';
-import { procesarPlantel, esArquero } from '../analytics/plantel';
+import { procesarPlantel, esArquero, minimoPartidosDestacado } from '../analytics/plantel';
 import { Icono } from '../iconos';
 import ModalPlaca from '../placas/ModalPlaca';
 import PlacaPlantel from '../placas/PlacaPlantel';
@@ -179,9 +179,17 @@ export default function ResumenPlantel() {
   }, [arquerosProc, soloConMinutos, busqueda]);
 
   /* ---------- destacados ---------- */
+  /* Los partidos del equipo en el filtro se toman del que más jugó: la lista
+     de partidos también trae los que todavía no se jugaron. */
+  const minimoDestacado = useMemo(() => {
+    const partidosEquipo = Math.max(0, ...[...jugadoresProc, ...arquerosProc].map(p => p.jugados || 0));
+    return { partidos: partidosEquipo, minimo: minimoPartidosDestacado(partidosEquipo) };
+  }, [jugadoresProc, arquerosProc]);
+
   const destacados = useMemo(() => {
     const conMin = jugadoresProc.filter(p => p.jugados > 0);
     if (conMin.length === 0) return [];
+    const regulares = conMin.filter(p => p.jugados >= minimoDestacado.minimo);
     const pick = (arr, fn) => [...arr].sort((a, b) => fn(b) - fn(a))[0];
     const d = [];
     const goleador = pick(conMin, p => p.goles);
@@ -192,12 +200,12 @@ export default function ResumenPlantel() {
     if (minutos) d.push({ ico: 'cronometro', t: 'MÁS MINUTOS', n: minutos, v: `${minutos.minutos}'`, valor: `${minutos.minutos}'`, unidad: '' });
     const asist = pick(conMin, p => p.asistencias);
     if (asist && asist.asistencias > 0) d.push({ ico: 'asistencia', t: 'MÁS ASISTENCIAS', n: asist, v: `${asist.asistencias} asist.`, valor: asist.asistencias, unidad: 'ASIST.' });
-    const muro = pick(conMin.filter(p => p.duelDefTot >= 5), p => p.defPct);
+    const muro = pick(regulares.filter(p => p.duelDefTot >= 5), p => p.defPct);
     if (muro) d.push({ ico: 'escudo', t: 'MURO DEFENSIVO', n: muro, v: `${muro.defPct.toFixed(0)}% duelos`, valor: `${muro.defPct.toFixed(0)}%`, unidad: 'DUELOS' });
-    const fig = pick(conMin.filter(p => p.ratingCount >= 2), p => p.ratingProm);
+    const fig = pick(regulares.filter(p => p.ratingCount >= 2), p => p.ratingProm);
     if (fig) d.push({ ico: 'estrella', t: 'MEJOR RATING', n: fig, v: fig.ratingProm.toFixed(1), valor: fig.ratingProm.toFixed(1), unidad: '' });
     return d.slice(0, 5);
-  }, [jugadoresProc]);
+  }, [jugadoresProc, minimoDestacado]);
 
   /* ---------- placa del plantel ---------- */
   /* Respeta categoría, torneo y rueda, como el resto de la pantalla. La
@@ -419,7 +427,8 @@ export default function ResumenPlantel() {
         <>
           {/* DESTACADOS */}
           {destacados.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(170px, 100%), 1fr))', gap: '12px', marginBottom: '25px' }}>
+            <div style={{ marginBottom: '25px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(170px, 100%), 1fr))', gap: '12px' }}>
               {destacados.map((d, i) => (
                 <div key={i} className="bento-card" style={{ padding: '14px', borderLeft: '3px solid var(--accent)' }}>
                   <div className="stat-label" style={{ fontSize: '0.6rem' }}><Icono nombre={d.ico} size="1.3em" relleno="propio" style={{ marginRight: 5 }} />{d.t}</div>
@@ -427,6 +436,11 @@ export default function ResumenPlantel() {
                   <div style={{ fontSize: '0.8rem', color: 'var(--accent)', fontWeight: 800, fontFamily: MONO }}>{d.v}</div>
                 </div>
               ))}
+            </div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '8px' }}>
+              Muro defensivo y mejor rating: sólo jugadores con {minimoDestacado.minimo} partidos jugados o más
+              {minimoDestacado.partidos > 0 && ` (el equipo lleva ${minimoDestacado.partidos} en este filtro)`}.
+            </div>
             </div>
           )}
 

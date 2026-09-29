@@ -312,4 +312,21 @@ export function procesarPlantel({
     };
 }
 
+/* PARTIDOS MÍNIMOS PARA SER DESTACADO EN UN PORCENTAJE O PROMEDIO
+ *
+ * Un jugador con un solo partido y 100% de duelos ganados no es el muro del
+ * equipo: es una muestra de uno. Para los destacados que son porcentaje o
+ * promedio (muro defensivo, mejor rating) se pide haber jugado una parte
+ * razonable de lo que jugó el equipo, escalonado según lo largo que es:
+ * temporada o torneo largo, 10; torneo mediano, 5; torneo corto, la mitad.
+ * Los que son totales (goles, minutos, asistencias) no lo necesitan: ya
+ * premian haber jugado.
+ */
+export function minimoPartidosDestacado(partidosEquipo) {
+  const n = Math.max(0, Number(partidosEquipo) || 0);
+  if (n >= 20) return 10;
+  if (n >= 10) return 5;
+  return Math.max(2, Math.ceil(n / 2));
+}
+
 export { DUR_PARTIDO, mismoId, esArquero, parseQuinteto, plantillaIds, ordenEv, edadDe, nuevoAcc };
