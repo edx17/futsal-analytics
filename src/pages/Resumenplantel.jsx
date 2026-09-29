@@ -7,6 +7,9 @@ import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, tieneRuedasConfiguradas } from '../utils/ruedas';
 import { procesarPlantel, esArquero } from '../analytics/plantel';
 import { Icono } from '../iconos';
+import ModalPlaca from '../placas/ModalPlaca';
+import PlacaPlantel from '../placas/PlacaPlantel';
+import { datosDelClub } from '../placas/club';
 
 const MONO = 'JetBrains Mono, monospace';
 
@@ -25,6 +28,7 @@ export default function ResumenPlantel() {
   const [mostrarGlosario, setMostrarGlosario] = useState(false);
   const [sortKey, setSortKey] = useState('min');
   const [sortDir, setSortDir] = useState('desc');
+  const [verPlaca, setVerPlaca] = useState(false);
 
   /* La carga vive en useDatosPlantel: la comparte con Comparar. */
   const { raw, loading, avance } = useDatosPlantel(clubId);
@@ -181,17 +185,53 @@ export default function ResumenPlantel() {
     const pick = (arr, fn) => [...arr].sort((a, b) => fn(b) - fn(a))[0];
     const d = [];
     const goleador = pick(conMin, p => p.goles);
-    if (goleador && goleador.goles > 0) d.push({ ico: 'pelota', t: 'GOLEADOR', n: goleador, v: `${goleador.goles} goles` });
+    // `valor` y `unidad` van separados para la placa, que los muestra con
+    // distinto tamaño; `v` es el mismo texto armado para la pantalla.
+    if (goleador && goleador.goles > 0) d.push({ ico: 'pelota', t: 'GOLEADOR', n: goleador, v: `${goleador.goles} goles`, valor: goleador.goles, unidad: 'GOLES' });
     const minutos = pick(conMin, p => p.minutos);
-    if (minutos) d.push({ ico: 'cronometro', t: 'MÁS MINUTOS', n: minutos, v: `${minutos.minutos}'` });
+    if (minutos) d.push({ ico: 'cronometro', t: 'MÁS MINUTOS', n: minutos, v: `${minutos.minutos}'`, valor: `${minutos.minutos}'`, unidad: '' });
     const asist = pick(conMin, p => p.asistencias);
-    if (asist && asist.asistencias > 0) d.push({ ico: 'asistencia', t: 'MÁS ASISTENCIAS', n: asist, v: `${asist.asistencias} asist.` });
+    if (asist && asist.asistencias > 0) d.push({ ico: 'asistencia', t: 'MÁS ASISTENCIAS', n: asist, v: `${asist.asistencias} asist.`, valor: asist.asistencias, unidad: 'ASIST.' });
     const muro = pick(conMin.filter(p => p.duelDefTot >= 5), p => p.defPct);
-    if (muro) d.push({ ico: 'escudo', t: 'MURO DEFENSIVO', n: muro, v: `${muro.defPct.toFixed(0)}% duelos` });
+    if (muro) d.push({ ico: 'escudo', t: 'MURO DEFENSIVO', n: muro, v: `${muro.defPct.toFixed(0)}% duelos`, valor: `${muro.defPct.toFixed(0)}%`, unidad: 'DUELOS' });
     const fig = pick(conMin.filter(p => p.ratingCount >= 2), p => p.ratingProm);
-    if (fig) d.push({ ico: 'estrella', t: 'MEJOR RATING', n: fig, v: fig.ratingProm.toFixed(1) });
+    if (fig) d.push({ ico: 'estrella', t: 'MEJOR RATING', n: fig, v: fig.ratingProm.toFixed(1), valor: fig.ratingProm.toFixed(1), unidad: '' });
     return d.slice(0, 5);
   }, [jugadoresProc]);
+
+  /* ---------- placa del plantel ---------- */
+  /* Respeta categoría, torneo y rueda, como el resto de la pantalla. La
+     búsqueda y "solo con minutos" no: son para mirar la tabla, no cambian
+     qué plantel es. */
+  const datosPlaca = useMemo(() => {
+    const todos = [...jugadoresProc, ...arquerosProc];
+    const usados = todos.filter(p => p.jugados > 0);
+    if (usados.length === 0) return null;
+    const suma = (fn) => todos.reduce((a, p) => a + (Number(fn(p)) || 0), 0);
+    const nombre = (p) => `${p.apellido ? p.apellido.toUpperCase() : ''} ${p.nombre || ''}`.trim();
+    return {
+      club: datosDelClub(perfil),
+      info: {
+        categoria: filtroCategoria === 'Todas' ? 'TODAS LAS CATEGORÍAS' : String(filtroCategoria).toUpperCase(),
+        torneo: filtroTorneo === 'Todos' ? 'TEMPORADA'
+          : String(torneosDisponibles.find(t => t.id === filtroTorneo)?.nombre || torneoElegido?.nombre || 'TORNEO').toUpperCase(),
+        rueda: filtroRueda === 1 ? '1RA RUEDA' : filtroRueda === 2 ? '2DA RUEDA' : null,
+      },
+      totales: {
+        jugadores: usados.length,
+        goles: suma(p => p.goles),
+        asistencias: suma(p => p.asistencias),
+        recuperaciones: suma(p => p.rec),
+      },
+      destacados: destacados.map(d => ({
+        etiqueta: d.t, nombre: nombre(d.n), foto: d.n.foto || null, valor: d.valor, unidad: d.unidad,
+      })),
+      ranking: [...usados].sort((a, b) => b.minutos - a.minutos).map(p => ({
+        dorsal: p.dorsal, nombre: nombre(p), pj: p.jugados, min: p.minutos,
+        g: p.goles, a: p.asistencias, rat: p.ratingCount ? p.ratingProm.toFixed(1) : null,
+      })),
+    };
+  }, [jugadoresProc, arquerosProc, destacados, perfil, filtroCategoria, filtroTorneo, filtroRueda, torneoElegido, torneosDisponibles]);
 
   const setSort = (k) => {
     if (sortKey === k) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
@@ -359,6 +399,10 @@ export default function ResumenPlantel() {
         </button>
         <button onClick={exportarCSV} style={{ padding: '12px 16px', fontWeight: 800, fontSize: '0.8rem', backgroundColor: 'var(--accent)', color: 'var(--bg)', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
           <Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />EXPORTAR CSV
+        </button>
+        <button onClick={() => setVerPlaca(true)} disabled={!datosPlaca} className="btn-secondary"
+          style={{ padding: '12px 16px', fontWeight: 800, fontSize: '0.8rem', borderColor: 'var(--accent)', color: 'var(--accent)', opacity: datosPlaca ? 1 : 0.45 }}>
+          <Icono nombre="imagen" size="1.2em" style={{ marginRight: 6 }} />PLACA DEL PLANTEL
         </button>
       </div>
 
@@ -559,6 +603,14 @@ export default function ResumenPlantel() {
           </div>
         </>
       )}
+
+      <ModalPlaca
+        abierto={verPlaca && !!datosPlaca}
+        onCerrar={() => setVerPlaca(false)}
+        nombreArchivo={`plantel-${datosPlaca?.club.nombre || 'club'}`}
+      >
+        {(formato) => <PlacaPlantel datos={datosPlaca} formato={formato} />}
+      </ModalPlaca>
     </div>
   );
 }

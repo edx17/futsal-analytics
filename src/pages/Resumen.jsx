@@ -1579,7 +1579,10 @@ const COLORS_ORIGEN = {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 230px), 1fr))', gap: '20px' }}>
+          {/* Diez tarjetas: van de a 5, de a 2 o de a 1 para que ninguna fila
+              quede renga (ver .vc-grilla-pareja en index.css). */}
+          <div className="vc-grilla-pareja-caja">
+          <div className="vc-grilla-pareja">
             <div className="bento-card" style={{ borderTop: '3px solid #f59e0b', display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '5px', color: '#f59e0b', display: 'flex', alignItems: 'center' }}>
                 ADN DE GOLES <InfoBox texto="El contexto táctico desde el cual marcamos." />
@@ -1766,6 +1769,7 @@ const COLORS_ORIGEN = {
                  <div style={{...zonePill, background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text)'}}>Z4 (FINAL.)<br/><strong style={{fontSize:'1rem'}}>{analitica.stats.propio.zonasPasesInc.z4}</strong></div>
               </div>
             </div>
+          </div>
           </div>
 
           <div className="bento-card">
