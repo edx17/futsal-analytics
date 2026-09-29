@@ -16,6 +16,8 @@ const MONO = 'JetBrains Mono, monospace';
  *                  txt = título en texto plano cuando t es un icono, para el selector de orden).
  *                  `bloque: true` pinta esa columna a todo el ancho y sin rótulo
  *                  (para botones de acción, que no son un "dato: valor").
+ *                  `ancho: 'completo'` la pinta a todo el ancho con rótulo (textos
+ *                  largos); los textos de más de 14 caracteres ya lo hacen solos.
  *   colsClave      [k, k, k]         claves destacadas en la cara de la card (2-4).
  *   grupos         { g: color }      (tu GRUPOS).
  *   gruposLabel    { g: label }      (tu GRUPO_LABEL).
@@ -159,23 +161,32 @@ export function TablaResponsive({
                   })}
                 </div>
 
-                {/* Detalle completo, agrupado */}
+                {/* Detalle completo, agrupado. Recuadros en tres columnas fijas,
+                    rótulo arriba y valor abajo: todos los grupos quedan alineados
+                    entre sí aunque tengan distinta cantidad de datos, y un rótulo
+                    que ocupa dos líneas no corre el número. */}
                 {abierta && (
-                  <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px 14px', background: 'var(--bg)' }}>
+                  <div style={{ borderTop: '1px solid var(--border)', padding: '12px 10px 14px', background: 'var(--bg)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     {agruparPorGrupo(columnas, claves).map(({ g, cols }) => (
-                      <div key={g} style={{ marginBottom: '12px' }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: grupos[g] || 'var(--text-dim)', letterSpacing: '0.5px', marginBottom: '6px' }}>
-                          {gruposLabel[g] || g}
+                      <div key={g}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
+                          <span style={{ fontSize: '0.6rem', fontWeight: 900, color: grupos[g] || 'var(--text-dim)', letterSpacing: '0.6px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                            {gruposLabel[g] || g}
+                          </span>
+                          <span style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(80px, 100%), 1fr))', gap: '6px 10px' }}>
-                          {cols.map((col) => col.bloque ? (
-                            <div key={col.k} style={{ gridColumn: '1 / -1' }}>{col.r(fila)}</div>
-                          ) : (
-                            <div key={col.k} style={{ display: 'flex', justifyContent: 'space-between', gap: '6px', fontSize: '0.72rem', borderBottom: '1px solid var(--border)', paddingBottom: '3px' }}>
-                              <span style={{ color: 'var(--text-dim)' }}>{col.t}</span>
-                              <span style={{ fontFamily: MONO, fontWeight: 700, color: colorDe(fila, col) }}>{col.r(fila)}</span>
-                            </div>
-                          ))}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '6px' }}>
+                          {cols.map((col) => {
+                            if (col.bloque) return <div key={col.k} style={{ gridColumn: '1 / -1' }}>{col.r(fila)}</div>;
+                            const valor = col.r(fila);
+                            const completo = col.ancho === 'completo' || (typeof valor === 'string' && valor.length > 14);
+                            return (
+                              <div key={col.k} style={{ ...recuadro, gridColumn: completo ? '1 / -1' : undefined }}>
+                                <span style={rotuloRecuadro}>{col.t}</span>
+                                <span style={{ ...valorRecuadro, color: colorDe(fila, col) }}>{valor}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -189,6 +200,16 @@ export function TablaResponsive({
     </div>
   );
 }
+
+const recuadro = {
+  display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '4px', minWidth: 0,
+  background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', padding: '7px 8px',
+};
+const rotuloRecuadro = {
+  fontSize: '0.56rem', fontWeight: 800, color: 'var(--text-dim)',
+  letterSpacing: '0.3px', lineHeight: 1.25, overflowWrap: 'anywhere',
+};
+const valorRecuadro = { fontFamily: MONO, fontWeight: 800, fontSize: '0.92rem', lineHeight: 1.2, overflowWrap: 'anywhere' };
 
 // Agrupa columnas por su grupo `g`, excluyendo las que ya se muestran destacadas.
 function agruparPorGrupo(columnas, claves) {
