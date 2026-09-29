@@ -10,6 +10,9 @@ import {
   TIPOS, ORDEN_TIPOS,
 } from '../analytics/agenda';
 import { Icono } from '../iconos';
+import ModalPlaca from '../placas/ModalPlaca';
+import PlacaCumple from '../placas/PlacaCumple';
+import { datosDelClub } from '../placas/club';
 
 /* AGENDA ÚNICA
  *
@@ -64,6 +67,8 @@ export default function Agenda() {
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
   const [raw, setRaw] = useState({ partidos: [], sesiones: [], jugadores: [], deudas: [], lesiones: [] });
+  /* El cumpleaños del que se está armando la placa, o null. */
+  const [cumplePlaca, setCumplePlaca] = useState(null);
   const [cargandoBD, setCargandoBD] = useState(true);
   /* Sin club no hay nada que esperar, y derivarlo evita tocar el estado antes
      del primer await (lo que dispara renders en cascada). */
@@ -107,7 +112,7 @@ export default function Agenda() {
           .order('fecha', { ascending: true }).order('id', { ascending: true })],
 
         ['jugadores', 'jugadores', () => supabase.from('jugadores')
-          .select('id, nombre, apellido, categoria, fechanac, vencimiento_apto')
+          .select('id, nombre, apellido, categoria, fechanac, vencimiento_apto, foto, dorsal')
           .eq('club_id', clubId).order('id', { ascending: true })],
 
         ['deudas', 'cuotas', () => supabase.from('tesoreria_deudas')
@@ -320,8 +325,18 @@ export default function Agenda() {
                       fontFamily: MONO, fontSize: '0.6rem', letterSpacing: '0.08em',
                       color: 'var(--text-dim)', textAlign: 'right', whiteSpace: 'nowrap',
                       gridColumn: esMovil ? '2 / 3' : undefined,
+                      display: 'flex', alignItems: 'center', justifyContent: esMovil ? 'space-between' : 'flex-end', gap: 10,
                     }}>
                       {e.categoria}
+                      {e.tipo === 'cumple' && (
+                        <button
+                          onClick={(ev) => { ev.stopPropagation(); setCumplePlaca(e); }}
+                          onKeyDown={(ev) => ev.stopPropagation()}
+                          style={{ background: 'transparent', border: `1px solid ${def.color}`, color: def.color, borderRadius: 6,
+                            padding: '4px 8px', fontFamily: 'inherit', fontSize: '0.62rem', fontWeight: 800, cursor: 'pointer' }}>
+                          <Icono nombre="imagen" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />PLACA
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -330,6 +345,22 @@ export default function Agenda() {
           );
         })
       )}
+
+      <ModalPlaca abierto={!!cumplePlaca} onCerrar={() => setCumplePlaca(null)}
+        nombreArchivo={`cumple-${cumplePlaca?.meta?.jugadorId || ''}`}>
+        {(formato) => {
+          const j = (raw.jugadores || []).find((x) => String(x.id) === String(cumplePlaca?.meta?.jugadorId));
+          const [, m, d] = String(cumplePlaca?.fecha || '').split('-');
+          return (
+            <PlacaCumple formato={formato} datos={j ? {
+              club: datosDelClub(perfil),
+              jugador: { nombre: j.nombre, apellido: j.apellido, foto: j.foto, dorsal: j.dorsal, categoria: (j.categoria || '').toUpperCase() },
+              anios: cumplePlaca?.meta?.anios || 0,
+              fecha: d && m ? `${d}/${m}` : '',
+            } : null} />
+          );
+        }}
+      </ModalPlaca>
     </div>
   );
 }

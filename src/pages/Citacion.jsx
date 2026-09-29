@@ -10,10 +10,13 @@ import { analizarPartido } from '../analytics/engine';
 import { prepararRatingsPartido } from '../analytics/ratingPartido';
 import {
   PLANTILLA_DEFAULT, INDUMENTARIA_DEFAULT, MINUTOS_ANTES_DEFAULT, PLACEHOLDERS,
-  resolverPlantilla, restarMinutos, partesDeFecha,
+  resolverPlantilla, restarMinutos, partesDeFecha, formatearHora,
   sugerirConvocatoria, limiteConvocados, esArquero,
 } from '../utils/citacion';
 import { Icono } from '../iconos';
+import ModalPlaca from '../placas/ModalPlaca';
+import PlacaProximo from '../placas/PlacaProximo';
+import { datosDelClub } from '../placas/club';
 
 /* ══════════════════════════════════════════════════════════════════════════
    CITACIÓN AL PRÓXIMO PARTIDO
@@ -479,6 +482,29 @@ function Citacion() {
 
   const textoFinal = mensajeManual ?? textoGenerado;
 
+  /* La placa del próximo partido: los mismos datos que el mensaje. */
+  const [placaAbierta, setPlacaAbierta] = useState(false);
+  const datosPlaca = useMemo(() => {
+    if (!partido) return null;
+    const f = partesDeFecha(partido.fecha);
+    const club = datosDelClub(perfil);
+    return {
+      club: { nombre: club.nombre, escudo: partido.escudo_propio || club.escudo },
+      rival: { nombre: partido.rival || 'RIVAL', escudo: partido.escudo_rival || null },
+      info: {
+        torneo: (partido.competicion || '').toUpperCase(),
+        jornada: partido.jornada ? String(partido.jornada).toUpperCase() : '',
+        categoria: (partido.categoria || '').toUpperCase(),
+        condicion: partido.condicion,
+      },
+      cuando: { dia: f.dia, fecha: f.corta, hora: formatearHora(partido.horario), citacion: formatearHora(form.horaCitacion) },
+      lugar: { sede: form.sede || partido.lugar || '', direccion: form.direccion || partido.direccion || '' },
+      citados: [...convocados]
+        .sort((a, b) => (Number(a.dorsal) || 99) - (Number(b.dorsal) || 99))
+        .map((j) => ({ dorsal: j.dorsal ?? '', nombre: String(j.apellido || j.nombre || '').toUpperCase() })),
+    };
+  }, [partido, perfil, form, convocados]);
+
   const limite = limiteConvocados(partido?.competicion);
   const arquerosCitados = convocados.filter(esArquero).length;
   const refuerzos = convocados.filter(j => !mismaCategoria(j)).length;
@@ -914,6 +940,9 @@ function Citacion() {
                 style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: publicando ? 'wait' : 'pointer', background: '#3b82f6', color: '#fff', border: 'none' }}>
                 {publicando ? 'PUBLICANDO…' : <><Icono nombre="fijado" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PUBLICAR EN EL TABLÓN</>}
               </button>
+              <button onClick={() => setPlacaAbierta(true)} className="btn-secondary" style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer' }}>
+                <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA PARA REDES
+              </button>
               <button onClick={guardarCitacion} disabled={guardando} className="btn-secondary" style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: guardando ? 'wait' : 'pointer' }}>
                 {guardando ? 'GUARDANDO…' : <><Icono nombre="guardar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GUARDAR CONVOCATORIA</>}
               </button>
@@ -923,6 +952,10 @@ function Citacion() {
               <strong> Tablón</strong> lo publica dentro de la app y dispara el push ·
               <strong> Guardar</strong> deja los convocados precargados en NUEVO PARTIDO
             </div>
+            <ModalPlaca abierto={placaAbierta && !!datosPlaca} onCerrar={() => setPlacaAbierta(false)}
+              nombreArchivo={`proximo-vs-${partido?.rival || 'rival'}`}>
+              {(formato) => <PlacaProximo datos={datosPlaca} formato={formato} />}
+            </ModalPlaca>
           </div>
         </>
       )}

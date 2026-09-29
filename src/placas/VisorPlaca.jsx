@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FORMATOS, CLAVES_FORMATO, FORMATO_POR_DEFECTO, formatoDe } from './formatos';
 import { exportarPlaca } from './exportar';
-import { asegurarEstilos, COLOR_CLUB, COLOR_RIVAL, aRGB } from './estilos';
+import { asegurarEstilos, COLOR_CLUB, COLOR_RIVAL, aRGB, ESTILOS_PLACA, CLAVES_ESTILO } from './estilos';
 import { Icono } from '../iconos';
 
 /* EL MARCO DE TODAS LAS PLACAS
@@ -18,12 +18,24 @@ export default function VisorPlaca({
   nombreArchivo = 'placa',
   formatos = CLAVES_FORMATO,
   formatoInicial = FORMATO_POR_DEFECTO,
-  colorClub = COLOR_CLUB,
+  colorClub: colorClubProp,
   onCerrar,
 }) {
   asegurarEstilos();
 
   const [formato, setFormato] = useState(formatoInicial);
+  /* El estilo se recuerda: el club suele elegir uno y publicar siempre así. */
+  const [estilo, setEstilo] = useState(() => {
+    try {
+      const guardado = localStorage.getItem('placa_estilo');
+      return ESTILOS_PLACA[guardado] ? guardado : 'noche';
+    } catch { return 'noche'; }
+  });
+  const elegirEstilo = (k) => {
+    setEstilo(k);
+    try { localStorage.setItem('placa_estilo', k); } catch { /* storage bloqueado */ }
+  };
+  const colorClub = colorClubProp || ESTILOS_PLACA[estilo].club || COLOR_CLUB;
   const [escala, setEscala] = useState(0.4);
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState(null);
@@ -91,6 +103,19 @@ export default function VisorPlaca({
         </div>
       </div>
 
+      <div style={{ ...barra, justifyContent: 'flex-start', gap: '8px' }}>
+        <span style={{ fontSize: '.7rem', fontWeight: 800, letterSpacing: '.08em', color: 'var(--text-dim)' }}>ESTILO</span>
+        {CLAVES_ESTILO.map((k) => {
+          const activo = estilo === k;
+          return (
+            <button key={k} onClick={() => elegirEstilo(k)} aria-pressed={activo}
+              style={{ ...btnFormato, padding: '7px 14px', ...(activo ? { color: 'var(--text)', borderColor: colorClub } : null) }}>
+              {ESTILOS_PLACA[k].label}
+            </button>
+          );
+        })}
+      </div>
+
       {error && (
         <div style={aviso}>
           No se pudo generar la imagen: {error}
@@ -104,7 +129,7 @@ export default function VisorPlaca({
       <div ref={marcoRef} style={{ height: f.alto * escala, width: f.ancho * escala, position: 'relative' }}>
         <div
           ref={placaRef}
-          className="pl"
+          className={`pl pl-e-${estilo}`}
           style={{
             width: f.ancho, height: f.alto,
             transform: `scale(${escala})`, transformOrigin: 'top left',

@@ -20,7 +20,7 @@ import {
   ChartLine, ChartPie, ChatCircle, Check, CheckCircle, Circle, ClipboardText,
   Clock, CloudSlash, Coins, Compass, Confetti, Copy, CornersIn, CornersOut,
   CreditCard, Crosshair, Crown, Cursor, DeviceMobile, Dna, DotsSixVertical,
-  DownloadSimple, Envelope, Export, Eye, EyeSlash, FileText, FileXls,
+  DownloadSimple, Envelope, Eye, EyeSlash, FileText, FileXls,
   FilmStrip, Fire, FirstAidKit, Flag, FlipHorizontal, FlipVertical, FloppyDisk,
   Folder, Footprints, ForkKnife, GameController, Gear, Ghost, Gift, Globe,
   GraduationCap, Hand, HandPalm, HandWaving, Handshake, Hash, Heart, Heartbeat,
@@ -67,7 +67,6 @@ const ICONOS = {
   jugador: User,
   origenGoles: Arco,
   disciplina: Tarjetas,
-  exportarGraficas: Export,
 
   planificacion: CalendarDots,
   agenda: CalendarBlank,
