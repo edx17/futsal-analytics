@@ -66,7 +66,6 @@ const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
 const KioscoTorneo        = lazy(() => import('./pages/KioscoTorneo'));
 const KioscoMisDatos      = lazy(() => import('./pages/KioscoMisDatos'));
 const KioscoMisPagos      = lazy(() => import('./pages/KioscoMisPagos'));
-const GeneradorReportes   = lazy(() => import('./pages/GeneradorReportes'));
 
 import './App.css';
 import LimiteDeError from './components/LimiteDeError';
@@ -189,7 +188,6 @@ function AppRoutes() {
       <Route path="/libro-tactico" element={<ProtectedRoute><LibroTactico /></ProtectedRoute>} />
       <Route path="/aceptar-terminos" element={<ProtectedRoute><AceptarTerminos /></ProtectedRoute>} />
       
-      <Route path="/reportes" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><GeneradorReportes /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/inicio" replace />} />
     </Routes>
@@ -438,7 +436,6 @@ useEffect(() => {
                 <NavLink to="/jugador" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="jugador" /> <span>{permisos.esJugador ? 'MI PERFIL' : 'RESUMEN POR JUGADOR'}</span></NavLink>
                 {!permisos.esJugador && <NavLink to="/origen-goles" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="origenGoles" /> <span>ORIGEN DE GOLES</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/disciplina" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="disciplina" /> <span>DISCIPLINA</span></NavLink>}
-                {!permisos.esJugador && <NavLink to="/reportes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="exportarGraficas" /> <span>EXPORTAR GRÁFICAS</span></NavLink>}
               </>
             )}
           </>
