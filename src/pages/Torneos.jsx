@@ -17,6 +17,7 @@ import PlacaTabla from '../placas/PlacaTabla';
 import PlacaCampana from '../placas/PlacaCampana';
 import { datosDelClub } from '../placas/club';
 import { Icono } from '../iconos';
+import { useEsMovil } from '../utils/useEsMovil';
 
 /* Cuadros por fila en la tira de ESTADO DE FORMA. */
 const POR_FILA_RACHA = 5;
@@ -55,6 +56,7 @@ const Kpi = ({ rotulo, valor, pie, color }) => (
 );
 
 function Torneos() {
+  const esMovil = useEsMovil();
   const clubId = localStorage.getItem('club_id');
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -2135,8 +2137,11 @@ function Torneos() {
                       </div>
                     </div>
 
-                    <div style={{ background: 'var(--panel)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border)', overflowX: 'auto' }}>
+                    <div style={{ background: 'var(--panel)', padding: esMovil ? '16px 14px' : '20px', borderRadius: '8px', border: '1px solid var(--border)', overflowX: 'auto' }}>
                        <div className="stat-label" style={{ marginBottom: '15px' }}>ESTADÍSTICAS AVANZADAS Y PODER OFENSIVO</div>
+                       {esMovil ? (
+                         <PoderOfensivoMovil equipos={reporteLiga.powerRanking} miClub={miClubGlobal} />
+                       ) : (
                        <table style={{ width: '100%', textAlign: 'center', borderCollapse: 'collapse', minWidth: '700px' }}>
                          <thead>
                            <tr style={{ color: 'var(--text-dim)', fontSize: '0.7rem', borderBottom: '1px solid var(--border)' }}>
@@ -2166,6 +2171,7 @@ function Torneos() {
                            ))}
                          </tbody>
                        </table>
+                       )}
                     </div>
 
                     {/* COMPARADOR DE RENDIMIENTO (NUEVO) */}
@@ -2724,5 +2730,46 @@ const selectStyle = {
 };
 
 const inputIndustrial = { width: '100%', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', outline: 'none' };
+
+/* Estadísticas avanzadas en el celular. La tabla de la PC pide 700px y en
+   el teléfono había que deslizarla de costado; son cuatro datos por equipo,
+   así que entran en dos líneas: equipo y efectividad arriba, ataque, defensa
+   y dominio abajo. */
+function PoderOfensivoMovil({ equipos, miClub }) {
+  const rotulo = { fontSize: '0.56rem', fontWeight: 800, color: 'var(--text-dim)', letterSpacing: '0.3px', marginBottom: '3px' };
+  const valor = { fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '0.9rem' };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {equipos.map((eq, i) => {
+        const esMio = eq.nombre === miClub;
+        const dominio = Math.max(eq.dominioRaw, 0);
+        return (
+          <div key={eq.nombre} style={{ padding: '11px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ ...valor, fontSize: '0.72rem', color: 'var(--text-dim)', width: '18px', flexShrink: 0 }}>{i + 1}</span>
+              <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: '0.85rem', color: esMio ? 'var(--accent)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {eq.nombre.toUpperCase()}
+              </span>
+              <span style={{ ...valor, fontSize: '1rem', color: eq.pctPuntos > 60 ? '#00ff88' : 'var(--text)' }}>{eq.pctPuntos}%</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.6fr', gap: '10px', paddingLeft: '26px' }}>
+              <div><div style={rotulo}>ATAQUE GF/PJ</div><div style={{ ...valor, color: '#0ea5e9' }}>{eq.gfPromedio}</div></div>
+              <div><div style={rotulo}>DEFENSA GC/PJ</div><div style={{ ...valor, color: '#ef4444' }}>{eq.gcPromedio}</div></div>
+              <div>
+                <div style={rotulo}>DOMINIO</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ flex: 1, height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(dominio, 100)}%`, background: 'linear-gradient(90deg, #3b82f6, #a855f7)' }} />
+                  </div>
+                  <span style={{ ...valor, fontSize: '0.8rem' }}>{dominio.toFixed(0)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default Torneos;
