@@ -410,3 +410,16 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
     text-transform: uppercase;
   }
 }
+/* GRILLA PAREJA DE 10 TARJETAS (Resumen, vista avanzada)
+   Con auto-fit quedaban filas de 4 + 4 + 2: dos tarjetas solas abajo.
+   Diez tarjetas se reparten parejo solo en 1, 2 o 5 columnas, así que
+   la grilla salta entre esas tres según el ancho que tiene de verdad
+   (el del contenedor, no el de la ventana: la barra lateral lo cambia). */
+.vc-grilla-pareja-caja { container-type: inline-size; }
+.vc-grilla-pareja { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 560px) {
+  .vc-grilla-pareja { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 1100px) {
+  .vc-grilla-pareja { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}

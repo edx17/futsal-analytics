@@ -298,6 +298,33 @@ export const CSS_PLACAS = `
   border-radius:40px;padding:12px 30px;color:var(--pl-tx)}
 .pl-cu-m{text-align:center;font-family:var(--pl-mono);letter-spacing:.16em;color:var(--pl-dim)}
 
+/* ── plantel ── */
+.pl-pt-tot{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.pl-pt-tot>div{background:var(--pl-sup);border:1px solid var(--pl-linea);border-radius:12px;padding:18px 10px;text-align:center}
+.pl-pt-tot b{display:block;font-weight:900;font-size:54px;line-height:1;font-variant-numeric:tabular-nums}
+.pl-pt-tot span{display:block;font-family:var(--pl-mono);font-size:13px;letter-spacing:.14em;color:var(--pl-dim);margin-top:10px}
+.pl-pt-dest{display:flex;flex-direction:column;gap:10px}
+.pl-pt-d{display:grid;grid-template-columns:72px 1fr auto;align-items:center;gap:22px;
+  background:var(--pl-sup);border:1px solid var(--pl-linea);border-left:4px solid var(--pl-club);border-radius:12px;padding:12px 22px}
+.pl-pt-d .ft{width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--pl-sup2);
+  border:2px solid var(--pl-linea);display:grid;place-items:center}
+.pl-pt-d .ft img{width:100%;height:100%;object-fit:cover}
+.pl-pt-d .ft span{font-weight:900;font-size:28px;color:rgba(var(--pl-club-rgb),.5)}
+.pl-pt-d .tx{min-width:0}
+.pl-pt-d .et{font-family:var(--pl-mono);font-size:14px;font-weight:700;letter-spacing:.18em;color:var(--pl-club)}
+.pl-pt-d .nm{font-size:32px;font-weight:900;letter-spacing:-.02em;margin-top:4px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pl-pt-d .vl{font-family:var(--pl-mono);font-weight:800;font-size:40px;font-variant-numeric:tabular-nums;text-align:right}
+.pl-pt-d .vl small{font-size:16px;color:var(--pl-dim);margin-left:8px;letter-spacing:.08em}
+.pl-pt-cab,.pl-pt-f{display:grid;grid-template-columns:50px 1fr 60px 84px 50px 50px 76px;gap:0 8px;align-items:center}
+.pl-pt-cab{font-family:var(--pl-mono);font-size:14px;font-weight:700;letter-spacing:.14em;color:var(--pl-dim);padding:0 18px 12px}
+.pl-pt-cab span:not(:nth-child(2)){text-align:center}
+.pl-pt-f{background:var(--pl-sup);border:1px solid var(--pl-linea);border-radius:9px;padding:11px 18px;margin-bottom:7px}
+.pl-pt-f .nm{font-size:26px;font-weight:800;letter-spacing:-.01em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pl-pt-f .c{font-family:var(--pl-mono);font-size:22px;text-align:center;color:var(--pl-dim);font-variant-numeric:tabular-nums}
+.pl-pt-f .c:first-child{color:var(--pl-club);font-weight:800}
+.pl-pt-f .rt{color:var(--pl-tx);font-weight:800}
+
 /* ── ESTILOS ──────────────────────────────────────────────────────────────
  * Los tres estilos cambian la paleta y el fondo; la maqueta de cada placa es
  * la misma. Noche es el original. Todo son colores planos, rgba() y

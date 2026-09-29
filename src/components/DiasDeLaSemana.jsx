@@ -25,7 +25,7 @@ const colorEfe = (e) => {
   return '#ef4444';
 };
 
-export default function DiasDeLaSemana({ partidos = [], esMovil = false }) {
+export default function DiasDeLaSemana({ partidos = [], esMovil = false, estilo }) {
   const { filas, sinFecha } = useMemo(() => resumenPorDia(partidos), [partidos]);
   const grupos = useMemo(() => resumenPorGrupo(partidos), [partidos]);
   const lectura = useMemo(() => extremos(filas), [filas]);
@@ -34,7 +34,7 @@ export default function DiasDeLaSemana({ partidos = [], esMovil = false }) {
 
   if (totalPJ === 0) {
     return (
-      <div className="bento-card" style={{ marginTop: 20 }}>
+      <div className="bento-card" style={{ marginTop: 20, ...estilo }}>
         <div className="section-title" style={{ marginTop: 0 }}>EN QUÉ DÍAS JUGAMOS</div>
         <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 24, fontSize: '0.85rem' }}>
           Todavía no hay partidos jugados con estos filtros.
@@ -44,7 +44,7 @@ export default function DiasDeLaSemana({ partidos = [], esMovil = false }) {
   }
 
   return (
-    <div className="bento-card" style={{ marginTop: 20 }}>
+    <div className="bento-card" style={{ marginTop: 20, ...estilo }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
         <div className="section-title" style={{ marginTop: 0, marginBottom: 0 }}>EN QUÉ DÍAS JUGAMOS</div>
         <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>

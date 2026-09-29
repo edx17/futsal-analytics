@@ -522,14 +522,21 @@ function OrigenGoles() {
              </div>
           </div>
 
+          {/* Los dos gráficos, lado a lado, ocupan el mismo alto: el de la fila
+              (lo marca el más alto de los dos). Cada gráfico se dibuja en una
+              capa absoluta que llena su tarjeta, así el que es más bajo se
+              estira en vez de dejar un hueco abajo, y el gráfico no empuja el
+              alto de la fila (si lo empujara, nunca podría volver a achicarse). */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: '20px' }}>
             
             {/* GOLES VS xG POR ORIGEN */}
-            <div className="bento-card">
+            <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="stat-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
                 EFECTIVIDAD POR ORIGEN (GOLES VS xG) <InfoBox texto="Cruza los goles marcados (Barras) con el peligro real que acarreaban (Línea). Si la barra está muy por encima de la línea, convertiste chances muy difíciles. Si la línea supera a la barra, generás peligro ahí pero te cuesta embocarla." />
               </div>
-              <ResponsiveContainer width="100%" height={280}>
+              <div style={{ position: 'relative', flex: 1, minHeight: 280 }}>
+              <div style={{ position: 'absolute', inset: 0 }}>
+              <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={dataAnalizada.dataEfectividadOrigen} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 10, fontWeight: 700 }} angle={-25} textAnchor="end" height={60} />
@@ -541,11 +548,13 @@ function OrigenGoles() {
                   <Line yAxisId="right" type="monotone" dataKey="xG" stroke="#a855f7" strokeWidth={3} dot={{ r: 5, fill: '#a855f7', stroke: 'var(--panel)' }} activeDot={{ r: 8 }} />
                 </ComposedChart>
               </ResponsiveContainer>
+              </div>
+              </div>
             </div>
 
             {/* COMPARATIVA A FAVOR vs EN CONTRA POR ORIGEN */}
             {comparativa.data.length > 0 && (
-              <div className="bento-card">
+              <div className="bento-card" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="stat-label" style={{ marginBottom: '6px', display: 'flex', alignItems: 'center' }}>
                   ADN COMPARADO: CÓMO MARCAMOS vs CÓMO NOS HACEN <InfoBox texto="Goles a favor (verde) y en contra (rojo) según cómo se gestaron. El contraste muestra de qué nos hacen daño y de qué lastimamos nosotros." />
                 </div>
@@ -553,7 +562,9 @@ function OrigenGoles() {
                   <span style={{ color: '#00ff88', fontWeight: 800 }}>● A favor: {comparativa.totalAF} goles <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({comparativa.xgAF.toFixed(1)} xG)</span></span>
                   <span style={{ color: '#ef4444', fontWeight: 800 }}>● En contra: {comparativa.totalEC} goles <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({comparativa.xgEC.toFixed(1)} xG)</span></span>
                 </div>
-                <ResponsiveContainer width="100%" height={Math.max(220, comparativa.data.length * 42)}>
+                <div style={{ position: 'relative', flex: 1, minHeight: Math.max(220, comparativa.data.length * 42) }}>
+                <div style={{ position: 'absolute', inset: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={comparativa.data} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }} barGap={2}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                     <XAxis type="number" stroke="var(--border)" tick={{ fill: 'var(--text-dim)', fontSize: 11 }} allowDecimals={false} />
@@ -564,6 +575,8 @@ function OrigenGoles() {
                     <Bar dataKey="En contra" fill="#ef4444" radius={[0, 3, 3, 0]} barSize={13} />
                   </BarChart>
                 </ResponsiveContainer>
+                </div>
+                </div>
               </div>
             )}
 

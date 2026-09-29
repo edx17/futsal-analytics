@@ -129,7 +129,7 @@ const MallaTacticaInteractiva = ({ eventos, maxCount }) => {
 };
 
 // COMPONENTE: Momentum de la Temporada (Partido a Partido)
-const GraficoMomentumTemporada = ({ partidos, eventos }) => {
+const GraficoMomentumTemporada = ({ partidos, eventos, alto = 280, estilo }) => {
   const [metrica, setMetrica] = useState('golesFavor'); 
 
   const dataProcesada = useMemo(() => {
@@ -206,7 +206,7 @@ const GraficoMomentumTemporada = ({ partidos, eventos }) => {
   if (!partidos || partidos.length === 0) return null;
 
   return (
-    <div className="bento-card" style={{ padding: '20px', marginTop: '20px', marginBottom: '20px', borderTop: `3px solid ${color}` }}>
+    <div className="bento-card" style={{ padding: '20px', marginTop: '20px', marginBottom: '20px', borderTop: `3px solid ${color}`, display: 'flex', flexDirection: 'column', ...estilo }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
         <h3 style={{ color: 'var(--text)', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
           Momentum de la Temporada <span style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>({partidos.length} PJ)</span>
@@ -234,7 +234,11 @@ const GraficoMomentumTemporada = ({ partidos, eventos }) => {
         </select>
       </div>
 
-      <div style={{ width: '100%', height: 280 }}>
+      {/* El gráfico va en una capa absoluta: llena lo que le toque a la
+          tarjeta (en la compu se estira hasta el alto de la columna de al
+          lado) sin empujar ese alto, así puede volver a achicarse. */}
+      <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: alto }}>
+      <div style={{ position: 'absolute', inset: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={dataProcesada} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
@@ -264,6 +268,7 @@ const GraficoMomentumTemporada = ({ partidos, eventos }) => {
             />
           </AreaChart>
         </ResponsiveContainer>
+      </div>
       </div>
     </div>
   );
@@ -1027,8 +1032,14 @@ function Temporada() {
               </div>
           </div>
 
-          {/* ═══ ESTADO DE FORMA — sección propia, a todo el ancho ═══ */}
-          <div className="bento-card" style={{ marginBottom: '20px' }}>
+          {/* ═══ ESTADO DE FORMA · EN QUÉ DÍAS JUGAMOS · MOMENTUM ═══
+              En el celular van uno debajo del otro, a todo el ancho. En la
+              compu, apilados, ocupaban casi una pantalla entera cada uno:
+              ahí van en dos columnas (forma y momentum a la izquierda, los
+              días a la derecha) y el momentum baja de alto. */}
+          <div style={esMovil ? undefined : { display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)', gap: '20px', marginBottom: '20px' }}>
+          <div style={esMovil ? undefined : { display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
+          <div className="bento-card" style={{ marginBottom: esMovil ? '20px' : 0 }}>
             <div className="stat-label" style={{ marginBottom: '15px', display: 'flex', alignItems: 'center' }}>
               ESTADO DE FORMA
               <InfoBox texto="Un cuadro por partido del período filtrado, del más viejo (izquierda) al más reciente (derecha). El halo marca la racha en curso. Pasá el mouse por cada cuadro para ver rival y resultado." />
@@ -1042,7 +1053,7 @@ function Temporada() {
             const rachas = analizarRachas(hist);
             const colorDe = (res) => res === 'V' ? 'var(--accent)' : res === 'D' ? '#ef4444' : '#71717a';
             const letraDe = (res) => res === 'V' ? 'G' : res === 'D' ? 'P' : 'E';
-            const tam = esMovil ? 30 : 38;
+            const tam = esMovil ? 30 : 32;
 
             return (
               <div>
@@ -1115,9 +1126,20 @@ function Temporada() {
               misma lista que alimenta todo lo de arriba, así que respeta los
               filtros de categoría, torneo, rival y condición que ya estén
               puestos y sus totales no pueden discrepar con el resto. */}
-          <DiasDeLaSemana partidos={partidosFiltrados} esMovil={esMovil} />
-
-          <GraficoMomentumTemporada partidos={partidosFiltrados} eventos={eventosFiltrados} />
+          {esMovil ? (
+            <>
+              <DiasDeLaSemana partidos={partidosFiltrados} esMovil />
+              <GraficoMomentumTemporada partidos={partidosFiltrados} eventos={eventosFiltrados} />
+            </>
+          ) : (
+            <GraficoMomentumTemporada
+              partidos={partidosFiltrados} eventos={eventosFiltrados}
+              alto={200} estilo={{ marginTop: 0, marginBottom: 0, flex: 1 }}
+            />
+          )}
+          </div>
+          {!esMovil && <DiasDeLaSemana partidos={partidosFiltrados} estilo={{ marginTop: 0 }} />}
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '20px' }}>
               
@@ -1622,7 +1644,11 @@ function Temporada() {
                </div>
 
 
-               <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto', maxHeight: esMovil ? '400px' : 'auto', paddingRight: '5px' }}>
+               {/* En la compu la lista va en posición absoluta: no aporta alto a
+                   la tarjeta, así que la fila toma el alto del mapeo (la cancha)
+                   y los partidos se recorren con la barra de adentro. */}
+               <div style={{ position: 'relative', flex: 1, minHeight: esMovil ? 0 : '260px' }}>
+               <div className="custom-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', paddingRight: '5px', ...(esMovil ? { maxHeight: '400px' } : { position: 'absolute', inset: 0 }) }}>
                   {[...analiticaGlobal.historialPartidos].reverse().map(p => {
                     let badgeColor = 'var(--border)'; 
                     let textColor = 'var(--text-dim)';
@@ -1696,6 +1722,7 @@ function Temporada() {
                       </div>
                     )
                   })}
+               </div>
                </div>
             </div>
             
