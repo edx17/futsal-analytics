@@ -182,8 +182,8 @@ const Card = ({ children, id, accent, index, scroll, ctx }) => {
           {Array.from({ length: Math.max(1, columnas) }, (_, k) => k + 1).map((n) => (
             <button key={n} onClick={() => cambiarTamano(id, n)} style={sizeBtn(span === n)} title={`${n} columna${n > 1 ? 's' : ''}`}>{n}</button>
           ))}
-          <button onClick={() => mover(index, 'up')} style={editBtn}><Icono nombre="contraer" size="1em" /></button>
-          <button onClick={() => mover(index, 'down')} style={editBtn}><Icono nombre="expandir" size="1em" /></button>
+          <button aria-label="Subir" onClick={() => mover(index, 'up')} style={editBtn}><Icono nombre="contraer" size="1em" /></button>
+          <button aria-label="Bajar" onClick={() => mover(index, 'down')} style={editBtn}><Icono nombre="expandir" size="1em" /></button>
         </div>
       )}
       {children}

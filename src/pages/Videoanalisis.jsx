@@ -1008,7 +1008,7 @@ export default function Videoanalisis() {
               const nClips = v.video_clips?.[0]?.count ?? 0;
               return (
                 <div key={v.id} onClick={() => abrirVideo(v)} className="bento-card" style={{ cursor: 'pointer', position: 'relative', padding: '18px' }}>
-                  <button onClick={(e) => eliminarVideo(v, e)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1rem', padding: '4px' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                  <button aria-label="Eliminar" onClick={(e) => eliminarVideo(v, e)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '1rem', padding: '4px' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                   <div style={{ marginBottom: '10px' }}><Icono nombre={v.fuente === 'youtube' ? 'reproducir' : v.fuente === 'upload' ? 'celular' : 'carpeta'} size={28} /></div>
                   <div style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--text)', marginBottom: '6px', paddingRight: '20px' }}>
                     {v.titulo || (v.fuente === 'youtube' ? 'Video de YouTube' : 'Video')}
@@ -1027,7 +1027,7 @@ export default function Videoanalisis() {
             <div className="bento-card" style={{ width: '100%', maxWidth: '480px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '92dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>NUEVO ANÁLISIS DE VIDEO</div>
-                <button onClick={cerrarModalNuevo} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                <button aria-label="Cerrar" onClick={cerrarModalNuevo} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
@@ -1146,7 +1146,7 @@ export default function Videoanalisis() {
             <div className="bento-card" style={{ width: '100%', maxWidth: '520px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>CONFIGURAR BOTONERA</div>
-                <button onClick={() => setModalConfig(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                <button aria-label="Cerrar" onClick={() => setModalConfig(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -1169,7 +1169,7 @@ export default function Videoanalisis() {
                   >
                     <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>{pr.nombre}</span>
                     {presetsEdit.length > 1 && (
-                      <button
+                      <button aria-label="Eliminar"
                         onClick={(e) => { e.stopPropagation(); eliminarPresetEdit(pr.id); }}
                         style={{ background: 'transparent', border: 'none', color: 'inherit', opacity: 0.6, cursor: 'pointer', fontSize: '0.8rem', padding: '0 4px' }}
                       >
@@ -1201,7 +1201,7 @@ export default function Videoanalisis() {
                           placeholder="Nombre de la etiqueta"
                           style={{ flex: 1, minWidth: 0, padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px', boxSizing: 'border-box' }}
                         />
-                        <button onClick={() => eliminarEtiquetaEdit(i)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0, minWidth: '32px' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                        <button aria-label="Eliminar" onClick={() => eliminarEtiquetaEdit(i)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.1rem', flexShrink: 0, minWidth: '32px' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       </div>
                     ))}
                   </div>
@@ -1230,7 +1230,7 @@ export default function Videoanalisis() {
             <div className="bento-card" style={{ width: '100%', maxWidth: '480px', boxSizing: 'border-box', border: '1px solid var(--accent)', borderRadius: esMovil ? '16px 16px 0 0' : '12px', maxHeight: '90dvh', overflowY: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <div style={{ fontSize: '1.05rem', fontWeight: 900 }}>COMPARTIR CON JUGADORES</div>
-                <button onClick={() => setModalCompartir(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                <button aria-label="Cerrar" onClick={() => setModalCompartir(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '18px' }}>
                 "{modalCompartir.nombre}" — elegí quién la puede ver desde el kiosco. Podés combinar categorías enteras con jugadores puntuales (para análisis individual).
@@ -1288,7 +1288,7 @@ export default function Videoanalisis() {
                     return (
                       <span key={id} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 6px 5px 10px', borderRadius: '20px', border: '1px solid var(--accent)', background: 'rgba(0,255,136,0.1)', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 800 }}>
                         {j ? `${j.apellido}, ${j.nombre}` : `#${id}`}
-                        <button onClick={() => toggleJugCompartir(id)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                        <button aria-label="Quitar" onClick={() => toggleJugCompartir(id)} style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       </span>
                     );
                   })}
@@ -1417,9 +1417,9 @@ export default function Videoanalisis() {
                     <div key={clip.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0a0a0a', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px' }}>
                       <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: MONO, minWidth: '18px' }}>{i + 1}</span>
                       <span style={{ flex: 1, minWidth: 0, fontSize: '0.75rem', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clip.etiqueta}</span>
-                      <button onClick={() => moverSeleccionExplor(clip.id, -1)} disabled={i === 0} style={{ ...btnAjuste, opacity: i === 0 ? 0.3 : 1 }}><Icono nombre="subirFlecha" size="1em" /></button>
-                      <button onClick={() => moverSeleccionExplor(clip.id, 1)} disabled={i === itemsSeleccionExplor.length - 1} style={{ ...btnAjuste, opacity: i === itemsSeleccionExplor.length - 1 ? 0.3 : 1 }}><Icono nombre="bajarFlecha" size="1em" /></button>
-                      <button onClick={() => toggleSeleccionExplor(clip.id)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                      <button aria-label="Subir" onClick={() => moverSeleccionExplor(clip.id, -1)} disabled={i === 0} style={{ ...btnAjuste, opacity: i === 0 ? 0.3 : 1 }}><Icono nombre="subirFlecha" size="1em" /></button>
+                      <button aria-label="Bajar" onClick={() => moverSeleccionExplor(clip.id, 1)} disabled={i === itemsSeleccionExplor.length - 1} style={{ ...btnAjuste, opacity: i === itemsSeleccionExplor.length - 1 ? 0.3 : 1 }}><Icono nombre="bajarFlecha" size="1em" /></button>
+                      <button aria-label="Quitar" onClick={() => toggleSeleccionExplor(clip.id)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                     </div>
                   ))}
                 </div>
@@ -1435,7 +1435,7 @@ export default function Videoanalisis() {
                   placeholder="Nombre para guardar..."
                   style={{ flex: 1, minWidth: 0, padding: '10px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '6px', outline: 'none', fontSize: '16px' }}
                 />
-                <button onClick={guardarPlaylist} disabled={guardandoPlaylist || !nombreNuevaPlaylist.trim() || itemsSeleccionExplor.length === 0} style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '6px', padding: '10px 14px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0, opacity: (!nombreNuevaPlaylist.trim() || itemsSeleccionExplor.length === 0) ? 0.5 : 1 }}>
+                <button aria-label="Guardar" onClick={guardarPlaylist} disabled={guardandoPlaylist || !nombreNuevaPlaylist.trim() || itemsSeleccionExplor.length === 0} style={{ background: 'transparent', border: '1px solid var(--accent)', color: 'var(--accent)', borderRadius: '6px', padding: '10px 14px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0, opacity: (!nombreNuevaPlaylist.trim() || itemsSeleccionExplor.length === 0) ? 0.5 : 1 }}>
                   <Icono nombre="guardar" size="1.2em" relleno="propio" />
                 </button>
               </div>
@@ -1472,7 +1472,7 @@ export default function Videoanalisis() {
                       >
                         <Icono nombre="celular" size="1.2em" relleno="propio" />
                       </button>
-                      <button onClick={(e) => eliminarPlaylist(pl, e)} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                      <button aria-label="Eliminar" onClick={(e) => eliminarPlaylist(pl, e)} style={{ background: 'transparent', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', flexShrink: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                     </div>
                     );
                   })}
@@ -1665,7 +1665,7 @@ export default function Videoanalisis() {
                           value={clip.etiqueta} onChange={(e) => editarEtiqueta(clip, e.target.value)}
                           style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', color: 'var(--text)', fontWeight: 900, fontSize: '0.8rem', outline: 'none' }}
                         />
-                        <button onClick={() => eliminarClip(clip)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', flexShrink: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+                        <button aria-label="Eliminar" onClick={() => eliminarClip(clip)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', flexShrink: 0 }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>

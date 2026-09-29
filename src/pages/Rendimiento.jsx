@@ -1415,7 +1415,7 @@ function ModalIngreso({ jugadores, clubId, onClose, onSuccess, showToast }) {
       <div style={{ background: '#060a14', width: '100%', maxWidth: 650, padding: 24, maxHeight: '92vh', overflowY: 'auto', border: '1px solid #1e293b', borderRadius: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, borderBottom: '1px solid #0f172a', paddingBottom: 14 }}>
           <h2 style={{ margin: 0, color: 'var(--accent)', fontWeight: 900, fontSize: '1.05rem' }}>NUEVA TOMA DE DATOS</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#334155', fontSize: '1.3rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+          <button aria-label="Cerrar" onClick={onClose} style={{ background: 'none', border: 'none', color: '#334155', fontSize: '1.3rem', cursor: 'pointer' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 11, marginBottom: 15 }}>
           <div>

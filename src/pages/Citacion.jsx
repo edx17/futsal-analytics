@@ -904,7 +904,7 @@ function Citacion() {
 
             <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr' : 'repeat(2, 1fr)', gap: '10px', marginTop: '16px' }}>
               <button onClick={copiar} className="btn-action" style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer' }}>
-                <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR MENSAJE
+                <Icono nombre="copiar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR MENSAJE
               </button>
               <button onClick={exportarWhatsApp}
                 style={{ padding: '14px', borderRadius: '8px', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', background: '#25D366', color: '#fff', border: 'none' }}>

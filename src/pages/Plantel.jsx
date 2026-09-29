@@ -452,7 +452,7 @@ function Plantel() {
     { k: 'acciones', t: 'ACCIONES', g: 'acc', bloque: true, r: j => (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
         <button onClick={(e) => { e.stopPropagation(); enviarPorWhatsApp(j); }} style={btnAccion('#25D366', '#25D366')}><Icono nombre="whatsapp" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />WHATSAPP</button>
-        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={btnAccion('var(--border)')}><span style={{ color: 'var(--text)' }}><Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PIN</span></button>
+        <button onClick={(e) => { e.stopPropagation(); copiarPinIndividual(j); }} style={btnAccion('var(--border)')}><span style={{ color: 'var(--text)' }}><Icono nombre="copiar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PIN</span></button>
         {/* VER abre la ficha completa en un modal, sin riesgo de tocar nada.
             Tocar el nombre hacía lo mismo, pero en el celular no se notaba. */}
         <button onClick={(e) => { e.stopPropagation(); setJugadorSeleccionado(j); }} style={btnAccion('var(--accent)')}><Icono nombre="ver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER</button>
@@ -691,7 +691,7 @@ function Plantel() {
                         title="Copiar mensaje de acceso"
                         style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '6px 10px', cursor: 'pointer', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <Icono nombre="lista" size="1.2em" relleno="propio" />
+                        <Icono nombre="copiar" size="1.2em" relleno="propio" />
                       </button>
                       <span style={{ color: 'var(--border)', fontSize: '0.85rem' }}>|</span>
                       <button onClick={() => setJugadorSeleccionado(j)} title="Ver ficha completa" style={{ ...btnGhost, color: 'var(--accent)', borderColor: 'var(--accent)' }}><Icono nombre="ver" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />VER</button>
@@ -730,7 +730,7 @@ function Plantel() {
                   <div style={{ color: 'var(--text-dim)', fontWeight: 600, marginTop: '5px' }}>{jugadorSeleccionado.posicion?.toUpperCase()} // {jugadorSeleccionado.categoria?.toUpperCase()}</div>
                 </div>
               </div>
-              <button onClick={() => setJugadorSeleccionado(null)} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
+              <button aria-label="Cerrar" onClick={() => setJugadorSeleccionado(null)} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
             </div>
 
             {/* Dos columnas en pantalla ancha, una sola en el celular. */}
@@ -783,7 +783,7 @@ function Plantel() {
                     onMouseOver={(e) => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#000'; }}
                     onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--accent)'; }}
                    >
-                    <Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR TEXTO
+                    <Icono nombre="copiar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR TEXTO
                    </button>
                  </div>
                </div>
@@ -838,7 +838,7 @@ function Plantel() {
               <div className="stat-label" style={{ fontSize: '1.2rem', color: 'var(--text)' }}>
                 {formData.id ? 'EDITAR FICHA MÉDICA Y TÉCNICA' : 'NUEVA FICHA DE JUGADOR'}
               </div>
-              <button onClick={() => setMostrarModalAlta(false)} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
+              <button aria-label="Cerrar" onClick={() => setMostrarModalAlta(false)} className="close-btn"><Icono nombre="cerrar" size="1em" /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

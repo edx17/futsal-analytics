@@ -548,7 +548,7 @@ function Usuarios() {
           <div className="bento-card custom-scroll" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--accent)', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text)' }}>EDITAR USUARIO</div>
-              <button onClick={() => setUsuarioEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
+              <button aria-label="Cerrar" onClick={() => setUsuarioEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
             </div>
             
             <form onSubmit={guardarEdicionUsuario} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -626,7 +626,7 @@ function Usuarios() {
           <div className="bento-card custom-scroll" style={{ maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid #c084fc', position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#c084fc' }}>EDITAR CLUB</div>
-              <button onClick={() => setClubEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
+              <button aria-label="Cerrar" onClick={() => setClubEnEdicion(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text)', fontSize: '1.5rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
             </div>
             
             <form onSubmit={guardarEdicionClub} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>

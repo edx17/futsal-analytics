@@ -87,7 +87,7 @@ export default function VisorPlaca({
             style={{ ...btnBajar, background: colorClub, opacity: exportando ? .6 : 1 }}>
             {exportando ? 'GENERANDO…' : <><Icono nombre="descargar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />DESCARGAR PNG</>}
           </button>
-          {onCerrar && <button onClick={onCerrar} style={btnCerrar}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>}
+          {onCerrar && <button aria-label="Cerrar" onClick={onCerrar} style={btnCerrar}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>}
         </div>
       </div>
 

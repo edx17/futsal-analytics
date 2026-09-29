@@ -290,7 +290,12 @@ const SIN_RELLENO = new Set(['cerrar', 'listo', 'agregar', 'menu', 'arrastrar'])
 
 export function Icono({ nombre, size = 20, className = '', relleno, girar, style, ...props }) {
   const Componente = ICONOS[nombre];
-  if (!Componente) return null;
+  if (!Componente) {
+    // Un nombre mal escrito no rompe la pantalla, pero el icono no aparece:
+    // en desarrollo se avisa para que no pase desapercibido.
+    if (import.meta.env.DEV) console.warn(`<Icono>: no existe el icono "${nombre}"`);
+    return null;
+  }
   const clases = ['vc-icono', relleno === 'propio' && 'vc-icono--propio', girar && 'vc-icono--girar', className]
     .filter(Boolean).join(' ');
   return (

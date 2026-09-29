@@ -55,7 +55,7 @@ function Empleados() {
             <div key={emp.id} style={{ background: 'var(--panel)', padding: '20px', borderRadius: '12px', border: `1px solid ${emp.estado === 'Activo' ? 'var(--border)' : '#ef4444'}`, position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <h3 style={{ margin: '0 0 5px 0', color: 'var(--text)' }}>{emp.nombre_completo}</h3>
-                {puedeEditar && <button onClick={() => setFicha(fichaDe(emp))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}><Icono nombre="editar" size="1.2em" relleno="propio" /></button>}
+                {puedeEditar && <button aria-label="Editar" onClick={() => setFicha(fichaDe(emp))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}><Icono nombre="editar" size="1.2em" relleno="propio" /></button>}
               </div>
               <div style={{ fontSize: '0.8rem', color: '#3b82f6', fontWeight: 'bold', marginBottom: '15px' }}>
                 {(emp.rol || '').toUpperCase()}
@@ -71,7 +71,7 @@ function Empleados() {
               <div style={{ background: 'var(--panel)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', marginTop: '15px' }}>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>DATOS BANCARIOS</div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text)', marginTop: '5px' }}><Icono nombre="banco" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{emp.banco || 'No registrado'}</div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text)' }}><Icono nombre="actualizar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CBU: <span style={{ fontFamily: 'monospace', color: '#00ff88' }}>{emp.cbu || 'N/A'}</span></div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text)' }}><Icono nombre="banco" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CBU: <span style={{ fontFamily: 'monospace', color: '#00ff88' }}>{emp.cbu || 'N/A'}</span></div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text)' }}><Icono nombre="texto" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Alias: <span style={{ fontFamily: 'monospace', color: '#a855f7' }}>{emp.alias || 'N/A'}</span></div>
               </div>
             </div>

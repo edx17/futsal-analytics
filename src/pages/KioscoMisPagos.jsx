@@ -94,7 +94,7 @@ export default function KioscoMisPagos() {
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: club.alias_cobro && club.whatsapp_tesoreria ? '1fr 1fr' : '1fr', gap: '8px' }}>
-                {club.alias_cobro && <button onClick={copiarAlias} style={btn('#00b1ea', '#000')}><Icono nombre="lista" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR ALIAS</button>}
+                {club.alias_cobro && <button onClick={copiarAlias} style={btn('#00b1ea', '#000')}><Icono nombre="copiar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />COPIAR ALIAS</button>}
                 {club.whatsapp_tesoreria && <button onClick={mandarComprobante} style={btn('#25D366', '#000')}><Icono nombre="subir" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />MANDAR COMPROBANTE</button>}
               </div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '8px' }}>

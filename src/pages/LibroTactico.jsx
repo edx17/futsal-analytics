@@ -315,7 +315,7 @@ export default function LibroTactico() {
                 ) : jugada.url_grafico ? (
                   <img src={jugada.url_grafico} alt="Táctica" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (
-                  <span style={{ fontSize: '3rem' }}><Icono nombre="lista" size="1.2em" relleno="propio" /></span>
+                  <span style={{ fontSize: '3rem' }}><Icono nombre="jugada" size="1.2em" relleno="propio" /></span>
                 )}
                 {jugada.editor_data?.frames?.length > 1 && !jugada.video_mp4_url && (
                   <span style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: '#ffffff', fontSize: '0.6rem', padding: '3px 6px', borderRadius: '4px', fontWeight: 'bold' }}>ANIMACIÓN</span>
@@ -347,7 +347,7 @@ export default function LibroTactico() {
                 </h2>
                 <span style={{ color: '#93c5fd', fontSize: '0.9rem', fontWeight: 'bold' }}>{jugadaSeleccionada.objetivo_principal}</span>
               </div>
-              <button onClick={() => setJugadaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'var(--text)', width: '36px', height: '36px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Cerrar" onClick={() => setJugadaSeleccionada(null)} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: 'var(--text)', width: '36px', height: '36px', borderRadius: '50%', fontSize: '1.2rem', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', padding: '15px', gap: '20px' }}>

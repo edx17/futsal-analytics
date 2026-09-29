@@ -1020,7 +1020,7 @@ function TomaDatos() {
                       {pasoRegistro === 4 && 'CONFIRMAR EQUIPO'}
                       {pasoRegistro === 5 && '4. CONTEXTO TÁCTICO (xG)'}
                     </div>
-                    <button onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.2rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
+                    <button aria-label="Cerrar" onClick={cancelarRegistro} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.2rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
                   </div>
 
                   {pasoRegistro === 1 && (
@@ -1224,7 +1224,7 @@ function TomaDatos() {
       {modalCambio && (
         <div style={overlayStyle}>
           <div style={{ ...modalIndustrial, width: '450px' }}>
-            <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--text)' }}><Icono nombre="actualizar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GESTIÓN DE CAMBIOS MÚLTIPLES</div>
+            <div className="stat-label" style={{ marginBottom: '15px', color: 'var(--text)' }}><Icono nombre="transferencias" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />GESTIÓN DE CAMBIOS MÚLTIPLES</div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '20px', lineHeight: 1.4 }}>
               Marcá los jugadores que <strong style={{color: '#ef4444'}}>SALEN</strong> y los que <strong style={{color: '#10b981'}}>ENTRAN</strong>. <br/>
               Asegurate de que salga y entre la misma cantidad.
@@ -1508,11 +1508,11 @@ function TomaDatos() {
             <div style={hoja}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div className="stat-label">PARTIDO</div>
-                <button onClick={() => setMenuTel(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.3rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
+                <button aria-label="Cerrar" onClick={() => setMenuTel(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.3rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
               </div>
 
               <div style={{ ...relojContainer, marginBottom: '12px', justifyContent: 'space-between' }}>
-                <button onClick={toggleReloj} style={btnPlay}><Icono nombre={relojCorriendo ? 'pausa' : 'reproducir'} size="1.2em" /></button>
+                <button aria-label={relojCorriendo ? 'Pausar' : 'Iniciar'} onClick={toggleReloj} style={btnPlay}><Icono nombre={relojCorriendo ? 'pausa' : 'reproducir'} size="1.2em" /></button>
                 <div style={{ display: 'flex', alignItems: 'center', color: '#fff', fontWeight: 800 }}>
                   <input type="number" inputMode="numeric" value={minuto} onChange={(e) => fijarTiempo(parseInt(e.target.value) || 0, segundos)} onFocus={() => { if (relojCorriendo) { congelarCrono(); setRelojCorriendo(false); } }} style={{ background: 'transparent', border: 'none', color: '#fff', width: '44px', textAlign: 'right', fontSize: '1.3rem', fontFamily: 'monospace', fontWeight: 800, outline: 'none' }} />
                   <span>:</span>
@@ -1551,7 +1551,7 @@ function TomaDatos() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <button onClick={() => { setMenuTel(false); setTimelineTel(true); }} style={itemMenu}><Icono nombre="reloj" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />TIMELINE ({eventos.length})</button>
-                <button onClick={() => { setMenuTel(false); setModalCambio(true); }} style={itemMenu}><Icono nombre="actualizar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CAMBIOS</button>
+                <button onClick={() => { setMenuTel(false); setModalCambio(true); }} style={itemMenu}><Icono nombre="transferencias" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CAMBIOS</button>
                 {eventos.length === 0 && <button onClick={() => { setMenuTel(false); abrirModalTitulares(); }} style={{ ...itemMenu, color: 'var(--accent)', borderColor: 'var(--accent)' }}>EDITAR 5 INICIAL</button>}
                 {cupoCancha < 5 && (
                   <button onClick={() => { setCupoCancha(5); setContextoJuego('5v5'); setMenuTel(false); showToast('Sanción de 2 min cumplida. Ya podés meter al 5to jugador en CAMBIOS.', 'success'); }} style={{ ...itemMenu, background: '#f59e0b', color: '#000', border: 'none' }}><Icono nombre="espera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />CUMPLIR SANCIÓN</button>
@@ -1571,7 +1571,7 @@ function TomaDatos() {
             <div style={hoja}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div className="stat-label">TIMELINE ({eventos.length})</div>
-                <button onClick={() => setTimelineTel(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.3rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
+                <button aria-label="Cerrar" onClick={() => setTimelineTel(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.3rem', cursor: 'pointer', display: 'flex' }}><Icono nombre="cerrar" size="1em" /></button>
               </div>
               {contenidoTimeline}
             </div>

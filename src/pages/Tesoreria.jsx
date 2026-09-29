@@ -589,7 +589,7 @@ function Tesoreria() {
   const colEmpLiq = (label) => ({ k: 'liq', t: 'LIQUIDACIÓN', g: 'gen', r: emp => emp.pagoEsteMes ? (
     <span style={{ color: '#00ff88', fontWeight: 900, fontSize: '0.75rem' }}><Icono nombre="ok" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{label}</span>
   ) : (
-    <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
+    <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="espera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
   ) });
   const colEmpMonto = { k: 'monto', t: 'MONTO', g: 'eco', r: emp => (
     <div>
@@ -819,7 +819,7 @@ function Tesoreria() {
                               <div style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                             </div>
                           ) : (
-                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
+                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="espera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right' }}>
@@ -898,7 +898,7 @@ function Tesoreria() {
                                <div style={{ color: 'var(--text-dim)', fontSize: '0.65rem', marginTop: '3px' }}>El {emp.pagoEsteMes.fecha.split('-').reverse().join('/')}</div>
                              </div>
                           ) : (
-                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="error" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
+                            <span style={{ background: '#7f1d1d', color: '#ffffff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}><Icono nombre="espera" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PENDIENTE</span>
                           )}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'right' }}>
@@ -1128,7 +1128,7 @@ function Tesoreria() {
           <div className="bento-card" style={{ width: '480px', maxWidth: 'calc(100vw - 24px)', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box', border: '1px solid #facc15' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <h3 style={{ marginTop: 0, color: '#facc15' }}>Cuotas y cobros</h3>
-              <button onClick={cerrarDetalle} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
+              <button aria-label="Cerrar" onClick={cerrarDetalle} style={{ background: 'transparent', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem' }}><Icono nombre="cerrar" size="1.2em" relleno="propio" /></button>
             </div>
             
             <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: '20px' }}>

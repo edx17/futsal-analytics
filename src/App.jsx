@@ -579,7 +579,7 @@ useEffect(() => {
                 <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '1px', color: 'var(--text)' }}>VIRTUAL<span style={{ color: 'var(--accent)' }}>.CLUB</span></div>
               </div>
             )}
-            <button onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}>
+            <button aria-label={sidebarAbierta ? 'Cerrar barra lateral' : 'Abrir barra lateral'} onClick={() => setSidebarAbierta(!sidebarAbierta)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}>
               <Icono nombre={sidebarAbierta ? 'barraAbierta' : 'barraCerrada'} size={18} />
             </button>
           </div>
@@ -616,7 +616,7 @@ useEffect(() => {
           )}
 
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
-            <button 
+            <button aria-label={fabAbierto ? 'Cerrar acciones rápidas' : 'Acciones rápidas'} 
               onClick={() => { setFabAbierto(!fabAbierto); setDrawerAbierto(false); setModoEdicionFab(false); }}
               style={fabStyle}
             >
@@ -730,7 +730,7 @@ useEffect(() => {
           }}>
             <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 900, color: 'var(--accent)', letterSpacing: '1px' }}>VIRTUAL.CLUB</span>
-              <button onClick={() => setDrawerAbierto(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.5rem', padding: 0, display: 'flex' }}><Icono nombre="cerrar" size={22} /></button>
+              <button aria-label="Cerrar" onClick={() => setDrawerAbierto(false)} style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: '1.5rem', padding: 0, display: 'flex' }}><Icono nombre="cerrar" size={22} /></button>
             </div>
             <nav style={{ flex: 1, paddingBottom: '20px', display: 'flex', flexDirection: 'column' }}>
               {renderNavLinks(false)}
