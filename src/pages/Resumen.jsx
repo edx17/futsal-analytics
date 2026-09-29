@@ -534,11 +534,16 @@ return 'Todas';
     return url; 
   };
 
+  /* Las acciones se marcan cuando terminan, así que el video arranca unos
+     segundos antes para ver cómo se armó la jugada. Goles y remates llevan
+     más margen: interesa la jugada previa, no solo el tiro. */
+  const segundosAntesDe = (accion = '') => (accion === 'Gol' || accion.includes('Remate') ? 5 : 3);
+
   const saltarAEventoVideo = (ev) => {
     if (!partidoSeleccionado?.video_url) return;
     const offset = ev.periodo === 'PT' ? offsetPT : offsetST;
     const tiempoEvento = (ev.minuto * 60) + (ev.segundos || 0) + offset;
-    const tiempoPrevio = Math.max(0, tiempoEvento - 5);
+    const tiempoPrevio = Math.max(0, tiempoEvento - segundosAntesDe(ev.accion));
     setTiempoVideo(tiempoPrevio);
   };
 
