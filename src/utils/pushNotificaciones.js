@@ -24,6 +24,9 @@ export function pushSoportado() {
    cuál de las cinco causas posibles era. */
 export const MOTIVOS_PUSH = {
   'no-soportado':      'Este navegador no soporta notificaciones.',
+  'ios-viejo':         'Las notificaciones en iPhone necesitan iOS 16.4 o más nuevo. Actualizá el iPhone desde Ajustes → General → Actualización de software.',
+  'ios-ajustes':       'El iPhone no dejó activarlas. Entrá a Ajustes → Notificaciones → VirtualClub, activá "Permitir notificaciones" y volvé a tocar el botón.',
+  'servicio-push':     'El servicio de notificaciones del teléfono rechazó el alta. Probá de nuevo en un rato; si sigue, borrá la app de la pantalla de inicio y volvé a agregarla.',
   'ios-sin-instalar':  'En iPhone hay que agregar la app a la pantalla de inicio (Compartir → Agregar a inicio) y activarlas desde ahí.',
   'falta-vapid-key':   'Falta la clave VITE_VAPID_PUBLIC_KEY en el entorno. Si funciona en tu máquina pero no en producción, hay que cargarla también en Vercel.',
   'permiso-bloqueado': 'El navegador tiene las notificaciones bloqueadas para este sitio. Se desbloquea desde el candado de la barra de direcciones.',
@@ -64,32 +67,101 @@ const esIOS = () =>
 const fallo = (motivo, detalle = null) =>
   ({ ok: false, motivo, mensaje: MOTIVOS_PUSH[motivo] || MOTIVOS_PUSH.error, detalle });
 
+/* Texto corto del error para mostrar debajo del cartel: con una captura de
+   pantalla alcanza para saber qué pasó, sin tener el teléfono a mano. */
+const textoDeError = (err) =>
+  [err?.name && err.name !== 'Error' ? err.name : null, err?.code, err?.message || (err ? String(err) : null)]
+    .filter(Boolean).join(': ');
+
+/* Sin PushManager no hay push. En iPhone eso tiene dos causas distintas: la
+   app no está instalada en la pantalla de inicio, o el iOS es anterior a
+   16.4 (ahí no existe aunque esté instalada). */
+function motivoSinSoporte() {
+  if (!esIOS()) return 'no-soportado';
+  return window.navigator.standalone ? 'ios-viejo' : 'ios-sin-instalar';
+}
+
+/* Los errores del navegador al suscribir, traducidos. En iPhone el
+   NotAllowedError casi siempre es el permiso apagado en Ajustes. */
+function motivoDeExcepcion(err) {
+  if (err?.name === 'NotAllowedError') return esIOS() ? 'ios-ajustes' : 'permiso-denegado';
+  if (err?.name === 'AbortError' || err?.name === 'InvalidStateError') return 'servicio-push';
+  return 'error';
+}
+
+/* El service worker se registra al cargar la página (main.jsx). Si por algo
+   no llegó a registrarse —en el iPhone instalado pasa al abrir la app desde
+   el ícono con la página ya en memoria—, se registra acá en vez de esperar
+   ocho segundos para nada. */
+async function registroDelServiceWorker() {
+  try {
+    const existente = await navigator.serviceWorker.getRegistration();
+    if (!existente) await navigator.serviceWorker.register('/sw.js');
+  } catch (err) {
+    console.error('No se pudo registrar el service worker:', err);
+  }
+  return serviceWorkerListo();
+}
+
+const mismosBytes = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+/* Crea la suscripción, o reusa la que ya hay si sirve. Una suscripción
+   vieja hecha con otra clave VAPID (o que el servicio de Apple/Google dio
+   de baja) hace fallar el alta para siempre: el teléfono la devuelve, pero
+   nadie puede mandarle nada. En ese caso se borra y se hace de nuevo, y lo
+   mismo si el subscribe falla una vez por estado inválido. */
+async function crearSuscripcion(registro) {
+  const clave = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  const opciones = { userVisibleOnly: true, applicationServerKey: clave };
+
+  const existente = await registro.pushManager.getSubscription();
+  if (existente) {
+    const suya = existente.options?.applicationServerKey;
+    const json = existente.toJSON();
+    const sirve = json?.keys?.p256dh && json?.keys?.auth
+      && (!suya || mismosBytes(new Uint8Array(suya), clave));
+    if (sirve) return existente;
+    await existente.unsubscribe().catch(() => {});
+  }
+
+  try {
+    return await registro.pushManager.subscribe(opciones);
+  } catch (err) {
+    if (err?.name !== 'InvalidStateError' && err?.name !== 'AbortError') throw err;
+    const vieja = await registro.pushManager.getSubscription();
+    if (vieja) await vieja.unsubscribe().catch(() => {});
+    return registro.pushManager.subscribe(opciones);
+  }
+}
+
 /* Permiso + suscripción del navegador. Devuelve { json } con endpoint y
    claves, o un fallo con su motivo. Lo comparten el alta del staff y la del
    jugador: lo único que cambia entre las dos es dónde se guarda. */
 async function suscribirNavegador() {
-  if (!pushSoportado()) {
-    if (esIOS() && !window.navigator.standalone) return fallo('ios-sin-instalar');
-    return fallo('no-soportado');
-  }
+  if (!pushSoportado()) return fallo(motivoSinSoporte());
   if (!window.isSecureContext) return fallo('sin-https');
   if (!VAPID_PUBLIC_KEY) return fallo('falta-vapid-key');
-  if (Notification.permission === 'denied') return fallo('permiso-bloqueado');
+  if (Notification.permission === 'denied') return fallo(esIOS() ? 'ios-ajustes' : 'permiso-bloqueado');
 
+  /* Lo primero que se hace después del toque es pedir el permiso: Safari
+     sólo muestra el cartel si viene directo de un gesto del usuario. */
   const permiso = await Notification.requestPermission();
-  if (permiso !== 'granted') return fallo('permiso-denegado');
+  if (permiso !== 'granted') return fallo(esIOS() && permiso === 'denied' ? 'ios-ajustes' : 'permiso-denegado');
 
-  const registro = await serviceWorkerListo();
+  const registro = await registroDelServiceWorker();
   if (!registro) return fallo('sin-service-worker');
 
-  let suscripcion = await registro.pushManager.getSubscription();
-  if (!suscripcion) {
-    suscripcion = await registro.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+  try {
+    const suscripcion = await crearSuscripcion(registro);
+    const json = suscripcion.toJSON();
+    if (!json?.endpoint || !json?.keys?.p256dh || !json?.keys?.auth) {
+      return fallo('servicio-push', 'La suscripción vino sin claves.');
+    }
+    return { ok: true, json };
+  } catch (err) {
+    console.error('Error suscribiendo el navegador:', err);
+    return fallo(motivoDeExcepcion(err), textoDeError(err));
   }
-  return { ok: true, json: suscripcion.toJSON() };
 }
 
 /* Alta del teléfono de un JUGADOR desde el kiosco. No escribe la tabla
@@ -107,11 +179,11 @@ export async function activarNotificacionesJugador(tokenKiosco) {
       p_auth: r.json.keys.auth,
       p_user_agent: navigator.userAgent,
     });
-    if (error) return fallo(error.code === '28000' ? 'sin-perfil' : 'error', error.message);
+    if (error) return fallo(error.code === '28000' ? 'sin-perfil' : motivoDeError(error), textoDeError(error));
     return { ok: true };
   } catch (err) {
     console.error('Error activando notificaciones del jugador:', err);
-    return fallo('error', err?.message || String(err));
+    return fallo('error', textoDeError(err));
   }
 }
 
@@ -127,38 +199,16 @@ export async function navegadorSuscripto() {
 // Llamar SIEMPRE desde un click/tap del usuario (no en un useEffect al cargar),
 // si no el navegador ignora el pedido de permiso o lo deniega directo.
 export async function activarNotificaciones(clubId, perfilId) {
-  if (!pushSoportado()) {
-    /* En iPhone el push existe recién con la app instalada en la pantalla de
-       inicio: en Safari suelto ni siquiera aparece PushManager. */
-    if (esIOS() && !window.navigator.standalone) return fallo('ios-sin-instalar');
-    return fallo('no-soportado');
-  }
-  /* Sin HTTPS el navegador no registra service workers y todo lo demás falla
-     después, con un error que no dice esto. Mejor cortarlo acá. */
-  if (!window.isSecureContext) return fallo('sin-https');
-  if (!VAPID_PUBLIC_KEY) return fallo('falta-vapid-key');
-  if (!perfilId) return fallo('sin-perfil');
-
-  /* Si ya está bloqueado, requestPermission devuelve 'denied' al instante y
-     sin mostrar nada: parece que el botón no hace nada. */
-  if (Notification.permission === 'denied') return fallo('permiso-bloqueado');
-
-  const permiso = await Notification.requestPermission();
-  if (permiso !== 'granted') return fallo('permiso-denegado');
+  /* Sin usuario no tiene sentido pedir el permiso: se corta antes. El resto
+     de los chequeos (soporte, HTTPS, clave, permiso) los hace
+     suscribirNavegador, igual que para el jugador. */
+  if (pushSoportado() && window.isSecureContext && VAPID_PUBLIC_KEY && !perfilId) return fallo('sin-perfil');
 
   try {
-    const registro = await serviceWorkerListo();
-    if (!registro) return fallo('sin-service-worker');
+    const r = await suscribirNavegador();
+    if (!r.ok) return r;
 
-    let suscripcion = await registro.pushManager.getSubscription();
-    if (!suscripcion) {
-      suscripcion = await registro.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-    }
-
-    const json = suscripcion.toJSON();
+    const json = r.json;
     const fila = {
       club_id: clubId,
       perfil_id: perfilId,
@@ -180,11 +230,11 @@ export async function activarNotificaciones(clubId, perfilId) {
       if (!error) return { ok: true, aviso: 'falta-indice' };
     }
 
-    if (error) return fallo(motivoDeError(error), error.message);
+    if (error) return fallo(motivoDeError(error), textoDeError(error));
     return { ok: true };
   } catch (err) {
     console.error('Error activando notificaciones:', err);
-    return fallo('error', err?.message || String(err));
+    return fallo('error', textoDeError(err));
   }
 }
 
@@ -217,7 +267,7 @@ export async function diagnosticarPush(clubId, perfilId) {
 
   anotar('Navegador compatible', pushSoportado() ? 'ok' : 'falla',
     pushSoportado() ? null
-      : (esIOS() && !window.navigator.standalone ? MOTIVOS_PUSH['ios-sin-instalar'] : MOTIVOS_PUSH['no-soportado']));
+      : MOTIVOS_PUSH[motivoSinSoporte()]);
 
   /* localhost cuenta como contexto seguro aunque sea http://, y verlo escrito
      evita el susto de leer "HTTPS ✅ http://". */

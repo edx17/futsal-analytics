@@ -233,7 +233,7 @@ export default function LoginKiosco() {
       setPush({ estado: 'activas', mensaje: null });
       showToast('Listo, te van a llegar los avisos', 'success');
     } else {
-      setPush({ estado: 'inactivas', mensaje: r.mensaje });
+      setPush({ estado: 'inactivas', mensaje: r.mensaje, detalle: r.detalle });
     }
   };
 
@@ -639,7 +639,7 @@ export default function LoginKiosco() {
         )}
 
         {estadoFicha === 'ok' && (
-          <TarjetaNotificaciones estado={push.estado} mensaje={push.mensaje} onActivar={activarPush} />
+          <TarjetaNotificaciones estado={push.estado} mensaje={push.mensaje} detalle={push.detalle} onActivar={activarPush} />
         )}
 
         <div className="hub-grid">

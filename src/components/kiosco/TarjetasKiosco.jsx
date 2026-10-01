@@ -228,7 +228,7 @@ export function TarjetaDisciplina({ disciplina }) {
 
 /* ── NOTIFICACIONES ─────────────────────────────────────────────────────── */
 
-export function TarjetaNotificaciones({ estado, mensaje, onActivar }) {
+export function TarjetaNotificaciones({ estado, mensaje, detalle, onActivar }) {
   if (estado === 'activas') return null;
   return (
     <div style={caja('#a855f7')}>
@@ -237,7 +237,16 @@ export function TarjetaNotificaciones({ estado, mensaje, onActivar }) {
         Enterate al toque cuando te citan, recordatorio del wellness y más.
       </div>
       {mensaje && (
-        <div style={{ fontSize: '0.72rem', color: '#f59e0b', marginBottom: '10px', lineHeight: 1.4 }}>{mensaje}</div>
+        <div style={{ fontSize: '0.72rem', color: '#f59e0b', marginBottom: '10px', lineHeight: 1.4 }}>
+          {mensaje}
+          {/* El error tal cual lo dio el teléfono. Al jugador no le dice
+              nada, pero con una captura alcanza para saber qué falló. */}
+          {detalle && (
+            <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '6px', fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-word' }}>
+              {detalle}
+            </div>
+          )}
+        </div>
       )}
       <button onClick={onActivar} disabled={estado === 'activando'} style={{ ...btn('#a855f7', '#fff'), width: '100%', opacity: estado === 'activando' ? 0.6 : 1 }}>
         {estado === 'activando' ? 'ACTIVANDO…' : 'ACTIVAR NOTIFICACIONES'}
