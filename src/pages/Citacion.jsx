@@ -585,6 +585,12 @@ function Citacion() {
     /* Marcamos el partido como "citación publicada": es lo que mira el cron
        para mandar el push una sola vez. Si la migración todavía no se corrió
        esto falla, pero la novedad ya quedó publicada igual. */
+    /* Publicar guarda también la convocatoria (lista, sede, horarios): el
+       kiosco del jugador mira la lista del partido para decirle si está
+       citado, y antes había que acordarse de tocar GUARDAR además. */
+    const previos = parsePlantilla(partido);
+    const titularDe = Object.fromEntries(previos.map(x => [String(x.id_jugador), !!x.titular]));
+    const plantillaNueva = convocados.map(j => ({ id_jugador: j.id, titular: titularDe[String(j.id)] || false }));
     const citacionActualizada = {
       ...(partido.citacion || {}),
       mensaje: textoFinal,
@@ -592,8 +598,16 @@ function Citacion() {
       entrada: form.entrada,
       publicada_at: new Date().toISOString(),
     };
+    const cambios = {
+      plantilla: plantillaNueva,
+      lugar: form.sede,
+      horario: form.horario,
+      hora_citacion: form.horaCitacion,
+      direccion: form.direccion,
+      citacion: citacionActualizada,
+    };
     const { error: errorMarca } = await supabase.from('partidos')
-      .update({ citacion: citacionActualizada }).eq('id', partido.id);
+      .update(cambios).eq('id', partido.id);
 
     setPublicando(false);
 
@@ -603,8 +617,8 @@ function Citacion() {
         : 'Publicado en el Tablón (no se pudo marcar el partido para el push)', 'warning');
     }
 
-    setPartidos(ps => ps.map(p => p.id === partido.id ? { ...p, citacion: citacionActualizada } : p));
-    showToast('Publicado en el Tablón. El push sale en la próxima corrida del cron.', 'success');
+    setPartidos(ps => ps.map(p => p.id === partido.id ? { ...p, ...cambios } : p));
+    showToast('Publicado en el Tablón y en el kiosco. El push sale en la próxima corrida del cron.', 'success');
   };
 
   const guardarCitacion = async () => {
@@ -622,7 +636,11 @@ function Citacion() {
       horario: form.horario,
       hora_citacion: form.horaCitacion,
       direccion: form.direccion,
+      /* Se parte de la citación que ya había: si estaba publicada, guardar
+         de nuevo no puede borrarle `publicada_at` (el kiosco volvía a decir
+         "todavía no se publicó"). */
       citacion: {
+        ...(partido.citacion || {}),
         mensaje: textoFinal,
         indumentaria: form.indumentaria,
         entrada: form.entrada,
@@ -949,8 +967,8 @@ function Citacion() {
             </div>
             <div style={{ marginTop: '10px', fontSize: '0.65rem', color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6 }}>
               <strong>Exportar</strong> abre WhatsApp con el mensaje escrito y vos elegís el grupo ·
-              <strong> Tablón</strong> lo publica dentro de la app y dispara el push ·
-              <strong> Guardar</strong> deja los convocados precargados en NUEVO PARTIDO
+              <strong> Tablón</strong> lo publica dentro de la app, lo muestra en el kiosco de cada jugador y dispara el push ·
+              <strong> Guardar</strong> deja los convocados precargados en NUEVO PARTIDO, sin avisar a nadie
             </div>
             <ModalPlaca abierto={placaAbierta && !!datosPlaca} onCerrar={() => setPlacaAbierta(false)}
               nombreArchivo={`proximo-vs-${partido?.rival || 'rival'}`}>
