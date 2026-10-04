@@ -1,0 +1,57 @@
+/* MI QUINTETO — cancha y cartas.
+   La cancha y las cartas llevan colores propios (pasto, oro, plata, bronce),
+   iguales en tema claro y oscuro: son "objetos" del juego, no texto. */
+
+.mq-cancha { position: relative; width: 100%; aspect-ratio: 840 / 640; user-select: none; }
+/* Aire arriba: las cartas del fondo se paran sobre la cancha y asoman por encima. */
+.mq-cancha { margin-top: 24px; }
+@media (max-width: 600px) { .mq-cancha { margin-top: 52px; } }
+.mq-cancha > svg { position: absolute; left: 0; top: 0; width: 100%; height: calc(100% * 610 / 640); overflow: visible; }
+.mq-formacion-tag { position: absolute; left: 3%; bottom: 8%; font-size: clamp(22px, 5vw, 46px); font-weight: 900;
+  font-style: italic; color: rgba(255,255,255,.13); pointer-events: none; }
+
+/* ── la carta ── */
+.mq-carta { position: absolute; width: 122px; height: 184px; transform-origin: 50% 100%;
+  filter: drop-shadow(0 16px 16px rgba(0,0,0,.55)); cursor: pointer; transition: filter .15s; }
+.mq-carta:hover { filter: drop-shadow(0 16px 16px rgba(0,0,0,.55)) brightness(1.06); }
+.mq-forma { position: absolute; inset: 0; padding: 9px 9px 0; overflow: hidden;
+  clip-path: polygon(0 6%, 10% 0, 90% 0, 100% 6%, 100% 86%, 50% 100%, 0 86%); }
+.mq-oro .mq-forma { background: linear-gradient(160deg, #fff1b8 0%, #e7c766 35%, #b8902c 100%); color: #2a2005; }
+.mq-plata .mq-forma { background: linear-gradient(160deg, #f4f6f8 0%, #c7ced6 40%, #8b96a3 100%); color: #1b2229; }
+.mq-bronce .mq-forma { background: linear-gradient(160deg, #f6d2b0 0%, #c98b57 40%, #8a5527 100%); color: #2b1606; }
+.mq-figura .mq-forma { background: linear-gradient(160deg, #1b2b24 0%, #0a3b26 45%, #00b862 100%); color: #eafff4;
+  box-shadow: inset 0 0 0 2px #00ff88; }
+.mq-carta .mq-forma { clip-path: polygon(0 6%, 10% 0, 90% 0, 100% 6%, 100% 90%, 50% 100%, 0 90%); }
+.mq-evaluacion .mq-forma { background: linear-gradient(160deg, #4b5563 0%, #374151 60%, #1f2937 100%); color: #d1d5db; }
+.mq-ovr { font-size: 30px; font-weight: 900; line-height: .9; position: relative; z-index: 1; }
+.mq-rol { font-size: 11px; font-weight: 800; letter-spacing: .06em; position: relative; z-index: 1; }
+.mq-foto { position: absolute; right: 6px; top: 6px; width: 72px; height: 76px; display: grid; place-items: end center; overflow: hidden; }
+.mq-foto img { width: 100%; height: 100%; object-fit: cover; object-position: top center;
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%); mask-image: linear-gradient(180deg, #000 70%, transparent 100%); }
+.mq-foto span { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,0,0,.18); display: grid; place-items: center;
+  font-size: 21px; font-weight: 900; margin-bottom: 8px; }
+.mq-nombre { margin-top: 38px; text-align: center; font-size: 12.5px; font-weight: 900; letter-spacing: .02em;
+  border-top: 1px solid rgba(0,0,0,.18); padding-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+.mq-figura .mq-nombre, .mq-evaluacion .mq-nombre { border-color: rgba(255,255,255,.2); }
+.mq-attrs { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; margin-top: 3px; font-size: 10.5px; font-weight: 800; }
+.mq-attrs span { display: flex; justify-content: space-between; }
+.mq-attrs em { font-style: normal; opacity: .7; font-weight: 700; }
+.mq-chip { position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%); background: #0b0f0e; border: 1px solid #1f2a26;
+  color: #eef3f1; font-size: 10px; font-weight: 800; letter-spacing: .1em; padding: 2px 8px; border-radius: 5px; white-space: nowrap; }
+.mq-badge { position: absolute; top: -9px; left: -9px; z-index: 2; background: #00ff88; color: #04120c; font-size: 9px;
+  font-weight: 900; letter-spacing: .1em; padding: 3px 7px; border-radius: 4px; }
+.mq-evaluacion .mq-badge { background: #9ca3af; }
+.mq-sel { outline: 2px solid #00ff88; outline-offset: 6px; border-radius: 8px; }
+.mq-vacio { position: absolute; width: 122px; height: 184px; transform-origin: 50% 100%; border: 2px dashed rgba(255,255,255,.3);
+  border-radius: 10px; display: grid; place-items: center; color: rgba(255,255,255,.55); font-size: 11px; font-weight: 800;
+  letter-spacing: .1em; cursor: pointer; }
+
+/* ── carta chica (banco) ── */
+.mq-mini { position: relative; flex: 0 0 auto; width: 78px; height: 104px; cursor: pointer; transition: transform .12s; }
+.mq-mini:hover { transform: translateY(-3px); }
+.mq-mini .mq-forma { padding: 6px; }
+.mq-mini .mq-ovr { font-size: 18px; }
+.mq-mini .mq-rol { font-size: 8.5px; }
+.mq-mini .mq-foto { width: 44px; height: 48px; right: 3px; top: 3px; }
+.mq-mini .mq-foto span { width: 36px; height: 36px; font-size: 13px; margin-bottom: 4px; }
+.mq-mini .mq-nombre { margin-top: 32px; font-size: 9.5px; border: 0; padding: 0; }

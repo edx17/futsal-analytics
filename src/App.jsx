@@ -60,6 +60,10 @@ const AceptarTerminos     = lazy(() => import('./pages/AceptarTerminos'));
 const Disciplina          = lazy(() => import('./pages/Disciplina'));
 const Transferencias      = lazy(() => import('./pages/Transferencias'));
 const ResumenPlantel      = lazy(() => import('./pages/Resumenplantel'));
+const MiQuinteto          = lazy(() => import('./pages/MiQuinteto'));
+
+// "Mi Quinteto" es para jugar con el plantel: lo ven sólo el cuerpo técnico y el superuser.
+const ROLES_JUEGO = ['superuser', 'ct'];
 const Comparar            = lazy(() => import('./pages/Comparar'));
 const Agenda              = lazy(() => import('./pages/Agenda'));
 const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
@@ -166,6 +170,8 @@ function AppRoutes() {
       <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['superuser']}><Usuarios /></ProtectedRoute>} />
       <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
       
+      {/* JUEGO: sólo cuerpo técnico y superuser. */}
+      <Route path="/mi-quinteto" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><MiQuinteto /></ProtectedRoute>} />
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
       <Route path="/agenda" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Agenda /></ProtectedRoute>} />
@@ -215,6 +221,7 @@ function AppLayout() {
     planificacion: false,
     plantel: false,
     administracion: false,
+    juego: false,
     sistema: false
   });
 
@@ -264,6 +271,7 @@ useEffect(() => {
       puedeControlarAdmin: ['superuser', 'manager', 'admin'].includes(rol),
       manejaPlata: manejaPlata(rol),
       puedeConfigurar: ['superuser', 'manager', 'admin'].includes(rol),
+      puedeJugar: ROLES_JUEGO.includes(rol),
     };
   }, [perfil]);
 
@@ -482,6 +490,17 @@ useEffect(() => {
                 <NavLink to="/rendimiento" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="fisiologia" /> <span>FISIOLOGÍA</span></NavLink>
                 <NavLink to="/novedades" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="novedades" /> <span>NOVEDADES</span></NavLink>
               </>
+            )}
+          </>
+        )}
+
+        {permisos.puedeJugar && (
+          <>
+            <div style={titleStyle} onClick={() => toggleMenu('juego')} title={isCollapsed ? "Juego" : ""}>
+              {isCollapsed ? <Icono nombre="juego" size={22} /> : <><span>JUEGO</span> <Icono nombre={menusAbiertos.juego ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
+            </div>
+            {menusAbiertos.juego && !isCollapsed && (
+              <NavLink to="/mi-quinteto" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>MI QUINTETO</span></NavLink>
             )}
           </>
         )}
