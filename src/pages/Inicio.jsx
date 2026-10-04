@@ -31,62 +31,90 @@ import { Icono } from '../iconos';
    VERSION_ACTUAL en localStorage y no vuelve hasta el próximo release.
    Para publicar novedades: subí VERSION_ACTUAL y editá NOVEDADES_VERSION.
 ============================================================================ */
-const VERSION_ACTUAL = 'v0.00202609221730';
+const VERSION_ACTUAL = 'v0.00202610041252';
 const LS_VERSION_VISTA = 'vc_version_novedades_vista';
 
-const NOVEDADES_TITULO = 'La Semana en Una Pantalla';
-const NOVEDADES_BAJADA = 'Todo lo que tiene fecha dejó de vivir en cinco pantallas distintas, la carga de entrenamiento avisa antes de que alguien se rompa, y por fin hay dónde anotar a quién llamar si a un chico le pasa algo.';
+const NOVEDADES_TITULO = 'Tu Plantel en Cartas';
+const NOVEDADES_BAJADA = 'Llegó Mi Quinteto para jugar con el plantel, la tesorería cobra sola y deja recibo, el jugador recibe sus avisos en el celular, y las placas para redes se renovaron enteras.';
 
 const NOVEDADES_VERSION = [
   {
-    grupo: 'Agenda',
+    grupo: 'Mi Quinteto (nuevo)',
     color: '#00ff88',
     items: [
-      { t: 'Todo lo que tiene fecha, junto', d: 'Pantalla nueva en Planificación. El partido, el entrenamiento, el apto que vence, la cuota que se vence, el alta del lesionado y los cumpleaños, en una sola lista ordenada por día y hora. Antes eso eran cinco pantallas, y por eso se pasaban las cosas.' },
-      { t: 'Ves 7, 30 o 90 días', d: 'Con flechas para adelantar o volver. Filtrás por categoría y podés apagar los tipos que no te interesan; el número al lado de cada uno dice cuántos hay en el tramo que estás mirando.' },
-      { t: 'Cada cosa te lleva a donde se resuelve', d: 'Tocás la cuota y vas a Tesorería, tocás el apto y vas a Plantel. La agenda te dice qué pasa, no te deja a mitad de camino.' },
-      { t: 'Los próximos 7 días, en el tablón', d: 'Un bloque nuevo en el Inicio con lo que viene esta semana. Se acomoda y se saca como los demás módulos. Sale del mismo cálculo que la agenda, así que nunca te van a decir cosas distintas.' },
-      { t: 'Lo que ya se pagó no molesta', d: 'La cuota saldada no aparece, y el alta del jugador que ya volvió tampoco. La agenda es de lo pendiente.' },
+      { t: 'Tu plantel, como en el FIFA', d: 'Grupo nuevo en el menú: JUEGO → MI QUINTETO, sólo para el cuerpo técnico. Cada jugador es una carta con su foto, su media y seis atributos, parada sobre una cancha de futsal en perspectiva.' },
+      { t: 'Nada inventado', d: 'La media sale del rating promedio de la temporada y los atributos (tiro, pase, regate, defensa, impacto y físico) de lo que registra la toma de datos. Con pocos partidos la carta queda EN EVALUACIÓN, y la figura del último partido lleva la carta verde de FIGURA.' },
+      { t: 'Formaciones y quinteto ideal', d: '2-2, 1-2-1, 3-1 y 4-0. Un botón arma el ideal según los números y otro carga el quinteto que más jugó junto de verdad, para compararlos.' },
+      { t: 'Química de verdad', d: 'Las líneas entre jugadores salen de cuánto compartieron cancha y cómo les fue juntos: verde si suman, roja si restan, amarilla si casi no jugaron juntos.' },
     ],
   },
   {
-    grupo: 'Carga y riesgo de lesión',
-    color: '#ef4444',
-    items: [
-      { t: 'El RPE que venís cargando por fin sirve para algo', d: 'Hace meses que se carga el esfuerzo percibido y los minutos de cada sesión, y no se usaban para nada. Con esos dos números sale la carga de cada entrenamiento (esfuerzo × minutos) y de ahí el indicador que más se asocia a las lesiones.' },
-      { t: 'Qué es el ACWR, en criollo', d: 'Compara lo que el jugador cargó esta semana contra lo que su cuerpo viene tolerando en el último mes. Si esta semana hizo mucho más de lo que está acostumbrado, el riesgo sube. Entre 0,80 y 1,30 está la zona buena; arriba de 1,50 es donde más se rompe la gente.' },
-      { t: 'La tabla del plantel, ordenada por riesgo', d: 'En Fisiología, sólo para el cuerpo técnico. El que está en riesgo va arriba de todo, con su barra, su zona y la monotonía (si entrena siempre igual de fuerte, sin días livianos, eso también suma riesgo).' },
-      { t: 'No te inventa un número', d: 'Si el jugador no tiene al menos siete días cargados, no muestra un ACWR: te dice cuántos días le faltan. Un indicador armado sobre tres registros sueltos es peor que no tener ninguno.' },
-      { t: 'Aviso en el tablón', d: 'Aparte del de wellness, y a propósito: el wellness dice cómo se siente el jugador hoy, el ACWR dice si la carga se le fue de las manos. Son dos cosas distintas.' },
-    ],
-  },
-  {
-    grupo: 'Tutores y autorizaciones',
+    grupo: 'Tesorería y cobros',
     color: '#fbbf24',
     items: [
-      { t: 'A quién llamar si pasa algo', d: 'Dentro de la ficha de cada jugador, en Plantel. Podés cargar varios tutores —madre, padre, el tío que lo lleva los martes— con su parentesco, teléfono y mail, y marcar cuál es el contacto principal. Cada uno tiene su botón de WhatsApp directo.' },
-      { t: 'Quién lo puede retirar del club', d: 'Se marca tutor por tutor. Si un menor no tiene a nadie que lo pueda retirar y tampoco tiene permiso para irse solo, la ficha te lo avisa.' },
-      { t: 'Los permisos de la familia', d: 'Viajar con el club, uso de imagen en las redes, atención médica de urgencia y retirarse solo. Queda registrado quién firmó y cuándo.' },
-      { t: 'Sin responder no es lo mismo que "no"', d: 'Los permisos tienen tres estados, no un tilde: sin responder, no autoriza y autoriza. Que la familia todavía no haya contestado es trabajo pendiente del club; que haya dicho que no es una decisión tomada. Pintarlos igual esconde una de las dos cosas.' },
-      { t: 'Aviso en el tablón', d: 'Si hay menores sin tutor a quién llamar, el Inicio te lo dice. Sólo lo grave: los permisos que faltan responder se ven en la ficha y no te ocupan el tablón.' },
+      { t: 'La cuota del mes se genera sola', d: 'Cargás la tarifa de cada categoría y el día de vencimiento, y la app arma la cuota de cada jugador activo a principio de mes. Al jugador le llega el aviso al celular.' },
+      { t: 'Descuento por hermanos', d: 'Los jugadores del mismo grupo familiar pagan completo el de la tarifa más alta y el resto con el descuento que configures.' },
+      { t: 'Cada cobro con su recibo', d: 'Número correlativo, escudo y monto, para compartir por WhatsApp. No se puede cobrar más que lo que se debe, y un cobro mal hecho se anula con motivo: ya no se borra, queda el rastro.' },
+      { t: 'El tesorero tiene su lugar', d: 'Rol tesorero con acceso a Tesorería, Empleados y Sponsors. Las fechas son las del día local: después de las 21 h ya no se guardan con fecha de mañana.' },
     ],
   },
   {
-    grupo: 'Comparar jugadores',
+    grupo: 'Kiosco del jugador',
     color: '#a855f7',
     items: [
-      { t: 'Dos jugadores, cara a cara', d: 'Pantalla nueva en Plantel. Elegís dos y salen las barras enfrentadas métrica por métrica, con el marcador de cuántas gana cada uno. Antes había que abrir dos pestañas y acordarse de los números de una mientras mirabas la otra.' },
-      { t: 'No gana el que jugó más', d: 'Por defecto compara cada 40 minutos jugados. Si no, el titular le gana siempre al suplente aunque rinda peor. Se puede apagar con un tilde para ver los totales crudos.' },
-      { t: 'Donde menos es mejor, se lee al revés', d: 'En pérdidas y faltas cometidas gana el número más bajo, como corresponde.' },
-      { t: 'Los mismos números de Resumen Plantel', d: 'Usa el mismo cálculo, así que no puede darte un número distinto al de esa pantalla.' },
+      { t: 'Avisos en el celular, también en iPhone', d: 'Cada jugador activa las notificaciones desde su kiosco y le llega su citación, el recordatorio del wellness y lo que le toca a él. En iPhone hay que agregar la app a la pantalla de inicio.' },
+      { t: 'La citación llega con un solo botón', d: 'PUBLICAR EN EL TABLÓN guarda la convocatoria y la muestra en el kiosco de cada jugador, diciéndole si está citado. Guardar después ya no la despublica.' },
+      { t: 'Mis pagos', d: 'El jugador ve lo que debe, el alias para transferir y sus recibos.' },
+      { t: 'Menú completo y más privado', d: 'Estado físico, torneo, temporada y libro táctico desde el kiosco, con un "¿Cómo funciona?" que abre el manual. De los compañeros sólo se ve lo necesario: nada de DNI, teléfonos ni datos médicos.' },
+    ],
+  },
+  {
+    grupo: 'Placas para redes',
+    color: '#ec4899',
+    items: [
+      { t: 'Tres estilos', d: 'Noche, Claro y Estadio, para todas las placas. La app recuerda el último que usaste.' },
+      { t: 'Placas nuevas', d: 'Figura del partido (desde Resumen), próximo partido (desde Citación), cumpleaños (desde la Agenda) y resumen del plantel (desde Resumen de plantel).' },
+      { t: 'Chau Exportar gráficas', d: 'El editor no estaba a la altura y las placas automáticas hacen lo mismo mejor.' },
+    ],
+  },
+  {
+    grupo: 'Partidos y temporada',
+    color: '#3b82f6',
+    items: [
+      { t: 'El video arranca antes', d: 'Al tocar un evento en Resumen, el video empieza 3 segundos antes, y 5 en goles y remates, para ver cómo se armó la jugada.' },
+      { t: 'Resumen más claro', d: 'Tarjetas en el detalle de los goles, el rating primero en los quintetos, los remates separados por tiempo y las tarjetas de estadísticas parejas, sin filas a medias.' },
+      { t: 'Temporada más compacta', d: 'En qué días jugamos y cómo nos fue en cada uno. El historial de partidos se recorre al lado de la cancha y la pantalla tiene un cargando que dice cuánto falta.' },
+      { t: 'Partidos cargados a mano', d: 'Ya no salen todos empatados en Temporada: se lee el marcador del fixture.' },
+      { t: 'Rating más justo', d: 'La asistencia ya no cuenta como gol del que asiste, y la figura se elige con desempate. Contra las figuras que eligió el cuerpo técnico en partidos reales, acierta todas.' },
+    ],
+  },
+  {
+    grupo: 'Plantel',
+    color: '#22c55e',
+    items: [
+      { t: 'Carga por planilla', d: 'Bajás un Excel con todo el plantel, lo completás y lo subís. Antes de guardar te muestra qué entra nuevo, qué cambia y qué filas tienen errores.' },
+      { t: 'Buscador y apodo', d: 'Buscás por nombre, apellido, apodo o dorsal, sin preocuparte por los acentos.' },
+      { t: 'WhatsApp que funciona', d: 'Los teléfonos se pasan solos al formato de WhatsApp (549…). Antes el botón mandaba números que WhatsApp no reconocía.' },
+      { t: 'Destacados con criterio', d: 'El muro defensivo y el mejor rating piden un mínimo de partidos: con uno solo jugado ya no sos el mejor del plantel.' },
+    ],
+  },
+  {
+    grupo: 'Pantallas',
+    color: '#f97316',
+    items: [
+      { t: 'Iconos nuevos', d: 'Toda la app pasó a un mismo estilo de iconos, y las tarjetas amarilla y roja se ven siempre de su color.' },
+      { t: 'Toma de datos en el celular', d: 'Con el celular acostado, la cancha ocupa toda la pantalla y cada acción se carga en una ventana por pasos.' },
+      { t: 'Tablas en el celular', d: 'El detalle se lee en recuadros alineados, no en una lista escalonada.' },
+      { t: 'Planificador', d: 'El bloque físico se pliega para ver sólo las tareas en cancha.' },
+      { t: 'Inicio', d: 'Una franja arriba con lo de hoy, el próximo partido y los avisos pendientes, y los bloques ordenados según tu rol.' },
     ],
   },
   {
     grupo: 'Por dentro',
     color: '#22d3ee',
     items: [
-      { t: 'La app ahora se prueba sola', d: 'Noventa y cuatro pruebas automáticas que corren antes de cada cambio y avisan si algo que funcionaba dejó de funcionar. Para mover el cálculo de Resumen Plantel se guardó una copia del código viejo y se exige que los dos den exactamente el mismo resultado: no se confía en la lectura, se compara contra lo que hacía antes.' },
-      { t: 'Una parte rota ya no rompe la pantalla entera', d: 'Si una consulta falla, la agenda y el tablón muestran lo que sí pudieron leer y un aviso diciendo qué falta, en vez de quedar en blanco.' },
+      { t: 'Cada club ve sólo lo suyo', d: 'Se cerraron los permisos de la base club por club y rol. El kiosco queda atado a su club, y después de cinco PIN mal se bloquea 15 minutos.' },
+      { t: 'Más de 300 pruebas automáticas', d: 'Antes de cada cambio se corren solas y avisan si algo que funcionaba dejó de funcionar.' },
     ],
   },
 ];
