@@ -35,14 +35,14 @@ const VERSION_ACTUAL = 'v0.00202610041252';
 const LS_VERSION_VISTA = 'vc_version_novedades_vista';
 
 const NOVEDADES_TITULO = 'Tu Plantel en Cartas';
-const NOVEDADES_BAJADA = 'Llegó Mi Quinteto para jugar con el plantel, la tesorería cobra sola y deja recibo, el jugador recibe sus avisos en el celular, y las placas para redes se renovaron enteras.';
+const NOVEDADES_BAJADA = 'Llegó MySquad para jugar con el plantel, la tesorería cobra sola y deja recibo, el jugador recibe sus avisos en el celular, y las placas para redes se renovaron enteras.';
 
 const NOVEDADES_VERSION = [
   {
-    grupo: 'Mi Quinteto (nuevo)',
+    grupo: 'MySquad (nuevo)',
     color: '#00ff88',
     items: [
-      { t: 'Tu plantel, como en el FIFA', d: 'Grupo nuevo en el menú: JUEGO → MI QUINTETO, sólo para el cuerpo técnico. Cada jugador es una carta con su foto, su media y seis atributos, parada sobre una cancha de futsal en perspectiva.' },
+      { t: 'Tu plantel, como en el FIFA', d: 'Grupo nuevo en el menú: JUEGO → MYSQUAD, para el cuerpo técnico y la dirección del club. Cada jugador es una carta con su foto, su media y seis atributos, parada sobre una cancha de futsal en perspectiva.' },
       { t: 'Nada inventado', d: 'La media sale del rating promedio de la temporada y los atributos (tiro, pase, regate, defensa, impacto y físico) de lo que registra la toma de datos. Con pocos partidos la carta queda EN EVALUACIÓN, y la figura del último partido lleva la carta verde de FIGURA.' },
       { t: 'Formaciones y quinteto ideal', d: '2-2, 1-2-1, 3-1 y 4-0. Un botón arma el ideal según los números y otro carga el quinteto que más jugó junto de verdad, para compararlos.' },
       { t: 'Química de verdad', d: 'Las líneas entre jugadores salen de cuánto compartieron cancha y cómo les fue juntos: verde si suman, roja si restan, amarilla si casi no jugaron juntos.' },

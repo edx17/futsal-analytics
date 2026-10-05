@@ -1,4 +1,4 @@
-/* MI QUINTETO: LAS CUENTAS
+/* MYSQUAD: LAS CUENTAS
  *
  * Las cartas al estilo Ultimate Team salen de los mismos números que Resumen
  * de plantel (procesarPlantel): acá no se inventa ningún dato, sólo se pasa a

@@ -12,7 +12,7 @@ import CartaJugador from '../components/quinteto/CartaJugador';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
-/* MI QUINTETO
+/* MYSQUAD (antes "Mi Quinteto")
  *
  * El plantel como cartas de Ultimate Team, sobre una cancha en perspectiva.
  * Es para "jugar": armar quintetos, ver el ideal según los números y comparar
@@ -135,7 +135,7 @@ export default function MiQuinteto() {
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 18, flexWrap: 'wrap' }}>
         <Icono nombre="juego" size={36} relleno="propio" style={{ color: 'var(--accent)' }} />
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>MI QUINTETO</div>
+          <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>MYSQUAD</div>
           <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>Tu plantel en cartas: armá el quinteto, mirá el ideal y la química real de cada pareja.</div>
         </div>
         <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={selectStyle}>
