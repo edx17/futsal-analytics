@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   ovrDesdeRating, tierDe, rolDe, percentiles, analizarPartidos, armarCartas,
   FORMACIONES, quintetoIdeal, quintetoMasUsado, quimicaDe, colorPareja, clavePareja,
+  puedeIr, enSuPuesto, etiquetaLugar, CASTIGO_FUERA_DE_PUESTO,
 } from '../quinteto';
 import { procesarPlantel } from '../plantel';
 
@@ -113,8 +114,9 @@ describe('armarCartas, quinteto ideal y química', () => {
     expect(ideal[0]).toBe('1');
     expect(new Set(ideal).size).toBe(5);
     const porId = new Map(cartas.map((c) => [c.id, c]));
-    // el pivot va en el lugar de pivot si está entre los cuatro elegidos
-    if (ideal.includes('4')) expect(f.lugares[ideal.indexOf('4')].rol).toBe('PIV');
+    // el pivot va en un lugar de pivot y el cierre en uno de cierre
+    expect(f.lugares[ideal.indexOf('4')].roles).toContain('PIV');
+    expect(f.lugares[ideal.indexOf('2')].roles).toContain('CIE');
     expect(porId.get(ideal[0]).rol).toBe('ARQ');
   });
 
@@ -141,5 +143,50 @@ describe('colorPareja', () => {
   it('con tiempo de sobra manda el +/-', () => {
     expect(colorPareja({ minutos: 80, pm: 1 })).toBe('verde');
     expect(colorPareja({ minutos: 80, pm: -1 })).toBe('roja');
+  });
+});
+
+/* ── puestos según la formación ── */
+const carta = (id, rol, ovr = 70) => ({ id, rol, ovr, enEvaluacion: false, apellido: id });
+
+describe('puestos', () => {
+  it('las formaciones piden los puestos acordados', () => {
+    const roles = (id) => FORMACIONES[id].lugares.slice(1).map(etiquetaLugar);
+    expect(roles('2-2')).toEqual(['CIE', 'CIE', 'PIV', 'PIV']);
+    expect(roles('1-2-1').sort()).toEqual(['ALA', 'ALA', 'CIE', 'PIV']);
+    expect(roles('3-1').sort()).toEqual(['ALA', 'ALA', 'CIE', 'PIV']);
+    // 4-0: 2 cierres y 2 alas, o 1 cierre y 3 alas
+    expect(roles('4-0')).toEqual(['ALA', 'CIE', 'CIE/ALA', 'ALA']);
+  });
+
+  it('el arco es fijo: sólo arqueros, y los arqueros no van al campo', () => {
+    expect(puedeIr(carta('a', 'ARQ'), 0)).toBe(true);
+    expect(puedeIr(carta('b', 'ALA'), 0)).toBe(false);
+    expect(puedeIr(carta('a', 'ARQ'), 2)).toBe(false);
+    expect(puedeIr(carta('b', 'PIV'), 2)).toBe(true); // fuera de puesto, pero se puede
+  });
+
+  it('fuera de puesto baja la química', () => {
+    const f = FORMACIONES['2-2'];
+    const enPuesto = [carta('g', 'ARQ'), carta('c1', 'CIE'), carta('c2', 'CIE'), carta('p1', 'PIV'), carta('p2', 'PIV')];
+    const conUnAla = [...enPuesto.slice(0, 4), carta('a1', 'ALA')];
+    expect(enSuPuesto(conUnAla[4], f.lugares[4])).toBe(false);
+    const ids = (l) => l.map((c) => c.id);
+    const bien = quimicaDe(ids(enPuesto), f, {}, enPuesto);
+    const mal = quimicaDe(ids(conUnAla), f, {}, conUnAla);
+    expect(bien.fueraDePuesto).toBe(0);
+    expect(mal.fueraDePuesto).toBe(1);
+    expect(bien.total - mal.total).toBe(CASTIGO_FUERA_DE_PUESTO);
+  });
+
+  it('el ideal respeta los puestos y, si falta uno, completa con el mejor que queda', () => {
+    const cartas = [carta('g', 'ARQ', 80), carta('c1', 'CIE', 70), carta('c2', 'CIE', 60),
+      carta('p1', 'PIV', 75), carta('a1', 'ALA', 90), carta('a2', 'ALA', 85)];
+    const f = FORMACIONES['2-2'];
+    const ideal = quintetoIdeal(cartas, f);
+    expect(ideal[0]).toBe('g');
+    expect(ideal.slice(1, 3).sort()).toEqual(['c1', 'c2']);
+    // hay un solo pivot: el otro lugar de pivot lo ocupa el mejor que queda (fuera de puesto)
+    expect(ideal.slice(3).sort()).toEqual(['a1', 'p1']);
   });
 });

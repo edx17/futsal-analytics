@@ -55,3 +55,16 @@
 .mq-mini .mq-foto { width: 44px; height: 48px; right: 3px; top: 3px; }
 .mq-mini .mq-foto span { width: 36px; height: 36px; font-size: 13px; margin-bottom: 4px; }
 .mq-mini .mq-nombre { margin-top: 32px; font-size: 9.5px; border: 0; padding: 0; }
+
+/* ── fuera de puesto ── */
+.mq-fuera .mq-badge { background: #f97316; color: #fff; }
+.mq-fuera .mq-chip { background: #f97316; border-color: #f97316; color: #fff; }
+
+/* ── arrastre ── */
+.mq-carta, .mq-mini, .mq-vacio { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.mq-origen { opacity: .35; }
+.mq-destino-ok { outline: 3px solid #00ff88; outline-offset: 6px; border-radius: 10px; filter: drop-shadow(0 0 18px rgba(0,255,136,.55)); }
+.mq-destino-no { outline: 3px solid #ef4444; outline-offset: 6px; border-radius: 10px; }
+.mq-fantasma { position: fixed; z-index: 9999; pointer-events: none; transform: translate(-50%, -60%) rotate(-4deg) scale(1.08);
+  filter: drop-shadow(0 18px 22px rgba(0,0,0,.6)); }
+.mq-arrastrando, .mq-arrastrando * { cursor: grabbing !important; }

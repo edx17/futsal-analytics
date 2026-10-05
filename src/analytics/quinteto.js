@@ -290,74 +290,102 @@ export function armarCartas({ jugadoresProc = [], arquerosProc = [], forma = {},
 
 /* Posiciones en la cancha: u de 0 a 1 a lo ancho, v de 0 (arco rival, al
    fondo) a 1 (arco propio, adelante). El lugar 0 es siempre el arquero.
+   `roles`: los puestos que pide cada lugar (el 4-0 acepta cierre o ala en uno
+   de los del medio: 2 cierres y 2 alas, o 1 cierre y 3 alas).
    `enlaces`: las líneas de química, entre los que juegan cerca. */
 export const FORMACIONES = {
   '2-2': {
     id: '2-2', nombre: 'CUADRADO',
     lugares: [
-      { u: 0.5, v: 0.99, rol: 'ARQ' },
-      { u: 0.26, v: 0.69, rol: 'CIE' }, { u: 0.74, v: 0.69, rol: 'ALA' },
-      { u: 0.3, v: 0.33, rol: 'ALA' }, { u: 0.7, v: 0.33, rol: 'PIV' },
+      { u: 0.5, v: 0.99, roles: ['ARQ'] },
+      { u: 0.26, v: 0.69, roles: ['CIE'] }, { u: 0.74, v: 0.69, roles: ['CIE'] },
+      { u: 0.3, v: 0.33, roles: ['PIV'] }, { u: 0.7, v: 0.33, roles: ['PIV'] },
     ],
     enlaces: [[0, 1], [0, 2], [1, 2], [1, 3], [2, 4], [3, 4]],
   },
   '1-2-1': {
     id: '1-2-1', nombre: 'ROMBO',
     lugares: [
-      { u: 0.5, v: 0.99, rol: 'ARQ' },
-      { u: 0.5, v: 0.74, rol: 'CIE' },
-      { u: 0.17, v: 0.52, rol: 'ALA' }, { u: 0.83, v: 0.52, rol: 'ALA' },
-      { u: 0.5, v: 0.27, rol: 'PIV' },
+      { u: 0.5, v: 0.99, roles: ['ARQ'] },
+      { u: 0.5, v: 0.74, roles: ['CIE'] },
+      { u: 0.17, v: 0.52, roles: ['ALA'] }, { u: 0.83, v: 0.52, roles: ['ALA'] },
+      { u: 0.5, v: 0.27, roles: ['PIV'] },
     ],
     enlaces: [[0, 1], [1, 2], [1, 3], [2, 4], [3, 4]],
   },
   '3-1': {
     id: '3-1', nombre: 'CON PIVOT',
     lugares: [
-      { u: 0.5, v: 0.99, rol: 'ARQ' },
-      { u: 0.16, v: 0.64, rol: 'ALA' }, { u: 0.5, v: 0.72, rol: 'CIE' }, { u: 0.84, v: 0.64, rol: 'ALA' },
-      { u: 0.5, v: 0.28, rol: 'PIV' },
+      { u: 0.5, v: 0.99, roles: ['ARQ'] },
+      { u: 0.16, v: 0.64, roles: ['ALA'] }, { u: 0.5, v: 0.72, roles: ['CIE'] }, { u: 0.84, v: 0.64, roles: ['ALA'] },
+      { u: 0.5, v: 0.28, roles: ['PIV'] },
     ],
     enlaces: [[0, 2], [1, 2], [2, 3], [1, 4], [3, 4], [2, 4]],
   },
   '4-0': {
     id: '4-0', nombre: 'EN LÍNEA',
     lugares: [
-      { u: 0.5, v: 0.99, rol: 'ARQ' },
-      { u: 0.12, v: 0.5, rol: 'ALA' }, { u: 0.38, v: 0.58, rol: 'CIE' },
-      { u: 0.62, v: 0.58, rol: 'ALA' }, { u: 0.88, v: 0.5, rol: 'ALA' },
+      { u: 0.5, v: 0.99, roles: ['ARQ'] },
+      { u: 0.12, v: 0.5, roles: ['ALA'] }, { u: 0.38, v: 0.58, roles: ['CIE'] },
+      { u: 0.62, v: 0.58, roles: ['CIE', 'ALA'] }, { u: 0.88, v: 0.5, roles: ['ALA'] },
     ],
     enlaces: [[0, 2], [0, 3], [1, 2], [2, 3], [3, 4]],
   },
 };
 
-const permutaciones = (arr) => (arr.length <= 1 ? [arr]
-  : arr.flatMap((x, i) => permutaciones([...arr.slice(0, i), ...arr.slice(i + 1)]).map((r) => [x, ...r])));
+/** Texto del puesto que pide un lugar: "CIE", o "CIE/ALA" si acepta dos. */
+export const etiquetaLugar = (lugar) => lugar.roles.join('/');
+
+/** ¿El jugador juega en su puesto en ese lugar? */
+export const enSuPuesto = (carta, lugar) => !!carta && lugar.roles.includes(carta.rol);
+
+/* EL ARCO ES FIJO: en el lugar 0 sólo va un arquero y un arquero no va al
+   campo. Así nunca quedan cinco jugadores de campo. El resto de los lugares
+   acepta a cualquiera; si no es su puesto, la carta lo dice y la química baja. */
+export function puedeIr(carta, indiceLugar) {
+  if (!carta) return true;
+  return indiceLugar === 0 ? carta.rol === 'ARQ' : carta.rol !== 'ARQ';
+}
 
 /* Ubica a cuatro jugadores de campo en los cuatro lugares de la formación
-   respetando lo más posible el puesto de cada uno. */
+   respetando lo más posible el puesto de cada uno; a igualdad de puestos
+   respetados, deja el orden que traían. */
 export function ubicar(jugadores4, formacion) {
   const lugares = formacion.lugares.slice(1);
   let mejor = null;
   permutaciones(jugadores4).forEach((perm) => {
-    const puntos = perm.reduce((s, c, i) => s + (c && c.rol === lugares[i].rol ? 1 : 0), 0);
+    const puntos = perm.reduce((s, c, i) => s + (enSuPuesto(c, lugares[i]) ? 1 : 0), 0);
     if (!mejor || puntos > mejor.puntos) mejor = { perm, puntos };
   });
   return mejor ? mejor.perm : jugadores4;
 }
 
-/** Los cinco mejores por media: el mejor arquero y los cuatro mejores de campo. */
+const permutaciones = (arr) => (arr.length <= 1 ? [arr]
+  : arr.flatMap((x, i) => permutaciones([...arr.slice(0, i), ...arr.slice(i + 1)]).map((r) => [x, ...r])));
+
+/* El ideal respeta la formación: para cada lugar, el mejor de ese puesto que
+   quede libre. Primero se llenan los lugares con menos candidatos (si hay un
+   solo pivot, que no se lo lleve otro lugar). Si de un puesto no hay nadie,
+   va el mejor que quede, y esa carta queda fuera de puesto. */
 export function quintetoIdeal(cartas, formacion) {
   const elegibles = (lista) => {
     const ok = lista.filter((c) => !c.enEvaluacion);
     return ok.length ? ok : lista;
   };
   const arqueros = elegibles(cartas.filter((c) => c.rol === 'ARQ')).sort((a, b) => b.ovr - a.ovr);
-  const campo = elegibles(cartas.filter((c) => c.rol !== 'ARQ')).sort((a, b) => b.ovr - a.ovr);
-  const cuatro = campo.slice(0, 4);
-  while (cuatro.length < 4) cuatro.push(null);
-  const ubicados = ubicar(cuatro, formacion);
-  return [arqueros[0]?.id ?? null, ...ubicados.map((c) => c?.id ?? null)];
+  const libres = elegibles(cartas.filter((c) => c.rol !== 'ARQ')).sort((a, b) => b.ovr - a.ovr);
+
+  const res = [arqueros[0]?.id ?? null, null, null, null, null];
+  const orden = [1, 2, 3, 4].sort((a, b) => {
+    const n = (i) => libres.filter((c) => enSuPuesto(c, formacion.lugares[i])).length;
+    return n(a) - n(b) || a - b;
+  });
+  orden.forEach((i) => {
+    const k = libres.findIndex((c) => enSuPuesto(c, formacion.lugares[i]));
+    if (k >= 0) res[i] = libres.splice(k, 1)[0].id;
+  });
+  [1, 2, 3, 4].forEach((i) => { if (res[i] == null && libres.length) res[i] = libres.shift().id; });
+  return res;
 }
 
 /** El quinteto con más minutos juntos en la realidad, en el orden de la formación. */
@@ -385,8 +413,15 @@ export function colorPareja(dato) {
   return dato.pm >= 0 ? 'verde' : 'roja';
 }
 
-/** Las líneas de la formación con su color y la química total (0-100). */
-export function quimicaDe(alineacion, formacion, parejas) {
+/* Cada jugador fuera de su puesto le resta esto a la química del quinteto. */
+export const CASTIGO_FUERA_DE_PUESTO = 8;
+
+/**
+ * Las líneas de la formación con su color y la química total (0-100).
+ * `cartas` (opcional): las cartas de la alineación, para descontar a los que
+ * juegan fuera de su puesto.
+ */
+export function quimicaDe(alineacion, formacion, parejas, cartas = null) {
   const lineas = formacion.enlaces
     .map(([i, j]) => {
       const a = alineacion[i], b = alineacion[j];
@@ -395,8 +430,12 @@ export function quimicaDe(alineacion, formacion, parejas) {
       return { i, j, color: colorPareja(dato), minutos: dato?.minutos || 0, pm: dato?.pm || 0 };
     })
     .filter(Boolean);
-  const total = lineas.length
+  const base = lineas.length
     ? Math.round(lineas.reduce((s, l) => s + PUNTOS[l.color], 0) / lineas.length)
     : 0;
-  return { lineas, total };
+  const fueraDePuesto = cartas
+    ? cartas.filter((c, i) => i > 0 && c && !enSuPuesto(c, formacion.lugares[i])).length
+    : 0;
+  const total = Math.max(0, base - fueraDePuesto * CASTIGO_FUERA_DE_PUESTO);
+  return { lineas, total, fueraDePuesto };
 }
