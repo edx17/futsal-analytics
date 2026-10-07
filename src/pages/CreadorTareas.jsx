@@ -16,6 +16,7 @@ import {
   convertOldEl, convertOldLine,
 } from '../tactica/pizarra'
 import { FORMACIONES, CLAVES_FORMACION, elementosDeFormacion } from '../tactica/formaciones'
+import { imantar, dibujarGuias, esAlineable } from '../tactica/alineacion'
 import { useToast } from '../components/ToastContext'
 import { useAuth } from '../context/AuthContext' 
 import { NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
@@ -333,6 +334,19 @@ const CreadorTareas = () => {
     try { localStorage.setItem('ct_cebolla', n ? '1' : '0') } catch { /* modo privado */ }
     return n
   })
+  /* Imán: guías de alineación al arrastrar materiales (como en Canva). Se
+     apaga con el botón o, en la compu, manteniendo Alt o Shift mientras se
+     arrastra. Las guías se ven sólo mientras se arrastra: nunca en el PNG ni
+     en lo que se guarda. */
+  const [iman, setIman] = useState(() => {
+    try { return localStorage.getItem('ct_iman') !== '0' } catch { return true }
+  })
+  const toggleIman = () => setIman(v => {
+    const n = !v
+    try { localStorage.setItem('ct_iman', n ? '1' : '0') } catch { /* modo privado */ }
+    return n
+  })
+  const [guias, setGuias] = useState(null)
   const [nombreTarea, setNombreTarea] = useState(tareaAEditar?.titulo||'')
   const [textModal, setTextModal]   = useState(false)
   const [textValue, setTextValue]   = useState('')
@@ -499,10 +513,11 @@ const CreadorTareas = () => {
       idArrastrado: ixRef.current.bowId,
       escalaPantalla,
     })
+    if (guias && !animSnapshot) dibujarGuias(ctx, guias, escalaPantalla)
 
     ctx.setTransform(1, 0, 0, 1, 0, 0)
   }, [board, cvSize, pitchCfg, animSnapshot, isPlaying, esMovil, rotarCancha, view, dpr,
-      verCebolla, elementosPrevios, trayectos, escalaPantalla])
+      verCebolla, elementosPrevios, trayectos, escalaPantalla, guias])
 
   function syncCurrentFrame(overrideIdx) {
     const idx = overrideIdx ?? frameIdx
@@ -802,11 +817,20 @@ const CreadorTareas = () => {
           if(esMovil){ setPanelMovil(null); dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow,hideProps:true}}) }
         }
       }
-      dispatchBoard({type:'MOVE_EL',id:board.selected.id,x:p.x-ix.dOffX,y:p.y-ix.dOffY});return
+      let nx=p.x-ix.dOffX, ny=p.y-ix.dOffY
+      const movido=board.elements.find(x=>x.id===board.selected.id)
+      if(iman && !e.altKey && !e.shiftKey && esAlineable(movido)){
+        const r=imantar({...movido,x:nx,y:ny}, board.elements, {
+          cW: BASE_W, cH: getBaseH(pitchCfg.variant),
+          umbral: 7 / (escalaRef.current || 1), // ~7 px de pantalla, con o sin zoom
+        })
+        nx=r.x; ny=r.y; setGuias(r.guias)
+      } else setGuias(null)
+      dispatchBoard({type:'MOVE_EL',id:board.selected.id,x:nx,y:ny});return
     }
     if(ix.drawingArrow){ix.drawingArrow.cx=p.x;ix.drawingArrow.cy=p.y;tempRef.current.arrow={...ix.drawingArrow};forceUpdate();return}
     if(ix.drawingZone){ix.drawingZone.w=p.x-ix.drawingZone.sx;ix.drawingZone.h=p.y-ix.drawingZone.sy;tempRef.current.zone={...ix.drawingZone};forceUpdate()}
-  },[board.selected, board.elements, isPlaying, animSnapshot, getPos, esMovil, cvSize])
+  },[board.selected, board.elements, isPlaying, animSnapshot, getPos, esMovil, cvSize, iman, pitchCfg.variant])
 
   const onPointerUp = useCallback((e) => {
     pointersRef.current.delete(e.pointerId)
@@ -819,6 +843,7 @@ const CreadorTareas = () => {
       dispatchBoard({type:'SELECT',sel:{id:board.selected.id,isArrow:board.selected.isArrow}})
     }
     ix.dragging=false; ix.hasDragged=false
+    setGuias(null)
     if(ix.drawingArrow){
       if(Math.hypot(p.x-ix.drawingArrow.x1,p.y-ix.drawingArrow.y1)>18){
         const st=ARROW_STYLES[ix.drawingArrow.style]
@@ -1065,6 +1090,11 @@ const CreadorTareas = () => {
 
           <button className="ct-tbtn" onClick={()=>dispatchBoard({type:'UNDO'})} disabled={isPlaying}><Icono nombre="deshacer" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />Deshacer</button>
           <button className="ct-tbtn" style={{color:'var(--red)'}} onClick={()=>{if(confirm('¿Limpiar todo?'))dispatchBoard({type:'CLEAR'})}}><Icono nombre="cerrar" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />Limpiar</button>
+          <button className="ct-tbtn" onClick={toggleIman} aria-pressed={iman}
+            title="Guías de alineación al mover conos, vallas, arcos y zonas. Mantené Alt o Shift para soltar libre."
+            style={iman?{color:'#ff2bd6',borderColor:'rgba(255,43,214,.5)'}:undefined}>
+            <Icono nombre="mira" size="1.1em" relleno="propio" style={{ marginRight: 4 }} />Imán {iman?'sí':'no'}
+          </button>
 
           <div style={{flex:1}}/>
 
@@ -1161,6 +1191,13 @@ const CreadorTareas = () => {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
           />
+          {esMovil && (
+            <button onClick={toggleIman} aria-pressed={iman} aria-label="Guías de alineación"
+              title="Guías de alineación al mover materiales"
+              style={{position:'absolute',bottom:'96px',right:12,zIndex:20,background:'rgba(0,0,0,.72)',border:`1px solid ${iman?'#ff2bd6':'#3a3f55'}`,color:iman?'#ff2bd6':'#9ca3af',height:38,padding:'0 12px',borderRadius:19,fontSize:'.78rem',fontWeight:'bold',display:'flex',alignItems:'center',gap:6,backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
+              <Icono nombre="mira" size="1.1em" relleno="propio" />Imán {iman?'sí':'no'}
+            </button>
+          )}
           {view.zoom > 1.01 && (
             <button onClick={resetVista} title="Restablecer zoom"
               style={{position:'absolute',bottom:esMovil?'96px':'16px',left:12,zIndex:20,background:'rgba(0,0,0,.72)',border:'1px solid #3a3f55',color:'#fff',height:38,padding:'0 12px',borderRadius:19,fontSize:'.78rem',fontWeight:'bold',display:'flex',alignItems:'center',gap:6,backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
