@@ -6,7 +6,9 @@ import { useEsMovil } from '../utils/useEsMovil';
 import { procesarPlantel } from '../analytics/plantel';
 import {
   analizarPartidos, armarCartas, FORMACIONES, quintetoIdeal, quintetoMasUsado, quimicaDe,
+  ubicar, etiquetaLugar, puedeIr, CASTIGO_FUERA_DE_PUESTO,
 } from '../analytics/quinteto';
+import { useArrastre } from '../components/quinteto/useArrastre';
 import CanchaPerspectiva from '../components/quinteto/CanchaPerspectiva';
 import CartaJugador from '../components/quinteto/CartaJugador';
 import { Icono } from '../iconos';
@@ -43,6 +45,7 @@ export default function MiQuinteto() {
   const [alineacion, setAlineacion] = useState([null, null, null, null, null]);
   const [sel, setSel] = useState(null);
   const [verId, setVerId] = useState(null);
+  const [aviso, setAviso] = useState(null);
 
   const { raw, loading, avance } = useDatosPlantel(clubId);
   const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
@@ -88,7 +91,7 @@ export default function MiQuinteto() {
 
   const enCancha = alineacion.map((id) => (id != null ? porId.get(id) || null : null));
   const banco = cartas.filter((c) => !alineacion.includes(c.id));
-  const { lineas, total: quimica } = quimicaDe(alineacion, formacion, analisis.parejas);
+  const { lineas, total: quimica, fueraDePuesto } = quimicaDe(alineacion, formacion, analisis.parejas, enCancha);
   const presentes = enCancha.filter(Boolean);
   const media = presentes.length ? Math.round(presentes.reduce((s, c) => s + c.ovr, 0) / presentes.length) : 0;
 
@@ -96,28 +99,72 @@ export default function MiQuinteto() {
     // Los mismos cinco, reubicados según los puestos de la formación nueva.
     const f = FORMACIONES[id];
     const campo = alineacion.slice(1).map((x) => (x != null ? porId.get(x) || null : null));
-    const conRol = campo.filter(Boolean);
-    const ordenados = f.lugares.slice(1).map(() => null);
-    const libres = [...conRol];
-    f.lugares.slice(1).forEach((l, i) => {
-      const k = libres.findIndex((c) => c.rol === l.rol);
-      if (k >= 0) ordenados[i] = libres.splice(k, 1)[0];
-    });
-    ordenados.forEach((c, i) => { if (!c && libres.length) ordenados[i] = libres.shift(); });
-    setAlineacion([alineacion[0], ...ordenados.map((c) => c?.id ?? null)]);
+    setAlineacion([alineacion[0], ...ubicar(campo, f).map((c) => c?.id ?? null)]);
     setFormacionId(id);
     setSel(null);
   };
 
+  /* ── LAS REGLAS DEL CAMBIO ──
+     El arco es fijo: ahí sólo va un arquero y un arquero no sale al campo.
+     En el campo, cualquiera puede ir a cualquier lugar; si no es su puesto,
+     la carta lo marca y la química baja. */
+  const avisar = (texto) => {
+    setAviso(texto);
+    clearTimeout(avisar.t);
+    avisar.t = setTimeout(() => setAviso(null), 3500);
+  };
+  const motivoNo = (carta, i) => (i === 0
+    ? `En el arco sólo puede ir un arquero (${(carta.apellido || '').toUpperCase()} es ${carta.rol}).`
+    : 'Un arquero no puede jugar de jugador de campo.');
+
+  /* origen: { tipo: 'banco', id } o { tipo: 'cancha', i } */
+  const cartaDe = (origen) => (origen.tipo === 'banco' ? porId.get(origen.id) : enCancha[origen.i]);
+
+  const destinoValido = (origen, destino) => {
+    if (origen.tipo === 'cancha' && origen.i === destino) return false;
+    const carta = cartaDe(origen);
+    if (!puedeIr(carta, destino)) return false;
+    // Si se intercambian dos de la cancha, el que estaba también tiene que poder ir al lugar de origen.
+    if (origen.tipo === 'cancha') return puedeIr(enCancha[destino], origen.i);
+    return true;
+  };
+
+  const cambiar = (origen, destino) => {
+    const carta = cartaDe(origen);
+    setAlineacion((al) => {
+      const nueva = [...al];
+      if (origen.tipo === 'cancha') {
+        nueva[origen.i] = al[destino];
+        nueva[destino] = al[origen.i];
+      } else {
+        nueva[destino] = origen.id;
+      }
+      return nueva;
+    });
+    setSel(null);
+    setVerId(carta?.id ?? null);
+  };
+
+  const rechazar = (origen, destino) => {
+    if (origen.tipo === 'cancha' && origen.i === destino) return;
+    const carta = cartaDe(origen);
+    if (!puedeIr(carta, destino)) avisar(motivoNo(carta, destino));
+    else avisar(motivoNo(enCancha[destino], origen.i));
+  };
+
+  const arrastre = useArrastre({ alSoltar: cambiar, destinoValido, alRechazar: rechazar });
+
   const elegirLugar = (i) => {
+    if (arrastre.recienArrastro()) return;
     setSel((s) => (s === i ? null : i));
     setVerId(alineacion[i]);
   };
 
   const elegirSuplente = (c) => {
+    if (arrastre.recienArrastro()) return;
     if (sel == null) { setVerId(c.id); return; }
-    setAlineacion((al) => al.map((x, i) => (i === sel ? c.id : x)));
-    setVerId(c.id);
+    if (!puedeIr(c, sel)) { avisar(motivoNo(c, sel)); return; }
+    cambiar({ tipo: 'banco', id: c.id }, sel);
   };
 
   const cargarIdeal = () => { setAlineacion(quintetoIdeal(cartas, formacion)); setSel(null); };
@@ -178,6 +225,11 @@ export default function MiQuinteto() {
                   {quimica}<span style={{ fontSize: 12, color: 'var(--text-dim)', marginLeft: 6 }}>/ 100</span>
                 </div>
                 <Barra pct={quimica} color={quimica >= 70 ? '#00ff88' : quimica >= 45 ? '#fbbf24' : '#ef4444'} />
+                {fueraDePuesto > 0 && (
+                  <div style={{ fontSize: '0.65rem', color: '#f97316', marginTop: 6, fontWeight: 700 }}>
+                    −{fueraDePuesto * CASTIGO_FUERA_DE_PUESTO} por {fueraDePuesto} fuera de puesto
+                  </div>
+                )}
               </div>
             </div>
 
@@ -211,6 +263,9 @@ export default function MiQuinteto() {
               <Leyenda color="#fbbf24" texto="Menos de un partido juntos" />
               <Leyenda color="#ef4444" texto="Juntos les fue mal (+/− en contra)" />
               <div style={{ marginTop: 6, lineHeight: 1.5 }}>
+                Cada lugar pide un puesto. Si ponés a alguien de otro puesto, la carta dice <b style={{ color: '#f97316' }}>FUERA DE PUESTO</b> y la química baja {CASTIGO_FUERA_DE_PUESTO} puntos. El arco es sólo para arqueros.
+              </div>
+              <div style={{ marginTop: 6, lineHeight: 1.5 }}>
                 Media: rating promedio del filtro, en escala 40-99. Con menos de {minimo} partidos (el equipo lleva {partidosEquipo}) la carta queda en evaluación.
               </div>
             </div>
@@ -218,19 +273,24 @@ export default function MiQuinteto() {
 
           {/* ── centro: cancha y banco ── */}
           <div style={{ minWidth: 0, order: esMovil ? 0 : 1 }}>
-            <CanchaPerspectiva formacion={formacion} alineacion={enCancha} lineas={lineas} seleccionado={sel} onElegir={elegirLugar} />
+            <CanchaPerspectiva formacion={formacion} alineacion={enCancha} lineas={lineas} seleccionado={sel} onElegir={elegirLugar}
+              arrastre={arrastre.vista}
+              onEmpezarArrastre={(e, i) => enCancha[i] && arrastre.empezar(e, { tipo: 'cancha', i }, enCancha[i])} />
 
-            <div style={{ fontSize: '0.7rem', color: sel != null ? 'var(--accent)' : 'var(--text-dim)', textAlign: 'center', margin: '4px 0 8px', fontWeight: 700 }}>
-              {sel != null
-                ? `Tocá un suplente para ponerlo de ${formacion.lugares[sel].rol}${enCancha[sel] ? ` en lugar de ${enCancha[sel].apellido.toUpperCase()}` : ''}`
-                : 'Tocá una carta de la cancha para elegir el lugar y después un suplente para cambiarlo'}
+            <div style={{ fontSize: '0.7rem', color: aviso ? '#ef4444' : sel != null ? 'var(--accent)' : 'var(--text-dim)', textAlign: 'center', margin: '4px 0 8px', fontWeight: 700, minHeight: '1.2em' }}>
+              {aviso
+                || (sel != null
+                  ? `Tocá un suplente para ponerlo de ${etiquetaLugar(formacion.lugares[sel])}${enCancha[sel] ? ` en lugar de ${enCancha[sel].apellido.toUpperCase()}` : ''}`
+                  : 'Arrastrá un suplente sobre una carta para cambiarlo, o dos cartas de la cancha para intercambiarlas. También podés tocar el lugar y después el suplente.')}
             </div>
 
             <div className="bento-card" style={{ padding: '12px 12px 14px' }}>
               <div style={rotulo}>SUPLENTES · {banco.length}</div>
               <div className="custom-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
                 {banco.map((c) => (
-                  <CartaJugador key={c.id} carta={c} chica seleccionada={verId === c.id} onClick={() => elegirSuplente(c)} />
+                  <CartaJugador key={c.id} carta={c} chica seleccionada={verId === c.id} onClick={() => elegirSuplente(c)}
+                    className={arrastre.vista?.origen?.tipo === 'banco' && arrastre.vista.origen.id === c.id ? 'mq-origen' : ''}
+                    onPointerDown={(e) => arrastre.empezar(e, { tipo: 'banco', id: c.id }, c)} />
                 ))}
               </div>
             </div>
@@ -244,6 +304,13 @@ export default function MiQuinteto() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* La carta que sigue al dedo (o al mouse) mientras se arrastra. */}
+      {arrastre.vista && (
+        <div className="mq-fantasma" style={{ left: arrastre.vista.x, top: arrastre.vista.y }}>
+          <CartaJugador carta={arrastre.vista.carta} chica />
         </div>
       )}
     </div>

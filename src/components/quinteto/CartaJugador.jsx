@@ -11,21 +11,30 @@ const iniciales = (c) => `${(c.nombre || '?')[0] || ''}${(c.apellido || '')[0] |
 
 const BADGE = { figura: 'FIGURA', evaluacion: 'EN EVALUACIÓN' };
 
-export default function CartaJugador({ carta, chica = false, seleccionada = false, onClick, style }) {
+/* `etiqueta`: el puesto que pide el lugar de la cancha (va en el chip de abajo).
+   `fueraDePuesto`: el jugador no es de ese puesto; la carta lo avisa.
+   El resto de las props (data-lugar, onPointerDown…) van al elemento de afuera. */
+export default function CartaJugador({
+  carta, chica = false, seleccionada = false, onClick, style, className = '',
+  etiqueta, fueraDePuesto = false, ...resto
+}) {
   if (!carta) return null;
-  const clase = `${chica ? 'mq-mini' : 'mq-carta'} mq-${carta.tier}${seleccionada ? ' mq-sel' : ''}`;
+  const clase = `${chica ? 'mq-mini' : 'mq-carta'} mq-${carta.tier}${seleccionada ? ' mq-sel' : ''}${fueraDePuesto ? ' mq-fuera' : ''} ${className}`;
   const titulo = `${carta.apellido} ${carta.nombre}`.trim();
+  const badge = fueraDePuesto ? 'FUERA DE PUESTO' : BADGE[carta.tier];
 
   return (
     <div className={clase} style={style} onClick={onClick} title={titulo} role="button" tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}>
-      {!chica && BADGE[carta.tier] && <div className="mq-badge">{BADGE[carta.tier]}</div>}
+      onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+      {...resto}>
+      {!chica && badge && <div className="mq-badge">{badge}</div>}
       <div className="mq-forma">
         <div className="mq-ovr">{carta.enEvaluacion ? '—' : carta.ovr}</div>
         <div className="mq-rol">{carta.rol}</div>
         <div className="mq-foto">
           {carta.foto
-            ? <img src={carta.foto} alt="" loading="lazy" />
+            ? <img src={carta.foto} alt="" loading="lazy" draggable={false} />
             : <span>{iniciales(carta)}</span>}
         </div>
         <div className="mq-nombre">{(carta.apellido || carta.nombre || '').toUpperCase()}</div>
@@ -35,7 +44,7 @@ export default function CartaJugador({ carta, chica = false, seleccionada = fals
           </div>
         )}
       </div>
-      {!chica && <div className="mq-chip">{carta.rol}</div>}
+      {!chica && <div className="mq-chip">{etiqueta || carta.rol}</div>}
     </div>
   );
 }

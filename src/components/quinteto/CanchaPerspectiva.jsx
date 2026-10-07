@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CartaJugador from './CartaJugador';
 import { LIENZO, proyectar, dibujoCancha } from './perspectiva';
+import { etiquetaLugar, enSuPuesto } from '../../analytics/quinteto';
 
 /* LA CANCHA CON LAS CARTAS PARADAS ENCIMA
  *
@@ -13,7 +14,12 @@ import { LIENZO, proyectar, dibujoCancha } from './perspectiva';
 const COLOR_LINEA = { verde: '#00ff88', amarilla: '#fbbf24', roja: '#ef4444' };
 const ALTO_TOTAL = 640; // 610 de cancha + aire abajo para el chip del arquero
 
-export default function CanchaPerspectiva({ formacion, alineacion = [], lineas = [], seleccionado = null, onElegir }) {
+/* `arrastre`: lo que está pasando con el arrastre (useArrastre), para marcar
+   el lugar de destino y apagar la carta que se está moviendo.
+   `onEmpezarArrastre(evento, lugar)`: cada carta de la cancha se puede arrastrar. */
+export default function CanchaPerspectiva({
+  formacion, alineacion = [], lineas = [], seleccionado = null, onElegir, arrastre = null, onEmpezarArrastre,
+}) {
   const ref = useRef(null);
   const [escala, setEscala] = useState(1);
   const dibujo = useMemo(() => dibujoCancha(), []);
@@ -64,11 +70,21 @@ export default function CanchaPerspectiva({ formacion, alineacion = [], lineas =
           zIndex: 10 + Math.round(lugar.v * 10),
         };
         const carta = alineacion[i];
+        const marca = arrastre?.destino === i ? (arrastre.valido ? ' mq-destino-ok' : ' mq-destino-no') : '';
+        const origen = arrastre?.origen?.tipo === 'cancha' && arrastre.origen.i === i ? ' mq-origen' : '';
         return carta
-          ? <CartaJugador key={i} carta={carta} style={style} seleccionada={seleccionado === i} onClick={() => onElegir?.(i)} />
+          ? (
+            <CartaJugador key={i} carta={carta} style={style} data-lugar={i}
+              className={`${marca}${origen}`}
+              etiqueta={etiquetaLugar(lugar)}
+              fueraDePuesto={i > 0 && !enSuPuesto(carta, lugar)}
+              seleccionada={seleccionado === i && !arrastre}
+              onClick={() => onElegir?.(i)}
+              onPointerDown={(e) => onEmpezarArrastre?.(e, i)} />
+          )
           : (
-            <div key={i} className={`mq-vacio${seleccionado === i ? ' mq-sel' : ''}`} style={style} onClick={() => onElegir?.(i)}>
-              {lugar.rol}
+            <div key={i} data-lugar={i} className={`mq-vacio${seleccionado === i ? ' mq-sel' : ''}${marca}`} style={style} onClick={() => onElegir?.(i)}>
+              {etiquetaLugar(lugar)}
             </div>
           );
       })}
