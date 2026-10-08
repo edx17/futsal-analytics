@@ -124,7 +124,9 @@ function Presentismo() {
         .select('*')
         .eq('club_id', clubId)
         .eq('categoria', categoria)
-        .order('fecha', { ascending: true });
+        .order('fecha', { ascending: true })
+        .limit(100000);
+      
       setHistorial(histAll || []);
 
       // 3) asistencias del día actual
