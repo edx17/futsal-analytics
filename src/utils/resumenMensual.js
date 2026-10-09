@@ -14,6 +14,11 @@
 // resto de la pantalla. 'justificado' es una ausencia con motivo: no suma.
 export const ESTUVO = new Set(['presente', 'tarde']);
 
+/* El texto del estado se normaliza antes de comparar: un 'Presente' o un
+   'presente ' (cargado a mano, importado de un Excel) daba 0 presentes sin
+   ningún aviso. */
+const estadoDe = (h) => String(h?.estado ?? '').trim().toLowerCase();
+
 export const DIAS_SEMANA = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
 
 /* Semáforo de cinco pasos, de rojo a verde.
@@ -80,15 +85,23 @@ export function resumirMesPorDia(historial = [], mesISO) {
   for (const h of historial) {
     if (claveMes(h.fecha) !== mesISO) continue;
     if (!porFecha.has(h.fecha)) {
-      porFecha.set(h.fecha, { fecha: h.fecha, total: 0, presentes: 0, tarde: 0, ausentes: 0, justificados: 0 });
+      porFecha.set(h.fecha, { fecha: h.fecha, total: 0, presentes: 0, tarde: 0, ausentes: 0, justificados: 0, lesionados: 0 });
     }
     const d = porFecha.get(h.fecha);
+    const estado = estadoDe(h);
+    /* Un lesionado no es una falta: sale del total, igual que en la tabla
+       jugador por jugador y en la Citación. Antes entraba en el denominador y
+       un día con 5 lesionados de 19 marcaba 68% en vez de 93%. */
+    if (estado === 'lesionado') { d.lesionados++; continue; }
     d.total++;
-    if (h.estado === 'tarde') d.tarde++;
-    if (h.estado === 'ausente') d.ausentes++;
-    if (h.estado === 'justificado') d.justificados++;
-    if (ESTUVO.has(h.estado)) d.presentes++;
+    if (estado === 'tarde') d.tarde++;
+    if (estado === 'ausente') d.ausentes++;
+    if (estado === 'justificado') d.justificados++;
+    if (ESTUVO.has(estado)) d.presentes++;
   }
+  /* Un día en que TODOS estaban lesionados no tiene a nadie a quien contarle
+     la asistencia: no es un día entrenado. */
+  for (const [fecha, d] of porFecha) if (d.total === 0) porFecha.delete(fecha);
   if (porFecha.size === 0) return null;
 
   for (const d of porFecha.values()) {

@@ -7,6 +7,7 @@ import { useEsMovil } from '../utils/useEsMovil';
 import CalendarioAsistencia from '../components/CalendarioAsistencia';
 import { resumirMesPorDia, claveMes } from '../utils/resumenMensual';
 import { soloActivos } from '../utils/plantelActivo';
+import { fetchPaginado } from '../utils/supaPaginado';
 import { disponibilidadDe, cuentaParaPresentismo, cuentaComoPresente, ASISTENCIA_LESIONADO } from '../utils/disponibilidad';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, 
@@ -119,15 +120,23 @@ function Presentismo() {
       if (errLes) console.warn('Presentismo sin datos de lesiones:', errLes.message);
       setLesiones(les || []);
 
-      const { data: histAll } = await supabase
-        .from('asistencias')
-        .select('*')
-        .eq('club_id', clubId)
-        .eq('categoria', categoria)
-        .order('fecha', { ascending: true })
-        .limit(100000);
-      
-      setHistorial(histAll || []);
+      /* PostgREST corta toda respuesta en 1000 filas sin avisar, y el
+         .limit(100000) que había acá no lo cambia. Con el historial ordenado
+         por fecha, lo que se perdía era lo MÁS NUEVO: el calendario mostraba
+         los últimos días con filas a medias (un "0 de 4" donde había 19
+         registros) y los siguientes, vacíos. Se lee por páginas, con `id` de
+         desempate para que el OFFSET no repita ni pierda filas. */
+      const histAll = await fetchPaginado(() =>
+        supabase
+          .from('asistencias')
+          .select('*')
+          .eq('club_id', clubId)
+          .eq('categoria', categoria)
+          .order('fecha', { ascending: true })
+          .order('id', { ascending: true })
+      );
+
+      setHistorial(histAll);
 
       // 3) asistencias del día actual
       const { data: histHoy } = await supabase
