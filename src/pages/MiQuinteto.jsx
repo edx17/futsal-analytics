@@ -7,6 +7,7 @@ import { procesarPlantel } from '../analytics/plantel';
 import {
   analizarPartidos, armarCartas, FORMACIONES, quintetoIdeal, quintetoMasUsado, quimicaDe,
   ubicar, etiquetaLugar, puedeIr, CASTIGO_FUERA_DE_PUESTO,
+  mesDe, mesesConPartidos, aplicarEdiciones, mesesDelJugador,
 } from '../analytics/quinteto';
 import { useArrastre } from '../components/quinteto/useArrastre';
 import CanchaPerspectiva from '../components/quinteto/CanchaPerspectiva';
@@ -14,6 +15,7 @@ import CartaJugador from '../components/quinteto/CartaJugador';
 import PanelPremios from '../components/quinteto/PanelPremios';
 import HistorialPremios from '../components/quinteto/HistorialPremios';
 import { datosDelClub } from '../placas/club';
+import { etiquetaMes } from '../analytics/premiosCartas';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -51,6 +53,8 @@ export default function MiQuinteto() {
   const [verId, setVerId] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [seccion, setSeccion] = useState('cancha');
+  /* { idJugador: 'YYYY-MM' }: qué jugadores usan la carta de un mes pasado (ver aplicarEdiciones). */
+  const [ediciones, setEdiciones] = useState({});
 
   const { raw, loading, avance } = useDatosPlantel(clubId);
   const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
@@ -74,7 +78,7 @@ export default function MiQuinteto() {
     [partidosScopeCat, filtroTorneo],
   );
 
-  const { cartas, minimo, partidosEquipo, analisis } = useMemo(() => {
+  const { cartas: cartasBase, minimo, partidosEquipo, analisis } = useMemo(() => {
     const { jugadoresProc, arquerosProc } = procesarPlantel({
       raw, partidosScopeCat, filtroTorneo, filtroCategoria, misCategorias,
       hayRuedas: false, filtroRueda: 'Todas', torneoElegido: null, jornadasOrdenadas: [],
@@ -83,16 +87,50 @@ export default function MiQuinteto() {
     return { ...armarCartas({ jugadoresProc, arquerosProc, forma: a.forma, figura: a.figura }), analisis: a };
   }, [raw, partidosScopeCat, partidosFiltro, filtroTorneo, filtroCategoria, misCategorias]);
 
+  /* Las cartas de cada mes: lo mismo que las de arriba, pero con los partidos de ese mes solo. */
+  const cartasPorMes = useMemo(() => {
+    const porMes = new Map();
+    mesesConPartidos(partidosFiltro).forEach((mes) => {
+      const delMes = partidosFiltro.filter((p) => mesDe(p.fecha) === mes);
+      const { jugadoresProc, arquerosProc } = procesarPlantel({
+        raw, partidosScopeCat: delMes, filtroTorneo: 'Todos', filtroCategoria, misCategorias,
+        hayRuedas: false, filtroRueda: 'Todas', torneoElegido: null, jornadasOrdenadas: [],
+      });
+      const a = analizarPartidos({ partidos: delMes, eventos: raw.eventos, jugadores: raw.jugadores });
+      porMes.set(mes, armarCartas({ jugadoresProc, arquerosProc, forma: a.forma, figura: null }).cartas);
+    });
+    return porMes;
+  }, [raw, partidosFiltro, filtroCategoria, misCategorias]);
+
+  /* Una carta por jugador, siempre: elegir otro mes reemplaza la actual (misma id). */
+  const cartas = useMemo(() => aplicarEdiciones(cartasBase, ediciones, cartasPorMes), [cartasBase, ediciones, cartasPorMes]);
   const porId = useMemo(() => new Map(cartas.map((c) => [c.id, c])), [cartas]);
+
+  const edicionGlobal = useMemo(() => {
+    const usados = new Set(Object.values(ediciones));
+    return usados.size === 1 && Object.keys(ediciones).length > 0 ? [...usados][0] : '';
+  }, [ediciones]);
+  const ponerEdicionGlobal = (mes) => {
+    if (!mes) { setEdiciones({}); return; }
+    const nuevas = {};
+    (cartasPorMes.get(mes) || []).forEach((c) => { nuevas[c.id] = mes; });
+    setEdiciones(nuevas);
+  };
+  const ponerEdicion = (id, mes) => setEdiciones((e) => {
+    const n = { ...e };
+    if (mes) n[id] = mes; else delete n[id];
+    return n;
+  });
   const formacion = FORMACIONES[formacionId];
 
   /* Al cambiar el filtro (o al llegar los datos) arranca con el quinteto ideal. */
   useEffect(() => {
-    setAlineacion(quintetoIdeal(cartas, FORMACIONES[formacionId]));
+    setEdiciones({});
+    setAlineacion(quintetoIdeal(cartasBase, FORMACIONES[formacionId]));
     setSel(null);
     setVerId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartas]);
+  }, [cartasBase]);
 
   const enCancha = alineacion.map((id) => (id != null ? porId.get(id) || null : null));
   const banco = cartas.filter((c) => !alineacion.includes(c.id));
@@ -271,6 +309,19 @@ export default function MiQuinteto() {
               </div>
             </div>
 
+            {cartasPorMes.size > 0 && (
+              <div>
+                <div style={rotulo}>EDICIÓN DE LAS CARTAS</div>
+                <select value={edicionGlobal} onChange={(e) => ponerEdicionGlobal(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
+                  <option value="">{Object.keys(ediciones).length > 0 && !edicionGlobal ? 'MEZCLADAS' : 'ACTUAL'}</option>
+                  {[...cartasPorMes.keys()].map((m) => <option key={m} value={m}>{etiquetaMes(m).toUpperCase()}</option>)}
+                </select>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: 6, lineHeight: 1.5 }}>
+                  Jugá con las cartas de un mes pasado. Cada jugador tiene una sola carta: la del mes reemplaza a la actual.
+                </div>
+              </div>
+            )}
+
             <button onClick={cargarIdeal} className="btn-action" style={btnAccion}>
               <Icono nombre="estrella" size="1.2em" relleno="propio" style={{ marginRight: 8 }} />QUINTETO IDEAL
             </button>
@@ -320,7 +371,7 @@ export default function MiQuinteto() {
 
           {/* ── derecha: detalle del jugador (en el celular, debajo del banco) ── */}
           <div style={{ order: esMovil ? 1 : 3 }}>
-            {detalle ? <Detalle carta={detalle} /> : (
+            {detalle ? <Detalle carta={detalle} meses={mesesDelJugador(detalle.id, cartasPorMes)} onEdicion={(m) => ponerEdicion(detalle.id, m)} /> : (
               <div className="bento-card" style={{ ...caja, color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', padding: 30 }}>
                 Tocá una carta para ver sus atributos y su forma.
               </div>
@@ -339,10 +390,16 @@ export default function MiQuinteto() {
   );
 }
 
-function Detalle({ carta }) {
+function Detalle({ carta, meses = [], onEdicion }) {
   const forma = carta.forma || [];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {meses.length > 0 && (
+        <select value={carta.edicion || ''} onChange={(e) => onEdicion?.(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
+          <option value="">CARTA ACTUAL</option>
+          {meses.map((m) => <option key={m} value={m}>{etiquetaMes(m).toUpperCase()}</option>)}
+        </select>
+      )}
       <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         <div style={{ width: 76, height: 76, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--panel)', border: '2px solid var(--accent)', display: 'grid', placeItems: 'center', fontSize: 26, fontWeight: 900, color: 'var(--accent)' }}>
           {carta.foto ? <img src={carta.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : `${(carta.nombre || '?')[0]}${(carta.apellido || '')[0] || ''}`.toUpperCase()}

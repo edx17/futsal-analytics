@@ -68,3 +68,9 @@
 .mq-fantasma { position: fixed; z-index: 9999; pointer-events: none; transform: translate(-50%, -60%) rotate(-4deg) scale(1.08);
   filter: drop-shadow(0 18px 22px rgba(0,0,0,.6)); }
 .mq-arrastrando, .mq-arrastrando * { cursor: grabbing !important; }
+
+/* ── carta de un mes pasado ── */
+.mq-mes { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); z-index: 2; background: #1f2937; color: #fbbf24;
+  border: 1px solid #fbbf24; font-size: 8px; font-weight: 900; letter-spacing: .08em; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.mq-mini .mq-mes { font-size: 7px; padding: 1px 4px; bottom: -6px; }
+.mq-carta .mq-mes { bottom: auto; top: -9px; left: auto; right: -6px; transform: none; }

@@ -3,6 +3,7 @@ import {
   ovrDesdeRating, tierDe, rolDe, percentiles, analizarPartidos, armarCartas,
   FORMACIONES, quintetoIdeal, quintetoMasUsado, quimicaDe, colorPareja, clavePareja,
   puedeIr, enSuPuesto, etiquetaLugar, CASTIGO_FUERA_DE_PUESTO,
+  mesDe, mesesConPartidos, aplicarEdiciones, mesesDelJugador, cartaDeMes,
 } from '../quinteto';
 import { procesarPlantel } from '../plantel';
 import { elegirMVP } from '../rating';
@@ -203,5 +204,50 @@ describe('puestos', () => {
     expect(ideal.slice(1, 3).sort()).toEqual(['c1', 'c2']);
     // hay un solo pivot: el otro lugar de pivot lo ocupa el mejor que queda (fuera de puesto)
     expect(ideal.slice(3).sort()).toEqual(['a1', 'p1']);
+  });
+});
+
+describe('ediciones de otros meses', () => {
+  const mk = (id, ovr, rating = 7, extra = {}) => ({ id, nombre: id, apellido: id, rol: 'PIV', ovr, tier: 'oro', enEvaluacion: false, stats: { rating }, ...extra });
+  const base = [mk('a', 80), mk('b', 70), mk('c', 60, 6)];
+  const porMes = new Map([
+    ['2026-09', [mk('a', 90, 8), mk('b', 55, 5)]],
+    ['2026-08', [mk('a', 65, 6)]],
+  ]);
+
+  it('lista los meses con partidos, del más nuevo al más viejo', () => {
+    expect(mesesConPartidos([{ fecha: '2026-08-03' }, { fecha: '2026-09-10' }, { fecha: '2026-08-20' }, { fecha: null }]))
+      .toEqual(['2026-09', '2026-08']);
+    expect(mesDe('2026-09-10')).toBe('2026-09');
+  });
+
+  it('elegir un mes reemplaza la carta del jugador: nunca hay dos del mismo', () => {
+    const r = aplicarEdiciones(base, { a: '2026-09' }, porMes);
+    expect(r.map((c) => c.id)).toEqual(['a', 'b', 'c']);
+    expect(r[0].ovr).toBe(90);
+    expect(r[0].edicion).toBe('2026-09');
+    expect(r[1]).toBe(base[1]);
+  });
+
+  it('si el jugador no jugó ese mes, conserva la actual', () => {
+    const r = aplicarEdiciones(base, { c: '2026-09' }, porMes);
+    expect(r[2]).toBe(base[2]);
+  });
+
+  it('descarta repetidos aunque la lista de entrada los traiga', () => {
+    const r = aplicarEdiciones([...base, mk('a', 10)], { a: '2026-08' }, porMes);
+    expect(new Set(r.map((c) => c.id)).size).toBe(r.length);
+    expect(r.filter((c) => c.id === 'a')).toHaveLength(1);
+  });
+
+  it('la carta del mes se juzga por ese mes: sin nota queda en evaluación', () => {
+    expect(cartaDeMes(mk('a', 90, 8), '2026-09').tier).toBe('oro');
+    expect(cartaDeMes(mk('a', 50, null), '2026-09').enEvaluacion).toBe(true);
+  });
+
+  it('los meses de un jugador, del más nuevo al más viejo', () => {
+    expect(mesesDelJugador('a', porMes)).toEqual(['2026-09', '2026-08']);
+    expect(mesesDelJugador('b', porMes)).toEqual(['2026-09']);
+    expect(mesesDelJugador('z', porMes)).toEqual([]);
   });
 });

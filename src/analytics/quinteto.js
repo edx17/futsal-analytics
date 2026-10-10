@@ -312,6 +312,55 @@ export function armarCartas({ jugadoresProc = [], arquerosProc = [], forma = {},
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   EDICIONES DE OTROS MESES
+   ══════════════════════════════════════════════════════════════════════════
+   Cada jugador tiene UNA carta en pantalla. Elegir la de un mes pasado no suma
+   una carta: reemplaza la versión actual del mismo jugador (misma id), así que
+   en la cancha y el banco no puede haber dos del mismo jugador. */
+
+export const mesDe = (fecha) => String(fecha || '').slice(0, 7);
+
+/** Los meses ('YYYY-MM') con partidos, del más nuevo al más viejo. */
+export function mesesConPartidos(partidos = []) {
+  const set = new Set();
+  (partidos || []).forEach((p) => { const m = mesDe(p?.fecha); if (/^\d{4}-\d{2}$/.test(m)) set.add(m); });
+  return [...set].sort().reverse();
+}
+
+/* La carta de un mes se juzga por lo que hizo ese mes: no queda "en evaluación"
+   si tiene nota, porque el mínimo de partidos es del filtro entero. */
+export function cartaDeMes(carta, mes) {
+  const conNota = carta.stats?.rating != null;
+  const enEvaluacion = !conNota;
+  return { ...carta, edicion: mes, enEvaluacion, tier: enEvaluacion ? 'evaluacion' : tierDe(carta.ovr) };
+}
+
+/**
+ * `ediciones`: { [idJugador]: 'YYYY-MM' }. `cartasPorMes`: Map mes → cartas de ese mes.
+ * Devuelve una carta por jugador, en el mismo orden; si el jugador no jugó en el
+ * mes pedido se queda con la actual.
+ */
+export function aplicarEdiciones(cartas = [], ediciones = {}, cartasPorMes = new Map()) {
+  const vistos = new Set();
+  const salida = [];
+  cartas.forEach((c) => {
+    if (vistos.has(c.id)) return;
+    vistos.add(c.id);
+    const mes = ediciones[c.id];
+    const delMes = mes ? (cartasPorMes.get(mes) || []).find((x) => x.id === c.id) : null;
+    salida.push(delMes ? cartaDeMes(delMes, mes) : c);
+  });
+  return salida;
+}
+
+/** Los meses en los que este jugador tiene carta (para el selector de su detalle). */
+export function mesesDelJugador(id, cartasPorMes = new Map()) {
+  return [...cartasPorMes.entries()]
+    .filter(([, lista]) => lista.some((x) => x.id === id))
+    .map(([mes]) => mes).sort().reverse();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    FORMACIONES
    ══════════════════════════════════════════════════════════════════════════ */
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { etiquetaMes } from '../../analytics/premiosCartas';
 
 /* UNA CARTA AL ESTILO ULTIMATE TEAM
  *
@@ -29,6 +30,7 @@ export default function CartaJugador({
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
       {...resto}>
       {!chica && badge && <div className="mq-badge">{badge}</div>}
+      {carta.edicion && <div className="mq-mes">{etiquetaMes(carta.edicion).toUpperCase()}</div>}
       <div className="mq-forma">
         <div className="mq-ovr">{carta.enEvaluacion ? '—' : carta.ovr}</div>
         <div className="mq-rol">{carta.rol}</div>
