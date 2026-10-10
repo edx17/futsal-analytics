@@ -228,42 +228,65 @@ export function premioTemporada(partidosJugados = []) {
 /** Un mes está cerrado cuando ya empezó uno posterior. `hoy`: 'YYYY-MM-DD'. */
 export const mesCerrado = (mes, hoy) => mes < claveMes(hoy);
 
+/* Los registros que se guardan en el historial: un formato único para los
+   cinco premios, así lo que se lee de la base se dibuja igual que lo que se
+   acaba de calcular.
+   { tipo, periodo, fechaRef, destacadoId, jugadores:[ficha], contexto } */
+
+/** POTW y TOTW de un partido, a partir de `premiosDelPartido`. */
+export function registrosDePartido(pr) {
+  if (!pr) return [];
+  const contexto = { ...pr.partido, etiqueta: pr.potw.etiqueta };
+  return [
+    {
+      tipo: 'POTW', periodo: pr.partido.id, fechaRef: pr.partido.fecha,
+      destacadoId: pr.potw.id, jugadores: [pr.potw], contexto,
+    },
+    {
+      tipo: 'TOTW', periodo: pr.partido.id, fechaRef: pr.partido.fecha,
+      destacadoId: pr.potw.id, jugadores: pr.totw.jugadores, contexto: { ...contexto, sinArquero: pr.totw.sinArquero },
+    },
+  ];
+}
+
+/** POTM y TOTM de un mes, a partir de `premiosDelMes`. */
+export function registrosDeMes(pm) {
+  if (!pm) return [];
+  const contexto = { mes: pm.mes, partidos: pm.partidos, minimo: pm.minimo };
+  const [anio, nroMes] = pm.mes.split('-').map(Number);
+  const fechaRef = `${pm.mes}-${String(diasDelMes(anio, nroMes)).padStart(2, '0')}`;
+  return [
+    { tipo: 'POTM', periodo: pm.mes, fechaRef, destacadoId: pm.potm.id, jugadores: [pm.potm], contexto },
+    {
+      tipo: 'TOTM', periodo: pm.mes, fechaRef, destacadoId: pm.potm.id,
+      jugadores: pm.totm.jugadores, contexto: { ...contexto, sinArquero: pm.totm.sinArquero },
+    },
+  ];
+}
+
+/** TOTY de la temporada que cubren los partidos, a partir de `premioTemporada`. */
+export function registroTemporada(pt, partidosJugados = []) {
+  if (!pt) return null;
+  const ultimo = ultimoPartido(partidosJugados);
+  const fechaRef = ultimo?.fecha || null;
+  return {
+    tipo: 'TOTY', periodo: claveAnio(fechaRef), fechaRef,
+    destacadoId: pt.toty.id, jugadores: [pt.toty],
+    contexto: { partidos: pt.partidos, minimo: pt.minimo },
+  };
+}
+
 /**
  * Todo lo que ya es definitivo y conviene congelar en el historial:
  * el POTW/TOTW de cada partido, y el POTM/TOTM de cada mes cerrado.
- * El TOTY de la temporada en curso no se congela: sigue moviéndose.
- *
- * Devuelve [{ tipo, periodo, fechaRef, destacadoId, jugadores:[ficha], contexto }].
+ * El TOTY de la temporada en curso no se congela solo: sigue moviéndose, se
+ * guarda a mano cuando se cierra.
  */
 export function registrosDefinitivos(partidosJugados = [], hoy) {
   const registros = [];
-
-  partidosJugados.forEach((p) => {
-    const pr = premiosDelPartido(p);
-    if (!pr) return;
-    const contexto = { ...pr.partido, etiqueta: pr.potw.etiqueta };
-    registros.push({
-      tipo: 'POTW', periodo: pr.partido.id, fechaRef: pr.partido.fecha,
-      destacadoId: pr.potw.id, jugadores: [pr.potw], contexto,
-    });
-    registros.push({
-      tipo: 'TOTW', periodo: pr.partido.id, fechaRef: pr.partido.fecha,
-      destacadoId: pr.potw.id, jugadores: pr.totw.jugadores, contexto: { ...contexto, sinArquero: pr.totw.sinArquero },
-    });
-  });
-
-  mesesConPartidos(partidosJugados).filter((m) => mesCerrado(m, hoy)).forEach((mes) => {
-    const pm = premiosDelMes(partidosJugados, mes);
-    if (!pm) return;
-    const contexto = { mes, partidos: pm.partidos, minimo: pm.minimo };
-    const [anio, nroMes] = mes.split('-').map(Number);
-    const fechaRef = `${mes}-${String(diasDelMes(anio, nroMes)).padStart(2, '0')}`;
-    registros.push({ tipo: 'POTM', periodo: mes, fechaRef, destacadoId: pm.potm.id, jugadores: [pm.potm], contexto });
-    registros.push({
-      tipo: 'TOTM', periodo: mes, fechaRef, destacadoId: pm.potm.id,
-      jugadores: pm.totm.jugadores, contexto: { ...contexto, sinArquero: pm.totm.sinArquero },
-    });
-  });
-
+  partidosJugados.forEach((p) => registros.push(...registrosDePartido(premiosDelPartido(p))));
+  mesesConPartidos(partidosJugados)
+    .filter((m) => mesCerrado(m, hoy))
+    .forEach((mes) => registros.push(...registrosDeMes(premiosDelMes(partidosJugados, mes))));
   return registros;
 }
