@@ -5,6 +5,7 @@ import {
   puedeIr, enSuPuesto, etiquetaLugar, CASTIGO_FUERA_DE_PUESTO,
 } from '../quinteto';
 import { procesarPlantel } from '../plantel';
+import { elegirMVP } from '../rating';
 
 describe('ovrDesdeRating', () => {
   it('pasa el rating a escala FIFA cuando hay partidos de sobra', () => {
@@ -86,6 +87,20 @@ describe('analizarPartidos', () => {
   });
   it('marca la figura del último partido', () => {
     expect(r.figura).not.toBeNull();
+  });
+  it('la figura sale de elegirMVP, igual que en Resumen e Inicio', () => {
+    const ultimo = r.partidosJugados[r.partidosJugados.length - 1];
+    const mvp = elegirMVP(ultimo.jugadores, { golesFavor: ultimo.golesFavor, golesContra: ultimo.golesContra });
+    expect(r.figura).toBe(String(mvp.id));
+  });
+  it('deja partido a partido la nota, la participación y los goles de cada uno', () => {
+    expect(r.partidosJugados).toHaveLength(2);
+    const [primero] = r.partidosJugados;
+    expect(primero.fecha).toBe('2026-01-10');
+    const delantero = primero.jugadores.find((c) => c.id === '4');
+    expect(delantero.goles).toBe(1);
+    expect(delantero.rol).toBe('PIV');
+    expect(primero.jugadores.find((c) => c.id === '3').asistencias).toBe(1);
   });
 });
 
