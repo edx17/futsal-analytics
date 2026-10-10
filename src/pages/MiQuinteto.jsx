@@ -11,6 +11,9 @@ import {
 import { useArrastre } from '../components/quinteto/useArrastre';
 import CanchaPerspectiva from '../components/quinteto/CanchaPerspectiva';
 import CartaJugador from '../components/quinteto/CartaJugador';
+import PanelPremios from '../components/quinteto/PanelPremios';
+import HistorialPremios from '../components/quinteto/HistorialPremios';
+import { datosDelClub } from '../placas/club';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -23,6 +26,7 @@ import '../components/quinteto/quinteto.css';
  */
 
 const MONO = 'JetBrains Mono, monospace';
+const SECCIONES = [['cancha', 'CANCHA'], ['premios', 'PREMIOS'], ['historial', 'HISTORIAL']];
 const COLOR_ATTR = (v) => (v >= 80 ? '#00ff88' : v >= 65 ? '#fbbf24' : '#ef4444');
 const COLOR_RATING = (r) => (r >= 7 ? '#00ff88' : r >= 6 ? '#fbbf24' : '#ef4444');
 const TEXTO_TIER = {
@@ -46,6 +50,7 @@ export default function MiQuinteto() {
   const [sel, setSel] = useState(null);
   const [verId, setVerId] = useState(null);
   const [aviso, setAviso] = useState(null);
+  const [seccion, setSeccion] = useState('cancha');
 
   const { raw, loading, avance } = useDatosPlantel(clubId);
   const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
@@ -195,7 +200,21 @@ export default function MiQuinteto() {
         </select>
       </div>
 
-      {loading ? (
+      {/* ── qué se mira: la cancha, los premios de ahora o el historial guardado ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+        {SECCIONES.map(([id, texto]) => (
+          <button key={id} onClick={() => setSeccion(id)} style={{
+            ...btnForm, padding: '10px 18px', fontSize: 13, letterSpacing: '.08em',
+            borderColor: seccion === id ? 'var(--accent)' : 'var(--border)',
+            color: seccion === id ? 'var(--accent)' : 'var(--text-dim)',
+            background: seccion === id ? 'rgba(0,255,136,.08)' : 'transparent',
+          }}>{texto}</button>
+        ))}
+      </div>
+
+      {seccion === 'historial' ? (
+        <HistorialPremios clubId={clubId} club={datosDelClub(perfil)} esMovil={esMovil} />
+      ) : loading ? (
         <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)' }}>
           Armando las cartas…
           {avance.total > 0 && (
@@ -204,6 +223,9 @@ export default function MiQuinteto() {
             </div>
           )}
         </div>
+      ) : seccion === 'premios' ? (
+        <PanelPremios partidosJugados={analisis.partidosJugados} jugadores={raw.jugadores} club={datosDelClub(perfil)}
+          clubId={clubId} categoria={filtroCategoria} torneoId={filtroTorneo} esMovil={esMovil} />
       ) : cartas.length === 0 ? (
         <div className="bento-card" style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)' }}>
           Todavía no hay partidos con datos para estos filtros.

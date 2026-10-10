@@ -8,6 +8,7 @@
  */
 
 import { prepararRatingsPartido } from './ratingPartido';
+import { elegirMVP } from './rating';
 import { esArquero, ordenEv, parseQuinteto, minimoPartidosDestacado } from './plantel';
 
 const DUR_PARTIDO = 40;
@@ -131,7 +132,15 @@ export const clavePareja = (a, b) => [String(a), String(b)].sort().join('|');
  *  - forma:     id → [{ fecha, rival, rating }] del más viejo al más nuevo
  *  - parejas:   "a|b" → { minutos, pm } con los dos en cancha a la vez
  *  - quintetos: [{ ids, minutos }] de los cinco que más jugaron juntos
- *  - figura:    id del mejor rating del último partido con datos
+ *  - figura:    id de la figura del último partido con datos. Sale de
+ *               `elegirMVP`, igual que en Resumen e Inicio: entre los que
+ *               quedan a 0,3 o menos de la nota más alta, gana el que más
+ *               goles y asistencias tuvo. Antes era la nota más alta a secas,
+ *               y la carta FIGURA y la placa del partido podían ser personas
+ *               distintas.
+ *  - partidosJugados: partido a partido, con la nota, la participación y los
+ *               goles/asistencias de cada uno. Es la base de los premios
+ *               (POTW, TOTW, POTM, TOTM, TOTY): ver premios.js.
  *
  * Los minutos juntos salen de la proporción de acciones del partido con los
  * dos en cancha (como la participación): el cronómetro en vivo no es fiable.
@@ -146,6 +155,7 @@ export function analizarPartidos({ partidos = [], eventos = [], jugadores = [] }
   const forma = {};
   const parejas = {};
   const quintetos = {};
+  const partidosJugados = [];
   let figura = null;
 
   const ordenados = [...partidos]
@@ -212,23 +222,40 @@ export function analizarPartidos({ partidos = [], eventos = [], jugadores = [] }
 
     // ── rating de cada uno en este partido ──
     const ratings = prepararRatingsPartido(evs, { plusMinus: pmJug });
-    let mejor = null;
+    const candidatos = [];
     jugadores.forEach((j) => {
       const sid = String(j.id);
       if (!presentes.has(sid)) return;
-      const r = Number(ratings.rating(j));
+      const det = ratings.detalle(j);
+      const r = Number(det.rating);
       if (!Number.isFinite(r)) return;
       (forma[sid] = forma[sid] || []).push({ fecha: fechaDe(p), rival: p.rival || 'Rival', rating: r });
-      if (!mejor || r > mejor.r) mejor = { id: sid, r };
+      candidatos.push({
+        id: sid,
+        rating: r,
+        participacion: det.participacion,
+        goles: det.desglose?.conteo?.goles || 0,
+        asistencias: det.desglose?.conteo?.asistencias || 0,
+        rol: rolDe(j.posicion),
+      });
     });
-    if (mejor) figura = mejor.id;
+
+    const contexto = { golesFavor: ratings.golesFavor, golesContra: ratings.golesContra };
+    const mvp = elegirMVP(candidatos, contexto);
+    if (mvp) figura = String(mvp.id);
+
+    partidosJugados.push({
+      id: p.id, fecha: fechaDe(p), rival: p.rival || 'Rival',
+      golesFavor: ratings.golesFavor, golesContra: ratings.golesContra,
+      jugadores: candidatos,
+    });
   });
 
   const listaQ = Object.entries(quintetos)
     .map(([k, minutos]) => ({ ids: k.split('|'), minutos }))
     .sort((a, b) => b.minutos - a.minutos);
 
-  return { forma, parejas, quintetos: listaQ, figura };
+  return { forma, parejas, quintetos: listaQ, figura, partidosJugados };
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
