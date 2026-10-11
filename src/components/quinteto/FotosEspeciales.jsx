@@ -57,6 +57,7 @@ export default function FotosEspeciales({ premios = [], fotos = new Map(), clubI
         Poné una <b style={{ color: 'var(--text)' }}>foto especial</b> a las cartas de premio, como en las ediciones limitadas del FIFA.
         Va mejor una foto <b style={{ color: 'var(--text)' }}>PNG recortada (sin fondo)</b>, de frente y con la cara en la parte de arriba.
         Se ve en el frente de la carta y entera al darla vuelta. No hace falta volver a publicar las cartas.
+        <br />Acá están sólo los premios <b style={{ color: 'var(--text)' }}>guardados en HISTORIAL</b>. Para sumar uno, guardalo en PREMIOS; para sacar uno que no querés, quitalo en HISTORIAL.
       </div>
 
       {aviso && (
@@ -75,7 +76,7 @@ export default function FotosEspeciales({ premios = [], fotos = new Map(), clubI
 
       {lista.length === 0 ? (
         <div className="bento-card" style={{ textAlign: 'center', padding: 30, color: 'var(--text-dim)', fontSize: '0.85rem' }}>
-          No hay cartas {tipo} para estos filtros.
+          No hay cartas {tipo} guardadas en HISTORIAL.
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 18 }}>

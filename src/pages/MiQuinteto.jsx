@@ -15,8 +15,9 @@ import PanelPremios from '../components/quinteto/PanelPremios';
 import HistorialPremios from '../components/quinteto/HistorialPremios';
 import FotosEspeciales from '../components/quinteto/FotosEspeciales';
 import { listarFotos } from '../utils/cartasFotos';
+import { listarHistorial } from '../utils/cartasDestacadas';
 import { datosDelClub } from '../placas/club';
-import { cartasDePremios, armarBanco } from '../analytics/premiosCartas';
+import { cartasDeHistorial, armarBanco } from '../analytics/premiosCartas';
 import { TIPOS } from '../analytics/premios';
 import { catalogoDeCartas, probabilidades } from '../analytics/sobres';
 import { publicarCatalogo } from '../utils/sobres';
@@ -56,7 +57,6 @@ export default function MiQuinteto() {
   const [sel, setSel] = useState(null);
   const [verId, setVerId] = useState(null);
   const [aviso, setAviso] = useState(null);
-  const [seccion, setSeccion] = useState('cancha');
   /* { idJugador: clave }: qué jugadores juegan con una carta de premio en vez de la base.
      La alineación guarda ids de JUGADOR, así que en la cancha va una sola carta por jugador. */
   const [elegidas, setElegidas] = useState({});
@@ -65,6 +65,17 @@ export default function MiQuinteto() {
   const [fotos, setFotos] = useState(() => new Map());
   const cargarFotos = useCallback(async () => { if (clubId) setFotos(await listarFotos(clubId)); }, [clubId]);
   useEffect(() => { cargarFotos(); }, [cargarFotos]);
+  /* Las cartas especiales salen del HISTORIAL: sólo existen los premios guardados ahí. */
+  const [historial, setHistorial] = useState([]);
+  const [seccion, setSeccion] = useState('cancha');
+  useEffect(() => {
+    if (!clubId || seccion === 'historial') return undefined;
+    let vivo = true;
+    listarHistorial(clubId)
+      .then((r) => { if (vivo) setHistorial(r); })
+      .catch((err) => { console.warn('Historial de premios:', err?.message); if (vivo) setHistorial([]); });
+    return () => { vivo = false; };
+  }, [clubId, seccion]);
 
   const { raw, loading, avance } = useDatosPlantel(clubId);
   const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
@@ -97,8 +108,8 @@ export default function MiQuinteto() {
     return { ...armarCartas({ jugadoresProc, arquerosProc, forma: a.forma, figura: a.figura }), analisis: a };
   }, [raw, partidosScopeCat, partidosFiltro, filtroTorneo, filtroCategoria, misCategorias]);
 
-  /* Las versiones de premio de cada carta (TOTY, TOTM, TOTW…): salen de todos los partidos del filtro. */
-  const premios = useMemo(() => cartasDePremios(analisis.partidosJugados, cartasBase, fotos), [analisis, cartasBase, fotos]);
+  /* Las versiones de premio de cada carta (TOTY, TOTM, TOTW…): las del historial guardado. */
+  const premios = useMemo(() => cartasDeHistorial(historial, cartasBase, fotos), [historial, cartasBase, fotos]);
   const todasPorClave = useMemo(() => {
     const m = new Map(cartasBase.map((c) => [c.id, { ...c, clave: c.id }]));
     premios.forEach((c) => m.set(c.clave, c));

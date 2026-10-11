@@ -231,34 +231,57 @@ export function registrosDeTodo(partidosJugados = []) {
  * Cada una: la carta base + { clave, premio, edicion, ovr, tier, stats }.
  * Un jugador que no tiene carta base en el filtro se saltea.
  */
-export function cartasDePremios(partidosJugados = [], cartasBase = [], fotos = new Map()) {
+function cartasDeRegistros(registros, cartasBase, fotos, { soloConBase }) {
   const base = new Map(cartasBase.map((c) => [c.id, c]));
+  const vistas = new Set();
   const salida = [];
-  registrosDeTodo(partidosJugados).forEach((r) => {
+  registros.forEach((r) => {
     const etiqueta = etiquetaCorta(r);
-    (r.jugadores || []).forEach((f) => {
+    (r.jugadores || r.cartas || []).forEach((f) => {
       const id = String(f.id);
       const b = base.get(id);
       const nota = Number(f.nota);
-      if (!b || !Number.isFinite(nota)) return;
-      const ovr = ovrDeNota(nota);
+      if (!Number.isFinite(nota) || (soloConBase && !b)) return;
       const clave = claveCarta(r.tipo, r.periodo, id);
+      if (vistas.has(clave)) return; // el mismo premio guardado en dos categorías/torneos: una sola carta
+      vistas.add(clave);
+      const ovr = ovrDeNota(nota);
+      const ref = b || {
+        id, nombre: f.nombre, apellido: f.apellido, dorsal: f.dorsal, foto: f.foto,
+        categoria: f.categoria, rol: f.rol, stats: {},
+      };
       salida.push({
-        ...b,
+        ...ref,
+        sinBase: !b,
         clave,
-        foto: fotos.get(clave) || b.foto,
+        foto: fotos.get(clave) || ref.foto,
         fotoEspecial: fotos.has(clave),
         premio: r.tipo,
         fechaRef: r.fechaRef || '',
         edicion: etiqueta,
         descripcion: descripcionRegistro(r),
-        rol: f.rol || b.rol,
+        rol: f.rol || ref.rol,
         ovr, tier: tierDe(ovr), enEvaluacion: false,
-        stats: { ...b.stats, pj: f.pj ?? 1, goles: f.goles || 0, asist: f.asistencias || 0, rating: nota, min: null },
+        stats: { ...ref.stats, pj: f.pj ?? 1, goles: f.goles || 0, asist: f.asistencias ?? f.asist ?? 0, rating: nota, min: null },
       });
     });
   });
   return salida;
+}
+
+/** Las cartas de premio calculadas de los partidos (todo lo que PODRÍA premiarse). */
+export function cartasDePremios(partidosJugados = [], cartasBase = [], fotos = new Map()) {
+  return cartasDeRegistros(registrosDeTodo(partidosJugados), cartasBase, fotos, { soloConBase: true });
+}
+
+/**
+ * Las cartas especiales que de verdad existen: las de los premios GUARDADOS en el
+ * historial. Lo que no está guardado (o se quitó de ahí) no aparece. Un jugador sin
+ * carta base en el filtro igual sale, marcado `sinBase`, para poder subirle la foto
+ * y publicarlo; el banco del juego lo oculta.
+ */
+export function cartasDeHistorial(registros = [], cartasBase = [], fotos = new Map()) {
+  return cartasDeRegistros(registros, cartasBase, fotos, { soloConBase: false });
 }
 
 /**
@@ -271,7 +294,7 @@ export function armarBanco(cartasBase = [], premios = [], alineacion = [], tipo 
     ? cartasBase.filter((c) => !enCancha.has(c.id)).map((c) => ({ ...c, clave: c.id }))
     : [];
   const especiales = tipo === 'BASE' ? [] : premios
-    .filter((c) => !enCancha.has(c.id) && (tipo === 'TODAS' || c.premio === tipo))
+    .filter((c) => !c.sinBase && !enCancha.has(c.id) && (tipo === 'TODAS' || c.premio === tipo))
     .sort((a, b) => String(b.fechaRef).localeCompare(String(a.fechaRef)) || b.ovr - a.ovr);
   return [...base, ...especiales];
 }

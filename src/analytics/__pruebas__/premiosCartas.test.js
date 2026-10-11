@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   PREMIOS, etiquetaMes, fechaCorta, indicePorId, cartaDeFicha, cartasDeRegistro,
   registroAFila, filaARegistro, datosDePlaca, descripcionRegistro, rankingDestacados,
-  etiquetaCorta, registrosDeTodo, cartasDePremios, armarBanco, claveCarta,
+  etiquetaCorta, registrosDeTodo, cartasDePremios, cartasDeHistorial, armarBanco, claveCarta,
 } from '../premiosCartas';
 import { premiosDelPartido, premiosDelMes, premioTemporada, registrosDePartido, registrosDeMes, registroTemporada } from '../premios';
 
@@ -203,6 +203,27 @@ describe('premios como cartas para jugar', () => {
     const toty = armarBanco(base, premios, [], 'TOTY');
     expect(toty.length).toBeGreaterThan(0);
     expect(toty.every((x) => x.premio === 'TOTY')).toBe(true);
+  });
+
+  it('las especiales salen sólo de lo guardado en el historial', () => {
+    const todos = registrosDeTodo(partidos);
+    const guardado = todos.filter((r) => r.tipo === 'TOTY');
+    const hist = guardado.map((r) => ({ ...r, cartas: r.jugadores }));
+    const cartas = cartasDeHistorial(hist, base);
+    expect(cartas.length).toBeGreaterThan(0);
+    expect(cartas.every((x) => x.premio === 'TOTY')).toBe(true);
+    expect(cartasDeHistorial([], base)).toEqual([]);
+    expect(cartasDeHistorial(hist, base).map((x) => x.clave)).toEqual(cartasDePremios(partidos, base).filter((x) => x.premio === 'TOTY').map((x) => x.clave));
+  });
+
+  it('un jugador sin carta base sale marcado y el banco lo oculta; la misma clave no se repite', () => {
+    const r = registrosDeTodo(partidos).find((x) => x.tipo === 'TOTY');
+    const snap = (r.jugadores || []).map((f) => ({ ...f, nombre: 'X', apellido: 'Y' }));
+    const hist = [{ ...r, cartas: snap }, { ...r, id: 'otro', cartas: snap }];
+    const cartas = cartasDeHistorial(hist, base.filter((b) => b.id !== '3'));
+    expect(cartas.find((x) => x.id === '3')?.sinBase).toBe(true);
+    expect(new Set(cartas.map((x) => x.clave)).size).toBe(cartas.length);
+    expect(armarBanco(base, cartas, [], 'TOTY').some((x) => x.id === '3')).toBe(false);
   });
 
   it('etiquetas cortas para la carta', () => {
