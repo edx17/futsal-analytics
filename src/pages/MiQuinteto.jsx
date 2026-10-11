@@ -16,6 +16,8 @@ import HistorialPremios from '../components/quinteto/HistorialPremios';
 import { datosDelClub } from '../placas/club';
 import { cartasDePremios, armarBanco } from '../analytics/premiosCartas';
 import { TIPOS } from '../analytics/premios';
+import { catalogoDeCartas, probabilidades } from '../analytics/sobres';
+import { publicarCatalogo } from '../utils/sobres';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -203,6 +205,24 @@ export default function MiQuinteto() {
     cambiar({ tipo: 'banco', id: c.id, clave: c.clave }, sel);
   };
 
+  /* Las cartas que pueden salir en los sobres del club: las del filtro que esté puesto. */
+  const [publicando, setPublicando] = useState(false);
+  const publicar = async () => {
+    const filas = catalogoDeCartas(cartasBase, premios);
+    const lineas = probabilidades(filas).map((r) => `${r.nombre}: ${r.cartas}`).join('\n');
+    if (!window.confirm(`Vas a publicar ${filas.length} cartas para los sobres (${filtroCategoria === 'Todas' ? 'todas las categorías' : filtroCategoria}, ${filtroTorneo === 'Todos' ? 'toda la temporada' : 'un torneo'}).\n\n${lineas}\n\nLas que ya estaban se actualizan; ninguna se borra. ¿Seguir?`)) return;
+    setPublicando(true);
+    try {
+      const n = await publicarCatalogo(clubId, filas);
+      avisar(`Se publicaron ${n} cartas para los sobres.`);
+    } catch (err) {
+      console.error('Publicar catálogo:', err);
+      avisar(err?.message || 'No se pudieron publicar las cartas.');
+    } finally {
+      setPublicando(false);
+    }
+  };
+
   const cargarIdeal = () => { setElegidas({}); setAlineacion(quintetoIdeal(cartasBase, formacion)); setSel(null); };
   const usado = quintetoMasUsado(analisis.quintetos, cartasBase, formacion);
   const cargarUsado = () => { if (usado) { setElegidas({}); setAlineacion(usado); setSel(null); } };
@@ -308,6 +328,11 @@ export default function MiQuinteto() {
             <button onClick={cargarUsado} disabled={!usado} className="btn-secondary" style={{ ...btnAccion, opacity: usado ? 1 : 0.45 }}
               title={usado ? '' : 'No hay un quinteto con los cinco jugadores en este filtro'}>
               <Icono nombre="actualizar" size="1.2em" style={{ marginRight: 8 }} />EL MÁS USADO
+            </button>
+
+            <button onClick={publicar} disabled={publicando} className="btn-secondary" style={btnAccion}
+              title="Deja las cartas de este filtro disponibles para los sobres del club">
+              {publicando ? 'PUBLICANDO…' : 'PUBLICAR CARTAS PARA SOBRES'}
             </button>
 
             <div className="bento-card" style={{ ...caja, fontSize: '0.7rem', color: 'var(--text-dim)', display: 'flex', flexDirection: 'column', gap: 6 }}>

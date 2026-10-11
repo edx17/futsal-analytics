@@ -108,6 +108,14 @@ const IconPagos = () => (
 
 /* Los accesos del menú. Mi estado físico, Temporada, Libro táctico y Torneo
    ya existían como pantallas del kiosco pero no tenían botón. */
+const IconSobres = () => (
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+    <path d="M4 8h16"></path>
+    <path d="M12 12l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"></path>
+  </svg>
+);
+
 const ACCESOS = [
   { ruta: '/kiosco/wellness',       titulo: 'WELLNESS',     icono: IconWellness },
   { ruta: '/kiosco/rendimiento',    titulo: 'RENDIMIENTO',  icono: IconRendimiento },
@@ -119,6 +127,7 @@ const ACCESOS = [
   { ruta: '/kiosco/videoanalisis',  titulo: 'VIDEOS',       icono: IconVideos },
   { ruta: '/kiosco/libro-tactico',  titulo: 'LIBRO TÁCTICO', icono: IconLibro },
   // Ancho, abajo de todo: son diez accesos y en tres columnas quedaba uno suelto.
+  { ruta: '/kiosco/sobres',         titulo: 'SOBRES · ABRÍ TU SOBRE DE HOY Y JUNTÁ CARTAS', icono: IconSobres, ancho: true },
   { ruta: '/kiosco/mis-datos',      titulo: 'MIS DATOS · CORREGÍ TU CELULAR, EMERGENCIA U OBRA SOCIAL', icono: IconDatos, ancho: true },
   { ruta: '/kiosco/mis-pagos',      titulo: 'MIS PAGOS · SALDO Y RECIBOS', icono: IconPagos, ancho: true },
 ];
