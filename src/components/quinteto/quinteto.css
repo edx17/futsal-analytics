@@ -126,3 +126,7 @@
 /* Brillo del color de la edición, sin perder la sombra de la carta en la cancha. */
 .mq-carta.mq-premio, .mq-carta.mq-figura { filter: drop-shadow(0 16px 16px rgba(0,0,0,.55)) drop-shadow(0 0 7px var(--glow)); }
 .mq-mini.mq-premio, .mq-mini.mq-figura { filter: drop-shadow(0 0 5px var(--glow)); }
+
+/* La carta no hereda la alineación de donde esté puesta (en la apertura de sobres el contenedor
+   está centrado y la media y el puesto se corrían contra la foto). */
+.mq-forma { text-align: left; }
