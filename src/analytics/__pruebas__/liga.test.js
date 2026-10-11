@@ -77,6 +77,14 @@ describe('liga-sync: lo que viene de segundopalo', () => {
       .toMatchObject({ id_externo: 7, jornada: 3, hora: '10:00', goles_local: null, goles_visitante: null, estadio: null });
   });
 
+  it('inferiores: el ID viene como texto con los ids de los equipos', () => {
+    const real = { ID: 'inf-127-3-1-28-144', equipolocal: 'Estrella Maldonado', equipovisitante: 'Villa Heredia', goleslocal: 1, golesvisitante: 1, estado: 'Finalizado', fecha: '2026-03-28', hora: '09:00:00', jornada: 1, equipo_local_id: 28, equipo_visitante_id: 144 };
+    expect(normalizarInferiores(real)).toMatchObject({ id_externo: 28000144, local: 'Estrella Maldonado', goles_local: 1, jornada: 1, hora: '09:00' });
+    expect(normalizarInferiores({ ...real, equipo_local_id: 144, equipo_visitante_id: 28, ID: 'inf-127-3-1-144-28' }).id_externo).toBe(144000028);
+    expect(normalizarInferiores({ ...real, ID: 'raro' }).id_externo).toBe(28000144);
+    expect(planificar([], [normalizarInferiores(real)]).resumen.nuevos).toBe(1);
+  });
+
   it('arma la consulta según la fuente', () => {
     expect(consultaDe({ fuente: 'primera', anio: 2026, fuente_params: { competencia_id: 10 } }).cuerpo).toEqual({ competencia_id_input: 10, 'año_input': 2026 });
     expect(consultaDe({ fuente: 'inferiores', anio: 2026, fuente_params: { edicion_id: 127, categoria_id: 3 } }).cuerpo)
