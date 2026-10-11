@@ -35,14 +35,31 @@ export function normalizarPrimera(p) {
     estadio: texto(p?.estadios_nombre),
     goleadores_local: texto(p?.goleadores_local),
     goleadores_visitante: texto(p?.goleadores_visitante),
+    zona: texto(p?.zona),
   };
+}
+
+/* En inferiores el ID no es un número sino un texto armado con la edición, la
+   categoría, el tipo de torneo y los ids de los dos equipos:
+   "inf-127-3-1-28-144" (local 28, visitante 144). Dentro de una competencia el
+   cruce local-visitante es único (cada uno es local una vez por rival), así
+   que el número sale de esos dos ids. Si algún día viene numérico, se usa tal
+   cual. */
+export function idInferiores(id) {
+  const n = numero(id);
+  if (n !== null) return n;
+  const m = String(id ?? '').match(/(\d+)-(\d+)$/);
+  return m ? Number(m[1]) * 1000000 + Number(m[2]) : null;
 }
 
 /* Inferiores: rpc get_partidos_inferiores_por_edicion_categoria_tipo_inferiores
    (los campos de inf-scraper.js). No trae estadio ni goleadores. */
 export function normalizarInferiores(p) {
+  const local = numero(p?.equipo_local_id);
+  const visitante = numero(p?.equipo_visitante_id);
   return {
-    id_externo: numero(p?.ID ?? p?.id),
+    id_externo: idInferiores(p?.ID ?? p?.id)
+      ?? (local !== null && visitante !== null ? local * 1000000 + visitante : null),
     jornada: jornadaNum(p?.jornada),
     fecha: fechaIso(p?.fecha),
     hora: horaCorta(p?.hora),
@@ -54,6 +71,7 @@ export function normalizarInferiores(p) {
     estadio: null,
     goleadores_local: null,
     goleadores_visitante: null,
+    zona: texto(p?.zona),
   };
 }
 
@@ -75,7 +93,7 @@ export function consultaDe(competencia) {
 }
 
 const esFinal = (estado) => /^finalizado$/i.test(String(estado || ''));
-const CAMPOS = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'goles_local', 'goles_visitante', 'estado', 'estadio', 'goleadores_local', 'goleadores_visitante'];
+const CAMPOS = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'goles_local', 'goles_visitante', 'estado', 'estadio', 'goleadores_local', 'goleadores_visitante', 'zona'];
 
 /**
  * Compara lo que vino de la fuente con lo que ya tenemos guardado.

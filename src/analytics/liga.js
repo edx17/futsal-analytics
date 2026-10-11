@@ -222,3 +222,72 @@ export function categoriaLiga(texto) {
   const k = Object.keys(palabras).find((w) => t.includes(w));
   return k ? palabras[k] : null;
 }
+
+/** 'z1' / 'Z1' / 'zona 1' / '1' → 'Zona 1'. Otro texto queda tal cual. */
+export function nombreZona(z) {
+  const t = String(z ?? '').trim();
+  const m = t.match(/^(?:z|zona)?\s*(\d+)$/i);
+  return m ? `Zona ${m[1]}` : t;
+}
+
+/* Grupos de equipos que juegan entre sí (componentes del grafo de cruces). */
+function gruposDeCruces(partidos) {
+  const padre = new Map();
+  const raiz = (x) => { while (padre.get(x) !== x) { padre.set(x, padre.get(padre.get(x))); x = padre.get(x); } return x; };
+  const unir = (a, b) => {
+    [a, b].forEach((x) => { if (!padre.has(x)) padre.set(x, x); });
+    const ra = raiz(a); const rb = raiz(b);
+    if (ra !== rb) padre.set(ra, rb);
+  };
+  (partidos || []).forEach((p) => { if (p.local && p.visitante) unir(p.local, p.visitante); });
+  const grupos = new Map();
+  [...padre.keys()].forEach((eq) => {
+    const r = raiz(eq);
+    if (!grupos.has(r)) grupos.set(r, new Set());
+    grupos.get(r).add(eq);
+  });
+  return [...grupos.values()];
+}
+
+/**
+ * Separa una competencia en zonas. Devuelve [] si se juega en una sola.
+ *
+ * Primero usa la zona que trae cada partido. Si no viene (inferiores), arma los
+ * grupos de equipos que juegan entre sí y les pone el nombre según
+ * `zonaPorEquipo` (la zona de cada club en la Primera de la misma división); si
+ * tampoco se sabe, quedan "Zona 1", "Zona 2"… por orden alfabético.
+ *
+ * @returns {Array<{ zona: string, equipos: Set<string>, partidos: Array }>}
+ */
+export function zonasDe(partidos, zonaPorEquipo = {}) {
+  const lista = partidos || [];
+  const conZona = lista.filter((p) => p.zona);
+  let zonas;
+  if (conZona.length === lista.length && lista.length) {
+    const m = new Map();
+    lista.forEach((p) => {
+      const z = nombreZona(p.zona);
+      if (!m.has(z)) m.set(z, { zona: z, equipos: new Set(), partidos: [] });
+      const g = m.get(z);
+      g.partidos.push(p); g.equipos.add(p.local); g.equipos.add(p.visitante);
+    });
+    zonas = [...m.values()];
+  } else {
+    const grupos = gruposDeCruces(lista);
+    if (grupos.length < 2) return [];
+    const usados = new Set();
+    zonas = grupos
+      .sort((a, b) => [...a].sort()[0].localeCompare([...b].sort()[0]))
+      .map((equipos, i) => {
+        const votos = {};
+        equipos.forEach((e) => { const z = zonaPorEquipo[e]; if (z) votos[z] = (votos[z] || 0) + 1; });
+        const [ganadora] = Object.entries(votos).sort((a, b) => b[1] - a[1])[0] || [];
+        let zona = ganadora ? nombreZona(ganadora) : `Zona ${i + 1}`;
+        if (usados.has(zona)) zona = `Zona ${i + 1}`;
+        usados.add(zona);
+        return { zona, equipos, partidos: lista.filter((p) => equipos.has(p.local)) };
+      });
+  }
+  if (zonas.length < 2) return [];
+  return zonas.sort((a, b) => a.zona.localeCompare(b.zona, 'es', { numeric: true }));
+}
