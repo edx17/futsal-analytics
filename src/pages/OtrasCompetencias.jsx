@@ -517,6 +517,11 @@ function ModalSync({ onCerrar, onListo, showToast }) {
                             : `sin cambios (${c.recibidos ?? 0})`}
                         </span>
                       </div>
+                      {c.descartados > 0 && (
+                        <div style={{ fontSize: '0.66rem', color: '#fbbf24', marginTop: '3px' }}>
+                          {c.descartados} partido{c.descartados > 1 ? 's' : ''} sin datos suficientes para guardar (falta el id o los equipos).
+                        </div>
+                      )}
                       {(c.muestra || []).length > 0 && (
                         <div style={{ fontSize: '0.66rem', color: 'var(--text-dim)', marginTop: '3px' }}>
                           {c.muestra.map((m) => <div key={m}>{m}</div>)}
