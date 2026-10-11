@@ -74,3 +74,10 @@
   border: 1px solid #fbbf24; font-size: 8px; font-weight: 900; letter-spacing: .08em; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
 .mq-mini .mq-mes { font-size: 7px; padding: 1px 4px; bottom: -6px; }
 .mq-carta .mq-mes { bottom: auto; top: -9px; left: auto; right: -6px; transform: none; }
+
+/* ── cartas de premio: brillo propio de cada una (drop-shadow: la forma de la carta recorta el box-shadow) ── */
+.mq-premio { filter: drop-shadow(0 0 5px rgba(251,191,36,.9)); }
+.mq-p-potw, .mq-p-totw { filter: drop-shadow(0 0 5px rgba(56,189,248,.9)); }
+.mq-p-potm, .mq-p-totm { filter: drop-shadow(0 0 5px rgba(192,132,252,.9)); }
+.mq-p-toty { filter: drop-shadow(0 0 8px rgba(251,191,36,1)); }
+.mq-premio .mq-mes { filter: none; }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   PREMIOS, etiquetaMes, fechaCorta, indicePorId, cartaDeFicha, cartasDeRegistro,
   registroAFila, filaARegistro, datosDePlaca, descripcionRegistro, rankingDestacados,
+  etiquetaCorta, registrosDeTodo, cartasDePremios, armarBanco, claveCarta,
 } from '../premiosCartas';
 import { premiosDelPartido, premiosDelMes, premioTemporada, registrosDePartido, registrosDeMes, registroTemporada } from '../premios';
 
@@ -135,5 +136,67 @@ describe('historial', () => {
     expect(r[1].quintetos).toBe(2);
     expect(r[2].individuales).toBe(0);   // ser el destacado de un quinteto no suma como premio individual
     expect(r[2].quintetos).toBe(2);
+  });
+});
+
+describe('premios como cartas para jugar', () => {
+  const p2 = { id: 'p2', fecha: '2026-11-02', rival: 'Sur', golesFavor: 1, golesContra: 1,
+    jugadores: [c(1, 'ARQ', 6), c(2, 'ALA', 6.5), c(3, 'PIV', 8.1, { goles: 1 })] };
+  const partidos = [partido, p2];
+  const cb = (id, rol) => ({ id: String(id), nombre: 'N' + id, apellido: 'A' + id, rol, ovr: 70, tier: 'plata', enEvaluacion: false, atributos: [], forma: [],
+    stats: { pj: 5, min: 120, goles: 3, asist: 1, rating: 6.5 } });
+  const base = [cb(1, 'ARQ'), cb(2, 'ALA'), cb(3, 'PIV')];
+
+  it('hay premios de cada partido, de cada mes y de la temporada', () => {
+    const tipos = new Set(registrosDeTodo(partidos).map((r) => r.tipo));
+    expect([...tipos].sort()).toEqual(['POTM', 'POTW', 'TOTM', 'TOTW', 'TOTY']);
+  });
+
+  it('un jugador puede tener varias cartas de premio, cada una con clave propia', () => {
+    const cartas = cartasDePremios(partidos, base);
+    const deCarlos = cartas.filter((x) => x.id === '3');
+    expect(deCarlos.length).toBeGreaterThan(2);
+    expect(new Set(cartas.map((x) => x.clave)).size).toBe(cartas.length);
+    expect(deCarlos.every((x) => x.premio && x.edicion)).toBe(true);
+  });
+
+  it('la carta de premio lleva la nota de ese premio, no la del año', () => {
+    const potw = cartasDePremios(partidos, base).find((x) => x.clave === claveCarta('POTW', 'p2', '3'));
+    expect(potw.stats.rating).toBe(8.1);
+    expect(potw.ovr).toBe(91);
+    expect(potw.stats.min).toBeNull();
+    expect(potw.atributos).toBe(base[2].atributos);
+  });
+
+  it('un jugador sin carta base en el filtro se saltea', () => {
+    const cartas = cartasDePremios(partidos, base.filter((b) => b.id !== '3'));
+    expect(cartas.some((x) => x.id === '3')).toBe(false);
+  });
+
+  it('TOTY sale una vez por año', () => {
+    const anios = [partido, { ...p2, id: 'p3', fecha: '2027-02-02' }];
+    const tipos = registrosDeTodo(anios).filter((r) => r.tipo === 'TOTY').map((r) => r.periodo).sort();
+    expect(tipos).toEqual(['2026', '2027']);
+  });
+
+  it('el banco no muestra ninguna carta de un jugador que ya está en la cancha', () => {
+    const premios = cartasDePremios(partidos, base);
+    const banco = armarBanco(base, premios, ['1', '3', null, null, null], 'TODAS');
+    expect(banco.some((x) => x.id === '3' || x.id === '1')).toBe(false);
+    expect(banco.some((x) => x.id === '2' && x.premio)).toBe(true);
+  });
+
+  it('el filtro del banco por tipo', () => {
+    const premios = cartasDePremios(partidos, base);
+    expect(armarBanco(base, premios, [], 'BASE').every((x) => !x.premio)).toBe(true);
+    const toty = armarBanco(base, premios, [], 'TOTY');
+    expect(toty.length).toBeGreaterThan(0);
+    expect(toty.every((x) => x.premio === 'TOTY')).toBe(true);
+  });
+
+  it('etiquetas cortas para la carta', () => {
+    expect(etiquetaCorta({ tipo: 'TOTW', periodo: 'p1', fechaRef: '2026-10-08', contexto: { rival: 'Los Pibes', fecha: '2026-10-08' } })).toBe('TOTW LOS 08/10');
+    expect(etiquetaCorta({ tipo: 'TOTM', periodo: '2026-09' })).toBe('TOTM SEP 26');
+    expect(etiquetaCorta({ tipo: 'TOTY', periodo: '2026' })).toBe('TOTY 2026');
   });
 });
