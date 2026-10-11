@@ -11,7 +11,8 @@ import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
 import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
 import { parseFixturePegado, matchearRivales, calcularAliasNuevos, ID_MI_CLUB } from '../utils/parseFixturePegado';
-import { parseFixtureJson, planificarSincronizacion, aliasDeResueltos } from '../utils/importarFixtureJson';
+import { parseFixtureJson, crucesDeLiga, planificarSincronizacion, aliasDeResueltos } from '../utils/importarFixtureJson';
+import { esMiEquipo, categoriaLiga } from '../analytics/liga';
 import { calcularTabla, resultadosDe, statsDe, rachasDe, mejorYPeor, puestoDe, equiposDe } from '../utils/analisisTorneo';
 import ModalPlaca from '../placas/ModalPlaca';
 import PlacaTabla from '../placas/PlacaTabla';
@@ -81,6 +82,9 @@ function Torneos() {
   // pegado, pero actualiza lo que ya está en vez de volver a insertarlo.
   const [mostrarSync, setMostrarSync] = useState(false);
   const [syncArchivo, setSyncArchivo] = useState(null); // { nombre, cruces, avisos }
+  const [ligaCompetencias, setLigaCompetencias] = useState([]);
+  const [ligaElegida, setLigaElegida] = useState('');
+  const [trayendoLiga, setTrayendoLiga] = useState(false);
   const [syncResueltos, setSyncResueltos] = useState({}); // nombre del archivo -> id elegido a mano
   const [syncAplicarDistintos, setSyncAplicarDistintos] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
@@ -391,6 +395,44 @@ function Torneos() {
   /* ── SINCRONIZAR CON ARCHIVO ──────────────────────────────────────────── */
   const abrirSync = () => {
     setSyncArchivo(null); setSyncResueltos({}); setSyncAplicarDistintos(false); setMostrarSync(true);
+    cargarLigaSync();
+  };
+
+  /* La otra fuente: lo que la app ya bajó de segundopalo (Otras
+     competencias). Se propone la división donde juega el club y la
+     categoría del torneo. */
+  const cargarLigaSync = async () => {
+    const { data: comps } = await supabase.from('liga_competencias').select('id, nombre, division, categoria, actualizado_at').eq('activa', true).order('orden');
+    const lista = comps || [];
+    setLigaCompetencias(lista);
+    if (!lista.length) return;
+    const primeras = lista.filter((c) => c.categoria === '1ra');
+    const { data: j } = await supabase.from('liga_partidos').select('competencia_id, local, visitante')
+      .in('competencia_id', primeras.map((c) => c.id)).lte('jornada', 2);
+    const hit = (j || []).find((p) => esMiEquipo(p.local, miClubGlobal) || esMiEquipo(p.visitante, miClubGlobal));
+    const division = hit ? primeras.find((c) => c.id === hit.competencia_id)?.division : null;
+    const cat = categoriaLiga(torneoActivo?.categoria) || '1ra';
+    const sugerida = lista.find((c) => c.division === division && c.categoria === cat);
+    setLigaElegida(sugerida?.id || '');
+  };
+
+  const traerDeLiga = async () => {
+    if (!ligaElegida) return;
+    setTrayendoLiga(true);
+    try {
+      const filas = await fetchPaginado(() => supabase.from('liga_partidos').select('*')
+        .eq('competencia_id', ligaElegida).order('id_externo'));
+      const { cruces, avisos } = crucesDeLiga(filas);
+      const comp = ligaCompetencias.find((c) => c.id === ligaElegida);
+      setSyncResueltos({});
+      setSyncArchivo({ nombre: `Liga · ${comp?.nombre || ligaElegida}`, cruces, avisos });
+      if (!cruces.length) showToast('Esa competencia todavía no tiene partidos. Actualizala desde Otras competencias.', 'warning');
+    } catch (err) {
+      console.error(err);
+      showToast('No se pudieron traer los partidos de la liga.', 'error');
+    } finally {
+      setTrayendoLiga(false);
+    }
   };
 
   const leerArchivoSync = async (e) => {
@@ -2786,11 +2828,22 @@ function Torneos() {
               SINCRONIZAR CON ARCHIVO
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.6, marginTop: 0, marginBottom: '12px' }}>
-              Elegí el JSON con los partidos de la liga. Se compara con el fixture de <b style={{ color: 'var(--text)' }}>{torneoActivo?.nombre}</b> y
+              Traé los partidos que la app ya bajó de la liga (o elegí un JSON). Se compara con el fixture de <b style={{ color: 'var(--text)' }}>{torneoActivo?.nombre}</b> y
               antes de cambiar nada te muestra qué va a hacer. Correrlo de nuevo no duplica partidos.
               Lo que cargaron ustedes manda: un partido finalizado no vuelve atrás y los partidos con toma de datos no cambian de resultado.
             </p>
 
+            {ligaCompetencias.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                <select value={ligaElegida} onChange={(e) => setLigaElegida(e.target.value)} style={{ flex: '1 1 200px', padding: '10px', fontSize: '0.8rem' }}>
+                  <option value="">Elegí la competencia de la liga…</option>
+                  {ligaCompetencias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+                <button onClick={traerDeLiga} disabled={!ligaElegida || trayendoLiga} className="btn-action" style={{ flex: '0 0 auto', fontSize: '0.75rem', padding: '10px 14px' }}>
+                  {trayendoLiga ? 'TRAYENDO…' : 'TRAER DE LA LIGA'}
+                </button>
+              </div>
+            )}
             <label className="btn-secondary" style={{ display: 'block', textAlign: 'center', padding: '12px', borderStyle: 'dashed', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800 }}>
               <Icono nombre="subir" size="1.2em" style={{ marginRight: 6 }} />
               {syncArchivo ? `${syncArchivo.nombre} · ${syncArchivo.cruces.length} partidos (cambiar archivo)` : 'ELEGIR ARCHIVO .JSON'}

@@ -256,3 +256,26 @@ export function aliasDeResueltos(resueltos, rivales) {
     .filter(([nombre, id]) => id && id !== ID_MI_CLUB && porId.has(id) && normalizarNombre(nombre) !== normalizarNombre(porId.get(id).nombre))
     .map(([nombre, id]) => ({ rival_id: id, alias: nombre.trim(), alias_norm: normalizarNombre(nombre) }));
 }
+
+/**
+ * Lo mismo que leer el archivo, pero con los partidos que ya bajó la app de
+ * segundopalo (tabla liga_partidos, ver Otras competencias).
+ * @param {Array} filas  Filas de liga_partidos.
+ * @returns {{ cruces: Array, avisos: string[] }}
+ */
+export function crucesDeLiga(filas) {
+  return parseFixtureJson(JSON.stringify((filas || []).map((p) => ({
+    id_externo: p.id_externo,
+    jornada: p.jornada,
+    fecha: p.fecha,
+    hora: p.hora,
+    equipo_local: p.local,
+    equipo_visitante: p.visitante,
+    goles_local: p.goles_local,
+    goles_visitante: p.goles_visitante,
+    estado: p.estado,
+    estadio: p.estadio,
+    goleadores_local: p.goleadores_local,
+    goleadores_visitante: p.goleadores_visitante,
+  }))));
+}
