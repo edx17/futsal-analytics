@@ -52,9 +52,9 @@ async function consultarSegundopalo(competencia: Record<string, unknown>) {
     },
     body: JSON.stringify(cuerpo),
   });
-  if (!res.ok) throw new Error(`segundopalo respondió ${res.status}`);
+  if (!res.ok) throw new Error(`la fuente de AFA Futsal respondió ${res.status}`);
   const datos = await res.json();
-  if (!Array.isArray(datos)) throw new Error("segundopalo no devolvió una lista");
+  if (!Array.isArray(datos)) throw new Error("la fuente de AFA Futsal no devolvió una lista");
   return datos.map(normalizar);
 }
 

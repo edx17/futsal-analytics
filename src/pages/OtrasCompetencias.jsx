@@ -150,12 +150,12 @@ export default function OtrasCompetencias({ kiosco = false }) {
             {kiosco ? 'AFA Stats' : 'Otras competencias'}
           </h1>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-            Datos de segundopalo.com · actualizado {haceCuanto(competencia?.actualizado_at)}
+            Datos de AFA Futsal · actualizado {haceCuanto(competencia?.actualizado_at)}
           </div>
         </div>
         {puedeActualizar && (
           <button onClick={() => setMostrarSync(true)} style={btnSecundario}>
-            <Icono nombre="actualizar" size={16} /> ACTUALIZAR DESDE SEGUNDOPALO
+            <Icono nombre="actualizar" size={16} /> ACTUALIZAR DATOS DE AFA FUTSAL
           </button>
         )}
       </div>
@@ -187,7 +187,7 @@ export default function OtrasCompetencias({ kiosco = false }) {
       {estado === 'ok' && !partidos.length && (
         <p style={vacio}>
           Todavía no hay partidos de Primera {division} · {categoria}.
-          {puedeActualizar && ' Tocá "Actualizar desde segundopalo" para bajarlos.'}
+          {puedeActualizar && ' Tocá "Actualizar datos de AFA Futsal" para bajarlos.'}
         </p>
       )}
 
@@ -268,7 +268,7 @@ export default function OtrasCompetencias({ kiosco = false }) {
 
       {estado === 'ok' && partidos.length > 0 && tab === 'goleadores' && (
         !conGoleadores ? (
-          <p style={vacio}>segundopalo no publica los goleadores de inferiores. Están solo en 1ra.</p>
+          <p style={vacio}>AFA Futsal no publica los goleadores de inferiores. Están solo en 1ra.</p>
         ) : (
           <>
             <input value={filtroGol} onChange={(e) => setFiltroGol(e.target.value)} placeholder="Buscar jugador o equipo…"
@@ -492,9 +492,9 @@ function ModalSync({ onCerrar, onListo, showToast }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={onCerrar}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', width: '100%', maxWidth: '560px', maxHeight: '86vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', fontWeight: 900 }}>ACTUALIZAR DESDE SEGUNDOPALO</div>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', fontWeight: 900 }}>ACTUALIZAR DATOS DE AFA FUTSAL</div>
         <div style={{ padding: '14px 16px', overflowY: 'auto', flex: 1, fontSize: '0.8rem' }}>
-          {fase === 'consultando' && <p style={vacio}>Consultando segundopalo (Primera A a D, de 1ra a 8va)… tarda unos segundos.</p>}
+          {fase === 'consultando' && <p style={vacio}>Consultando AFA Futsal (Primera A a D, de 1ra a 8va)… tarda unos segundos.</p>}
           {fase === 'aplicando' && <p style={vacio}>Guardando…</p>}
           {fase === 'error' && <p style={{ ...vacio, color: '#ef4444' }}>{res?.error || 'Algo falló.'}</p>}
           {fase === 'previa' && (
