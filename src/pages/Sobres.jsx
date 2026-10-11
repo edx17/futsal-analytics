@@ -5,6 +5,7 @@ import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, RACHA_PARA_PREMIO, rarezaPorId, pr
 import { estadoSobres, abrirSobre, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
 import '../components/quinteto/quinteto.css';
+import './sobres.css';
 
 /* SOBRES
  *
@@ -217,41 +218,106 @@ function Probabilidades({ catalogo }) {
   );
 }
 
-/* La apertura: las cartas boca abajo, una por una. */
+/* LA APERTURA
+   1. el sobre tiembla cada vez más fuerte (suspenso),
+   2. se rompe con un destello,
+   3. caen papelitos y aparecen las cartas boca abajo,
+   4. se dan vuelta de a una.
+   Si en el sobre viene algo muy raro (oro o un premio), el temblor dura más y los
+   papelitos son dorados. */
+const MUY_RARAS = new Set(['oro', 'totw', 'potw', 'totm', 'potm', 'toty']);
+const COLORES_COMUN = ['#00ff88', '#ffffff', '#38bdf8', '#a7f3d0'];
+const COLORES_RARA = ['#fbbf24', '#fde68a', '#f59e0b', '#ffffff', '#c084fc', '#38bdf8'];
+const reducido = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+function Papelitos({ rara }) {
+  const papeles = useMemo(() => {
+    const colores = rara ? COLORES_RARA : COLORES_COMUN;
+    return Array.from({ length: rara ? 90 : 55 }, (_, i) => ({
+      i, left: Math.random() * 100, delay: Math.random() * 1.2, dur: 2.4 + Math.random() * 2,
+      dx: (Math.random() - 0.5) * 160, giro: 360 + Math.random() * 720, color: colores[i % colores.length],
+      ancho: 6 + Math.random() * 6,
+    }));
+  }, [rara]);
+  return papeles.map((p) => (
+    <i key={p.i} className="sb-papel" style={{
+      left: `${p.left}%`, background: p.color, width: p.ancho, animationDuration: `${p.dur}s`, animationDelay: `${p.delay}s`,
+      '--dx': `${p.dx}px`, '--giro': `${p.giro}deg`,
+    }} />
+  ));
+}
+
 function Apertura({ resultado, onCerrar }) {
+  const rara = resultado.cartas.some((c) => MUY_RARAS.has(c.rareza));
+  const sinMovimiento = reducido();
+  const [fase, setFase] = useState(sinMovimiento ? 'cartas' : 'tiembla');
   const [dadas, setDadas] = useState({});
   const todas = resultado.cartas.every((_, i) => dadas[i]);
+
+  useEffect(() => {
+    if (fase === 'tiembla') {
+      const t = setTimeout(() => setFase('abre'), rara ? 2700 : 1900);
+      return () => clearTimeout(t);
+    }
+    if (fase === 'abre') {
+      const t = setTimeout(() => setFase('cartas'), 650);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [fase, rara]);
+
+  const nombreSobre = SOBRES[resultado.tipo]?.nombre || 'SOBRE';
+  const enCartas = fase === 'cartas';
+
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,.88)', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', padding: 16, overflowY: 'auto' }}>
-      <div style={{ color: '#fff', fontWeight: 900, letterSpacing: '.1em', marginBottom: 6 }}>{SOBRES[resultado.tipo]?.nombre}</div>
-      <div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 22 }}>{todas ? 'Listo.' : 'Tocá cada carta para darla vuelta.'}</div>
-      <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 30 }}>
-        {resultado.cartas.map((c, i) => (
-          <div key={c.catalogo_id} style={{ width: 122, textAlign: 'center' }}>
-            {dadas[i] ? (
-              <>
-                <CartaJugador carta={aCarta(c)} style={{ position: 'relative' }} etiqueta={rarezaPorId[c.rareza]?.nombre} />
-                <div style={{ marginTop: 30, fontSize: 11, fontWeight: 900, letterSpacing: '.06em', color: c.nueva ? '#00ff88' : '#fbbf24' }}>
-                  {c.nueva ? 'NUEVA' : `REPETIDA · +${c.puntos} PTS`}
-                </div>
-              </>
-            ) : (
-              <button onClick={() => setDadas((d) => ({ ...d, [i]: true }))} aria-label="Dar vuelta la carta" style={{
-                width: 122, height: 184, border: '2px solid #00ff88', borderRadius: 10, cursor: 'pointer', fontSize: 40, fontWeight: 900, color: '#00ff88',
-                background: 'linear-gradient(160deg, #0a3b26, #04120c)', boxShadow: '0 0 18px rgba(0,255,136,.4)',
-              }}>?</button>
-            )}
+    <div className={`sb-escena sb-fase-${fase}${rara ? ' sb-rara' : ''}`}>
+      <div className="sb-flash" />
+      {(fase === 'abre' || enCartas) && !sinMovimiento && <Papelitos rara={rara} />}
+
+      {!enCartas && (
+        <>
+          <div className="sb-sobre" style={{ animationDuration: rara && fase === 'tiembla' ? '2.7s' : undefined }}>
+            <div className="sb-sobre-cuerpo" style={{ animationDuration: rara && fase === 'tiembla' ? '2.7s' : undefined }}>
+              <span className="sb-sobre-estrella">★</span>
+              <span className="sb-sobre-tipo">{nombreSobre}</span>
+              <span className="sb-sobre-marca">MYSQUAD</span>
+            </div>
           </div>
-        ))}
-      </div>
-      {todas && resultado.puntos_ganados > 0 && (
-        <div style={{ color: '#fbbf24', fontWeight: 900, marginBottom: 14 }}>+{resultado.puntos_ganados} puntos por repetidas</div>
+          <button onClick={() => setFase('cartas')} style={{ ...btn, background: 'transparent', color: '#9ca3af', border: '1px solid #374151', marginTop: 40 }}>SALTAR</button>
+        </>
       )}
-      <div style={{ display: 'flex', gap: 10 }}>
-        {!todas && <button onClick={() => setDadas(Object.fromEntries(resultado.cartas.map((_, i) => [i, true])))} style={{ ...btn, background: 'transparent', color: '#fff', border: '1px solid #4b5563' }}>DAR VUELTA TODAS</button>}
-        {todas && <button onClick={onCerrar} style={btn}>LISTO</button>}
-      </div>
+
+      {enCartas && (
+        <>
+          <div style={{ color: '#fff', fontWeight: 900, letterSpacing: '.1em', marginBottom: 6 }}>{nombreSobre}</div>
+          <div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 22 }}>{todas ? 'Listo.' : 'Tocá cada carta para darla vuelta.'}</div>
+          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 30 }}>
+            {resultado.cartas.map((c, i) => (
+              <div key={c.catalogo_id} className="sb-entra" style={{ width: 122, textAlign: 'center', animationDelay: `${i * 0.12}s` }}>
+                {dadas[i] ? (
+                  <>
+                    <div className={`sb-gira${MUY_RARAS.has(c.rareza) ? ' sb-rara-carta' : ''}`}>
+                      <CartaJugador carta={aCarta(c)} style={{ position: 'relative' }} etiqueta={rarezaPorId[c.rareza]?.nombre} />
+                    </div>
+                    <div style={{ marginTop: 30, fontSize: 11, fontWeight: 900, letterSpacing: '.06em', color: c.nueva ? '#00ff88' : '#fbbf24' }}>
+                      {c.nueva ? 'NUEVA' : `REPETIDA · +${c.puntos} PTS`}
+                    </div>
+                  </>
+                ) : (
+                  <button className="sb-reverso" onClick={() => setDadas((d) => ({ ...d, [i]: true }))} aria-label="Dar vuelta la carta">?</button>
+                )}
+              </div>
+            ))}
+          </div>
+          {todas && resultado.puntos_ganados > 0 && (
+            <div style={{ color: '#fbbf24', fontWeight: 900, marginBottom: 14 }}>+{resultado.puntos_ganados} puntos por repetidas</div>
+          )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            {!todas && <button onClick={() => setDadas(Object.fromEntries(resultado.cartas.map((_, i) => [i, true])))} style={{ ...btn, background: 'transparent', color: '#fff', border: '1px solid #4b5563' }}>DAR VUELTA TODAS</button>}
+            {todas && <button onClick={onCerrar} style={btn}>LISTO</button>}
+          </div>
+        </>
+      )}
     </div>
   );
 }
