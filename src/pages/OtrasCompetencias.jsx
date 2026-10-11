@@ -6,7 +6,7 @@ import { Icono } from '../iconos';
 import { fetchPaginado } from '../utils/supaPaginado';
 import {
   DIVISIONES, CATEGORIAS_LIGA, esMiEquipo, esFinalizado, tablaPosiciones, tablaGoleadores,
-  fixturePorJornada, jornadaActual, reportesLiga, partidosDeEquipo, parsearGoleadores,
+  fixturePorJornada, jornadaActual, reportesLiga, partidosDeEquipo, parsearGoleadores, zonasDe,
 } from '../analytics/liga';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -86,6 +86,7 @@ export default function OtrasCompetencias({ kiosco = false }) {
   const [jornadaVista, setJornadaVista] = useState(null);
   const [filtroGol, setFiltroGol] = useState('');
   const [mostrarSync, setMostrarSync] = useState(false);
+  const [zonaElegida, setZonaElegida] = useState(null);
 
   useEffect(() => {
     let vivo = true;
@@ -105,30 +106,49 @@ export default function OtrasCompetencias({ kiosco = false }) {
     [competencias, division, categoria]
   );
 
+  /* Inferiores no trae la zona: se deduce con la Primera de la misma división
+     (son los mismos clubes), así que también se baja esa. */
+  const idPrimera = competencias.find((c) => c.division === division && c.categoria === '1ra')?.id;
+
   // Cada competencia se baja una vez; volver a una ya vista es instantáneo.
   const idComp = competencia?.id;
-  const yaEsta = idComp ? idComp in porCompetencia : true;
+  const faltan = [idComp, idPrimera].filter((id) => id && !(id in porCompetencia)).join(',');
   useEffect(() => {
-    if (!idComp || yaEsta) return;
+    if (!faltan) return;
     let vivo = true;
-    traerPartidos(idComp)
-      .then((lista) => { if (vivo) setPorCompetencia((m) => ({ ...m, [idComp]: lista })); })
-      .catch(() => { if (vivo) setPorCompetencia((m) => ({ ...m, [idComp]: 'error' })); });
+    faltan.split(',').forEach((id) => {
+      traerPartidos(id)
+        .then((lista) => { if (vivo) setPorCompetencia((m) => ({ ...m, [id]: lista })); })
+        .catch(() => { if (vivo) setPorCompetencia((m) => ({ ...m, [id]: 'error' })); });
+    });
     return () => { vivo = false; };
-  }, [idComp, yaEsta]);
+  }, [faltan]);
 
   const crudo = idComp ? porCompetencia[idComp] : [];
   const estado = errorCompetencias || crudo === 'error' ? 'error'
     : !competencias.length || crudo === undefined ? 'cargando' : 'ok';
   const partidos = Array.isArray(crudo) ? crudo : SIN_PARTIDOS;
 
-  const elegirDivision = (d) => { setDivision(d); guardar(LS_DIVISION, d); setEquipoAbierto(null); setJornadaVista(null); };
+  const elegirDivision = (d) => { setDivision(d); guardar(LS_DIVISION, d); setEquipoAbierto(null); setJornadaVista(null); setZonaElegida(null); };
   const elegirCategoria = (c) => { setCategoria(c); guardar(LS_CATEGORIA, c); setEquipoAbierto(null); setJornadaVista(null); };
+  const elegirZona = (z) => { setZonaElegida(z); setEquipoAbierto(null); setJornadaVista(null); };
 
-  const tabla = useMemo(() => tablaPosiciones(partidos, ambito), [partidos, ambito]);
-  const goleadores = useMemo(() => tablaGoleadores(partidos), [partidos]);
-  const fixture = useMemo(() => fixturePorJornada(partidos), [partidos]);
-  const reportes = useMemo(() => reportesLiga(partidos), [partidos]);
+  /* Zonas (Primera D se juega en dos). Por defecto, la de mi club. */
+  const primera = Array.isArray(porCompetencia[idPrimera]) ? porCompetencia[idPrimera] : SIN_PARTIDOS;
+  const zonas = useMemo(() => {
+    const zonaPorEquipo = {};
+    primera.forEach((p) => { if (p.zona) { zonaPorEquipo[p.local] = p.zona; zonaPorEquipo[p.visitante] = p.zona; } });
+    return zonasDe(partidos, zonaPorEquipo);
+  }, [partidos, primera]);
+  const zonaActiva = zonas.find((z) => z.zona === zonaElegida)
+    || zonas.find((z) => [...z.equipos].some((e) => esMiEquipo(e, miClub)))
+    || zonas[0] || null;
+  const vista = zonaActiva ? zonaActiva.partidos : partidos;
+
+  const tabla = useMemo(() => tablaPosiciones(vista, ambito), [vista, ambito]);
+  const goleadores = useMemo(() => tablaGoleadores(vista), [vista]);
+  const fixture = useMemo(() => fixturePorJornada(vista), [vista]);
+  const reportes = useMemo(() => reportesLiga(vista), [vista]);
   const jornadaHoy = useMemo(() => jornadaActual(fixture), [fixture]);
   const jornada = jornadaVista ?? jornadaHoy;
   const fechaVista = fixture.find((f) => f.jornada === jornada) || null;
@@ -175,6 +195,19 @@ export default function OtrasCompetencias({ kiosco = false }) {
           </button>
         ))}
       </div>
+
+      {zonas.length > 1 && (
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+          {zonas.map((z) => {
+            const mia = [...z.equipos].some((e) => esMiEquipo(e, miClub));
+            return (
+              <button key={z.zona} onClick={() => elegirZona(z.zona)} style={{ ...chip(zonaActiva?.zona === z.zona), fontSize: '0.66rem' }}>
+                {z.zona.toUpperCase()} · {z.equipos.size} EQUIPOS{mia && <span title="Tu zona" style={{ marginLeft: 3 }}>●</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
         {[['tabla', 'TABLA'], ['fixture', 'FIXTURE'], ['goleadores', 'GOLEADORES'], ['reportes', 'REPORTES']].map(([id, txt]) => (

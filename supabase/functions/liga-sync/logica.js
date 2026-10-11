@@ -35,6 +35,7 @@ export function normalizarPrimera(p) {
     estadio: texto(p?.estadios_nombre),
     goleadores_local: texto(p?.goleadores_local),
     goleadores_visitante: texto(p?.goleadores_visitante),
+    zona: texto(p?.zona),
   };
 }
 
@@ -70,6 +71,7 @@ export function normalizarInferiores(p) {
     estadio: null,
     goleadores_local: null,
     goleadores_visitante: null,
+    zona: texto(p?.zona),
   };
 }
 
@@ -91,7 +93,7 @@ export function consultaDe(competencia) {
 }
 
 const esFinal = (estado) => /^finalizado$/i.test(String(estado || ''));
-const CAMPOS = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'goles_local', 'goles_visitante', 'estado', 'estadio', 'goleadores_local', 'goleadores_visitante'];
+const CAMPOS = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'goles_local', 'goles_visitante', 'estado', 'estadio', 'goleadores_local', 'goleadores_visitante', 'zona'];
 
 /**
  * Compara lo que vino de la fuente con lo que ya tenemos guardado.

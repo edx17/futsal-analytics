@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esMiEquipo, tablaPosiciones, parsearGoleadores, tablaGoleadores, fixturePorJornada, jornadaActual, reportesLiga,
+  esMiEquipo, tablaPosiciones, parsearGoleadores, tablaGoleadores, fixturePorJornada, jornadaActual, reportesLiga, zonasDe, nombreZona,
 } from '../liga';
 import { normalizarPrimera, normalizarInferiores, consultaDe, planificar } from '../../../supabase/functions/liga-sync/logica.js';
 
@@ -72,7 +72,7 @@ describe('liga: fixture y reportes', () => {
 describe('liga-sync: lo que viene de segundopalo', () => {
   it('normaliza primera e inferiores', () => {
     expect(normalizarPrimera({ id: 18963, jornada: 1, fecha: '2026-03-28', hora: '19:30:00', equipos_local_nombre: 'Dep Moron ', equipos_visitante_nombre: 'Rosario Ctral', goles_local: 2, goles_visitante: 0, estados_partido_nombre: 'Finalizado', estadios_nombre: 'Parque', goleadores_local: 'L.Gonzalez1', goleadores_visitante: null }))
-      .toEqual({ id_externo: 18963, jornada: 1, fecha: '2026-03-28', hora: '19:30', local: 'Dep Moron', visitante: 'Rosario Ctral', goles_local: 2, goles_visitante: 0, estado: 'Finalizado', estadio: 'Parque', goleadores_local: 'L.Gonzalez1', goleadores_visitante: null });
+      .toEqual({ id_externo: 18963, jornada: 1, fecha: '2026-03-28', hora: '19:30', local: 'Dep Moron', visitante: 'Rosario Ctral', goles_local: 2, goles_visitante: 0, estado: 'Finalizado', estadio: 'Parque', goleadores_local: 'L.Gonzalez1', goleadores_visitante: null, zona: null });
     expect(normalizarInferiores({ ID: 7, jornada: 'Fecha 3', fecha: '2026-04-11', hora: '10:00:00', equipolocal: 'A', equipovisitante: 'B', goleslocal: null, golesvisitante: '', estado: 'Pendiente' }))
       .toMatchObject({ id_externo: 7, jornada: 3, hora: '10:00', goles_local: null, goles_visitante: null, estadio: null });
   });
@@ -110,5 +110,30 @@ describe('liga-sync: lo que viene de segundopalo', () => {
   it('cuenta las reprogramaciones', () => {
     const a = { id_externo: 1, jornada: 1, fecha: '2026-03-28', hora: '20:00', local: 'A', visitante: 'B', estado: 'Pendiente' };
     expect(planificar([a], [{ ...a, hora: '21:00' }]).resumen.reprogramados).toBe(1);
+  });
+});
+
+describe('liga: zonas', () => {
+  const cruce = (l, v, zona) => ({ local: l, visitante: v, zona, estado: 'Finalizado', goles_local: 1, goles_visitante: 0 });
+
+  it('usa la zona de la fuente', () => {
+    const z = zonasDe([cruce('Almagro', 'Mitre', 'z1'), cruce('All Boys', 'Huracán', 'z2'), cruce('Mitre', 'Almagro', 'z1')]);
+    expect(z.map((x) => x.zona)).toEqual(['Zona 1', 'Zona 2']);
+    expect(z[0].partidos).toHaveLength(2);
+    expect([...z[1].equipos].sort()).toEqual(['All Boys', 'Huracán']);
+  });
+
+  it('sin zona: separa por quién juega con quién y nombra con la Primera', () => {
+    const z = zonasDe(
+      [cruce('All Boys', 'Huracán'), cruce('Almagro', 'Mitre'), cruce('Huracán', 'Dock Sud')],
+      { Almagro: 'z1', Mitre: 'z1', 'All Boys': 'z2', 'Dock Sud': 'z2' },
+    );
+    expect(z.map((x) => [x.zona, x.partidos.length])).toEqual([['Zona 1', 1], ['Zona 2', 2]]);
+  });
+
+  it('una sola zona: nada', () => {
+    expect(zonasDe([cruce('A', 'B', 'z1'), cruce('B', 'A', 'z1')])).toEqual([]);
+    expect(zonasDe([cruce('A', 'B'), cruce('B', 'C')])).toEqual([]);
+    expect(nombreZona('z2')).toBe('Zona 2');
   });
 });
