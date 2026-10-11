@@ -34,10 +34,10 @@ export const VARIANTES = {
   oro:    { grad: ['#fff1b8', '#e7c766', '#b8902c'], borde: '#fff7d6', texto: '#2a2005', suave: 'rgba(42,32,5,.62)', pastilla: 'rgba(42,32,5,.14)' },
   plata:  { grad: ['#f4f6f8', '#c7ced6', '#8b96a3'], borde: '#ffffff', texto: '#1b2229', suave: 'rgba(27,34,41,.62)', pastilla: 'rgba(27,34,41,.12)' },
   bronce: { grad: ['#f6d2b0', '#c98b57', '#8a5527'], borde: '#ffe6cf', texto: '#2b1606', suave: 'rgba(43,22,6,.62)', pastilla: 'rgba(43,22,6,.14)' },
-  potw:   { grad: ['#1b2b24', '#0a3b26', '#00b862'], borde: '#7dffc0', texto: '#eafff4', suave: 'rgba(234,255,244,.7)', pastilla: 'rgba(0,0,0,.28)' },
-  totw:   { grad: ['#16233f', '#1f3a8a', '#3b82f6'], borde: '#bfdbfe', texto: '#eff6ff', suave: 'rgba(239,246,255,.72)', pastilla: 'rgba(0,0,0,.28)' },
-  potm:   { grad: ['#2a1647', '#5b21b6', '#a855f7'], borde: '#e9d5ff', texto: '#faf5ff', suave: 'rgba(250,245,255,.72)', pastilla: 'rgba(0,0,0,.28)' },
-  totm:   { grad: ['#06323a', '#0e7490', '#22d3ee'], borde: '#a5f3fc', texto: '#ecfeff', suave: 'rgba(236,254,255,.72)', pastilla: 'rgba(0,0,0,.28)' },
+  potw:   { grad: ['#4a7bf0', '#1f46b8', '#0a1f5c'], borde: '#9db8ff', texto: '#eaf1ff', suave: 'rgba(234,241,255,.72)', pastilla: 'rgba(0,0,0,.28)' },
+  totw:   { grad: ['#d6f2ff', '#5cc8ff', '#2b7fe6'], borde: '#e8f8ff', texto: '#04223f', suave: 'rgba(4,34,63,.64)', pastilla: 'rgba(4,34,63,.14)' },
+  potm:   { grad: ['#ff7cff', '#c21bff', '#4a00ff'], borde: '#ffb8ff', texto: '#ffffff', suave: 'rgba(255,255,255,.75)', pastilla: 'rgba(0,0,0,.28)' },
+  totm:   { grad: ['#ead3ff', '#a561ff', '#5a1fb5'], borde: '#f3e6ff', texto: '#1e0636', suave: 'rgba(30,6,54,.64)', pastilla: 'rgba(30,6,54,.14)' },
   toty:   { grad: ['#0b0b0b', '#3b2f0b', '#e7c766'], borde: '#ffe9a3', texto: '#fff7dc', suave: 'rgba(255,247,220,.72)', pastilla: 'rgba(0,0,0,.34)' },
 };
 

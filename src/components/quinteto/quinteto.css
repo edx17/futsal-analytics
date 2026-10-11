@@ -19,8 +19,8 @@
 .mq-oro .mq-forma { background: linear-gradient(160deg, #fff1b8 0%, #e7c766 35%, #b8902c 100%); color: #2a2005; }
 .mq-plata .mq-forma { background: linear-gradient(160deg, #f4f6f8 0%, #c7ced6 40%, #8b96a3 100%); color: #1b2229; }
 .mq-bronce .mq-forma { background: linear-gradient(160deg, #f6d2b0 0%, #c98b57 40%, #8a5527 100%); color: #2b1606; }
-.mq-figura .mq-forma { background: linear-gradient(160deg, #1b2b24 0%, #0a3b26 45%, #00b862 100%); color: #eafff4;
-  box-shadow: inset 0 0 0 2px #00ff88; }
+.mq-figura .mq-forma { background: linear-gradient(160deg, #000 0%, #04100a 55%, #072818 100%); color: #39ff88;
+  box-shadow: inset 0 0 0 2px #00ff6a; }
 .mq-carta .mq-forma { clip-path: polygon(0 6%, 10% 0, 90% 0, 100% 6%, 100% 90%, 50% 100%, 0 90%); }
 .mq-evaluacion .mq-forma { background: linear-gradient(160deg, #4b5563 0%, #374151 60%, #1f2937 100%); color: #d1d5db; }
 .mq-ovr { font-size: 30px; font-weight: 900; line-height: .9; position: relative; z-index: 1; }
@@ -75,9 +75,54 @@
 .mq-mini .mq-mes { font-size: 7px; padding: 1px 4px; bottom: -6px; }
 .mq-carta .mq-mes { bottom: auto; top: -9px; left: auto; right: -6px; transform: none; }
 
-/* ── cartas de premio: brillo propio de cada una (drop-shadow: la forma de la carta recorta el box-shadow) ── */
-.mq-premio { filter: drop-shadow(0 0 5px rgba(251,191,36,.9)); }
-.mq-p-potw, .mq-p-totw { filter: drop-shadow(0 0 5px rgba(56,189,248,.9)); }
-.mq-p-potm, .mq-p-totm { filter: drop-shadow(0 0 5px rgba(192,132,252,.9)); }
-.mq-p-toty { filter: drop-shadow(0 0 8px rgba(251,191,36,1)); }
+/* ══ LA FOTO NO PISA LA MEDIA NI EL PUESTO ══
+   La media y el puesto tienen su columna a la izquierda; la foto se achica y queda del otro lado. */
+.mq-carta .mq-ovr { font-size: 28px; }
+.mq-carta .mq-foto { width: 60px; height: 72px; right: 4px; top: 6px; }
+.mq-carta .mq-foto span { width: 54px; height: 54px; }
+
+/* ══ EDICIONES ESPECIALES ══
+   Cada una con su paleta (el color de la media sale de la base; acá se pinta fondo, texto y brillo).
+   El ::before es un reflejo diagonal que queda detrás de todo. */
+.mq-forma::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+
+/* FIGURA — verde fluo con negro */
+.mq-figura .mq-forma::before { background: linear-gradient(115deg, transparent 38%, rgba(0,255,106,.5) 39%, rgba(0,255,106,.5) 44%, transparent 45%, transparent 56%, rgba(0,255,106,.18) 57%, rgba(0,255,106,.18) 70%, transparent 71%); }
+.mq-figura { --glow: rgba(0,255,106,.85); }
+
+/* TOTW — celeste / azul */
+.mq-p-totw .mq-forma { background: linear-gradient(160deg, #d6f2ff 0%, #5cc8ff 38%, #2b7fe6 100%); color: #04223f; box-shadow: inset 0 0 0 2px #e8f8ff; }
+.mq-p-totw .mq-forma::before { background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.45) 31%, rgba(255,255,255,.45) 36%, transparent 37%, transparent 52%, rgba(255,255,255,.2) 53%, rgba(255,255,255,.2) 66%, transparent 67%); }
+.mq-p-totw { --glow: rgba(92,200,255,.9); }
+
+/* POTW — azul más oscuro */
+.mq-p-potw .mq-forma { background: linear-gradient(160deg, #4a7bf0 0%, #1f46b8 42%, #0a1f5c 100%); color: #eaf1ff; box-shadow: inset 0 0 0 2px #9db8ff; }
+.mq-p-potw .mq-forma::before { background: linear-gradient(120deg, transparent 30%, rgba(157,184,255,.4) 31%, rgba(157,184,255,.4) 36%, transparent 37%, transparent 52%, rgba(157,184,255,.16) 53%, rgba(157,184,255,.16) 66%, transparent 67%); }
+.mq-p-potw { --glow: rgba(59,111,224,.95); }
+
+/* TOTM — violeta */
+.mq-p-totm .mq-forma { background: linear-gradient(160deg, #ead3ff 0%, #a561ff 42%, #5a1fb5 100%); color: #1e0636; box-shadow: inset 0 0 0 2px #f3e6ff; }
+.mq-p-totm .mq-forma::before { background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.4) 31%, rgba(255,255,255,.4) 36%, transparent 37%, transparent 52%, rgba(255,255,255,.18) 53%, rgba(255,255,255,.18) 66%, transparent 67%); }
+.mq-p-totm { --glow: rgba(165,97,255,.9); }
+
+/* POTM — violeta eléctrico */
+.mq-p-potm .mq-forma { background: linear-gradient(160deg, #ff7cff 0%, #c21bff 40%, #4a00ff 100%); color: #fff; box-shadow: inset 0 0 0 2px #ffb8ff; }
+.mq-p-potm .mq-forma::before { background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.5) 31%, rgba(255,255,255,.5) 36%, transparent 37%, transparent 52%, rgba(255,255,255,.2) 53%, rgba(255,255,255,.2) 66%, transparent 67%); }
+.mq-p-potm { --glow: rgba(194,27,255,1); }
+
+/* TOTY — negro con dorado */
+.mq-p-toty .mq-forma { background: linear-gradient(160deg, #2b2210 0%, #0b0b0b 45%, #000 100%); color: #f5d57a; box-shadow: inset 0 0 0 2px #e7c766; }
+.mq-p-toty .mq-forma::before { background: linear-gradient(120deg, transparent 30%, rgba(231,199,102,.5) 31%, rgba(231,199,102,.5) 35%, transparent 36%, transparent 52%, rgba(231,199,102,.2) 53%, rgba(231,199,102,.2) 66%, transparent 67%); }
+.mq-p-toty { --glow: rgba(231,199,102,.95); }
+
+/* En los fondos oscuros la raya de abajo del apellido y el rótulo de la edición se aclaran. */
+.mq-p-potw .mq-nombre, .mq-p-toty .mq-nombre, .mq-figura .mq-nombre { border-color: rgba(255,255,255,.28); }
+.mq-p-potm .mq-nombre { border-color: rgba(255,255,255,.35); }
+.mq-p-totw .mq-nombre, .mq-p-totm .mq-nombre { border-color: rgba(0,0,0,.25); }
 .mq-premio .mq-mes { filter: none; }
+/* El reflejo (::before) va detrás de todo el contenido. */
+.mq-attrs, .mq-nombre { position: relative; z-index: 1; }
+.mq-foto { z-index: 1; }
+/* Brillo del color de la edición, sin perder la sombra de la carta en la cancha. */
+.mq-carta.mq-premio, .mq-carta.mq-figura { filter: drop-shadow(0 16px 16px rgba(0,0,0,.55)) drop-shadow(0 0 7px var(--glow)); }
+.mq-mini.mq-premio, .mq-mini.mq-figura { filter: drop-shadow(0 0 5px var(--glow)); }
