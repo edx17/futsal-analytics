@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCategorias } from '../utils/useCategorias';
 import { useDatosPlantel } from '../utils/useDatosPlantel';
@@ -13,6 +13,8 @@ import CanchaPerspectiva from '../components/quinteto/CanchaPerspectiva';
 import CartaJugador from '../components/quinteto/CartaJugador';
 import PanelPremios from '../components/quinteto/PanelPremios';
 import HistorialPremios from '../components/quinteto/HistorialPremios';
+import FotosEspeciales from '../components/quinteto/FotosEspeciales';
+import { listarFotos } from '../utils/cartasFotos';
 import { datosDelClub } from '../placas/club';
 import { cartasDePremios, armarBanco } from '../analytics/premiosCartas';
 import { TIPOS } from '../analytics/premios';
@@ -30,7 +32,7 @@ import '../components/quinteto/quinteto.css';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const SECCIONES = [['cancha', 'CANCHA'], ['premios', 'PREMIOS'], ['historial', 'HISTORIAL']];
+const SECCIONES = [['cancha', 'CANCHA'], ['premios', 'PREMIOS'], ['especiales', 'ESPECIALES'], ['historial', 'HISTORIAL']];
 const COLOR_ATTR = (v) => (v >= 80 ? '#00ff88' : v >= 65 ? '#fbbf24' : '#ef4444');
 const COLOR_RATING = (r) => (r >= 7 ? '#00ff88' : r >= 6 ? '#fbbf24' : '#ef4444');
 const TEXTO_TIER = {
@@ -59,6 +61,10 @@ export default function MiQuinteto() {
      La alineación guarda ids de JUGADOR, así que en la cancha va una sola carta por jugador. */
   const [elegidas, setElegidas] = useState({});
   const [tipoBanco, setTipoBanco] = useState('TODAS');
+  /* Fotos especiales de las cartas de premio: Map clave → url (ver cartas_fotos). */
+  const [fotos, setFotos] = useState(() => new Map());
+  const cargarFotos = useCallback(async () => { if (clubId) setFotos(await listarFotos(clubId)); }, [clubId]);
+  useEffect(() => { cargarFotos(); }, [cargarFotos]);
 
   const { raw, loading, avance } = useDatosPlantel(clubId);
   const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
@@ -92,7 +98,7 @@ export default function MiQuinteto() {
   }, [raw, partidosScopeCat, partidosFiltro, filtroTorneo, filtroCategoria, misCategorias]);
 
   /* Las versiones de premio de cada carta (TOTY, TOTM, TOTW…): salen de todos los partidos del filtro. */
-  const premios = useMemo(() => cartasDePremios(analisis.partidosJugados, cartasBase), [analisis, cartasBase]);
+  const premios = useMemo(() => cartasDePremios(analisis.partidosJugados, cartasBase, fotos), [analisis, cartasBase, fotos]);
   const todasPorClave = useMemo(() => {
     const m = new Map(cartasBase.map((c) => [c.id, { ...c, clave: c.id }]));
     premios.forEach((c) => m.set(c.clave, c));
@@ -277,6 +283,8 @@ export default function MiQuinteto() {
       ) : seccion === 'premios' ? (
         <PanelPremios partidosJugados={analisis.partidosJugados} jugadores={raw.jugadores} club={datosDelClub(perfil)}
           clubId={clubId} categoria={filtroCategoria} torneoId={filtroTorneo} esMovil={esMovil} />
+      ) : seccion === 'especiales' ? (
+        <FotosEspeciales premios={premios} fotos={fotos} clubId={clubId} alCambiar={cargarFotos} esMovil={esMovil} />
       ) : cartas.length === 0 ? (
         <div className="bento-card" style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)' }}>
           Todavía no hay partidos con datos para estos filtros.

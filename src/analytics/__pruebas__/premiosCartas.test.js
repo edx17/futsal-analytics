@@ -168,6 +168,17 @@ describe('premios como cartas para jugar', () => {
     expect(potw.atributos).toBe(base[2].atributos);
   });
 
+  it('una foto especial reemplaza la del plantel sólo en esa carta', () => {
+    const fotos = new Map([[claveCarta('POTW', 'p2', '3'), 'https://x/especial.png']]);
+    const cartas = cartasDePremios(partidos, base.map((b) => ({ ...b, foto: 'plantel.jpg' })), fotos);
+    const conFoto = cartas.find((x) => x.clave === claveCarta('POTW', 'p2', '3'));
+    expect(conFoto.foto).toBe('https://x/especial.png');
+    expect(conFoto.fotoEspecial).toBe(true);
+    const otra = cartas.find((x) => x.id === '3' && x.premio === 'TOTW');
+    expect(otra.foto).toBe('plantel.jpg');
+    expect(otra.fotoEspecial).toBe(false);
+  });
+
   it('un jugador sin carta base en el filtro se saltea', () => {
     const cartas = cartasDePremios(partidos, base.filter((b) => b.id !== '3'));
     expect(cartas.some((x) => x.id === '3')).toBe(false);

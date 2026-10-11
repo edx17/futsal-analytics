@@ -130,3 +130,25 @@
 /* La carta no hereda la alineación de donde esté puesta (en la apertura de sobres el contenedor
    está centrado y la media y el puesto se corrían contra la foto). */
 .mq-forma { text-align: left; }
+
+/* ══ LA CARTA QUE SE GIRA ══
+   Frente y dorso en dos caras con backface-visibility; el dorso muestra la foto entera. */
+.mq-giro { position: relative; width: 122px; height: 184px; perspective: 900px; cursor: pointer; }
+.mq-giro-in { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .6s cubic-bezier(.3,.7,.3,1); }
+.mq-volteada .mq-giro-in { transform: rotateY(180deg); }
+.mq-cara { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.mq-cara-dorso { transform: rotateY(180deg); }
+.mq-dorso { padding: 0 !important; }
+.mq-dorso::before { display: none !important; }
+.mq-dorso img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; z-index: 0; }
+.mq-dorso-iniciales { position: absolute; inset: 0; display: grid; place-items: center; font-size: 46px; font-weight: 900; opacity: .5; }
+.mq-dorso-datos { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 34px 6px 17px; text-align: center; color: #fff;
+  background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.78) 55%, rgba(0,0,0,.9) 100%); }
+.mq-dorso-datos b { display: block; font-size: 14px; font-weight: 900; letter-spacing: .03em; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mq-dorso-datos span { display: block; margin-top: 3px; font-size: 22px; font-weight: 900; line-height: 1; }
+.mq-dorso-datos em { font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .08em; margin-left: 6px; opacity: .85; }
+@media (prefers-reduced-motion: reduce) { .mq-giro-in { transition: none; } }
+/* El dorso conserva el color de la edición: un aro fino del color de la carta. */
+.mq-dorso::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 3px var(--aro, #e7c766); }
+.mq-oro { --aro: #e7c766; } .mq-plata { --aro: #d1d5db; } .mq-bronce { --aro: #d49a66; } .mq-figura { --aro: #00ff6a; }
+.mq-p-totw { --aro: #7dd3fc; } .mq-p-potw { --aro: #6f95ff; } .mq-p-totm { --aro: #c39bff; } .mq-p-potm { --aro: #ff9bff; } .mq-p-toty { --aro: #e7c766; }

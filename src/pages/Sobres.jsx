@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import CartaJugador from '../components/quinteto/CartaJugador';
+import CartaGiratoria from '../components/quinteto/CartaGiratoria';
 import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, RACHA_PARA_PREMIO, rarezaPorId, probabilidades } from '../analytics/sobres';
 import { estadoSobres, abrirSobre, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
@@ -139,8 +139,8 @@ export default function Sobres() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '14px 10px', justifyItems: 'center' }}>
             {mostradas.map((c) => (
-              <div key={c.catalogo_id} style={{ paddingBottom: 6 }}>
-                <CartaJugador carta={aCarta(c)} style={{ position: 'relative' }} etiqueta={rarezaPorId[c.rareza]?.nombre} />
+              <div key={c.catalogo_id} style={{ paddingBottom: 30 }}>
+                <CartaGiratoria carta={aCarta(c)} etiqueta={rarezaPorId[c.rareza]?.nombre} />
               </div>
             ))}
           </div>
@@ -290,14 +290,14 @@ function Apertura({ resultado, onCerrar }) {
       {enCartas && (
         <>
           <div style={{ color: '#fff', fontWeight: 900, letterSpacing: '.1em', marginBottom: 6 }}>{nombreSobre}</div>
-          <div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 22 }}>{todas ? 'Listo.' : 'Tocá cada carta para darla vuelta.'}</div>
+          <div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 22 }}>{todas ? 'Listo.' : 'Tocá cada carta para darla vuelta. Después, tocala para ver la foto.'}</div>
           <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 30 }}>
             {resultado.cartas.map((c, i) => (
               <div key={c.catalogo_id} className="sb-entra" style={{ width: 122, textAlign: 'center', animationDelay: `${i * 0.12}s` }}>
                 {dadas[i] ? (
                   <>
                     <div className={`sb-gira${MUY_RARAS.has(c.rareza) ? ' sb-rara-carta' : ''}`}>
-                      <CartaJugador carta={aCarta(c)} style={{ position: 'relative' }} etiqueta={rarezaPorId[c.rareza]?.nombre} />
+                      <CartaGiratoria carta={aCarta(c)} etiqueta={rarezaPorId[c.rareza]?.nombre} />
                     </div>
                     <div style={{ marginTop: 30, fontSize: 11, fontWeight: 900, letterSpacing: '.06em', color: c.nueva ? '#00ff88' : '#fbbf24' }}>
                       {c.nueva ? 'NUEVA' : `REPETIDA · +${c.puntos} PTS`}

@@ -231,7 +231,7 @@ export function registrosDeTodo(partidosJugados = []) {
  * Cada una: la carta base + { clave, premio, edicion, ovr, tier, stats }.
  * Un jugador que no tiene carta base en el filtro se saltea.
  */
-export function cartasDePremios(partidosJugados = [], cartasBase = []) {
+export function cartasDePremios(partidosJugados = [], cartasBase = [], fotos = new Map()) {
   const base = new Map(cartasBase.map((c) => [c.id, c]));
   const salida = [];
   registrosDeTodo(partidosJugados).forEach((r) => {
@@ -242,9 +242,12 @@ export function cartasDePremios(partidosJugados = [], cartasBase = []) {
       const nota = Number(f.nota);
       if (!b || !Number.isFinite(nota)) return;
       const ovr = ovrDeNota(nota);
+      const clave = claveCarta(r.tipo, r.periodo, id);
       salida.push({
         ...b,
-        clave: claveCarta(r.tipo, r.periodo, id),
+        clave,
+        foto: fotos.get(clave) || b.foto,
+        fotoEspecial: fotos.has(clave),
         premio: r.tipo,
         fechaRef: r.fechaRef || '',
         edicion: etiqueta,
