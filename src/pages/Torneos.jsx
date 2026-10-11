@@ -11,6 +11,7 @@ import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
 import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
 import { parseFixturePegado, matchearRivales, calcularAliasNuevos, ID_MI_CLUB } from '../utils/parseFixturePegado';
+import { parseFixtureJson, planificarSincronizacion, aliasDeResueltos } from '../utils/importarFixtureJson';
 import { calcularTabla, resultadosDe, statsDe, rachasDe, mejorYPeor, puestoDe, equiposDe } from '../utils/analisisTorneo';
 import ModalPlaca from '../placas/ModalPlaca';
 import PlacaTabla from '../placas/PlacaTabla';
@@ -75,6 +76,14 @@ function Torneos() {
   const [mostrarModalImportar, setMostrarModalImportar] = useState(false);
   const [textoPegado, setTextoPegado] = useState('');
   const [avisosImport, setAvisosImport] = useState([]);
+
+  // SINCRONIZAR CON UN ARCHIVO DE LA LIGA (el JSON del scraper). Paralelo al
+  // pegado, pero actualiza lo que ya está en vez de volver a insertarlo.
+  const [mostrarSync, setMostrarSync] = useState(false);
+  const [syncArchivo, setSyncArchivo] = useState(null); // { nombre, cruces, avisos }
+  const [syncResueltos, setSyncResueltos] = useState({}); // nombre del archivo -> id elegido a mano
+  const [syncAplicarDistintos, setSyncAplicarDistintos] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
   
   const [filtroCategoria, setFiltroCategoria] = useState(categoriaInicial);
   const [torneoActivo, setTorneoActivo] = useState(null);
@@ -377,6 +386,82 @@ function Torneos() {
     ]);
     setMostrarModalImportar(false);
     setTextoPegado('');
+  };
+
+  /* ── SINCRONIZAR CON ARCHIVO ──────────────────────────────────────────── */
+  const abrirSync = () => {
+    setSyncArchivo(null); setSyncResueltos({}); setSyncAplicarDistintos(false); setMostrarSync(true);
+  };
+
+  const leerArchivoSync = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const texto = await file.text();
+    const { cruces, avisos } = parseFixtureJson(texto);
+    setSyncResueltos({});
+    setSyncArchivo({ nombre: file.name, cruces, avisos });
+    e.target.value = '';
+  };
+
+  // Reconoce los equipos con lo mismo que el pegado (rivales + alias + tu
+  // club) y después aplica lo que elegiste a mano para los que no salieron.
+  const syncPartidos = useMemo(() => {
+    if (!syncArchivo?.cruces?.length) return [];
+    return matchearRivales(syncArchivo.cruces, rivales, aliasRivales, miClubGlobal).map((m) => {
+      const loc = m.local_id || syncResueltos[m._crudo.local] || '';
+      const vis = m.visitante_id || syncResueltos[m._crudo.visitante] || '';
+      return { ...m, local_id: loc, visitante_id: vis, _sinResolver: [!loc && m._crudo.local, !vis && m._crudo.visitante].filter(Boolean) };
+    });
+  }, [syncArchivo, rivales, aliasRivales, miClubGlobal, syncResueltos]);
+
+  const syncSinResolverOriginal = useMemo(() => {
+    if (!syncArchivo?.cruces?.length) return [];
+    const m = matchearRivales(syncArchivo.cruces, rivales, aliasRivales, miClubGlobal);
+    return [...new Set(m.flatMap((x) => x._sinResolver))].sort();
+  }, [syncArchivo, rivales, aliasRivales, miClubGlobal]);
+
+  const syncPlan = useMemo(() => (
+    syncPartidos.length && torneoActivo
+      ? planificarSincronizacion(syncPartidos, fixture, rivales, {
+          clubId, torneo: torneoActivo, miClub: miClubGlobal, miEscudo: localStorage.getItem('escudo_url') || null,
+        })
+      : null
+  ), [syncPartidos, fixture, rivales, torneoActivo, clubId, miClubGlobal]);
+
+  const aplicarSync = async () => {
+    if (!syncPlan) return;
+    const corregibles = syncAplicarDistintos ? syncPlan.revisar.filter((r) => r.id && r.cambios) : [];
+    const updates = [...syncPlan.actualizar, ...corregibles];
+    const inserts = syncPlan.nuevos.map((n) => n.fila);
+    if (!updates.length && !inserts.length) return showToast('No hay nada para cambiar: el fixture ya está al día.', 'success');
+
+    setSincronizando(true);
+    let errores = 0;
+    for (let i = 0; i < inserts.length; i += 100) {
+      const { error } = await supabase.from('partidos').insert(inserts.slice(i, i + 100));
+      if (error) { errores += inserts.slice(i, i + 100).length; console.error('[Sync] insert:', error.message); }
+    }
+    // De a 10 a la vez: son updates sueltos (cada partido cambia distinto).
+    for (let i = 0; i < updates.length; i += 10) {
+      const res = await Promise.all(updates.slice(i, i + 10).map((u) => supabase.from('partidos').update(u.cambios).eq('id', u.id)));
+      res.forEach((r) => { if (r.error) { errores += 1; console.error('[Sync] update:', r.error.message); } });
+    }
+    // Los nombres resueltos a mano quedan como alias para la próxima.
+    const alias = aliasDeResueltos(syncResueltos, rivales).filter((a) => !aliasRivales.some((x) => x.alias_norm === a.alias_norm));
+    if (alias.length) {
+      const { data: guardados, error: errAlias } = await supabase.from('rivales_alias')
+        .upsert(alias.map((a) => ({ ...a, club_id: clubId })), { onConflict: 'club_id, alias_norm', ignoreDuplicates: true })
+        .select('rival_id, alias, alias_norm');
+      if (errAlias) console.error('[Sync] alias:', errAlias.message);
+      if (guardados?.length) setAliasRivales((prev) => [...prev, ...guardados]);
+    }
+    setSincronizando(false);
+    await fetchFixture(torneoActivo.id, torneoActivo.categoria);
+    setMostrarSync(false);
+    const hechos = inserts.length + updates.length - errores;
+    showToast(errores
+      ? `Se aplicaron ${hechos} cambios y fallaron ${errores}. Mirá la consola para el detalle.`
+      : `Listo: ${inserts.length} partidos nuevos y ${updates.length} actualizados.`, errores ? 'warning' : 'success');
   };
 
   const handleGuardarFixture = async () => {
@@ -1524,6 +1609,10 @@ function Torneos() {
                     <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA DE LA CAMPAÑA
                   </button>
                 )}
+                <button onClick={abrirSync} className="btn-secondary" style={{ fontSize: '0.75rem', padding: '10px 16px', fontWeight: 900 }}
+                  title="Actualiza resultados, fechas y horarios con el archivo de la liga, sin duplicar partidos">
+                  <Icono nombre="actualizar" size="1.2em" style={{ marginRight: 6 }} />SINCRONIZAR CON ARCHIVO
+                </button>
                 <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem', padding: '10px 20px', fontWeight: 800 }}>
                   + AGREGAR FECHA
                 </button>
@@ -2689,6 +2778,97 @@ function Torneos() {
         </div>
       )}
 
+      {/* MODAL: sincronizar el fixture con el archivo de la liga */}
+      {mostrarSync && (
+        <div className="modal-overlay" style={{ zIndex: 100000 }}>
+          <div className="modal-content" style={{ maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto', padding: '25px', borderRadius: '8px' }}>
+            <div className="section-title" style={{ color: 'var(--accent)', fontSize: '1rem', marginBottom: '8px' }}>
+              SINCRONIZAR CON ARCHIVO
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.6, marginTop: 0, marginBottom: '12px' }}>
+              Elegí el JSON con los partidos de la liga. Se compara con el fixture de <b style={{ color: 'var(--text)' }}>{torneoActivo?.nombre}</b> y
+              antes de cambiar nada te muestra qué va a hacer. Correrlo de nuevo no duplica partidos.
+              Lo que cargaron ustedes manda: un partido finalizado no vuelve atrás y los partidos con toma de datos no cambian de resultado.
+            </p>
+
+            <label className="btn-secondary" style={{ display: 'block', textAlign: 'center', padding: '12px', borderStyle: 'dashed', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800 }}>
+              <Icono nombre="subir" size="1.2em" style={{ marginRight: 6 }} />
+              {syncArchivo ? `${syncArchivo.nombre} · ${syncArchivo.cruces.length} partidos (cambiar archivo)` : 'ELEGIR ARCHIVO .JSON'}
+              <input type="file" accept=".json,application/json" onChange={leerArchivoSync} style={{ display: 'none' }} />
+            </label>
+
+            {syncArchivo?.avisos?.length > 0 && (
+              <div style={{ marginTop: '12px', padding: '10px', borderRadius: '6px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.45)' }}>
+                {syncArchivo.avisos.slice(0, 8).map((a, i) => <div key={i} style={{ fontSize: '0.72rem', color: '#fbbf24', lineHeight: 1.5 }}>• {a}</div>)}
+                {syncArchivo.avisos.length > 8 && <div style={{ fontSize: '0.72rem', color: '#fbbf24' }}>• y {syncArchivo.avisos.length - 8} más.</div>}
+              </div>
+            )}
+
+            {syncSinResolverOriginal.length > 0 && (
+              <div style={{ marginTop: '14px' }}>
+                <div className="section-title" style={{ marginBottom: '8px' }}>¿QUIÉN ES QUIÉN? (SE RECUERDA PARA LA PRÓXIMA)</div>
+                {syncSinResolverOriginal.map((nombre) => (
+                  <div key={nombre} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 800, color: syncResueltos[nombre] ? 'var(--text)' : '#ef4444' }}>{nombre}</span>
+                    <select value={syncResueltos[nombre] || ''} onChange={(e) => setSyncResueltos((r) => ({ ...r, [nombre]: e.target.value }))}
+                      style={{ ...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1.4, marginBottom: 0 }}>
+                      <option value="">ELEGIR…</option>
+                      <option value={ID_MI_CLUB}>{miClubGlobal.toUpperCase()} (MI CLUB)</option>
+                      {rivales.map((r) => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {syncPlan && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginTop: '16px' }}>
+                  {[
+                    ['RESULTADOS', syncPlan.actualizar.filter((a) => a.resultado).length, 'var(--accent)'],
+                    ['FECHAS / HORAS', syncPlan.actualizar.filter((a) => !a.resultado).length, '#3b82f6'],
+                    ['NUEVOS', syncPlan.nuevos.length, '#a855f7'],
+                    ['PARA REVISAR', syncPlan.revisar.length, '#f59e0b'],
+                    ['SIN CAMBIOS', syncPlan.iguales, 'var(--text-dim)'],
+                  ].map(([l, n, c]) => (
+                    <div key={l} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: c }}>{n}</div>
+                      <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '0.08em' }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {syncPlan.sinResolver.length > 0 && (
+                  <div style={{ marginTop: '10px', fontSize: '0.72rem', color: '#ef4444' }}>
+                    Los partidos de equipos sin elegir arriba no se tocan.
+                  </div>
+                )}
+
+                <ListaSync titulo="Resultados nuevos" items={syncPlan.actualizar.filter((a) => a.resultado).map((a) => `${a.desc} · ${a.que.join(', ')}`)} />
+                <ListaSync titulo="Partidos nuevos" items={syncPlan.nuevos.map((n) => n.desc)} />
+                <ListaSync titulo="Fechas y horarios" items={syncPlan.actualizar.filter((a) => !a.resultado).map((a) => `${a.desc} · ${a.que.join(', ')}`)} />
+                <ListaSync titulo="Para revisar" abierta items={syncPlan.revisar.map((r) => `${r.desc} · ${r.motivo}`)} />
+                {syncPlan.avisos.length > 0 && <ListaSync titulo="Avisos" items={syncPlan.avisos} />}
+
+                {syncPlan.revisar.some((r) => r.id && r.cambios) && (
+                  <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginTop: '12px', fontSize: '0.75rem', color: 'var(--text)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={syncAplicarDistintos} onChange={(e) => setSyncAplicarDistintos(e.target.checked)} />
+                    Corregir con el resultado oficial los {syncPlan.revisar.filter((r) => r.id && r.cambios).length} partidos con resultado distinto que no tienen toma de datos.
+                  </label>
+                )}
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => setMostrarSync(false)} className="btn-secondary" style={{ flex: 1 }} disabled={sincronizando}>CANCELAR</button>
+              <button onClick={aplicarSync} className="btn-action" style={{ flex: 1, opacity: syncPlan && !sincronizando ? 1 : 0.5 }} disabled={!syncPlan || sincronizando}>
+                {sincronizando ? 'APLICANDO…' : 'APLICAR CAMBIOS'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ModalPlaca
         abierto={placaAbierta === 'tabla'}
         onCerrar={() => setPlacaAbierta(null)}
@@ -2773,3 +2953,18 @@ function PoderOfensivoMovil({ equipos, miClub }) {
 }
 
 export default Torneos;
+
+/* Una lista plegable del resumen de la sincronización. */
+function ListaSync({ titulo, items, abierta = false }) {
+  if (!items?.length) return null;
+  return (
+    <details open={abierta} style={{ marginTop: '10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px 12px' }}>
+      <summary style={{ cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text)' }}>{titulo} ({items.length})</summary>
+      <div style={{ maxHeight: '180px', overflowY: 'auto', marginTop: '6px' }}>
+        {items.slice(0, 300).map((t, i) => (
+          <div key={i} style={{ fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.6, borderTop: i ? '1px solid var(--border)' : 'none', padding: '3px 0' }}>{t}</div>
+        ))}
+      </div>
+    </details>
+  );
+}
