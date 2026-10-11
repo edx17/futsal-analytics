@@ -61,6 +61,7 @@ const Disciplina          = lazy(() => import('./pages/Disciplina'));
 const Transferencias      = lazy(() => import('./pages/Transferencias'));
 const ResumenPlantel      = lazy(() => import('./pages/Resumenplantel'));
 const MiQuinteto          = lazy(() => import('./pages/MiQuinteto'));
+const Sobres              = lazy(() => import('./pages/Sobres'));
 
 // MySquad es para jugar con el plantel: lo ven superuser, manager, administrador y cuerpo técnico.
 const ROLES_JUEGO = ['superuser', 'manager', 'admin', 'ct'];
@@ -174,6 +175,7 @@ function AppRoutes() {
       <Route path="/mysquad" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><MiQuinteto /></ProtectedRoute>} />
       {/* La primera versión se llamó "Mi Quinteto": el link viejo sigue andando. */}
       <Route path="/mi-quinteto" element={<Navigate to="/mysquad" replace />} />
+      <Route path="/sobres" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><Sobres /></ProtectedRoute>} />
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
       <Route path="/agenda" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Agenda /></ProtectedRoute>} />
@@ -380,6 +382,7 @@ useEffect(() => {
             <Route path="/kiosco/torneo" element={<KioscoTorneo />} />
             <Route path="/kiosco/mis-datos" element={<KioscoMisDatos />} />
             <Route path="/kiosco/mis-pagos" element={<KioscoMisPagos />} />
+            <Route path="/kiosco/sobres" element={<Sobres />} />
             <Route path="/kiosco/*" element={<Navigate to="/kiosco" replace />} />
           </Routes>
         </Suspense>
@@ -502,7 +505,12 @@ useEffect(() => {
               {isCollapsed ? <Icono nombre="juego" size={22} /> : <><span>JUEGO</span> <Icono nombre={menusAbiertos.juego ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
             </div>
             {menusAbiertos.juego && !isCollapsed && (
-              <NavLink to="/mysquad" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>MYSQUAD</span></NavLink>
+              <>
+                <NavLink to="/mysquad" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>MYSQUAD</span></NavLink>
+                {!permisos.esSuperUser && (
+                  <NavLink to="/sobres" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>SOBRES</span></NavLink>
+                )}
+              </>
             )}
           </>
         )}

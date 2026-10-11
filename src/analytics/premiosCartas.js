@@ -8,8 +8,11 @@
  * Funciones puras, sin pantalla ni base de datos, para poder probarlas.
  */
 
-import { ovrDeNota } from './premios';
-import { rolDe } from './quinteto';
+import {
+  ovrDeNota, premiosDelPartido, premiosDelMes, premioTemporada, mesesConPartidos, claveAnio,
+  registrosDePartido, registrosDeMes, registroTemporada,
+} from './premios';
+import { rolDe, tierDe } from './quinteto';
 
 /** Cómo se llama cada premio y cómo se dibuja. */
 export const PREMIOS = {
@@ -180,4 +183,92 @@ export function rankingDestacados(registros = []) {
   return [...por.values()]
     .map((f) => ({ ...f, individuales: f.potw + f.potm + f.toty, quintetos: f.totw + f.totm }))
     .sort((a, b) => (b.individuales - a.individuales) || (b.quintetos - a.quintetos) || String(a.apellido).localeCompare(String(b.apellido)));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LOS PREMIOS COMO CARTAS PARA JUGAR
+   ══════════════════════════════════════════════════════════════════════════
+   Cada premio ganado es una versión especial de la carta del jugador: misma
+   cara y mismos atributos, pero con la nota de ese partido / mes / temporada.
+   Un jugador puede tener muchas (Matoff TOTY, Matoff TOTM de septiembre…) y
+   todas están a disposición en el banco, pero en la cancha va UNA por jugador:
+   la alineación guarda ids de jugador, no de carta, así que no hay forma de
+   poner dos del mismo. */
+
+export const claveCarta = (tipo, periodo, id) => `${tipo}|${periodo}|${id}`;
+
+const MES3 = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+
+/** El texto corto que lleva la carta: 'TOTW SUR 01/10', 'TOTM SEP 26', 'TOTY 2026'. */
+export function etiquetaCorta(registro) {
+  const { tipo, periodo, contexto = {} } = registro;
+  if (tipo === 'POTW' || tipo === 'TOTW') {
+    const [, m, d] = String(contexto.fecha || registro.fechaRef || '').slice(0, 10).split('-');
+    return `${tipo} ${String(contexto.rival || '').slice(0, 3).toUpperCase()} ${d}/${m}`.trim();
+  }
+  if (tipo === 'POTM' || tipo === 'TOTM') {
+    const [a, m] = String(periodo).split('-').map(Number);
+    return `${tipo} ${MES3[m - 1] || ''} ${String(a).slice(2)}`;
+  }
+  return `${tipo} ${periodo}`;
+}
+
+/** Todos los registros de premios que salen de los partidos: cada partido, cada mes y cada año. */
+export function registrosDeTodo(partidosJugados = []) {
+  const registros = [];
+  partidosJugados.forEach((p) => registros.push(...registrosDePartido(premiosDelPartido(p))));
+  mesesConPartidos(partidosJugados).forEach((m) => registros.push(...registrosDeMes(premiosDelMes(partidosJugados, m))));
+  [...new Set(partidosJugados.map((p) => claveAnio(p.fecha)).filter(Boolean))].forEach((anio) => {
+    const delAnio = partidosJugados.filter((p) => claveAnio(p.fecha) === anio);
+    const t = registroTemporada(premioTemporada(delAnio), delAnio);
+    if (t) registros.push(t);
+  });
+  return registros;
+}
+
+/**
+ * Las cartas de premio para el juego, a partir de las cartas base del plantel.
+ * Cada una: la carta base + { clave, premio, edicion, ovr, tier, stats }.
+ * Un jugador que no tiene carta base en el filtro se saltea.
+ */
+export function cartasDePremios(partidosJugados = [], cartasBase = []) {
+  const base = new Map(cartasBase.map((c) => [c.id, c]));
+  const salida = [];
+  registrosDeTodo(partidosJugados).forEach((r) => {
+    const etiqueta = etiquetaCorta(r);
+    (r.jugadores || []).forEach((f) => {
+      const id = String(f.id);
+      const b = base.get(id);
+      const nota = Number(f.nota);
+      if (!b || !Number.isFinite(nota)) return;
+      const ovr = ovrDeNota(nota);
+      salida.push({
+        ...b,
+        clave: claveCarta(r.tipo, r.periodo, id),
+        premio: r.tipo,
+        fechaRef: r.fechaRef || '',
+        edicion: etiqueta,
+        descripcion: descripcionRegistro(r),
+        rol: f.rol || b.rol,
+        ovr, tier: tierDe(ovr), enEvaluacion: false,
+        stats: { ...b.stats, pj: f.pj ?? 1, goles: f.goles || 0, asist: f.asistencias || 0, rating: nota, min: null },
+      });
+    });
+  });
+  return salida;
+}
+
+/**
+ * Lo que se ve en el banco: las cartas base y las de premio, salvo las de los
+ * jugadores que ya están en la cancha. `tipo`: 'TODAS', 'BASE' o un premio.
+ */
+export function armarBanco(cartasBase = [], premios = [], alineacion = [], tipo = 'TODAS') {
+  const enCancha = new Set((alineacion || []).filter((x) => x != null).map(String));
+  const base = tipo === 'TODAS' || tipo === 'BASE'
+    ? cartasBase.filter((c) => !enCancha.has(c.id)).map((c) => ({ ...c, clave: c.id }))
+    : [];
+  const especiales = tipo === 'BASE' ? [] : premios
+    .filter((c) => !enCancha.has(c.id) && (tipo === 'TODAS' || c.premio === tipo))
+    .sort((a, b) => String(b.fechaRef).localeCompare(String(a.fechaRef)) || b.ovr - a.ovr);
+  return [...base, ...especiales];
 }

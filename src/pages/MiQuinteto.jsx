@@ -7,7 +7,6 @@ import { procesarPlantel } from '../analytics/plantel';
 import {
   analizarPartidos, armarCartas, FORMACIONES, quintetoIdeal, quintetoMasUsado, quimicaDe,
   ubicar, etiquetaLugar, puedeIr, CASTIGO_FUERA_DE_PUESTO,
-  mesDe, mesesConPartidos, aplicarEdiciones, mesesDelJugador,
 } from '../analytics/quinteto';
 import { useArrastre } from '../components/quinteto/useArrastre';
 import CanchaPerspectiva from '../components/quinteto/CanchaPerspectiva';
@@ -15,7 +14,10 @@ import CartaJugador from '../components/quinteto/CartaJugador';
 import PanelPremios from '../components/quinteto/PanelPremios';
 import HistorialPremios from '../components/quinteto/HistorialPremios';
 import { datosDelClub } from '../placas/club';
-import { etiquetaMes } from '../analytics/premiosCartas';
+import { cartasDePremios, armarBanco } from '../analytics/premiosCartas';
+import { TIPOS } from '../analytics/premios';
+import { catalogoDeCartas, probabilidades } from '../analytics/sobres';
+import { publicarCatalogo } from '../utils/sobres';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -53,8 +55,10 @@ export default function MiQuinteto() {
   const [verId, setVerId] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [seccion, setSeccion] = useState('cancha');
-  /* { idJugador: 'YYYY-MM' }: qué jugadores usan la carta de un mes pasado (ver aplicarEdiciones). */
-  const [ediciones, setEdiciones] = useState({});
+  /* { idJugador: clave }: qué jugadores juegan con una carta de premio en vez de la base.
+     La alineación guarda ids de JUGADOR, así que en la cancha va una sola carta por jugador. */
+  const [elegidas, setElegidas] = useState({});
+  const [tipoBanco, setTipoBanco] = useState('TODAS');
 
   const { raw, loading, avance } = useDatosPlantel(clubId);
   const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
@@ -87,45 +91,25 @@ export default function MiQuinteto() {
     return { ...armarCartas({ jugadoresProc, arquerosProc, forma: a.forma, figura: a.figura }), analisis: a };
   }, [raw, partidosScopeCat, partidosFiltro, filtroTorneo, filtroCategoria, misCategorias]);
 
-  /* Las cartas de cada mes: lo mismo que las de arriba, pero con los partidos de ese mes solo. */
-  const cartasPorMes = useMemo(() => {
-    const porMes = new Map();
-    mesesConPartidos(partidosFiltro).forEach((mes) => {
-      const delMes = partidosFiltro.filter((p) => mesDe(p.fecha) === mes);
-      const { jugadoresProc, arquerosProc } = procesarPlantel({
-        raw, partidosScopeCat: delMes, filtroTorneo: 'Todos', filtroCategoria, misCategorias,
-        hayRuedas: false, filtroRueda: 'Todas', torneoElegido: null, jornadasOrdenadas: [],
-      });
-      const a = analizarPartidos({ partidos: delMes, eventos: raw.eventos, jugadores: raw.jugadores });
-      porMes.set(mes, armarCartas({ jugadoresProc, arquerosProc, forma: a.forma, figura: null }).cartas);
-    });
-    return porMes;
-  }, [raw, partidosFiltro, filtroCategoria, misCategorias]);
+  /* Las versiones de premio de cada carta (TOTY, TOTM, TOTW…): salen de todos los partidos del filtro. */
+  const premios = useMemo(() => cartasDePremios(analisis.partidosJugados, cartasBase), [analisis, cartasBase]);
+  const todasPorClave = useMemo(() => {
+    const m = new Map(cartasBase.map((c) => [c.id, { ...c, clave: c.id }]));
+    premios.forEach((c) => m.set(c.clave, c));
+    return m;
+  }, [cartasBase, premios]);
 
-  /* Una carta por jugador, siempre: elegir otro mes reemplaza la actual (misma id). */
-  const cartas = useMemo(() => aplicarEdiciones(cartasBase, ediciones, cartasPorMes), [cartasBase, ediciones, cartasPorMes]);
+  /* La carta con la que juega cada uno: la de premio si la eligió, si no la base. */
+  const cartas = useMemo(
+    () => cartasBase.map((c) => todasPorClave.get(elegidas[c.id]) || { ...c, clave: c.id }),
+    [cartasBase, elegidas, todasPorClave],
+  );
   const porId = useMemo(() => new Map(cartas.map((c) => [c.id, c])), [cartas]);
-
-  const edicionGlobal = useMemo(() => {
-    const usados = new Set(Object.values(ediciones));
-    return usados.size === 1 && Object.keys(ediciones).length > 0 ? [...usados][0] : '';
-  }, [ediciones]);
-  const ponerEdicionGlobal = (mes) => {
-    if (!mes) { setEdiciones({}); return; }
-    const nuevas = {};
-    (cartasPorMes.get(mes) || []).forEach((c) => { nuevas[c.id] = mes; });
-    setEdiciones(nuevas);
-  };
-  const ponerEdicion = (id, mes) => setEdiciones((e) => {
-    const n = { ...e };
-    if (mes) n[id] = mes; else delete n[id];
-    return n;
-  });
   const formacion = FORMACIONES[formacionId];
 
   /* Al cambiar el filtro (o al llegar los datos) arranca con el quinteto ideal. */
   useEffect(() => {
-    setEdiciones({});
+    setElegidas({});
     setAlineacion(quintetoIdeal(cartasBase, FORMACIONES[formacionId]));
     setSel(null);
     setVerId(null);
@@ -133,7 +117,7 @@ export default function MiQuinteto() {
   }, [cartasBase]);
 
   const enCancha = alineacion.map((id) => (id != null ? porId.get(id) || null : null));
-  const banco = cartas.filter((c) => !alineacion.includes(c.id));
+  const banco = useMemo(() => armarBanco(cartasBase, premios, alineacion, tipoBanco), [cartasBase, premios, alineacion, tipoBanco]);
   const { lineas, total: quimica, fueraDePuesto } = quimicaDe(alineacion, formacion, analisis.parejas, enCancha);
   const presentes = enCancha.filter(Boolean);
   const media = presentes.length ? Math.round(presentes.reduce((s, c) => s + c.ovr, 0) / presentes.length) : 0;
@@ -161,7 +145,8 @@ export default function MiQuinteto() {
     : 'Un arquero no puede jugar de jugador de campo.');
 
   /* origen: { tipo: 'banco', id } o { tipo: 'cancha', i } */
-  const cartaDe = (origen) => (origen.tipo === 'banco' ? porId.get(origen.id) : enCancha[origen.i]);
+  const cartaDe = (origen) => (origen.tipo === 'banco' ? todasPorClave.get(origen.clave) : enCancha[origen.i]);
+  const claveDeLugar = (i) => (alineacion[i] != null ? porId.get(alineacion[i])?.clave ?? null : null);
 
   const destinoValido = (origen, destino) => {
     if (origen.tipo === 'cancha' && origen.i === destino) return false;
@@ -180,12 +165,22 @@ export default function MiQuinteto() {
         nueva[origen.i] = al[destino];
         nueva[destino] = al[origen.i];
       } else {
-        nueva[destino] = origen.id;
+        nueva[destino] = carta.id;
       }
       return nueva;
     });
+    if (origen.tipo === 'banco') {
+      // El que sale vuelve al banco con sus cartas; el que entra juega con la que se eligió.
+      const saliente = alineacion[destino];
+      setElegidas((e) => {
+        const n = { ...e };
+        if (saliente != null) delete n[saliente];
+        if (carta.premio) n[carta.id] = carta.clave; else delete n[carta.id];
+        return n;
+      });
+    }
     setSel(null);
-    setVerId(carta?.id ?? null);
+    setVerId(carta?.clave ?? null);
   };
 
   const rechazar = (origen, destino) => {
@@ -200,21 +195,39 @@ export default function MiQuinteto() {
   const elegirLugar = (i) => {
     if (arrastre.recienArrastro()) return;
     setSel((s) => (s === i ? null : i));
-    setVerId(alineacion[i]);
+    setVerId(claveDeLugar(i));
   };
 
   const elegirSuplente = (c) => {
     if (arrastre.recienArrastro()) return;
-    if (sel == null) { setVerId(c.id); return; }
+    if (sel == null) { setVerId(c.clave); return; }
     if (!puedeIr(c, sel)) { avisar(motivoNo(c, sel)); return; }
-    cambiar({ tipo: 'banco', id: c.id }, sel);
+    cambiar({ tipo: 'banco', id: c.id, clave: c.clave }, sel);
   };
 
-  const cargarIdeal = () => { setAlineacion(quintetoIdeal(cartas, formacion)); setSel(null); };
-  const usado = quintetoMasUsado(analisis.quintetos, cartas, formacion);
-  const cargarUsado = () => { if (usado) { setAlineacion(usado); setSel(null); } };
+  /* Las cartas que pueden salir en los sobres del club: las del filtro que esté puesto. */
+  const [publicando, setPublicando] = useState(false);
+  const publicar = async () => {
+    const filas = catalogoDeCartas(cartasBase, premios);
+    const lineas = probabilidades(filas).map((r) => `${r.nombre}: ${r.cartas}`).join('\n');
+    if (!window.confirm(`Vas a publicar ${filas.length} cartas para los sobres (${filtroCategoria === 'Todas' ? 'todas las categorías' : filtroCategoria}, ${filtroTorneo === 'Todos' ? 'toda la temporada' : 'un torneo'}).\n\n${lineas}\n\nLas que ya estaban se actualizan; ninguna se borra. ¿Seguir?`)) return;
+    setPublicando(true);
+    try {
+      const n = await publicarCatalogo(clubId, filas);
+      avisar(`Se publicaron ${n} cartas para los sobres.`);
+    } catch (err) {
+      console.error('Publicar catálogo:', err);
+      avisar(err?.message || 'No se pudieron publicar las cartas.');
+    } finally {
+      setPublicando(false);
+    }
+  };
 
-  const detalle = verId != null ? porId.get(verId) : null;
+  const cargarIdeal = () => { setElegidas({}); setAlineacion(quintetoIdeal(cartasBase, formacion)); setSel(null); };
+  const usado = quintetoMasUsado(analisis.quintetos, cartasBase, formacion);
+  const cargarUsado = () => { if (usado) { setElegidas({}); setAlineacion(usado); setSel(null); } };
+
+  const detalle = verId != null ? todasPorClave.get(verId) || null : null;
 
   if (!clubId) return <div style={{ textAlign: 'center', marginTop: 50, color: '#ef4444' }}>Elegí un club para armar el quinteto.</div>;
 
@@ -309,25 +322,17 @@ export default function MiQuinteto() {
               </div>
             </div>
 
-            {cartasPorMes.size > 0 && (
-              <div>
-                <div style={rotulo}>EDICIÓN DE LAS CARTAS</div>
-                <select value={edicionGlobal} onChange={(e) => ponerEdicionGlobal(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
-                  <option value="">{Object.keys(ediciones).length > 0 && !edicionGlobal ? 'MEZCLADAS' : 'ACTUAL'}</option>
-                  {[...cartasPorMes.keys()].map((m) => <option key={m} value={m}>{etiquetaMes(m).toUpperCase()}</option>)}
-                </select>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: 6, lineHeight: 1.5 }}>
-                  Jugá con las cartas de un mes pasado. Cada jugador tiene una sola carta: la del mes reemplaza a la actual.
-                </div>
-              </div>
-            )}
-
             <button onClick={cargarIdeal} className="btn-action" style={btnAccion}>
               <Icono nombre="estrella" size="1.2em" relleno="propio" style={{ marginRight: 8 }} />QUINTETO IDEAL
             </button>
             <button onClick={cargarUsado} disabled={!usado} className="btn-secondary" style={{ ...btnAccion, opacity: usado ? 1 : 0.45 }}
               title={usado ? '' : 'No hay un quinteto con los cinco jugadores en este filtro'}>
               <Icono nombre="actualizar" size="1.2em" style={{ marginRight: 8 }} />EL MÁS USADO
+            </button>
+
+            <button onClick={publicar} disabled={publicando} className="btn-secondary" style={btnAccion}
+              title="Deja las cartas de este filtro disponibles para los sobres del club">
+              {publicando ? 'PUBLICANDO…' : 'PUBLICAR CARTAS PARA SOBRES'}
             </button>
 
             <div className="bento-card" style={{ ...caja, fontSize: '0.7rem', color: 'var(--text-dim)', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -359,11 +364,22 @@ export default function MiQuinteto() {
 
             <div className="bento-card" style={{ padding: '12px 12px 14px' }}>
               <div style={rotulo}>SUPLENTES · {banco.length}</div>
-              <div className="custom-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                {['TODAS', 'BASE', ...TIPOS].map((t) => (
+                  <button key={t} onClick={() => setTipoBanco(t)} style={{
+                    padding: '5px 10px', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', borderRadius: 6, cursor: 'pointer',
+                    border: `1px solid ${tipoBanco === t ? 'var(--accent)' : 'var(--border)'}`,
+                    color: tipoBanco === t ? 'var(--accent)' : 'var(--text-dim)',
+                    background: tipoBanco === t ? 'rgba(0,255,136,.08)' : 'transparent',
+                  }}>{t}</button>
+                ))}
+              </div>
+              <div className="custom-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 10, paddingTop: 6 }}>
+                {banco.length === 0 && <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', padding: 10 }}>No hay cartas de este tipo.</div>}
                 {banco.map((c) => (
-                  <CartaJugador key={c.id} carta={c} chica seleccionada={verId === c.id} onClick={() => elegirSuplente(c)}
-                    className={arrastre.vista?.origen?.tipo === 'banco' && arrastre.vista.origen.id === c.id ? 'mq-origen' : ''}
-                    onPointerDown={(e) => arrastre.empezar(e, { tipo: 'banco', id: c.id }, c)} />
+                  <CartaJugador key={c.clave} carta={c} chica seleccionada={verId === c.clave} onClick={() => elegirSuplente(c)}
+                    className={arrastre.vista?.origen?.tipo === 'banco' && arrastre.vista.origen.clave === c.clave ? 'mq-origen' : ''}
+                    onPointerDown={(e) => arrastre.empezar(e, { tipo: 'banco', id: c.id, clave: c.clave }, c)} />
                 ))}
               </div>
             </div>
@@ -371,7 +387,7 @@ export default function MiQuinteto() {
 
           {/* ── derecha: detalle del jugador (en el celular, debajo del banco) ── */}
           <div style={{ order: esMovil ? 1 : 3 }}>
-            {detalle ? <Detalle carta={detalle} meses={mesesDelJugador(detalle.id, cartasPorMes)} onEdicion={(m) => ponerEdicion(detalle.id, m)} /> : (
+            {detalle ? <Detalle carta={detalle} /> : (
               <div className="bento-card" style={{ ...caja, color: 'var(--text-dim)', fontSize: '0.8rem', textAlign: 'center', padding: 30 }}>
                 Tocá una carta para ver sus atributos y su forma.
               </div>
@@ -390,15 +406,14 @@ export default function MiQuinteto() {
   );
 }
 
-function Detalle({ carta, meses = [], onEdicion }) {
+function Detalle({ carta }) {
   const forma = carta.forma || [];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {meses.length > 0 && (
-        <select value={carta.edicion || ''} onChange={(e) => onEdicion?.(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
-          <option value="">CARTA ACTUAL</option>
-          {meses.map((m) => <option key={m} value={m}>{etiquetaMes(m).toUpperCase()}</option>)}
-        </select>
+      {carta.premio && (
+        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: '#fbbf24', border: '1px solid #fbbf24', borderRadius: 6, padding: '6px 10px', textAlign: 'center' }}>
+          {carta.premio} · {carta.descripcion}
+        </div>
       )}
       <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         <div style={{ width: 76, height: 76, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--panel)', border: '2px solid var(--accent)', display: 'grid', placeItems: 'center', fontSize: 26, fontWeight: 900, color: 'var(--accent)' }}>
@@ -447,7 +462,7 @@ function Detalle({ carta, meses = [], onEdicion }) {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, textAlign: 'center' }}>
-        {[['PJ', carta.stats.pj], ['MIN', `${carta.stats.min}'`], ['GOLES', carta.stats.goles], ['ASIST', carta.stats.asist]].map(([l, v]) => (
+        {[['PJ', carta.stats.pj], ['MIN', carta.stats.min != null ? `${carta.stats.min}'` : '—'], ['GOLES', carta.stats.goles], ['ASIST', carta.stats.asist]].map(([l, v]) => (
           <div key={l} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 0' }}>
             <b style={{ display: 'block', fontSize: 17, fontWeight: 900, color: 'var(--text)' }}>{v}</b>
             <span style={{ fontSize: 9, color: 'var(--text-dim)', letterSpacing: '.12em', fontWeight: 700 }}>{l}</span>
@@ -456,7 +471,7 @@ function Detalle({ carta, meses = [], onEdicion }) {
       </div>
 
       <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.5 }}>
-        {TEXTO_TIER[carta.tier]}
+        {carta.premio ? 'Carta de premio: la nota y los números son los de ese partido, mes o temporada. En la cancha va una sola carta por jugador.' : TEXTO_TIER[carta.tier]}
         {carta.stats.rating != null && ` Rating promedio: ${carta.stats.rating.toFixed(2)}.`}
       </div>
     </div>
