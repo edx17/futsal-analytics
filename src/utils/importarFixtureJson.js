@@ -160,6 +160,23 @@ export function planificarSincronizacion(partidos, fixture, rivales, ctx) {
     const marcador = c.finalizado ? ` · ${c.golesLocal}-${c.golesVisitante}` : '';
     const filas = indice.get(k) || [];
 
+    /* El mismo cruce con la localía al revés (la liga dice A-B y en la app está
+       B-A en esa fecha): es el mismo partido, no uno nuevo. No se toca solo. */
+    if (!filas.length) {
+      const invertido = indice.get(clave(p.jornada || c.jornada, nombreDe(p.visitante_id), nombreDe(p.local_id))) || [];
+      if (invertido.length) {
+        const l = ladosDeFila(invertido[0]);
+        revisar.push({
+          id: invertido[0].id,
+          desc,
+          trackeado: !!invertido[0].esTrackeado,
+          motivo: `En la app está con la localía al revés (${texto(p.visitante_id, c.visitante)} de local${l.gl !== null ? `, ${l.gl}-${l.gv}` : ''}). No se cambia.`,
+          cambios: null,
+        });
+        return;
+      }
+    }
+
     if (filas.length > 1) {
       revisar.push({ id: null, desc, motivo: `Está ${filas.length} veces en la app: hay que borrar los repetidos a mano.`, cambios: null });
       return;
@@ -172,13 +189,13 @@ export function planificarSincronizacion(partidos, fixture, rivales, ctx) {
 
     const fila = filas[0];
     const lados = ladosDeFila(fila);
-    const cambios = {};
-    const que = [];
+    /* Cada parte del cambio por separado, para poder elegir qué se trae
+       (ver elegirCambios): el resultado, la fecha y el horario. */
+    const partes = {};
 
     if (c.finalizado) {
       if (fila.estado !== 'Finalizado') {
-        Object.assign(cambios, { estado: 'Finalizado', ...golesParaFila(fila, c.golesLocal, c.golesVisitante) });
-        que.push(`resultado ${c.golesLocal}-${c.golesVisitante}`);
+        partes.resultado = { cambios: { estado: 'Finalizado', ...golesParaFila(fila, c.golesLocal, c.golesVisitante) }, que: `resultado ${c.golesLocal}-${c.golesVisitante}` };
       } else if (lados.gl !== c.golesLocal || lados.gv !== c.golesVisitante) {
         revisar.push({
           id: fila.id,
@@ -195,12 +212,22 @@ export function planificarSincronizacion(partidos, fixture, rivales, ctx) {
     // Fecha y hora: no en tus partidos ya jugados (esa fecha la cargaron ustedes).
     const tocaFecha = !(lados.propio && (fila.estado === 'Finalizado' || fila.esTrackeado));
     if (tocaFecha) {
-      if (c.fecha && c.fecha !== (fila.fecha || null)) { cambios.fecha = c.fecha; que.push(fila.fecha ? `fecha ${fila.fecha} → ${c.fecha}` : `fecha ${c.fecha}`); }
-      if (c.hora && c.hora !== (fila.horario || null)) { cambios.horario = c.hora; que.push(`hora ${c.hora}`); }
+      if (c.fecha && c.fecha !== (fila.fecha || null)) partes.fecha = { cambios: { fecha: c.fecha }, que: fila.fecha ? `fecha ${fila.fecha} → ${c.fecha}` : `fecha ${c.fecha}` };
+      const horaApp = horaCorta(fila.horario);
+      if (c.hora && c.hora !== horaApp) partes.hora = { cambios: { horario: c.hora }, que: horaApp ? `hora ${horaApp} → ${c.hora}` : `hora ${c.hora}` };
     }
 
-    if (Object.keys(cambios).length) actualizar.push({ id: fila.id, cambios, desc, que, resultado: 'estado' in cambios });
-    else iguales += 1;
+    const lista = Object.values(partes);
+    if (lista.length) {
+      actualizar.push({
+        id: fila.id,
+        desc,
+        partes,
+        cambios: Object.assign({}, ...lista.map((x) => x.cambios)),
+        que: lista.map((x) => x.que),
+        resultado: !!partes.resultado,
+      });
+    } else iguales += 1;
   });
 
   return { nuevos, actualizar, revisar, iguales, sinResolver: [...sinResolver], avisos };
@@ -278,4 +305,59 @@ export function crucesDeLiga(filas) {
     goleadores_local: p.goleadores_local,
     goleadores_visitante: p.goleadores_visitante,
   }))));
+}
+
+/* ── qué se aplica ──────────────────────────────────────────────────────── */
+
+/** Los grupos que se pueden elegir en la sincronización, en orden. */
+export const GRUPOS_SYNC = ['resultado', 'fecha', 'hora', 'nuevo', 'corregir'];
+
+/**
+ * Los ítems elegibles del plan, cada uno con su clave: un resultado, una
+ * fecha o un horario de un partido que ya está; un partido nuevo; o un
+ * resultado distinto para corregir (de "para revisar", sin toma de datos).
+ *
+ * @returns {Array<{ clave, grupo, desc, detalle }>}
+ */
+export function itemsElegibles(plan) {
+  if (!plan) return [];
+  const items = [];
+  plan.actualizar.forEach((a) => {
+    ['resultado', 'fecha', 'hora'].forEach((g) => {
+      if (a.partes?.[g]) items.push({ clave: `${g}:${a.id}`, grupo: g, desc: a.desc, detalle: a.partes[g].que });
+    });
+  });
+  plan.nuevos.forEach((n, i) => items.push({ clave: `nuevo:${i}`, grupo: 'nuevo', desc: n.desc, detalle: '' }));
+  plan.revisar.forEach((r) => {
+    if (r.id && r.cambios) items.push({ clave: `corregir:${r.id}`, grupo: 'corregir', desc: r.desc, detalle: r.motivo });
+  });
+  return items;
+}
+
+/**
+ * Arma lo que se escribe en la base según lo elegido.
+ *
+ * @param {object} plan          Salida de planificarSincronizacion.
+ * @param {Set<string>} elegidos Claves de itemsElegibles que se aplican.
+ * @returns {{ updates: Array<{ id, cambios }>, inserts: Array<object> }}
+ */
+export function elegirCambios(plan, elegidos) {
+  if (!plan) return { updates: [], inserts: [] };
+  const si = (k) => elegidos?.has(k);
+  const porId = new Map();
+  const sumar = (id, cambios) => porId.set(id, { ...(porId.get(id) || {}), ...cambios });
+
+  plan.actualizar.forEach((a) => {
+    ['resultado', 'fecha', 'hora'].forEach((g) => {
+      if (a.partes?.[g] && si(`${g}:${a.id}`)) sumar(a.id, a.partes[g].cambios);
+    });
+  });
+  plan.revisar.forEach((r) => {
+    if (r.id && r.cambios && si(`corregir:${r.id}`)) sumar(r.id, r.cambios);
+  });
+
+  return {
+    updates: [...porId.entries()].map(([id, cambios]) => ({ id, cambios })),
+    inserts: plan.nuevos.filter((_, i) => si(`nuevo:${i}`)).map((n) => n.fila),
+  };
 }
