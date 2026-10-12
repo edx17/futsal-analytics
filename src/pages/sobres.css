@@ -1,0 +1,68 @@
+/* SOBRES — la apertura: el sobre tiembla, se rompe, caen papelitos y las cartas se dan vuelta.
+   Todo es CSS (nada de librerías ni imágenes). Con "reducir movimiento" del sistema, quieto. */
+
+.sb-escena { position: fixed; inset: 0; z-index: 300; background: radial-gradient(circle at 50% 40%, rgb(10,42,28) 0%, rgb(2,7,10) 75%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; overflow-x: hidden; }
+
+/* ── el sobre ── */
+.sb-sobre { position: relative; width: 150px; height: 214px; filter: drop-shadow(0 14px 22px rgba(0,0,0,.6)); }
+.sb-sobre-cuerpo { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(155deg, #0a3b26 0%, #00b862 45%, #0a3b26 100%); color: #eafff4; font-weight: 900; letter-spacing: .12em; text-align: center;
+  clip-path: polygon(0 3%, 6% 0, 12% 3%, 18% 0, 24% 3%, 30% 0, 36% 3%, 42% 0, 48% 3%, 54% 0, 60% 3%, 66% 0, 72% 3%, 78% 0, 84% 3%, 90% 0, 96% 3%, 100% 0,
+    100% 97%, 94% 100%, 88% 97%, 82% 100%, 76% 97%, 70% 100%, 64% 97%, 58% 100%, 52% 97%, 46% 100%, 40% 97%, 34% 100%, 28% 97%, 22% 100%, 16% 97%, 10% 100%, 4% 97%, 0 100%); }
+.sb-sobre-cuerpo::before { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.28) 50%, transparent 65%);
+  background-size: 250% 100%; animation: sb-brillo 2.2s linear infinite; }
+.sb-sobre-estrella { font-size: 46px; line-height: 1; color: #fbbf24; text-shadow: 0 0 14px rgba(251,191,36,.9); }
+.sb-sobre-tipo { font-size: 11px; padding: 0 12px; }
+.sb-sobre-marca { font-size: 9px; opacity: .7; }
+
+.sb-fase-tiembla .sb-sobre { animation: sb-tiembla 1.9s ease-in forwards; }
+.sb-fase-tiembla .sb-sobre-cuerpo { animation: sb-resplandor 1.9s ease-in forwards; }
+.sb-fase-abre .sb-sobre { animation: sb-estalla .55s ease-out forwards; }
+.sb-flash { position: fixed; inset: 0; background: #fff; pointer-events: none; opacity: 0; z-index: 310; }
+.sb-fase-abre .sb-flash { animation: sb-destello .7s ease-out forwards; }
+.sb-rara.sb-fase-abre .sb-flash { background: #fde68a; }
+
+@keyframes sb-brillo { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+/* El temblor arranca suave y se vuelve más fuerte: ese es el suspenso. */
+@keyframes sb-tiembla {
+  0%   { transform: translate(0, 0) rotate(0) scale(1); }
+  10%  { transform: translate(-1px, 0) rotate(-.6deg); }
+  20%  { transform: translate(2px, 1px) rotate(.8deg); }
+  30%  { transform: translate(-2px, -1px) rotate(-1.2deg) scale(1.02); }
+  40%  { transform: translate(3px, 1px) rotate(1.6deg) scale(1.03); }
+  50%  { transform: translate(-4px, -2px) rotate(-2.2deg) scale(1.05); }
+  60%  { transform: translate(5px, 2px) rotate(2.6deg) scale(1.07); }
+  70%  { transform: translate(-6px, -2px) rotate(-3.2deg) scale(1.09); }
+  80%  { transform: translate(7px, 3px) rotate(3.6deg) scale(1.12); }
+  90%  { transform: translate(-8px, -3px) rotate(-4deg) scale(1.15); }
+  100% { transform: translate(0, 0) rotate(0) scale(1.2); }
+}
+@keyframes sb-resplandor { 0% { filter: brightness(1); } 100% { filter: brightness(1.9) saturate(1.4); } }
+@keyframes sb-estalla { 0% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes sb-destello { 0% { opacity: .95; } 100% { opacity: 0; } }
+
+/* ── papelitos ── */
+.sb-papel { position: fixed; top: -24px; width: 9px; height: 15px; z-index: 305; pointer-events: none; opacity: 0;
+  animation: sb-cae linear forwards; }
+@keyframes sb-cae {
+  0%   { transform: translate3d(0, 0, 0) rotate(0) rotateY(0); opacity: 1; }
+  100% { transform: translate3d(var(--dx, 0px), 112vh, 0) rotate(var(--giro, 540deg)) rotateY(720deg); opacity: 1; }
+}
+
+/* ── las cartas ── */
+.sb-reverso { width: 122px; height: 184px; border: 2px solid #00ff88; border-radius: 10px; cursor: pointer; font-size: 40px; font-weight: 900; color: #00ff88;
+  background: linear-gradient(160deg, #0a3b26, #04120c); box-shadow: 0 0 18px rgba(0,255,136,.4); animation: sb-late 1.4s ease-in-out infinite; }
+.sb-reverso:hover { filter: brightness(1.2); }
+.sb-entra { animation: sb-aparece .5s cubic-bezier(.2,.9,.3,1.2) both; }
+.sb-gira { animation: sb-voltea .6s ease-out both; }
+.sb-gira.sb-rara-carta { animation: sb-voltea .6s ease-out both, sb-pulso 1.6s ease-in-out .6s 2; }
+@keyframes sb-late { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@keyframes sb-aparece { from { transform: translateY(40px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes sb-voltea { 0% { transform: rotateY(90deg) scale(.9); opacity: 0; } 100% { transform: rotateY(0) scale(1); opacity: 1; } }
+@keyframes sb-pulso { 0%, 100% { filter: drop-shadow(0 0 0 rgba(251,191,36,0)); } 50% { filter: drop-shadow(0 0 22px rgba(251,191,36,.95)); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-sobre, .sb-sobre-cuerpo, .sb-sobre-cuerpo::before, .sb-flash, .sb-papel, .sb-reverso, .sb-entra, .sb-gira { animation: none !important; }
+  .sb-papel { display: none; }
+}
