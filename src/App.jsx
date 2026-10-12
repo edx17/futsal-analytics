@@ -71,6 +71,7 @@ const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
 const KioscoTorneo        = lazy(() => import('./pages/KioscoTorneo'));
 const KioscoMisDatos      = lazy(() => import('./pages/KioscoMisDatos'));
 const KioscoMisPagos      = lazy(() => import('./pages/KioscoMisPagos'));
+const OtrasCompetencias   = lazy(() => import('./pages/OtrasCompetencias'));
 
 import './App.css';
 import LimiteDeError from './components/LimiteDeError';
@@ -184,6 +185,7 @@ function AppRoutes() {
       <Route path="/resumen/:id" element={<ProtectedRoute><Resumen /></ProtectedRoute>} />
       <Route path="/torneos" element={<ProtectedRoute><Torneos /></ProtectedRoute>} />
       <Route path="/scouting-rivales" element={<ProtectedRoute><ScoutingRivales /></ProtectedRoute>} />
+      <Route path="/otras-competencias" element={<ProtectedRoute><OtrasCompetencias /></ProtectedRoute>} />
       
       <Route path="/jugador" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
       <Route path="/jugador-perfil" element={<ProtectedRoute><JugadorPerfil /></ProtectedRoute>} />
@@ -383,6 +385,7 @@ useEffect(() => {
             <Route path="/kiosco/mis-datos" element={<KioscoMisDatos />} />
             <Route path="/kiosco/mis-pagos" element={<KioscoMisPagos />} />
             <Route path="/kiosco/sobres" element={<Sobres />} />
+            <Route path="/kiosco/afa-stats" element={<OtrasCompetencias kiosco />} />
             <Route path="/kiosco/*" element={<Navigate to="/kiosco" replace />} />
           </Routes>
         </Suspense>
@@ -432,9 +435,18 @@ useEffect(() => {
               <>
                 <NavLink to="/torneos" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="torneos" /> <span>MIS TORNEOS</span></NavLink>
                 <NavLink to="/scouting-rivales" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="rivales" /> <span>RIVALES</span></NavLink>
+                <NavLink to="/otras-competencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="medalla" /> <span>OTRAS COMPETENCIAS</span></NavLink>
               </>
             )}
           </>
+        )}
+
+        {/* La liga la ve todo el mundo: quien no tiene el grupo Competición
+            (jugadores, tesorería) la tiene suelta. */}
+        {!(!permisos.esJugador && permisos.puedeVerDeportivo) && (
+          <NavLink to="/otras-competencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle} title={isCollapsed ? "Otras competencias" : ""}>
+            <Icono nombre="medalla" size={22} /> {!isCollapsed && <span>OTRAS COMPETENCIAS</span>}
+          </NavLink>
         )}
 
         {permisos.puedeVerDeportivo && (

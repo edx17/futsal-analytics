@@ -11,6 +11,8 @@ import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
 import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
 import { parseFixturePegado, matchearRivales, calcularAliasNuevos, ID_MI_CLUB } from '../utils/parseFixturePegado';
+import { parseFixtureJson, crucesDeLiga, planificarSincronizacion, aliasDeResueltos, itemsElegibles, elegirCambios } from '../utils/importarFixtureJson';
+import { esMiEquipo, categoriaLiga } from '../analytics/liga';
 import { calcularTabla, resultadosDe, statsDe, rachasDe, mejorYPeor, puestoDe, equiposDe } from '../utils/analisisTorneo';
 import ModalPlaca from '../placas/ModalPlaca';
 import PlacaTabla from '../placas/PlacaTabla';
@@ -75,6 +77,21 @@ function Torneos() {
   const [mostrarModalImportar, setMostrarModalImportar] = useState(false);
   const [textoPegado, setTextoPegado] = useState('');
   const [avisosImport, setAvisosImport] = useState([]);
+
+  // SINCRONIZAR CON UN ARCHIVO DE LA LIGA (el JSON del scraper). Paralelo al
+  // pegado, pero actualiza lo que ya está en vez de volver a insertarlo.
+  const [mostrarSync, setMostrarSync] = useState(false);
+  const [syncArchivo, setSyncArchivo] = useState(null); // { nombre, cruces, avisos }
+  const [ligaCompetencias, setLigaCompetencias] = useState([]);
+  const [ligaElegida, setLigaElegida] = useState('');
+  const [trayendoLiga, setTrayendoLiga] = useState(false);
+  const [syncResueltos, setSyncResueltos] = useState({}); // nombre del archivo -> id elegido a mano
+  // Qué se trae: los grupos que no querés (ej. horarios) quedan apagados para la próxima.
+  const [syncGruposOff, setSyncGruposOff] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('sync_grupos_off') || '["corregir"]')); } catch { return new Set(['corregir']); }
+  });
+  const [syncExcluidos, setSyncExcluidos] = useState(() => new Set());
+  const [sincronizando, setSincronizando] = useState(false);
   
   const [filtroCategoria, setFiltroCategoria] = useState(categoriaInicial);
   const [torneoActivo, setTorneoActivo] = useState(null);
@@ -377,6 +394,149 @@ function Torneos() {
     ]);
     setMostrarModalImportar(false);
     setTextoPegado('');
+  };
+
+  /* ── SINCRONIZAR CON ARCHIVO ──────────────────────────────────────────── */
+  const abrirSync = () => {
+    setSyncArchivo(null); setSyncResueltos({}); setSyncExcluidos(new Set()); setMostrarSync(true);
+    cargarLigaSync();
+  };
+
+  /* La otra fuente: lo que la app ya bajó de segundopalo (Otras
+     competencias). Se propone la división donde juega el club y la
+     categoría del torneo. */
+  const cargarLigaSync = async () => {
+    const { data: comps } = await supabase.from('liga_competencias').select('id, nombre, division, categoria, actualizado_at').eq('activa', true).order('orden');
+    const lista = comps || [];
+    setLigaCompetencias(lista);
+    if (!lista.length) return;
+    const primeras = lista.filter((c) => c.categoria === '1ra');
+    const { data: j } = await supabase.from('liga_partidos').select('competencia_id, local, visitante')
+      .in('competencia_id', primeras.map((c) => c.id)).lte('jornada', 2);
+    const hit = (j || []).find((p) => esMiEquipo(p.local, miClubGlobal) || esMiEquipo(p.visitante, miClubGlobal));
+    const division = hit ? primeras.find((c) => c.id === hit.competencia_id)?.division : null;
+    const cat = categoriaLiga(torneoActivo?.categoria) || '1ra';
+    const sugerida = lista.find((c) => c.division === division && c.categoria === cat);
+    setLigaElegida(sugerida?.id || '');
+  };
+
+  const traerDeLiga = async () => {
+    if (!ligaElegida) return;
+    setTrayendoLiga(true);
+    try {
+      const filas = await fetchPaginado(() => supabase.from('liga_partidos').select('*')
+        .eq('competencia_id', ligaElegida).order('id_externo'));
+      const { cruces, avisos } = crucesDeLiga(filas);
+      const comp = ligaCompetencias.find((c) => c.id === ligaElegida);
+      setSyncResueltos({});
+      setSyncArchivo({ nombre: `Liga · ${comp?.nombre || ligaElegida}`, cruces, avisos });
+      if (!cruces.length) showToast('Esa competencia todavía no tiene partidos. Actualizala desde Otras competencias.', 'warning');
+    } catch (err) {
+      console.error(err);
+      showToast('No se pudieron traer los partidos de la liga.', 'error');
+    } finally {
+      setTrayendoLiga(false);
+    }
+  };
+
+  const leerArchivoSync = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const texto = await file.text();
+    const { cruces, avisos } = parseFixtureJson(texto);
+    setSyncResueltos({});
+    setSyncArchivo({ nombre: file.name, cruces, avisos });
+    e.target.value = '';
+  };
+
+  // Reconoce los equipos con lo mismo que el pegado (rivales + alias + tu
+  // club) y después aplica lo que elegiste a mano para los que no salieron.
+  const syncPartidos = useMemo(() => {
+    if (!syncArchivo?.cruces?.length) return [];
+    return matchearRivales(syncArchivo.cruces, rivales, aliasRivales, miClubGlobal).map((m) => {
+      const loc = m.local_id || syncResueltos[m._crudo.local] || '';
+      const vis = m.visitante_id || syncResueltos[m._crudo.visitante] || '';
+      return { ...m, local_id: loc, visitante_id: vis, _sinResolver: [!loc && m._crudo.local, !vis && m._crudo.visitante].filter(Boolean) };
+    });
+  }, [syncArchivo, rivales, aliasRivales, miClubGlobal, syncResueltos]);
+
+  const syncSinResolverOriginal = useMemo(() => {
+    if (!syncArchivo?.cruces?.length) return [];
+    const m = matchearRivales(syncArchivo.cruces, rivales, aliasRivales, miClubGlobal);
+    return [...new Set(m.flatMap((x) => x._sinResolver))].sort();
+  }, [syncArchivo, rivales, aliasRivales, miClubGlobal]);
+
+  const syncPlan = useMemo(() => (
+    syncPartidos.length && torneoActivo
+      ? planificarSincronizacion(syncPartidos, fixture, rivales, {
+          clubId, torneo: torneoActivo, miClub: miClubGlobal, miEscudo: localStorage.getItem('escudo_url') || null,
+        })
+      : null
+  ), [syncPartidos, fixture, rivales, torneoActivo, clubId, miClubGlobal]);
+
+  const syncItems = useMemo(() => itemsElegibles(syncPlan), [syncPlan]);
+  const syncElegidos = useMemo(
+    () => new Set(syncItems.filter((i) => !syncGruposOff.has(i.grupo) && !syncExcluidos.has(i.clave)).map((i) => i.clave)),
+    [syncItems, syncGruposOff, syncExcluidos]
+  );
+
+  const alternarGrupoSync = (grupo) => {
+    setSyncGruposOff((prev) => {
+      const sig = new Set(prev);
+      if (sig.has(grupo)) sig.delete(grupo); else sig.add(grupo);
+      try { localStorage.setItem('sync_grupos_off', JSON.stringify([...sig])); } catch { /* sin storage */ }
+      return sig;
+    });
+    // Al prender un grupo vuelven todos sus partidos; al apagarlo no importa.
+    setSyncExcluidos((prev) => new Set([...prev].filter((k) => !k.startsWith(`${grupo}:`))));
+  };
+
+  const alternarItemSync = (item) => {
+    if (syncGruposOff.has(item.grupo)) {
+      // Prender uno solo de un grupo apagado: se prende el grupo y quedan afuera los demás.
+      alternarGrupoSync(item.grupo);
+      setSyncExcluidos((prev) => new Set([...prev, ...syncItems.filter((i) => i.grupo === item.grupo && i.clave !== item.clave).map((i) => i.clave)]));
+      return;
+    }
+    setSyncExcluidos((prev) => {
+      const sig = new Set(prev);
+      if (sig.has(item.clave)) sig.delete(item.clave); else sig.add(item.clave);
+      return sig;
+    });
+  };
+
+  const aplicarSync = async () => {
+    if (!syncPlan) return;
+    const { updates, inserts } = elegirCambios(syncPlan, syncElegidos);
+    if (!updates.length && !inserts.length) return showToast('No elegiste nada para traer.', 'warning');
+
+    setSincronizando(true);
+    let errores = 0;
+    for (let i = 0; i < inserts.length; i += 100) {
+      const { error } = await supabase.from('partidos').insert(inserts.slice(i, i + 100));
+      if (error) { errores += inserts.slice(i, i + 100).length; console.error('[Sync] insert:', error.message); }
+    }
+    // De a 10 a la vez: son updates sueltos (cada partido cambia distinto).
+    for (let i = 0; i < updates.length; i += 10) {
+      const res = await Promise.all(updates.slice(i, i + 10).map((u) => supabase.from('partidos').update(u.cambios).eq('id', u.id)));
+      res.forEach((r) => { if (r.error) { errores += 1; console.error('[Sync] update:', r.error.message); } });
+    }
+    // Los nombres resueltos a mano quedan como alias para la próxima.
+    const alias = aliasDeResueltos(syncResueltos, rivales).filter((a) => !aliasRivales.some((x) => x.alias_norm === a.alias_norm));
+    if (alias.length) {
+      const { data: guardados, error: errAlias } = await supabase.from('rivales_alias')
+        .upsert(alias.map((a) => ({ ...a, club_id: clubId })), { onConflict: 'club_id, alias_norm', ignoreDuplicates: true })
+        .select('rival_id, alias, alias_norm');
+      if (errAlias) console.error('[Sync] alias:', errAlias.message);
+      if (guardados?.length) setAliasRivales((prev) => [...prev, ...guardados]);
+    }
+    setSincronizando(false);
+    await fetchFixture(torneoActivo.id, torneoActivo.categoria);
+    setMostrarSync(false);
+    const hechos = inserts.length + updates.length - errores;
+    showToast(errores
+      ? `Se aplicaron ${hechos} cambios y fallaron ${errores}. Mirá la consola para el detalle.`
+      : `Listo: ${inserts.length} partidos nuevos y ${updates.length} actualizados.`, errores ? 'warning' : 'success');
   };
 
   const handleGuardarFixture = async () => {
@@ -1524,6 +1684,10 @@ function Torneos() {
                     <Icono nombre="imagen" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />PLACA DE LA CAMPAÑA
                   </button>
                 )}
+                <button onClick={abrirSync} className="btn-secondary" style={{ fontSize: '0.75rem', padding: '10px 16px', fontWeight: 900 }}
+                  title="Actualiza resultados, fechas y horarios con el archivo de la liga, sin duplicar partidos">
+                  <Icono nombre="actualizar" size="1.2em" style={{ marginRight: 6 }} />SINCRONIZAR CON ARCHIVO
+                </button>
                 <button onClick={() => setMostrarModalFixture(true)} className="btn-action" style={{ background: 'var(--accent)', color: '#000', fontSize: '0.8rem', padding: '10px 20px', fontWeight: 800 }}>
                   + AGREGAR FECHA
                 </button>
@@ -2689,6 +2853,113 @@ function Torneos() {
         </div>
       )}
 
+      {/* MODAL: sincronizar el fixture con el archivo de la liga */}
+      {mostrarSync && (
+        <div className="modal-overlay" style={{ zIndex: 100000 }}>
+          <div className="modal-content" style={{ maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto', padding: '25px', borderRadius: '8px' }}>
+            <div className="section-title" style={{ color: 'var(--accent)', fontSize: '1rem', marginBottom: '8px' }}>
+              SINCRONIZAR CON ARCHIVO
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: 1.6, marginTop: 0, marginBottom: '12px' }}>
+              Traé los partidos que la app ya bajó de la liga (o elegí un JSON). Se compara con el fixture de <b style={{ color: 'var(--text)' }}>{torneoActivo?.nombre}</b> y
+              antes de cambiar nada te muestra qué va a hacer. Correrlo de nuevo no duplica partidos.
+              Lo que cargaron ustedes manda: un partido finalizado no vuelve atrás y los partidos con toma de datos no cambian de resultado.
+            </p>
+
+            {ligaCompetencias.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                <select value={ligaElegida} onChange={(e) => setLigaElegida(e.target.value)} style={{ flex: '1 1 200px', padding: '10px', fontSize: '0.8rem' }}>
+                  <option value="">Elegí la competencia de la liga…</option>
+                  {ligaCompetencias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+                <button onClick={traerDeLiga} disabled={!ligaElegida || trayendoLiga} className="btn-action" style={{ flex: '0 0 auto', fontSize: '0.75rem', padding: '10px 14px' }}>
+                  {trayendoLiga ? 'TRAYENDO…' : 'TRAER DE LA LIGA'}
+                </button>
+              </div>
+            )}
+            <label className="btn-secondary" style={{ display: 'block', textAlign: 'center', padding: '12px', borderStyle: 'dashed', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800 }}>
+              <Icono nombre="subir" size="1.2em" style={{ marginRight: 6 }} />
+              {syncArchivo ? `${syncArchivo.nombre} · ${syncArchivo.cruces.length} partidos (cambiar archivo)` : 'ELEGIR ARCHIVO .JSON'}
+              <input type="file" accept=".json,application/json" onChange={leerArchivoSync} style={{ display: 'none' }} />
+            </label>
+
+            {syncArchivo?.avisos?.length > 0 && (
+              <div style={{ marginTop: '12px', padding: '10px', borderRadius: '6px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.45)' }}>
+                {syncArchivo.avisos.slice(0, 8).map((a, i) => <div key={i} style={{ fontSize: '0.72rem', color: '#fbbf24', lineHeight: 1.5 }}>• {a}</div>)}
+                {syncArchivo.avisos.length > 8 && <div style={{ fontSize: '0.72rem', color: '#fbbf24' }}>• y {syncArchivo.avisos.length - 8} más.</div>}
+              </div>
+            )}
+
+            {syncSinResolverOriginal.length > 0 && (
+              <div style={{ marginTop: '14px' }}>
+                <div className="section-title" style={{ marginBottom: '8px' }}>¿QUIÉN ES QUIÉN? (SE RECUERDA PARA LA PRÓXIMA)</div>
+                {syncSinResolverOriginal.map((nombre) => (
+                  <div key={nombre} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ flex: 1, fontSize: '0.8rem', fontWeight: 800, color: syncResueltos[nombre] ? 'var(--text)' : '#ef4444' }}>{nombre}</span>
+                    <select value={syncResueltos[nombre] || ''} onChange={(e) => setSyncResueltos((r) => ({ ...r, [nombre]: e.target.value }))}
+                      style={{ ...inputIndustrial, padding: '8px', fontSize: '0.8rem', flex: 1.4, marginBottom: 0 }}>
+                      <option value="">ELEGIR…</option>
+                      <option value={ID_MI_CLUB}>{miClubGlobal.toUpperCase()} (MI CLUB)</option>
+                      {rivales.map((r) => <option key={r.id} value={r.id}>{r.nombre.toUpperCase()}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {syncPlan && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginTop: '16px' }}>
+                  {[
+                    ['RESULTADOS', syncPlan.actualizar.filter((a) => a.resultado).length, 'var(--accent)'],
+                    ['FECHAS / HORAS', syncPlan.actualizar.filter((a) => !a.resultado).length, '#3b82f6'],
+                    ['NUEVOS', syncPlan.nuevos.length, '#a855f7'],
+                    ['PARA REVISAR', syncPlan.revisar.length, '#f59e0b'],
+                    ['SIN CAMBIOS', syncPlan.iguales, 'var(--text-dim)'],
+                  ].map(([l, n, c]) => (
+                    <div key={l} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '10px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: c }}>{n}</div>
+                      <div style={{ fontSize: '0.6rem', color: 'var(--text-dim)', fontWeight: 800, letterSpacing: '0.08em' }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {syncPlan.sinResolver.length > 0 && (
+                  <div style={{ marginTop: '10px', fontSize: '0.72rem', color: '#ef4444' }}>
+                    Los partidos de equipos sin elegir arriba no se tocan.
+                  </div>
+                )}
+
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '14px 0 0', lineHeight: 1.5 }}>
+                  Elegí qué traer. Destildá un grupo entero (por ejemplo, horarios) o un partido suelto que en la liga esté mal cargado. Los grupos que apagues quedan apagados para la próxima.
+                </p>
+                {[
+                  ['resultado', 'Resultados nuevos', 'var(--accent)'],
+                  ['fecha', 'Fechas', '#3b82f6'],
+                  ['hora', 'Horarios', '#06b6d4'],
+                  ['nuevo', 'Partidos nuevos', '#a855f7'],
+                  ['corregir', 'Corregir resultado distinto', '#f59e0b'],
+                ].map(([grupo, titulo, color]) => (
+                  <GrupoSync key={grupo} titulo={titulo} color={color}
+                    items={syncItems.filter((i) => i.grupo === grupo)}
+                    apagado={syncGruposOff.has(grupo)} elegidos={syncElegidos}
+                    onGrupo={() => alternarGrupoSync(grupo)} onItem={alternarItemSync} />
+                ))}
+                <ListaSync titulo="Para revisar (no se cambia solo)" items={syncPlan.revisar.filter((r) => !(r.id && r.cambios)).map((r) => `${r.desc} · ${r.motivo}`)} />
+                {syncPlan.avisos.length > 0 && <ListaSync titulo="Avisos" items={syncPlan.avisos} />}
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => setMostrarSync(false)} className="btn-secondary" style={{ flex: 1 }} disabled={sincronizando}>CANCELAR</button>
+              <button onClick={aplicarSync} className="btn-action" style={{ flex: 1, opacity: syncPlan && syncElegidos.size && !sincronizando ? 1 : 0.5 }} disabled={!syncPlan || !syncElegidos.size || sincronizando}>
+                {sincronizando ? 'APLICANDO…' : `APLICAR ${syncElegidos.size} CAMBIO${syncElegidos.size === 1 ? '' : 'S'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ModalPlaca
         abierto={placaAbierta === 'tabla'}
         onCerrar={() => setPlacaAbierta(null)}
@@ -2773,3 +3044,44 @@ function PoderOfensivoMovil({ equipos, miClub }) {
 }
 
 export default Torneos;
+
+/* Una lista plegable del resumen de la sincronización. */
+/* Un grupo de la sincronización: casilla para el grupo entero y una por
+   partido. */
+function GrupoSync({ titulo, color, items, apagado, elegidos, onGrupo, onItem }) {
+  if (!items?.length) return null;
+  const n = items.filter((i) => elegidos.has(i.clave)).length;
+  const casilla = { width: '18px', height: '18px', accentColor: color, flexShrink: 0, cursor: 'pointer' };
+  return (
+    <details style={{ marginTop: '10px', background: 'var(--bg)', border: `1px solid ${apagado ? 'var(--border)' : color}`, borderRadius: '6px', padding: '8px 12px', opacity: apagado ? 0.6 : 1 }}>
+      <summary style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', listStyle: 'none' }}>
+        <input type="checkbox" checked={!apagado && n > 0} ref={(el) => { if (el) el.indeterminate = !apagado && n > 0 && n < items.length; }}
+          onChange={onGrupo} onClick={(e) => e.stopPropagation()} style={casilla} />
+        <span style={{ flex: 1, fontSize: '0.78rem', fontWeight: 800, color: 'var(--text)' }}>{titulo}</span>
+        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: apagado ? 'var(--text-dim)' : color }}>{apagado ? `0 / ${items.length}` : `${n} / ${items.length}`}</span>
+      </summary>
+      <div style={{ maxHeight: '240px', overflowY: 'auto', marginTop: '6px' }}>
+        {items.slice(0, 400).map((it, i) => (
+          <label key={it.clave} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.5, borderTop: i ? '1px solid var(--border)' : 'none', padding: '6px 0', cursor: 'pointer' }}>
+            <input type="checkbox" checked={elegidos.has(it.clave)} onChange={() => onItem(it)} style={{ ...casilla, marginTop: '1px' }} />
+            <span><span style={{ color: 'var(--text)' }}>{it.desc}</span>{it.detalle ? ` · ${it.detalle}` : ''}</span>
+          </label>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function ListaSync({ titulo, items, abierta = false }) {
+  if (!items?.length) return null;
+  return (
+    <details open={abierta} style={{ marginTop: '10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px 12px' }}>
+      <summary style={{ cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text)' }}>{titulo} ({items.length})</summary>
+      <div style={{ maxHeight: '180px', overflowY: 'auto', marginTop: '6px' }}>
+        {items.slice(0, 300).map((t, i) => (
+          <div key={i} style={{ fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.6, borderTop: i ? '1px solid var(--border)' : 'none', padding: '3px 0' }}>{t}</div>
+        ))}
+      </div>
+    </details>
+  );
+}

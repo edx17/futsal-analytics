@@ -183,6 +183,13 @@ export function matchearRivales(cruces, rivales, alias = [], miClub = null) {
     if (kMiClub && k === kMiClub) return { id: ID_MI_CLUB, nombre: miClub };
     if (indiceAlias.has(k)) return indiceAlias.get(k);
     if (indice.has(k)) return indice.get(k);
+    // Tu club por prefijo: en el fixture suele guardarse con la categoría
+    // ("LIBERTADORES SC (AFA - Masc)") y la liga lo publica corto
+    // ("Libertadores"). Va después del alias y del nombre exacto, así un rival
+    // de nombre parecido que ya esté cargado no se confunde con vos.
+    if (kMiClub && k.length >= 5 && (kMiClub.startsWith(k) || k.startsWith(kMiClub))) {
+      return { id: ID_MI_CLUB, nombre: miClub };
+    }
     // Fallback por prefijo: "Rosario Ctral" vs "Rosario Central".
     for (const [clave, rival] of indice) {
       if (clave.startsWith(k) || k.startsWith(clave)) return rival;
