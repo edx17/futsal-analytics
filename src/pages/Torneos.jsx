@@ -11,7 +11,7 @@ import { TablaResponsive } from '../components/TablaResponsive';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas, etiquetaRueda, colorRueda } from '../utils/ruedas';
 import { fetchPaginado, fetchPorLotes } from '../utils/supaPaginado';
 import { parseFixturePegado, matchearRivales, calcularAliasNuevos, ID_MI_CLUB } from '../utils/parseFixturePegado';
-import { parseFixtureJson, crucesDeLiga, planificarSincronizacion, aliasDeResueltos } from '../utils/importarFixtureJson';
+import { parseFixtureJson, crucesDeLiga, planificarSincronizacion, aliasDeResueltos, itemsElegibles, elegirCambios } from '../utils/importarFixtureJson';
 import { esMiEquipo, categoriaLiga } from '../analytics/liga';
 import { calcularTabla, resultadosDe, statsDe, rachasDe, mejorYPeor, puestoDe, equiposDe } from '../utils/analisisTorneo';
 import ModalPlaca from '../placas/ModalPlaca';
@@ -86,7 +86,11 @@ function Torneos() {
   const [ligaElegida, setLigaElegida] = useState('');
   const [trayendoLiga, setTrayendoLiga] = useState(false);
   const [syncResueltos, setSyncResueltos] = useState({}); // nombre del archivo -> id elegido a mano
-  const [syncAplicarDistintos, setSyncAplicarDistintos] = useState(false);
+  // Qué se trae: los grupos que no querés (ej. horarios) quedan apagados para la próxima.
+  const [syncGruposOff, setSyncGruposOff] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('sync_grupos_off') || '["corregir"]')); } catch { return new Set(['corregir']); }
+  });
+  const [syncExcluidos, setSyncExcluidos] = useState(() => new Set());
   const [sincronizando, setSincronizando] = useState(false);
   
   const [filtroCategoria, setFiltroCategoria] = useState(categoriaInicial);
@@ -394,7 +398,7 @@ function Torneos() {
 
   /* ── SINCRONIZAR CON ARCHIVO ──────────────────────────────────────────── */
   const abrirSync = () => {
-    setSyncArchivo(null); setSyncResueltos({}); setSyncAplicarDistintos(false); setMostrarSync(true);
+    setSyncArchivo(null); setSyncResueltos({}); setSyncExcluidos(new Set()); setMostrarSync(true);
     cargarLigaSync();
   };
 
@@ -470,12 +474,41 @@ function Torneos() {
       : null
   ), [syncPartidos, fixture, rivales, torneoActivo, clubId, miClubGlobal]);
 
+  const syncItems = useMemo(() => itemsElegibles(syncPlan), [syncPlan]);
+  const syncElegidos = useMemo(
+    () => new Set(syncItems.filter((i) => !syncGruposOff.has(i.grupo) && !syncExcluidos.has(i.clave)).map((i) => i.clave)),
+    [syncItems, syncGruposOff, syncExcluidos]
+  );
+
+  const alternarGrupoSync = (grupo) => {
+    setSyncGruposOff((prev) => {
+      const sig = new Set(prev);
+      if (sig.has(grupo)) sig.delete(grupo); else sig.add(grupo);
+      try { localStorage.setItem('sync_grupos_off', JSON.stringify([...sig])); } catch { /* sin storage */ }
+      return sig;
+    });
+    // Al prender un grupo vuelven todos sus partidos; al apagarlo no importa.
+    setSyncExcluidos((prev) => new Set([...prev].filter((k) => !k.startsWith(`${grupo}:`))));
+  };
+
+  const alternarItemSync = (item) => {
+    if (syncGruposOff.has(item.grupo)) {
+      // Prender uno solo de un grupo apagado: se prende el grupo y quedan afuera los demás.
+      alternarGrupoSync(item.grupo);
+      setSyncExcluidos((prev) => new Set([...prev, ...syncItems.filter((i) => i.grupo === item.grupo && i.clave !== item.clave).map((i) => i.clave)]));
+      return;
+    }
+    setSyncExcluidos((prev) => {
+      const sig = new Set(prev);
+      if (sig.has(item.clave)) sig.delete(item.clave); else sig.add(item.clave);
+      return sig;
+    });
+  };
+
   const aplicarSync = async () => {
     if (!syncPlan) return;
-    const corregibles = syncAplicarDistintos ? syncPlan.revisar.filter((r) => r.id && r.cambios) : [];
-    const updates = [...syncPlan.actualizar, ...corregibles];
-    const inserts = syncPlan.nuevos.map((n) => n.fila);
-    if (!updates.length && !inserts.length) return showToast('No hay nada para cambiar: el fixture ya está al día.', 'success');
+    const { updates, inserts } = elegirCambios(syncPlan, syncElegidos);
+    if (!updates.length && !inserts.length) return showToast('No elegiste nada para traer.', 'warning');
 
     setSincronizando(true);
     let errores = 0;
@@ -2897,25 +2930,30 @@ function Torneos() {
                   </div>
                 )}
 
-                <ListaSync titulo="Resultados nuevos" items={syncPlan.actualizar.filter((a) => a.resultado).map((a) => `${a.desc} · ${a.que.join(', ')}`)} />
-                <ListaSync titulo="Partidos nuevos" items={syncPlan.nuevos.map((n) => n.desc)} />
-                <ListaSync titulo="Fechas y horarios" items={syncPlan.actualizar.filter((a) => !a.resultado).map((a) => `${a.desc} · ${a.que.join(', ')}`)} />
-                <ListaSync titulo="Para revisar" abierta items={syncPlan.revisar.map((r) => `${r.desc} · ${r.motivo}`)} />
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '14px 0 0', lineHeight: 1.5 }}>
+                  Elegí qué traer. Destildá un grupo entero (por ejemplo, horarios) o un partido suelto que en la liga esté mal cargado. Los grupos que apagues quedan apagados para la próxima.
+                </p>
+                {[
+                  ['resultado', 'Resultados nuevos', 'var(--accent)'],
+                  ['fecha', 'Fechas', '#3b82f6'],
+                  ['hora', 'Horarios', '#06b6d4'],
+                  ['nuevo', 'Partidos nuevos', '#a855f7'],
+                  ['corregir', 'Corregir resultado distinto', '#f59e0b'],
+                ].map(([grupo, titulo, color]) => (
+                  <GrupoSync key={grupo} titulo={titulo} color={color}
+                    items={syncItems.filter((i) => i.grupo === grupo)}
+                    apagado={syncGruposOff.has(grupo)} elegidos={syncElegidos}
+                    onGrupo={() => alternarGrupoSync(grupo)} onItem={alternarItemSync} />
+                ))}
+                <ListaSync titulo="Para revisar (no se cambia solo)" items={syncPlan.revisar.filter((r) => !(r.id && r.cambios)).map((r) => `${r.desc} · ${r.motivo}`)} />
                 {syncPlan.avisos.length > 0 && <ListaSync titulo="Avisos" items={syncPlan.avisos} />}
-
-                {syncPlan.revisar.some((r) => r.id && r.cambios) && (
-                  <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginTop: '12px', fontSize: '0.75rem', color: 'var(--text)', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={syncAplicarDistintos} onChange={(e) => setSyncAplicarDistintos(e.target.checked)} />
-                    Corregir con el resultado oficial los {syncPlan.revisar.filter((r) => r.id && r.cambios).length} partidos con resultado distinto que no tienen toma de datos.
-                  </label>
-                )}
               </>
             )}
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button onClick={() => setMostrarSync(false)} className="btn-secondary" style={{ flex: 1 }} disabled={sincronizando}>CANCELAR</button>
-              <button onClick={aplicarSync} className="btn-action" style={{ flex: 1, opacity: syncPlan && !sincronizando ? 1 : 0.5 }} disabled={!syncPlan || sincronizando}>
-                {sincronizando ? 'APLICANDO…' : 'APLICAR CAMBIOS'}
+              <button onClick={aplicarSync} className="btn-action" style={{ flex: 1, opacity: syncPlan && syncElegidos.size && !sincronizando ? 1 : 0.5 }} disabled={!syncPlan || !syncElegidos.size || sincronizando}>
+                {sincronizando ? 'APLICANDO…' : `APLICAR ${syncElegidos.size} CAMBIO${syncElegidos.size === 1 ? '' : 'S'}`}
               </button>
             </div>
           </div>
@@ -3008,6 +3046,32 @@ function PoderOfensivoMovil({ equipos, miClub }) {
 export default Torneos;
 
 /* Una lista plegable del resumen de la sincronización. */
+/* Un grupo de la sincronización: casilla para el grupo entero y una por
+   partido. */
+function GrupoSync({ titulo, color, items, apagado, elegidos, onGrupo, onItem }) {
+  if (!items?.length) return null;
+  const n = items.filter((i) => elegidos.has(i.clave)).length;
+  const casilla = { width: '18px', height: '18px', accentColor: color, flexShrink: 0, cursor: 'pointer' };
+  return (
+    <details style={{ marginTop: '10px', background: 'var(--bg)', border: `1px solid ${apagado ? 'var(--border)' : color}`, borderRadius: '6px', padding: '8px 12px', opacity: apagado ? 0.6 : 1 }}>
+      <summary style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', listStyle: 'none' }}>
+        <input type="checkbox" checked={!apagado && n > 0} ref={(el) => { if (el) el.indeterminate = !apagado && n > 0 && n < items.length; }}
+          onChange={onGrupo} onClick={(e) => e.stopPropagation()} style={casilla} />
+        <span style={{ flex: 1, fontSize: '0.78rem', fontWeight: 800, color: 'var(--text)' }}>{titulo}</span>
+        <span style={{ fontSize: '0.72rem', fontWeight: 900, color: apagado ? 'var(--text-dim)' : color }}>{apagado ? `0 / ${items.length}` : `${n} / ${items.length}`}</span>
+      </summary>
+      <div style={{ maxHeight: '240px', overflowY: 'auto', marginTop: '6px' }}>
+        {items.slice(0, 400).map((it, i) => (
+          <label key={it.clave} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.5, borderTop: i ? '1px solid var(--border)' : 'none', padding: '6px 0', cursor: 'pointer' }}>
+            <input type="checkbox" checked={elegidos.has(it.clave)} onChange={() => onItem(it)} style={{ ...casilla, marginTop: '1px' }} />
+            <span><span style={{ color: 'var(--text)' }}>{it.desc}</span>{it.detalle ? ` · ${it.detalle}` : ''}</span>
+          </label>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function ListaSync({ titulo, items, abierta = false }) {
   if (!items?.length) return null;
   return (

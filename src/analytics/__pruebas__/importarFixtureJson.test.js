@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseFixtureJson, planificarSincronizacion, aliasDeResueltos } from '../../utils/importarFixtureJson';
+import { parseFixtureJson, planificarSincronizacion, aliasDeResueltos, itemsElegibles, elegirCambios } from '../../utils/importarFixtureJson';
 import { matchearRivales, ID_MI_CLUB } from '../../utils/parseFixturePegado';
 
 const MI = 'LIBERTADORES SC (AFA - Masc)';
@@ -103,6 +103,42 @@ describe('planificarSincronizacion', () => {
     const r = plan([p({ equipo_local: 'Equipo Fantasma', equipo_visitante: 'Almafuerte' })], []);
     expect(r.sinResolver).toEqual(['Equipo Fantasma']);
     expect(r.nuevos).toHaveLength(0);
+  });
+});
+
+describe('elegir qué se trae', () => {
+  const ajeno = (o) => ({ id: 'x', condicion: 'Neutral', jornada: 'Fecha 25', fecha: '2026-09-20', horario: '20:00:00', estado: 'Pendiente', goles_propios: 0, goles_rival: 0, nombre_propio: 'ALMAFUERTE', rival: 'JUV TAPIALES', local_rival_id: 'r2', rival_id: 'r3', ...o });
+  const liga = (o) => p({ jornada: 25, fecha: '2026-09-21', hora: '21:30:00', equipo_local: 'Almafuerte', equipo_visitante: 'Juv Tapiales', goles_local: 3, goles_visitante: 1, estado: 'Finalizado', ...o });
+
+  it('resultado, fecha y horario se eligen por separado', () => {
+    const r = plan([liga()], [ajeno()]);
+    const items = itemsElegibles(r);
+    expect(items.map((i) => i.clave)).toEqual(['resultado:x', 'fecha:x', 'hora:x']);
+    expect(elegirCambios(r, new Set(['resultado:x'])).updates).toEqual([{ id: 'x', cambios: { estado: 'Finalizado', goles_propios: 3, goles_rival: 1 } }]);
+    expect(elegirCambios(r, new Set(['fecha:x', 'hora:x'])).updates).toEqual([{ id: 'x', cambios: { fecha: '2026-09-21', horario: '21:30' } }]);
+    expect(elegirCambios(r, new Set()).updates).toEqual([]);
+  });
+
+  it('la hora guardada con segundos no cuenta como cambio', () => {
+    const r = plan([liga({ fecha: '2026-09-20', hora: '20:00:00', estado: 'Pendiente', goles_local: null, goles_visitante: null })], [ajeno()]);
+    expect(r.actualizar).toHaveLength(0);
+    expect(r.iguales).toBe(1);
+  });
+
+  it('nuevos y correcciones solo si se eligen', () => {
+    const r = plan([liga({ jornada: 26, equipo_local: 'UNLAM', equipo_visitante: 'Almafuerte' }), liga()], [ajeno({ estado: 'Finalizado', goles_propios: 1, goles_rival: 1, fecha: '2026-09-21', horario: '21:30' })]);
+    expect(itemsElegibles(r).map((i) => i.grupo)).toEqual(['nuevo', 'corregir']);
+    expect(elegirCambios(r, new Set(['nuevo:0'])).inserts).toHaveLength(1);
+    expect(elegirCambios(r, new Set(['nuevo:0'])).updates).toEqual([]);
+    expect(elegirCambios(r, new Set(['corregir:x'])).updates).toEqual([{ id: 'x', cambios: { goles_propios: 3, goles_rival: 1 } }]);
+  });
+
+  it('el mismo cruce con la localía al revés no se duplica', () => {
+    const mio = { id: 'm', condicion: 'Local', jornada: 'Fecha 4', fecha: '2026-04-19', estado: 'Finalizado', goles_propios: 2, goles_rival: 2, rival: 'UNLAM', rival_id: 'r4' };
+    const r = plan([p({ jornada: 4, equipo_local: 'UNLAM', equipo_visitante: 'Libertadores', goles_local: 2, goles_visitante: 2, estado: 'Finalizado' })], [mio]);
+    expect(r.nuevos).toHaveLength(0);
+    expect(r.revisar[0]).toMatchObject({ id: 'm', cambios: null });
+    expect(r.revisar[0].motivo).toMatch(/localía al revés/);
   });
 });
 
