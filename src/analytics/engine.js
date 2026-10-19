@@ -4,6 +4,102 @@ import { detectarTransiciones } from './transiciones';
 import { generarGrid } from './spatial';
 import { generarInsights } from './insights';
 
+/* ══════════════════════════════════════════════════════════════════════
+   EL RELOJ DEL PARTIDO
+
+   Cada período se registra con su propio reloj: el tracker arranca el ST de
+   0 y, como corre en tiempo real, cada tiempo llega a 25' o 30'. Antes se
+   suponía 20' fijos por tiempo ("ST y minuto < 20 → +20") y se ordenaba sólo
+   por minuto: un evento del ST a los 22' quedaba ANTES de uno del PT a los
+   28', y los cambios, los minutos jugados y los minutos por quinteto salían
+   mezclados. Pasaba en casi todos los partidos.
+
+   Ahora:
+     · ordenarEventos: período, minuto, segundos e id (el orden real).
+     · relojDelPartido: a cada período le suma lo que duró el anterior, si su
+       reloj arranca de nuevo. Si el registro viene en minutos corridos (ST de
+       20 a 40), no le suma nada.
+   ══════════════════════════════════════════════════════════════════════ */
+const ORDEN_PERIODO = { PT: 0, 'Primer Tiempo': 0, ST: 1, 'Segundo Tiempo': 1, ET: 2, 'Tiempo Extra': 2 };
+export const indicePeriodo = (periodo) => ORDEN_PERIODO[periodo] ?? 0;
+
+const relojCrudo = (ev) => (Number(ev?.minuto) || 0) + ((Number(ev?.segundos) || 0) / 60);
+
+export function ordenarEventos(eventos = []) {
+  return [...(Array.isArray(eventos) ? eventos : [])].sort((a, b) =>
+    indicePeriodo(a.periodo) - indicePeriodo(b.periodo)
+    || relojCrudo(a) - relojCrudo(b)
+    || (Number(a.id) || 0) - (Number(b.id) || 0));
+}
+
+/** Devuelve (evento) => minuto absoluto del partido (PT 0-…, después ST, después alargue). */
+export function relojDelPartido(eventos = []) {
+  const rangos = [];
+  (Array.isArray(eventos) ? eventos : []).forEach((ev) => {
+    const k = indicePeriodo(ev.periodo);
+    const m = relojCrudo(ev);
+    if (!rangos[k]) rangos[k] = { min: m, max: m };
+    else { rangos[k].min = Math.min(rangos[k].min, m); rangos[k].max = Math.max(rangos[k].max, m); }
+  });
+
+  const offset = [0];
+  const periodos = []; // { inicio, fin } en minutos absolutos, por período
+  let finAnterior = 0; // minuto absoluto en que terminó el período anterior
+  for (let k = 0; k < Math.max(rangos.length, 1); k += 1) {
+    const r = rangos[k];
+    const arranque = k === 0 ? 0 : Math.max(finAnterior, 20 * k);
+    // Reloj propio del período: arranca antes de donde terminó el anterior.
+    if (k > 0) offset[k] = r && r.min < arranque - 0.01 ? arranque : 0;
+    periodos[k] = { inicio: arranque, fin: r ? Math.max(offset[k] + r.max, arranque) : arranque };
+    finAnterior = r ? Math.max(offset[k] + r.max, 20 * (k + 1)) : Math.max(finAnterior, 20 * (k + 1));
+  }
+
+  const reloj = (ev) => (offset[indicePeriodo(ev?.periodo)] || 0) + relojCrudo(ev);
+  reloj.periodos = periodos;
+  return reloj;
+}
+
+const leerQuinteto = (qa) => {
+  if (!qa) return [];
+  if (Array.isArray(qa)) return qa.map(String);
+  if (typeof qa === 'string') {
+    try { const j = JSON.parse(qa); return Array.isArray(j) ? j.map(String) : []; }
+    catch { return qa.split(',').map((id) => String(id).trim()).filter(Boolean); }
+  }
+  return [];
+};
+
+/* Minutos por jugador según el `quinteto_activo` de cada evento: el tiempo
+   entre un evento y el siguiente es de los que estaban en cancha. Cada
+   período se cuenta desde su arranque hasta su último evento (el entretiempo
+   no suma). Es la fuente principal: es lo que se ve y se corrige en los
+   eventos. Devuelve null si el partido no tiene quintetos cargados. */
+function minutosPorQuinteto(eventos, reloj) {
+  const conQ = eventos.filter((e) => leerQuinteto(e.quinteto_activo).length > 0);
+  if (conQ.length < 2 || conQ.length < eventos.length * 0.5) return null;
+
+  const min = {};
+  const sumar = (ids, dt) => { if (dt > 0) ids.forEach((id) => { min[id] = (min[id] || 0) + dt; }); };
+  const porPeriodo = new Map();
+  conQ.forEach((e) => {
+    const k = indicePeriodo(e.periodo);
+    if (!porPeriodo.has(k)) porPeriodo.set(k, []);
+    porPeriodo.get(k).push(e);
+  });
+  porPeriodo.forEach((lista, k) => {
+    const { inicio = reloj(lista[0]) } = reloj.periodos?.[k] || {};
+    let t = Math.min(inicio, reloj(lista[0]));
+    let enCancha = leerQuinteto(lista[0].quinteto_activo);
+    lista.forEach((e) => {
+      const ahora = reloj(e);
+      sumar(enCancha, ahora - t);
+      t = ahora;
+      enCancha = leerQuinteto(e.quinteto_activo);
+    });
+  });
+  return min;
+}
+
 const obtenerMicroZona = (x, y) => {
   if (x == null || y == null) return null;
   let zX = x < 25 ? 'Z1' : x < 50 ? 'Z2' : x < 75 ? 'Z3' : 'Z4';
@@ -17,7 +113,8 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
      que son los mismos que viven en el estado de React y que comparten varias
      pantallas. Si una llamada usaba huboCambioDeLado=true y otra false, la
      segunda leía coordenadas ya invertidas por la primera. */
-  const evSeguros = (Array.isArray(eventos) ? eventos : []).map(ev => ({ ...ev }));
+  const evSeguros = ordenarEventos(eventos).map(ev => ({ ...ev }));
+  const minutoAbs = relojDelPartido(evSeguros);
 
   const diccionarios = {
     porEquipo: { propio: [], rival: [] },
@@ -163,8 +260,7 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
           };
         }
         
-        let m = ev.minuto + ((ev.segundos || 0) / 60);
-        if (ev.periodo === 'ST' && ev.minuto < 20) m += 20;
+        const m = minutoAbs(ev);
 
         if (ultimoQuintetoIds && ultimoQuintetoIds !== idsOrdenados) {
            let delta = m - ultimoTiempoQuinteto;
@@ -211,10 +307,8 @@ export function analizarPartido(eventos = [], equipoPropio, huboCambioDeLado = f
 
   if (ultimoQuintetoIds && trackingQuintetos[ultimoQuintetoIds] && evSeguros.length > 0) {
       const ultimoEv = evSeguros[evSeguros.length - 1];
-      let m = ultimoEv.minuto + ((ultimoEv.segundos || 0) / 60);
-      if (ultimoEv.periodo === 'ST' && ultimoEv.minuto < 20) m += 20;
-      
-      const finAbsoluto = (ultimoEv.periodo === 'ST' || m > 20) ? Math.max(m, 40) : Math.max(m, 20);
+      const m = minutoAbs(ultimoEv);
+      const finAbsoluto = (indicePeriodo(ultimoEv.periodo) > 0 || m > 20) ? Math.max(m, 40) : Math.max(m, 20);
       const delta = finAbsoluto - ultimoTiempoQuinteto;
       
       if (delta > 0) {
@@ -271,7 +365,17 @@ export function calcularStatsArquero(eventosArquero, eventosRivales) {
   };
 }
 
-export function calcularMinutosPorJugador(eventos = []) {
+export function calcularMinutosPorJugador(eventosCrudos = []) {
+  const eventos = ordenarEventos(eventosCrudos);
+  const minutoAbs = relojDelPartido(eventos);
+
+  const porQuinteto = minutosPorQuinteto(eventos, minutoAbs);
+  if (porQuinteto) {
+    Object.keys(porQuinteto).forEach((id) => { porQuinteto[id] = Math.round(porQuinteto[id]); });
+    return porQuinteto;
+  }
+
+  // Respaldo, para partidos sin quintetos: los eventos de cambio.
   const minJugados = {};
   const entradas = {};
   
@@ -291,11 +395,7 @@ export function calcularMinutosPorJugador(eventos = []) {
     minJugados[id] = 0;
   });
 
-  const getMinutoAbsoluto = (ev) => {
-    let m = ev.minuto + ((ev.segundos || 0) / 60);
-    if (ev.periodo === 'ST' && ev.minuto < 20) m += 20; 
-    return m;
-  };
+  const getMinutoAbsoluto = minutoAbs;
 
   eventos.forEach(ev => {
     if (ev.equipo !== 'Propio') return;
@@ -363,7 +463,7 @@ export function calcularMinutosPorJugador(eventos = []) {
      - minutosEquivalentes: pct proyectado sobre `duracionPartido` (default 40')
    ══════════════════════════════════════════════════════════════════════ */
 export function calcularParticipacion(eventos = [], duracionPartido = 40) {
-  const evs = Array.isArray(eventos) ? eventos : [];
+  const evs = ordenarEventos(eventos);
 
   const parseQuinteto = (qa) => {
     if (!qa) return [];
