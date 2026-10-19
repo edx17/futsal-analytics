@@ -15,7 +15,16 @@ import './sobres.css';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const ORDEN_SOBRES = ['diario', 'wellness', 'racha', 'puntos', 'mega'];
+const ORDEN_SOBRES = ['premio_especial', 'premio', 'diario', 'wellness', 'racha', 'puntos', 'mega'];
+
+/* Qué sobres se muestran: el de wellness no es para el staff, y los del V-Draft
+   sólo si tenés alguno guardado. */
+const seMuestra = (tipo, e) => {
+  if (tipo === 'wellness') return !e.es_staff;
+  if (tipo === 'premio') return (e.sobres_premio || 0) > 0;
+  if (tipo === 'premio_especial') return (e.sobres_especiales || 0) > 0;
+  return true;
+};
 
 /* Una carta del catálogo en el formato que dibuja CartaJugador. */
 const aCarta = (c) => ({ atributos: [], stats: {}, ...(c.carta || c) });
@@ -104,7 +113,7 @@ export default function Sobres() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
-            {ORDEN_SOBRES.filter((t) => t !== 'wellness' || !estado.es_staff).map((t) => (
+            {ORDEN_SOBRES.filter((t) => seMuestra(t, estado)).map((t) => (
               <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t}
                 alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
             ))}
@@ -165,6 +174,8 @@ export default function Sobres() {
 }
 
 const notaDe = (tipo, e) => {
+  if (tipo === 'premio') return `Ganado en el V-Draft. Tenés ${e.sobres_premio} para abrir.`;
+  if (tipo === 'premio_especial') return `Ganado en el V-Draft: 5 especiales. Tenés ${e.sobres_especiales} para abrir.`;
   if (tipo === 'wellness' && !e.disponibles?.wellness) return e.wellness_hecho ? 'Ya lo abriste hoy.' : 'Completá el wellness de hoy.';
   if (tipo === 'racha' && !e.disponibles?.racha) return `Llevás ${e.racha} de ${RACHA_PARA_PREMIO} días seguidos.`;
   if (tipo === 'puntos' && !e.disponibles?.puntos) return e.cartas_total === 0 ? 'No hay cartas.' : `Te faltan ${Math.max(0, COSTO_SOBRE_PUNTOS - e.puntos)} ${MONEDA}.`;
@@ -181,12 +192,13 @@ const cartasDePorRareza = (coleccion) => Object.entries(coleccion?.por_rareza ||
   .flatMap(([rareza, v]) => Array.from({ length: v.total }, () => ({ rareza })));
 
 function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas }) {
-  const mega = !!sobre.soloEspeciales;
+  const mega = !!sobre.soloEspeciales && !sobre.premio;
+  const dorado = !!sobre.soloEspeciales;
   const avance = mega ? Math.min(100, ((monedas || 0) / sobre.costo) * 100) : null;
   return (
-    <div className={`bento-card${mega ? ' sb-mega' : ''}`} style={{ padding: 14, opacity: disponible || mega ? 1 : 0.6, border: disponible ? `1px solid ${mega ? '#fbbf24' : 'var(--accent)'}` : undefined }}>
-      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: mega ? '#fbbf24' : disponible ? 'var(--accent)' : 'var(--text)' }}>
-        {mega && '★ '}{sobre.nombre}
+    <div className={`bento-card${dorado ? ' sb-mega' : ''}`} style={{ padding: 14, opacity: disponible || mega ? 1 : 0.6, border: disponible ? `1px solid ${dorado ? '#fbbf24' : 'var(--accent)'}` : undefined }}>
+      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: dorado ? '#fbbf24' : disponible ? 'var(--accent)' : 'var(--text)' }}>
+        {dorado && '★ '}{sobre.nombre}
       </div>
       <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '4px 0 10px', minHeight: '2.4em', lineHeight: 1.4 }}>{nota || sobre.ayuda}</div>
       {mega && (
@@ -198,8 +210,9 @@ function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas }) {
         </div>
       )}
       <button disabled={!disponible || abriendo} onClick={alAbrir}
-        style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...(mega ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : null) }}>
-        {abriendo ? 'ABRIENDO…' : mega ? `ABRIR · ${sobre.cartas} ESPECIALES · ${sobre.costo} V-COINS` : `ABRIR · ${sobre.cartas} CARTAS`}
+        style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...(dorado ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : null) }}>
+        {abriendo ? 'ABRIENDO…' : mega ? `ABRIR · ${sobre.cartas} ESPECIALES · ${sobre.costo} V-COINS`
+          : dorado ? `ABRIR · ${sobre.cartas} ESPECIALES` : `ABRIR · ${sobre.cartas} CARTAS`}
       </button>
     </div>
   );

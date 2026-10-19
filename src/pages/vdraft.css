@@ -1,0 +1,111 @@
+/* V-DRAFT */
+
+.vd { max-width: 1000px; margin: 0 auto; animation: fadeIn .3s; }
+.vd-cabeza { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.vd-monedas { white-space: nowrap; font-size: .8rem; font-weight: 800; color: var(--text-dim); padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; }
+.vd-monedas b { color: #fbbf24; font-family: 'JetBrains Mono', monospace; font-size: 1rem; }
+.vd-error { font-size: .85rem; font-weight: 700; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; color: #ef4444;
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3); }
+.vd-panel { padding: 14px; margin-bottom: 12px; }
+.vd-rotulo { font-size: 10px; font-weight: 800; letter-spacing: .18em; color: var(--text-dim); margin-bottom: 8px; }
+.vd-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.vd-dos .vd-panel { margin-bottom: 12px; }
+
+.vd-btn { padding: 10px 14px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-weight: 900;
+  font-size: .8rem; letter-spacing: .04em; cursor: pointer; min-height: 42px; }
+.vd-btn:disabled { opacity: .5; cursor: default; }
+.vd-btn-sec { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+
+/* formaciones */
+.vd-formaciones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.vd-formacion { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 10px; cursor: pointer;
+  background: transparent; border: 1px solid var(--border); color: var(--text); }
+.vd-formacion b { font-size: .95rem; font-family: 'JetBrains Mono', monospace; }
+.vd-formacion span { font-size: 9px; font-weight: 800; letter-spacing: .08em; color: var(--text-dim); }
+.vd-formacion.vd-on { border-color: var(--accent); background: rgba(0,255,136,.08); }
+.vd-formacion.vd-on b { color: var(--accent); }
+.vd-minicancha { position: relative; width: 46px; height: 56px; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; margin-bottom: 4px;
+  background: linear-gradient(#0f3d26, #0b2e1d); }
+.vd-minicancha i { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); }
+
+.vd-premio { display: flex; justify-content: space-between; gap: 10px; font-size: .8rem; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.vd-premio:last-of-type { border-bottom: none; }
+.vd-premio b { color: #fbbf24; white-space: nowrap; }
+.vd-ranking { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 10px; align-items: center; font-size: .8rem; padding: 6px 4px;
+  border-bottom: 1px solid var(--border); }
+.vd-ranking.vd-yo { color: var(--accent); font-weight: 800; }
+.vd-pos { font-weight: 900; color: var(--text-dim); text-align: center; }
+.vd-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* equipo */
+.vd-numeros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.vd-numero { text-align: center; padding: 6px; border: 1px solid var(--border); border-radius: 8px; }
+.vd-numero .vd-rotulo { margin-bottom: 2px; }
+.vd-cancha { position: relative; width: 100%; max-width: 420px; aspect-ratio: 3 / 4; margin: 0 auto; border-radius: 12px; overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 17%, rgba(255,255,255,.18) 17.4%, transparent 18%),
+    linear-gradient(transparent 49.7%, rgba(255,255,255,.18) 49.7%, rgba(255,255,255,.18) 50.3%, transparent 50.3%),
+    repeating-linear-gradient(#0f3d26 0 10%, #0d3522 10% 20%);
+  border: 1px solid rgba(255,255,255,.18); }
+.vd-lugar { position: absolute; transform: translate(-50%, -50%); }
+.vd-envoltura { position: relative; }
+.vd-envoltura.vd-elegido { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 10px; }
+.vd-capitan { position: absolute; top: -6px; right: -6px; z-index: 3; width: 20px; height: 20px; border-radius: 50%; background: #fbbf24;
+  color: #000; font-size: 11px; font-weight: 900; display: grid; place-items: center; }
+.vd-fuera { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); z-index: 3; white-space: nowrap; font-size: 8px;
+  font-weight: 900; color: #fff; background: #b45309; padding: 1px 5px; border-radius: 4px; }
+.vd-vacio { width: 78px; height: 104px; border: 2px dashed rgba(255,255,255,.3); border-radius: 10px; display: grid; place-items: center;
+  font-size: 12px; font-weight: 900; letter-spacing: .06em; color: rgba(255,255,255,.55); }
+.vd-vacio.vd-actual { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 22px rgba(0,255,136,.35); animation: vd-latido 1.2s infinite; }
+.vd-vacio-banco { border-color: var(--border); color: var(--text-dim); }
+.vd-banco { display: flex; gap: 14px; justify-content: center; padding-bottom: 6px; }
+@keyframes vd-latido { 50% { box-shadow: 0 0 6px rgba(0,255,136,.15); } }
+
+/* draft */
+.vd-paso { font-size: 1.1rem; font-weight: 900; letter-spacing: .08em; color: var(--accent); }
+.vd-oferta { display: flex; flex-wrap: wrap; gap: 30px 14px; justify-content: center; padding-bottom: 10px; }
+.vd-opcion { background: none; border: none; padding: 0; cursor: pointer; transition: transform .15s; }
+.vd-opcion:hover:not(:disabled) { transform: translateY(-4px) scale(1.03); }
+.vd-opcion:disabled { opacity: .6; cursor: default; }
+.vd-carta-grande { position: relative; width: 122px; height: 184px; }
+
+/* torneo */
+.vd-llave { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.vd-ronda { padding: 10px; border-radius: 10px; border: 1px solid var(--border); opacity: .7; }
+.vd-ronda.vd-proxima { opacity: 1; border-color: var(--accent); background: rgba(0,255,136,.06); }
+.vd-ronda.vd-gano { opacity: 1; border-color: rgba(0,255,136,.4); }
+.vd-ronda.vd-perdio { opacity: 1; border-color: rgba(239,68,68,.5); }
+.vd-ronda-nombre { font-size: 9px; font-weight: 900; letter-spacing: .14em; color: var(--text-dim); }
+.vd-ronda-rival { font-size: .95rem; font-weight: 900; margin: 2px 0; }
+.vd-ronda-dato { font-size: .68rem; color: var(--text-dim); }
+.vd-ronda-resultado { margin-top: 4px; font-size: .75rem; font-weight: 900; }
+.vd-gano .vd-ronda-resultado { color: var(--accent); }
+.vd-perdio .vd-ronda-resultado { color: #ef4444; }
+
+/* el partido */
+.vd-escena { position: fixed; inset: 0; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px 16px; color: #fff; overflow-y: auto;
+  background: radial-gradient(circle at 50% 35%, rgb(10,42,28) 0%, rgb(2,7,10) 75%); }
+.vd-escena-ronda { font-size: 11px; font-weight: 900; letter-spacing: .2em; color: #9ca3af; margin-bottom: 14px; }
+.vd-marcador { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; width: 100%; max-width: 460px; }
+.vd-marcador > div:not(.vd-reloj) { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.vd-marcador span { font-size: 11px; font-weight: 900; letter-spacing: .08em; color: #d1d5db; }
+.vd-marcador b { font-size: 56px; font-weight: 900; font-family: 'JetBrains Mono', monospace; line-height: 1.05; }
+.vd-reloj { font-family: 'JetBrains Mono', monospace; font-weight: 900; color: #00ff88; padding: 4px 10px; border: 1px solid #14532d; border-radius: 6px; }
+.vd-goles { width: 100%; max-width: 460px; margin-top: 16px; min-height: 60px; }
+.vd-gol { display: flex; gap: 10px; font-size: .85rem; padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; animation: fadeIn .3s; }
+.vd-gol em { color: #9ca3af; font-style: normal; }
+.vd-gol-propio { background: rgba(0,255,136,.1); }
+.vd-gol-rival { background: rgba(239,68,68,.1); justify-content: flex-end; flex-direction: row-reverse; }
+.vd-penales { margin-top: 10px; color: #fbbf24; font-weight: 800; }
+.vd-veredicto { margin-top: 12px; font-size: 2rem; font-weight: 900; letter-spacing: .06em; animation: fadeIn .4s; }
+.vd-veredicto.vd-si { color: #00ff88; }
+.vd-veredicto.vd-no { color: #ef4444; }
+.vd-final { margin-top: 18px; text-align: center; padding: 14px 20px; border: 1px solid #374151; border-radius: 12px; background: rgba(0,0,0,.35); }
+.vd-final-premio { font-size: 1.5rem; font-weight: 900; color: #fbbf24; }
+
+@media (max-width: 520px) {
+  .vd-formaciones { grid-template-columns: repeat(2, 1fr); }
+  .vd-cancha .mq-mini, .vd-cancha .vd-vacio { transform: scale(.82); }
+  .vd-marcador b { font-size: 44px; }
+}

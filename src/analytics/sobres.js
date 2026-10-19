@@ -45,6 +45,10 @@ export const SOBRES = {
   puntos: { id: 'puntos', nombre: 'SOBRE POR V-COINS', cartas: 3, ayuda: `Se paga con ${COSTO_SOBRE_PUNTOS} ${MONEDA} de cartas repetidas.` },
   mega: { id: 'mega', nombre: 'MEGA SOBRE ESPECIAL', cartas: 10, costo: COSTO_MEGA, soloEspeciales: true,
     ayuda: `10 cartas, todas especiales (TOTW, POTW, TOTM, POTM, TOTY). Cuesta ${COSTO_MEGA} ${MONEDA}.` },
+  // Los que se ganan en el V-Draft: quedan guardados hasta que los abrís.
+  premio: { id: 'premio', nombre: 'SOBRE DE CAMPEÓN', cartas: 3, ayuda: 'Lo ganaste en el V-Draft.' },
+  premio_especial: { id: 'premio_especial', nombre: 'SOBRE ESPECIAL V-DRAFT', cartas: 5, soloEspeciales: true, premio: true,
+    ayuda: '5 cartas especiales. Lo ganaste en el V-Draft.' },
 };
 
 export const rarezaPorId = Object.fromEntries(RAREZAS.map((r) => [r.id, r]));
