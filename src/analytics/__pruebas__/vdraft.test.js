@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { fuerzaDelEquipo, premioPorVictorias, pasoDelDraft, marcador, puestoRival, FORMACIONES_DRAFT } from '../vdraft';
+import {
+  fuerzaDelEquipo, premioPorVictorias, pasoDelDraft, marcador, puestoRival, FORMACIONES_DRAFT, lineasDraft, pelotaEn, pseudoAzar,
+} from '../vdraft';
 import { FORMACIONES } from '../quinteto';
 
 const carta = (rol, ovr) => ({ carta: { rol, ovr } });
@@ -49,5 +51,30 @@ describe('V-Draft: premios y textos', () => {
 
   it('las cuatro formaciones del draft son las de MySquad', () => {
     expect(FORMACIONES_DRAFT.map((f) => f.id)).toEqual(['2-2', '1-2-1', '3-1', '4-0']);
+  });
+});
+
+describe('V-Draft: cancha y partido', () => {
+  it('líneas de química: verde, amarilla o roja según quién juega en su puesto', () => {
+    const f = FORMACIONES['1-2-1'];
+    const eq = [carta('ARQ', 80), carta('CIE', 80), carta('PIV', 80), null, carta('PIV', 80)];
+    const l = lineasDraft(eq, f);
+    expect(l.find((x) => x.i === 0 && x.j === 1).color).toBe('verde');
+    expect(l.find((x) => x.i === 1 && x.j === 2).color).toBe('amarilla');
+    expect(l.some((x) => x.j === 3)).toBe(false);
+  });
+
+  it('la pelota entra al arco en el minuto del gol y si no, anda por la cancha', () => {
+    const goles = [{ minuto: 5, equipo: 'propio' }, { minuto: 9, equipo: 'rival' }];
+    expect(pelotaEn(5, goles)).toMatchObject({ gol: 'propio' });
+    expect(pelotaEn(5, goles).x).toBeGreaterThan(40);
+    expect(pelotaEn(9, goles).x).toBeLessThan(0);
+    for (let m = 0; m < 40; m += 1) {
+      if (m === 5 || m === 9) continue;
+      const b = pelotaEn(m, goles, 3);
+      expect(b.x).toBeGreaterThanOrEqual(0); expect(b.x).toBeLessThanOrEqual(40);
+      expect(b.y).toBeGreaterThanOrEqual(0); expect(b.y).toBeLessThanOrEqual(20);
+    }
+    expect(pseudoAzar(7)).toBe(pseudoAzar(7));
   });
 });

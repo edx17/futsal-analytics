@@ -1,10 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CartaJugador from '../components/quinteto/CartaJugador';
+import CanchaPerspectiva from '../components/quinteto/CanchaPerspectiva';
+import CanchaPlana from '../components/vdraft/CanchaPlana';
 import { FORMACIONES } from '../analytics/quinteto';
 import { MONEDA } from '../analytics/sobres';
 import {
   COSTO_PARTIDA, FORMACIONES_DRAFT, PREMIOS, NOMBRE_SOBRE, RONDAS, pasoDelDraft, marcador, puestoRival,
+  lineasDraft, pelotaEn, pseudoAzar,
 } from '../analytics/vdraft';
 import { estadoVDraft, nuevaPartida, elegirCarta, hacerCambio, jugarPartido, abandonarPartida } from '../utils/vdraft';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
@@ -219,19 +222,15 @@ function MiniCancha({ formacion }) {
 
 function Draft({ partida, elegir, ocupado, abandonar }) {
   const paso = pasoDelDraft(partida);
+  const claveOferta = (partida.oferta || []).map((c) => c.catalogo_id).join('|');
   return (
     <>
       <Equipo partida={partida} />
       <div className="bento-card vd-panel">
-        <div className="vd-paso">{paso?.titulo}</div>
+        <div className="vd-paso" key={`t-${claveOferta}`}>{paso?.titulo}</div>
         <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginBottom: 14 }}>{paso?.ayuda}</div>
-        <div className="vd-oferta">
-          {(partida.oferta || []).map((c) => (
-            <button key={c.catalogo_id} className="vd-opcion" disabled={ocupado} onClick={() => elegir(c)}>
-              <div className="vd-carta-grande"><CartaJugador carta={aCarta(c)} /></div>
-            </button>
-          ))}
-        </div>
+        {/* Una oferta nueva se monta de cero: se reparte otra vez y se olvida la elegida. */}
+        <Oferta key={claveOferta} oferta={partida.oferta || []} elegir={elegir} ocupado={ocupado} capitan={partida.paso === 'capitan'} />
       </div>
       <div style={{ textAlign: 'center' }}>
         <button className="vd-btn vd-btn-sec" onClick={abandonar} disabled={ocupado}>ABANDONAR</button>
@@ -240,46 +239,59 @@ function Draft({ partida, elegir, ocupado, abandonar }) {
   );
 }
 
-/* La cancha con los cinco lugares y el banco. En el torneo, tocás un titular
-   y un suplente para cambiarlos. */
+/* Las cartas se reparten dadas vuelta y giran de a una. Al elegir, la elegida
+   brilla y las otras se van; recién ahí se le avisa a la base. */
+function Oferta({ oferta, elegir, ocupado, capitan }) {
+  const [elegida, setElegida] = useState(null);
+  const tocar = (c) => {
+    if (elegida || ocupado) return;
+    setElegida(c.catalogo_id);
+    setTimeout(() => elegir(c), reducido() ? 0 : 450);
+  };
+  return (
+    <div className={`vd-oferta${capitan ? ' vd-oferta-capitan' : ''}`}>
+      {oferta.map((c, i) => {
+        const estado = !elegida ? '' : elegida === c.catalogo_id ? ' vd-opcion-elegida' : ' vd-opcion-descartada';
+        return (
+          <button key={c.catalogo_id} className={`vd-opcion${estado}`} disabled={ocupado || !!elegida} onClick={() => tocar(c)}
+            style={{ animationDelay: `${i * 0.11}s` }}>
+            <div className="vd-carta-grande"><CartaJugador carta={aCarta(c)} /></div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* La cancha de MySquad (en perspectiva, con las medidas del futsal) con las
+   líneas de química, y el banco. En el torneo, tocás un titular y un suplente
+   para cambiarlos. */
 function Equipo({ partida, cambio, tocarCambio }) {
   const forma = FORMACIONES[partida.formacion];
   const f = partida.fuerza || {};
   const enTorneo = partida.estado === 'torneo';
+  const alineacion = (partida.equipo || []).map(aCarta);
+  const lineas = lineasDraft(partida.equipo || [], forma);
+  const seleccionado = enTorneo ? (cambio && 'lugar' in cambio ? cambio.lugar : null)
+    : (partida.paso === 'lugar' || partida.paso === 'capitan' ? partida.lugar_actual : null);
+  const capitan = (partida.equipo || []).findIndex((c) => c && c.catalogo_id === partida.capitan);
   return (
     <div className="bento-card vd-panel">
       <div className="vd-numeros">
         <Numero rotulo="FUERZA" valor={f.fuerza ?? '—'} />
         <Numero rotulo="MEDIA" valor={f.media ?? '—'} />
-        <Numero rotulo="QUÍMICA" valor={`${f.quimica ?? 0}/100`} />
+        <Numero rotulo="QUÍMICA" valor={`${f.quimica ?? 0}/100`} barra={f.quimica ?? 0} />
       </div>
-      <div className="vd-cancha">
-        {forma.lugares.map((l, i) => {
-          const c = partida.equipo?.[i];
-          const actual = partida.estado === 'draft' && partida.lugar_actual === i;
-          const elegido = cambio && cambio.lugar === i;
-          return (
-            <div key={i} className="vd-lugar" style={{ left: `${l.u * 100}%`, top: `${14 + ((l.v - 0.27) / 0.72) * 72}%` }}>
-              {c ? (
-                <div className={`vd-envoltura${elegido ? ' vd-elegido' : ''}`}>
-                  <CartaJugador carta={aCarta(c)} chica onClick={enTorneo ? () => tocarCambio({ lugar: i }) : undefined}
-                    fueraDePuesto={!l.roles.includes(c.carta?.rol)} />
-                  {c.catalogo_id === partida.capitan && <span className="vd-capitan">C</span>}
-                  {!l.roles.includes(c.carta?.rol) && <span className="vd-fuera">FUERA DE PUESTO</span>}
-                </div>
-              ) : (
-                <div className={`vd-vacio${actual ? ' vd-actual' : ''}`}>{l.roles.join('/')}</div>
-              )}
-            </div>
-          );
-        })}
+      <div className="vd-cancha-p" data-cap={capitan}>
+        <CanchaPerspectiva formacion={forma} alineacion={alineacion} lineas={lineas} seleccionado={seleccionado}
+          onElegir={enTorneo ? (i) => tocarCambio({ lugar: i }) : undefined} />
       </div>
       <div className="vd-rotulo" style={{ marginTop: 10 }}>BANCO{enTorneo ? ' · tocá un titular y un suplente para cambiarlos' : ''}</div>
       <div className="vd-banco">
         {[0, 1].map((j) => {
           const c = partida.banco?.[j];
           return c ? (
-            <div key={j} className={`vd-envoltura${cambio && cambio.banco === j ? ' vd-elegido' : ''}`}>
+            <div key={j} className={`vd-envoltura vd-aparece${cambio && cambio.banco === j ? ' vd-elegido' : ''}`}>
               <CartaJugador carta={aCarta(c)} chica onClick={enTorneo ? () => tocarCambio({ banco: j }) : undefined} />
             </div>
           ) : <div key={j} className={`vd-vacio vd-vacio-banco${partida.paso === 'banco' && (partida.banco?.length || 0) === j ? ' vd-actual' : ''}`}>SUP</div>;
@@ -289,11 +301,12 @@ function Equipo({ partida, cambio, tocarCambio }) {
   );
 }
 
-function Numero({ rotulo, valor }) {
+function Numero({ rotulo, valor, barra }) {
   return (
     <div className="vd-numero">
       <div className="vd-rotulo">{rotulo}</div>
-      <div style={{ fontSize: 22, fontWeight: 900, fontFamily: MONO, color: 'var(--accent)' }}>{valor}</div>
+      <div key={valor} className="vd-numero-valor">{valor}</div>
+      {barra != null && <div className="vd-barra"><i style={{ width: `${barra}%` }} /></div>}
     </div>
   );
 }
@@ -311,7 +324,8 @@ function Torneo({ partida, jugar, ocupado, abandonar, cambio, tocarCambio }) {
           {(partida.rivales || []).map((r, i) => {
             const jugado = partida.partidos?.[i];
             return (
-              <div key={i} className={`vd-ronda${i === n ? ' vd-proxima' : ''}${jugado ? (jugado.gano ? ' vd-gano' : ' vd-perdio') : ''}`}>
+              <div key={i} className={`vd-ronda${i === n ? ' vd-proxima' : ''}${jugado ? (jugado.gano ? ' vd-gano' : ' vd-perdio') : ''}`}
+                style={{ animationDelay: `${i * 0.12}s` }}>
                 <div className="vd-ronda-nombre">{r.ronda || RONDAS[i]}</div>
                 <div className="vd-ronda-rival">{r.equipo}</div>
                 <div className="vd-ronda-dato">{puestoRival(r)} · fuerza {r.fuerza}</div>
@@ -321,7 +335,7 @@ function Torneo({ partida, jugar, ocupado, abandonar, cambio, tocarCambio }) {
           })}
         </div>
         {proximo && (
-          <button className="vd-btn" onClick={jugar} disabled={ocupado} style={{ width: '100%', marginTop: 12 }}>
+          <button className="vd-btn vd-btn-jugar" onClick={jugar} disabled={ocupado} style={{ width: '100%', marginTop: 12 }}>
             {ocupado ? 'JUGANDO…' : `JUGAR ${proximo.ronda} · VS ${proximo.equipo.toUpperCase()}`}
           </button>
         )}
@@ -336,39 +350,83 @@ function Torneo({ partida, jugar, ocupado, abandonar, cambio, tocarCambio }) {
   );
 }
 
-/* ── EL PARTIDO: el reloj corre y los goles van cayendo ─────────────────── */
+/* ── EL PARTIDO ─────────────────────────────────────────────────────────────
+   1. La previa: mi equipo contra el rival, con sus fuerzas.
+   2. El reloj corre (40'), la pelota se mueve por la cancha y en cada gol se
+      frena: la pelota entra al arco, se ilumina la red y aparece el cartel.
+   3. El final: ganaste (papelitos) o perdiste; si terminó el torneo, el premio. */
 
 const reducido = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const PAUSA_GOL = 1300;
+const TICK = 120;
 
 function PartidoVivo({ partida, onCerrar, kiosco }) {
   const p = partida.ultimo;
-  const [minuto, setMinuto] = useState(() => (!p || reducido() ? 40 : 0));
+  const sinMovimiento = reducido();
+  const [fase, setFase] = useState(() => (!p ? 'fin' : sinMovimiento ? 'fin' : 'previa'));
+  const [minuto, setMinuto] = useState(() => (!p || sinMovimiento ? 40 : 0));
+  const goles = useMemo(() => p?.goles || [], [p]);
+  const semilla = goles.length * 7 + (p?.goles_propios || 0) * 3 + (p?.rival?.length || 0);
 
   useEffect(() => {
-    if (minuto >= 40) return undefined;
-    const t = setTimeout(() => setMinuto((m) => Math.min(40, m + 1)), 110);
+    if (fase === 'previa') {
+      const t = setTimeout(() => setFase('juego'), 1800);
+      return () => clearTimeout(t);
+    }
+    if (fase !== 'juego') return undefined;
+    if (minuto >= 40) {
+      const t = setTimeout(() => setFase('fin'), 500);
+      return () => clearTimeout(t);
+    }
+    const hayGol = goles.some((g) => g.minuto === minuto);
+    const t = setTimeout(() => setMinuto((m) => m + 1), hayGol ? PAUSA_GOL : TICK);
     return () => clearTimeout(t);
-  }, [minuto]);
+  }, [fase, minuto, goles]);
 
-  const terminado = minuto >= 40;
-  const goles = (p?.goles || []).filter((g) => g.minuto <= minuto);
-  const gp = goles.filter((g) => g.equipo === 'propio').length;
-  const gr = goles.length - gp;
+  const saltar = () => { setMinuto(40); setFase('fin'); };
+  const terminado = fase === 'fin';
+  const vistos = goles.filter((g) => g.minuto <= minuto);
+  const gp = vistos.filter((g) => g.equipo === 'propio').length;
+  const gr = vistos.length - gp;
+  const golAhora = fase === 'juego' ? goles.filter((g) => g.minuto === minuto) : [];
+  const pelota = pelotaEn(fase === 'juego' ? minuto : -1, fase === 'juego' ? goles : [], semilla);
   const fin = partida.estado === 'terminada';
   const premio = partida.premio;
+  const campeon = fin && partida.victorias >= 3;
 
   return (
-    <div className="vd-escena">
-      {p && (
+    <div className={`vd-escena${golAhora.some((g) => g.equipo === 'rival') ? ' vd-temblor' : ''}`}>
+      {p && fase === 'previa' && (
+        <div className="vd-previa">
+          <div className="vd-escena-ronda">{p.ronda}</div>
+          <div className="vd-vs">
+            <div className="vd-vs-lado vd-vs-izq"><span>MI EQUIPO</span><b>{p.fuerza_propia}</b><em>fuerza</em></div>
+            <div className="vd-vs-x">VS</div>
+            <div className="vd-vs-lado vd-vs-der"><span>{p.rival.toUpperCase()}</span><b>{p.fuerza_rival}</b><em>Primera {p.division}</em></div>
+          </div>
+        </div>
+      )}
+
+      {p && fase !== 'previa' && (
         <>
           <div className="vd-escena-ronda">{p.ronda}</div>
           <div className="vd-marcador">
-            <div><span>MI EQUIPO</span><b>{gp}</b></div>
+            <div><span>MI EQUIPO</span><b key={`p${gp}`} className="vd-salta">{gp}</b></div>
             <div className="vd-reloj">{terminado ? 'FINAL' : `${minuto}'`}</div>
-            <div><span>{p.rival.toUpperCase()}</span><b>{gr}</b></div>
+            <div><span>{p.rival.toUpperCase()}</span><b key={`r${gr}`} className="vd-salta">{gr}</b></div>
+          </div>
+          <div className="vd-tiempo"><i style={{ width: `${(minuto / 40) * 100}%` }} /></div>
+          <div className="vd-plana-caja">
+            <CanchaPlana pelota={terminado ? null : pelota} gol={golAhora[0]?.equipo} />
+            {golAhora.map((g) => (
+              <div key={`${g.minuto}-${g.equipo}`} className={`vd-cartel vd-cartel-${g.equipo}`}>
+                <b>{g.equipo === 'propio' ? '¡GOOOL!' : `GOL DE ${p.rival.toUpperCase()}`}</b>
+                {g.equipo === 'propio' && <span>{g.autor}{g.asistencia ? ` · asist. ${g.asistencia}` : ''}</span>}
+              </div>
+            ))}
           </div>
           <div className="vd-goles">
-            {goles.map((g, i) => (
+            {vistos.map((g, i) => (
               <div key={i} className={`vd-gol vd-gol-${g.equipo}`}>
                 <span style={{ fontFamily: MONO }}>{g.minuto}'</span>
                 {g.equipo === 'propio'
@@ -382,8 +440,11 @@ function PartidoVivo({ partida, onCerrar, kiosco }) {
         </>
       )}
 
+      {terminado && p?.gano && !sinMovimiento && <Papelitos dorados={campeon} semilla={semilla} />}
+
       {terminado && fin && premio && (
-        <div className="vd-final">
+        <div className={`vd-final${campeon ? ' vd-final-campeon' : ''}`}>
+          {campeon && <div className="vd-copa">🏆</div>}
           <div className="vd-rotulo" style={{ color: '#9ca3af' }}>
             {partida.victorias >= 4 ? 'CAMPEÓN DE CAMPEONES' : partida.victorias === 3 ? 'CAMPEÓN' : 'FIN DEL TORNEO'} · {partida.victorias} {partida.victorias === 1 ? 'victoria' : 'victorias'}
           </div>
@@ -396,10 +457,30 @@ function PartidoVivo({ partida, onCerrar, kiosco }) {
         </div>
       )}
 
-      {terminado && (
-        <button className="vd-btn" onClick={onCerrar} style={{ marginTop: 22 }}>{fin ? 'LISTO' : 'SEGUIR'}</button>
-      )}
-      {!terminado && <button className="vd-btn vd-btn-sec" onClick={() => setMinuto(40)} style={{ marginTop: 22 }}>SALTAR</button>}
+      {terminado
+        ? <button className="vd-btn" onClick={onCerrar} style={{ marginTop: 22 }}>{fin ? 'LISTO' : 'SEGUIR'}</button>
+        : <button className="vd-btn vd-btn-sec" onClick={saltar} style={{ marginTop: 18 }}>SALTAR</button>}
+    </div>
+  );
+}
+
+const COLORES = ['#00ff88', '#ffffff', '#38bdf8', '#a7f3d0'];
+const COLORES_ORO = ['#fbbf24', '#fde68a', '#f59e0b', '#ffffff', '#c084fc'];
+
+function Papelitos({ dorados, semilla }) {
+  const colores = dorados ? COLORES_ORO : COLORES;
+  return (
+    <div className="vd-papelitos" aria-hidden="true">
+      {Array.from({ length: dorados ? 90 : 50 }, (_, i) => {
+        const r = (k) => pseudoAzar(semilla * 31 + i * 5 + k);
+        return (
+          <i key={i} style={{
+            left: `${r(0) * 100}%`, background: colores[i % colores.length], width: 6 + r(1) * 6,
+            animationDuration: `${2.4 + r(2) * 2}s`, animationDelay: `${r(3) * 1.2}s`,
+            '--dx': `${(r(4) - 0.5) * 160}px`, '--giro': `${360 + r(5) * 720}deg`,
+          }} />
+        );
+      })}
     </div>
   );
 }

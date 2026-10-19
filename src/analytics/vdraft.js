@@ -82,3 +82,31 @@ export function puestoRival(r) {
   const zona = r.zona ? ` · ${nombreZona(r.zona)}` : '';
   return `${r.puesto}° de ${r.de}${zona} · Primera ${r.division}`;
 }
+
+/**
+ * Las líneas de química de la cancha (como en MySquad): verde si los dos
+ * juegan en su puesto, amarilla si uno solo, roja si ninguno.
+ */
+export function lineasDraft(equipo = [], formacion) {
+  const enPuesto = (i) => (formacion.lugares[i]?.roles || []).includes(equipo[i]?.carta?.rol);
+  return formacion.enlaces
+    .filter(([i, j]) => equipo[i] && equipo[j])
+    .map(([i, j]) => {
+      const n = Number(enPuesto(i)) + Number(enPuesto(j));
+      return { i, j, color: n === 2 ? 'verde' : n === 1 ? 'amarilla' : 'roja' };
+    });
+}
+
+/* Un número "al azar" pero fijo para cada semilla: así la pelota y los
+   papelitos se mueven distinto en cada partido sin ensuciar el render. */
+export const pseudoAzar = (n) => {
+  const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+/** Dónde anda la pelota en un minuto (cancha de 40×20 m; ataco hacia la derecha). */
+export function pelotaEn(minuto, goles = [], semilla = 0) {
+  const gol = goles.find((g) => g.minuto === minuto);
+  if (gol) return { x: gol.equipo === 'propio' ? 40.6 : -0.6, y: 10 + (pseudoAzar(semilla + minuto) - 0.5) * 2, gol: gol.equipo };
+  return { x: 4 + pseudoAzar(semilla + minuto * 3) * 32, y: 2.5 + pseudoAzar(semilla + minuto * 7 + 1) * 15, gol: null };
+}
