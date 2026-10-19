@@ -31,90 +31,49 @@ import { Icono } from '../iconos';
    VERSION_ACTUAL en localStorage y no vuelve hasta el próximo release.
    Para publicar novedades: subí VERSION_ACTUAL y editá NOVEDADES_VERSION.
 ============================================================================ */
-const VERSION_ACTUAL = 'v0.00202610041252';
+const VERSION_ACTUAL = 'v0.00202610191140';
 const LS_VERSION_VISTA = 'vc_version_novedades_vista';
 
-const NOVEDADES_TITULO = 'Tu Plantel en Cartas';
-const NOVEDADES_BAJADA = 'Llegó MySquad para jugar con el plantel, la tesorería cobra sola y deja recibo, el jugador recibe sus avisos en el celular, y las placas para redes se renovaron enteras.';
+const NOVEDADES_TITULO = 'Cargá el partido a tu ritmo';
+const NOVEDADES_BAJADA = 'La toma de datos suma un modo simplificado y uno por voz, llega AFA Stats con toda la liga, MySquad tiene premios y sobres de cartas, y el Resumen corrige los minutos de cada jugador.';
 
 const NOVEDADES_VERSION = [
   {
-    grupo: 'MySquad (nuevo)',
+    grupo: 'Toma de datos (nuevo)',
     color: '#00ff88',
     items: [
-      { t: 'Tu plantel, como en el FIFA', d: 'Grupo nuevo en el menú: JUEGO → MYSQUAD, para el cuerpo técnico y la dirección del club. Cada jugador es una carta con su foto, su media y seis atributos, parada sobre una cancha de futsal en perspectiva.' },
-      { t: 'Nada inventado', d: 'La media sale del rating promedio de la temporada y los atributos (tiro, pase, regate, defensa, impacto y físico) de lo que registra la toma de datos. Con pocos partidos la carta queda EN EVALUACIÓN, y la figura del último partido lleva la carta verde de FIGURA.' },
-      { t: 'Formaciones y quinteto ideal', d: '2-2, 1-2-1, 3-1 y 4-0. Un botón arma el ideal según los números y otro carga el quinteto que más jugó junto de verdad, para compararlos.' },
-      { t: 'Química de verdad', d: 'Las líneas entre jugadores salen de cuánto compartieron cancha y cómo les fue juntos: verde si suman, roja si restan, amarilla si casi no jugaron juntos.' },
+      { t: 'Elegís cómo cargar', d: 'Antes de empezar: TRADICIONAL (la de siempre), SIMPLIFICADA o POR VOZ. Se recuerda por partido y se cambia desde el menú.' },
+      { t: 'Camisetas de hoy', d: 'Para los dos modos rápidos ponés el número con el que juega cada convocado. Arranca con el dorsal y se recuerda para el próximo partido.' },
+      { t: 'Simplificada', d: 'Tocás la cancha, la camiseta (o RIVAL) y la acción: gol, remate atajado, desviado o rebatido, falta, recuperación o pérdida. En los goles, quién asistió. Lateral y córner como siempre, y MÁS… abre la carga completa para ese toque.' },
+      { t: 'Por voz', d: 'Tocás la cancha y decís, por ejemplo: "7 remate desviado", "Central remate atajado", "gol del 10 asistencia del 4", "falta de Cideco al 7" o "amarilla al 21". Si se entiende todo se guarda y te muestra qué registró para deshacer; si falta algo, completás con dos toques.' },
+      { t: 'Minutos de verdad', d: 'El Resumen ya no mezcla el primer y el segundo tiempo: los minutos de cada jugador y de cada quinteto salen del quinteto en cancha de cada evento y del reloj real de cada tiempo.' },
     ],
   },
   {
-    grupo: 'Tesorería y cobros',
-    color: '#fbbf24',
-    items: [
-      { t: 'La cuota del mes se genera sola', d: 'Cargás la tarifa de cada categoría y el día de vencimiento, y la app arma la cuota de cada jugador activo a principio de mes. Al jugador le llega el aviso al celular.' },
-      { t: 'Descuento por hermanos', d: 'Los jugadores del mismo grupo familiar pagan completo el de la tarifa más alta y el resto con el descuento que configures.' },
-      { t: 'Cada cobro con su recibo', d: 'Número correlativo, escudo y monto, para compartir por WhatsApp. No se puede cobrar más que lo que se debe, y un cobro mal hecho se anula con motivo: ya no se borra, queda el rastro.' },
-      { t: 'El tesorero tiene su lugar', d: 'Rol tesorero con acceso a Tesorería, Empleados y Sponsors. Las fechas son las del día local: después de las 21 h ya no se guardan con fecha de mañana.' },
-    ],
-  },
-  {
-    grupo: 'Kiosco del jugador',
-    color: '#a855f7',
-    items: [
-      { t: 'Avisos en el celular, también en iPhone', d: 'Cada jugador activa las notificaciones desde su kiosco y le llega su citación, el recordatorio del wellness y lo que le toca a él. En iPhone hay que agregar la app a la pantalla de inicio.' },
-      { t: 'La citación llega con un solo botón', d: 'PUBLICAR EN EL TABLÓN guarda la convocatoria y la muestra en el kiosco de cada jugador, diciéndole si está citado. Guardar después ya no la despublica.' },
-      { t: 'Mis pagos', d: 'El jugador ve lo que debe, el alias para transferir y sus recibos.' },
-      { t: 'Menú completo y más privado', d: 'Estado físico, torneo, temporada y libro táctico desde el kiosco, con un "¿Cómo funciona?" que abre el manual. De los compañeros sólo se ve lo necesario: nada de DNI, teléfonos ni datos médicos.' },
-    ],
-  },
-  {
-    grupo: 'Placas para redes',
-    color: '#ec4899',
-    items: [
-      { t: 'Tres estilos', d: 'Noche, Claro y Estadio, para todas las placas. La app recuerda el último que usaste.' },
-      { t: 'Placas nuevas', d: 'Figura del partido (desde Resumen), próximo partido (desde Citación), cumpleaños (desde la Agenda) y resumen del plantel (desde Resumen de plantel).' },
-      { t: 'Chau Exportar gráficas', d: 'El editor no estaba a la altura y las placas automáticas hacen lo mismo mejor.' },
-    ],
-  },
-  {
-    grupo: 'Partidos y temporada',
+    grupo: 'AFA Stats',
     color: '#3b82f6',
     items: [
-      { t: 'El video arranca antes', d: 'Al tocar un evento en Resumen, el video empieza 3 segundos antes, y 5 en goles y remates, para ver cómo se armó la jugada.' },
-      { t: 'Resumen más claro', d: 'Tarjetas en el detalle de los goles, el rating primero en los quintetos, los remates separados por tiempo y las tarjetas de estadísticas parejas, sin filas a medias.' },
-      { t: 'Temporada más compacta', d: 'En qué días jugamos y cómo nos fue en cada uno. El historial de partidos se recorre al lado de la cancha y la pantalla tiene un cargando que dice cuánto falta.' },
-      { t: 'Partidos cargados a mano', d: 'Ya no salen todos empatados en Temporada: se lee el marcador del fixture.' },
-      { t: 'Rating más justo', d: 'La asistencia ya no cuenta como gol del que asiste, y la figura se elige con desempate. Contra las figuras que eligió el cuerpo técnico en partidos reales, acierta todas.' },
+      { t: 'Otras competencias', d: 'Primera A, B, C y D, de 1ra a 8va, con tabla general, local y visitante, fixture por fecha, goleadores y reportes. Primera D separada en Zona 1 y Zona 2.' },
+      { t: 'Para todos', d: 'Lo ve todo el plantel y está en el Kiosco como AFA Stats. El staff lo actualiza con un botón, con vista previa: volver a actualizar no duplica nada.' },
+      { t: 'Tu fixture al día', d: 'En Mis Torneos, el fixture se sincroniza con los datos de la liga y elegís qué traer: resultados, fechas, horarios o partidos nuevos, grupo por grupo o partido por partido.' },
     ],
   },
   {
-    grupo: 'Plantel',
-    color: '#22c55e',
+    grupo: 'MySquad',
+    color: '#fbbf24',
     items: [
-      { t: 'Carga por planilla', d: 'Bajás un Excel con todo el plantel, lo completás y lo subís. Antes de guardar te muestra qué entra nuevo, qué cambia y qué filas tienen errores.' },
-      { t: 'Buscador y apodo', d: 'Buscás por nombre, apellido, apodo o dorsal, sin preocuparte por los acentos.' },
-      { t: 'WhatsApp que funciona', d: 'Los teléfonos se pasan solos al formato de WhatsApp (549…). Antes el botón mandaba números que WhatsApp no reconocía.' },
-      { t: 'Destacados con criterio', d: 'El muro defensivo y el mejor rating piden un mínimo de partidos: con uno solo jugado ya no sos el mejor del plantel.' },
+      { t: 'Premios', d: 'Jugador y equipo de la semana, del mes y del año, con su carta especial y un historial para mirar atrás.' },
+      { t: 'Sobres de cartas', d: 'Un sobre por día, otro por completar el wellness y uno por entrar 7 días seguidos. Las repetidas dan V-Coins.' },
+      { t: 'Mega Sobre Especial', d: '10 cartas, todas especiales, por 500 V-Coins.' },
+      { t: 'Cartas que se giran', d: 'Tocás la carta y se da vuelta con la foto entera. El staff puede ponerle una foto especial a cada carta.' },
     ],
   },
   {
-    grupo: 'Pantallas',
-    color: '#f97316',
+    grupo: 'Más',
+    color: '#a855f7',
     items: [
-      { t: 'Iconos nuevos', d: 'Toda la app pasó a un mismo estilo de iconos, y las tarjetas amarilla y roja se ven siempre de su color.' },
-      { t: 'Toma de datos en el celular', d: 'Con el celular acostado, la cancha ocupa toda la pantalla y cada acción se carga en una ventana por pasos.' },
-      { t: 'Tablas en el celular', d: 'El detalle se lee en recuadros alineados, no en una lista escalonada.' },
-      { t: 'Planificador', d: 'El bloque físico se pliega para ver sólo las tareas en cancha.' },
-      { t: 'Inicio', d: 'Una franja arriba con lo de hoy, el próximo partido y los avisos pendientes, y los bloques ordenados según tu rol.' },
-    ],
-  },
-  {
-    grupo: 'Por dentro',
-    color: '#22d3ee',
-    items: [
-      { t: 'Cada club ve sólo lo suyo', d: 'Se cerraron los permisos de la base club por club y rol. El kiosco queda atado a su club, y después de cinco PIN mal se bloquea 15 minutos.' },
-      { t: 'Más de 300 pruebas automáticas', d: 'Antes de cada cambio se corren solas y avisan si algo que funcionaba dejó de funcionar.' },
+      { t: 'Creador táctico', d: 'Los conos, vallas y arcos se alinean entre sí con guías al moverlos, como en Canva.' },
+      { t: 'Presentismo', d: 'Lee el historial completo de asistencias y ya no cuenta a los lesionados como faltas.' },
     ],
   },
 ];

@@ -26,9 +26,9 @@ export const ACCIONES_RAPIDAS = [
   { accion: 'Pérdida', etiqueta: 'PÉRDIDA', color: '#ef4444' },
 ];
 
+const ETIQUETAS_EXTRA = { 'Falta recibida': 'FALTA RECIBIDA', 'Tarjeta Amarilla': 'AMARILLA', 'Tarjeta Roja': 'ROJA', 'Penal a favor': 'PENAL A FAVOR', 'Penal en contra': 'PENAL EN CONTRA' };
 export const etiquetaAccion = (accion) =>
-  ACCIONES_RAPIDAS.find((a) => a.accion === accion)?.etiqueta
-  || (accion === 'Falta recibida' ? 'FALTA RECIBIDA' : String(accion || '').toUpperCase());
+  ACCIONES_RAPIDAS.find((a) => a.accion === accion)?.etiqueta || ETIQUETAS_EXTRA[accion] || String(accion || '').toUpperCase();
 
 /* ── camisetas ─────────────────────────────────────────────────────────── */
 
@@ -93,49 +93,103 @@ export function numerosEnPalabras(texto) {
 
 const tiene = (t, re) => re.test(t);
 
+/* Palabras que no sirven para reconocer a un club por la voz. */
+const GENERICAS = new Set(['club', 'atletico', 'deportivo', 'sportivo', 'social', 'cultural', 'sociedad', 'asociacion',
+  'futbol', 'futsal', 'de', 'del', 'la', 'el', 'los', 'las', 'y', 'afa', 'masc', 'fem', 'sc', 'cs', 'ca', 'cd', 'fc', 'rival']);
+
+const normalizarPalabras = (texto) => sinTildes(texto).toLowerCase().replace(/[^a-z0-9ñ\s]/g, ' ').split(/\s+/).filter(Boolean);
+
+/**
+ * Cómo se lo nombra al rival por la voz: "R. CENTRAL" → ['central'],
+ * "CIDECO" → ['cideco']. Acepta varios nombres o apodos separados por coma.
+ */
+export function palabrasDelRival(...nombres) {
+  const res = new Set();
+  nombres.flat().filter(Boolean).forEach((nombre) => {
+    String(nombre).split(',').forEach((parte) => {
+      const pal = normalizarPalabras(parte).filter((w) => !GENERICAS.has(w) && !/^\d+$/.test(w) && w.length >= 3);
+      pal.forEach((w) => res.add(w));
+      if (pal.length > 1) res.add(pal.join(' '));
+    });
+  });
+  return [...res];
+}
+
+const escaparRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Lo dictado → un evento.
  *
  * @param {string} texto     Lo que reconoció el teléfono.
  * @param {object} camisetas { [jugadorId]: número } del partido.
+ * @param {{ rival?: string[] }} opciones  rival: cómo se lo nombra (ver palabrasDelRival).
  * @returns {{ equipo, accion, dorsal, jugadorId, asistenciaDorsal, asistenciaId, completo, falta: string[], texto }}
  *   `falta` dice qué no se entendió: 'accion', 'resultado' (un remate sin
  *   atajado/desviado/rebatido), 'jugador' (un número que no es de nadie).
+ *
+ * Quién es quién:
+ *   · "rival", "ellos" o el nombre del rival ("Central remate desviado") → del rival.
+ *   · "falta del 18" → la hizo mi 18. "falta al 7" / "falta de Cideco al 7" →
+ *     la recibió mi 7. "falta de Cideco" / "falta rival" → la hizo el rival.
+ *   · "amarilla al 21" → a mi 21. "amarilla a GEVS" → a un jugador del rival.
  */
-export function interpretarVoz(texto, camisetas = {}) {
+export function interpretarVoz(texto, camisetas = {}, { rival = [] } = {}) {
   const t = ` ${numerosEnPalabras(texto)} `;
   const r = { equipo: 'Propio', accion: null, dorsal: null, jugadorId: null, asistenciaDorsal: null, asistenciaId: null, completo: false, falta: [], texto: String(texto || '') };
 
-  if (tiene(t, /\brival(es)?\b|\bellos\b|\bcontra\b/)) r.equipo = 'Rival';
+  const nombraRival = tiene(t, /\brival(es)?\b|\bellos\b/)
+    || rival.some((w) => w && new RegExp(`\\b${escaparRe(w)}\\b`).test(t));
 
-  // Asistencia: "asistencia (de/del) 4", "pase (de/del) 4", "con el 4".
+  // Asistencia: "asistencia (de/del) 4", "pase (de/del) 4".
   const asis = t.match(/\b(?:asistencia|asiste|asistio|pase|habilita|habilito)\s+(?:de\s+|del\s+|el\s+|la\s+)*(\d{1,2})\b/);
   if (asis) r.asistenciaDorsal = asis[1];
+  // Destinatario: "al 7", "a el 7" (la falta que recibe / la tarjeta que le sacan).
+  const al = t.match(/\b(?:al|a)\s+(?:el\s+|la\s+)?(\d{1,2})\b/);
 
-  // Autor: el primer número que no sea el de la asistencia.
   const numeros = [...t.matchAll(/\b(\d{1,2})\b/g)].map((m) => ({ n: m[1], i: m.index }));
-  const autor = numeros.find((x) => !(asis && x.i >= asis.index && x.i <= asis.index + asis[0].length));
-  if (autor && r.equipo === 'Propio') r.dorsal = autor.n;
+  const primerNumero = numeros.find((x) => !(asis && x.i >= asis.index && x.i <= asis.index + asis[0].length))?.n || null;
 
   // Acción
-  const esRemate = tiene(t, /\b(remate|remato|tiro|tira|tiro al arco|disparo|patea|pateo|remata)\b/);
+  const esRemate = tiene(t, /\b(remate|remato|tiro|tira|disparo|patea|pateo|remata)\b/);
   const atajado = tiene(t, /\b(atajad[oa]|ataja|atajo|atajada|arquero|al arco)\b/);
   const desviado = tiene(t, /\b(desviad[oa]|desvia|desvio|afuera|fuera|errado|erro|palo)\b/);
   const rebatido = tiene(t, /\b(rebatid[oa]|rebate|rebatio|bloquead[oa]|bloqueo|tapad[oa]|tapo)\b/);
+  const esFalta = tiene(t, /\bfalta\b|\binfraccion\b/);
+  const esTarjeta = tiene(t, /\b(amarilla|roja|tarjeta|amonestad[oa]|amonestacion|expulsad[oa]|expulsion|expulsan)\b/);
 
-  if (tiene(t, /\b(gol|golazo|goool|gool)\b/)) r.accion = 'Remate - Gol';
-  else if (atajado && (esRemate || !tiene(t, /\bfalta\b/))) r.accion = 'Remate - Atajado';
-  else if (desviado && (esRemate || !tiene(t, /\bfalta\b/))) r.accion = 'Remate - Desviado';
+  // Por defecto: si se nombra al rival, es del rival; el número es de mi jugador.
+  let equipo = nombraRival ? 'Rival' : 'Propio';
+  let dorsal = primerNumero;
+
+  if (esTarjeta) {
+    r.accion = tiene(t, /\b(roja|expulsad[oa]|expulsion|expulsan|doble amarilla)\b/) ? 'Tarjeta Roja' : 'Tarjeta Amarilla';
+    dorsal = al ? al[1] : primerNumero;
+  } else if (tiene(t, /\b(gol|golazo|goool|gool)\b/)) r.accion = 'Remate - Gol';
+  else if (atajado && (esRemate || !esFalta)) r.accion = 'Remate - Atajado';
+  else if (desviado && (esRemate || !esFalta)) r.accion = 'Remate - Desviado';
   else if (rebatido) r.accion = 'Remate - Rebatido';
   else if (esRemate) r.falta.push('resultado');
-  else if (tiene(t, /\bfalta\b|\binfraccion\b/)) {
-    r.accion = tiene(t, /\b(recibid[oa]|recibe|recibio|le hacen|le hicieron|le pegan|le pegaron)\b/) ? 'Falta recibida' : 'Falta cometida';
+  else if (esFalta) {
+    const recibida = tiene(t, /\b(recibid[oa]|recibe|recibio|le hacen|le hicieron|le pegan|le pegaron|sobre)\b/);
+    if (recibida || al) {
+      // Mi jugador la recibió ("falta al 7", "falta de Cideco al 7", "7 falta recibida").
+      r.accion = 'Falta recibida';
+      equipo = 'Propio';
+      dorsal = al ? al[1] : primerNumero;
+      if (!dorsal && nombraRival) { equipo = 'Rival'; r.accion = 'Falta cometida'; }
+    } else if (nombraRival) {
+      r.accion = 'Falta cometida'; // "falta de Cideco", "falta rival"
+    } else {
+      r.accion = 'Falta cometida'; // "falta del 18"
+    }
   } else if (tiene(t, /\b(recupera|recupero|recuperacion|recuperada|roba|robo|robada|intercepta|intercepto|intercepcion)\b/)) r.accion = 'Recuperación';
   else if (tiene(t, /\b(perdida|pierde|perdio|perdida de pelota)\b/)) r.accion = 'Pérdida';
 
   if (!r.accion && !r.falta.includes('resultado')) r.falta.push('accion');
 
+  r.equipo = equipo;
   if (r.equipo === 'Propio') {
+    r.dorsal = dorsal;
     if (r.dorsal) {
       r.jugadorId = jugadorPorCamiseta(camisetas, r.dorsal);
       if (!r.jugadorId) r.falta.push('jugador');
@@ -155,9 +209,9 @@ export function interpretarVoz(texto, camisetas = {}) {
  * De varias alternativas del reconocedor, la que se entiende completa; si
  * ninguna, la que menos le falta.
  */
-export function mejorInterpretacion(alternativas = [], camisetas = {}) {
-  const lista = (alternativas || []).filter(Boolean).map((a) => interpretarVoz(a, camisetas));
-  if (!lista.length) return interpretarVoz('', camisetas);
+export function mejorInterpretacion(alternativas = [], camisetas = {}, opciones = {}) {
+  const lista = (alternativas || []).filter(Boolean).map((a) => interpretarVoz(a, camisetas, opciones));
+  if (!lista.length) return interpretarVoz('', camisetas, opciones);
   return lista.find((x) => x.completo) || [...lista].sort((a, b) => a.falta.length - b.falta.length)[0];
 }
 

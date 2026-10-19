@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   numerosEnPalabras, interpretarVoz, mejorInterpretacion, camisetasIniciales, camisetasRepetidas,
-  jugadorPorCamiseta, accionSegunZona, eventosDeAccionRapida,
+  jugadorPorCamiseta, accionSegunZona, eventosDeAccionRapida, palabrasDelRival, etiquetaAccion,
 } from '../tomaRapida';
 
-const CAMISETAS = { 101: '7', 102: '10', 103: '4', 104: '1', 105: '31' };
+const CAMISETAS = { 101: '7', 102: '10', 103: '4', 104: '1', 105: '31', 106: '18', 107: '21' };
 
 describe('camisetas', () => {
   it('lo del partido manda, después lo del club, después el dorsal', () => {
@@ -82,5 +82,47 @@ describe('guardar', () => {
   it('acción del rival: sin jugador', () => {
     const [f] = eventosDeAccionRapida({ base, equipo: 'Rival', accion: 'Remate - Atajado', jugadorId: '101', x: 20, y: 50 });
     expect(f).toMatchObject({ equipo: 'Rival', id_jugador: null, accion: 'Remate - Atajado' });
+  });
+});
+
+describe('voz: el rival por su nombre, faltas y tarjetas', () => {
+  const vs = (nombre) => ({ rival: palabrasDelRival(nombre) });
+
+  it('arma las palabras del rival sin las genéricas', () => {
+    expect(palabrasDelRival('R. CENTRAL')).toEqual(['central']);
+    expect(palabrasDelRival('Club Atlético Juventud Unida')).toEqual(['juventud', 'unida', 'juventud unida']);
+    expect(palabrasDelRival('CIDECO', 'Cide, Los del Oeste')).toEqual(['cideco', 'cide', 'oeste']);
+  });
+
+  it('"Central remate desviado" es del rival', () => {
+    expect(interpretarVoz('Central remate desviado', CAMISETAS, vs('R. CENTRAL'))).toMatchObject({ equipo: 'Rival', accion: 'Remate - Desviado', completo: true });
+  });
+
+  it('"Falta de CIDECO": la hizo el rival', () => {
+    expect(interpretarVoz('Falta de CIDECO', CAMISETAS, vs('CIDECO'))).toMatchObject({ equipo: 'Rival', accion: 'Falta cometida', completo: true });
+  });
+
+  it('"Falta de Cideco al 7": la recibió mi 7', () => {
+    expect(interpretarVoz('Falta de Cideco al 7', CAMISETAS, vs('CIDECO'))).toMatchObject({ equipo: 'Propio', accion: 'Falta recibida', jugadorId: '101', completo: true });
+    expect(interpretarVoz('falta al siete', CAMISETAS, vs('CIDECO'))).toMatchObject({ equipo: 'Propio', accion: 'Falta recibida', jugadorId: '101' });
+  });
+
+  it('"Falta del 18": la hizo mi 18', () => {
+    expect(interpretarVoz('Falta del 18', CAMISETAS, vs('CIDECO'))).toMatchObject({ equipo: 'Propio', accion: 'Falta cometida', jugadorId: '106', completo: true });
+  });
+
+  it('"Amarilla a GEVS": a un jugador del rival', () => {
+    expect(interpretarVoz('Amarilla a GEVS', CAMISETAS, vs('GEVS'))).toMatchObject({ equipo: 'Rival', accion: 'Tarjeta Amarilla', completo: true });
+  });
+
+  it('"Amarilla al 21": a mi 21', () => {
+    expect(interpretarVoz('Amarilla al 21', CAMISETAS, vs('GEVS'))).toMatchObject({ equipo: 'Propio', accion: 'Tarjeta Amarilla', jugadorId: '107', completo: true });
+    expect(interpretarVoz('roja al veintiuno', CAMISETAS, vs('GEVS'))).toMatchObject({ equipo: 'Propio', accion: 'Tarjeta Roja', jugadorId: '107' });
+    expect(interpretarVoz('expulsado el 9 de GEVS', CAMISETAS, vs('GEVS'))).toMatchObject({ equipo: 'Rival', accion: 'Tarjeta Roja', completo: true });
+  });
+
+  it('sin decir el rival, lo de siempre sigue igual', () => {
+    expect(interpretarVoz('7 remate desviado', CAMISETAS, vs('R. CENTRAL'))).toMatchObject({ equipo: 'Propio', jugadorId: '101' });
+    expect(etiquetaAccion('Tarjeta Amarilla')).toBe('AMARILLA');
   });
 });

@@ -7,7 +7,7 @@ import CanchaTelefono from '../components/tomaDatos/CanchaTelefono';
 import { esPantallaTelefono } from '../analytics/canchaTelefono';
 import { Icono } from '../iconos';
 import { SelectorModo, PanelSimplificado, PanelVoz } from '../components/tomaDatos/RegistroRapido';
-import { camisetasIniciales, mejorInterpretacion, eventosDeAccionRapida } from '../analytics/tomaRapida';
+import { camisetasIniciales, mejorInterpretacion, eventosDeAccionRapida, palabrasDelRival } from '../analytics/tomaRapida';
 import { escuchar, hayReconocimientoDeVoz } from '../utils/reconocedorVoz';
 
 /* Máximo hueco que el cronómetro recupera automáticamente tras volver de
@@ -109,6 +109,10 @@ function TomaDatos() {
   const [modoToma, setModoToma] = useState(() => (modoKey ? leerLS(modoKey, null) : null));
   const [selectorModo, setSelectorModo] = useState(() => !modoKey || !leerLS(modoKey, null));
   const [camisetas, setCamisetas] = useState({});
+  const nombreRival = partido?.rivales?.nombre || partido?.rival || '';
+  const apodosKey = partido?.id ? `vc_rival_voz_${partido.id}` : null;
+  const [apodosRival, setApodosRival] = useState(() => (apodosKey ? leerLS(apodosKey, '') : ''));
+  const palabrasRival = useMemo(() => palabrasDelRival(nombreRival, apodosRival), [nombreRival, apodosRival]);
   const [registroCompleto, setRegistroCompleto] = useState(false); // "MÁS…": este toque va por la tradicional
   const [vozEstado, setVozEstado] = useState(null);
   const vozRef = useRef(null);
@@ -805,8 +809,9 @@ function TomaDatos() {
 
   /* ── TOMA SIMPLIFICADA Y POR VOZ ──────────────────────────────────── */
 
-  const confirmarModo = (modo, nums) => {
+  const confirmarModo = (modo, nums, apodos) => {
     setModoToma(modo);
+    if (apodos !== undefined) { setApodosRival(apodos); if (apodosKey) guardarLS(apodosKey, apodos); }
     if (modoKey) guardarLS(modoKey, modo);
     guardarLS('vc_modo_toma', modo);
     if (nums) {
@@ -828,7 +833,31 @@ function TomaDatos() {
       club_id: clubId, id_partido: partido.id, periodo, minuto, segundos,
       quinteto_activo: jugadoresEnCancha.map(j => String(j.id)), contexto_juego: contextoJuego,
     };
-    const filas = eventosDeAccionRapida({ base, equipo: eq, accion: acc, jugadorId, asistenciaId, x: dbX, y: dbY });
+    let filas = eventosDeAccionRapida({ base, equipo: eq, accion: acc, jugadorId, asistenciaId, x: dbX, y: dbY });
+
+    /* Tarjetas: lo mismo que la toma tradicional. La 2da amarilla de un
+       jugador propio es roja (se borra la amarilla anterior), y la roja
+       propia deja al equipo con 4. */
+    if (acc.startsWith('Tarjeta') && eq === 'Propio' && jugadorId) {
+      const jid = Number(jugadorId);
+      const amarillaPrevia = acc === 'Tarjeta Amarilla'
+        && eventos.find((e) => e.accion === 'Tarjeta Amarilla' && e.equipo === 'Propio' && Number(e.id_jugador) === jid);
+      if (amarillaPrevia) {
+        await eliminarEvento(amarillaPrevia.id);
+        filas = [{ ...filas[0], accion: 'Tarjeta Roja', contexto_juego: '4v5', etiqueta_tactica: 'doble_amarilla' }];
+        showToast('Doble amarilla → ROJA. Jugador expulsado, jugás con 4.', 'warning');
+      }
+      if (amarillaPrevia || acc === 'Tarjeta Roja') {
+        setCupoCancha(4);
+        setContextoJuego('4v5');
+        setJugadoresEnCancha((prev) => prev.filter((j) => Number(j.id) !== jid));
+        setJugadoresEnBanco((prev) => prev.filter((j) => Number(j.id) !== jid));
+        if (!amarillaPrevia) showToast('¡Roja! Jugador expulsado. Jugás con 4.', 'warning');
+      }
+    } else if (acc === 'Tarjeta Roja' && eq === 'Rival') {
+      setContextoJuego('5v4');
+      showToast('¡Expulsión rival! Contexto en 5v4.', 'info');
+    }
     const final = filas[0].accion;
     if (final.startsWith('Penal')) showToast(`¡${final.toUpperCase()}! Falta dentro del área.`, final === 'Penal a favor' ? 'success' : 'error');
     if (final === 'Remate - Gol' && eq === 'Rival' && cupoCancha < 5) {
@@ -851,7 +880,7 @@ function TomaDatos() {
       onFinal: (alternativas) => {
         if (!vigente()) return;
         vozRef.current = null;
-        const r = mejorInterpretacion(alternativas, camisetas);
+        const r = mejorInterpretacion(alternativas, camisetas, { rival: palabrasRival });
         const texto = alternativas[0] || '';
         if (r.completo) {
           setVozEstado({ fase: 'guardado', texto, resultado: r });
@@ -1341,6 +1370,8 @@ function TomaDatos() {
           jugadores={todosLosJugadores}
           camisetas={camisetas}
           vozDisponible={vozDisponible}
+          nombreRival={nombreRival}
+          apodosRival={apodosRival}
           onConfirmar={confirmarModo}
           onCerrar={modoToma ? () => setSelectorModo(false) : null}
         />

@@ -19,8 +19,9 @@ const nombreCorto = (j) => String(j?.apellido || j?.nombre || '').toUpperCase();
 
 /* ── Selector de modo ──────────────────────────────────────────────────── */
 
-export function SelectorModo({ modoActual, jugadores = [], camisetas = {}, vozDisponible, onConfirmar, onCerrar }) {
+export function SelectorModo({ modoActual, jugadores = [], camisetas = {}, vozDisponible, nombreRival = '', apodosRival = '', onConfirmar, onCerrar }) {
   const [modo, setModo] = useState(modoActual || 'tradicional');
+  const [apodos, setApodos] = useState(apodosRival);
   const [paso, setPaso] = useState('modo');
   const [nums, setNums] = useState(camisetas);
   const repetidas = camisetasRepetidas(nums);
@@ -102,9 +103,19 @@ export function SelectorModo({ modoActual, jugadores = [], camisetas = {}, vozDi
               })}
             </div>
             {repetidas.length > 0 && <div style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: 10 }}>Hay números repetidos ({repetidas.join(', ')}): cada camiseta tiene que ser de uno solo.</div>}
+            {modo === 'voz' && (
+              <div style={{ marginTop: 14 }}>
+                <div className="stat-label" style={{ fontSize: '0.6rem', marginBottom: 6 }}>¿CÓMO LE DECÍS AL RIVAL?</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: 6, lineHeight: 1.4 }}>
+                  Además de "rival", la voz reconoce <b style={{ color: 'var(--text)' }}>{nombreRival || 'su nombre'}</b>. Si le decís distinto, agregalo (separado por comas).
+                </div>
+                <input value={apodos} onChange={(e) => setApodos(e.target.value)} placeholder="Ej.: Central, Rosario"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }} />
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button onClick={() => setPaso('modo')} style={btnSec}>ATRÁS</button>
-              <button disabled={repetidas.length > 0} onClick={() => onConfirmar(modo, nums)} style={{ ...btnPri, opacity: repetidas.length ? 0.5 : 1 }}>EMPEZAR</button>
+              <button disabled={repetidas.length > 0} onClick={() => onConfirmar(modo, nums, apodos)} style={{ ...btnPri, opacity: repetidas.length ? 0.5 : 1 }}>EMPEZAR</button>
             </div>
           </>
         )}
@@ -216,7 +227,7 @@ export function PanelVoz({ estado, camisetas, onListo, onCancelar, onReintentar 
           <style>{'.td-mic{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ef4444;color:#fff;box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:tdMic 1.2s infinite}@keyframes tdMic{0%{box-shadow:0 0 0 0 rgba(239,68,68,.6)}70%{box-shadow:0 0 0 22px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}@media (prefers-reduced-motion:reduce){.td-mic{animation:none}}'}</style>
           <div style={{ fontWeight: 900, color: 'var(--text)' }}>Escuchando…</div>
           <div style={{ minHeight: 28, margin: '8px 0', fontSize: '1.1rem', color: 'var(--accent)', fontWeight: 800 }}>{texto || ' '}</div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: 14 }}>Ej.: "7 remate desviado" · "remate rival atajado" · "gol del 10 asistencia del 4"</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginBottom: 14, lineHeight: 1.5 }}>Ej.: "7 remate desviado" · "Central remate atajado" · "gol del 10 asistencia del 4" · "falta de Cideco al 7" · "amarilla al 21"</div>
           <button onClick={onListo} style={{ ...btnPri, width: '100%' }}>LISTO</button>
         </>
       )}
