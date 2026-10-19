@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, sortearSobre, probabilidades, catalogoDeCartas, rarezaDeCarta } from '../sobres';
+import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, ESPECIALES, MONEDA, sortearSobre, probabilidades, catalogoDeCartas, rarezaDeCarta } from '../sobres';
 
 const cat = [];
 RAREZAS.forEach((r) => { for (let i = 0; i < 6; i += 1) cat.push({ id: `${r.id}${i}`, rareza: r.id }); });
@@ -100,5 +100,38 @@ describe('catalogoDeCartas', () => {
   });
   it('la foto de la carta no lleva datos de más', () => {
     expect(catalogoDeCartas(base, [])[0].carta.forma).toBeUndefined();
+  });
+});
+
+describe('Mega Sobre especial', () => {
+  const catalogo = [
+    ...Array.from({ length: 30 }, (_, i) => ({ id: `b${i}`, rareza: ['bronce', 'plata', 'oro'][i % 3] })),
+    ...Array.from({ length: 25 }, (_, i) => ({ id: `e${i}`, rareza: ['totw', 'potw', 'totm', 'potm', 'toty'][i % 5] })),
+  ];
+
+  it('cuesta 500 V-Coins y trae 10 cartas', () => {
+    expect(COSTO_MEGA).toBe(500);
+    expect(MONEDA).toBe('V-Coins');
+    expect(SOBRES.mega).toMatchObject({ cartas: 10, costo: 500, soloEspeciales: true });
+  });
+
+  it('trae 10 cartas, todas especiales y sin repetir', () => {
+    for (let n = 0; n < 50; n += 1) {
+      const r = sortearSobre({ catalogo, cantidad: 10, soloEspeciales: true });
+      expect(r.cartas).toHaveLength(10);
+      expect(r.cartas.every((c) => ESPECIALES.has(c.rareza))).toBe(true);
+      expect(new Set(r.cartas.map((c) => c.id)).size).toBe(10);
+    }
+  });
+
+  it('con menos de 10 especiales trae las que hay', () => {
+    const r = sortearSobre({ catalogo: catalogo.slice(0, 33), cantidad: 10, soloEspeciales: true });
+    expect(r.cartas).toHaveLength(3);
+  });
+
+  it('las probabilidades del mega son sólo de especiales y suman 100', () => {
+    const p = probabilidades(catalogo, { soloEspeciales: true });
+    expect(p.map((r) => r.id)).toEqual(['totw', 'potw', 'totm', 'potm', 'toty']);
+    expect(p.reduce((s, r) => s + r.porCiento, 0)).toBeCloseTo(100);
   });
 });

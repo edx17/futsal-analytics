@@ -13,7 +13,11 @@ import { tierDe } from './quinteto';
  * POTM, TOTM, TOTY). Cuanto más rara, menos probable.
  */
 
-/* Probabilidad de cada rareza en cada lugar del sobre (suman 100) y puntos que
+/* La moneda del juego: lo que dan las cartas repetidas y con lo que se pagan
+   los sobres extra. En la base sigue siendo la columna `puntos`. */
+export const MONEDA = 'V-Coins';
+
+/* Probabilidad de cada rareza en cada lugar del sobre (suman 100) y V-Coins que
    da una carta repetida. `orden` es el de la tirada en la base: no cambiarlo. */
 export const RAREZAS = [
   { id: 'bronce', nombre: 'BRONCE', peso: 42, puntos: 5 },
@@ -27,6 +31,10 @@ export const RAREZAS = [
 ];
 
 export const COSTO_SOBRE_PUNTOS = 50;
+export const COSTO_MEGA = 500;
+
+/* Las cartas especiales (las de premio): las únicas que trae el Mega Sobre. */
+export const ESPECIALES = new Set(['totw', 'potw', 'totm', 'potm', 'toty']);
 export const RACHA_PARA_PREMIO = 7;
 
 /* Cuántas cartas trae cada sobre. Pocas a propósito: así cuesta completar. */
@@ -34,7 +42,9 @@ export const SOBRES = {
   diario: { id: 'diario', nombre: 'SOBRE DIARIO', cartas: 3, ayuda: 'Uno por día. Si no lo abrís hoy, se pierde.' },
   wellness: { id: 'wellness', nombre: 'SOBRE WELLNESS', cartas: 3, ayuda: 'Completá el wellness de hoy y ganás otro. Se pierde si no lo abrís hoy.' },
   racha: { id: 'racha', nombre: 'SOBRE DE LA SEMANA', cartas: 4, ayuda: 'Entrá 7 días seguidos. Se abre el día que completás la semana.' },
-  puntos: { id: 'puntos', nombre: 'SOBRE POR PUNTOS', cartas: 3, ayuda: `Se paga con ${COSTO_SOBRE_PUNTOS} puntos de cartas repetidas.` },
+  puntos: { id: 'puntos', nombre: 'SOBRE POR V-COINS', cartas: 3, ayuda: `Se paga con ${COSTO_SOBRE_PUNTOS} ${MONEDA} de cartas repetidas.` },
+  mega: { id: 'mega', nombre: 'MEGA SOBRE ESPECIAL', cartas: 10, costo: COSTO_MEGA, soloEspeciales: true,
+    ayuda: `10 cartas, todas especiales (TOTW, POTW, TOTM, POTM, TOTY). Cuesta ${COSTO_MEGA} ${MONEDA}.` },
 };
 
 export const rarezaPorId = Object.fromEntries(RAREZAS.map((r) => [r.id, r]));
@@ -68,15 +78,15 @@ function fila(clave, tipo, c) {
  * Un sobre. `catalogo`: [{ id, rareza, ... }]; `poseidas`: Set de ids que ya tiene.
  * Se sortea la rareza (sólo entre las que todavía tienen cartas para sacar) y
  * después una carta de esa rareza; en un mismo sobre no se repite ninguna.
- * Una carta que ya tenías no se suma: da puntos.
+ * Una carta que ya tenías no se suma: da V-Coins. `soloEspeciales`: el Mega Sobre.
  * `azar`: () => número en [0, 1); se puede pasar uno fijo para probar.
  */
-export function sortearSobre({ catalogo = [], poseidas = new Set(), cantidad = 3, azar = Math.random }) {
+export function sortearSobre({ catalogo = [], poseidas = new Set(), cantidad = 3, soloEspeciales = false, azar = Math.random }) {
   const sacadas = new Set();
   const cartas = [];
   for (let i = 0; i < cantidad; i += 1) {
     const libres = catalogo.filter((c) => !sacadas.has(c.id));
-    const disponibles = RAREZAS.filter((r) => libres.some((c) => c.rareza === r.id));
+    const disponibles = RAREZAS.filter((r) => (!soloEspeciales || ESPECIALES.has(r.id)) && libres.some((c) => c.rareza === r.id));
     if (disponibles.length === 0) break;
 
     const total = disponibles.reduce((s, r) => s + r.peso, 0);
@@ -96,8 +106,8 @@ export function sortearSobre({ catalogo = [], poseidas = new Set(), cantidad = 3
 }
 
 /** Las probabilidades reales: se renormalizan si el club todavía no tiene cartas de alguna rareza. */
-export function probabilidades(catalogo = []) {
-  const disponibles = RAREZAS.filter((r) => catalogo.some((c) => c.rareza === r.id));
+export function probabilidades(catalogo = [], { soloEspeciales = false } = {}) {
+  const disponibles = RAREZAS.filter((r) => (!soloEspeciales || ESPECIALES.has(r.id)) && catalogo.some((c) => c.rareza === r.id));
   const total = disponibles.reduce((s, r) => s + r.peso, 0);
   return disponibles.map((r) => ({
     ...r,

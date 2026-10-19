@@ -66,3 +66,13 @@
   .sb-sobre, .sb-sobre-cuerpo, .sb-sobre-cuerpo::before, .sb-flash, .sb-papel, .sb-reverso, .sb-entra, .sb-gira { animation: none !important; }
   .sb-papel { display: none; }
 }
+
+/* El Mega Sobre se distingue en la grilla: borde dorado que brilla. */
+.sb-mega { background: linear-gradient(160deg, rgba(251, 191, 36, 0.12), transparent 60%), var(--panel); box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35), 0 0 18px rgba(251, 191, 36, 0.15); }
+@media (prefers-reduced-motion: no-preference) {
+  .sb-mega { animation: sb-mega-brillo 3s ease-in-out infinite; }
+}
+@keyframes sb-mega-brillo {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.35), 0 0 14px rgba(251, 191, 36, 0.12); }
+  50% { box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.6), 0 0 26px rgba(251, 191, 36, 0.3); }
+}
