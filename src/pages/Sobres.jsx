@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CartaGiratoria from '../components/quinteto/CartaGiratoria';
-import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, RACHA_PARA_PREMIO, rarezaPorId, probabilidades } from '../analytics/sobres';
+import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, rarezaPorId, probabilidades } from '../analytics/sobres';
 import { estadoSobres, abrirSobre, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
 import '../components/quinteto/quinteto.css';
@@ -15,7 +15,7 @@ import './sobres.css';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const ORDEN_SOBRES = ['diario', 'wellness', 'racha', 'puntos'];
+const ORDEN_SOBRES = ['diario', 'wellness', 'racha', 'puntos', 'mega'];
 
 /* Una carta del catálogo en el formato que dibuja CartaJugador. */
 const aCarta = (c) => ({ atributos: [], stats: {}, ...(c.carta || c) });
@@ -61,7 +61,7 @@ export default function Sobres() {
   };
 
   const reiniciar = async () => {
-    if (!window.confirm('Esto borra TU colección, tus puntos y tus sobres de hoy para volver a probar. ¿Seguro?')) return;
+    if (!window.confirm('Esto borra TU colección, tus V-Coins y tus sobres de hoy para volver a probar. ¿Seguro?')) return;
     const r = await reiniciarPruebaSobres();
     if (r.error) { setError(r.error.message); return; }
     cargar();
@@ -81,7 +81,7 @@ export default function Sobres() {
       <div style={{ marginBottom: 16 }}>
         <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>SOBRES</div>
         <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-          Entrá todos los días y juntá las cartas del plantel. Las repetidas te dan puntos para más sobres.
+          Entrá todos los días y juntá las cartas del plantel. Las repetidas te dan V-Coins para más sobres.
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export default function Sobres() {
       {estado && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
-            <Dato rotulo="PUNTOS" valor={estado.puntos} extra={`${COSTO_SOBRE_PUNTOS} = 1 sobre`} />
+            <Dato rotulo="V-COINS" valor={estado.puntos} extra={`${COSTO_SOBRE_PUNTOS} = 1 sobre · ${COSTO_MEGA} = 1 mega`} />
             <Dato rotulo="RACHA" valor={`${estado.racha}/${RACHA_PARA_PREMIO}`} extra="días seguidos" />
             <Dato rotulo="COLECCIÓN" valor={`${estado.cartas_tengo}/${estado.cartas_total}`} extra="cartas" />
           </div>
@@ -106,13 +106,14 @@ export default function Sobres() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
             {ORDEN_SOBRES.filter((t) => t !== 'wellness' || !estado.es_staff).map((t) => (
               <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t}
-                alAbrir={() => abrir(t)} nota={notaDe(t, estado)} />
+                alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
             ))}
           </div>
           <button onClick={() => setVerProbs((v) => !v)} style={{ ...btn, background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', marginBottom: 6 }}>
             {verProbs ? 'OCULTAR' : 'VER'} PROBABILIDADES
           </button>
           {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} />}
+          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} soloEspeciales />}
         </>
       )}
 
@@ -153,7 +154,7 @@ export default function Sobres() {
             REINICIAR MI PRUEBA
           </button>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: 6 }}>
-            Borra tu colección, tus puntos y tus sobres de hoy para volver a probar. No toca a los jugadores.
+            Borra tu colección, tus V-Coins y tus sobres de hoy para volver a probar. No toca a los jugadores.
           </div>
         </div>
       )}
@@ -166,7 +167,11 @@ export default function Sobres() {
 const notaDe = (tipo, e) => {
   if (tipo === 'wellness' && !e.disponibles?.wellness) return e.wellness_hecho ? 'Ya lo abriste hoy.' : 'Completá el wellness de hoy.';
   if (tipo === 'racha' && !e.disponibles?.racha) return `Llevás ${e.racha} de ${RACHA_PARA_PREMIO} días seguidos.`;
-  if (tipo === 'puntos' && !e.disponibles?.puntos) return e.cartas_total === 0 ? 'No hay cartas.' : `Te faltan ${Math.max(0, COSTO_SOBRE_PUNTOS - e.puntos)} puntos.`;
+  if (tipo === 'puntos' && !e.disponibles?.puntos) return e.cartas_total === 0 ? 'No hay cartas.' : `Te faltan ${Math.max(0, COSTO_SOBRE_PUNTOS - e.puntos)} ${MONEDA}.`;
+  if (tipo === 'mega' && !e.disponibles?.mega) {
+    if (e.cartas_especiales === 0) return 'El club todavía no tiene cartas especiales.';
+    return `Te faltan ${Math.max(0, COSTO_MEGA - e.puntos)} ${MONEDA}. Juntalas con las repetidas.`;
+  }
   if (tipo === 'diario' && !e.disponibles?.diario) return 'Ya lo abriste hoy. Volvé mañana.';
   return '';
 };
@@ -175,13 +180,26 @@ const notaDe = (tipo, e) => {
 const cartasDePorRareza = (coleccion) => Object.entries(coleccion?.por_rareza || {})
   .flatMap(([rareza, v]) => Array.from({ length: v.total }, () => ({ rareza })));
 
-function Sobre({ sobre, disponible, abriendo, alAbrir, nota }) {
+function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas }) {
+  const mega = !!sobre.soloEspeciales;
+  const avance = mega ? Math.min(100, ((monedas || 0) / sobre.costo) * 100) : null;
   return (
-    <div className="bento-card" style={{ padding: 14, opacity: disponible ? 1 : 0.6, border: disponible ? '1px solid var(--accent)' : undefined }}>
-      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: disponible ? 'var(--accent)' : 'var(--text)' }}>{sobre.nombre}</div>
+    <div className={`bento-card${mega ? ' sb-mega' : ''}`} style={{ padding: 14, opacity: disponible || mega ? 1 : 0.6, border: disponible ? `1px solid ${mega ? '#fbbf24' : 'var(--accent)'}` : undefined }}>
+      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: mega ? '#fbbf24' : disponible ? 'var(--accent)' : 'var(--text)' }}>
+        {mega && '★ '}{sobre.nombre}
+      </div>
       <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '4px 0 10px', minHeight: '2.4em', lineHeight: 1.4 }}>{nota || sobre.ayuda}</div>
-      <button disabled={!disponible || abriendo} onClick={alAbrir} style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5 }}>
-        {abriendo ? 'ABRIENDO…' : `ABRIR · ${sobre.cartas} CARTAS`}
+      {mega && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ width: `${avance}%`, height: '100%', background: 'linear-gradient(90deg, #f59e0b, #fde68a)' }} />
+          </div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', marginTop: 4, fontFamily: MONO }}>{Math.min(monedas || 0, sobre.costo)} / {sobre.costo} {MONEDA}</div>
+        </div>
+      )}
+      <button disabled={!disponible || abriendo} onClick={alAbrir}
+        style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...(mega ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : null) }}>
+        {abriendo ? 'ABRIENDO…' : mega ? `ABRIR · ${sobre.cartas} ESPECIALES · ${sobre.costo} V-COINS` : `ABRIR · ${sobre.cartas} CARTAS`}
       </button>
     </div>
   );
@@ -197,12 +215,15 @@ function Dato({ rotulo: r, valor, extra }) {
   );
 }
 
-function Probabilidades({ catalogo }) {
-  const filas = probabilidades(catalogo);
+function Probabilidades({ catalogo, soloEspeciales = false }) {
+  const filas = probabilidades(catalogo, { soloEspeciales });
+  if (!filas.length) return null;
   return (
     <div className="bento-card" style={{ padding: 12, marginBottom: 6 }}>
       <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: 8 }}>
-        Chance de cada lugar del sobre. Una carta repetida da puntos según su rareza.
+        {soloEspeciales
+          ? 'MEGA SOBRE: chance de cada lugar (sólo especiales).'
+          : `Chance de cada lugar del sobre. Una carta repetida da ${MONEDA} según su rareza.`}
       </div>
       {filas.map((r) => (
         <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '64px 1fr 56px 64px', gap: 8, alignItems: 'center', fontSize: 11, fontWeight: 800, marginBottom: 5 }}>
@@ -211,7 +232,7 @@ function Probabilidades({ catalogo }) {
             <div style={{ width: `${Math.min(100, r.porCiento * 2)}%`, height: '100%', background: 'var(--accent)' }} />
           </div>
           <span style={{ fontFamily: MONO, textAlign: 'right' }}>{r.porCiento.toFixed(1)}%</span>
-          <span style={{ color: 'var(--text-dim)', textAlign: 'right' }}>+{r.puntos} pts</span>
+          <span style={{ color: 'var(--text-dim)', textAlign: 'right' }}>+{r.puntos} VC</span>
         </div>
       ))}
     </div>
@@ -300,7 +321,7 @@ function Apertura({ resultado, onCerrar }) {
                       <CartaGiratoria carta={aCarta(c)} etiqueta={rarezaPorId[c.rareza]?.nombre} />
                     </div>
                     <div style={{ marginTop: 30, fontSize: 11, fontWeight: 900, letterSpacing: '.06em', color: c.nueva ? '#00ff88' : '#fbbf24' }}>
-                      {c.nueva ? 'NUEVA' : `REPETIDA · +${c.puntos} PTS`}
+                      {c.nueva ? 'NUEVA' : <>REPETIDA<br /><span style={{ whiteSpace: 'nowrap' }}>+{c.puntos} V-COINS</span></>}
                     </div>
                   </>
                 ) : (
@@ -310,7 +331,7 @@ function Apertura({ resultado, onCerrar }) {
             ))}
           </div>
           {todas && resultado.puntos_ganados > 0 && (
-            <div style={{ color: '#fbbf24', fontWeight: 900, marginBottom: 14 }}>+{resultado.puntos_ganados} puntos por repetidas</div>
+            <div style={{ color: '#fbbf24', fontWeight: 900, marginBottom: 14 }}>+{resultado.puntos_ganados} {MONEDA} por repetidas</div>
           )}
           <div style={{ display: 'flex', gap: 10 }}>
             {!todas && <button onClick={() => setDadas(Object.fromEntries(resultado.cartas.map((_, i) => [i, true])))} style={{ ...btn, background: 'transparent', color: '#fff', border: '1px solid #4b5563' }}>DAR VUELTA TODAS</button>}
