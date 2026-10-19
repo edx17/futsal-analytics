@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { useParams, useNavigate } from 'react-router-dom';
 
-import { analizarPartido } from '../analytics/engine';
+import { analizarPartido, ordenarEventos } from '../analytics/engine';
 import { calcularCadenasValor } from '../analytics/posesiones';
 import InfoBox from '../components/InfoBox';
 import { getColorAccion } from '../utils/helpers';
@@ -506,7 +506,9 @@ return 'Todas';
         .order('minuto', { ascending: true })
         .order('id', { ascending: true })
     ).catch(() => []);
-    setEventosPartido(data || []);
+    // En el orden real (período, minuto, segundos): la base sólo ordena por
+    // minuto, y el ST arranca su reloj de 0.
+    setEventosPartido(ordenarEventos(data || []));
   };
 
   const cargarPartido = (idPartido) => {
