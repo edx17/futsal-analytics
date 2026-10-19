@@ -6,10 +6,16 @@ import { useToast } from '../components/ToastContext';
 import CanchaTelefono from '../components/tomaDatos/CanchaTelefono';
 import { esPantallaTelefono } from '../analytics/canchaTelefono';
 import { Icono } from '../iconos';
+import { SelectorModo, PanelSimplificado, PanelVoz } from '../components/tomaDatos/RegistroRapido';
+import { camisetasIniciales, mejorInterpretacion, eventosDeAccionRapida, palabrasDelRival } from '../analytics/tomaRapida';
+import { escuchar, hayReconocimientoDeVoz } from '../utils/reconocedorVoz';
 
 /* Máximo hueco que el cronómetro recupera automáticamente tras volver de
    segundo plano o de una recarga. Más que esto, restaura en pausa. */
 const CRONO_MAX_RECUPERACION_MS = 15 * 60 * 1000;
+
+const leerLS = (k, def) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } };
+const guardarLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin espacio */ } };
 
 function TomaDatos() {
   const location = useLocation();
@@ -93,6 +99,26 @@ function TomaDatos() {
   const [tempTitulares, setTempTitulares] = useState([]);
   const [tempSuplentes, setTempSuplentes] = useState([]);
   const [isSavingTitulares, setIsSavingTitulares] = useState(false);
+
+  /* ── MODO DE CARGA: tradicional / simplificada / por voz ──
+     Se elige antes de empezar y se recuerda por partido. Las dos rápidas
+     usan las camisetas de hoy (número → convocado). */
+  const modoKey = partido?.id ? `vc_modo_toma_${partido.id}` : null;
+  const camisetasKey = partido?.id ? `vc_camisetas_${partido.id}` : null;
+  const camisetasClubKey = `vc_camisetas_club_${clubId}`;
+  const [modoToma, setModoToma] = useState(() => (modoKey ? leerLS(modoKey, null) : null));
+  const [selectorModo, setSelectorModo] = useState(() => !modoKey || !leerLS(modoKey, null));
+  const [camisetas, setCamisetas] = useState({});
+  const nombreRival = partido?.rivales?.nombre || partido?.rival || '';
+  const apodosKey = partido?.id ? `vc_rival_voz_${partido.id}` : null;
+  const [apodosRival, setApodosRival] = useState(() => (apodosKey ? leerLS(apodosKey, '') : ''));
+  const palabrasRival = useMemo(() => palabrasDelRival(nombreRival, apodosRival), [nombreRival, apodosRival]);
+  const [registroCompleto, setRegistroCompleto] = useState(false); // "MÁS…": este toque va por la tradicional
+  const [vozEstado, setVozEstado] = useState(null);
+  const vozRef = useRef(null);
+  const vozTurnoRef = useRef(0); // cada dictado tiene su turno: lo viejo no pisa a lo nuevo
+  const vozDisponible = hayReconocimientoDeVoz();
+  const modoEfectivo = modoToma === 'voz' && !vozDisponible ? 'simplificada' : (modoToma || 'tradicional');
 
   const [optDeEspaldas, setOptDeEspaldas] = useState(false);
   const [optBajoPresion, setOptBajoPresion] = useState(false);
@@ -238,6 +264,11 @@ function TomaDatos() {
 
         setJugadoresEnCancha(titulares);
         setJugadoresEnBanco(suplentes);
+        setCamisetas(camisetasIniciales(
+          [...titulares, ...suplentes],
+          leerLS(`vc_camisetas_${partido.id}`, {}),
+          leerLS(`vc_camisetas_club_${localStorage.getItem('club_id')}`, {}),
+        ));
 
         const { data: dbEventos } = await supabase.from('eventos').select('*').eq('id_partido', partido.id);
         if (dbEventos) setEventos(dbEventos);
@@ -438,6 +469,8 @@ function TomaDatos() {
   /* x, y en la cancha acostada tal como se ve (antes de dar vuelta por la
      dirección de ataque). La usan la cancha de PC y la del celular. */
   const registrarToqueEn = (x, y) => {
+    setRegistroCompleto(false);
+    if (modoEfectivo === 'voz') empezarVoz({ x, y });
     setPanelAbierto(true);
     setPanelLateral({ activo: true, x, y });
     setPasoRegistro(1);
@@ -760,6 +793,11 @@ function TomaDatos() {
   };
 
   const cancelarRegistro = () => {
+    vozTurnoRef.current += 1;
+    vozRef.current?.cancelar();
+    vozRef.current = null;
+    setVozEstado(null);
+    setRegistroCompleto(false);
     setPanelLateral({ activo: false, x: 0, y: 0 });
     setPasoRegistro(1);
     setMenuActivo(null);
@@ -767,6 +805,102 @@ function TomaDatos() {
     setAutorAsistencia(null);
     setModificadoresRemate([]); 
     setOrigenRemate(null);
+  };
+
+  /* ── TOMA SIMPLIFICADA Y POR VOZ ──────────────────────────────────── */
+
+  const confirmarModo = (modo, nums, apodos) => {
+    setModoToma(modo);
+    if (apodos !== undefined) { setApodosRival(apodos); if (apodosKey) guardarLS(apodosKey, apodos); }
+    if (modoKey) guardarLS(modoKey, modo);
+    guardarLS('vc_modo_toma', modo);
+    if (nums) {
+      const limpias = Object.fromEntries(Object.entries(nums).filter(([, n]) => n));
+      setCamisetas(limpias);
+      if (camisetasKey) guardarLS(camisetasKey, limpias);
+      guardarLS(camisetasClubKey, { ...leerLS(camisetasClubKey, {}), ...limpias });
+    }
+    setSelectorModo(false);
+  };
+
+  /* Una acción de la toma simplificada (o entendida por voz). Las filas
+     tienen la misma forma que las de la toma tradicional. */
+  const guardarAccionRapida = async ({ equipo: eq, accion: acc, jugadorId, asistenciaId }, { cerrar = true, pos = panelLateral } = {}) => {
+    let dbX = pos.x;
+    let dbY = pos.y;
+    if (direccionAtaque === 'izquierda') { dbX = 100 - dbX; dbY = 100 - dbY; }
+    const base = {
+      club_id: clubId, id_partido: partido.id, periodo, minuto, segundos,
+      quinteto_activo: jugadoresEnCancha.map(j => String(j.id)), contexto_juego: contextoJuego,
+    };
+    let filas = eventosDeAccionRapida({ base, equipo: eq, accion: acc, jugadorId, asistenciaId, x: dbX, y: dbY });
+
+    /* Tarjetas: lo mismo que la toma tradicional. La 2da amarilla de un
+       jugador propio es roja (se borra la amarilla anterior), y la roja
+       propia deja al equipo con 4. */
+    if (acc.startsWith('Tarjeta') && eq === 'Propio' && jugadorId) {
+      const jid = Number(jugadorId);
+      const amarillaPrevia = acc === 'Tarjeta Amarilla'
+        && eventos.find((e) => e.accion === 'Tarjeta Amarilla' && e.equipo === 'Propio' && Number(e.id_jugador) === jid);
+      if (amarillaPrevia) {
+        await eliminarEvento(amarillaPrevia.id);
+        filas = [{ ...filas[0], accion: 'Tarjeta Roja', contexto_juego: '4v5', etiqueta_tactica: 'doble_amarilla' }];
+        showToast('Doble amarilla → ROJA. Jugador expulsado, jugás con 4.', 'warning');
+      }
+      if (amarillaPrevia || acc === 'Tarjeta Roja') {
+        setCupoCancha(4);
+        setContextoJuego('4v5');
+        setJugadoresEnCancha((prev) => prev.filter((j) => Number(j.id) !== jid));
+        setJugadoresEnBanco((prev) => prev.filter((j) => Number(j.id) !== jid));
+        if (!amarillaPrevia) showToast('¡Roja! Jugador expulsado. Jugás con 4.', 'warning');
+      }
+    } else if (acc === 'Tarjeta Roja' && eq === 'Rival') {
+      setContextoJuego('5v4');
+      showToast('¡Expulsión rival! Contexto en 5v4.', 'info');
+    }
+    const final = filas[0].accion;
+    if (final.startsWith('Penal')) showToast(`¡${final.toUpperCase()}! Falta dentro del área.`, final === 'Penal a favor' ? 'success' : 'error');
+    if (final === 'Remate - Gol' && eq === 'Rival' && cupoCancha < 5) {
+      setCupoCancha(5);
+      setContextoJuego('5v5');
+      showToast('Sanción cumplida (Gol en contra). Ya podés ingresar al 5to jugador.', 'info');
+    }
+    if (cerrar) cancelarRegistro();
+    await guardarEventos(filas, final === 'Remate - Gol' ? '¡Gol registrado!' : null);
+    proponerPausa(final);
+  };
+
+  const empezarVoz = (pos = panelLateral) => {
+    vozRef.current?.cancelar();
+    const turno = ++vozTurnoRef.current;
+    const vigente = () => vozTurnoRef.current === turno;
+    setVozEstado({ fase: 'escuchando', texto: '' });
+    vozRef.current = escuchar({
+      onParcial: (texto) => { if (vigente()) setVozEstado((v) => (v?.fase === 'escuchando' ? { ...v, texto } : v)); },
+      onFinal: (alternativas) => {
+        if (!vigente()) return;
+        vozRef.current = null;
+        const r = mejorInterpretacion(alternativas, camisetas, { rival: palabrasRival });
+        const texto = alternativas[0] || '';
+        if (r.completo) {
+          setVozEstado({ fase: 'guardado', texto, resultado: r });
+          guardarAccionRapida(r, { cerrar: false, pos });
+          setTimeout(() => {
+            if (!vigente()) return;
+            setVozEstado(null);
+            setPanelLateral({ activo: false, x: 0, y: 0 });
+          }, 1400);
+        } else {
+          // Lo que se entendió pasa al panel simplificado para completarlo a mano.
+          const faltan = [];
+          if (r.falta.includes('jugador')) faltan.push(r.dorsal ? `nadie tiene la camiseta ${r.dorsal}` : 'quién fue');
+          if (r.falta.includes('resultado')) faltan.push('cómo terminó el remate');
+          if (r.falta.includes('accion')) faltan.push('la acción');
+          setVozEstado({ fase: 'completar', texto, resultado: r, aviso: `Escuché "${texto}". Falta: ${faltan.join(', ')}.` });
+        }
+      },
+      onError: (error) => { if (!vigente()) return; vozRef.current = null; setVozEstado({ fase: 'error', error }); },
+    });
   };
 
   const eliminarEvento = async (idEvento) => {
@@ -1198,8 +1332,50 @@ function TomaDatos() {
     </>
   );
 
+  /* Qué se muestra al tocar la cancha, según el modo. Lateral y córner
+     (paso 4) y el "MÁS…" de la simplificada usan los pasos de siempre. */
+  const usaPasosTradicionales = modoEfectivo === 'tradicional' || registroCompleto || pasoRegistro !== 1;
+  const panelRapido = (() => {
+    if (usaPasosTradicionales) return null;
+    const comun = {
+      enCancha: jugadoresEnCancha,
+      camisetas,
+      onGuardar: (r) => guardarAccionRapida(r),
+      onCancelar: cancelarRegistro,
+      onABP: (acc) => { vozRef.current?.cancelar(); setVozEstado(null); triggerABP(acc, panelLateral.x, panelLateral.y); },
+      onCompleto: () => { vozRef.current?.cancelar(); setVozEstado(null); setRegistroCompleto(true); },
+    };
+    if (modoEfectivo === 'voz' && vozEstado && vozEstado.fase !== 'completar') {
+      return (
+        <PanelVoz estado={vozEstado} camisetas={camisetas}
+          onListo={() => vozRef.current?.detener()}
+          onCancelar={cancelarRegistro}
+          onReintentar={() => empezarVoz(panelLateral)} />
+      );
+    }
+    if (modoEfectivo === 'voz' && vozEstado?.fase === 'completar') {
+      const r = vozEstado.resultado;
+      return <PanelSimplificado key="voz" {...comun} aviso={vozEstado.aviso}
+        inicial={{ equipo: r.equipo === 'Rival' || r.jugadorId ? r.equipo : null, jugadorId: r.jugadorId, accion: r.accion }} />;
+    }
+    return <PanelSimplificado key="simple" {...comun} />;
+  })();
+  const nombreModo = { tradicional: 'TRADICIONAL', simplificada: 'SIMPLIFICADA', voz: 'POR VOZ' }[modoEfectivo];
+
   const modales = (
     <>
+      {selectorModo && (
+        <SelectorModo
+          modoActual={modoToma || leerLS('vc_modo_toma', 'tradicional')}
+          jugadores={todosLosJugadores}
+          camisetas={camisetas}
+          vozDisponible={vozDisponible}
+          nombreRival={nombreRival}
+          apodosRival={apodosRival}
+          onConfirmar={confirmarModo}
+          onCerrar={modoToma ? () => setSelectorModo(false) : null}
+        />
+      )}
       {eventoEditando && (
         <div style={overlayStyle}>
           <div style={modalIndustrial}>
@@ -1481,7 +1657,7 @@ function TomaDatos() {
         {/* Ventana de registro, paso a paso */}
         {panelLateral.activo && (
           <>
-            <div style={fondo} onClick={() => { if (pasoRegistro === 1) cancelarRegistro(); }} />
+            <div style={fondo} onClick={() => { if (pasoRegistro === 1 && vozEstado?.fase !== 'guardado') cancelarRegistro(); }} />
             <div style={hoja} className="td-hoja">
               {/* En el celular acostado los grupos de acciones van en columnas:
                   entran casi sin desplazar. */}
@@ -1489,8 +1665,8 @@ function TomaDatos() {
               {pasoRegistro > 1 && (
                 <button onClick={pasoAtras} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 900, fontSize: '0.85rem', padding: '4px 0 10px', cursor: 'pointer' }}><Icono nombre="anteriorPag" size="1em" style={{ marginRight: 2 }} />ATRÁS</button>
               )}
-              {pasosRegistro}
-              {pasoRegistro === 1 && (
+              {panelRapido || pasosRegistro}
+              {!panelRapido && pasoRegistro === 1 && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '16px' }}>
                   <div className="stat-label" style={{ gridColumn: 'span 2', fontSize: '0.6rem' }}>PELOTA PARADA EN ESTE LUGAR (RÁPIDO)</div>
                   <BotonAccion label="LATERAL" color="#06b6d4" onClick={() => triggerABP('Lateral', panelLateral.x, panelLateral.y)} />
@@ -1558,6 +1734,7 @@ function TomaDatos() {
                 )}
                 <button onClick={() => navigate(`/resumen/${partido.id}`)} style={{ ...itemMenu, background: '#3b82f6', color: '#fff', border: 'none' }}>RESUMEN PARCIAL</button>
                 <button onClick={() => { setMenuTel(false); setModalFinalizar(true); }} style={{ ...itemMenu, background: '#dc2626', color: '#fff', border: 'none' }}>FINALIZAR</button>
+                <button onClick={() => { setMenuTel(false); setSelectorModo(true); }} style={{ ...itemMenu, gridColumn: 'span 2', color: 'var(--accent)', borderColor: 'var(--accent)' }}>MODO DE CARGA: {nombreModo} · CAMBIAR</button>
                 <button onClick={girarYPantallaCompleta} style={{ ...itemMenu, gridColumn: 'span 2' }}>⤢ PANTALLA COMPLETA</button>
               </div>
             </div>
@@ -1647,6 +1824,14 @@ function TomaDatos() {
             </div>
           </div>
           
+          <button
+            onClick={() => setSelectorModo(true)}
+            title="Cambiar el modo de carga y las camisetas"
+            style={{ background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 12px', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', fontSize: '0.75rem' }}
+          >
+            MODO: <span style={{ color: 'var(--accent)' }}>{nombreModo}</span>
+          </button>
+
           <button 
             onClick={() => setDireccionAtaque(d => d === 'derecha' ? 'izquierda' : 'derecha')}
             style={{ background: 'var(--panel)', border: '1px solid var(--accent)', color: 'var(--accent)', padding: '8px 15px', borderRadius: '4px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 0 10px rgba(0,255,136,0.1)' }}
@@ -1896,7 +2081,7 @@ function TomaDatos() {
 
               {panelLateral.activo && (
                 <>
-                  {pasosRegistro}
+                  {panelRapido || pasosRegistro}
                 </>
               )}
             </>
