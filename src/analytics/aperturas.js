@@ -40,6 +40,13 @@ export const VIDEOS = {
     musica: '/cine/musica/elite.m4a',
     sonidos: [[0, 'carga', 1.2], [1.2, 'golpe', 0.6], [2.8, 'pabellon', 3.3], [6.2, 'golpeFuerte', 1], [6.5, 'brillo', 0.5]],
   },
+  epico: {
+    fuentes: [{ src: '/cine/epico.webm', tipo: 'video/webm' }, { src: '/cine/epico.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/epico.jpg',
+    duracion: 7,
+    musica: '/cine/musica/epico.m4a',
+    sonidos: [[0, 'carga', 1.4], [1.4, 'golpeSuave', 0.5], [3.2, 'portal', 0.8], [3.9, 'pabellon', 2.3], [6.27, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
+  },
 };
 
 /* ── tiempos (ms) ──────────────────────────────────────────────────────────── */
