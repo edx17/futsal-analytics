@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  normalizarEvento, erroresEvento, cambiosDeExclusivas, varianteDeEventoDb, eventoDePlantilla, clavesDeTipo, PLANTILLAS, REGLAS, ESCENAS_BASE,
+  normalizarEvento, erroresEvento, cambiosDeExclusivas, varianteDeEventoDb, eventoDePlantilla, clavesDeTipo, PLANTILLAS, REGLAS, ESCENAS_BASE, CINEMATICAS, varianteDeEscena,
 } from '../eventos';
 import { resultadoDePrueba } from '../god';
 
@@ -72,5 +72,27 @@ describe('eventos: la escena', () => {
   });
   it('todas las escenas base tienen nombre', () => {
     ESCENAS_BASE.forEach((e) => expect(e.nombre).toBeTruthy());
+  });
+});
+
+describe('cinemáticas del Modo GOD', () => {
+  it('están todas, las de los eventos también', () => {
+    const ids = CINEMATICAS.map((c) => c.id);
+    ['elite', 'epico', 'leyenda', 'excepcional', 'vdraft', 'evento_goleadores', 'evento_recuperadores', 'evento_demo']
+      .forEach((v) => expect(ids).toContain(`escena:${v}`));
+  });
+
+  it('cada una se puede abrir (la que no tiene video propio usa otro)', () => {
+    CINEMATICAS.forEach((c) => expect(varianteDeEscena(c.id)?.modo, c.id).toBe('video'));
+    expect(varianteDeEscena('escena:evento_goleadores').video.id).toBe('evento_goleadores');
+    expect(varianteDeEscena('escena:evento_goleadores').nombre).toBe('EVENTO GOLEADORES');
+    expect(varianteDeEscena('escena:elite').video.id).toBe('elite');
+  });
+
+  it('sigue aceptando una variante o un evento de código', () => {
+    expect(varianteDeEscena('diario')?.modo).toBe('estandar');
+    expect(varianteDeEscena('evento:demo')).toBeTruthy();
+    expect(varianteDeEscena('escena:nada')).toBeNull();
+    expect(varianteDeEscena('')).toBeNull();
   });
 });

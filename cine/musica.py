@@ -12,6 +12,8 @@ Todo se sintetiza con numpy/scipy:
   - coro: sierras por filtros de formantes ("ah"/"oh");
   - percusión: taikos y timbales (seno con caída de tono + ruido), platos al revés;
   - subidas (risers), impactos con sub-grave y campanas FM;
+  - la hinchada del final (festejo): voces que gritan, el rumor de la tribuna,
+    aplausos y silbidos, que entran con el clímax y crecen con la mejor carta;
   - reverb por convolución con una respuesta sintética, y un master suave.
 
 Uso:  python3 cine/musica.py [variante ...]   (sin argumentos: todas)
@@ -373,6 +375,74 @@ def brillo_agudo(frecs, dur):
 
 # ── las piezas ──────────────────────────────────────────────────────────────
 
+# ── la hinchada (el festejo del final) ──────────────────────────────────────
+
+def _suave(n, corte):
+    """Una curva lenta al azar, de desvío 1 (para temblores y oleadas)."""
+    x = pasabajos(ruido(n), corte)
+    return x / (np.std(x) + 1e-9)
+
+
+def grito(dur, f0, vocal='ah', ataque=0.25):
+    """Una voz de la tribuna: un "¡aaah!" que sube, se sostiene y tiembla, con aire."""
+    n = muestras(dur)
+    t = np.arange(n) / SR
+    sube = 0.78 + 0.3 * (1 - np.exp(-t / rng.uniform(0.15, 0.35)))
+    cae = 1 - rng.uniform(0.03, 0.1) * t / dur
+    temblor = 1 + 0.012 * np.sin(2 * np.pi * rng.uniform(4.5, 7) * t + rng.random() * 6) + 0.01 * _suave(n, 6)
+    fuente = sierra(f0 * sube * cae * temblor, n)
+    voz = sum(g * pasabanda(fuente, fc * rng.uniform(0.9, 1.12), 4.0) for fc, g in FORMANTES[vocal])
+    voz /= np.std(voz) + 1e-9
+    aire = pasabanda(ruido(n), rng.uniform(1200, 2600), 1.2)
+    voz += 0.35 * aire / (np.std(aire) + 1e-9)
+    oleada = np.clip(1 + 0.25 * _suave(n, 3), 0.3, 2)
+    return voz * oleada * envolvente(n, ataque, 0.4, rng.uniform(0.55, 0.8), soltar=dur * 0.45)
+
+
+def aplausos(dur, por_segundo=160, crece=0.8):
+    """Palmas: golpecitos de ruido al azar, cada vez más seguidos."""
+    n = muestras(dur)
+    x = np.zeros(n)
+    largo = muestras(0.014)
+    caida = np.exp(-np.arange(largo) / (largo / 4))
+    t = 0.0
+    while t < dur:
+        i = muestras(t)
+        golpe = pasabanda(ruido(largo), rng.uniform(900, 2600), 1.5) * caida * rng.uniform(0.4, 1.0)
+        x[i:i + largo] += golpe[: n - i]
+        t += rng.exponential(1 / (por_segundo * min(1.0, crece + t / dur)))
+    return x / (np.std(x) + 1e-9) * envolvente(n, 0.3, 0.2, 1.0, soltar=dur * 0.4)
+
+
+def silbido(dur=0.7):
+    """Un silbido con los dedos: sube, se sostiene y cae."""
+    n = muestras(dur)
+    f = rampa(n, [(0, 2300), (0.25, 3200), (0.8, 3100), (1, 2500)]) * (1 + 0.004 * _suave(n, 20))
+    x = seno(f, n) + 0.08 * pasabanda(ruido(n), 3000, 3)
+    return x * envolvente(n, 0.05, 0.1, 0.8, soltar=0.25)
+
+
+def festejo(p, s, fuerza=1.0, voces=36):
+    """La hinchada, desde el segundo `s` hasta el final de la pieza: el grito de
+    gol (graves y agudos, cada uno a su tiempo y en su lugar), el rumor de la
+    tribuna, aplausos y un par de silbidos."""
+    dur = p.n / SR - s
+    for _ in range(voces):
+        f0 = rng.uniform(105, 190) if rng.random() < 0.6 else rng.uniform(210, 360)
+        tarde = rng.uniform(0, 0.35)
+        p.poner(s + tarde, grito(dur - tarde, f0, rng.choice(['ah', 'ah', 'oh']), rng.uniform(0.12, 0.4)),
+                0.05 * fuerza, pan=rng.uniform(-0.9, 0.9), reverb=0.55)
+    n = muestras(dur)
+    rumor = pasaaltos(pasabajos(ruido(n), 2800), 260)
+    rumor *= np.clip(1 + 0.3 * _suave(n, 2), 0.3, 2) / (np.std(rumor) + 1e-9)
+    p.poner(s, rumor * envolvente(n, 0.35, 0.5, 0.7, soltar=dur * 0.5), 0.09 * fuerza, reverb=0.6, ancho=1.5)
+    for pan in (-0.7, -0.25, 0.25, 0.7):
+        p.poner(s + 0.35 + rng.uniform(0, 0.3), aplausos(dur - 0.6), 0.05 * fuerza, pan=pan, reverb=0.5)
+    for tarde, pan in ((0.7, -0.5), (1.8, 0.6)):
+        if tarde < dur - 0.8:
+            p.poner(s + tarde, silbido(), 0.05 * fuerza, pan=pan, reverb=0.5)
+
+
 def pieza_vdraft():
     """V-Draft (6,5 s): el sobre se carga, el portal, la caminata por el pasillo
     violeta (taikos + cuerdas), el coro solemne y el golpe final. Re menor."""
@@ -399,6 +469,7 @@ def pieza_vdraft():
     p.poner(6.1, braam(acorde('Bb1', 'F2', 'D3'), 3.6, abre=0.15, pico=3200), 0.9, reverb=0.5)
     p.poner(6.1, coro(acorde('D4', 'F4', 'A4', 'D5', 'F5'), 3.6, 'ah', ataque=0.05, soltar=2.0), 0.6, reverb=0.7)
     p.poner(6.1, cuerdas(acorde('D4', 'F4', 'A4', 'D5'), 3.6, ataque=0.05, soltar=2.2, brillo=3600), 0.5, reverb=0.6)
+    festejo(p, 6.1)                                                     # la hinchada
     return p.mezclar(2.8, dinamica=[(0, -8), (6.0, -5), (6.1, 0)])
 
 
@@ -436,6 +507,7 @@ def pieza_elite():
     p.poner(6.53, metales(acorde('E3', 'B3', 'G#4', 'E4'), 3.8, ataque=0.03, brillo=3800), 0.85, reverb=0.5)
     p.poner(6.53, braam(acorde('E1', 'B1', 'E2'), 3.8, abre=0.12, pico=2000), 0.8, reverb=0.5)
     p.poner(6.53, brillo_agudo(acorde('E6', 'B6', 'G#6'), 3.6), 0.5, reverb=0.7, ancho=1)
+    festejo(p, 6.2)                                                     # la hinchada
     return p.mezclar(2.4, dinamica=[(0, -7), (6.1, -4), (6.2, 0)])
 
 
@@ -465,6 +537,7 @@ def pieza_epico():
     p.poner(6.27, braam(acorde('A1', 'E2', 'C#3'), 4.0, abre=0.15, pico=2800), 0.9, reverb=0.55)
     p.poner(6.27, coro(acorde('C#4', 'E4', 'A4', 'C#5', 'E5'), 4.0, 'ah', ataque=0.06, soltar=2.4), 0.7, reverb=0.75)
     p.poner(6.6, campana(nota('C#6'), 0.6, 3.0), 0.5, reverb=0.8)
+    festejo(p, 6.27)                                                     # la hinchada
     return p.mezclar(3.2, 5000, dinamica=[(0, -7), (6.2, -4), (6.27, 0)])
 
 
@@ -494,6 +567,7 @@ def pieza_leyenda():
     p.poner(6.53, cuerdas(acorde('Bb2', 'F3', 'Bb3', 'D4'), 4.6, ataque=0.4, brillo=2800), 0.45, reverb=0.7)
     p.poner(7.53, campana(nota('Bb5'), 0.6, 3.4), 0.45, reverb=0.85)
     p.poner(7.53, brillo_agudo(acorde('D6', 'F6', 'Bb6'), 3.2), 0.4, reverb=0.8, ancho=1)
+    festejo(p, 6.53)                                                     # la hinchada
     return p.mezclar(3.6, 4800, dinamica=[(0, -7), (6.4, -4), (6.53, 0)])
 
 
@@ -528,6 +602,7 @@ def pieza_evento_demo():
     p.poner(6.2, metales(acorde('A2', 'E3', 'A3', 'C#4', 'E4'), 4.0, ataque=0.03, brillo=4000), 0.9, reverb=0.55)
     p.poner(6.2, coro(acorde('A3', 'C#4', 'E4', 'A4'), 4.0, 'ah', ataque=0.1, soltar=2.4), 0.5, reverb=0.7)
     p.poner(6.6, brillo_agudo(acorde('A6', 'E6', 'C#7'), 3.0), 0.45, reverb=0.7, ancho=1)
+    festejo(p, 6.2)                                                     # la hinchada
     return p.mezclar(2.6, dinamica=[(0, -7), (6.1, -4), (6.2, 0)])
 
 
@@ -559,6 +634,7 @@ def pieza_excepcional():
     p.poner(7.13, braam(acorde('D1', 'A1', 'D2'), 4.6, abre=0.2, pico=1800), 0.7, reverb=0.6)
     p.poner(8.0, impacto(0.8, 38, 3.4), 0.8, reverb=0.6)                                # el destello
     p.poner(8.0, brillo_agudo(acorde('D7', 'A6', 'F#6'), 3.2), 0.5, reverb=0.85, ancho=1)
+    festejo(p, 7.13)                                                     # la hinchada
     return p.mezclar(3.8, 5200, dinamica=[(0, -24), (0.95, -24), (1.2, -14), (5.2, -7), (5.33, -1), (7.0, -3), (7.13, 0)])
 
 

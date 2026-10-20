@@ -12,7 +12,7 @@
  *               particulas, intensidad } }
  */
 
-import { completarVariante, VARIANTES, VIDEOS } from './aperturas';
+import { completarVariante, varianteForzada, VARIANTES, VIDEOS } from './aperturas';
 
 /* sobre.exclusivas: las cartas del evento sólo salen en su sobre (no en los demás ni en el V-Draft). */
 export const REGLAS = {
@@ -39,6 +39,23 @@ export const ESCENAS_BASE = [
   { id: 'excepcional', nombre: 'Excepcional (el haz central)' },
   { id: 'vdraft', nombre: 'V-Draft (el pasillo)' },
 ];
+
+/* Todas las cinemáticas, para elegirlas a mano en el Modo GOD (probarlas o
+   ponerlas en todas las aperturas del club). id: 'escena:<video>'. */
+export const CINEMATICAS = ESCENAS_BASE.filter((e) => e.id).map((e) => ({ id: `escena:${e.id}`, video: e.id, nombre: e.nombre }));
+
+/** La variante de una escena elegida a mano: 'escena:<video>', o una de VARIANTES / 'evento:<id>'. null si no existe. */
+export function varianteDeEscena(id, videos = VIDEOS) {
+  if (!id) return null;
+  const s = String(id);
+  if (!s.startsWith('escena:')) return varianteForzada(s, videos);
+  const video = s.slice(7);
+  if (VARIANTES[video]) return completarVariante(VARIANTES[video], videos);
+  if (video === 'evento_demo') return varianteForzada('evento:demo', videos);
+  // La de un evento: con los colores de su plantilla.
+  const p = Object.values(PLANTILLAS).find((x) => x.escena.video === video);
+  return p ? varianteDeEventoDb({ id: video, nombre: p.nombre, escena: p.escena }, videos) : null;
+}
 
 /* Si la escena elegida todavía no tiene video, ésta (la primera que exista). */
 const RESPALDO = ['elite', 'epico', 'vdraft'];

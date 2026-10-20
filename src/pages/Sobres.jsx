@@ -10,7 +10,7 @@ import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasAper
 import { prepararAudio, sonidoActivo, cargarMusica } from '../utils/sonidoApertura';
 import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, probabilidades, nombreDeCarta } from '../analytics/sobres';
 import { estadoSobres, abrirSobre, abrirSobreEvento, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
-import { varianteDeEventoDb } from '../analytics/eventos';
+import { varianteDeEventoDb, varianteDeEscena } from '../analytics/eventos';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
 import '../components/quinteto/quinteto.css';
 import './sobres.css';
@@ -53,6 +53,8 @@ export default function Sobres() {
   const { perfil } = useAuth() || {};
   /* El evento: el de la dirección, o el que activó el superusuario para el club. */
   const evento = eventoUrl || (estado?.evento && Object.prototype.hasOwnProperty.call(EVENTOS, estado.evento) ? estado.evento : null);
+  /* O una cinemática para todas las aperturas ('escena:<video>', elegida en el Modo GOD). Los sobres de eventos conservan la suya. */
+  const escenaClub = !eventoUrl && String(estado?.evento || '').startsWith('escena:') ? estado.evento : null;
   /* El superusuario no tiene club propio ni colección: entra directo al Modo
      GOD del club elegido en la app (las funciones de sobres no lo atienden). */
   const soloGod = !kiosco && perfil?.rol === 'superuser';
@@ -84,7 +86,7 @@ export default function Sobres() {
   const abrir = async (tipo) => {
     if (abriendo || resultado) return; // nunca dos aperturas a la vez
     prepararAudio(prefs.sonido);       // en el toque: el navegador sólo deja sonar así
-    precargarVideo(tipo, evento);      // el video baja mientras la base sortea las cartas
+    precargarVideo(tipo, evento, escenaClub); // el video baja mientras la base sortea las cartas
     setAbriendo(tipo);
     setError(null);
     const r = await abrirSobre(tipo);
@@ -183,7 +185,7 @@ export default function Sobres() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
             {ORDEN_SOBRES.filter((t) => seMuestra(t, estado)).map((t) => (
-              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t} alApuntar={() => precargarVideo(t, evento)}
+              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t} alApuntar={() => precargarVideo(t, evento, escenaClub)}
                 alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
             ))}
           </div>
@@ -251,7 +253,8 @@ export default function Sobres() {
           alProbar={(p) => { prepararAudio(prefs.sonido); setPrueba(p); }} />
       )}
 
-      {resultado && <AperturaSobre key={resultado.sobre_id} resultado={resultado} prefs={prefs} evento={evento} onCerrar={cerrarResultado} />}
+      {resultado && <AperturaSobre key={resultado.sobre_id} resultado={resultado} prefs={prefs} evento={evento}
+        forzar={resultado.evento ? null : escenaClub} onCerrar={cerrarResultado} />}
       {prueba && (
         <AperturaSobre key={prueba.resultado.sobre_id} resultado={prueba.resultado} prefs={{ ...prefs, cine: true }}
           evento={prueba.evento} forzar={prueba.forzar} onCerrar={() => setPrueba(null)} />
@@ -271,8 +274,8 @@ function eventoDeLaDireccion() {
 /* Cuando alguien apunta a un sobre con cinemática (o lo toca), el navegador
    empieza a bajar SU video (un solo formato, una sola vez): al abrirlo ya
    está o falta poco. Los demás videos no se bajan. */
-function precargarVideo(tipo, evento) {
-  const v = varianteDeApertura({ tipo, evento });
+function precargarVideo(tipo, evento, escena = null) {
+  const v = (escena && varianteDeEscena(escena)) || varianteDeApertura({ tipo, evento });
   if (v.video) {
     prepararVideo(v.video);
     if (v.video.musica) cargarMusica(v.video.musica);

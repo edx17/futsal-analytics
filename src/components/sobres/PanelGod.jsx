@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import CartaJugador from '../quinteto/CartaJugador';
 import { SOBRES, rarezaPorId } from '../../analytics/sobres';
-import { VARIANTES, VIDEOS, EVENTOS } from '../../analytics/aperturas';
+import { VARIANTES, VIDEOS } from '../../analytics/aperturas';
+import { CINEMATICAS, varianteDeEscena } from '../../analytics/eventos';
 import { PREMIOS } from '../../analytics/premiosCartas';
 import { resultadoDePrueba, aplicarAjuste, mediaDudosa, pendientesDePublicar } from '../../analytics/god';
 import { listarHistorial } from '../../utils/cartasDestacadas';
@@ -31,10 +32,12 @@ const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CART
 const POR_PAGINA = 40;
 
 /* Las escenas que se pueden forzar, con aviso si su video todavía no está. */
+/* Todas las cinemáticas (las de los eventos también); la que todavía no tiene video propio usa otra. */
+const nombreCinematica = (c) => `${c.nombre}${VIDEOS[c.video] ? '' : ' · todavía con otro video'}`;
 const ESCENAS = [
   ['', 'LA QUE CORRESPONDA'],
-  ...Object.values(VARIANTES).map((v) => [v.id, `${v.nombre}${v.modo === 'video' && !VIDEOS[v.video] ? ' (sin video: estándar)' : ''}`]),
-  ...Object.entries(EVENTOS).map(([id, e]) => [`evento:${id}`, e.nombre]),
+  ...Object.values(VARIANTES).filter((v) => v.modo !== 'video').map((v) => [v.id, `${v.nombre} (estándar, sin video)`]),
+  ...CINEMATICAS.map((c) => [c.id, nombreCinematica(c)]),
 ];
 
 export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoInicial = false }) {
@@ -118,10 +121,8 @@ function Probar({ catalogo, ajustes, alProbar }) {
 
   const probar = (t = tipo, e = escena) => {
     if (!activas.length) return;
-    const forzar = e && !e.startsWith('evento:') ? e : null;
-    const evento = e && e.startsWith('evento:') ? e.slice(7) : null;
     const resultado = resultadoDePrueba({ catalogo: activas, tipo: t, ajustes });
-    alProbar({ resultado, forzar: forzar || (evento ? `evento:${evento}` : null), evento });
+    alProbar({ resultado, forzar: e || null, evento: null });
   };
 
   if (catalogo === null) return <div style={dim}>Leyendo el catálogo…</div>;
@@ -139,10 +140,10 @@ function Probar({ catalogo, ajustes, alProbar }) {
       </div>
       <div style={rotulo}>VER CADA CINEMÁTICA (con un Mega Sobre de prueba)</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {ESCENAS.filter(([id]) => id && (id.startsWith('evento:') || VARIANTES[id]?.modo === 'video')).map(([id, t]) => (
-          <button key={id} style={chip(false)} disabled={!activas.length}
-            onPointerEnter={() => { const v = VARIANTES[id]; if (v && VIDEOS[v.video]) prepararVideo({ id: v.video, ...VIDEOS[v.video] }); }}
-            onClick={() => probar('mega', id)}>{t.replace(' (sin video: estándar)', ' ·  sin video')}</button>
+        {CINEMATICAS.map((c) => (
+          <button key={c.id} style={chip(false)} disabled={!activas.length}
+            onPointerEnter={() => { const v = varianteDeEscena(c.id); if (v?.video) prepararVideo(v.video); }}
+            onClick={() => probar('mega', c.id)}>{nombreCinematica(c)}</button>
         ))}
       </div>
     </div>
@@ -288,10 +289,11 @@ function Config({ clubId, estado, avisar, alCambiar }) {
       </div>
       <div style={rotulo}>ESCENA PARA TODAS LAS APERTURAS (opcional; los eventos con sobre propio se arman en EVENTOS)</div>
       <select value={cfg.evento_activo || ''} onChange={(e) => setCfg((c) => ({ ...c, evento_activo: e.target.value || null }))} style={select}>
-        <option value="">NINGUNO</option>
-        {Object.entries(EVENTOS).map(([id, e]) => <option key={id} value={id}>{e.nombre}{e.demo ? ' (demostración)' : ''}</option>)}
+        <option value="">NINGUNA (cada sobre con la suya)</option>
+        {CINEMATICAS.map((c) => <option key={c.id} value={c.id}>{nombreCinematica(c)}</option>)}
+        {cfg.evento_activo && !CINEMATICAS.some((c) => c.id === cfg.evento_activo) && <option value={cfg.evento_activo}>{cfg.evento_activo}</option>}
       </select>
-      <div style={dim}>Ahora: {estado?.evento ? `evento ${estado.evento}` : 'sin evento'} · suspendidos: {(estado?.suspendidos || []).join(', ') || 'ninguno'}</div>
+      <div style={dim}>Ahora: {estado?.evento ? (CINEMATICAS.find((c) => c.id === estado.evento)?.nombre || estado.evento) : 'cada sobre con su cinemática'} · suspendidos: {(estado?.suspendidos || []).join(', ') || 'ninguno'}</div>
       <button onClick={guardar} disabled={guardando || cfg.sinTabla} style={{ ...btn, background: '#fbbf24', color: '#1a1205', alignSelf: 'flex-start' }}>
         {guardando ? 'GUARDANDO…' : 'GUARDAR'}
       </button>
