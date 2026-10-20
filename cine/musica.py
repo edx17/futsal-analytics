@@ -34,17 +34,37 @@ rng = np.random.default_rng(7)
 
 # ── utilidades ──────────────────────────────────────────────────────────────
 
+# Para reusar una pieza en otra tonalidad (y en menor): ver `en_tono`.
+_TONO = {'semitonos': 0, 'menor': False}
+
+
 def nota(n):
-    """'A2', 'C#3', 'Bb1'… → Hz."""
+    """'A2', 'C#3', 'Bb1'… → Hz (con la transposición de `en_tono`, si hay)."""
     nombres = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
     semi = nombres[n[0]]
     resto = n[1:]
     if resto[0] == '#':
         semi += 1; resto = resto[1:]
+        # La mayor → La menor: el do#, fa# y sol# bajan medio tono.
+        if _TONO['menor'] and n[0] in 'CFG':
+            semi -= 1
     elif resto[0] == 'b':
         semi -= 1; resto = resto[1:]
-    midi = 12 * (int(resto) + 1) + semi
+    midi = 12 * (int(resto) + 1) + semi + _TONO['semitonos']
     return 440.0 * 2 ** ((midi - 69) / 12)
+
+
+class en_tono:
+    """with en_tono(-5, menor=True): pieza() → la misma pieza, en otra tonalidad."""
+
+    def __init__(self, semitonos=0, menor=False):
+        self.nuevo = {'semitonos': semitonos, 'menor': menor}
+
+    def __enter__(self):
+        self.antes = dict(_TONO); _TONO.update(self.nuevo)
+
+    def __exit__(self, *a):
+        _TONO.update(self.antes)
 
 
 def acorde(*ns):
@@ -542,8 +562,22 @@ def pieza_excepcional():
     return p.mezclar(3.8, 5200, dinamica=[(0, -24), (0.95, -24), (1.2, -14), (5.2, -7), (5.33, -1), (7.0, -3), (7.13, 0)])
 
 
+def pieza_evento_goleadores():
+    """Evento Goleadores: el himno del evento en Mi menor, más oscuro y agresivo
+    (mismo guion 'evento': los golpes caen en los mismos cuadros)."""
+    with en_tono(-5, menor=True):
+        return pieza_evento_demo()
+
+
+def pieza_evento_recuperadores():
+    """Evento Recuperadores: el himno del evento en Re menor, más contenido."""
+    with en_tono(-7, menor=True):
+        return pieza_evento_demo()
+
+
 PIEZAS = {'vdraft': pieza_vdraft, 'elite': pieza_elite, 'epico': pieza_epico, 'leyenda': pieza_leyenda,
-          'evento_demo': pieza_evento_demo, 'excepcional': pieza_excepcional}
+          'evento_demo': pieza_evento_demo, 'excepcional': pieza_excepcional,
+          'evento_goleadores': pieza_evento_goleadores, 'evento_recuperadores': pieza_evento_recuperadores}
 
 
 def ffmpeg():
