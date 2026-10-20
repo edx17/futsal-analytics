@@ -9,7 +9,8 @@ import { prepararVideo, liberarVideos } from '../utils/videoApertura';
 import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasApertura';
 import { prepararAudio, sonidoActivo, cargarMusica } from '../utils/sonidoApertura';
 import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, probabilidades, nombreDeCarta } from '../analytics/sobres';
-import { estadoSobres, abrirSobre, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
+import { estadoSobres, abrirSobre, abrirSobreEvento, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
+import { varianteDeEventoDb } from '../analytics/eventos';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
 import '../components/quinteto/quinteto.css';
 import './sobres.css';
@@ -87,6 +88,20 @@ export default function Sobres() {
     setAbriendo(tipo);
     setError(null);
     const r = await abrirSobre(tipo);
+    setAbriendo(null);
+    if (r.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); return; }
+    if (r.error) { setError(r.error.message); cargar(); return; }
+    setResultado(r.data);
+  };
+
+  /* El sobre de un evento (armado en el Modo GOD): sus cartas, sus reglas, su escena. */
+  const abrirEvento = async (ev) => {
+    if (abriendo || resultado) return;
+    prepararAudio(prefs.sonido);
+    precargarEvento(ev);
+    setAbriendo(`evento:${ev.id}`);
+    setError(null);
+    const r = await abrirSobreEvento(ev.id);
     setAbriendo(null);
     if (r.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); return; }
     if (r.error) { setError(r.error.message); cargar(); return; }
@@ -172,6 +187,14 @@ export default function Sobres() {
                 alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
             ))}
           </div>
+          {(estado.eventos || []).length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
+              {estado.eventos.map((ev) => (
+                <SobreEvento key={ev.id} ev={ev} abriendo={abriendo === `evento:${ev.id}`} alAbrir={() => abrirEvento(ev)}
+                  alApuntar={() => precargarEvento(ev)} monedas={estado.puntos} />
+              ))}
+            </div>
+          )}
           <button onClick={() => setVerProbs((v) => !v)} style={{ ...btn, background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', marginBottom: 6 }}>
             {verProbs ? 'OCULTAR' : 'VER'} PROBABILIDADES
           </button>
@@ -301,6 +324,36 @@ function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas, alApuntar 
       </button>
     </div>
   );
+}
+
+/* El sobre de un evento: con los colores de su escena. */
+function SobreEvento({ ev, abriendo, alAbrir, alApuntar, monedas }) {
+  const col = ev.escena?.colores || {};
+  const luz = col.luz || '#fbbf24';
+  const agotado = ev.abiertos_hoy >= ev.por_dia;
+  const nota = agotado ? `Ya abriste ${ev.por_dia === 1 ? 'el de hoy' : `los ${ev.por_dia} de hoy`}. Volvé mañana.`
+    : ev.total_cartas === 0 ? 'El evento todavía no tiene cartas.'
+      : ev.costo > (monedas || 0) ? `Te faltan ${ev.costo - (monedas || 0)} ${MONEDA}.`
+        : `Evento: ${ev.total_cartas} cartas para juntar. ${ev.costo ? `${ev.costo} ${MONEDA}` : 'Gratis'} · ${ev.por_dia} por día${ev.hasta ? ` · hasta el ${String(ev.hasta).split('-').reverse().join('/')}` : ''}.`;
+  return (
+    <div className="bento-card" style={{ padding: 14, opacity: ev.disponible ? 1 : 0.6, border: `1px solid ${luz}`,
+      background: `linear-gradient(160deg, ${col.secundario || '#111'} 0%, var(--panel) 70%)` }}>
+      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: luz }}>★ {ev.nombre}</div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '4px 0 10px', minHeight: '2.4em', lineHeight: 1.4 }}>{nota}</div>
+      <button disabled={!ev.disponible || abriendo} onClick={alAbrir} onPointerEnter={alApuntar} onFocus={alApuntar} onTouchStart={alApuntar}
+        style={{ ...btn, width: '100%', opacity: ev.disponible ? 1 : 0.5, background: `linear-gradient(90deg, ${col.principal || luz}, ${luz})`, color: col.texto || '#fff' }}>
+        {abriendo ? 'ABRIENDO…' : `ABRIR · ${ev.cartas} CARTAS${ev.costo ? ` · ${ev.costo} V-COINS` : ''}`}
+      </button>
+    </div>
+  );
+}
+
+function precargarEvento(ev) {
+  const v = varianteDeEventoDb(ev);
+  if (v.video) {
+    prepararVideo(v.video);
+    if (v.video.musica) cargarMusica(v.video.musica);
+  }
 }
 
 function Dato({ rotulo: r, valor, extra }) {

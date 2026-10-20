@@ -9,6 +9,7 @@ import {
 } from '../../utils/god';
 import { listarFotos, subirFotoEspecial, quitarFotoEspecial } from '../../utils/cartasFotos';
 import { prepararVideo } from '../../utils/videoApertura';
+import GodEventos from './GodEventos';
 
 /* MODO GOD (sólo superusuario)
  *
@@ -24,7 +25,7 @@ import { prepararVideo } from '../../utils/videoApertura';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const PESTANAS = [['probar', 'PROBAR'], ['cartas', 'CARTAS'], ['sobres', 'SOBRES Y EVENTOS']];
+const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['sobres', 'SOBRES']];
 const POR_PAGINA = 40;
 
 /* Las escenas que se pueden forzar, con aviso si su video todavía no está. */
@@ -75,6 +76,9 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
           {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} alProbar={alProbar} />}
           {pestana === 'cartas' && (
             <Cartas clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
+          )}
+          {pestana === 'eventos' && (
+            <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
           )}
           {pestana === 'sobres' && <Config clubId={clubId} estado={estado} avisar={setAviso} alCambiar={alCambiar} />}
         </div>
@@ -206,6 +210,7 @@ function FilaCarta({ f, ajuste, foto, ocupado, alternar, ajustar, desajustar, su
           <b style={{ fontSize: 14 }}>{(c.apellido || '').toUpperCase()} {c.nombre}</b>
           <span style={{ fontFamily: MONO, fontSize: 11, color: 'var(--text-dim)' }}>{PREMIOS[f.tipo]?.sigla || f.tipo} · {rarezaPorId[f.rareza]?.nombre} · {c.edicion || c.categoria || ''}</span>
           {baja && <span style={{ ...tag, background: '#ef4444' }}>DE BAJA</span>}
+          {f.exclusiva_evento && <span style={{ ...tag, background: '#7c3aed' }} title="Sólo sale en el sobre de su evento">SÓLO EVENTO</span>}
           {f.dudosa && <span style={{ ...tag, background: '#f97316' }} title="La media no cuadra con sus datos">REVISAR · {f.dudosa}</span>}
           {c.ovrAjustada && <span style={{ ...tag, background: '#fbbf24', color: '#1a1205' }}>MEDIA {c.ovr} (CALC. {calculada})</span>}
         </div>
@@ -258,7 +263,7 @@ function Config({ clubId, estado, avisar, alCambiar }) {
           );
         })}
       </div>
-      <div style={rotulo}>EVENTO ACTIVO (cambia la puesta en escena de todas las aperturas del club)</div>
+      <div style={rotulo}>ESCENA PARA TODAS LAS APERTURAS (opcional; los eventos con sobre propio se arman en EVENTOS)</div>
       <select value={cfg.evento_activo || ''} onChange={(e) => setCfg((c) => ({ ...c, evento_activo: e.target.value || null }))} style={select}>
         <option value="">NINGUNO</option>
         {Object.entries(EVENTOS).map(([id, e]) => <option key={id} value={id}>{e.nombre}{e.demo ? ' (demostración)' : ''}</option>)}

@@ -12,13 +12,16 @@
 import { SOBRES, sortearSobre } from './sobres';
 
 /** Un sobre de prueba con cartas reales del catálogo activo. No toca la base. */
-export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = new Map(), azar = Math.random, n = Date.now() }) {
-  const sobre = SOBRES[tipo] || SOBRES.diario;
-  const activas = catalogo.filter((k) => k.activa !== false);
+export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = new Map(), azar = Math.random, n = Date.now(), evento = null }) {
+  const sobre = evento ? { id: 'evento', cartas: evento.sobre?.cartas || 3 } : SOBRES[tipo] || SOBRES.diario;
+  // El sobre de un evento: sólo sus cartas.
+  const claves = evento ? new Set(evento.cartas || []) : null;
+  const activas = catalogo.filter((k) => k.activa !== false && (!claves || claves.has(k.clave)));
   const { cartas } = sortearSobre({ catalogo: activas, cantidad: sobre.cartas, soloEspeciales: !!sobre.soloEspeciales, azar });
   return {
     sobre_id: `prueba-${n}`,
     tipo: sobre.id,
+    ...(evento ? { evento } : {}),
     prueba: true,
     puntos_ganados: 0,
     cartas: cartas.map((k) => ({
