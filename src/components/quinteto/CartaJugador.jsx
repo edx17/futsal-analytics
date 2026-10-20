@@ -1,4 +1,6 @@
 import React from 'react';
+import CartaEspecial from './CartaEspecial';
+import { esEspecial } from '../../analytics/especialesCartas';
 
 /* UNA CARTA AL ESTILO ULTIMATE TEAM
  *
@@ -22,6 +24,21 @@ export default function CartaJugador({
   const clase = `${chica ? 'mq-mini' : 'mq-carta'} mq-${carta.tier}${carta.premio ? ` mq-premio mq-p-${carta.premio.toLowerCase()}` : ''}${seleccionada ? ' mq-sel' : ''}${fueraDePuesto ? ' mq-fuera' : ''} ${className}`;
   const titulo = `${carta.apellido} ${carta.nombre}`.trim();
   const badge = fueraDePuesto ? 'FUERA DE PUESTO' : BADGE[carta.tier];
+
+  /* Las cartas especiales (Goleadores, Asistidores, Presencia, MVP, Recuperadores)
+     tienen su propio diseño: el mismo de las placas, a la medida de la carta. */
+  if (esEspecial(carta.premio)) {
+    return (
+      <div className={`${clase} mq-especial`} style={style} onClick={onClick} title={titulo} role="button" tabIndex={0}
+        onContextMenu={(e) => e.preventDefault()}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
+        {...resto}>
+        {!chica && fueraDePuesto && <div className="mq-badge">{badge}</div>}
+        <CartaEspecial carta={carta} ancho={chica ? 69 : 122} compacta={chica} />
+        {!chica && <div className="mq-chip">{etiqueta || carta.rol}</div>}
+      </div>
+    );
+  }
 
   return (
     <div className={clase} style={style} onClick={onClick} title={titulo} role="button" tabIndex={0}

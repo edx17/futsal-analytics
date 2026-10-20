@@ -1,4 +1,5 @@
 import { tierDe } from './quinteto';
+import { ESPECIALES as ESPECIALES_CARTAS } from './especialesCartas';
 
 /* SOBRES DE CARTAS
  *
@@ -54,9 +55,15 @@ export const SOBRES = {
 export const rarezaPorId = Object.fromEntries(RAREZAS.map((r) => [r.id, r]));
 
 /** La rareza de una carta base según su media; las de premio, la de su tipo. */
-export const rarezaDeCarta = (carta) => (carta.premio ? carta.premio.toLowerCase() : tierDe(carta.ovr));
+export const rarezaDeCarta = (carta) => {
+  if (!carta.premio) return tierDe(carta.ovr);
+  // Las especiales nuevas caen en una rareza que ya existe (ver especialesCartas.js).
+  return ESPECIALES_CARTAS[carta.premio]?.rareza || carta.premio.toLowerCase();
+};
 
-const CAMPOS_CARTA = ['id', 'nombre', 'apellido', 'dorsal', 'foto', 'categoria', 'rol', 'ovr', 'tier', 'atributos', 'stats', 'premio', 'edicion', 'descripcion'];
+const CAMPOS_CARTA = ['id', 'nombre', 'apellido', 'dorsal', 'foto', 'categoria', 'rol', 'ovr', 'tier', 'atributos', 'stats', 'premio', 'edicion', 'descripcion',
+  // las especiales: lo que dibuja CartaEspecial
+  'pj', 'nota', 'goles', 'asistencias', 'rec', 'mvp', 'titulo', 'pie', 'especial'];
 
 /**
  * Las filas del catálogo a partir de las cartas de MySquad.
