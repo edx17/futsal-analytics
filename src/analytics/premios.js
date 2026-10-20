@@ -30,6 +30,8 @@ export const PORCENTAJE_MIN_TOTY = 0.65;
 export const MIN_PARTICIPACION = 0.25;
 
 export const TIPOS = ['POTW', 'TOTW', 'POTM', 'TOTM', 'TOTY'];
+/* Los de siempre y las cartas especiales (especiales.js), para los filtros por tipo. */
+export const TODOS_LOS_TIPOS = [...TIPOS, 'GOLM', 'ASIM', 'PREM', 'GOLR', 'ASIR', 'PRER', 'MVPR', 'SGOL', 'SREC'];
 
 const redondear = (n, d = 2) => Number(Number(n).toFixed(d));
 const ga = (c) => (Number(c.goles) || 0) + (Number(c.asistencias) || 0);

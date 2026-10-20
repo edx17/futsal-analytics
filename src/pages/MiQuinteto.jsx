@@ -18,9 +18,11 @@ import { listarFotos } from '../utils/cartasFotos';
 import { listarHistorial } from '../utils/cartasDestacadas';
 import { datosDelClub } from '../placas/club';
 import { cartasDeHistorial, armarBanco } from '../analytics/premiosCartas';
-import { TIPOS } from '../analytics/premios';
+import { TODOS_LOS_TIPOS } from '../analytics/premios';
 import { catalogoDeCartas, probabilidades } from '../analytics/sobres';
 import { publicarCatalogo } from '../utils/sobres';
+import { listarAjustes } from '../utils/god';
+import { aplicarAjustes } from '../analytics/god';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -68,6 +70,7 @@ export default function MiQuinteto() {
   /* Las cartas especiales salen del HISTORIAL: sólo existen los premios guardados ahí. */
   const [historial, setHistorial] = useState([]);
   const [seccion, setSeccion] = useState('cancha');
+  const [versionHistorial, setVersionHistorial] = useState(0);
   useEffect(() => {
     if (!clubId || seccion === 'historial') return undefined;
     let vivo = true;
@@ -75,7 +78,7 @@ export default function MiQuinteto() {
       .then((r) => { if (vivo) setHistorial(r); })
       .catch((err) => { console.warn('Historial de premios:', err?.message); if (vivo) setHistorial([]); });
     return () => { vivo = false; };
-  }, [clubId, seccion]);
+  }, [clubId, seccion, versionHistorial]);
 
   const { raw, loading, avance } = useDatosPlantel(clubId);
   const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
@@ -99,7 +102,17 @@ export default function MiQuinteto() {
     [partidosScopeCat, filtroTorneo],
   );
 
-  const { cartas: cartasBase, minimo, partidosEquipo, analisis } = useMemo(() => {
+  /* Medias corregidas a mano por el superusuario (modo GOD): se ven en la
+     cancha y el banco; al publicar va siempre la calculada (la rareza no cambia). */
+  const [ajustes, setAjustes] = useState(() => new Map());
+  useEffect(() => {
+    if (!clubId) return undefined;
+    let vivo = true;
+    listarAjustes(clubId).then((a) => { if (vivo) setAjustes(a); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [clubId]);
+
+  const { cartas: cartasCalculadas, minimo, partidosEquipo, analisis } = useMemo(() => {
     const { jugadoresProc, arquerosProc } = procesarPlantel({
       raw, partidosScopeCat, filtroTorneo, filtroCategoria, misCategorias,
       hayRuedas: false, filtroRueda: 'Todas', torneoElegido: null, jornadasOrdenadas: [],
@@ -108,8 +121,11 @@ export default function MiQuinteto() {
     return { ...armarCartas({ jugadoresProc, arquerosProc, forma: a.forma, figura: a.figura }), analisis: a };
   }, [raw, partidosScopeCat, partidosFiltro, filtroTorneo, filtroCategoria, misCategorias]);
 
+  const cartasBase = useMemo(() => aplicarAjustes(cartasCalculadas, ajustes, (c) => `BASE|${c.id}`), [cartasCalculadas, ajustes]);
+
   /* Las versiones de premio de cada carta (TOTY, TOTM, TOTW…): las del historial guardado. */
-  const premios = useMemo(() => cartasDeHistorial(historial, cartasBase, fotos), [historial, cartasBase, fotos]);
+  const premiosCalculados = useMemo(() => cartasDeHistorial(historial, cartasCalculadas, fotos), [historial, cartasCalculadas, fotos]);
+  const premios = useMemo(() => aplicarAjustes(premiosCalculados, ajustes), [premiosCalculados, ajustes]);
   const todasPorClave = useMemo(() => {
     const m = new Map(cartasBase.map((c) => [c.id, { ...c, clave: c.id }]));
     premios.forEach((c) => m.set(c.clave, c));
@@ -225,7 +241,7 @@ export default function MiQuinteto() {
   /* Las cartas que pueden salir en los sobres del club: las del filtro que esté puesto. */
   const [publicando, setPublicando] = useState(false);
   const publicar = async () => {
-    const filas = catalogoDeCartas(cartasBase, premios);
+    const filas = catalogoDeCartas(cartasCalculadas, premiosCalculados);
     const lineas = probabilidades(filas).map((r) => `${r.nombre}: ${r.cartas}`).join('\n');
     if (!window.confirm(`Vas a publicar ${filas.length} cartas para los sobres (${filtroCategoria === 'Todas' ? 'todas las categorías' : filtroCategoria}, ${filtroTorneo === 'Todos' ? 'toda la temporada' : 'un torneo'}).\n\n${lineas}\n\nLas que ya estaban se actualizan; ninguna se borra. ¿Seguir?`)) return;
     setPublicando(true);
@@ -293,7 +309,10 @@ export default function MiQuinteto() {
         </div>
       ) : seccion === 'premios' ? (
         <PanelPremios partidosJugados={analisis.partidosJugados} jugadores={raw.jugadores} club={datosDelClub(perfil)}
-          clubId={clubId} categoria={filtroCategoria} torneoId={filtroTorneo} esMovil={esMovil} />
+          clubId={clubId} categoria={filtroCategoria} torneoId={filtroTorneo} esMovil={esMovil}
+          historial={historial} alGuardar={() => setVersionHistorial((v) => v + 1)}
+          raw={raw} partidosFiltro={partidosFiltro} partidosCategoria={partidosScopeCat} misCategorias={misCategorias}
+          torneo={filtroTorneo === 'Todos' ? null : (raw.torneos || []).find((t) => t.id === filtroTorneo) || null} />
       ) : seccion === 'especiales' ? (
         <FotosEspeciales premios={premios} fotos={fotos} clubId={clubId} alCambiar={cargarFotos} esMovil={esMovil} />
       ) : cartas.length === 0 ? (
@@ -384,7 +403,7 @@ export default function MiQuinteto() {
             <div className="bento-card" style={{ padding: '12px 12px 14px' }}>
               <div style={rotulo}>SUPLENTES · {banco.length}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                {['TODAS', 'BASE', ...TIPOS].map((t) => (
+                {['TODAS', 'BASE', ...TODOS_LOS_TIPOS.filter((t) => t === tipoBanco || premios.some((c) => c.premio === t))].map((t) => (
                   <button key={t} onClick={() => setTipoBanco(t)} style={{
                     padding: '5px 10px', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', borderRadius: 6, cursor: 'pointer',
                     border: `1px solid ${tipoBanco === t ? 'var(--accent)' : 'var(--border)'}`,

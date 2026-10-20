@@ -17,8 +17,11 @@ const partido = { id: 'p1', fecha: '2026-10-08', rival: 'Los Pibes', golesFavor:
   jugadores: [c(1, 'ARQ', 7), c(2, 'ALA', 7.5, { goles: 1 }), c(3, 'PIV', 7.6, { goles: 2, asistencias: 1 })] };
 
 describe('textos', () => {
-  it('cinco premios con sigla y título', () => {
-    expect(Object.keys(PREMIOS)).toEqual(['POTW', 'TOTW', 'POTM', 'TOTM', 'TOTY']);
+  it('los cinco premios de siempre y las especiales, con sigla y título', () => {
+    expect(Object.keys(PREMIOS).slice(0, 5)).toEqual(['POTW', 'TOTW', 'POTM', 'TOTM', 'TOTY']);
+    Object.values(PREMIOS).forEach((m) => { expect(m.sigla).toBeTruthy(); expect(m.titulo).toBeTruthy(); });
+    expect(PREMIOS.SGOL).toMatchObject({ quinteto: true, especial: true });
+    expect(PREMIOS.GOLM).toMatchObject({ quinteto: false, especial: true });
     expect(PREMIOS.TOTM.quinteto).toBe(true);
     expect(PREMIOS.POTM.quinteto).toBe(false);
   });

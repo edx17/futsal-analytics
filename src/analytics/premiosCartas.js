@@ -13,6 +13,8 @@ import {
   registrosDePartido, registrosDeMes, registroTemporada,
 } from './premios';
 import { rolDe, tierDe } from './quinteto';
+import { ESPECIALES, esEspecial } from './especialesCartas';
+import { torneoDePeriodo } from './especiales';
 
 /** Cómo se llama cada premio y cómo se dibuja. */
 export const PREMIOS = {
@@ -21,6 +23,10 @@ export const PREMIOS = {
   POTM: { sigla: 'POTM', titulo: 'JUGADOR DEL MES', quinteto: false, variante: 'potm' },
   TOTM: { sigla: 'TOTM', titulo: 'QUINTETO DEL MES', quinteto: true, variante: 'totm' },
   TOTY: { sigla: 'TOTY', titulo: 'JUGADOR DE LA TEMPORADA', quinteto: false, variante: 'toty' },
+  // Las cartas especiales (especiales.js): se dibujan con CartaEspecial.
+  ...Object.fromEntries(Object.entries(ESPECIALES).map(([tipo, e]) => [tipo, {
+    sigla: e.sigla, titulo: e.titulo, quinteto: !!e.serie, variante: e.familia, especial: true,
+  }])),
 };
 
 export const NOMBRE_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -62,13 +68,30 @@ export function cartaDeFicha(ficha, porId, { destacadoId = null } = {}) {
     pj: ficha.pj ?? 1,
     goles: ficha.goles || 0,
     asistencias: ficha.asistencias || 0,
+    ...(ficha.rec != null ? { rec: ficha.rec } : {}),
+    ...(ficha.mvp != null ? { mvp: ficha.mvp } : {}),
+    ...(ficha.puesto != null ? { puesto: ficha.puesto, valor: ficha.valor ?? null, empate: !!ficha.empate } : {}),
     destacado: destacadoId != null && String(destacadoId) === String(ficha.id),
   };
 }
 
+/** Lo que una carta especial muestra además de lo de siempre: el puesto, el número que la hizo ganar, los partidos del equipo. */
+export const datosEspecial = (f, registro) => ({
+  puesto: f.puesto ?? 1,
+  valor: f.valor ?? null,
+  empate: !!f.empate || !!registro?.contexto?.compartido,
+  partidos: registro?.contexto?.partidos ?? null,
+});
+
 /** Las cartas de un registro de premio (ver registrosDePartido/Mes/Temporada en premios.js). */
 export const cartasDeRegistro = (registro, porId) =>
-  (registro.jugadores || []).map((f) => cartaDeFicha(f, porId, { destacadoId: registro.destacadoId }));
+  (registro.jugadores || []).map((f) => conDatosEspecial(registro, cartaDeFicha(f, porId, { destacadoId: registro.destacadoId })));
+
+/** A una carta especial le suma lo que dibuja CartaEspecial (título, pie, puesto); las demás quedan igual. */
+export function conDatosEspecial(registro, carta) {
+  if (!esEspecial(registro?.tipo)) return carta;
+  return { ...carta, premio: registro.tipo, titulo: PREMIOS[registro.tipo].titulo, pie: pieEspecial(registro), especial: datosEspecial(carta, registro) };
+}
 
 /**
  * La fila que se guarda en `cartas_destacadas`. Lleva la FOTO de cada carta
@@ -100,8 +123,12 @@ export function filaARegistro(fila) {
     fechaRef: fila.fecha_ref,
     destacadoId,
     categoria: fila.categoria,
+    torneoId: fila.torneo_id,
     contexto: fila.contexto || {},
-    cartas: (fila.jugadores || []).map((c) => ({ ...c, destacado: destacadoId != null && String(c.id) === destacadoId })),
+    cartas: (fila.jugadores || []).map((c) => conDatosEspecial(
+      { tipo: fila.tipo, periodo: fila.periodo, contexto: fila.contexto || {} },
+      { ...c, destacado: destacadoId != null && String(c.id) === destacadoId },
+    )),
   };
 }
 
@@ -129,9 +156,37 @@ export function datosDePlaca({ tipo, periodo, fechaRef, contexto = {}, cartas = 
     subtitulo = `TEMPORADA ${periodo || String(fechaRef || '').slice(0, 4)}`;
     derecha = categoria && categoria !== 'Todas' ? String(categoria).toUpperCase() : '';
     if (contexto.partidos) detalle = `Jugó al menos ${contexto.minimo} de ${contexto.partidos} partidos del equipo`;
+  } else if (esEspecial(tipo)) {
+    subtitulo = periodoEspecial({ periodo, contexto }).toUpperCase();
+    derecha = categoria && categoria !== 'Todas' ? String(categoria).toUpperCase() : '';
+    detalle = criterioEspecial(tipo, contexto);
   }
 
-  return { tipo, sigla: meta?.sigla || tipo, titulo: meta?.titulo || '', quinteto: !!meta?.quinteto, subtitulo, derecha, detalle, cartas, club, sinArquero: !!contexto.sinArquero };
+  return { tipo, sigla: meta?.sigla || tipo, titulo: meta?.titulo || '', quinteto: !!meta?.quinteto, especial: !!meta?.especial, subtitulo, derecha, detalle, cartas, club, sinArquero: !!contexto.sinArquero };
+}
+
+/** De qué período es una carta especial: 'Octubre 2026' o 'Torneo 2026 · 1ª rueda'. */
+export function periodoEspecial({ periodo, contexto = {} }) {
+  if (torneoDePeriodo(periodo)) return `${contexto.torneo || 'Torneo'} · 1ª rueda`;
+  return etiquetaMes(contexto.mes || periodo);
+}
+
+/** El pie de la carta: el mes, o el torneo (la cinta ya dice "1ª RUEDA"). */
+export const pieEspecial = (r) => String(torneoDePeriodo(r.periodo) ? (r.contexto?.torneo || 'TORNEO') : etiquetaMes(r.contexto?.mes || r.periodo)).toUpperCase();
+
+/** Cómo se eligió (va en la placa y en el panel): el criterio y los partidos que se usaron. */
+export function criterioEspecial(tipo, contexto = {}) {
+  const p = contexto.partidos ? ` · ${contexto.partidos} partidos con datos` : '';
+  const comp = contexto.compartido ? ' · empate: la comparten' : '';
+  switch (tipo) {
+    case 'GOLM': case 'GOLR': return `Más goles${p}${comp}`;
+    case 'ASIM': case 'ASIR': return `Más asistencias${p}${comp}`;
+    case 'PREM': case 'PRER': return `Más partidos jugados; a igual cantidad, mejor nota${p}${comp}`;
+    case 'MVPR': return `Más veces figura del partido${p}${comp}`;
+    case 'SGOL': return `Los ${contexto.tope || 10} primeros en goles${p} · los empatados comparten puesto`;
+    case 'SREC': return `Los ${contexto.tope || 10} primeros en recuperaciones${p} · los empatados comparten puesto`;
+    default: return '';
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -150,6 +205,9 @@ export function descripcionRegistro(registro) {
     base = etiquetaMes(contexto.mes || periodo);
   } else if (tipo === 'TOTY') {
     base = `Temporada ${periodo || String(fechaRef || '').slice(0, 4)}`;
+  } else if (esEspecial(tipo)) {
+    // Los de la rueda ya dicen "1ª RUEDA" en el título: va el torneo; los del mes, el mes.
+    base = `${PREMIOS[tipo].titulo} · ${torneoDePeriodo(periodo) ? contexto.torneo || 'Torneo' : etiquetaMes(contexto.mes || periodo)}`;
   }
   return categoria && categoria !== 'Todas' ? `${base} · ${categoria}` : base;
 }
@@ -210,6 +268,12 @@ export function etiquetaCorta(registro) {
     const [a, m] = String(periodo).split('-').map(Number);
     return `${tipo} ${MES3[m - 1] || ''} ${String(a).slice(2)}`;
   }
+  if (esEspecial(tipo)) {
+    const sigla = PREMIOS[tipo].sigla;
+    if (torneoDePeriodo(periodo)) return `${sigla} ${String(registro.fechaRef || '').slice(0, 4)}`.trim();
+    const [a, m] = String(periodo).split('-').map(Number);
+    return `${sigla} ${MES3[m - 1] || ''} ${String(a).slice(2)}`;
+  }
   return `${tipo} ${periodo}`;
 }
 
@@ -263,6 +327,10 @@ function cartasDeRegistros(registros, cartasBase, fotos, { soloConBase }) {
         rol: f.rol || ref.rol,
         ovr, tier: tierDe(ovr), enEvaluacion: false,
         stats: { ...ref.stats, pj: f.pj ?? 1, goles: f.goles || 0, asist: f.asistencias ?? f.asist ?? 0, rating: nota, min: null },
+        ...(esEspecial(r.tipo) ? {
+          pj: f.pj ?? null, nota, goles: f.goles || 0, asistencias: f.asistencias || 0, rec: f.rec ?? null, mvp: f.mvp ?? null,
+          titulo: PREMIOS[r.tipo].titulo, pie: pieEspecial(r), especial: datosEspecial(f, r),
+        } : {}),
       });
     });
   });

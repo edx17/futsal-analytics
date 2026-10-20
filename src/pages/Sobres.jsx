@@ -1,8 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CartaGiratoria from '../components/quinteto/CartaGiratoria';
-import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, rarezaPorId, probabilidades } from '../analytics/sobres';
-import { estadoSobres, abrirSobre, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
+import AperturaSobre from '../components/sobres/AperturaSobre';
+import PanelGod from '../components/sobres/PanelGod';
+import { useAuth } from '../context/AuthContext';
+import { varianteDeApertura, EVENTOS } from '../analytics/aperturas';
+import { prepararVideo, liberarVideos } from '../utils/videoApertura';
+import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasApertura';
+import { prepararAudio, sonidoActivo, cargarMusica } from '../utils/sonidoApertura';
+import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, probabilidades, nombreDeCarta } from '../analytics/sobres';
+import { estadoSobres, abrirSobre, abrirSobreEvento, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
+import { varianteDeEventoDb, varianteDeEscena } from '../analytics/eventos';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
 import '../components/quinteto/quinteto.css';
 import './sobres.css';
@@ -15,7 +23,16 @@ import './sobres.css';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const ORDEN_SOBRES = ['diario', 'wellness', 'racha', 'puntos', 'mega'];
+const ORDEN_SOBRES = ['premio_especial', 'premio', 'diario', 'wellness', 'racha', 'puntos', 'mega'];
+
+/* Qué sobres se muestran: el de wellness no es para el staff, y los del V-Draft
+   sólo si tenés alguno guardado. */
+const seMuestra = (tipo, e) => {
+  if (tipo === 'wellness') return !e.es_staff;
+  if (tipo === 'premio') return (e.sobres_premio || 0) > 0;
+  if (tipo === 'premio_especial') return (e.sobres_especiales || 0) > 0;
+  return true;
+};
 
 /* Una carta del catálogo en el formato que dibuja CartaJugador. */
 const aCarta = (c) => ({ atributos: [], stats: {}, ...(c.carta || c) });
@@ -31,8 +48,29 @@ export default function Sobres() {
   const [resultado, setResultado] = useState(null);
   const [filtro, setFiltro] = useState('todas');
   const [verProbs, setVerProbs] = useState(false);
+  const [prefs, setPrefs] = useState(leerPreferencias);
+  const [eventoUrl] = useState(eventoDeLaDireccion); // ?evento=<id> (p. ej. la demo)
+  const { perfil } = useAuth() || {};
+  /* El evento: el de la dirección, o el que activó el superusuario para el club. */
+  const evento = eventoUrl || (estado?.evento && Object.prototype.hasOwnProperty.call(EVENTOS, estado.evento) ? estado.evento : null);
+  /* O una cinemática para todas las aperturas ('escena:<video>', elegida en el Modo GOD). Los sobres de eventos conservan la suya. */
+  const escenaClub = !eventoUrl && String(estado?.evento || '').startsWith('escena:') ? estado.evento : null;
+  /* El superusuario no tiene club propio ni colección: entra directo al Modo
+     GOD del club elegido en la app (las funciones de sobres no lo atienden). */
+  const soloGod = !kiosco && perfil?.rol === 'superuser';
+  const esGod = soloGod || (!kiosco && !!estado?.es_superuser);
+  const clubGod = localStorage.getItem('club_id') || perfil?.club_id || null;
+  /* Una apertura de prueba del modo GOD: { resultado, forzar, evento }. No toca la base. */
+  const [prueba, setPrueba] = useState(null);
+  const cambiarPref = (clave, valor) => {
+    const nuevas = { ...prefs, [clave]: valor };
+    setPrefs(nuevas);
+    guardarPreferencias(nuevas);
+    if (clave === 'sonido') sonidoActivo(valor);
+  };
 
   const cargar = useCallback(async () => {
+    if (!kiosco && perfil?.rol === 'superuser') { setCargando(false); return; } // Modo GOD: no hay colección propia
     const [e, c] = await Promise.all([estadoSobres(), coleccionSobres()]);
     if (e.vencida || c.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); setCargando(false); return; }
     if (e.error || c.error) { setError((e.error || c.error).message); setCargando(false); return; }
@@ -40,14 +78,32 @@ export default function Sobres() {
     setEstado(e.data);
     setColeccion(c.data);
     setCargando(false);
-  }, []);
+  }, [kiosco, perfil?.rol]);
 
   useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => () => liberarVideos(), []); // al salir de la pantalla, nada queda bajando
 
   const abrir = async (tipo) => {
+    if (abriendo || resultado) return; // nunca dos aperturas a la vez
+    prepararAudio(prefs.sonido);       // en el toque: el navegador sólo deja sonar así
+    precargarVideo(tipo, evento, escenaClub); // el video baja mientras la base sortea las cartas
     setAbriendo(tipo);
     setError(null);
     const r = await abrirSobre(tipo);
+    setAbriendo(null);
+    if (r.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); return; }
+    if (r.error) { setError(r.error.message); cargar(); return; }
+    setResultado(r.data);
+  };
+
+  /* El sobre de un evento (armado en el Modo GOD): sus cartas, sus reglas, su escena. */
+  const abrirEvento = async (ev) => {
+    if (abriendo || resultado) return;
+    prepararAudio(prefs.sonido);
+    precargarEvento(ev);
+    setAbriendo(`evento:${ev.id}`);
+    setError(null);
+    const r = await abrirSobreEvento(ev.id);
     setAbriendo(null);
     if (r.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); return; }
     if (r.error) { setError(r.error.message); cargar(); return; }
@@ -75,6 +131,30 @@ export default function Sobres() {
   );
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)' }}>Abriendo el paquete…</div>;
+
+  if (soloGod) {
+    return (
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 0 80px', animation: 'fadeIn 0.3s' }}>
+        <div className="stat-label" style={{ color: '#fbbf24', fontSize: '1.2rem' }}>SOBRES · MODO GOD</div>
+        <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 14 }}>
+          Probá cualquier sobre y cualquier cinemática sin gastar nada, manejá las cartas del catálogo y los sobres del club.
+        </div>
+        {!clubGod ? (
+          <div className="bento-card" style={{ padding: 24, color: 'var(--text-dim)' }}>Elegí un club en la app para administrar sus sobres.</div>
+        ) : (
+          <>
+            <PreferenciasApertura prefs={prefs} cambiar={cambiarPref} />
+            <PanelGod clubId={clubGod} estado={null} abiertoInicial alCambiar={cargar}
+              alProbar={(p) => { prepararAudio(prefs.sonido); setPrueba(p); }} />
+          </>
+        )}
+        {prueba && (
+          <AperturaSobre key={prueba.resultado.sobre_id} resultado={prueba.resultado} prefs={{ ...prefs, cine: true }}
+            evento={prueba.evento} forzar={prueba.forzar} onCerrar={() => setPrueba(null)} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: kiosco ? '16px 16px 90px' : '0 0 80px', animation: 'fadeIn 0.3s' }}>
@@ -104,14 +184,23 @@ export default function Sobres() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
-            {ORDEN_SOBRES.filter((t) => t !== 'wellness' || !estado.es_staff).map((t) => (
-              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t}
+            {ORDEN_SOBRES.filter((t) => seMuestra(t, estado)).map((t) => (
+              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t} alApuntar={() => precargarVideo(t, evento, escenaClub)}
                 alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
             ))}
           </div>
+          {(estado.eventos || []).length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
+              {estado.eventos.map((ev) => (
+                <SobreEvento key={ev.id} ev={ev} abriendo={abriendo === `evento:${ev.id}`} alAbrir={() => abrirEvento(ev)}
+                  alApuntar={() => precargarEvento(ev)} monedas={estado.puntos} />
+              ))}
+            </div>
+          )}
           <button onClick={() => setVerProbs((v) => !v)} style={{ ...btn, background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', marginBottom: 6 }}>
             {verProbs ? 'OCULTAR' : 'VER'} PROBABILIDADES
           </button>
+          <PreferenciasApertura prefs={prefs} cambiar={cambiarPref} />
           {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} />}
           {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} soloEspeciales />}
         </>
@@ -141,7 +230,7 @@ export default function Sobres() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '14px 10px', justifyItems: 'center' }}>
             {mostradas.map((c) => (
               <div key={c.catalogo_id} style={{ paddingBottom: 30 }}>
-                <CartaGiratoria carta={aCarta(c)} etiqueta={rarezaPorId[c.rareza]?.nombre} />
+                <CartaGiratoria carta={aCarta(c)} etiqueta={nombreDeCarta(c)} />
               </div>
             ))}
           </div>
@@ -159,12 +248,44 @@ export default function Sobres() {
         </div>
       )}
 
-      {resultado && <Apertura resultado={resultado} onCerrar={cerrarResultado} />}
+      {esGod && (
+        <PanelGod clubId={clubGod} estado={estado} alCambiar={cargar}
+          alProbar={(p) => { prepararAudio(prefs.sonido); setPrueba(p); }} />
+      )}
+
+      {resultado && <AperturaSobre key={resultado.sobre_id} resultado={resultado} prefs={prefs} evento={evento}
+        forzar={resultado.evento ? null : escenaClub} onCerrar={cerrarResultado} />}
+      {prueba && (
+        <AperturaSobre key={prueba.resultado.sobre_id} resultado={prueba.resultado} prefs={{ ...prefs, cine: true }}
+          evento={prueba.evento} forzar={prueba.forzar} onCerrar={() => setPrueba(null)} />
+      )}
     </div>
   );
 }
 
+/* Un evento se activa sólo a mano, desde la dirección (?evento=demo) y si
+   está cargado en EVENTOS: cambia la puesta en escena, nunca las cartas. */
+function eventoDeLaDireccion() {
+  if (typeof window === 'undefined') return null;
+  const id = new URLSearchParams(window.location.search).get('evento');
+  return id && Object.prototype.hasOwnProperty.call(EVENTOS, id) ? id : null;
+}
+
+/* Cuando alguien apunta a un sobre con cinemática (o lo toca), el navegador
+   empieza a bajar SU video (un solo formato, una sola vez): al abrirlo ya
+   está o falta poco. Los demás videos no se bajan. */
+function precargarVideo(tipo, evento, escena = null) {
+  const v = (escena && varianteDeEscena(escena)) || varianteDeApertura({ tipo, evento });
+  if (v.video) {
+    prepararVideo(v.video);
+    if (v.video.musica) cargarMusica(v.video.musica);
+  }
+}
+
 const notaDe = (tipo, e) => {
+  if ((e.suspendidos || []).includes(tipo)) return 'Suspendido por el club por ahora.';
+  if (tipo === 'premio') return `Ganado en el V-Draft. Tenés ${e.sobres_premio} para abrir.`;
+  if (tipo === 'premio_especial') return `Ganado en el V-Draft: 5 especiales. Tenés ${e.sobres_especiales} para abrir.`;
   if (tipo === 'wellness' && !e.disponibles?.wellness) return e.wellness_hecho ? 'Ya lo abriste hoy.' : 'Completá el wellness de hoy.';
   if (tipo === 'racha' && !e.disponibles?.racha) return `Llevás ${e.racha} de ${RACHA_PARA_PREMIO} días seguidos.`;
   if (tipo === 'puntos' && !e.disponibles?.puntos) return e.cartas_total === 0 ? 'No hay cartas.' : `Te faltan ${Math.max(0, COSTO_SOBRE_PUNTOS - e.puntos)} ${MONEDA}.`;
@@ -180,13 +301,15 @@ const notaDe = (tipo, e) => {
 const cartasDePorRareza = (coleccion) => Object.entries(coleccion?.por_rareza || {})
   .flatMap(([rareza, v]) => Array.from({ length: v.total }, () => ({ rareza })));
 
-function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas }) {
-  const mega = !!sobre.soloEspeciales;
+function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas, alApuntar }) {
+  const mega = !!sobre.soloEspeciales && !sobre.premio;
+  const dorado = mega;
+  const violeta = sobre.id === 'premio' || sobre.id === 'premio_especial';
   const avance = mega ? Math.min(100, ((monedas || 0) / sobre.costo) * 100) : null;
   return (
-    <div className={`bento-card${mega ? ' sb-mega' : ''}`} style={{ padding: 14, opacity: disponible || mega ? 1 : 0.6, border: disponible ? `1px solid ${mega ? '#fbbf24' : 'var(--accent)'}` : undefined }}>
-      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: mega ? '#fbbf24' : disponible ? 'var(--accent)' : 'var(--text)' }}>
-        {mega && '★ '}{sobre.nombre}
+    <div className={`bento-card${dorado ? ' sb-mega' : ''} sb-t-${sobre.id}`} style={{ padding: 14, opacity: disponible || mega ? 1 : 0.6, border: disponible ? `1px solid ${dorado ? '#fbbf24' : violeta ? '#c084fc' : 'var(--accent)'}` : undefined }}>
+      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: dorado ? '#fbbf24' : violeta ? '#c084fc' : disponible ? 'var(--accent)' : 'var(--text)' }}>
+        {(dorado || violeta) && '★ '}{sobre.nombre}
       </div>
       <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '4px 0 10px', minHeight: '2.4em', lineHeight: 1.4 }}>{nota || sobre.ayuda}</div>
       {mega && (
@@ -197,12 +320,43 @@ function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas }) {
           <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', marginTop: 4, fontFamily: MONO }}>{Math.min(monedas || 0, sobre.costo)} / {sobre.costo} {MONEDA}</div>
         </div>
       )}
-      <button disabled={!disponible || abriendo} onClick={alAbrir}
-        style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...(mega ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : null) }}>
-        {abriendo ? 'ABRIENDO…' : mega ? `ABRIR · ${sobre.cartas} ESPECIALES · ${sobre.costo} V-COINS` : `ABRIR · ${sobre.cartas} CARTAS`}
+      <button disabled={!disponible || abriendo} onClick={alAbrir} onPointerEnter={alApuntar} onFocus={alApuntar} onTouchStart={alApuntar}
+        style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...(dorado ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : violeta ? { background: 'linear-gradient(90deg, #7c3aed, #c084fc)', color: '#fff' } : null) }}>
+        {abriendo ? 'ABRIENDO…' : mega ? `ABRIR · ${sobre.cartas} ESPECIALES · ${sobre.costo} V-COINS`
+          : sobre.soloEspeciales ? `ABRIR · ${sobre.cartas} ESPECIALES` : `ABRIR · ${sobre.cartas} CARTAS`}
       </button>
     </div>
   );
+}
+
+/* El sobre de un evento: con los colores de su escena. */
+function SobreEvento({ ev, abriendo, alAbrir, alApuntar, monedas }) {
+  const col = ev.escena?.colores || {};
+  const luz = col.luz || '#fbbf24';
+  const agotado = ev.abiertos_hoy >= ev.por_dia;
+  const nota = agotado ? `Ya abriste ${ev.por_dia === 1 ? 'el de hoy' : `los ${ev.por_dia} de hoy`}. Volvé mañana.`
+    : ev.total_cartas === 0 ? 'El evento todavía no tiene cartas.'
+      : ev.costo > (monedas || 0) ? `Te faltan ${ev.costo - (monedas || 0)} ${MONEDA}.`
+        : `Evento: ${ev.total_cartas} cartas para juntar. ${ev.costo ? `${ev.costo} ${MONEDA}` : 'Gratis'} · ${ev.por_dia} por día${ev.hasta ? ` · hasta el ${String(ev.hasta).split('-').reverse().join('/')}` : ''}.`;
+  return (
+    <div className="bento-card" style={{ padding: 14, opacity: ev.disponible ? 1 : 0.6, border: `1px solid ${luz}`,
+      background: `linear-gradient(160deg, ${col.secundario || '#111'} 0%, var(--panel) 70%)` }}>
+      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: luz }}>★ {ev.nombre}</div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '4px 0 10px', minHeight: '2.4em', lineHeight: 1.4 }}>{nota}</div>
+      <button disabled={!ev.disponible || abriendo} onClick={alAbrir} onPointerEnter={alApuntar} onFocus={alApuntar} onTouchStart={alApuntar}
+        style={{ ...btn, width: '100%', opacity: ev.disponible ? 1 : 0.5, background: `linear-gradient(90deg, ${col.principal || luz}, ${luz})`, color: col.texto || '#fff' }}>
+        {abriendo ? 'ABRIENDO…' : `ABRIR · ${ev.cartas} CARTAS${ev.costo ? ` · ${ev.costo} V-COINS` : ''}`}
+      </button>
+    </div>
+  );
+}
+
+function precargarEvento(ev) {
+  const v = varianteDeEventoDb(ev);
+  if (v.video) {
+    prepararVideo(v.video);
+    if (v.video.musica) cargarMusica(v.video.musica);
+  }
 }
 
 function Dato({ rotulo: r, valor, extra }) {
@@ -239,106 +393,25 @@ function Probabilidades({ catalogo, soloEspeciales = false }) {
   );
 }
 
-/* LA APERTURA
-   1. el sobre tiembla cada vez más fuerte (suspenso),
-   2. se rompe con un destello,
-   3. caen papelitos y aparecen las cartas boca abajo,
-   4. se dan vuelta de a una.
-   Si en el sobre viene algo muy raro (oro o un premio), el temblor dura más y los
-   papelitos son dorados. */
-const MUY_RARAS = new Set(['oro', 'totw', 'potw', 'totm', 'potm', 'toty']);
-const COLORES_COMUN = ['#00ff88', '#ffffff', '#38bdf8', '#a7f3d0'];
-const COLORES_RARA = ['#fbbf24', '#fde68a', '#f59e0b', '#ffffff', '#c084fc', '#38bdf8'];
-const reducido = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-function Papelitos({ rara }) {
-  const papeles = useMemo(() => {
-    const colores = rara ? COLORES_RARA : COLORES_COMUN;
-    return Array.from({ length: rara ? 90 : 55 }, (_, i) => ({
-      i, left: Math.random() * 100, delay: Math.random() * 1.2, dur: 2.4 + Math.random() * 2,
-      dx: (Math.random() - 0.5) * 160, giro: 360 + Math.random() * 720, color: colores[i % colores.length],
-      ancho: 6 + Math.random() * 6,
-    }));
-  }, [rara]);
-  return papeles.map((p) => (
-    <i key={p.i} className="sb-papel" style={{
-      left: `${p.left}%`, background: p.color, width: p.ancho, animationDuration: `${p.dur}s`, animationDelay: `${p.delay}s`,
-      '--dx': `${p.dx}px`, '--giro': `${p.giro}deg`,
-    }} />
-  ));
-}
-
-function Apertura({ resultado, onCerrar }) {
-  const rara = resultado.cartas.some((c) => MUY_RARAS.has(c.rareza));
-  const sinMovimiento = reducido();
-  const [fase, setFase] = useState(sinMovimiento ? 'cartas' : 'tiembla');
-  const [dadas, setDadas] = useState({});
-  const todas = resultado.cartas.every((_, i) => dadas[i]);
-
-  useEffect(() => {
-    if (fase === 'tiembla') {
-      const t = setTimeout(() => setFase('abre'), rara ? 2700 : 1900);
-      return () => clearTimeout(t);
-    }
-    if (fase === 'abre') {
-      const t = setTimeout(() => setFase('cartas'), 650);
-      return () => clearTimeout(t);
-    }
-    return undefined;
-  }, [fase, rara]);
-
-  const nombreSobre = SOBRES[resultado.tipo]?.nombre || 'SOBRE';
-  const enCartas = fase === 'cartas';
-
+/* Las preferencias de la apertura: de quien mira, nunca cambian qué sale. */
+function PreferenciasApertura({ prefs, cambiar }) {
+  const opcion = (activo) => ({
+    padding: '5px 10px', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', borderRadius: 6, cursor: 'pointer',
+    border: `1px solid ${activo ? 'var(--accent)' : 'var(--border)'}`, color: activo ? 'var(--accent)' : 'var(--text-dim)',
+    background: activo ? 'rgba(0,255,136,.08)' : 'transparent',
+  });
   return (
-    <div className={`sb-escena sb-fase-${fase}${rara ? ' sb-rara' : ''}`}>
-      <div className="sb-flash" />
-      {(fase === 'abre' || enCartas) && !sinMovimiento && <Papelitos rara={rara} />}
-
-      {!enCartas && (
-        <>
-          <div className="sb-sobre" style={{ animationDuration: rara && fase === 'tiembla' ? '2.7s' : undefined }}>
-            <div className="sb-sobre-cuerpo" style={{ animationDuration: rara && fase === 'tiembla' ? '2.7s' : undefined }}>
-              <span className="sb-sobre-estrella">★</span>
-              <span className="sb-sobre-tipo">{nombreSobre}</span>
-              <span className="sb-sobre-marca">MYSQUAD</span>
-            </div>
-          </div>
-          <button onClick={() => setFase('cartas')} style={{ ...btn, background: 'transparent', color: '#9ca3af', border: '1px solid #374151', marginTop: 40 }}>SALTAR</button>
-        </>
-      )}
-
-      {enCartas && (
-        <>
-          <div style={{ color: '#fff', fontWeight: 900, letterSpacing: '.1em', marginBottom: 6 }}>{nombreSobre}</div>
-          <div style={{ color: '#9ca3af', fontSize: 12, marginBottom: 22 }}>{todas ? 'Listo.' : 'Tocá cada carta para darla vuelta. Después, tocala para ver la foto.'}</div>
-          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 30 }}>
-            {resultado.cartas.map((c, i) => (
-              <div key={c.catalogo_id} className="sb-entra" style={{ width: 122, textAlign: 'center', animationDelay: `${i * 0.12}s` }}>
-                {dadas[i] ? (
-                  <>
-                    <div className={`sb-gira${MUY_RARAS.has(c.rareza) ? ' sb-rara-carta' : ''}`}>
-                      <CartaGiratoria carta={aCarta(c)} etiqueta={rarezaPorId[c.rareza]?.nombre} />
-                    </div>
-                    <div style={{ marginTop: 30, fontSize: 11, fontWeight: 900, letterSpacing: '.06em', color: c.nueva ? '#00ff88' : '#fbbf24' }}>
-                      {c.nueva ? 'NUEVA' : <>REPETIDA<br /><span style={{ whiteSpace: 'nowrap' }}>+{c.puntos} V-COINS</span></>}
-                    </div>
-                  </>
-                ) : (
-                  <button className="sb-reverso" onClick={() => setDadas((d) => ({ ...d, [i]: true }))} aria-label="Dar vuelta la carta">?</button>
-                )}
-              </div>
-            ))}
-          </div>
-          {todas && resultado.puntos_ganados > 0 && (
-            <div style={{ color: '#fbbf24', fontWeight: 900, marginBottom: 14 }}>+{resultado.puntos_ganados} {MONEDA} por repetidas</div>
-          )}
-          <div style={{ display: 'flex', gap: 10 }}>
-            {!todas && <button onClick={() => setDadas(Object.fromEntries(resultado.cartas.map((_, i) => [i, true])))} style={{ ...btn, background: 'transparent', color: '#fff', border: '1px solid #4b5563' }}>DAR VUELTA TODAS</button>}
-            {todas && <button onClick={onCerrar} style={btn}>LISTO</button>}
-          </div>
-        </>
-      )}
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '6px 0 8px' }} aria-label="Cómo se abren los sobres">
+      <span style={{ ...rotulo, marginBottom: 0, marginRight: 4 }}>APERTURA</span>
+      <button style={opcion(prefs.cine !== false)} onClick={() => cambiar('cine', true)} aria-pressed={prefs.cine !== false}>DE CINE</button>
+      <button style={opcion(prefs.cine === false)} onClick={() => cambiar('cine', false)} aria-pressed={prefs.cine === false}>SIMPLE</button>
+      <span style={{ width: 8 }} />
+      <button style={opcion(prefs.velocidad !== 'rapida')} onClick={() => cambiar('velocidad', 'normal')} aria-pressed={prefs.velocidad !== 'rapida'}>NORMAL</button>
+      <button style={opcion(prefs.velocidad === 'rapida')} onClick={() => cambiar('velocidad', 'rapida')} aria-pressed={prefs.velocidad === 'rapida'}>RÁPIDA</button>
+      <span style={{ width: 8 }} />
+      <button style={opcion(prefs.sonido)} onClick={() => cambiar('sonido', !prefs.sonido)} aria-pressed={prefs.sonido}>
+        {prefs.sonido ? 'SONIDO: SÍ' : 'SONIDO: NO'}
+      </button>
     </div>
   );
 }

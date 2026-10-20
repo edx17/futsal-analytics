@@ -1,0 +1,439 @@
+{
+  "_nota": "Perfiles de las cinemáticas del pabellón (escena_pabellon.py). V-Draft NO está acá: sigue en variantes.json + escena_pasillo.py, aprobada y sin cambios. Colores en RGB lineal 0-1. 'guion' elige la puesta en escena (cámara + coreografía de luces); los demás campos la ajustan. Para un evento nuevo: copiar 'evento_demo', cambiar nombre, colores, decoración y gráficas, y renderizar con --perfil <id>.",
+  "elite": {
+    "guion": "elite",
+    "nombre": "MEGA SOBRE ESPECIAL",
+    "sobre_titulo": [
+      "MEGA",
+      "SOBRE"
+    ],
+    "sobre_subtitulo": "ESPECIAL",
+    "sobre_color": [
+      0.02,
+      0.09,
+      0.45
+    ],
+    "acento": [
+      0.1,
+      0.42,
+      1.0
+    ],
+    "luz_techo": [
+      0.86,
+      0.93,
+      1.0
+    ],
+    "luz_pabellon": [
+      0.88,
+      0.94,
+      1.0
+    ],
+    "luz_pabellon_w": 900,
+    "haz": [
+      0.45,
+      0.7,
+      1.0
+    ],
+    "destello": [
+      0.85,
+      0.93,
+      1.0
+    ],
+    "piso_margen": [
+      0.02,
+      0.05,
+      0.16
+    ],
+    "asientos": [
+      0.03,
+      0.06,
+      0.16
+    ],
+    "cuadros": 210,
+    "muestras": 16,
+    "decoracion": [],
+    "graficas": [
+      "MYSQUAD",
+      "ÉLITE",
+      "FUTSAL",
+      "MEGA"
+    ]
+  },
+  "epico": {
+    "guion": "epico",
+    "nombre": "SOBRE DE LA SEMANA",
+    "sobre_titulo": [
+      "SOBRE DE",
+      "LA SEMANA"
+    ],
+    "sobre_subtitulo": "7 DÍAS",
+    "sobre_color": [
+      0.2,
+      0.03,
+      0.42
+    ],
+    "acento": [
+      0.6,
+      0.12,
+      1.0
+    ],
+    "luz_techo": [
+      0.94,
+      0.88,
+      1.0
+    ],
+    "luz_pabellon": [
+      0.9,
+      0.82,
+      1.0
+    ],
+    "luz_pabellon_w": 420,
+    "haz": [
+      0.72,
+      0.28,
+      1.0
+    ],
+    "destello": [
+      0.95,
+      0.88,
+      1.0
+    ],
+    "piso_margen": [
+      0.06,
+      0.02,
+      0.1
+    ],
+    "asientos": [
+      0.07,
+      0.03,
+      0.12
+    ],
+    "cuadros": 210,
+    "muestras": 16,
+    "decoracion": [
+      "portal"
+    ],
+    "graficas": [
+      "MYSQUAD",
+      "ÉPICO",
+      "FUTSAL",
+      "7"
+    ]
+  },
+  "leyenda": {
+    "guion": "leyenda",
+    "nombre": "MYSQUAD",
+    "sobre_titulo": null,
+    "sobre_subtitulo": null,
+    "sobre_color": [
+      0.32,
+      0.17,
+      0.01
+    ],
+    "acento": [
+      1.0,
+      0.6,
+      0.1
+    ],
+    "luz_techo": [
+      1.0,
+      0.86,
+      0.62
+    ],
+    "luz_pabellon": [
+      1.0,
+      0.84,
+      0.6
+    ],
+    "luz_pabellon_w": 650,
+    "haz": [
+      1.0,
+      0.72,
+      0.28
+    ],
+    "destello": [
+      1.0,
+      0.92,
+      0.74
+    ],
+    "piso_margen": [
+      0.04,
+      0.03,
+      0.02
+    ],
+    "asientos": [
+      0.05,
+      0.04,
+      0.03
+    ],
+    "cuadros": 240,
+    "muestras": 16,
+    "decoracion": [],
+    "graficas": [
+      "MYSQUAD",
+      "LEYENDA",
+      "FUTSAL",
+      "10"
+    ]
+  },
+  "evento_demo": {
+    "guion": "evento",
+    "nombre": "EVENTO · PERFIL DE DEMOSTRACIÓN",
+    "sobre_titulo": [
+      "EDICIÓN",
+      "ESPECIAL"
+    ],
+    "sobre_subtitulo": "DEMO",
+    "sobre_color": [
+      0.32,
+      0.02,
+      0.02
+    ],
+    "acento": [
+      1.0,
+      0.36,
+      0.04
+    ],
+    "luz_techo": [
+      1.0,
+      0.82,
+      0.66
+    ],
+    "luz_pabellon": [
+      1.0,
+      0.78,
+      0.58
+    ],
+    "luz_pabellon_w": 560,
+    "haz": [
+      1.0,
+      0.42,
+      0.1
+    ],
+    "destello": [
+      1.0,
+      0.86,
+      0.7
+    ],
+    "piso_margen": [
+      0.12,
+      0.015,
+      0.01
+    ],
+    "asientos": [
+      0.14,
+      0.02,
+      0.015
+    ],
+    "cuadros": 210,
+    "muestras": 16,
+    "decoracion": [
+      "banderas",
+      "logo_centro"
+    ],
+    "graficas": [
+      "DEMO",
+      "EDICIÓN ESPECIAL",
+      "MYSQUAD",
+      "FUTSAL"
+    ],
+    "texto_banderas": [
+      "EDICIÓN",
+      "ESPECIAL",
+      "· DEMO ·"
+    ],
+    "texto_logo": "DEMO"
+  },
+  "excepcional": {
+    "guion": "excepcional",
+    "nombre": "MYSQUAD",
+    "sobre_titulo": null,
+    "sobre_subtitulo": null,
+    "sobre_color": [
+      0.38,
+      0.22,
+      0.01
+    ],
+    "acento": [
+      1.0,
+      0.74,
+      0.2
+    ],
+    "luz_techo": [
+      1.0,
+      0.9,
+      0.7
+    ],
+    "luz_pabellon": [
+      1.0,
+      0.92,
+      0.78
+    ],
+    "luz_pabellon_w": 800,
+    "haz": [
+      1.0,
+      0.8,
+      0.36
+    ],
+    "destello": [
+      1.0,
+      0.96,
+      0.86
+    ],
+    "piso_margen": [
+      0.03,
+      0.025,
+      0.015
+    ],
+    "asientos": [
+      0.04,
+      0.035,
+      0.025
+    ],
+    "cuadros": 255,
+    "muestras": 16,
+    "decoracion": [],
+    "graficas": [
+      "MYSQUAD",
+      "FUTSAL",
+      "EXCEPCIONAL",
+      "10"
+    ]
+  },
+  "evento_goleadores": {
+    "guion": "evento",
+    "nombre": "EVENTO GOLEADORES",
+    "sobre_titulo": [
+      "EVENTO",
+      "GOLEADORES"
+    ],
+    "sobre_subtitulo": "1ª RUEDA",
+    "sobre_color": [
+      0.22,
+      0.01,
+      0.01
+    ],
+    "acento": [
+      1.0,
+      0.62,
+      0.12
+    ],
+    "luz_techo": [
+      1.0,
+      0.86,
+      0.72
+    ],
+    "luz_pabellon": [
+      1.0,
+      0.8,
+      0.66
+    ],
+    "luz_pabellon_w": 560,
+    "haz": [
+      1.0,
+      0.12,
+      0.08
+    ],
+    "destello": [
+      1.0,
+      0.86,
+      0.6
+    ],
+    "piso_margen": [
+      0.08,
+      0.01,
+      0.01
+    ],
+    "asientos": [
+      0.09,
+      0.012,
+      0.012
+    ],
+    "cuadros": 210,
+    "muestras": 16,
+    "decoracion": [
+      "banderas",
+      "logo_centro"
+    ],
+    "graficas": [
+      "GOLEADORES",
+      "SERIE TOP 10",
+      "MYSQUAD",
+      "FUTSAL"
+    ],
+    "texto_banderas": [
+      "GOLEADORES",
+      "TOP 10",
+      "1ª RUEDA"
+    ],
+    "texto_logo": "GOL"
+  },
+  "evento_recuperadores": {
+    "guion": "evento",
+    "nombre": "EVENTO RECUPERADORES",
+    "sobre_titulo": [
+      "RECUPERA-",
+      "DORES"
+    ],
+    "sobre_subtitulo": "1ª RUEDA",
+    "sobre_color": [
+      0.01,
+      0.12,
+      0.11
+    ],
+    "acento": [
+      0.75,
+      0.8,
+      0.85
+    ],
+    "luz_techo": [
+      0.85,
+      0.95,
+      0.95
+    ],
+    "luz_pabellon": [
+      0.82,
+      0.95,
+      0.94
+    ],
+    "luz_pabellon_w": 560,
+    "haz": [
+      0.08,
+      0.8,
+      0.7
+    ],
+    "destello": [
+      0.85,
+      0.98,
+      0.96
+    ],
+    "piso_margen": [
+      0.01,
+      0.05,
+      0.05
+    ],
+    "asientos": [
+      0.015,
+      0.06,
+      0.06
+    ],
+    "cuadros": 210,
+    "muestras": 16,
+    "decoracion": [
+      "banderas",
+      "logo_centro"
+    ],
+    "graficas": [
+      "RECUPERADORES",
+      "SERIE TOP 10",
+      "MYSQUAD",
+      "FUTSAL"
+    ],
+    "texto_banderas": [
+      "RECUPERADORES",
+      "TOP 10",
+      "1ª RUEDA"
+    ],
+    "texto_logo": "REC"
+  }
+}

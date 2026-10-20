@@ -1,4 +1,5 @@
 import { tierDe } from './quinteto';
+import { ESPECIALES as ESPECIALES_CARTAS } from './especialesCartas';
 
 /* SOBRES DE CARTAS
  *
@@ -45,14 +46,33 @@ export const SOBRES = {
   puntos: { id: 'puntos', nombre: 'SOBRE POR V-COINS', cartas: 3, ayuda: `Se paga con ${COSTO_SOBRE_PUNTOS} ${MONEDA} de cartas repetidas.` },
   mega: { id: 'mega', nombre: 'MEGA SOBRE ESPECIAL', cartas: 10, costo: COSTO_MEGA, soloEspeciales: true,
     ayuda: `10 cartas, todas especiales (TOTW, POTW, TOTM, POTM, TOTY). Cuesta ${COSTO_MEGA} ${MONEDA}.` },
+  // Los que se ganan en el V-Draft: quedan guardados hasta que los abrís.
+  premio: { id: 'premio', nombre: 'SOBRE DE CAMPEÓN', cartas: 3, ayuda: 'Lo ganaste en el V-Draft.' },
+  premio_especial: { id: 'premio_especial', nombre: 'SOBRE ESPECIAL V-DRAFT', cartas: 5, soloEspeciales: true, premio: true,
+    ayuda: '5 cartas especiales. Lo ganaste en el V-Draft.' },
 };
 
 export const rarezaPorId = Object.fromEntries(RAREZAS.map((r) => [r.id, r]));
 
-/** La rareza de una carta base según su media; las de premio, la de su tipo. */
-export const rarezaDeCarta = (carta) => (carta.premio ? carta.premio.toLowerCase() : tierDe(carta.ovr));
+/** Cómo se nombra una carta del sobre: su rareza, o el premio especial que es ('GOLEADORES · 3º'). */
+export function nombreDeCarta(c = {}) {
+  const tipo = c.tipo || c.carta?.premio;
+  const esp = ESPECIALES_CARTAS[tipo];
+  if (!esp) return rarezaPorId[c.rareza]?.nombre || '';
+  const puesto = esp.serie ? c.carta?.especial?.puesto : null;
+  return puesto ? `${esp.sigla} · ${puesto}º` : esp.sigla;
+}
 
-const CAMPOS_CARTA = ['id', 'nombre', 'apellido', 'dorsal', 'foto', 'categoria', 'rol', 'ovr', 'tier', 'atributos', 'stats', 'premio', 'edicion', 'descripcion'];
+/** La rareza de una carta base según su media; las de premio, la de su tipo. */
+export const rarezaDeCarta = (carta) => {
+  if (!carta.premio) return tierDe(carta.ovr);
+  // Las especiales nuevas caen en una rareza que ya existe (ver especialesCartas.js).
+  return ESPECIALES_CARTAS[carta.premio]?.rareza || carta.premio.toLowerCase();
+};
+
+const CAMPOS_CARTA = ['id', 'nombre', 'apellido', 'dorsal', 'foto', 'categoria', 'rol', 'ovr', 'tier', 'atributos', 'stats', 'premio', 'edicion', 'descripcion',
+  // las especiales: lo que dibuja CartaEspecial
+  'pj', 'nota', 'goles', 'asistencias', 'rec', 'mvp', 'titulo', 'pie', 'especial'];
 
 /**
  * Las filas del catálogo a partir de las cartas de MySquad.

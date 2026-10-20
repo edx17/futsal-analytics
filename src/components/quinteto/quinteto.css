@@ -152,3 +152,14 @@
 .mq-dorso::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 3px var(--aro, #e7c766); }
 .mq-oro { --aro: #e7c766; } .mq-plata { --aro: #d1d5db; } .mq-bronce { --aro: #d49a66; } .mq-figura { --aro: #00ff6a; }
 .mq-p-totw { --aro: #7dd3fc; } .mq-p-potw { --aro: #6f95ff; } .mq-p-totm { --aro: #c39bff; } .mq-p-potm { --aro: #ff9bff; } .mq-p-toty { --aro: #e7c766; }
+
+/* ══ CARTAS ESPECIALES ══
+   El dibujo es CartaEspecial (svg + foto); acá sólo el lugar y el brillo de cada familia. */
+.mq-especial { display: grid; place-items: center; }
+.mq-especial .mq-badge, .mq-especial .mq-chip { z-index: 3; }
+.mq-p-golm { --glow: rgba(255,122,26,.9); --aro: #f0a46a; }
+.mq-p-asim, .mq-p-asir { --glow: rgba(59,130,246,.95); --aro: #c3ccd8; }
+.mq-p-prem, .mq-p-prer { --glow: rgba(16,185,129,.85); --aro: #94a3b8; }
+.mq-p-golr, .mq-p-sgol { --glow: rgba(225,29,42,.9); --aro: #d4a83a; }
+.mq-p-mvpr { --glow: rgba(231,199,102,.95); --aro: #e7c766; }
+.mq-p-srec { --glow: rgba(20,184,166,.9); --aro: #aab4be; }

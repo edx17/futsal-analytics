@@ -29,6 +29,7 @@ async function llamar(fn, params = {}) {
 
 export const estadoSobres = () => llamar('sobres_estado', { p_token: token() });
 export const abrirSobre = (tipo) => llamar('sobres_abrir', { p_tipo: tipo, p_token: token() });
+export const abrirSobreEvento = (id) => llamar('sobres_abrir_evento', { p_evento: id, p_token: token() });
 export const coleccionSobres = () => llamar('sobres_coleccion', { p_token: token() });
 export const reiniciarPruebaSobres = () => llamar('sobres_reiniciar_prueba');
 
