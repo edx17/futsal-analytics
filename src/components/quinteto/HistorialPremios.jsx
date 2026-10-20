@@ -4,6 +4,9 @@ import { ModalPlacaPremio } from '../../placas/PlacaPremio';
 import { listarHistorial, quitarRegistro } from '../../utils/cartasDestacadas';
 import { datosDePlaca, descripcionRegistro, rankingDestacados, PREMIOS } from '../../analytics/premiosCartas';
 import { TODOS_LOS_TIPOS } from '../../analytics/premios';
+import { conFotosYAjustes } from '../../analytics/god';
+import { listarFotos } from '../../utils/cartasFotos';
+import { listarAjustes } from '../../utils/god';
 
 /* HISTORIAL DE PREMIOS
  *
@@ -25,7 +28,11 @@ export default function HistorialPremios({ clubId, club, esMovil }) {
   const cargar = useCallback(async () => {
     setCargando(true); setError(null);
     try {
-      setRegistros(await listarHistorial(clubId));
+      // La foto especial y la media corregida se suman a lo guardado; si no se pueden leer, queda lo guardado.
+      const [lista, fotos, ajustes] = await Promise.all([
+        listarHistorial(clubId), listarFotos(clubId), listarAjustes(clubId).catch(() => new Map()),
+      ]);
+      setRegistros(lista.map((r) => conFotosYAjustes(r, fotos, ajustes)));
     } catch (err) {
       console.error('Historial de premios:', err);
       setError(err?.message || 'No se pudo leer el historial.');

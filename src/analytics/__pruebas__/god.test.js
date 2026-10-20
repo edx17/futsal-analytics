@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resultadoDePrueba, aplicarAjuste, aplicarAjustes, mediaDudosa, pendientesDePublicar } from '../god';
+import { resultadoDePrueba, aplicarAjuste, aplicarAjustes, mediaDudosa, pendientesDePublicar, conFotosYAjustes } from '../god';
 import { SOBRES, rarezaDeCarta, nombreDeCarta, catalogoDeCartas, ESPECIALES as RAREZAS_ESPECIALES } from '../sobres';
 import { varianteForzada, VARIANTES } from '../aperturas';
 import { ESPECIALES } from '../especialesCartas';
@@ -89,5 +89,20 @@ describe('god: premios guardados sin publicar', () => {
     expect(p.map((f) => f.clave)).toEqual(['SGOL|R1:t|1']);
     expect(p[0]).toMatchObject({ tipo: 'SGOL', rareza: 'totw' });
     expect(p[0].carta).toMatchObject({ foto: 'https://f/1.png', atributos: [['TIR', 80]], especial: { puesto: 1 } });
+  });
+});
+
+describe('conFotosYAjustes', () => {
+  const registro = { tipo: 'SGOL', periodo: 'R1:t', cartas: [{ id: '1', ovr: 80, foto: 'vieja.png' }, { id: '2', ovr: 67, foto: 'otra.png' }] };
+
+  it('suma la foto especial y la media corregida de cada carta del historial', () => {
+    const r = conFotosYAjustes(registro, new Map([['SGOL|R1:t|1', 'nueva.png']]), new Map([['SGOL|R1:t|1', { ovr: 98 }], ['SGOL|R1:t|2', { ovr: 95 }]]));
+    expect(r.cartas[0]).toMatchObject({ foto: 'nueva.png', ovr: 98, ovrCalculada: 80, ovrAjustada: true });
+    expect(r.cartas[1]).toMatchObject({ foto: 'otra.png', ovr: 95 });
+    expect(registro.cartas[0].ovr).toBe(80);
+  });
+
+  it('sin fotos ni ajustes devuelve el mismo registro', () => {
+    expect(conFotosYAjustes(registro)).toBe(registro);
   });
 });

@@ -9,10 +9,12 @@
  *                      todavía no están en el catálogo de los sobres.
  *   mediaDudosa        avisa cuando la media no la sostienen los datos de la
  *                      propia carta (un 99 con un solo partido, por ejemplo).
+ *   conFotosYAjustes   un premio del historial con la foto especial y la media
+ *                      corregida que tiene hoy cada carta (para verla y exportarla).
  */
 
 import { SOBRES, sortearSobre, catalogoDeCartas } from './sobres';
-import { cartasDeHistorial } from './premiosCartas';
+import { cartasDeHistorial, claveCarta } from './premiosCartas';
 
 /** Un sobre de prueba con cartas reales del catálogo activo. No toca la base. */
 export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = new Map(), azar = Math.random, n = Date.now(), evento = null }) {
@@ -32,6 +34,20 @@ export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = ne
       carta: aplicarAjuste(k.carta || {}, ajustes.get(k.clave)),
     })),
   };
+}
+
+/**
+ * Un registro del historial guarda las cartas como estaban ese día; la foto
+ * especial y la media corregida (Especiales, Modo GOD) se cambian después, con
+ * la clave de cada carta. Esto las suma para mostrarlo y para la placa.
+ */
+export function conFotosYAjustes(registro, fotos = new Map(), ajustes = new Map()) {
+  if (!registro || (!fotos.size && !ajustes.size)) return registro;
+  const cartas = (registro.cartas || []).map((c) => {
+    const clave = claveCarta(registro.tipo, registro.periodo, c.id);
+    return aplicarAjuste({ ...c, foto: fotos.get(clave) || c.foto }, ajustes.get(clave));
+  });
+  return { ...registro, cartas };
 }
 
 /** Una carta con su media ajustada (si hay ajuste). */

@@ -55,6 +55,14 @@ export const VIDEOS = {
     sonidos: [[0, 'latido', 2], [2.13, 'golpeSuave', 0.5], [3.13, 'golpe', 0.6], [3.93, 'golpe', 0.6], [4.6, 'golpe', 0.6],
       [5.33, 'solemne', 1.2], [6.53, 'golpeFuerte', 1], [7.53, 'brillo', 0.5]],
   },
+  /* Los eventos (guion 'evento'): pasillo, pabellón vestido y órbita. */
+  evento_goleadores: {
+    fuentes: [{ src: '/cine/evento_goleadores.webm', tipo: 'video/webm' }, { src: '/cine/evento_goleadores.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/evento_goleadores.jpg',
+    duracion: 7,
+    musica: '/cine/musica/evento_goleadores.m4a',
+    sonidos: [[0, 'carga', 1.5], [1.6, 'golpeSuave', 0.5], [3.07, 'pabellon', 3], [6.2, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
+  },
 };
 
 /* ── tiempos (ms) ──────────────────────────────────────────────────────────── */
