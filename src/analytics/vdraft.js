@@ -31,16 +31,21 @@ export const RONDAS = ['CUARTOS DE FINAL', 'SEMIFINAL', 'FINAL', 'CAMPEÓN DE CA
 
 export const premioPorVictorias = (v) => PREMIOS.find((p) => p.victorias === Math.min(4, v)) || { victorias: 0, vcoins: 0, sobre: null };
 
-/** Lo que pide el draft ahora mismo, para el título de la pantalla. */
+/** Lo que pide el draft ahora mismo, para el título de la pantalla.
+ *  Igual que la base: capitán especial, arquero (2 comunes y 2 especiales),
+ *  lugares de campo con cartas comunes y el último, "comodín", con 1 especial. */
 export function pasoDelDraft(partida) {
   if (!partida || partida.estado !== 'draft') return null;
   if (partida.paso === 'capitan') return { titulo: 'ELEGÍ TU CAPITÁN', ayuda: 'Una de estas cartas especiales. Va al lugar de su puesto.' };
   if (partida.paso === 'banco') {
-    return { titulo: `SUPLENTE ${(partida.banco?.length || 0) + 1} DE 2`, ayuda: 'Entran entre partido y partido si cambiás.' };
+    return { titulo: `SUPLENTE ${(partida.banco?.length || 0) + 1} DE 2`, ayuda: 'Cartas comunes. Entran entre partido y partido si cambiás.' };
   }
   const roles = partida.lugares?.[partida.lugar_actual]?.roles || [];
   const vacios = (partida.equipo || []).filter((c) => !c).length;
-  return { titulo: `ELEGÍ ${roles.join(' / ')}`, ayuda: `Te ${vacios === 1 ? 'falta 1 lugar' : `faltan ${vacios} lugares`} en la cancha.` };
+  const faltan = `Te ${vacios === 1 ? 'falta 1 lugar' : `faltan ${vacios} lugares`} en la cancha.`;
+  if (partida.lugar_actual === 0) return { titulo: 'ELEGÍ TU ARQUERO', ayuda: `Hay comunes y especiales. ${faltan}` };
+  if (vacios === 1) return { titulo: `COMODÍN · ${roles.join(' / ')}`, ayuda: 'El último lugar: una de las 4 cartas es especial.' };
+  return { titulo: `ELEGÍ ${roles.join(' / ')}`, ayuda: `Cartas comunes (bronce, plata u oro). ${faltan}` };
 }
 
 /**

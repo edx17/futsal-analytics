@@ -29,15 +29,15 @@ export default function CanchaPlana({ pelota, gol, children }) {
     <svg className="vd-plana" viewBox={`${-M} ${-M} ${L + 2 * M} ${A + 2 * M}`} role="img" aria-label="Cancha de futsal">
       <defs>
         <pattern id="vd-franjas" width="8" height={A} patternUnits="userSpaceOnUse">
-          <rect width="4" height={A} fill="#14532d" />
-          <rect x="4" width="4" height={A} fill="#166534" />
+          <rect width="4" height={A} fill="#1f4675" />
+          <rect x="4" width="4" height={A} fill="#224d80" />
         </pattern>
         <radialGradient id="vd-luz" cx="50%" cy="40%" r="70%">
           <stop offset="0" stopColor="rgba(255,255,255,.10)" />
           <stop offset="1" stopColor="rgba(0,0,0,.25)" />
         </radialGradient>
       </defs>
-      <rect x={-M} y={-M} width={L + 2 * M} height={A + 2 * M} rx="0.6" fill="#0b3b20" />
+      <rect x={-M} y={-M} width={L + 2 * M} height={A + 2 * M} rx="0.6" fill="#132c4a" />
       <rect x="0" y="0" width={L} height={A} fill="url(#vd-franjas)" />
       <rect x="0" y="0" width={L} height={A} fill="url(#vd-luz)" />
 

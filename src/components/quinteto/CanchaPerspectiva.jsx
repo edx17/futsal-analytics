@@ -13,12 +13,14 @@ import { etiquetaLugar, enSuPuesto } from '../../analytics/quinteto';
 
 const COLOR_LINEA = { verde: '#00ff88', amarilla: '#fbbf24', roja: '#ef4444' };
 const ALTO_TOTAL = 640; // 610 de cancha + aire abajo para el chip del arquero
+/* Colores del piso. `tema` permite otro (el V-Draft usa azul pista). */
+const PISO = { pasto: '#2f3a35', franja: 'rgba(255,255,255,.035)' };
 
 /* `arrastre`: lo que está pasando con el arrastre (useArrastre), para marcar
    el lugar de destino y apagar la carta que se está moviendo.
    `onEmpezarArrastre(evento, lugar)`: cada carta de la cancha se puede arrastrar. */
 export default function CanchaPerspectiva({
-  formacion, alineacion = [], lineas = [], seleccionado = null, onElegir, arrastre = null, onEmpezarArrastre,
+  formacion, alineacion = [], lineas = [], seleccionado = null, onElegir, arrastre = null, onEmpezarArrastre, tema = PISO,
 }) {
   const ref = useRef(null);
   const [escala, setEscala] = useState(1);
@@ -46,8 +48,8 @@ export default function CanchaPerspectiva({
   return (
     <div className="mq-cancha" ref={ref}>
       <svg viewBox={`0 0 ${LIENZO.ancho} ${LIENZO.alto}`} preserveAspectRatio="none">
-        <polygon points={dibujo.pasto} fill="#2f3a35" />
-        {dibujo.franjas.map((f, i) => <polygon key={i} points={f} fill="rgba(255,255,255,.035)" />)}
+        <polygon points={dibujo.pasto} fill={tema.pasto} />
+        {dibujo.franjas.map((f, i) => <polygon key={i} points={f} fill={tema.franja} />)}
         {dibujo.lineas.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(255,255,255,.3)" strokeWidth={i === 0 ? 2.5 : 2} strokeLinejoin="round" />)}
         {dibujo.arcos.map((d, i) => <path key={i} d={d} fill="none" stroke="rgba(255,255,255,.5)" strokeWidth={2.5} />)}
         {dibujo.puntos.map((p, i) => <ellipse key={i} cx={p.x} cy={p.y} rx={3 * p.esc} ry={2 * p.esc} fill="rgba(255,255,255,.45)" />)}

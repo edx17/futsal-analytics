@@ -37,7 +37,9 @@ describe('V-Draft: premios y textos', () => {
   it('dice qué toca elegir', () => {
     const base = { estado: 'draft', lugares: LUGARES, equipo: [{}, null, null, {}, {}], banco: [] };
     expect(pasoDelDraft({ ...base, paso: 'capitan' }).titulo).toBe('ELEGÍ TU CAPITÁN');
-    expect(pasoDelDraft({ ...base, paso: 'lugar', lugar_actual: 1 })).toMatchObject({ titulo: 'ELEGÍ CIE', ayuda: 'Te faltan 2 lugares en la cancha.' });
+    expect(pasoDelDraft({ ...base, paso: 'lugar', lugar_actual: 1 })).toMatchObject({ titulo: 'ELEGÍ CIE', ayuda: 'Cartas comunes (bronce, plata u oro). Te faltan 2 lugares en la cancha.' });
+    expect(pasoDelDraft({ ...base, equipo: [null, {}, {}, {}, {}], paso: 'lugar', lugar_actual: 0 }).titulo).toBe('ELEGÍ TU ARQUERO');
+    expect(pasoDelDraft({ ...base, equipo: [{}, {}, {}, null, {}], paso: 'lugar', lugar_actual: 3 }).titulo).toBe('COMODÍN · ALA');
     expect(pasoDelDraft({ ...base, paso: 'banco', banco: [{}] }).titulo).toBe('SUPLENTE 2 DE 2');
     expect(pasoDelDraft({ estado: 'torneo' })).toBeNull();
   });

@@ -5,9 +5,12 @@
 --  liga, de la D a la A:
 --    1. Formación (2-2, 1-2-1, 3-1, 4-0).
 --    2. Capitán: 1 de 5 cartas especiales.
---    3. Cada lugar vacío: 1 de 4 cartas de ese puesto.
---    4. Banco: 2 suplentes, 1 de 4 cada uno.
---    5. Torneo: cuartos vs Primera D, semis vs C, final vs B y "campeón de
+--    3. Arquero: 1 de 4 (2 comunes y 2 especiales, si hay).
+--    4. Los lugares de campo: 1 de 4 cartas comunes (bronce, plata, oro) de su
+--       puesto. Sólo el último lugar ("comodín") trae 1 especial entre las 4.
+--    5. Banco: 2 suplentes comunes, 1 de 4 cada uno.
+--    Así no se arma siempre un equipo de puros especiales.
+--    6. Torneo: cuartos vs Primera D, semis vs C, final vs B y "campeón de
 --       campeones" vs A. La fuerza del rival sale de su división y de cómo le
 --       va en la tabla (liga_partidos). Perdés y se termina.
 --
@@ -291,9 +294,10 @@ returns text[] language sql immutable as $$
 $$;
 
 /* n cartas al azar, de jugadores distintos.
-   p_roles null = cualquier puesto; p_campo = sin arqueros. */
+   p_roles null = cualquier puesto; p_campo = sin arqueros.
+   p_tipo: 'base' (bronce, plata, oro), 'especial' o 'todas'. */
 create or replace function public._vdraft_oferta(p_club uuid, p_n int, p_roles text[], p_excluir text[],
-                                                p_especiales boolean, p_campo boolean)
+                                                p_tipo text, p_campo boolean)
 returns jsonb language sql volatile security definer set search_path = public as $$
   select coalesce(jsonb_agg(c), '[]'::jsonb) from (
     select c from (
@@ -302,46 +306,88 @@ returns jsonb language sql volatile security definer set search_path = public as
        where k.club_id = p_club
          and (p_roles is null or k.carta ->> 'rol' = any (p_roles))
          and not (k.jugador_id = any (coalesce(p_excluir, '{}')))
-         and (not p_especiales or k.rareza in ('totw', 'potw', 'totm', 'potm', 'toty'))
+         and (p_tipo = 'todas'
+              or (p_tipo = 'especial' and k.rareza in ('totw', 'potw', 'totm', 'potm', 'toty'))
+              or (p_tipo = 'base' and k.rareza in ('bronce', 'plata', 'oro')))
          and (not p_campo or coalesce(k.carta ->> 'rol', '') <> 'ARQ')
        order by k.jugador_id, random()
-    ) d order by random() limit p_n
+    ) d order by random() limit greatest(p_n, 0)
   ) x
 $$;
 
--- La oferta para un lugar: primero de su puesto; si no alcanza, de cualquier
--- puesto de campo (o cualquiera, para el arco).
+-- Junta ofertas sin repetir jugador, hasta n cartas, y las mezcla.
+create or replace function public._vdraft_sumar(p_a jsonb, p_b jsonb, p_n int)
+returns jsonb language sql volatile as $$
+  select coalesce(jsonb_agg(c order by random()), '[]'::jsonb) from (
+    select c from (
+      select distinct on (c ->> 'jugador_id') c, o
+        from (select c, 1 as o from jsonb_array_elements(p_a) c
+              union all select c, 2 from jsonb_array_elements(p_b) c) t
+       order by c ->> 'jugador_id', o
+    ) u order by o limit p_n
+  ) x
+$$;
+
+/* La oferta para un lugar:
+   - el arco: 2 arqueros comunes y 2 especiales (se completa con lo que haya);
+   - el campo: 4 comunes de su puesto (si no alcanzan, comunes de otro puesto
+     de campo, que juegan fuera de puesto); el último lugar libre es el
+     "comodín" y trae 1 especial de su puesto entre las 4. */
 create or replace function public._vdraft_oferta_lugar(p public.vdraft_partidas, p_lugar int)
 returns jsonb language plpgsql volatile security definer set search_path = public as $$
 declare
   v_roles text[] := array(select jsonb_array_elements_text(p.lugares -> p_lugar -> 'roles'));
   v_usados text[] := public._vdraft_usados(p);
+  v_vacios int := (select count(*) from generate_series(0, 4) i where jsonb_typeof(p.equipo -> i) <> 'object');
   v_of jsonb;
 begin
-  v_of := public._vdraft_oferta(p.club_id, 4, v_roles, v_usados, false, false);
+  if p_lugar = 0 then
+    v_of := public._vdraft_sumar(public._vdraft_oferta(p.club_id, 2, array['ARQ'], v_usados, 'base', false),
+                                 public._vdraft_oferta(p.club_id, 2, array['ARQ'], v_usados, 'especial', false), 4);
+    v_of := public._vdraft_sumar(v_of, public._vdraft_oferta(p.club_id, 4, array['ARQ'], v_usados, 'todas', false), 4);
+    if jsonb_array_length(v_of) < 2 then
+      v_of := public._vdraft_sumar(v_of, public._vdraft_oferta(p.club_id, 4, null, v_usados, 'todas', false), 4);
+    end if;
+    return v_of;
+  end if;
+
+  if v_vacios <= 1 then
+    v_of := public._vdraft_oferta(p.club_id, 1, v_roles, v_usados, 'especial', true);
+  else
+    v_of := '[]'::jsonb;
+  end if;
+  v_of := public._vdraft_sumar(v_of, public._vdraft_oferta(p.club_id, 4, v_roles, v_usados, 'base', true), 4);
+  v_of := public._vdraft_sumar(v_of, public._vdraft_oferta(p.club_id, 4, null, v_usados, 'base', true), 4);
   if jsonb_array_length(v_of) < 2 then
-    v_of := public._vdraft_oferta(p.club_id, 4, null, v_usados, false, p_lugar <> 0);
+    v_of := public._vdraft_sumar(v_of, public._vdraft_oferta(p.club_id, 4, v_roles, v_usados, 'todas', true), 4);
   end if;
   return v_of;
 end
 $$;
 
 -- Los 4 rivales: un equipo de cada Primera, de la D a la A. La fuerza sale
--- de la media de las cartas del club (así el torneo es parejo para cualquier
--- club), más un plus por división (D -2, C +2, B +5, A +8) y por cómo le va
--- en la tabla (puntos por partido; con su puesto en su zona).
+-- de la media de las cartas COMUNES del club (así el torneo es parejo para
+-- cualquier club), más un plus por división (D +10,5, C +14, B +17, A +20) y
+-- por cómo le va en la tabla (puntos por partido; con su puesto en su zona).
+-- Simulado contra el catálogo real: eligiendo siempre la mejor carta, ganar
+-- los 4 sale ~1 de cada 10 y salir campeón ~1 de cada 4; con un draft
+-- promedio, casi nunca. Lo que paga en promedio no llega a los 100 V-Coins
+-- de una partida extra.
 create or replace function public._vdraft_rivales(p_club uuid)
 returns jsonb language plpgsql volatile security definer set search_path = public as $$
 declare
   v_nombre text := lower(coalesce((select nombre from public.clubes where id = p_club), ''));
-  v_media numeric := coalesce((select avg((carta ->> 'ovr')::numeric) from public.cartas_catalogo
-                                where club_id = p_club), 80);
+  v_media numeric := coalesce(
+    (select avg((carta ->> 'ovr')::numeric) from public.cartas_catalogo
+      where club_id = p_club and rareza in ('bronce', 'plata', 'oro')),
+    (select avg((carta ->> 'ovr')::numeric) - 14 from public.cartas_catalogo where club_id = p_club),
+    72);
   v_res jsonb := '[]'::jsonb;
   d record;
   r record;
 begin
-  for d in select * from (values ('D', -2.0, 'CUARTOS DE FINAL'), ('C', 2.0, 'SEMIFINAL'),
-                                 ('B', 5.0, 'FINAL'), ('A', 8.0, 'CAMPEÓN DE CAMPEONES')) v(division, plus, ronda)
+  for d in select * from (values ('D', 10.5, 'CUARTOS DE FINAL'), ('C', 14.0, 'SEMIFINAL'),
+                                 ('B', 17.0, 'FINAL'), ('A', 20.0, 'CAMPEÓN DE CAMPEONES')) v(division, plus, ronda)
   loop
     with comp as (
       select id from public.liga_competencias
@@ -594,14 +640,11 @@ begin
     values (c.o_club, c.o_dueno, v_hoy, v_paga, p_formacion, public._vdraft_lugares(p_formacion))
     returning * into p;
 
+  -- El capitán: 5 especiales de campo (si el club no tiene, cualquier carta).
   update public.vdraft_partidas
-     set oferta = public._vdraft_oferta(c.o_club, 5, null, '{}', true, false)
+     set oferta = public._vdraft_sumar(public._vdraft_oferta(c.o_club, 5, null, '{}', 'especial', true),
+                                       public._vdraft_oferta(c.o_club, 5, null, '{}', 'todas', false), 5)
    where id = p.id returning * into p;
-  -- Si el club no tiene 5 especiales, se completa con cualquier carta.
-  if jsonb_array_length(p.oferta) < 3 then
-    update public.vdraft_partidas set oferta = public._vdraft_oferta(c.o_club, 5, null, '{}', false, false)
-     where id = p.id returning * into p;
-  end if;
 
   return public._vdraft_vista(p);
 end
@@ -657,8 +700,10 @@ begin
   elsif jsonb_array_length(p.banco) < 2 then
     p.paso := 'banco';
     p.lugar_actual := null;
-    p.oferta := public._vdraft_oferta(p.club_id, 4, null, public._vdraft_usados(p), false,
-                                      jsonb_array_length(p.banco) = 0);  -- 1er suplente de campo, 2do cualquiera
+    -- Suplentes comunes: el 1ro de campo, el 2do cualquiera.
+    p.oferta := public._vdraft_sumar(
+      public._vdraft_oferta(p.club_id, 4, null, public._vdraft_usados(p), 'base', jsonb_array_length(p.banco) = 0),
+      public._vdraft_oferta(p.club_id, 4, null, public._vdraft_usados(p), 'todas', jsonb_array_length(p.banco) = 0), 4);
   else
     p.paso := 'listo';
     p.lugar_actual := null;
@@ -799,7 +844,9 @@ begin
 end
 $$;
 
-revoke all on function public._vdraft_oferta(uuid, int, text[], text[], boolean, boolean) from public, anon, authenticated;
+drop function if exists public._vdraft_oferta(uuid, int, text[], text[], boolean, boolean);
+revoke all on function public._vdraft_oferta(uuid, int, text[], text[], text, boolean) from public, anon, authenticated;
+revoke all on function public._vdraft_sumar(jsonb, jsonb, int) from public, anon, authenticated;
 revoke all on function public._vdraft_oferta_lugar(public.vdraft_partidas, int) from public, anon, authenticated;
 revoke all on function public._vdraft_rivales(uuid) from public, anon, authenticated;
 revoke all on function public._vdraft_terminar(uuid) from public, anon, authenticated;

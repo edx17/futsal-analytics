@@ -68,6 +68,7 @@ export default function MiQuinteto() {
   /* Las cartas especiales salen del HISTORIAL: sólo existen los premios guardados ahí. */
   const [historial, setHistorial] = useState([]);
   const [seccion, setSeccion] = useState('cancha');
+  const [versionHistorial, setVersionHistorial] = useState(0);
   useEffect(() => {
     if (!clubId || seccion === 'historial') return undefined;
     let vivo = true;
@@ -75,7 +76,7 @@ export default function MiQuinteto() {
       .then((r) => { if (vivo) setHistorial(r); })
       .catch((err) => { console.warn('Historial de premios:', err?.message); if (vivo) setHistorial([]); });
     return () => { vivo = false; };
-  }, [clubId, seccion]);
+  }, [clubId, seccion, versionHistorial]);
 
   const { raw, loading, avance } = useDatosPlantel(clubId);
   const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
@@ -293,7 +294,8 @@ export default function MiQuinteto() {
         </div>
       ) : seccion === 'premios' ? (
         <PanelPremios partidosJugados={analisis.partidosJugados} jugadores={raw.jugadores} club={datosDelClub(perfil)}
-          clubId={clubId} categoria={filtroCategoria} torneoId={filtroTorneo} esMovil={esMovil} />
+          clubId={clubId} categoria={filtroCategoria} torneoId={filtroTorneo} esMovil={esMovil}
+          historial={historial} alGuardar={() => setVersionHistorial((v) => v + 1)} />
       ) : seccion === 'especiales' ? (
         <FotosEspeciales premios={premios} fotos={fotos} clubId={clubId} alCambiar={cargarFotos} esMovil={esMovil} />
       ) : cartas.length === 0 ? (

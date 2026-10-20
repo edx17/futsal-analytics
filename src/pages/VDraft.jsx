@@ -25,6 +25,8 @@ import './vdraft.css';
 
 const MONO = 'JetBrains Mono, monospace';
 const aCarta = (c) => (c ? { atributos: [], stats: {}, ...(c.carta || c) } : null);
+/* El piso del V-Draft: azul pista, como las canchas de futsal techadas. */
+const PISO_PISTA = { pasto: '#1f4675', franja: 'rgba(255,255,255,.045)' };
 const SESION_VENCIDA = 'Tu sesión venció. Volvé al menú e ingresá con tu PIN.';
 
 export default function VDraft() {
@@ -153,7 +155,8 @@ function Inicio({ estado, formacion, setFormacion, empezar, ocupado }) {
         </div>
         <div className="vd-rotulo" style={{ marginTop: 16 }}>2 · ARMÁ EL EQUIPO Y JUGÁ</div>
         <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginBottom: 12, lineHeight: 1.5 }}>
-          Elegís el capitán entre 5 cartas especiales, después cada lugar entre 4 cartas de su puesto y 2 suplentes.
+          Elegís el capitán entre 5 cartas especiales, después el arquero y cada lugar entre 4 cartas comunes de su puesto
+          (el último, el comodín, trae una especial) y 2 suplentes.
           Después, 4 partidos contra equipos de la liga: Primera D, C, B y A. Si perdés, se termina.
         </div>
         <button className="vd-btn" disabled={!alcanza || ocupado} onClick={empezar} style={{ width: '100%' }}>
@@ -283,7 +286,7 @@ function Equipo({ partida, cambio, tocarCambio }) {
         <Numero rotulo="QUÍMICA" valor={`${f.quimica ?? 0}/100`} barra={f.quimica ?? 0} />
       </div>
       <div className="vd-cancha-p" data-cap={capitan}>
-        <CanchaPerspectiva formacion={forma} alineacion={alineacion} lineas={lineas} seleccionado={seleccionado}
+        <CanchaPerspectiva formacion={forma} alineacion={alineacion} lineas={lineas} seleccionado={seleccionado} tema={PISO_PISTA}
           onElegir={enTorneo ? (i) => tocarCambio({ lugar: i }) : undefined} />
       </div>
       <div className="vd-rotulo" style={{ marginTop: 10 }}>BANCO{enTorneo ? ' · tocá un titular y un suplente para cambiarlos' : ''}</div>

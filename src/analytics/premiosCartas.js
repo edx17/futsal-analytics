@@ -100,6 +100,7 @@ export function filaARegistro(fila) {
     fechaRef: fila.fecha_ref,
     destacadoId,
     categoria: fila.categoria,
+    torneoId: fila.torneo_id,
     contexto: fila.contexto || {},
     cartas: (fila.jugadores || []).map((c) => ({ ...c, destacado: destacadoId != null && String(c.id) === destacadoId })),
   };

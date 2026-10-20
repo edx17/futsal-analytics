@@ -25,7 +25,11 @@ import { hoyISO } from '../../utils/disponibilidad';
 
 const MONO = 'JetBrains Mono, monospace';
 
-export default function PanelPremios({ partidosJugados = [], jugadores = [], club, clubId, categoria = 'Todas', torneoId = 'Todos', esMovil }) {
+/* `historial`: los premios ya guardados. Lo guardado no se vuelve a mostrar acá
+   (se ve en HISTORIAL y en ESPECIALES); `alGuardar` avisa para releerlo. */
+export default function PanelPremios({
+  partidosJugados = [], jugadores = [], club, clubId, categoria = 'Todas', torneoId = 'Todos', esMovil, historial = [], alGuardar,
+}) {
   const [mesElegido, setMesElegido] = useState(null);
   const [placa, setPlaca] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -43,6 +47,8 @@ export default function PanelPremios({ partidosJugados = [], jugadores = [], clu
   const [potw, totw] = useMemo(() => registrosDePartido(delPartido), [delPartido]);
   const [potm, totm] = useMemo(() => registrosDeMes(delMes), [delMes]);
   const toty = useMemo(() => registroTemporada(temporada, partidosJugados), [temporada, partidosJugados]);
+  const guardados = useMemo(() => clavesGuardadas(historial, categoria, torneoId), [historial, categoria, torneoId]);
+  const yaGuardado = (r) => !!r && guardados.has(`${r.tipo}|${r.periodo}`);
 
   if (partidosJugados.length === 0) {
     return (
@@ -68,6 +74,7 @@ export default function PanelPremios({ partidosJugados = [], jugadores = [], clu
       if (sobrescribir) avisar('Guardado en el historial.');
       else if (escritas === 0) avisar(`Ya estaba todo guardado (${total} premios).`);
       else avisar(`Se guardaron ${escritas} premios nuevos en el historial${escritas < total ? ` (los otros ${total - escritas} ya estaban)` : ''}.`);
+      alGuardar?.();
     } catch (err) {
       console.error('Guardar premios:', err);
       avisar(err?.message || 'No se pudo guardar el historial.', true);
@@ -106,9 +113,9 @@ export default function PanelPremios({ partidosJugados = [], jugadores = [], clu
         detalle={ultimo ? `vs ${String(ultimo.rival).toUpperCase()} · ${ultimo.golesFavor}-${ultimo.golesContra} · ${fechaCorta(ultimo.fecha)}` : ''}>
         {delPartido ? (
           <>
-            <Premio registro={potw} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([potw], { sobrescribir: true })} guardando={guardando}
+            <Premio registro={potw} guardado={yaGuardado(potw)} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([potw], { sobrescribir: true })} guardando={guardando}
               nota={`${delPartido.potw.etiqueta} · nota ${delPartido.potw.nota.toFixed(1)}`} />
-            <Premio registro={totw} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([totw], { sobrescribir: true })} guardando={guardando}
+            <Premio registro={totw} guardado={yaGuardado(totw)} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([totw], { sobrescribir: true })} guardando={guardando}
               nota={delPartido.totw.sinArquero ? 'No hay arquero con nota en este partido: el quinteto se armó con cinco de campo.' : 'Arquero y los cuatro mejores de campo. La estrella marca al jugador del partido.'} />
           </>
         ) : <Vacio texto="El último partido no tiene notas." />}
@@ -124,9 +131,9 @@ export default function PanelPremios({ partidosJugados = [], jugadores = [], clu
         )}>
         {delMes ? (
           <>
-            <Premio registro={potm} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([potm], { sobrescribir: true })} guardando={guardando}
+            <Premio registro={potm} guardado={yaGuardado(potm)} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([potm], { sobrescribir: true })} guardando={guardando}
               nota={`Mejor nota promedio de ${delMes.potm.pj} ${delMes.potm.pj === 1 ? 'partido' : 'partidos'}.${mesAbierto ? ' El mes sigue en juego: puede cambiar.' : ''}`} />
-            <Premio registro={totm} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([totm], { sobrescribir: true })} guardando={guardando}
+            <Premio registro={totm} guardado={yaGuardado(totm)} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([totm], { sobrescribir: true })} guardando={guardando}
               nota={delMes.totm.sinArquero ? 'Ningún arquero llegó al mínimo: el quinteto se armó con cinco de campo.' : 'Arquero y los cuatro mejores de campo del mes, entre los que llegaron al mínimo.'} />
           </>
         ) : <Vacio texto={mes ? `Ningún jugador llegó a jugar ${Math.floor(partidosJugados.filter((p) => String(p.fecha).startsWith(mes)).length / 2) + 1} partidos en ${etiquetaMes(mes)}.` : 'No hay meses con partidos.'} />}
@@ -135,7 +142,7 @@ export default function PanelPremios({ partidosJugados = [], jugadores = [], clu
       {/* ── TEMPORADA ── */}
       <Seccion titulo="TEMPORADA" detalle={temporada ? `${temporada.partidos} partidos · hay que haber jugado ${temporada.minimo} (65%)` : ''}>
         {toty ? (
-          <Premio registro={toty} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([toty], { sobrescribir: true })} guardando={guardando}
+          <Premio registro={toty} guardado={yaGuardado(toty)} porId={porId} esMovil={esMovil} onExportar={exportar} onGuardar={() => guardar([toty], { sobrescribir: true })} guardando={guardando}
             nota="Mejor nota promedio entre los que jugaron al menos el 65% de los partidos. Se guarda a mano cuando termina la temporada." />
         ) : <Vacio texto="Todavía nadie llegó al 65% de los partidos." />}
       </Seccion>
@@ -146,9 +153,19 @@ export default function PanelPremios({ partidosJugados = [], jugadores = [], clu
 }
 
 /* Un premio: título, las cartas y los botones. */
-export function Premio({ registro, porId, esMovil, onExportar, onGuardar, onQuitar, guardando, nota, soloLectura = false, subtitulo = '' }) {
+export function Premio({ registro, porId, esMovil, onExportar, onGuardar, onQuitar, guardando, nota, soloLectura = false, subtitulo = '', guardado = false }) {
   if (!registro) return null;
   const meta = PREMIOS[registro.tipo];
+  // Ya está en el historial: acá queda sólo el aviso (las cartas se ven en HISTORIAL y ESPECIALES).
+  if (guardado) {
+    return (
+      <div className="bento-card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, letterSpacing: '.18em', color: 'var(--accent)' }}>{meta.sigla}</span>
+        <span style={{ fontSize: 13, fontWeight: 900 }}>{meta.titulo}</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>✓ Guardado. Está en HISTORIAL y en ESPECIALES.</span>
+      </div>
+    );
+  }
   const cartas = registro.cartas || cartasDeRegistro(registro, porId);
   const ancho = esMovil ? 138 : 168;
 
@@ -191,6 +208,13 @@ function Seccion({ titulo, detalle, derecha, children }) {
       {children}
     </section>
   );
+}
+
+/* tipo|periodo de lo guardado con el mismo filtro (categoría y torneo) que se está mirando. */
+function clavesGuardadas(historial, categoria, torneoId) {
+  return new Set((historial || [])
+    .filter((h) => (h.categoria || 'Todas') === categoria && (h.torneoId || 'Todos') === torneoId)
+    .map((h) => `${h.tipo}|${h.periodo}`));
 }
 
 const Vacio = ({ texto }) => (
