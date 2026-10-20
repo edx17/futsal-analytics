@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import CartaGiratoria from '../quinteto/CartaGiratoria';
 import { MONEDA, nombreDeCarta } from '../../analytics/sobres';
 import { azarFijo } from '../../analytics/aperturas';
-import { sonar } from '../../utils/sonidoApertura';
+import { sonar, sonidoDeCartas } from '../../utils/sonidoApertura';
 
 /* LAS CARTAS DEL SOBRE (la mecánica de siempre)
  *
@@ -48,11 +48,11 @@ export default function RevelacionCartas({ resultado, variante, onCerrar, yaDada
   const semilla = cartas.length * 3 + (resultado.puntos_ganados || 0);
 
   const dar = (i) => {
-    sonar(ESPECIALES.has(cartas[i]?.rareza) ? 'cartaRara' : 'carta');
+    sonar(sonidoDeCartas([cartas[i]?.rareza], variante));
     setDadas((d) => ({ ...d, [i]: true }));
   };
   const darTodas = () => {
-    sonar(cartas.some((c) => ESPECIALES.has(c.rareza)) ? 'cartaRara' : 'carta');
+    sonar(sonidoDeCartas(cartas.map((c) => c.rareza), variante));
     setDadas(Object.fromEntries(cartas.map((_, i) => [i, true])));
   };
 

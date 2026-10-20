@@ -2,8 +2,9 @@
  *
  * No hay archivos de audio en el proyecto: cada sonido se sintetiza con la Web
  * Audio API (osciladores, ruido y filtros), así no depende de nada externo.
- * Salvo el público que festeja cada carta (public/cine/efectos, generado con
- * cine/musica.py): se baja al tocar ABRIR y, si no llegó, suena el sintetizado.
+ * Salvo el público que festeja cada carta (grabaciones reales, preparadas con
+ * cine/efectos.py en public/cine/efectos): se baja al tocar ABRIR y, si no
+ * llegó, suena el sintetizado.
  * Todo pasa por un volumen general bajo y cada sonido dura poco.
  *
  * El navegador sólo deja sonar después de un toque: `prepararAudio()` se llama
@@ -126,7 +127,7 @@ const SONIDOS = {
   brillo: () => { [1046, 1318, 1568].forEach((f, i) => tono({ tipo: 'sine', desde: f, dur: 0.5, vol: 0.08, retraso: 0.06 * i })); },
   carta: () => { ruido({ dur: 0.12, vol: 0.22, desde: 2500, hasta: 900, q: 1.5 }); },
   // Una carta especial: arpegio de Re mayor que sube (re, fa#, la, re) en campanitas, sobre un colchón tibio.
-  cartaRara: () => { // (el roce del papel lo pone `sonar`)
+  cartaRara: () => { // (el roce del papel lo pone `sonar`; también es el de respaldo de cartaEvento y cartaOro)
     [587.3, 740, 880, 1174.7].forEach((f, i) => campana(f, { vol: 0.075 - i * 0.008, retraso: 0.06 + i * 0.075, dur: 1.5 - i * 0.15 }));
     [293.7, 440].forEach((f) => tono({ tipo: 'triangle', desde: f, dur: 1.6, vol: 0.05, ataque: 0.18, retraso: 0.04, filtro: { frec: 1200 } }));
     ruido({ dur: 0.9, vol: 0.035, desde: 7000, hasta: 9000, tipo: 'highpass', retraso: 0.3 });
@@ -140,37 +141,62 @@ function campana(frec, { vol, retraso = 0, dur = 1.4 }) {
   tono({ desde: frec * 3, dur: dur * 0.3, vol: vol * 0.1, ataque: 0.006, retraso });
 }
 
-/* El público al dar vuelta una carta: [archivo, volumen]. La especial, un
-   "¡AAAAHH!" que resalta; la común, un "ooh" corto y bastante más bajo. */
+/* El público al dar vuelta una carta: [archivo, volumen] (los archivos vienen
+   al mismo nivel). La especial, el rugido de la tribuna que resalta; la de oro,
+   festejo con aplausos; la de plata o bronce, la tribuna que se sorprende, más
+   bajo; las de un sobre de evento, pisotones y palmas. */
 const EFECTOS = {
-  carta: ['/cine/efectos/publico_carta.m4a', 0.7],
-  cartaRara: ['/cine/efectos/publico_especial.m4a', 2.4],
+  carta: ['/cine/efectos/publico_carta.m4a', 1.0],
+  cartaOro: ['/cine/efectos/publico_oro.m4a', 1.8],
+  cartaRara: ['/cine/efectos/publico_especial.m4a', 2.6],
+  cartaEvento: ['/cine/efectos/publico_evento.m4a', 2.6],
 };
 
-/** Toca un efecto grabado. false si todavía no bajó. */
+const ESPECIALES = new Set(['totw', 'potw', 'totm', 'potm', 'toty']);
+
+/** El sonido al dar vuelta cartas (una o todas juntas: manda la mejor). En un sobre de evento, el del evento. */
+export function sonidoDeCartas(rarezas = [], variante = null) {
+  if (String(variante?.id || '').startsWith('evento:')) return 'cartaEvento';
+  if (rarezas.some((r) => ESPECIALES.has(r))) return 'cartaRara';
+  return rarezas.includes('oro') ? 'cartaOro' : 'carta';
+}
+
+/** Toca un efecto grabado. false si todavía no bajó. El que venía sonando se
+    apaga rápido: dar vuelta varias cartas seguidas no amontona tribunas. */
+let ultimoEfecto = null; // { src, g }
 function efecto(nombre) {
   const [url, vol] = EFECTOS[nombre];
   const buf = decodificadas.get(url);
   if (!buf) return false;
+  const t = ctx.currentTime;
+  if (ultimoEfecto) {
+    const { src: s, g: gv } = ultimoEfecto;
+    try {
+      gv.gain.setValueAtTime(gv.gain.value, t);
+      gv.gain.linearRampToValueAtTime(0, t + 0.3);
+      s.stop(t + 0.32);
+    } catch { /* ya terminó */ }
+  }
   const src = ctx.createBufferSource();
   const g = ctx.createGain();
   src.buffer = buf;
   g.gain.value = vol;
   src.connect(g); g.connect(general);
-  registrar(src, ctx.currentTime + buf.duration + 0.05);
+  registrar(src, t + buf.duration + 0.05);
+  ultimoEfecto = { src, g };
   return true;
 }
 
 /** Hace sonar uno por nombre. `dur` en segundos (para los que acompañan una fase). */
 export function sonar(nombre, dur = 1) {
-  if (!listo() || !SONIDOS[nombre]) return;
+  if (!listo() || (!SONIDOS[nombre] && !EFECTOS[nombre])) return;
   try {
     // La carta que se da vuelta: el roce del papel y el público (o, si no bajó, el sintetizado).
     if (EFECTOS[nombre]) {
       SONIDOS.carta();
       if (efecto(nombre) || nombre === 'carta') return;
     }
-    SONIDOS[nombre](Math.max(0.1, dur));
+    (SONIDOS[nombre] || SONIDOS.cartaRara)(Math.max(0.1, dur));
   } catch { /* un sonido que falla no frena la apertura */ }
 }
 

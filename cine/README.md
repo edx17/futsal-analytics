@@ -14,6 +14,7 @@ de la app (`src/components/sobres`).
 | `escena_pabellon.py` | La escena del pabellón y los guiones de las demás variantes. |
 | `perfiles.json` | Los perfiles (Élite, Épico, Leyenda, Excepcional, evento demo). |
 | `musica.py` | La música de cada cinemática. |
+| `efectos.py` | El público al dar vuelta las cartas, a partir de las grabaciones de `sonidos/` (Pixabay). |
 | `pasillo_vdraft.blend`, `pabellon_<perfil>.blend` | Las escenas guardadas, editables en Blender 4.2. |
 | `texturas/` | Etiquetas del sobre y gráficas de las cajas de luz (generadas por el script con Pillow). |
 | `codificar.sh` | Pasa los cuadros a `public/cine/<variante>.webm`, `.mp4` y `.jpg` (póster). |

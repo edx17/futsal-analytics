@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import CartaGiratoria from '../quinteto/CartaGiratoria';
 import { MONEDA, nombreDeCarta } from '../../analytics/sobres';
-import { sonar } from '../../utils/sonidoApertura';
+import { sonar, sonidoDeCartas } from '../../utils/sonidoApertura';
 
 /* LA MEJOR CARTA DEL SOBRE
  *
@@ -13,9 +13,9 @@ const ESPECIALES = new Set(['totw', 'potw', 'totm', 'potm', 'toty']);
 
 export default function MejorCarta({ carta, variante, restantes, onSeguir }) {
   useEffect(() => {
-    if (carta) sonar(ESPECIALES.has(carta.rareza) ? 'cartaRara' : 'carta');
+    if (carta) sonar(sonidoDeCartas([carta.rareza], variante));
     else onSeguir(); // un sobre sin cartas: no hay nada que mostrar acá
-  }, [carta, onSeguir]);
+  }, [carta, variante, onSeguir]);
   if (!carta) return null;
   const rareza = nombreDeCarta(carta);
   return (

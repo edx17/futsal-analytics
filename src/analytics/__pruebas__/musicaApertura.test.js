@@ -51,3 +51,14 @@ describe('música de las aperturas', () => {
     expect(sonido.tocarMusica('/cine/musica/x.m4a', 0)).toBe(false);
   });
 });
+
+describe('el público al dar vuelta cartas', () => {
+  it('especial > oro > plata/bronce; en un sobre de evento, el del evento', () => {
+    expect(sonido.sonidoDeCartas(['bronce'])).toBe('carta');
+    expect(sonido.sonidoDeCartas(['plata', 'bronce'])).toBe('carta');
+    expect(sonido.sonidoDeCartas(['oro'])).toBe('cartaOro');
+    expect(sonido.sonidoDeCartas(['oro', 'potw', 'plata'])).toBe('cartaRara');
+    expect(sonido.sonidoDeCartas(['bronce'], { id: 'evento:abc' })).toBe('cartaEvento');
+    expect(sonido.sonidoDeCartas(['totw'], { id: 'elite' })).toBe('cartaRara');
+  });
+});
