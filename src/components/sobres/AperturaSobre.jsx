@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { varianteDeApertura, ajustarVariante, guionDe, indiceMejorCarta } from '../../analytics/aperturas';
+import { varianteDeApertura, ajustarVariante, guionDe, indiceMejorCarta, varianteForzada } from '../../analytics/aperturas';
 import { menosMovimiento, equipoLiviano } from '../../utils/preferenciasApertura';
 import { sonar, callarTodo, pararMusica } from '../../utils/sonidoApertura';
 import PaqueteSobre from './PaqueteSobre';
@@ -23,11 +23,12 @@ import './apertura.css';
 
 const claseSegura = (id) => String(id).replace(/[^a-z0-9_-]/gi, '-');
 
-export default function AperturaSobre({ resultado, prefs, evento = null, onCerrar }) {
+/* `forzar`: id de una variante para ver esa escena sí o sí (modo GOD, sólo prueba). */
+export default function AperturaSobre({ resultado, prefs, evento = null, forzar = null, onCerrar }) {
   const variante = useMemo(() => ajustarVariante(
-    varianteDeApertura({ tipo: resultado.tipo, cartas: resultado.cartas, evento }),
+    (forzar && varianteForzada(forzar)) || varianteDeApertura({ tipo: resultado.tipo, cartas: resultado.cartas, evento }),
     { prefs, menosMovimiento: menosMovimiento(), liviano: equipoLiviano() },
-  ), [resultado, prefs, evento]);
+  ), [resultado, prefs, evento, forzar]);
   const guion = useMemo(() => guionDe(variante), [variante]);
   const mejor = useMemo(() => indiceMejorCarta(resultado.cartas), [resultado]);
   const conVideo = variante.modo === 'video';

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import CartaGiratoria from '../quinteto/CartaGiratoria';
-import { rarezaPorId, MONEDA } from '../../analytics/sobres';
+import { MONEDA, nombreDeCarta } from '../../analytics/sobres';
 import { sonar } from '../../utils/sonidoApertura';
 
 /* LA MEJOR CARTA DEL SOBRE
@@ -17,7 +17,7 @@ export default function MejorCarta({ carta, variante, restantes, onSeguir }) {
     else onSeguir(); // un sobre sin cartas: no hay nada que mostrar acá
   }, [carta, onSeguir]);
   if (!carta) return null;
-  const rareza = rarezaPorId[carta.rareza]?.nombre || '';
+  const rareza = nombreDeCarta(carta);
   return (
     <div className="ap-mejor">
       <div className="ap-mejor-luz" aria-hidden="true" />

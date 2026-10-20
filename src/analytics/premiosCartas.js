@@ -85,7 +85,13 @@ export const datosEspecial = (f, registro) => ({
 
 /** Las cartas de un registro de premio (ver registrosDePartido/Mes/Temporada en premios.js). */
 export const cartasDeRegistro = (registro, porId) =>
-  (registro.jugadores || []).map((f) => cartaDeFicha(f, porId, { destacadoId: registro.destacadoId }));
+  (registro.jugadores || []).map((f) => conDatosEspecial(registro, cartaDeFicha(f, porId, { destacadoId: registro.destacadoId })));
+
+/** A una carta especial le suma lo que dibuja CartaEspecial (título, pie, puesto); las demás quedan igual. */
+export function conDatosEspecial(registro, carta) {
+  if (!esEspecial(registro?.tipo)) return carta;
+  return { ...carta, premio: registro.tipo, titulo: PREMIOS[registro.tipo].titulo, pie: pieEspecial(registro), especial: datosEspecial(carta, registro) };
+}
 
 /**
  * La fila que se guarda en `cartas_destacadas`. Lleva la FOTO de cada carta
@@ -119,7 +125,10 @@ export function filaARegistro(fila) {
     categoria: fila.categoria,
     torneoId: fila.torneo_id,
     contexto: fila.contexto || {},
-    cartas: (fila.jugadores || []).map((c) => ({ ...c, destacado: destacadoId != null && String(c.id) === destacadoId })),
+    cartas: (fila.jugadores || []).map((c) => conDatosEspecial(
+      { tipo: fila.tipo, periodo: fila.periodo, contexto: fila.contexto || {} },
+      { ...c, destacado: destacadoId != null && String(c.id) === destacadoId },
+    )),
   };
 }
 

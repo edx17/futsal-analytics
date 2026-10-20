@@ -3,6 +3,7 @@ import Marco from './Marco';
 import ModalPlaca from './ModalPlaca';
 import { Ceja } from './Piezas';
 import CartaPremio from '../components/quinteto/CartaPremio';
+import CartaEspecial from '../components/quinteto/CartaEspecial';
 import { PREMIOS } from '../analytics/premiosCartas';
 
 /* PLACA DE PREMIOS DE MYSQUAD (POTW, TOTW, POTM, TOTM, TOTY)
@@ -30,6 +31,18 @@ export function filasDeQuinteto(cartas = [], esStory = false) {
   return [{ cartas: cartas.slice(0, 3), ancho }, { cartas: cartas.slice(3), ancho }].filter((f) => f.cartas.length);
 }
 
+/* Las cartas especiales: una sola, grande; empatadas, de a dos o tres; las series
+   (hasta diez y pico), en filas de cinco (cuatro en la historia). */
+function filasEspeciales(cartas = [], esStory = false) {
+  const n = cartas.length;
+  if (n === 1) return [{ cartas, ancho: esStory ? 640 : 520 }];
+  const porFila = n <= 3 ? n : esStory ? 4 : 5;
+  const ancho = n <= 3 ? (esStory ? 420 : 330) : esStory ? 226 : 182;
+  const filas = [];
+  for (let i = 0; i < n; i += porFila) filas.push({ cartas: cartas.slice(i, i + porFila), ancho });
+  return filas;
+}
+
 /* El título tiene que entrar en UNA línea: `.pl-fg-n` corta con "…" y
    "JUGADOR DE LA TEMPORADA" en la historia llegaba a perder la mitad. Se baja
    el cuerpo hasta que entra en los 968 px útiles de la placa. */
@@ -37,7 +50,7 @@ export const tamanoTitulo = (titulo, base) => Math.min(base, Math.floor(968 / (M
 
 export default function PlacaPremio({ datos, formato }) {
   if (!datos?.cartas?.length) return null;
-  const { tipo, sigla, titulo, quinteto, subtitulo, derecha, detalle, cartas, club = {} } = datos;
+  const { tipo, sigla, titulo, quinteto, especial, subtitulo, derecha, detalle, cartas, club = {} } = datos;
   const esStory = formato?.id === 'story';
   const variante = PREMIOS[tipo]?.variante || 'potw';
 
@@ -57,7 +70,15 @@ export default function PlacaPremio({ datos, formato }) {
           <div className="pl-fg-n" style={{ fontSize: tamanoTitulo(titulo, esStory ? 84 : 70), marginTop: 8 }}>{titulo}</div>
         </div>
 
-        {quinteto ? (
+        {especial ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: esStory ? 26 : 16, marginTop: esStory ? 48 : 24 }}>
+            {filasEspeciales(cartas, esStory).map((fila, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'center', gap: 14 }}>
+                {fila.cartas.map((c) => <CartaEspecial key={c.id} carta={c} tipo={tipo} ancho={fila.ancho} />)}
+              </div>
+            ))}
+          </div>
+        ) : quinteto ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: esStory ? 34 : 20, marginTop: esStory ? 56 : 28 }}>
             {filasDeQuinteto(cartas, esStory).map((fila, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'center', gap: 18 }}>
@@ -74,11 +95,11 @@ export default function PlacaPremio({ datos, formato }) {
         )}
 
         <div style={{ textAlign: 'center', marginTop: esStory ? 48 : 26 }}>
-          {quinteto && <div className="pl-fg-res" style={{ justifyContent: 'center' }}>{subtitulo}</div>}
+          {(quinteto || especial) && <div className="pl-fg-res" style={{ justifyContent: 'center' }}>{subtitulo}</div>}
           {detalle && (
             <div style={{ marginTop: 12, fontFamily: 'var(--pl-mono)', fontSize: 17, letterSpacing: '.08em', color: 'var(--pl-dim)' }}>{detalle}</div>
           )}
-          {quinteto && (
+          {quinteto && !especial && (
             <div style={{ marginTop: 12, fontFamily: 'var(--pl-mono)', fontSize: 17, letterSpacing: '.12em', color: 'var(--pl-dim)' }}>
               ★ {tipo === 'TOTW' ? 'JUGADOR DEL PARTIDO' : 'JUGADOR DEL MES'}
             </div>

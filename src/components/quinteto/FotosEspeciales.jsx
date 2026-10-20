@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import CartaGiratoria from './CartaGiratoria';
-import { TIPOS } from '../../analytics/premios';
+import { TODOS_LOS_TIPOS as TIPOS } from '../../analytics/premios';
+import { PREMIOS } from '../../analytics/premiosCartas';
 import { subirFotoEspecial, quitarFotoEspecial } from '../../utils/cartasFotos';
 
 /* FOTOS ESPECIALES
  *
- * Cada carta de premio (TOTW, POTW, TOTM, POTM, TOTY) puede llevar una foto propia en
+ * Cada carta de premio (TOTW, POTW, TOTM, POTM, TOTY y las especiales) puede llevar una foto propia en
  * vez de la del plantel. Se sube acá, antes o después de publicar las cartas para los
  * sobres: no hace falta republicar. Una carta con foto especial se marca con ★.
  */
@@ -67,8 +68,8 @@ export default function FotosEspeciales({ premios = [], fotos = new Map(), clubI
       )}
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        {TIPOS.map((t) => (
-          <button key={t} onClick={() => { setTipo(t); setLimite(POR_PAGINA); }} style={chip(tipo === t)}>{t} {conteo[t] || 0}</button>
+        {TIPOS.filter((t) => t === tipo || conteo[t] > 0 || PREMIOS[t] && !PREMIOS[t].especial).map((t) => (
+          <button key={t} onClick={() => { setTipo(t); setLimite(POR_PAGINA); }} style={chip(tipo === t)}>{PREMIOS[t]?.sigla || t} {conteo[t] || 0}</button>
         ))}
         <input value={jugador} onChange={(e) => { setJugador(e.target.value); setLimite(POR_PAGINA); }} placeholder="Buscar jugador" aria-label="Buscar jugador"
           style={{ marginLeft: esMovil ? 0 : 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, width: esMovil ? '100%' : 180 }} />

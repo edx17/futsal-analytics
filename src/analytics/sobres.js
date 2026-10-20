@@ -54,6 +54,15 @@ export const SOBRES = {
 
 export const rarezaPorId = Object.fromEntries(RAREZAS.map((r) => [r.id, r]));
 
+/** Cómo se nombra una carta del sobre: su rareza, o el premio especial que es ('GOLEADORES · 3º'). */
+export function nombreDeCarta(c = {}) {
+  const tipo = c.tipo || c.carta?.premio;
+  const esp = ESPECIALES_CARTAS[tipo];
+  if (!esp) return rarezaPorId[c.rareza]?.nombre || '';
+  const puesto = esp.serie ? c.carta?.especial?.puesto : null;
+  return puesto ? `${esp.sigla} · ${puesto}º` : esp.sigla;
+}
+
 /** La rareza de una carta base según su media; las de premio, la de su tipo. */
 export const rarezaDeCarta = (carta) => {
   if (!carta.premio) return tierDe(carta.ovr);

@@ -242,6 +242,16 @@ export function varianteDeApertura({ tipo, cartas = [], evento = null, eventos =
   return completarVariante(delTipo, videos);
 }
 
+/** Una variante elegida a mano (modo GOD): una de VARIANTES o 'evento:<id>'. null si no existe. */
+export function varianteForzada(id, videos = VIDEOS) {
+  if (!id) return null;
+  if (String(id).startsWith('evento:')) {
+    const ev = String(id).slice(7);
+    return EVENTOS[ev] ? varianteDeEvento(ev, EVENTOS[ev], videos) : null;
+  }
+  return VARIANTES[id] ? completarVariante(VARIANTES[id], videos) : null;
+}
+
 /** La mejor carta del sobre: la más rara y, entre iguales, la de más media. */
 export function indiceMejorCarta(cartas = []) {
   let mejor = -1;

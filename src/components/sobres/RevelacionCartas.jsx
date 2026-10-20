@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import CartaGiratoria from '../quinteto/CartaGiratoria';
-import { rarezaPorId, MONEDA } from '../../analytics/sobres';
+import { MONEDA, nombreDeCarta } from '../../analytics/sobres';
 import { azarFijo } from '../../analytics/aperturas';
 import { sonar } from '../../utils/sonidoApertura';
 
@@ -67,7 +67,7 @@ export default function RevelacionCartas({ resultado, variante, onCerrar, yaDada
             {dadas[i] ? (
               <>
                 <div className={`ap-gira${MUY_RARAS.has(c.rareza) ? ' ap-rara-carta' : ''}`}>
-                  <CartaGiratoria carta={aCarta(c)} etiqueta={rarezaPorId[c.rareza]?.nombre} />
+                  <CartaGiratoria carta={aCarta(c)} etiqueta={nombreDeCarta(c)} />
                 </div>
                 <div className="ap-estado" style={{ color: c.nueva ? '#00ff88' : '#fbbf24' }}>
                   {c.nueva ? 'NUEVA' : <>REPETIDA<br /><span style={{ whiteSpace: 'nowrap' }}>+{c.puntos} {MONEDA.toUpperCase()}</span></>}

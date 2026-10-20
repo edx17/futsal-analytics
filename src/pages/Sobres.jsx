@@ -2,11 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CartaGiratoria from '../components/quinteto/CartaGiratoria';
 import AperturaSobre from '../components/sobres/AperturaSobre';
+import PanelGod from '../components/sobres/PanelGod';
+import { useAuth } from '../context/AuthContext';
 import { varianteDeApertura, EVENTOS } from '../analytics/aperturas';
 import { prepararVideo, liberarVideos } from '../utils/videoApertura';
 import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasApertura';
 import { prepararAudio, sonidoActivo, cargarMusica } from '../utils/sonidoApertura';
-import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, rarezaPorId, probabilidades } from '../analytics/sobres';
+import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, probabilidades, nombreDeCarta } from '../analytics/sobres';
 import { estadoSobres, abrirSobre, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
 import '../components/quinteto/quinteto.css';
@@ -46,7 +48,13 @@ export default function Sobres() {
   const [filtro, setFiltro] = useState('todas');
   const [verProbs, setVerProbs] = useState(false);
   const [prefs, setPrefs] = useState(leerPreferencias);
-  const [evento] = useState(eventoDeLaDireccion); // sólo con ?evento=<id> (p. ej. la demo)
+  const [eventoUrl] = useState(eventoDeLaDireccion); // ?evento=<id> (p. ej. la demo)
+  const { perfil } = useAuth() || {};
+  /* El evento: el de la dirección, o el que activó el superusuario para el club. */
+  const evento = eventoUrl || (estado?.evento && Object.prototype.hasOwnProperty.call(EVENTOS, estado.evento) ? estado.evento : null);
+  const esGod = !kiosco && (!!estado?.es_superuser || perfil?.rol === 'superuser');
+  /* Una apertura de prueba del modo GOD: { resultado, forzar, evento }. No toca la base. */
+  const [prueba, setPrueba] = useState(null);
   const cambiarPref = (clave, valor) => {
     const nuevas = { ...prefs, [clave]: valor };
     setPrefs(nuevas);
@@ -168,7 +176,7 @@ export default function Sobres() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '14px 10px', justifyItems: 'center' }}>
             {mostradas.map((c) => (
               <div key={c.catalogo_id} style={{ paddingBottom: 30 }}>
-                <CartaGiratoria carta={aCarta(c)} etiqueta={rarezaPorId[c.rareza]?.nombre} />
+                <CartaGiratoria carta={aCarta(c)} etiqueta={nombreDeCarta(c)} />
               </div>
             ))}
           </div>
@@ -186,7 +194,16 @@ export default function Sobres() {
         </div>
       )}
 
+      {esGod && (
+        <PanelGod clubId={localStorage.getItem('club_id') || perfil?.club_id} estado={estado} alCambiar={cargar}
+          alProbar={(p) => { prepararAudio(prefs.sonido); setPrueba(p); }} />
+      )}
+
       {resultado && <AperturaSobre key={resultado.sobre_id} resultado={resultado} prefs={prefs} evento={evento} onCerrar={cerrarResultado} />}
+      {prueba && (
+        <AperturaSobre key={prueba.resultado.sobre_id} resultado={prueba.resultado} prefs={{ ...prefs, cine: true }}
+          evento={prueba.evento} forzar={prueba.forzar} onCerrar={() => setPrueba(null)} />
+      )}
     </div>
   );
 }
@@ -211,6 +228,7 @@ function precargarVideo(tipo, evento) {
 }
 
 const notaDe = (tipo, e) => {
+  if ((e.suspendidos || []).includes(tipo)) return 'Suspendido por el club por ahora.';
   if (tipo === 'premio') return `Ganado en el V-Draft. Tenés ${e.sobres_premio} para abrir.`;
   if (tipo === 'premio_especial') return `Ganado en el V-Draft: 5 especiales. Tenés ${e.sobres_especiales} para abrir.`;
   if (tipo === 'wellness' && !e.disponibles?.wellness) return e.wellness_hecho ? 'Ya lo abriste hoy.' : 'Completá el wellness de hoy.';

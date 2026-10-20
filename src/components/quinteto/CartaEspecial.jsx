@@ -52,6 +52,8 @@ const LAYOUT = {
 };
 
 const iniciales = (c) => `${(c.nombre || '?')[0] || ''}${(c.apellido || '')[0] || ''}`.toUpperCase();
+/* La cinta entra en una línea: ~1 em por letra con el espaciado. */
+const tamanoCinta = (texto, ancho) => Math.min(12.5, ancho / (Math.max(1, String(texto).length) * 0.98));
 const tamanoNombre = (nombre, max = 34) => Math.max(14, Math.min(max, Math.floor(270 / (Math.max(1, nombre.length) * 0.82))));
 
 export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false, style, className = '' }) {
@@ -147,7 +149,8 @@ export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false
           {/* qué premio es */}
           <div style={{ position: 'absolute', left: px(L.margen - 8), right: px(L.margen - 8), top: px(L.cinta), textAlign: 'center' }}>
             <span style={{ display: 'inline-block', padding: `${px(3)}px ${px(10)}px`, borderRadius: px(4), background: c.cinta, color: c.cintaTexto,
-                           fontSize: px(12.5), fontWeight: 900, letterSpacing: '0.16em', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden' }}>
+                           fontSize: px(tamanoCinta(carta.titulo || fam.titulo, W - 2 * (L.margen - 8) - 24)), fontWeight: 900, letterSpacing: '0.14em',
+                           whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden' }}>
               {carta.titulo || fam.titulo}
             </span>
           </div>

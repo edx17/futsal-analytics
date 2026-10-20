@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Premio } from './PanelPremios';
 import { ModalPlacaPremio } from '../../placas/PlacaPremio';
 import { listarHistorial, quitarRegistro } from '../../utils/cartasDestacadas';
-import { datosDePlaca, descripcionRegistro, rankingDestacados } from '../../analytics/premiosCartas';
-import { TIPOS } from '../../analytics/premios';
+import { datosDePlaca, descripcionRegistro, rankingDestacados, PREMIOS } from '../../analytics/premiosCartas';
+import { TODOS_LOS_TIPOS } from '../../analytics/premios';
 
 /* HISTORIAL DE PREMIOS
  *
@@ -79,11 +79,11 @@ export default function HistorialPremios({ clubId, club, esMovil }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {['Todos', ...TIPOS].map((t) => (
+        {['Todos', ...TODOS_LOS_TIPOS.filter((t) => t === tipo || registros.some((r) => r.tipo === t))].map((t) => (
           <button key={t} onClick={() => setTipo(t)} style={{
             ...chip, borderColor: tipo === t ? 'var(--accent)' : 'var(--border)',
             color: tipo === t ? 'var(--accent)' : 'var(--text-dim)', background: tipo === t ? 'rgba(0,255,136,.08)' : 'transparent',
-          }}>{t === 'Todos' ? 'TODOS' : t}</button>
+          }}>{t === 'Todos' ? 'TODOS' : PREMIOS[t]?.sigla || t}</button>
         ))}
         {categorias.length > 1 && (
           <select value={categoria} onChange={(e) => setCategoria(e.target.value)} style={selectChico} aria-label="Categoría">
