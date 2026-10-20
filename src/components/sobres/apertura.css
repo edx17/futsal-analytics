@@ -80,6 +80,8 @@
 @keyframes ap-video-entra { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ap-gira-carga { to { transform: rotate(360deg); } }
 .ap-video ~ .ap-rotulo { opacity: 0; }
+.ap-video-aviso { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.55); color: #e5e7eb; font-weight: 700; text-align: center; padding: 20px; z-index: 3; }
 
 /* ── la mejor carta: aparece sola en la luz del final del pasillo ─────────── */
 .ap-fase-figura { background: radial-gradient(ellipse at 50% 38%, color-mix(in srgb, var(--ap-luz) 22%, #000) 0%, #000 62%); }

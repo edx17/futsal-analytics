@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import CartaGiratoria from '../components/quinteto/CartaGiratoria';
 import AperturaSobre from '../components/sobres/AperturaSobre';
 import { varianteDeApertura } from '../analytics/aperturas';
+import { prepararVideo, liberarVideos } from '../utils/videoApertura';
 import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasApertura';
 import { prepararAudio, sonidoActivo } from '../utils/sonidoApertura';
 import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, rarezaPorId, probabilidades } from '../analytics/sobres';
@@ -63,10 +64,12 @@ export default function Sobres() {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => () => liberarVideos(), []); // al salir de la pantalla, nada queda bajando
 
   const abrir = async (tipo) => {
     if (abriendo || resultado) return; // nunca dos aperturas a la vez
     prepararAudio(prefs.sonido);       // en el toque: el navegador sólo deja sonar así
+    precargarVideo(tipo);              // el video baja mientras la base sortea las cartas
     setAbriendo(tipo);
     setError(null);
     const r = await abrirSobre(tipo);
@@ -187,21 +190,12 @@ export default function Sobres() {
   );
 }
 
-/* Cuando alguien apunta a un sobre con cinemática, el navegador empieza a
-   bajar el video (una vez por video): al abrirlo ya está. */
-const precargados = new Set();
+/* Cuando alguien apunta a un sobre con cinemática (o lo toca), el navegador
+   empieza a bajar SU video (un solo formato, una sola vez): al abrirlo ya
+   está o falta poco. Los demás videos no se bajan. */
 function precargarVideo(tipo) {
-  if (typeof document === 'undefined') return;
   const v = varianteDeApertura({ tipo });
-  if (!v.video) return;
-  v.video.fuentes.forEach((f) => {
-    if (precargados.has(f.src)) return;
-    precargados.add(f.src);
-    const l = document.createElement('link');
-    l.rel = 'prefetch';
-    l.href = f.src;
-    document.head.appendChild(l);
-  });
+  if (v.video) prepararVideo(v.video);
 }
 
 const notaDe = (tipo, e) => {

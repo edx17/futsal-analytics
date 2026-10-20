@@ -73,7 +73,7 @@ export default function AperturaSobre({ resultado, prefs, onCerrar }) {
   };
 
   return (
-    <div className={`ap ap-${variante.modo} ap-v-${claseSegura(variante.id)} ap-fase-${fase}${variante.latido ? ' ap-latido' : ''}${variante.excepcional ? ' ap-excepcional' : ''}`}
+    <div className={`ap ap-modo-${variante.modo} ap-v-${claseSegura(variante.id)} ap-fase-${fase}${variante.latido ? ' ap-latido' : ''}${variante.excepcional ? ' ap-excepcional' : ''}`}
       style={vars} role="dialog" aria-modal="true" aria-label={`Apertura: ${variante.nombre}`}>
       {fase === 'video' && (
         <VideoApertura video={variante.video} velocidad={variante.velocidadVideo} onFin={avanzar} />
