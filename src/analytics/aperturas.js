@@ -32,6 +32,14 @@ export const VIDEOS = {
     musica: '/cine/musica/vdraft.m4a',
     sonidos: [[0, 'carga', 1.5], [1.5, 'portal', 0.6], [2.1, 'pabellon', 3.2], [5.3, 'solemne', 1.1], [6.1, 'golpeFuerte', 1]],
   },
+  /* El pabellón (cine/escena_pabellon.py): cada una con su puesta en escena. */
+  elite: {
+    fuentes: [{ src: '/cine/elite.webm', tipo: 'video/webm' }, { src: '/cine/elite.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/elite.jpg',
+    duracion: 7,
+    musica: '/cine/musica/elite.m4a',
+    sonidos: [[0, 'carga', 1.2], [1.2, 'golpe', 0.6], [2.8, 'pabellon', 3.3], [6.2, 'golpeFuerte', 1], [6.5, 'brillo', 0.5]],
+  },
 };
 
 /* ── tiempos (ms) ──────────────────────────────────────────────────────────── */
