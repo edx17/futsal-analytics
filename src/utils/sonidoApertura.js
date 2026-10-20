@@ -122,8 +122,21 @@ const SONIDOS = {
   },
   brillo: () => { [1046, 1318, 1568].forEach((f, i) => tono({ tipo: 'sine', desde: f, dur: 0.5, vol: 0.08, retraso: 0.06 * i })); },
   carta: () => { ruido({ dur: 0.12, vol: 0.22, desde: 2500, hasta: 900, q: 1.5 }); },
-  cartaRara: () => { ruido({ dur: 0.12, vol: 0.22, desde: 2500, hasta: 900, q: 1.5 }); [880, 1320].forEach((f, i) => tono({ desde: f, dur: 0.6, vol: 0.1, retraso: 0.08 + i * 0.08 })); },
+  // Una carta especial: arpegio de Re mayor que sube (re, fa#, la, re) en campanitas, sobre un colchón tibio.
+  cartaRara: () => {
+    ruido({ dur: 0.12, vol: 0.16, desde: 2500, hasta: 900, q: 1.5 });
+    [587.3, 740, 880, 1174.7].forEach((f, i) => campana(f, { vol: 0.075 - i * 0.008, retraso: 0.06 + i * 0.075, dur: 1.5 - i * 0.15 }));
+    [293.7, 440].forEach((f) => tono({ tipo: 'triangle', desde: f, dur: 1.6, vol: 0.05, ataque: 0.18, retraso: 0.04, filtro: { frec: 1200 } }));
+    ruido({ dur: 0.9, vol: 0.035, desde: 7000, hasta: 9000, tipo: 'highpass', retraso: 0.3 });
+  },
 };
+
+/* Una nota de campanita: la fundamental con dos armónicos suaves que se apagan antes (suena a celesta, no a "pip"). */
+function campana(frec, { vol, retraso = 0, dur = 1.4 }) {
+  tono({ desde: frec, dur, vol, ataque: 0.012, retraso });
+  tono({ desde: frec * 2, dur: dur * 0.55, vol: vol * 0.3, ataque: 0.008, retraso });
+  tono({ desde: frec * 3, dur: dur * 0.3, vol: vol * 0.1, ataque: 0.006, retraso });
+}
 
 /** Hace sonar uno por nombre. `dur` en segundos (para los que acompañan una fase). */
 export function sonar(nombre, dur = 1) {
