@@ -53,7 +53,8 @@ export function normalizarEvento(ev = {}) {
     activo: !!ev.activo,
     desde: ev.desde || null,
     hasta: ev.hasta || null,
-    cartas: [...new Set((ev.cartas || []).map(String).filter(Boolean))],
+    // En el estado de los sobres `cartas` es cuántas trae cada sobre (un número): acá sólo sirven las claves.
+    cartas: Array.isArray(ev.cartas) ? [...new Set(ev.cartas.map(String).filter(Boolean))] : [],
     sobre: { ...Object.fromEntries(Object.entries(REGLAS).map(([k, r]) => [k, entero(ev.sobre?.[k], r)])), exclusivas: ev.sobre?.exclusivas !== false },
     escena: {
       video: ESCENAS_BASE.some((e) => e.id === escena.video) ? escena.video : '',

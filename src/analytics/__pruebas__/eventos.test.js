@@ -63,6 +63,10 @@ describe('eventos: la escena', () => {
     expect(v.video.id).toBe('elite');
     expect(v.colores.luz).toBe('#ef4444');
   });
+  it('acepta el evento como viene en el estado de los sobres (cartas = cuántas por sobre)', () => {
+    const v = varianteDeEventoDb({ id: 'e1', nombre: 'EVENTO', cartas: 3, total_cartas: 14, escena: { video: 'elite', colores: { luz: '#ef4444' } } }, videos);
+    expect(v).toMatchObject({ id: 'evento:e1', modo: 'video' });
+  });
   it('sin video elegido, apertura estándar', () => {
     expect(varianteDeEventoDb({ id: 'e', nombre: 'E', escena: { video: '' } }, videos).modo).toBe('estandar');
   });
