@@ -16,9 +16,12 @@ describe('videos de apertura: qué formato se baja (uno solo)', () => {
   it('sin forma de preguntar, igual devuelve uno', () => {
     expect(elegirFuente(fuentes, null)).toBeTruthy();
   });
-  it('los archivos de V-Draft existen en public/cine', async () => {
+  it('los archivos de cada video (y su música) existen en public/cine', async () => {
     const fs = await import('node:fs');
-    fuentes.forEach((f) => expect(fs.existsSync(`public${f.src}`)).toBe(true));
-    expect(fs.existsSync(`public${VIDEOS.vdraft.poster}`)).toBe(true);
+    Object.values(VIDEOS).forEach((v) => {
+      v.fuentes.forEach((f) => expect(fs.existsSync(`public${f.src}`)).toBe(true));
+      expect(fs.existsSync(`public${v.poster}`)).toBe(true);
+      expect(fs.existsSync(`public${v.musica}`)).toBe(true);
+    });
   });
 });

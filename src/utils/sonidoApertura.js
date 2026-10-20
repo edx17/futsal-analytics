@@ -32,7 +32,7 @@ export function prepararAudio(conSonido = true) {
   }
 }
 
-export const sonidoActivo = (activo) => { encendido = activo; if (!activo) callarTodo(); };
+export const sonidoActivo = (activo) => { encendido = activo; if (!activo) { callarTodo(); pararMusica(0.2); } };
 
 /** Corta todo lo que esté sonando (al saltar o cerrar). */
 export function callarTodo() {
@@ -130,3 +130,76 @@ export function sonar(nombre, dur = 1) {
   if (!listo() || !SONIDOS[nombre]) return;
   try { SONIDOS[nombre](Math.max(0.1, dur)); } catch { /* un sonido que falla no frena la apertura */ }
 }
+
+/* ── la música de las cinemáticas ─────────────────────────────────────────────
+   Cada video puede traer su pieza (public/cine/musica, ver cine/musica.py):
+   se baja y se decodifica antes (al apuntar al sobre o tocar ABRIR) y suena
+   desde el segundo exacto en el que está el video. Dura un poco más que el
+   video: la cola acompaña la mejor carta. Va aparte de `callarTodo` (que se
+   llama cuando termina el video) y se corta con `pararMusica`. */
+const musicas = new Map(); // url → Promise<AudioBuffer|null>
+const decodificadas = new Map(); // url → AudioBuffer
+let musica = null; // { src, g }
+const VOLUMEN_MUSICA = 2; // sobre el volumen general (0.32): ~0.65
+
+function decodificar(datos) {
+  const AO = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const dec = ctx || (AO ? new AO(2, 1, 48000) : null);
+  if (!dec) return Promise.resolve(null);
+  // Safari viejo sólo tiene la versión con callbacks.
+  return new Promise((ok) => {
+    try {
+      const p = dec.decodeAudioData(datos, ok, () => ok(null));
+      if (p && p.catch) p.catch(() => ok(null));
+    } catch { ok(null); }
+  });
+}
+
+/** Empieza a bajar y decodificar una pieza (una sola vez por url). */
+export function cargarMusica(url) {
+  if (!url || typeof window === 'undefined' || typeof fetch === 'undefined') return Promise.resolve(null);
+  if (!musicas.has(url)) {
+    const p = fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : null))
+      .then((datos) => (datos ? decodificar(datos) : null))
+      .then((buf) => { if (buf) decodificadas.set(url, buf); else musicas.delete(url); return buf; })
+      .catch(() => { musicas.delete(url); return null; });
+    musicas.set(url, p);
+  }
+  return musicas.get(url);
+}
+
+/** Toca la pieza desde `desde` segundos. false si no está lista (o sin sonido). */
+export function tocarMusica(url, desde = 0) {
+  const buf = decodificadas.get(url);
+  if (!listo() || !buf || desde >= buf.duration) return false;
+  pararMusica(0);
+  try {
+    const src = ctx.createBufferSource();
+    const g = ctx.createGain();
+    src.buffer = buf;
+    g.gain.value = VOLUMEN_MUSICA;
+    src.connect(g); g.connect(general);
+    src.onended = () => { if (musica && musica.src === src) musica = null; };
+    src.start(0, Math.max(0, desde));
+    musica = { src, g };
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Corta la música con un fundido corto (al saltar, cerrar o si el video se traba). */
+export function pararMusica(fundido = 0.35) {
+  if (!musica || !ctx) return;
+  const { src, g } = musica;
+  musica = null;
+  try {
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.linearRampToValueAtTime(0, t + Math.max(0.01, fundido));
+    src.stop(t + Math.max(0.01, fundido) + 0.02);
+  } catch { /* ya terminó */ }
+}
+
+export const musicaLista = (url) => decodificadas.has(url);

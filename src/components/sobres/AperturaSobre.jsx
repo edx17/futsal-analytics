@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { varianteDeApertura, ajustarVariante, guionDe, indiceMejorCarta } from '../../analytics/aperturas';
 import { menosMovimiento, equipoLiviano } from '../../utils/preferenciasApertura';
-import { sonar, callarTodo } from '../../utils/sonidoApertura';
+import { sonar, callarTodo, pararMusica } from '../../utils/sonidoApertura';
 import PaqueteSobre from './PaqueteSobre';
 import Particulas from './Particulas';
 import VideoApertura from './VideoApertura';
@@ -23,11 +23,11 @@ import './apertura.css';
 
 const claseSegura = (id) => String(id).replace(/[^a-z0-9_-]/gi, '-');
 
-export default function AperturaSobre({ resultado, prefs, onCerrar }) {
+export default function AperturaSobre({ resultado, prefs, evento = null, onCerrar }) {
   const variante = useMemo(() => ajustarVariante(
-    varianteDeApertura({ tipo: resultado.tipo, cartas: resultado.cartas }),
+    varianteDeApertura({ tipo: resultado.tipo, cartas: resultado.cartas, evento }),
     { prefs, menosMovimiento: menosMovimiento(), liviano: equipoLiviano() },
-  ), [resultado, prefs]);
+  ), [resultado, prefs, evento]);
   const guion = useMemo(() => guionDe(variante), [variante]);
   const mejor = useMemo(() => indiceMejorCarta(resultado.cartas), [resultado]);
   const conVideo = variante.modo === 'video';
@@ -53,6 +53,7 @@ export default function AperturaSobre({ resultado, prefs, onCerrar }) {
   const saltar = useCallback(() => {
     if (Date.now() - inicio.current < variante.saltar.protegidoMs) return;
     callarTodo();
+    pararMusica();
     // En el video, saltar lleva a la mejor carta; en la estándar, a las cartas.
     setPaso(conVideo && fase === 'video' ? 1 : guion.length - 1);
   }, [variante, conVideo, fase, guion]);
@@ -63,7 +64,7 @@ export default function AperturaSobre({ resultado, prefs, onCerrar }) {
     return () => window.removeEventListener('keydown', tecla);
   }, [fase, saltar]);
 
-  useEffect(() => () => callarTodo(), []);
+  useEffect(() => () => { callarTodo(); pararMusica(0.2); }, []);
 
   const c = variante.colores;
   const vars = {

@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CartaGiratoria from '../components/quinteto/CartaGiratoria';
 import AperturaSobre from '../components/sobres/AperturaSobre';
-import { varianteDeApertura } from '../analytics/aperturas';
+import { varianteDeApertura, EVENTOS } from '../analytics/aperturas';
 import { prepararVideo, liberarVideos } from '../utils/videoApertura';
 import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasApertura';
-import { prepararAudio, sonidoActivo } from '../utils/sonidoApertura';
+import { prepararAudio, sonidoActivo, cargarMusica } from '../utils/sonidoApertura';
 import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, rarezaPorId, probabilidades } from '../analytics/sobres';
 import { estadoSobres, abrirSobre, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
@@ -46,6 +46,7 @@ export default function Sobres() {
   const [filtro, setFiltro] = useState('todas');
   const [verProbs, setVerProbs] = useState(false);
   const [prefs, setPrefs] = useState(leerPreferencias);
+  const [evento] = useState(eventoDeLaDireccion); // sólo con ?evento=<id> (p. ej. la demo)
   const cambiarPref = (clave, valor) => {
     const nuevas = { ...prefs, [clave]: valor };
     setPrefs(nuevas);
@@ -69,7 +70,7 @@ export default function Sobres() {
   const abrir = async (tipo) => {
     if (abriendo || resultado) return; // nunca dos aperturas a la vez
     prepararAudio(prefs.sonido);       // en el toque: el navegador sólo deja sonar así
-    precargarVideo(tipo);              // el video baja mientras la base sortea las cartas
+    precargarVideo(tipo, evento);      // el video baja mientras la base sortea las cartas
     setAbriendo(tipo);
     setError(null);
     const r = await abrirSobre(tipo);
@@ -130,7 +131,7 @@ export default function Sobres() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
             {ORDEN_SOBRES.filter((t) => seMuestra(t, estado)).map((t) => (
-              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t} alApuntar={() => precargarVideo(t)}
+              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t} alApuntar={() => precargarVideo(t, evento)}
                 alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
             ))}
           </div>
@@ -185,17 +186,28 @@ export default function Sobres() {
         </div>
       )}
 
-      {resultado && <AperturaSobre key={resultado.sobre_id} resultado={resultado} prefs={prefs} onCerrar={cerrarResultado} />}
+      {resultado && <AperturaSobre key={resultado.sobre_id} resultado={resultado} prefs={prefs} evento={evento} onCerrar={cerrarResultado} />}
     </div>
   );
+}
+
+/* Un evento se activa sólo a mano, desde la dirección (?evento=demo) y si
+   está cargado en EVENTOS: cambia la puesta en escena, nunca las cartas. */
+function eventoDeLaDireccion() {
+  if (typeof window === 'undefined') return null;
+  const id = new URLSearchParams(window.location.search).get('evento');
+  return id && Object.prototype.hasOwnProperty.call(EVENTOS, id) ? id : null;
 }
 
 /* Cuando alguien apunta a un sobre con cinemática (o lo toca), el navegador
    empieza a bajar SU video (un solo formato, una sola vez): al abrirlo ya
    está o falta poco. Los demás videos no se bajan. */
-function precargarVideo(tipo) {
-  const v = varianteDeApertura({ tipo });
-  if (v.video) prepararVideo(v.video);
+function precargarVideo(tipo, evento) {
+  const v = varianteDeApertura({ tipo, evento });
+  if (v.video) {
+    prepararVideo(v.video);
+    if (v.video.musica) cargarMusica(v.video.musica);
+  }
 }
 
 const notaDe = (tipo, e) => {

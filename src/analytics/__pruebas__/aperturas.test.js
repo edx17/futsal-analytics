@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   VARIANTES, VARIANTE_DE_TIPO, VIDEOS, varianteDeApertura, completarVariante, ajustarVariante, guionDe, duracionTotal,
-  varianteDeEvento, indiceMejorCarta, FASES_VIDEO, FASES_ESTANDAR,
+  varianteDeEvento, indiceMejorCarta, FASES_VIDEO, FASES_ESTANDAR, EVENTOS,
 } from '../aperturas';
 import { SOBRES } from '../sobres';
 
@@ -46,12 +46,39 @@ describe('aperturas: qué variante toca', () => {
     expect(varianteDeApertura({ tipo: 'mega', cartas: cartas('toty', 'totw'), videos: TODOS }).id).toBe('leyenda');
   });
 
+  it('excepcional: su propio video y, si no está, el de Leyenda', () => {
+    const conPropio = { ...TODOS, excepcional: { ...VIDEOS.vdraft, poster: '/cine/excepcional.jpg' } };
+    expect(varianteDeApertura({ tipo: 'mega', cartas: cartas('toty', 'potm'), videos: conPropio }).video.id).toBe('excepcional');
+    expect(varianteDeApertura({ tipo: 'mega', cartas: cartas('toty', 'potm'), videos: TODOS }).video.id).toBe('leyenda');
+  });
+
   it('eventos: sólo si están cargados', () => {
     expect(varianteDeApertura({ tipo: 'racha', evento: 'aniversario' }).id).not.toMatch(/^evento/);
     const eventos = { aniversario: { nombre: 'ANIVERSARIO', colores: { luz: '#f43f5e' } } };
     expect(varianteDeApertura({ tipo: 'racha', evento: 'aniversario', eventos }))
       .toMatchObject({ id: 'evento:aniversario', nombre: 'ANIVERSARIO', modo: 'video' });
     expect(varianteDeEvento('x', {}).colores.luz).toBeTruthy();
+  });
+
+  it('el evento demo: marcado como demo, sólo a pedido y con su video o el de V-Draft', () => {
+    expect(EVENTOS.demo.demo).toBe(true);
+    expect(EVENTOS.demo.nombre).toMatch(/DEMO/);
+    expect(varianteDeApertura({ tipo: 'racha', cartas: cartas('oro') }).id).toBe('epico');
+    const v = varianteDeApertura({ tipo: 'racha', evento: 'demo' });
+    expect(v).toMatchObject({ id: 'evento:demo', modo: 'video' });
+    expect(v.video.id).toBe(VIDEOS.evento_demo ? 'evento_demo' : 'vdraft');
+  });
+});
+
+describe('aperturas: los videos', () => {
+  it('cada video tiene fuentes, póster, duración y su música', () => {
+    Object.entries(VIDEOS).forEach(([id, v]) => {
+      expect(v.fuentes.map((f) => f.src)).toEqual([`/cine/${id}.webm`, `/cine/${id}.mp4`]);
+      expect(v.poster).toBe(`/cine/${id}.jpg`);
+      expect(v.duracion).toBeGreaterThan(5);
+      expect(v.musica).toBe(`/cine/musica/${id}.m4a`);
+      v.sonidos.forEach(([seg]) => expect(seg).toBeLessThan(v.duracion));
+    });
   });
 });
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { sonar, callarTodo } from '../../utils/sonidoApertura';
+import { sonar, callarTodo, tocarMusica, pararMusica, cargarMusica } from '../../utils/sonidoApertura';
 import { prepararVideo, recargarVideo } from '../../utils/videoApertura';
 
 /* EL VIDEO DE LA APERTURA
@@ -15,7 +15,9 @@ import { prepararVideo, recargarVideo } from '../../utils/videoApertura';
  *   - si el navegador no deja reproducir solo (p. ej. modo ahorro en iPhone),
  *     se ofrece un botón para verla;
  *   - al terminar (o al salir) se pausa y se saca de la pantalla.
- * Sin audio en el video: los sonidos se sintetizan sincronizados con él.
+ * Sin audio en el video: suena su música (cine/musica.py) desde el segundo en
+ * el que está el video; si no está lista, o en velocidad rápida, los sonidos
+ * sintetizados de siempre.
  */
 const CARGA_MAX = 8000;
 const TRABADO_MAX = 5000;
@@ -47,7 +49,7 @@ export default function VideoApertura({ video, velocidad = 1, onFin }) {
       poner('finalizada');
       finRef.current();
     };
-    const error = () => { if (!termino) poner('error'); };
+    const error = () => { if (!termino) { poner('error'); pararMusica(0.2); } };
 
     const intentarReproducir = () => {
       v.playbackRate = velocidad;
@@ -65,10 +67,16 @@ export default function VideoApertura({ video, velocidad = 1, onFin }) {
       poner('lista');
       if (v.paused) intentarReproducir();
     };
+    const conMusica = !!video.musica && velocidad === 1;
+    if (conMusica) cargarMusica(video.musica);
+    let musicaSonando = false;
     const reproduciendo = () => {
       poner('reproduciendo');
+      // Si la red frenó el video, la música se retoma en el mismo segundo.
+      if (musicaSonando) { tocarMusica(video.musica, v.currentTime); return; }
       if (sonidosPuestos) return;
       sonidosPuestos = true;
+      if (conMusica && tocarMusica(video.musica, v.currentTime)) { musicaSonando = true; return; }
       const desde = v.currentTime;
       (video.sonidos || []).forEach(([seg, nombre, dur]) => {
         if (seg < desde) return;
@@ -77,7 +85,7 @@ export default function VideoApertura({ video, velocidad = 1, onFin }) {
     };
     const avanza = () => { ultimoAvance = { t: v.currentTime, cuando: Date.now() }; };
     // Se frenó a esperar datos (red lenta): vuelve a 'cargando' hasta el próximo 'playing'.
-    const espera = () => { if (!termino && !v.ended) poner('cargando'); };
+    const espera = () => { if (!termino && !v.ended) { poner('cargando'); if (musicaSonando) pararMusica(0.15); } };
 
     v.addEventListener('loadeddata', lista);
     v.addEventListener('canplay', lista);

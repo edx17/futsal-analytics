@@ -21,12 +21,15 @@
 /* ── los videos renderizados ─────────────────────────────────────────────────
    Uno por variante de cine (public/cine). Sólo se usan los que existen: una
    variante cuyo video todavía no se renderizó abre en modo estándar.
-   `sonidos`: [segundo, sonido, duración] sincronizados con el video. */
+   `musica`: su pieza (cine/musica.py), que arranca con el video y dura un poco
+   más (acompaña la mejor carta). `sonidos`: [segundo, sonido, duración], los
+   sintetizados que suenan si la música no está lista o en velocidad rápida. */
 export const VIDEOS = {
   vdraft: {
     fuentes: [{ src: '/cine/vdraft.webm', tipo: 'video/webm' }, { src: '/cine/vdraft.mp4', tipo: 'video/mp4' }],
     poster: '/cine/vdraft.jpg',
     duracion: 6.5,
+    musica: '/cine/musica/vdraft.m4a',
     sonidos: [[0, 'carga', 1.5], [1.5, 'portal', 0.6], [2.1, 'pabellon', 3.2], [5.3, 'solemne', 1.1], [6.1, 'golpeFuerte', 1]],
   },
 };
@@ -124,9 +127,10 @@ export const VARIANTES = {
     intensidad: 1.3, particulas: 90, vibracion: 0.6,
   },
 
-  /* Excepcional: TOTY y además otra carta top. La escena de Leyenda con más de todo. */
+  /* Excepcional: TOTY y además otra carta top. Su propia escena (silencio, el haz
+     central, el golpe más grande); si su video no está, la de Leyenda. */
   excepcional: {
-    id: 'excepcional', nombre: 'RECOMPENSA EXCEPCIONAL', modo: 'video', video: 'leyenda', icono: 'copa', excepcional: true,
+    id: 'excepcional', nombre: 'RECOMPENSA EXCEPCIONAL', modo: 'video', video: 'excepcional', videoAlternativo: 'leyenda', icono: 'copa', excepcional: true,
     colores: { principal: '#d97706', secundario: '#0c0a09', acento: '#ffffff', fondo: '#000000', luz: '#fde68a',
       particulas: ['#fde68a', '#ffffff', '#fbbf24', '#e879f9'], texto: '#ffffff' },
     intensidad: 1.5, particulas: 140, vibracion: 0.8,
@@ -145,13 +149,24 @@ export const VARIANTE_DE_TIPO = {
 };
 
 /* ── eventos ─────────────────────────────────────────────────────────────────
-   Para torneos, temporadas o aniversarios con identidad propia. No hay ninguno
-   cargado: se agregan acá (id → definición) y se activan pasando `evento` al
-   resolver. Una definición se arma sobre la escena de video con lo que cambie:
-   { nombre, colores, video, particulas, intensidad, icono }. Para un video
-   propio: una entrada nueva en cine/variantes.json, se renderiza y se suma
-   a VIDEOS. */
-export const EVENTOS = {};
+   Para torneos, temporadas o aniversarios con identidad propia. Se agregan acá
+   (id → definición) y se activan SÓLO pasando `evento` al resolver (en Sobres:
+   `?evento=<id>` en la dirección); nunca solos. Una definición se arma sobre la
+   escena de video con lo que cambie: { nombre, colores, video, particulas,
+   intensidad, icono }. Para un video propio: un perfil nuevo en
+   cine/perfiles.json (copiando 'evento_demo'), se renderiza con
+   escena_pabellon.py --perfil <id>, se genera su música y se suma a VIDEOS.
+
+   'demo' es sólo un PERFIL DE DEMOSTRACIÓN del sistema (rojo oscuro y ámbar,
+   textos "DEMO"): no representa ningún evento real. */
+export const EVENTOS = {
+  demo: {
+    nombre: 'EVENTO · DEMO', demo: true, icono: 'estrella', video: 'evento_demo', videoAlternativo: 'vdraft',
+    colores: { principal: '#b91c1c', secundario: '#1c0303', acento: '#fbbf24', fondo: '#070101', luz: '#f59e0b',
+      particulas: ['#f59e0b', '#fbbf24', '#ffffff', '#ef4444'], texto: '#fff7ed' },
+    intensidad: 1.2, particulas: 90,
+  },
+};
 
 export const PLANTILLA_EVENTO = { nombre: 'EVENTO ESPECIAL', icono: 'estrella', modo: 'video', video: 'vdraft' };
 
@@ -169,7 +184,8 @@ const esColor = (c) => typeof c === 'string' && /^(#[0-9a-f]{3,8}|rgba?\(.+\))$/
  * devuelve algo que se puede mostrar.
  */
 export function completarVariante(def = {}, videos = VIDEOS) {
-  const video = def.modo === 'video' && def.video && videos[def.video] ? def.video : null;
+  const existe = (id) => (id && videos[id] ? id : null);
+  const video = def.modo === 'video' ? existe(def.video) || existe(def.videoAlternativo) : null;
   const modo = video ? 'video' : 'estandar';
   const tiempos = {};
   Object.keys(TIEMPOS_ESTANDAR).forEach((k) => { tiempos[k] = limitar(def.tiempos?.[k], 0, 6000, TIEMPOS_ESTANDAR[k]); });
