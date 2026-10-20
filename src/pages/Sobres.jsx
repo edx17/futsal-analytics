@@ -52,7 +52,11 @@ export default function Sobres() {
   const { perfil } = useAuth() || {};
   /* El evento: el de la dirección, o el que activó el superusuario para el club. */
   const evento = eventoUrl || (estado?.evento && Object.prototype.hasOwnProperty.call(EVENTOS, estado.evento) ? estado.evento : null);
-  const esGod = !kiosco && (!!estado?.es_superuser || perfil?.rol === 'superuser');
+  /* El superusuario no tiene club propio ni colección: entra directo al Modo
+     GOD del club elegido en la app (las funciones de sobres no lo atienden). */
+  const soloGod = !kiosco && perfil?.rol === 'superuser';
+  const esGod = soloGod || (!kiosco && !!estado?.es_superuser);
+  const clubGod = localStorage.getItem('club_id') || perfil?.club_id || null;
   /* Una apertura de prueba del modo GOD: { resultado, forzar, evento }. No toca la base. */
   const [prueba, setPrueba] = useState(null);
   const cambiarPref = (clave, valor) => {
@@ -63,6 +67,7 @@ export default function Sobres() {
   };
 
   const cargar = useCallback(async () => {
+    if (!kiosco && perfil?.rol === 'superuser') { setCargando(false); return; } // Modo GOD: no hay colección propia
     const [e, c] = await Promise.all([estadoSobres(), coleccionSobres()]);
     if (e.vencida || c.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); setCargando(false); return; }
     if (e.error || c.error) { setError((e.error || c.error).message); setCargando(false); return; }
@@ -70,7 +75,7 @@ export default function Sobres() {
     setEstado(e.data);
     setColeccion(c.data);
     setCargando(false);
-  }, []);
+  }, [kiosco, perfil?.rol]);
 
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => () => liberarVideos(), []); // al salir de la pantalla, nada queda bajando
@@ -109,6 +114,30 @@ export default function Sobres() {
   );
 
   if (cargando) return <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)' }}>Abriendo el paquete…</div>;
+
+  if (soloGod) {
+    return (
+      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 0 80px', animation: 'fadeIn 0.3s' }}>
+        <div className="stat-label" style={{ color: '#fbbf24', fontSize: '1.2rem' }}>SOBRES · MODO GOD</div>
+        <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 14 }}>
+          Probá cualquier sobre y cualquier cinemática sin gastar nada, manejá las cartas del catálogo y los sobres del club.
+        </div>
+        {!clubGod ? (
+          <div className="bento-card" style={{ padding: 24, color: 'var(--text-dim)' }}>Elegí un club en la app para administrar sus sobres.</div>
+        ) : (
+          <>
+            <PreferenciasApertura prefs={prefs} cambiar={cambiarPref} />
+            <PanelGod clubId={clubGod} estado={null} abiertoInicial alCambiar={cargar}
+              alProbar={(p) => { prepararAudio(prefs.sonido); setPrueba(p); }} />
+          </>
+        )}
+        {prueba && (
+          <AperturaSobre key={prueba.resultado.sobre_id} resultado={prueba.resultado} prefs={{ ...prefs, cine: true }}
+            evento={prueba.evento} forzar={prueba.forzar} onCerrar={() => setPrueba(null)} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: kiosco ? '16px 16px 90px' : '0 0 80px', animation: 'fadeIn 0.3s' }}>
@@ -195,7 +224,7 @@ export default function Sobres() {
       )}
 
       {esGod && (
-        <PanelGod clubId={localStorage.getItem('club_id') || perfil?.club_id} estado={estado} alCambiar={cargar}
+        <PanelGod clubId={clubGod} estado={estado} alCambiar={cargar}
           alProbar={(p) => { prepararAudio(prefs.sonido); setPrueba(p); }} />
       )}
 

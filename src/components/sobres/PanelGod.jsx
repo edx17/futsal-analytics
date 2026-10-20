@@ -34,8 +34,8 @@ const ESCENAS = [
   ...Object.entries(EVENTOS).map(([id, e]) => [`evento:${id}`, e.nombre]),
 ];
 
-export default function PanelGod({ clubId, estado, alProbar, alCambiar }) {
-  const [abierto, setAbierto] = useState(false);
+export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoInicial = false }) {
+  const [abierto, setAbierto] = useState(abiertoInicial);
   const [pestana, setPestana] = useState('probar');
   const [catalogo, setCatalogo] = useState(null);
   const [ajustes, setAjustes] = useState(new Map());
@@ -53,6 +53,13 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar }) {
     }
   }, [clubId]);
 
+
+  // Abierto de entrada (la pantalla del superusuario): el catálogo se pide al montar.
+  useEffect(() => {
+    if (!abiertoInicial) return undefined;
+    const t = setTimeout(cargar, 0);
+    return () => clearTimeout(t);
+  }, [abiertoInicial, cargar]);
 
   return (
     <div className="bento-card" style={{ marginTop: 26, padding: 14, border: '1px solid rgba(251,191,36,.45)' }}>

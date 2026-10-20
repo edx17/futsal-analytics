@@ -177,7 +177,8 @@ function AppRoutes() {
       <Route path="/mysquad" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><MiQuinteto /></ProtectedRoute>} />
       {/* La primera versión se llamó "Mi Quinteto": el link viejo sigue andando. */}
       <Route path="/mi-quinteto" element={<Navigate to="/mysquad" replace />} />
-      <Route path="/sobres" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><Sobres /></ProtectedRoute>} />
+      {/* El superusuario entra al Modo GOD del club que tenga elegido. */}
+      <Route path="/sobres" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Sobres /></ProtectedRoute>} />
       <Route path="/vdraft" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><VDraft /></ProtectedRoute>} />
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
@@ -522,9 +523,9 @@ useEffect(() => {
             {menusAbiertos.juego && !isCollapsed && (
               <>
                 <NavLink to="/mysquad" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>MYSQUAD</span></NavLink>
-                {!permisos.esSuperUser && (
-                  <NavLink to="/sobres" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>SOBRES</span></NavLink>
-                )}
+                <NavLink to="/sobres" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>
+                  <Icono nombre="juego" /> <span>{permisos.esSuperUser ? 'SOBRES · MODO GOD' : 'SOBRES'}</span>
+                </NavLink>
                 {!permisos.esSuperUser && (
                   <NavLink to="/vdraft" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>V-DRAFT</span></NavLink>
                 )}
