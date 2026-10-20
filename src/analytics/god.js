@@ -5,11 +5,14 @@
  *                      ACTIVO, sin gastar nada ni sumar a ninguna colección.
  *   aplicarAjustes     la media corregida a mano en vez de la calculada (la
  *                      calculada queda en `ovrCalculada`).
+ *   pendientes…        las cartas de premio guardadas en el historial que
+ *                      todavía no están en el catálogo de los sobres.
  *   mediaDudosa        avisa cuando la media no la sostienen los datos de la
  *                      propia carta (un 99 con un solo partido, por ejemplo).
  */
 
-import { SOBRES, sortearSobre } from './sobres';
+import { SOBRES, sortearSobre, catalogoDeCartas } from './sobres';
+import { cartasDeHistorial } from './premiosCartas';
 
 /** Un sobre de prueba con cartas reales del catálogo activo. No toca la base. */
 export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = new Map(), azar = Math.random, n = Date.now(), evento = null }) {
@@ -57,4 +60,17 @@ export function mediaDudosa(carta = {}) {
   if (ovr >= 90 && Number.isFinite(nota) && nota > 0 && nota < 8) return `${ovr} con nota ${nota.toFixed(1)}`;
   if (ovr === 99) return '99: el techo de la escala';
   return null;
+}
+
+/**
+ * Las filas de catálogo de los premios guardados en el historial que todavía
+ * no se publicaron. `historial`: registros (filaARegistro); `catalogo`: las
+ * filas del catálogo (de ahí salen las cartas BASE, con sus atributos);
+ * `fotos`: Map clave → url. Lo mismo que publica MySquad, sin recalcular nada.
+ */
+export function pendientesDePublicar(historial = [], catalogo = [], fotos = new Map()) {
+  const publicadas = new Set(catalogo.map((k) => k.clave));
+  const base = catalogo.filter((k) => k.tipo === 'BASE').map((k) => ({ ...(k.carta || {}), id: String(k.carta?.id ?? k.jugador_id) }));
+  const premios = cartasDeHistorial(historial, base, fotos).filter((c) => !publicadas.has(c.clave));
+  return catalogoDeCartas([], premios);
 }

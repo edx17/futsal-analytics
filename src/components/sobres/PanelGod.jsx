@@ -3,7 +3,9 @@ import CartaJugador from '../quinteto/CartaJugador';
 import { SOBRES, rarezaPorId } from '../../analytics/sobres';
 import { VARIANTES, VIDEOS, EVENTOS } from '../../analytics/aperturas';
 import { PREMIOS } from '../../analytics/premiosCartas';
-import { resultadoDePrueba, aplicarAjuste, mediaDudosa } from '../../analytics/god';
+import { resultadoDePrueba, aplicarAjuste, mediaDudosa, pendientesDePublicar } from '../../analytics/god';
+import { listarHistorial } from '../../utils/cartasDestacadas';
+import { publicarCatalogo } from '../../utils/sobres';
 import {
   listarCatalogo, activarCartas, MENSAJE_SIN_GOD, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, guardarConfigSobres,
 } from '../../utils/god';
@@ -42,12 +44,17 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
   const [ajustes, setAjustes] = useState(new Map());
   const [fotos, setFotos] = useState(new Map());
   const [aviso, setAviso] = useState(null);
+  /* Premios guardados en HISTORIAL que todavía no están en el catálogo de sobres. */
+  const [pendientes, setPendientes] = useState([]);
+  const [publicando, setPublicando] = useState(false);
 
   const cargar = useCallback(async () => {
     if (!clubId) return;
     try {
-      const [k, a, f] = await Promise.all([listarCatalogo(clubId), listarAjustes(clubId), listarFotos(clubId).catch(() => new Map())]);
+      const [k, a, f, h] = await Promise.all([listarCatalogo(clubId), listarAjustes(clubId), listarFotos(clubId).catch(() => new Map()),
+        listarHistorial(clubId).catch(() => [])]);
       setCatalogo(k); setAjustes(a); setFotos(f);
+      setPendientes(pendientesDePublicar(h, k, f));
     } catch (err) {
       setAviso({ texto: err?.message || 'No se pudo leer el catálogo.', error: true });
       setCatalogo([]);
@@ -73,6 +80,22 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
             {PESTANAS.map(([id, t]) => <button key={id} onClick={() => setPestana(id)} style={chip(pestana === id)}>{t}</button>)}
           </div>
           {aviso && <Aviso {...aviso} />}
+          {pendientes.length > 0 && (pestana === 'cartas' || pestana === 'eventos') && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px', borderRadius: 8, marginBottom: 10,
+              border: '1px solid rgba(251,191,36,.5)', background: 'rgba(251,191,36,.07)', fontSize: '0.78rem', color: 'var(--text)' }}>
+              <span style={{ flex: 1, minWidth: 220 }}>
+                Hay <b>{pendientes.length}</b> cartas guardadas en HISTORIAL que todavía no están publicadas para los sobres
+                ({Object.entries(pendientes.reduce((m, f) => ({ ...m, [f.tipo]: (m[f.tipo] || 0) + 1 }), {})).map(([t, n]) => `${PREMIOS[t]?.sigla || t} ${n}`).join(' · ')}).
+                Hasta publicarlas no aparecen acá ni pueden salir en un sobre.
+              </span>
+              <button style={{ ...btn, background: '#fbbf24', color: '#1a1205' }} disabled={publicando} onClick={async () => {
+                setPublicando(true); setAviso(null);
+                try { const n = await publicarCatalogo(clubId, pendientes); await cargar(); setAviso({ texto: `Se publicaron ${n} cartas.` }); } catch (err) {
+                  setAviso({ texto: err?.message || 'No se pudieron publicar.', error: true });
+                } finally { setPublicando(false); }
+              }}>{publicando ? 'PUBLICANDO…' : `PUBLICAR LAS ${pendientes.length}`}</button>
+            </div>
+          )}
           {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} alProbar={alProbar} />}
           {pestana === 'cartas' && (
             <Cartas clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />

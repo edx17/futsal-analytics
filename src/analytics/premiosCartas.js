@@ -206,7 +206,8 @@ export function descripcionRegistro(registro) {
   } else if (tipo === 'TOTY') {
     base = `Temporada ${periodo || String(fechaRef || '').slice(0, 4)}`;
   } else if (esEspecial(tipo)) {
-    base = `${PREMIOS[tipo].titulo} · ${periodoEspecial({ periodo, contexto })}`;
+    // Los de la rueda ya dicen "1ª RUEDA" en el título: va el torneo; los del mes, el mes.
+    base = `${PREMIOS[tipo].titulo} · ${torneoDePeriodo(periodo) ? contexto.torneo || 'Torneo' : etiquetaMes(contexto.mes || periodo)}`;
   }
   return categoria && categoria !== 'Todas' ? `${base} · ${categoria}` : base;
 }

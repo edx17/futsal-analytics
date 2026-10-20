@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resultadoDePrueba, aplicarAjuste, aplicarAjustes, mediaDudosa } from '../god';
+import { resultadoDePrueba, aplicarAjuste, aplicarAjustes, mediaDudosa, pendientesDePublicar } from '../god';
 import { SOBRES, rarezaDeCarta, nombreDeCarta, catalogoDeCartas, ESPECIALES as RAREZAS_ESPECIALES } from '../sobres';
 import { varianteForzada, VARIANTES } from '../aperturas';
 import { ESPECIALES } from '../especialesCartas';
@@ -76,5 +76,18 @@ describe('god: forzar una escena', () => {
     expect(varianteForzada('nada')).toBeNull();
     expect(varianteForzada(null)).toBeNull();
     Object.keys(VARIANTES).forEach((id) => expect(varianteForzada(id)).toBeTruthy());
+  });
+});
+
+describe('god: premios guardados sin publicar', () => {
+  const historial = [{ tipo: 'SGOL', periodo: 'R1:t', fechaRef: '2026-07-20', contexto: { torneo: 'T', partidos: 17 },
+    cartas: [{ id: '1', apellido: 'A', nota: 7, pj: 10, goles: 5, puesto: 1, valor: 5 }, { id: '2', apellido: 'B', nota: 6.5, pj: 9, goles: 3, puesto: 2, valor: 3 }] }];
+  const catalogo = [{ clave: 'BASE|1', tipo: 'BASE', jugador_id: '1', carta: { id: '1', apellido: 'A', atributos: [['TIR', 80]] } },
+    { clave: 'SGOL|R1:t|2', tipo: 'SGOL', jugador_id: '2', carta: {} }];
+  it('devuelve sólo las que faltan, listas para publicar y con los atributos de la base', () => {
+    const p = pendientesDePublicar(historial, catalogo, new Map([['SGOL|R1:t|1', 'https://f/1.png']]));
+    expect(p.map((f) => f.clave)).toEqual(['SGOL|R1:t|1']);
+    expect(p[0]).toMatchObject({ tipo: 'SGOL', rareza: 'totw' });
+    expect(p[0].carta).toMatchObject({ foto: 'https://f/1.png', atributos: [['TIR', 80]], especial: { puesto: 1 } });
   });
 });
