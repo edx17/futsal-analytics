@@ -7,14 +7,18 @@
 --  historial, la carta seguía en el catálogo y salía en los sobres (por
 --  ejemplo un TOTM de un mes que nunca quedó guardado).
 --
---  1. Limpia las cartas de premio del catálogo que ya no están en el historial
---     (y, por la clave foránea, las copias de esas cartas en las colecciones).
+--  1. Da de BAJA las cartas de premio del catálogo que ya no están en el
+--     historial: dejan de salir en los sobres y en el V-Draft. No se borran
+--     (borrarlas se llevaría, por la clave foránea, las copias que ya tienen
+--     los jugadores). Es la misma baja del modo GOD (cartas_catalogo.activa).
 --  2. Desde ahora, al quitar (o cambiar) un premio del historial, sus cartas se
---     quitan solas del catálogo.
+--     dan de baja solas (si se vuelve a guardar, se dan de alta desde el modo GOD).
 --
 --  La clave de una carta de premio es "TIPO|periodo|id_jugador" (ver
 --  catalogoDeCartas en src/analytics/sobres.js). Es idempotente.
 -- ═══════════════════════════════════════════════════════════════════════════
+
+alter table public.cartas_catalogo add column if not exists activa boolean not null default true;
 
 -- ¿La carta de premio del catálogo está en el historial del club?
 create or replace function public._carta_premio_vigente(p_club uuid, p_clave text)
@@ -28,18 +32,18 @@ returns boolean language sql stable security definer set search_path = public as
                     where j ->> 'id' = split_part(p_clave, '|', 3)))
 $$;
 
--- 1. Limpieza de lo que quedó colgado.
-delete from public.cartas_catalogo k
- where k.tipo <> 'BASE'
+-- 1. Baja de lo que quedó colgado.
+update public.cartas_catalogo k set activa = false
+ where k.tipo <> 'BASE' and k.activa
    and not public._carta_premio_vigente(k.club_id, k.clave);
 
--- 2. Al quitar o cambiar un premio del historial, se van sus cartas.
+-- 2. Al quitar o cambiar un premio del historial, sus cartas se dan de baja.
 create or replace function public._cartas_destacadas_sincronizar()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  delete from public.cartas_catalogo k
+  update public.cartas_catalogo k set activa = false
    where k.club_id = old.club_id
-     and k.tipo <> 'BASE'
+     and k.tipo <> 'BASE' and k.activa
      and split_part(k.clave, '|', 1) = old.tipo
      and split_part(k.clave, '|', 2) = old.periodo
      and not public._carta_premio_vigente(k.club_id, k.clave);

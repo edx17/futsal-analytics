@@ -21,13 +21,17 @@ const lanzar = (error) => {
   throw error;
 };
 
-/** Todo el catálogo del club (activas y dadas de baja). */
+/** Todo el catálogo del club (activas y dadas de baja). Sin la migración, todas cuentan como activas. */
 export async function listarCatalogo(clubId) {
+  const leer = (columnas) => fetchPaginado(() => supabase.from('cartas_catalogo')
+    .select(columnas).eq('club_id', clubId).order('clave', { ascending: true }));
   try {
-    return await fetchPaginado(() => supabase.from('cartas_catalogo')
-      .select('id, clave, jugador_id, tipo, rareza, carta, activa, actualizada_at')
-      .eq('club_id', clubId).order('clave', { ascending: true }));
-  } catch (err) { return lanzar(err); }
+    return await leer('id, clave, jugador_id, tipo, rareza, carta, activa, actualizada_at');
+  } catch (err) {
+    if (!falta(err)) throw err;
+    const filas = await leer('id, clave, jugador_id, tipo, rareza, carta, actualizada_at');
+    return filas.map((f) => ({ ...f, activa: true, sinMigracion: true }));
+  }
 }
 
 /** Da de baja (activa=false) o de alta un grupo de cartas. */

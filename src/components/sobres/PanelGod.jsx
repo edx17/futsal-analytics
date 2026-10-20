@@ -5,7 +5,7 @@ import { VARIANTES, VIDEOS, EVENTOS } from '../../analytics/aperturas';
 import { PREMIOS } from '../../analytics/premiosCartas';
 import { resultadoDePrueba, aplicarAjuste, mediaDudosa } from '../../analytics/god';
 import {
-  listarCatalogo, activarCartas, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, guardarConfigSobres,
+  listarCatalogo, activarCartas, MENSAJE_SIN_GOD, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, guardarConfigSobres,
 } from '../../utils/god';
 import { listarFotos, subirFotoEspecial, quitarFotoEspecial } from '../../utils/cartasFotos';
 import { prepararVideo } from '../../utils/videoApertura';
@@ -142,6 +142,7 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   };
 
   if (catalogo === null) return <div style={dim}>Leyendo el catálogo…</div>;
+  if (catalogo[0]?.sinMigracion) return <Aviso texto={MENSAJE_SIN_GOD} error />;
   const visibles = lista.slice(0, limite);
 
   return (
