@@ -47,6 +47,14 @@ export const VIDEOS = {
     musica: '/cine/musica/epico.m4a',
     sonidos: [[0, 'carga', 1.4], [1.4, 'golpeSuave', 0.5], [3.2, 'portal', 0.8], [3.9, 'pabellon', 2.3], [6.27, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
   },
+  leyenda: {
+    fuentes: [{ src: '/cine/leyenda.webm', tipo: 'video/webm' }, { src: '/cine/leyenda.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/leyenda.jpg',
+    duracion: 8,
+    musica: '/cine/musica/leyenda.m4a',
+    sonidos: [[0, 'latido', 2], [2.13, 'golpeSuave', 0.5], [3.13, 'golpe', 0.6], [3.93, 'golpe', 0.6], [4.6, 'golpe', 0.6],
+      [5.33, 'solemne', 1.2], [6.53, 'golpeFuerte', 1], [7.53, 'brillo', 0.5]],
+  },
 };
 
 /* ── tiempos (ms) ──────────────────────────────────────────────────────────── */
