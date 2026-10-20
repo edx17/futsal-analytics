@@ -24,15 +24,16 @@ import './apertura.css';
 
 const claseSegura = (id) => String(id).replace(/[^a-z0-9_-]/gi, '-');
 
-/* `forzar`: id de una variante para ver esa escena sí o sí (modo GOD, sólo prueba). */
-export default function AperturaSobre({ resultado, prefs, evento = null, forzar = null, onCerrar }) {
+/* `forzar`: id de una variante para ver esa escena sí o sí (modo GOD, sólo prueba).
+   `escenaTipo`: la escena que el club le puso a este tipo de sobre (Modo GOD · SOBRES). */
+export default function AperturaSobre({ resultado, prefs, evento = null, forzar = null, escenaTipo = null, onCerrar }) {
   const variante = useMemo(() => ajustarVariante(
     (forzar && varianteDeEscena(forzar))
       // El sobre de un evento del Modo GOD trae su escena (nombre, video, colores).
       || (resultado.evento && varianteDeEventoDb(resultado.evento))
-      || varianteDeApertura({ tipo: resultado.tipo, cartas: resultado.cartas, evento }),
+      || varianteDeApertura({ tipo: resultado.tipo, cartas: resultado.cartas, evento, escena: escenaTipo }),
     { prefs, menosMovimiento: menosMovimiento(), liviano: equipoLiviano() },
-  ), [resultado, prefs, evento, forzar]);
+  ), [resultado, prefs, evento, forzar, escenaTipo]);
   const guion = useMemo(() => guionDe(variante), [variante]);
   const mejor = useMemo(() => indiceMejorCarta(resultado.cartas), [resultado]);
   const conVideo = variante.modo === 'video';

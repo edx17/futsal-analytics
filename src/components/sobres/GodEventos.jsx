@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import CartaJugador from '../quinteto/CartaJugador';
-import { PREMIOS } from '../../analytics/premiosCartas';
+import SelectorCartas from './SelectorCartas';
 import { VIDEOS } from '../../analytics/aperturas';
 import { MONEDA } from '../../analytics/sobres';
-import { resultadoDePrueba, aplicarAjuste } from '../../analytics/god';
+import { resultadoDePrueba } from '../../analytics/god';
 import {
   ESCENAS_BASE, PLANTILLAS, REGLAS, normalizarEvento, erroresEvento, eventoDePlantilla, cambiosDeExclusivas,
 } from '../../analytics/eventos';
@@ -81,8 +80,6 @@ export default function GodEventos({ clubId, catalogo, ajustes, recargar, avisar
 function Editor({ inicial, catalogo, ajustes, clubId, avisar, probar, otros, recargarAjustes, alGuardar, alCancelar }) {
   const [ev, setEv] = useState(inicial);
   const [guardando, setGuardando] = useState(false);
-  const [tipo, setTipo] = useState('TODAS');
-  const [buscar, setBuscar] = useState('');
   const [suma, setSuma] = useState(0);
   const cambiar = (k, v) => setEv((e) => ({ ...e, [k]: v }));
   const cambiarSobre = (k, v) => setEv((e) => ({ ...e, sobre: { ...e.sobre, [k]: v } }));
@@ -91,13 +88,8 @@ function Editor({ inicial, catalogo, ajustes, clubId, avisar, probar, otros, rec
 
   const elegidas = useMemo(() => new Set(ev.cartas), [ev.cartas]);
   const activas = useMemo(() => catalogo.filter((k) => k.activa !== false), [catalogo]);
-  const tipos = useMemo(() => ['TODAS', ...new Set(activas.map((k) => k.tipo))], [activas]);
-  const candidatas = useMemo(() => activas.filter((k) => (tipo === 'TODAS' || k.tipo === tipo)
-    && (!buscar || `${k.carta?.apellido} ${k.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase()))), [activas, tipo, buscar]);
   const delEvento = useMemo(() => activas.filter((k) => elegidas.has(k.clave)), [activas, elegidas]);
   const errores = erroresEvento(ev);
-
-  const alternarCarta = (clave) => cambiar('cartas', elegidas.has(clave) ? ev.cartas.filter((c) => c !== clave) : [...ev.cartas, clave]);
 
   const guardar = async () => {
     setGuardando(true); avisar(null);
@@ -152,21 +144,7 @@ function Editor({ inicial, catalogo, ajustes, clubId, avisar, probar, otros, rec
 
       {/* cartas */}
       <div style={rotulo}>CARTAS QUE INCLUYE · {ev.cartas.length}</div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={campo}>{tipos.map((t) => <option key={t} value={t}>{PREMIOS[t]?.sigla || t}</option>)}</select>
-        <input value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Buscar jugador" style={{ ...campo, width: 160 }} />
-        <button style={chip(false)} onClick={() => cambiar('cartas', [...new Set([...ev.cartas, ...candidatas.map((k) => k.clave)])])}>AGREGAR LAS {candidatas.length} FILTRADAS</button>
-        <button style={chip(false)} onClick={() => cambiar('cartas', ev.cartas.filter((cl) => !candidatas.some((k) => k.clave === cl)))}>QUITAR LAS FILTRADAS</button>
-      </div>
-      <div className="custom-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
-        {candidatas.slice(0, 60).map((k) => (
-          <div key={k.clave} style={{ position: 'relative', opacity: elegidas.has(k.clave) ? 1 : 0.45, flex: '0 0 auto' }}>
-            <CartaJugador carta={aplicarAjuste({ atributos: [], stats: {}, ...(k.carta || {}) }, ajustes.get(k.clave))} chica onClick={() => alternarCarta(k.clave)} />
-            {elegidas.has(k.clave) && <span style={{ position: 'absolute', top: -6, right: -4, background: '#00ff88', color: '#04120c', borderRadius: 10, fontSize: 10, fontWeight: 900, padding: '1px 5px' }}>✓</span>}
-          </div>
-        ))}
-        {candidatas.length > 60 && <span style={dim}>…y {candidatas.length - 60} más (filtrá para verlas)</span>}
-      </div>
+      <SelectorCartas catalogo={catalogo} ajustes={ajustes} elegidas={ev.cartas} cambiar={(cl) => cambiar('cartas', cl)} />
 
       {/* media */}
       {delEvento.length > 0 && (

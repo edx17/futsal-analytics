@@ -99,14 +99,21 @@ function fila(clave, tipo, c) {
  * Se sortea la rareza (sólo entre las que todavía tienen cartas para sacar) y
  * después una carta de esa rareza; en un mismo sobre no se repite ninguna.
  * Una carta que ya tenías no se suma: da V-Coins. `soloEspeciales`: el Mega Sobre.
+ * Lo que el club cambió de un sobre (tiposSobre.js): `rarezas` (las que salen),
+ * `pesos` ({ rareza: peso }) e `incluidas` (claves: si hay, sólo esas).
  * `azar`: () => número en [0, 1); se puede pasar uno fijo para probar.
  */
-export function sortearSobre({ catalogo = [], poseidas = new Set(), cantidad = 3, soloEspeciales = false, azar = Math.random }) {
+export function sortearSobre({
+  catalogo = [], poseidas = new Set(), cantidad = 3, soloEspeciales = false, azar = Math.random,
+  rarezas = null, pesos = null, incluidas = null,
+}) {
   const sacadas = new Set();
   const cartas = [];
+  const pool = incluidas?.length ? catalogo.filter((c) => incluidas.includes(c.clave)) : catalogo;
+  const reglas = rarezasDelSobre({ soloEspeciales, rarezas, pesos });
   for (let i = 0; i < cantidad; i += 1) {
-    const libres = catalogo.filter((c) => !sacadas.has(c.id));
-    const disponibles = RAREZAS.filter((r) => (!soloEspeciales || ESPECIALES.has(r.id)) && libres.some((c) => c.rareza === r.id));
+    const libres = pool.filter((c) => !sacadas.has(c.id));
+    const disponibles = reglas.filter((r) => libres.some((c) => c.rareza === r.id));
     if (disponibles.length === 0) break;
 
     const total = disponibles.reduce((s, r) => s + r.peso, 0);
@@ -125,9 +132,18 @@ export function sortearSobre({ catalogo = [], poseidas = new Set(), cantidad = 3
   return { cartas, puntosGanados: cartas.reduce((s, c) => s + c.puntos, 0) };
 }
 
+/* Las rarezas que pueden salir en un sobre, con su peso (el de siempre o el que puso el club; 0 = no sale). */
+function rarezasDelSobre({ soloEspeciales = false, rarezas = null, pesos = null }) {
+  const permitidas = rarezas?.length ? new Set(rarezas) : null;
+  return RAREZAS
+    .filter((r) => (permitidas ? permitidas.has(r.id) : !soloEspeciales || ESPECIALES.has(r.id)))
+    .map((r) => ({ ...r, peso: Number.isFinite(Number(pesos?.[r.id])) ? Math.min(100, Math.max(0, Number(pesos[r.id]))) : r.peso }))
+    .filter((r) => r.peso > 0);
+}
+
 /** Las probabilidades reales: se renormalizan si el club todavía no tiene cartas de alguna rareza. */
-export function probabilidades(catalogo = [], { soloEspeciales = false } = {}) {
-  const disponibles = RAREZAS.filter((r) => (!soloEspeciales || ESPECIALES.has(r.id)) && catalogo.some((c) => c.rareza === r.id));
+export function probabilidades(catalogo = [], { soloEspeciales = false, rarezas = null, pesos = null } = {}) {
+  const disponibles = rarezasDelSobre({ soloEspeciales, rarezas, pesos }).filter((r) => catalogo.some((c) => c.rareza === r.id));
   const total = disponibles.reduce((s, r) => s + r.peso, 0);
   return disponibles.map((r) => ({
     ...r,

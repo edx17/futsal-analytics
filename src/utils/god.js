@@ -7,7 +7,7 @@ import { fetchPaginado } from './supaPaginado';
  * al superusuario; acá no se decide nada, sólo se mueven filas.
  *   cartas_catalogo.activa   dar de baja / de alta (no se borra: quien la tiene la conserva)
  *   cartas_ajustes           media corregida a mano (se muestra en vez de la calculada)
- *   sobres_config            sobres suspendidos y evento activo del club
+ *   sobres_config            sobres suspendidos, escena del club y cada sobre editado (tipos)
  */
 
 export const MENSAJE_SIN_GOD =
@@ -62,15 +62,31 @@ export async function quitarAjuste(clubId, clave) {
   if (error) lanzar(error);
 }
 
-/** { suspendidos: [], evento_activo: null } del club. */
+/**
+ * { suspendidos: [], evento_activo: null, tipos: {} } del club. `tipos`: cada
+ * sobre editado (migración 20261023120000_sobres_tipos.sql); sin esa
+ * migración, vacío y `sinTipos`.
+ */
 export async function leerConfigSobres(clubId) {
-  const { data, error } = await supabase.from('sobres_config').select('suspendidos, evento_activo').eq('club_id', clubId).maybeSingle();
-  if (error) { if (falta(error)) return { suspendidos: [], evento_activo: null, sinTabla: true }; throw error; }
-  return { suspendidos: data?.suspendidos || [], evento_activo: data?.evento_activo || null };
+  let { data, error } = await supabase.from('sobres_config').select('suspendidos, evento_activo, tipos').eq('club_id', clubId).maybeSingle();
+  let sinTipos = false;
+  if (error && falta(error)) {
+    sinTipos = true;
+    ({ data, error } = await supabase.from('sobres_config').select('suspendidos, evento_activo').eq('club_id', clubId).maybeSingle());
+  }
+  if (error) { if (falta(error)) return { suspendidos: [], evento_activo: null, tipos: {}, sinTabla: true, sinTipos: true }; throw error; }
+  return { suspendidos: data?.suspendidos || [], evento_activo: data?.evento_activo || null, tipos: data?.tipos || {}, sinTipos };
 }
 
-export async function guardarConfigSobres(clubId, { suspendidos, evento_activo }) {
-  const { error } = await supabase.from('sobres_config')
-    .upsert({ club_id: clubId, suspendidos, evento_activo: evento_activo || null, actualizado_at: new Date().toISOString() }, { onConflict: 'club_id' });
-  if (error) lanzar(error);
+/** Guarda la configuración. `tipos` sólo si se pasa (así no se pisa sin querer). */
+export async function guardarConfigSobres(clubId, { suspendidos, evento_activo, tipos }) {
+  const fila = { club_id: clubId, suspendidos, evento_activo: evento_activo || null, actualizado_at: new Date().toISOString() };
+  if (tipos !== undefined) fila.tipos = tipos;
+  const { error } = await supabase.from('sobres_config').upsert(fila, { onConflict: 'club_id' });
+  if (error) {
+    if (tipos !== undefined && falta(error)) throw new Error(MENSAJE_SIN_TIPOS);
+    lanzar(error);
+  }
 }
+
+export const MENSAJE_SIN_TIPOS = 'Falta la migración 20261023120000_sobres_tipos.sql en Supabase (para editar cada sobre).';

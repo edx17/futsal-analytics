@@ -248,10 +248,10 @@ export function varianteDeEvento(id, def = {}, videos = VIDEOS) {
  * La variante de una apertura.
  * @param {{ tipo: string, cartas?: Array<{ rareza: string }>, evento?: string, eventos?: object, videos?: object }} datos
  */
-export function varianteDeApertura({ tipo, cartas = [], evento = null, eventos = EVENTOS, videos = VIDEOS } = {}) {
+export function varianteDeApertura({ tipo, cartas = [], evento = null, escena = null, eventos = EVENTOS, videos = VIDEOS } = {}) {
   if (evento && eventos[evento]) return varianteDeEvento(evento, eventos[evento], videos);
   const rarezas = cartas.map((c) => c?.rareza);
-  const delTipo = VARIANTES[VARIANTE_DE_TIPO[tipo]] || VARIANTES.puntos;
+  const delTipo = conEscena(VARIANTES[VARIANTE_DE_TIPO[tipo]] || VARIANTES.puntos, escena);
   if (rarezas.includes('toty')) {
     const tops = rarezas.filter((r) => RAREZAS_TOP.has(r)).length;
     const escena = tops >= 2 ? VARIANTES.excepcional : VARIANTES.leyenda;
@@ -263,6 +263,27 @@ export function varianteDeApertura({ tipo, cartas = [], evento = null, eventos =
     return v.video ? v : completarVariante({ ...delTipo, colores: escena.colores, particulas: escena.particulas, escena: escena.id }, videos);
   }
   return completarVariante(delTipo, videos);
+}
+
+/**
+ * La escena que el club le puso a un tipo de sobre (Modo GOD, sobres_config.tipos):
+ * { video, titulo, colores, particulas, intensidad }, todo opcional, sobre la de siempre.
+ * Si el video elegido no está, queda el del sobre.
+ */
+export function conEscena(def, escena) {
+  if (!escena || typeof escena !== 'object') return def;
+  const colores = { ...def.colores, ...(escena.colores || {}) };
+  if (escena.colores?.luz || escena.colores?.acento) {
+    colores.particulas = [colores.luz, colores.acento, '#ffffff'].filter(esColor);
+  }
+  return {
+    ...def,
+    ...(escena.video ? { modo: 'video', video: escena.video, videoAlternativo: def.modo === 'video' ? def.video : null } : {}),
+    ...(escena.titulo ? { nombre: String(escena.titulo).slice(0, 40) } : {}),
+    colores,
+    ...(Number.isFinite(Number(escena.particulas)) && escena.particulas !== null ? { particulas: Number(escena.particulas) } : {}),
+    ...(Number.isFinite(Number(escena.intensidad)) && escena.intensidad !== null ? { intensidad: Number(escena.intensidad) } : {}),
+  };
 }
 
 /** Una variante elegida a mano (modo GOD): una de VARIANTES o 'evento:<id>'. null si no existe. */
