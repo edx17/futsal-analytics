@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { sonar, callarTodo, tocarMusica, pararMusica, cargarMusica } from '../../utils/sonidoApertura';
+import { sonar, callarTodo, tocarMusica, pararMusica, cargarMusica, musicaLista } from '../../utils/sonidoApertura';
 import { prepararVideo, recargarVideo } from '../../utils/videoApertura';
 
 /* EL VIDEO DE LA APERTURA
@@ -16,10 +16,12 @@ import { prepararVideo, recargarVideo } from '../../utils/videoApertura';
  *     se ofrece un botón para verla;
  *   - al terminar (o al salir) se pausa y se saca de la pantalla.
  * Sin audio en el video: suena su música (cine/musica.py) desde el segundo en
- * el que está el video; si no está lista, o en velocidad rápida, los sonidos
- * sintetizados de siempre.
+ * el que está el video. Si todavía baja, el video la espera un poco
+ * (ESPERA_MUSICA); si llega más tarde, entra en el segundo justo y reemplaza a
+ * los sonidos sintetizados, que son los de velocidad rápida o sin música.
  */
 const CARGA_MAX = 8000;
+const ESPERA_MUSICA = 2500;
 const TRABADO_MAX = 5000;
 
 export default function VideoApertura({ video, velocidad = 1, onFin }) {
@@ -42,6 +44,7 @@ export default function VideoApertura({ video, velocidad = 1, onFin }) {
     let sonidosPuestos = false;
     let ultimoAvance = { t: -1, cuando: Date.now() };
     const timers = [];
+    const sonidos = []; // los sintetizados pendientes (se cancelan si entra la música)
     const poner = (e) => { if (vivo) setEstado(e); };
     const terminar = () => {
       if (termino || !vivo) return;
@@ -62,14 +65,37 @@ export default function VideoApertura({ video, velocidad = 1, onFin }) {
         });
       }
     };
+    const conMusica = !!video.musica && velocidad === 1;
+    let musicaSonando = false;
+    let esperandoMusica = false;
+    let musicaEsperada = !conMusica || musicaLista(video.musica);
     const lista = () => {
       if (termino) return;
+      // Con el primer cuadro listo y la música todavía bajando: la espera un poco, así arrancan juntas.
+      if (!musicaEsperada) {
+        if (esperandoMusica) return;
+        esperandoMusica = true;
+        poner('cargando');
+        const basta = new Promise((ok) => timers.push(setTimeout(ok, ESPERA_MUSICA)));
+        Promise.race([cargarMusica(video.musica), basta]).then(() => {
+          musicaEsperada = true;
+          if (vivo && !termino) lista();
+        });
+        return;
+      }
       poner('lista');
       if (v.paused) intentarReproducir();
     };
-    const conMusica = !!video.musica && velocidad === 1;
-    if (conMusica) cargarMusica(video.musica);
-    let musicaSonando = false;
+    if (conMusica) {
+      // Si llega tarde (ya arrancó con los sintetizados), entra en el segundo en que va el video.
+      cargarMusica(video.musica).then((buf) => {
+        if (!buf || !vivo || termino || musicaSonando || !sonidosPuestos || v.paused) return;
+        if (!tocarMusica(video.musica, v.currentTime)) return;
+        musicaSonando = true;
+        sonidos.forEach(clearTimeout);
+        callarTodo();
+      });
+    }
     const reproduciendo = () => {
       poner('reproduciendo');
       // Si la red frenó el video, la música se retoma en el mismo segundo.
@@ -80,7 +106,7 @@ export default function VideoApertura({ video, velocidad = 1, onFin }) {
       const desde = v.currentTime;
       (video.sonidos || []).forEach(([seg, nombre, dur]) => {
         if (seg < desde) return;
-        timers.push(setTimeout(() => sonar(nombre, dur / velocidad), ((seg - desde) * 1000) / velocidad));
+        sonidos.push(setTimeout(() => sonar(nombre, dur / velocidad), ((seg - desde) * 1000) / velocidad));
       });
     };
     const avanza = () => { ultimoAvance = { t: v.currentTime, cuando: Date.now() }; };
@@ -113,6 +139,7 @@ export default function VideoApertura({ video, velocidad = 1, onFin }) {
     return () => {
       vivo = false;
       timers.forEach(clearTimeout);
+      sonidos.forEach(clearTimeout);
       clearInterval(vigia);
       callarTodo();
       ['loadeddata', 'canplay'].forEach((ev) => v.removeEventListener(ev, lista));
