@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { varianteDeApertura, ajustarVariante, guionDe } from '../../analytics/aperturas';
+import { varianteDeApertura, ajustarVariante, guionDe, indiceMejorCarta } from '../../analytics/aperturas';
 import { menosMovimiento, equipoLiviano } from '../../utils/preferenciasApertura';
 import { sonar, callarTodo } from '../../utils/sonidoApertura';
 import PaqueteSobre from './PaqueteSobre';
-import TunelFutsal from './TunelFutsal';
 import Particulas from './Particulas';
+import VideoApertura from './VideoApertura';
+import MejorCarta from './MejorCarta';
 import RevelacionCartas from './RevelacionCartas';
 import './apertura.css';
 
@@ -12,18 +13,13 @@ import './apertura.css';
  *
  * Recibe el resultado REAL de sobres_abrir (las cartas ya salieron en la base)
  * y sólo decide cómo mostrarlo:
- *   1. elige la variante (analytics/aperturas.js) según el tipo de sobre y lo
- *      que trae, y la ajusta a las preferencias y al equipo;
- *   2. recorre las fases de a una, con UN solo temporizador a la vez (nunca se
- *      pisan dos etapas);
- *   3. SALTAR (o Escape) corta todo y va directo a las cartas;
- *   4. termina en las cartas boca abajo de siempre (RevelacionCartas).
- * Si algo de la escena falla, las cartas igual están: la fase 'cartas' no
- * depende de nada de lo anterior.
+ *   - estándar: el sobre tiembla, se rompe y aparecen las cartas boca abajo;
+ *   - video: la cinemática renderizada (pasillo del pabellón que se oscurece),
+ *     después LA MEJOR CARTA del sobre sola y después las demás boca abajo.
+ * Un solo temporizador a la vez (las fases nunca se pisan). SALTAR o Escape
+ * adelantan una fase; si el video no carga o falla, se sigue igual. Las
+ * cartas no dependen de nada de lo anterior.
  */
-
-/* Qué sonido acompaña cada fase (las de la apertura estándar usan los de la variante). */
-const SONIDO_DE_FASE = { tiembla: 'activacion', abre: 'clima', activacion: 'activacion', portal: 'portal', tunel: 'tunel', clima: 'clima', salida: 'salida' };
 
 const claseSegura = (id) => String(id).replace(/[^a-z0-9_-]/gi, '-');
 
@@ -33,28 +29,33 @@ export default function AperturaSobre({ resultado, prefs, onCerrar }) {
     { prefs, menosMovimiento: menosMovimiento(), liviano: equipoLiviano() },
   ), [resultado, prefs]);
   const guion = useMemo(() => guionDe(variante), [variante]);
-  const ultimo = guion.length - 1;
+  const mejor = useMemo(() => indiceMejorCarta(resultado.cartas), [resultado]);
+  const conVideo = variante.modo === 'video';
 
-  const [paso, setPaso] = useState(() => (variante.sinMovimiento ? ultimo : 0));
+  // Con "reducir movimiento": sin animación (la mejor carta igual se muestra primero si hay video).
+  const [paso, setPaso] = useState(() => (variante.sinMovimiento ? guion.length - 1 : 0));
   const inicio = useRef(0);
   useEffect(() => { inicio.current = Date.now(); }, []);
   const fase = guion[paso].id;
+  const avanzar = useCallback(() => setPaso((p) => Math.min(guion.length - 1, p + 1)), [guion]);
 
-  /* El único temporizador: cuando termina la fase, pasa a la siguiente. */
+  /* Apertura estándar: el único temporizador (y su sonido). Las fases del
+     modo video avanzan por eventos (fin del video, botones). */
   useEffect(() => {
     const f = guion[paso];
-    if (f.id === 'cartas') return undefined;
-    const sonido = variante.sonidos[SONIDO_DE_FASE[f.id]];
-    if (sonido) sonar(sonido, (f.ms || 300) / 1000);
-    const t = setTimeout(() => setPaso((p) => Math.min(ultimo, p + 1)), f.ms || 0);
+    if (f.ms == null) return undefined;
+    const sonido = variante.sonidos[f.id];
+    if (sonido) sonar(sonido, f.ms / 1000);
+    const t = setTimeout(avanzar, f.ms);
     return () => clearTimeout(t);
-  }, [paso, guion, ultimo, variante]);
+  }, [paso, guion, variante, avanzar]);
 
   const saltar = useCallback(() => {
     if (Date.now() - inicio.current < variante.saltar.protegidoMs) return;
     callarTodo();
-    setPaso(ultimo);
-  }, [ultimo, variante]);
+    // En el video, saltar lleva a la mejor carta; en la estándar, a las cartas.
+    setPaso(conVideo && fase === 'video' ? 1 : guion.length - 1);
+  }, [variante, conVideo, fase, guion]);
 
   useEffect(() => {
     const tecla = (e) => { if (e.key === 'Escape' && fase !== 'cartas') saltar(); };
@@ -62,34 +63,41 @@ export default function AperturaSobre({ resultado, prefs, onCerrar }) {
     return () => window.removeEventListener('keydown', tecla);
   }, [fase, saltar]);
 
-  // Al cerrar (o desmontar), que no quede nada sonando.
   useEffect(() => () => callarTodo(), []);
 
   const c = variante.colores;
   const vars = {
     '--ap-principal': c.principal, '--ap-secundario': c.secundario, '--ap-acento': c.acento, '--ap-fondo': c.fondo,
     '--ap-luz': c.luz, '--ap-texto': c.texto, '--ap-int': variante.intensidad, '--ap-vib': variante.vibracion,
-    '--ap-blur': `${variante.desenfoque}px`, '--ap-balanceo': `${variante.camara.balanceo}px`,
     ...Object.fromEntries(Object.entries(variante.tiempos).map(([k, ms]) => [`--t-${k}`, `${ms}ms`])),
   };
-  const enEscena = fase !== 'cartas';
-  const cine = variante.modo === 'cine';
 
   return (
-    <div className={`ap ap-${variante.modo} ap-v-${claseSegura(variante.id)} ap-fase-${fase}${variante.latido ? ' ap-latido' : ''}`}
+    <div className={`ap ap-${variante.modo} ap-v-${claseSegura(variante.id)} ap-fase-${fase}${variante.latido ? ' ap-latido' : ''}${variante.excepcional ? ' ap-excepcional' : ''}`}
       style={vars} role="dialog" aria-modal="true" aria-label={`Apertura: ${variante.nombre}`}>
-      {enEscena && (
+      {fase === 'video' && (
+        <VideoApertura video={variante.video} velocidad={variante.velocidadVideo} onFin={avanzar} />
+      )}
+      {(fase === 'tiembla' || fase === 'abre') && (
         <>
-          {cine && <TunelFutsal variante={variante} />}
-          {(fase === 'activacion' || fase === 'tiembla') && <Particulas cantidad={variante.particulas} colores={c.particulas} modo="junta" semilla={3} />}
-          {(fase === 'clima' || fase === 'abre') && <Particulas cantidad={variante.particulas} colores={c.particulas} modo="estalla" semilla={7} />}
-          {['tiembla', 'abre', 'activacion', 'portal'].includes(fase) && <PaqueteSobre variante={variante} />}
+          {fase === 'tiembla' && <Particulas cantidad={variante.particulas} colores={c.particulas} modo="junta" semilla={3} />}
+          {fase === 'abre' && <Particulas cantidad={variante.particulas} colores={c.particulas} modo="estalla" semilla={7} />}
+          <PaqueteSobre variante={variante} />
           <div className="ap-flash" />
-          <div className="ap-rotulo" aria-live="polite">{variante.nombre}</div>
-          <button className="ap-saltar" onClick={saltar} aria-label="Saltar la animación y ver las cartas">SALTAR</button>
         </>
       )}
-      {!enEscena && <RevelacionCartas resultado={resultado} variante={variante} onCerrar={onCerrar} />}
+      {fase !== 'cartas' && fase !== 'figura' && (
+        <>
+          <div className="ap-rotulo" aria-live="polite">{variante.nombre}</div>
+          <button className="ap-saltar" onClick={saltar} aria-label="Saltar la animación">SALTAR</button>
+        </>
+      )}
+      {fase === 'figura' && (
+        <MejorCarta carta={resultado.cartas[mejor]} variante={variante} restantes={resultado.cartas.length - 1} onSeguir={avanzar} />
+      )}
+      {fase === 'cartas' && (
+        <RevelacionCartas resultado={resultado} variante={variante} onCerrar={onCerrar} yaDada={conVideo ? mejor : -1} />
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CartaGiratoria from '../components/quinteto/CartaGiratoria';
 import AperturaSobre from '../components/sobres/AperturaSobre';
+import { varianteDeApertura } from '../analytics/aperturas';
 import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasApertura';
 import { prepararAudio, sonidoActivo } from '../utils/sonidoApertura';
 import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, rarezaPorId, probabilidades } from '../analytics/sobres';
@@ -126,7 +127,7 @@ export default function Sobres() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
             {ORDEN_SOBRES.filter((t) => seMuestra(t, estado)).map((t) => (
-              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t}
+              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t} alApuntar={() => precargarVideo(t)}
                 alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
             ))}
           </div>
@@ -186,6 +187,23 @@ export default function Sobres() {
   );
 }
 
+/* Cuando alguien apunta a un sobre con cinemática, el navegador empieza a
+   bajar el video (una vez por video): al abrirlo ya está. */
+const precargados = new Set();
+function precargarVideo(tipo) {
+  if (typeof document === 'undefined') return;
+  const v = varianteDeApertura({ tipo });
+  if (!v.video) return;
+  v.video.fuentes.forEach((f) => {
+    if (precargados.has(f.src)) return;
+    precargados.add(f.src);
+    const l = document.createElement('link');
+    l.rel = 'prefetch';
+    l.href = f.src;
+    document.head.appendChild(l);
+  });
+}
+
 const notaDe = (tipo, e) => {
   if (tipo === 'premio') return `Ganado en el V-Draft. Tenés ${e.sobres_premio} para abrir.`;
   if (tipo === 'premio_especial') return `Ganado en el V-Draft: 5 especiales. Tenés ${e.sobres_especiales} para abrir.`;
@@ -204,7 +222,7 @@ const notaDe = (tipo, e) => {
 const cartasDePorRareza = (coleccion) => Object.entries(coleccion?.por_rareza || {})
   .flatMap(([rareza, v]) => Array.from({ length: v.total }, () => ({ rareza })));
 
-function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas }) {
+function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas, alApuntar }) {
   const mega = !!sobre.soloEspeciales && !sobre.premio;
   const dorado = mega;
   const violeta = sobre.id === 'premio' || sobre.id === 'premio_especial';
@@ -223,7 +241,7 @@ function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas }) {
           <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', marginTop: 4, fontFamily: MONO }}>{Math.min(monedas || 0, sobre.costo)} / {sobre.costo} {MONEDA}</div>
         </div>
       )}
-      <button disabled={!disponible || abriendo} onClick={alAbrir}
+      <button disabled={!disponible || abriendo} onClick={alAbrir} onPointerEnter={alApuntar} onFocus={alApuntar} onTouchStart={alApuntar}
         style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...(dorado ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : violeta ? { background: 'linear-gradient(90deg, #7c3aed, #c084fc)', color: '#fff' } : null) }}>
         {abriendo ? 'ABRIENDO…' : mega ? `ABRIR · ${sobre.cartas} ESPECIALES · ${sobre.costo} V-COINS`
           : sobre.soloEspeciales ? `ABRIR · ${sobre.cartas} ESPECIALES` : `ABRIR · ${sobre.cartas} CARTAS`}

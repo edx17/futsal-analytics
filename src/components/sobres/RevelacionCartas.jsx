@@ -38,10 +38,12 @@ function Papelitos({ rara, semilla }) {
   ));
 }
 
-export default function RevelacionCartas({ resultado, variante, onCerrar }) {
+/* `yaDada`: la carta que ya se mostró sola antes (la mejor del sobre), que
+   aparece dada vuelta. */
+export default function RevelacionCartas({ resultado, variante, onCerrar, yaDada = -1 }) {
   const cartas = resultado.cartas || [];
   const rara = cartas.some((c) => MUY_RARAS.has(c.rareza));
-  const [dadas, setDadas] = useState({});
+  const [dadas, setDadas] = useState(() => (yaDada >= 0 ? { [yaDada]: true } : {}));
   const todas = cartas.length > 0 && cartas.every((_, i) => dadas[i]);
   const semilla = cartas.length * 3 + (resultado.puntos_ganados || 0);
 

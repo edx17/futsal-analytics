@@ -44,13 +44,6 @@
 .ap-fase-abre .ap-sobre-tajo { animation: ap-tajo var(--t-abre) ease-out forwards; }
 .ap-fase-abre .ap-flash { animation: ap-destello var(--t-abre) ease-out forwards; }
 
-/* cine: el sobre se carga de luz y después se acerca a la cámara mientras se abre el portal */
-.ap-fase-activacion .ap-sobre { animation: ap-flota var(--t-activacion) ease-in-out forwards; }
-.ap-fase-activacion .ap-sobre-aura { animation: ap-aura var(--t-activacion) ease-in forwards; }
-.ap-fase-activacion .ap-sobre-cuerpo { animation: ap-resplandor var(--t-activacion) ease-in forwards; }
-.ap-fase-portal .ap-sobre { animation: ap-a-camara var(--t-portal) cubic-bezier(.5,0,.8,.4) forwards; }
-.ap-fase-portal .ap-sobre-aura { opacity: 1; }
-
 .ap-flash { position: fixed; inset: 0; z-index: 15; pointer-events: none; opacity: 0; background: #fff; }
 
 @keyframes ap-brillo { from { background-position: 150% 0; } to { background-position: -150% 0; } }
@@ -71,9 +64,6 @@
 @keyframes ap-estalla { 0% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
 @keyframes ap-tajo { 0% { opacity: 0; transform: scaleX(0); } 30% { opacity: 1; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1.4); } }
 @keyframes ap-destello { 0% { opacity: .95; } 100% { opacity: 0; } }
-@keyframes ap-flota { 0% { transform: translateY(30px) scale(.92); } 60% { transform: translateY(-6px) scale(1.02); } 100% { transform: translateY(0) scale(1.06); } }
-@keyframes ap-a-camara { 0% { transform: scale(1.06); opacity: 1; } 70% { opacity: 1; } 100% { transform: scale(5.5); opacity: 0; } }
-
 /* ── partículas ─────────────────────────────────────────────────────────── */
 .ap-particulas { position: fixed; inset: 0; z-index: 7; pointer-events: none; }
 .ap-particulas i { position: absolute; left: 50%; top: 50%; border-radius: 50%; opacity: 0; }
@@ -82,178 +72,43 @@
 @keyframes ap-junta { 0% { opacity: 0; transform: translate(var(--px), var(--py)); } 30% { opacity: .9; } 100% { opacity: 0; transform: translate(0, 0) scale(.4); } }
 @keyframes ap-estalla-p { 0% { opacity: 1; transform: translate(0, 0) scale(1.4); } 100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(.5); } }
 
-/* ── el pasillo ─────────────────────────────────────────────────────────── */
-.tf { position: fixed; inset: 0; z-index: 2; overflow: hidden; background: var(--ap-fondo); opacity: 0; }
-.tf-vista { position: absolute; inset: 0; perspective: 520px; perspective-origin: 50% 50%; }
-.tf-camara { position: absolute; left: 50%; top: 50%; transform-style: preserve-3d; transform: translateZ(0); }
-.tf-balanceo { transform-style: preserve-3d; }
-.tf-plano { position: absolute; left: 0; top: 0; transform-origin: 0 0; backface-visibility: visible; overflow: hidden; }
+/* ── el video (cinemática renderizada en Blender) ────────────────────────── */
+.ap-video { position: fixed; inset: 0; z-index: 2; background: #000; animation: ap-video-entra .35s ease-out; }
+.ap-video video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ap-video-carga { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,.15); border-top-color: var(--ap-luz); animation: ap-gira-carga .8s linear infinite; }
+@keyframes ap-video-entra { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ap-gira-carga { to { transform: rotate(360deg); } }
+.ap-video ~ .ap-rotulo { opacity: 0; }
 
-/* Piso: tablas de parquet con juntas, o piso sintético liso. */
-.tf-piso { width: var(--W); height: var(--L);
-  transform: translate3d(calc(var(--W) / -2), calc(var(--H) / 2), 0) rotateX(-90deg);
-  background:
-    linear-gradient(90deg, rgba(0,0,0,.55), transparent 18%, transparent 82%, rgba(0,0,0,.55)),
-    repeating-linear-gradient(0deg, transparent 0 118px, rgba(0,0,0,.35) 118px 120px),
-    repeating-linear-gradient(90deg, #6b4423 0 22px, #7a4f2a 22px 44px, #5e3b1e 44px 66px, #73492a 66px 88px); }
-.tf-piso-sintetico .tf-piso { background:
-    linear-gradient(90deg, rgba(0,0,0,.6), transparent 20%, transparent 80%, rgba(0,0,0,.6)),
-    repeating-linear-gradient(0deg, transparent 0 300px, rgba(255,255,255,.08) 300px 304px),
-    linear-gradient(#11307a, #0c235c); }
-.tf-piso-linea { position: absolute; top: 0; bottom: 0; left: calc(50% - 2px); width: 4px; background: var(--ap-luz);
-  box-shadow: 0 0 14px 3px var(--ap-luz); opacity: calc(.35 + var(--ap-int) * .35); }
-.tf-reflejo { position: absolute; left: 20%; width: 60%; height: 160px; margin-top: -80px; border-radius: 50%; opacity: .15;
-  background: radial-gradient(ellipse, var(--ap-luz) 0%, transparent 70%); }
-
-/* Techo y focos. */
-.tf-techo { width: var(--W); height: var(--L); transform: translate3d(calc(var(--W) / -2), calc(var(--H) / -2), 0) rotateX(-90deg);
-  background: linear-gradient(90deg, #020304, #0b0f14 30%, #0b0f14 70%, #020304); }
-.tf-lampara { position: absolute; left: 30%; width: 40%; height: 26px; margin-top: -13px; border-radius: 6px; opacity: .3;
-  background: #fff; box-shadow: 0 0 22px 8px var(--ap-luz), 0 0 60px 20px color-mix(in srgb, var(--ap-luz) 40%, transparent); }
-
-/* Paredes: paneles oscuros, dos tiras de LED, un cartel y camisetas colgadas. */
-.tf-pared { width: var(--L); height: var(--H);
-  background:
-    repeating-linear-gradient(90deg, transparent 0 316px, rgba(255,255,255,.05) 316px 320px),
-    linear-gradient(#0d1117, #161b22 55%, #0a0d12); }
-.tf-izq { transform: translate3d(calc(var(--W) / -2), calc(var(--H) / -2), 0) rotateY(90deg); }
-.tf-der { transform: translate3d(calc(var(--W) / 2), calc(var(--H) / -2), calc(var(--L) * -1)) rotateY(-90deg); }
-.tf-led { position: absolute; left: 0; right: 0; height: 5px; opacity: calc(.3 + var(--ap-int) * .4);
-  background: linear-gradient(90deg, transparent, var(--ap-luz) 20%, #fff 50%, var(--ap-luz) 80%, transparent) 0 0 / 600px 100% repeat-x;
-  box-shadow: 0 0 16px 3px var(--ap-luz); }
-.tf-led-alta { top: 16%; }
-.tf-led-baja { bottom: 10%; }
-.tf-cartel { position: absolute; top: 30%; width: 260px; text-align: center; font-size: 44px; font-weight: 900; font-style: italic;
-  letter-spacing: .08em; color: transparent; -webkit-text-stroke: 1.5px var(--ap-luz); text-shadow: 0 0 18px var(--ap-luz); opacity: .7; }
-.tf-colgada { position: absolute; top: 34%; width: 92px; }
-.tf-camiseta { width: 92px; height: auto; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--ap-luz) 60%, transparent)); }
-
-/* El fondo: la boca del pasillo con la cancha. */
-.tf-fondo { position: absolute; left: 0; top: 0; width: var(--W); height: var(--H);
-  transform: translate3d(calc(var(--W) / -2), calc(var(--H) / -2), calc(var(--L) * -1));
-  background: #05070a; display: flex; align-items: flex-end; justify-content: center; }
-.tf-boca { width: 76%; height: 82%; border-radius: 14px 14px 0 0; overflow: hidden; position: relative;
-  box-shadow: 0 0 0 6px #0b0f14, 0 0 50px 10px color-mix(in srgb, var(--ap-luz) 55%, transparent); }
-.tf-cancha { width: 100%; height: 100%; display: block; }
-.tf-marco-cartel { position: absolute; top: 3%; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 900; letter-spacing: .4em;
-  color: var(--ap-texto); text-shadow: 0 0 14px var(--ap-luz); }
-.tf-silueta, .tf-halo, .tf-haz, .tf-foco-cruzado { opacity: 0; }
-.tf-foco-pabellon { opacity: .9; }
-
-.tf-barrido, .tf-cristales, .tf-anillo { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
-.tf-vineta { position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(0,0,0,.7) 100%); }
-
-/* ── el viaje: aparece el pasillo (portal), avanza la cámara, se ve la cancha ── */
-.ap-fase-activacion .tf { opacity: 0; }
-.ap-fase-portal .tf, .ap-fase-tunel .tf, .ap-fase-previa .tf, .ap-fase-clima .tf, .ap-fase-salida .tf { opacity: 1; }
-
-/* Portales: cada variante abre el pasillo de una manera distinta. */
-.ap-fase-portal .tf-portal-energia { animation: tf-portal-circulo var(--t-portal) cubic-bezier(.6,0,.3,1) both; }
-.ap-fase-portal .tf-portal-eclipse { animation: tf-portal-circulo var(--t-portal) cubic-bezier(.7,0,.2,1) both; }
-.ap-fase-portal .tf-portal-expansion { animation: tf-portal-ranura var(--t-portal) cubic-bezier(.7,0,.2,1) both; }
-.ap-fase-portal .tf-portal-geometrico { animation: tf-portal-hexagono var(--t-portal) cubic-bezier(.6,0,.3,1) both; }
-@keyframes tf-portal-circulo { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(80% at 50% 50%); } }
-@keyframes tf-portal-ranura { 0% { clip-path: inset(50% 0 50% 0); } 40% { clip-path: inset(48% 0 48% 0); } 100% { clip-path: inset(0 0 0 0); } }
-@keyframes tf-portal-hexagono {
-  from { clip-path: polygon(50% 46%, 53.5% 48%, 53.5% 52%, 50% 54%, 46.5% 52%, 46.5% 48%); }
-  to   { clip-path: polygon(50% -60%, 160% 0%, 160% 100%, 50% 160%, -60% 100%, -60% 0%); }
+/* ── la mejor carta: aparece sola en la luz del final del pasillo ─────────── */
+.ap-fase-figura { background: radial-gradient(ellipse at 50% 38%, color-mix(in srgb, var(--ap-luz) 22%, #000) 0%, #000 62%); }
+.ap-mejor { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ap-mejor-luz { position: fixed; inset: 0; pointer-events: none; background: #fff; animation: ap-mejor-destello .9s ease-out forwards; }
+.ap-mejor-rayos { position: absolute; left: 50%; top: 46%; width: 760px; height: 760px; margin: -380px 0 0 -380px; pointer-events: none; opacity: .5;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--ap-luz) 55%, transparent) 0 6deg, transparent 6deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, transparent 62%); mask: radial-gradient(circle, #000 0%, transparent 62%);
+  animation: ap-rayos 14s linear infinite, ap-aparece .8s .2s ease-out both; }
+.ap-mejor-rotulo { font-size: 11px; font-weight: 900; letter-spacing: .3em; color: #d1d5db; margin-bottom: 26px; animation: ap-aparece .6s .3s both; }
+.ap-mejor-carta { transform: scale(1.55); transform-origin: 50% 40%; margin: 40px 0 110px; filter: drop-shadow(0 0 40px var(--ap-luz));
+  animation: ap-mejor-sube 1.1s cubic-bezier(.16,.9,.3,1.1) both; }
+.ap-mejor-datos { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; animation: ap-aparece .5s .7s both; }
+.ap-mejor-datos b { font-size: 1.6rem; letter-spacing: .14em; color: #fff; text-shadow: 0 0 18px var(--ap-luz); }
+.ap-mejor-datos span { font-size: 12px; font-weight: 900; letter-spacing: .08em; }
+.ap-mejor .ap-btn { animation: ap-aparece .4s 1s both; }
+.ap-excepcional .ap-mejor-rayos { opacity: .85; animation-duration: 7s, .8s; }
+@keyframes ap-mejor-destello { 0% { opacity: .95; } 100% { opacity: 0; } }
+@keyframes ap-rayos { to { transform: rotate(360deg); } }
+@keyframes ap-aparece { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ap-mejor-sube {
+  0% { opacity: 0; transform: scale(1.05) translateY(60px); filter: blur(14px) brightness(3) drop-shadow(0 0 0 transparent); }
+  60% { opacity: 1; filter: blur(0) brightness(1.4) drop-shadow(0 0 60px var(--ap-luz)); }
+  100% { transform: scale(1.55); filter: blur(0) brightness(1) drop-shadow(0 0 40px var(--ap-luz)); }
 }
-/* El anillo de luz del borde del portal. */
-.ap-fase-portal .tf-anillo { opacity: 1; border-radius: 50%; inset: auto; left: 50%; top: 50%; width: 10px; height: 10px;
-  border: 3px solid var(--ap-luz); box-shadow: 0 0 30px 8px var(--ap-luz), inset 0 0 30px 8px var(--ap-luz);
-  animation: tf-anillo var(--t-portal) cubic-bezier(.6,0,.3,1) forwards; }
-.ap-fase-portal .tf-portal-expansion .tf-anillo { border-radius: 0; height: 4px; border-width: 0; background: #fff; animation-name: tf-linea; }
-.ap-fase-portal .tf-portal-geometrico .tf-anillo { border-radius: 0; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--ap-luz); border: 0; animation-name: tf-anillo-hex; }
-.ap-fase-portal .tf-portal-eclipse .tf-anillo { border-color: var(--ap-acento); box-shadow: 0 0 50px 14px var(--ap-luz); }
-@keyframes tf-anillo { from { transform: translate(-50%, -50%) scale(1); opacity: 1; } to { transform: translate(-50%, -50%) scale(180); opacity: 0; } }
-@keyframes tf-linea { from { transform: translate(-50%, -50%) scaleX(1); opacity: 1; width: 10px; } to { transform: translate(-50%, -50%); width: 120vw; opacity: 0; } }
-@keyframes tf-anillo-hex { from { transform: translate(-50%, -50%) scale(1) rotate(0); opacity: .9; } to { transform: translate(-50%, -50%) scale(160) rotate(60deg); opacity: 0; } }
-
-/* La cámara: avanza por el pasillo, frena cerca de la boca y en el clímax entra. */
-.ap-fase-tunel .tf-camara { animation: tf-avanza var(--t-tunel) cubic-bezier(.45,.05,.55,.95) forwards; }
-.ap-fase-previa .tf-camara { animation: tf-acerca var(--t-previa) ease-out forwards; }
-.ap-fase-clima .tf-camara, .ap-fase-salida .tf-camara { animation: tf-entra var(--t-clima) cubic-bezier(.7,0,.3,1) forwards; }
-.ap-fase-tunel .tf-balanceo { animation: tf-balanceo 0.62s ease-in-out infinite; }
-@keyframes tf-avanza { from { transform: translateZ(0); } to { transform: translateZ(calc(var(--L) - 900px)); } }
-@keyframes tf-acerca { from { transform: translateZ(calc(var(--L) - 900px)); } to { transform: translateZ(calc(var(--L) - 620px)); } }
-@keyframes tf-entra { from { transform: translateZ(calc(var(--L) - 620px)); } to { transform: translateZ(calc(var(--L) - 330px)); } }
-@keyframes tf-balanceo { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(var(--ap-balanceo)); } }
-
-/* Los focos se prenden a medida que pasa la cámara; las tiras de LED corren. */
-.ap-fase-tunel .tf-lampara { animation: tf-enciende .35s ease-out forwards; animation-delay: calc(var(--i) * var(--t-tunel) / 11); }
-.ap-fase-tunel .tf-reflejo { animation: tf-refleja .35s ease-out forwards; animation-delay: calc(var(--i) * var(--t-tunel) / 11); }
-.ap-fase-previa .tf-lampara, .ap-fase-clima .tf-lampara, .ap-fase-salida .tf-lampara { opacity: 1; }
-.ap-fase-previa .tf-reflejo, .ap-fase-clima .tf-reflejo, .ap-fase-salida .tf-reflejo { opacity: .45; }
-.ap-fase-tunel .tf-led, .ap-fase-previa .tf-led { animation: tf-corre .5s linear infinite; }
-.ap-fase-tunel .tf-pared { filter: blur(var(--ap-blur)); }
-@keyframes tf-enciende { 0% { opacity: .3; } 40% { opacity: 1; filter: brightness(2.2); } 60% { opacity: .55; } 100% { opacity: 1; filter: none; } }
-@keyframes tf-refleja { to { opacity: .45; } }
-@keyframes tf-corre { from { background-position: 0 0; } to { background-position: -600px 0; } }
-
-/* Lo que se ve al fondo antes del clímax (sin revelar la carta). */
-.ap-fase-previa .tf-silueta, .ap-fase-clima .tf-silueta { animation: tf-aparece var(--t-previa) ease-out forwards; }
-.ap-fase-previa .tf-ap-silueta .tf-halo, .ap-fase-clima .tf-ap-silueta .tf-halo { animation: tf-pulsa .7s ease-in-out infinite alternate; }
-.ap-fase-previa .tf-ap-haz .tf-haz, .ap-fase-clima .tf-ap-haz .tf-haz { animation: tf-haz var(--t-previa) ease-in forwards; }
-.ap-fase-previa .tf-ap-haz .tf-halo { animation: tf-pulsa 1s ease-in-out infinite alternate; }
-.ap-fase-previa .tf-ap-focos .tf-foco-cruzado, .ap-fase-clima .tf-ap-focos .tf-foco-cruzado { animation: tf-focos 0.9s ease-in-out infinite alternate; }
-.ap-fase-previa .tf-ap-focos .tf-halo { animation: tf-pulsa .5s ease-in-out infinite alternate; }
-@keyframes tf-aparece { from { opacity: 0; } to { opacity: 1; } }
-@keyframes tf-pulsa { from { opacity: .35; } to { opacity: calc(.6 + var(--ap-int) * .25); } }
-@keyframes tf-haz { from { opacity: 0; } to { opacity: .45; } }
-@keyframes tf-focos { from { opacity: .08; } to { opacity: .32; } }
-
-/* El clímax: la escena se enciende, destello del color de la variante. */
-.ap-fase-clima .tf-vista { animation: tf-clima var(--t-clima) ease-in forwards; }
-.ap-fase-clima .ap-flash { background: var(--ap-luz); animation: ap-clima-flash var(--t-clima) ease-in forwards; }
-@keyframes tf-clima { 0% { filter: brightness(1); } 70% { filter: brightness(calc(1.4 + var(--ap-int) * .6)); } 100% { filter: brightness(2.6); } }
-@keyframes ap-clima-flash { 0% { opacity: 0; } 75% { opacity: .25; } 100% { opacity: .9; } }
-
-/* La salida hacia las cartas. */
-.ap-fase-salida .ap-flash { animation: ap-destello var(--t-salida) ease-out forwards; }
-.ap-fase-salida .tf { animation: tf-se-va var(--t-salida) ease-out forwards; }
-.ap-fase-salida .tf-salida-barrido ~ .ap-flash,
-.ap-fase-salida .ap-flash { background: #fff; }
-@keyframes tf-se-va { from { opacity: 1; } to { opacity: 0; } }
-
-/* ── escenarios ─────────────────────────────────────────────────────────── */
-
-/* leds (Sobre de la semana): ya es el de base, LEDs verdes que corren. */
-
-/* focos (Mega): focos redondos, más luz y barridos de luz que cruzan la pantalla. */
-.tf-focos .tf-lampara { left: 14%; width: 72%; height: 34px; border-radius: 20px;
-  background: radial-gradient(circle at 15% 50%, #fff 0 10px, transparent 12px), radial-gradient(circle at 50% 50%, #fff 0 10px, transparent 12px),
-    radial-gradient(circle at 85% 50%, #fff 0 10px, transparent 12px); }
-.tf-focos .tf-led { height: 3px; }
-.ap-fase-tunel .tf-focos .tf-barrido, .ap-fase-previa .tf-focos .tf-barrido { opacity: 1;
-  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--ap-luz) 45%, transparent) 46%, rgba(255,255,255,.55) 50%, transparent 58%) 0 0 / 250% 100%;
-  animation: tf-barre .8s linear infinite; mix-blend-mode: screen; }
-@keyframes tf-barre { from { background-position: 150% 0; } to { background-position: -150% 0; } }
-
-/* cristal (V-Draft): paredes de paneles triangulares y cristales flotando. */
-.tf-cristal .tf-pared { background:
-    repeating-conic-gradient(from 30deg at 50% 50%, rgba(192,132,252,.10) 0 60deg, rgba(10,4,24,.9) 60deg 120deg) 0 0 / 160px 140px,
-    linear-gradient(#0b0518, #12061f); }
-.ap-fase-portal .tf-cristal .tf-cristales, .ap-fase-tunel .tf-cristal .tf-cristales, .ap-fase-previa .tf-cristal .tf-cristales { opacity: 1; }
-.tf-cristales i { position: absolute; left: 50%; top: 50%; width: 46px; height: 70px; opacity: .85;
-  clip-path: polygon(50% 0, 100% 38%, 72% 100%, 18% 100%, 0 38%);
-  background: linear-gradient(160deg, rgba(255,255,255,.85), var(--ap-luz) 45%, rgba(124,58,237,.3));
-  box-shadow: 0 0 20px var(--ap-luz);
-  animation: tf-cristal 2.4s ease-in-out infinite; animation-delay: calc(var(--i) * -0.3s);
-  transform: rotate(calc(var(--i) * 45deg)) translateY(-34vmin) rotate(calc(var(--i) * -20deg)); }
-@keyframes tf-cristal {
-  0%, 100% { transform: rotate(calc(var(--i) * 45deg)) translateY(-34vmin) rotate(0) scale(.9); }
-  50% { transform: rotate(calc(var(--i) * 45deg + 20deg)) translateY(-40vmin) rotate(40deg) scale(1.1); }
+@media (max-width: 520px) {
+  .ap-mejor-carta { transform: scale(1.3); margin: 26px 0 80px; }
+  @keyframes ap-mejor-sube { 0% { opacity: 0; transform: scale(.9) translateY(60px); filter: blur(14px) brightness(3); } 100% { transform: scale(1.3); filter: blur(0) brightness(1) drop-shadow(0 0 40px var(--ap-luz)); } }
 }
-
-/* solemne (TOTY / excepcional): todo a oscuras, las luces se prenden de a una, un haz al centro. */
-.tf-solemne .tf-pared { background: linear-gradient(#030303, #0a0805 55%, #020202); }
-.tf-solemne .tf-lampara { opacity: 0; }
-.tf-solemne .tf-led { opacity: 0; }
-.ap-fase-tunel .tf-solemne .tf-led { animation: tf-aparece var(--t-tunel) ease-in forwards; }
-.ap-fase-previa .tf-solemne .tf-led, .ap-fase-clima .tf-solemne .tf-led { opacity: .55; }
-.tf-solemne .tf-cartel { -webkit-text-stroke-color: var(--ap-acento); }
-.ap-fase-activacion.ap-v-toty, .ap-fase-activacion.ap-v-excepcional { background: #000; }
 
 /* ── las cartas (la mecánica de siempre) ─────────────────────────────────── */
 .ap-cartas { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; width: 100%; animation: ap-cartas-entra .45s ease-out; }
