@@ -119,13 +119,30 @@ def textura_texto(nombre, lineas, acento, w=1024, h=256, fondo=(4, 5, 7), tam=15
     return ruta
 
 
-def mat_imagen(nombre, ruta, fuerza=0.0, proyeccion='UV'):
+def circular(ruta, acento):
+    """Recorta una gráfica cuadrada en un círculo (transparente afuera) con un aro
+    del color del acento: el logo pintado en el círculo central."""
+    from PIL import Image, ImageDraw
+    img = Image.open(ruta).convert('RGBA')
+    w, h = img.size
+    ac = tuple(int(255 * min(1, c ** (1 / 2.2))) for c in acento)
+    mascara = Image.new('L', (w * 2, h * 2), 0)
+    ImageDraw.Draw(mascara).ellipse((8, 8, w * 2 - 8, h * 2 - 8), fill=255)
+    img.putalpha(mascara.resize((w, h), Image.LANCZOS))
+    aro = Image.new('RGBA', (w * 2, h * 2), (0, 0, 0, 0))
+    ImageDraw.Draw(aro).ellipse((40, 40, w * 2 - 40, h * 2 - 40), outline=(*ac, 255), width=36)
+    Image.alpha_composite(img, aro.resize((w, h), Image.LANCZOS)).save(ruta)
+
+
+def mat_imagen(nombre, ruta, fuerza=0.0, proyeccion='UV', alfa=False):
     m = bpy.data.materials.new(nombre)
     n, l = nodos(m)
     p = n['Principled BSDF']
     tex = n.new('ShaderNodeTexImage')
     tex.image = bpy.data.images.load(ruta)
     l.new(tex.outputs['Color'], p.inputs['Base Color'])
+    if alfa:
+        l.new(tex.outputs['Alpha'], p.inputs['Alpha'])
     l.new(tex.outputs['Color'], p.inputs['Emission Color'])
     p.inputs['Emission Strength'].default_value = fuerza
     p.inputs['Roughness'].default_value = 0.5
@@ -450,20 +467,21 @@ def decoracion(p):
     """Elementos temáticos de un perfil, integrados al pabellón (no pantallas planas)."""
     extra = {}
     if 'portal' in p['decoracion']:
-        # Portal hexagonal en la boca del pasillo: seis piezas biseladas con filo emisivo.
+        # Portal hexagonal adentro del pasillo, 2,5 m antes de la boca: seis piezas
+        # biseladas con filo emisivo, del tamaño justo del pasillo (la cámara lo cruza).
         borde = base.mat_emisor('portal_filo', tuple(p['acento']), 0.0)
         metal = base.mat_simple('portal_metal', (0.05, 0.04, 0.07), 0.3, metal=1.0)
-        r = 2.75
+        r = 1.52
         piezas = []
         for i in range(6):
             a0 = math.radians(90 + i * 60)
             a1 = math.radians(90 + (i + 1) * 60)
-            pa = Vector((r * math.cos(a0), -1.1, 1.6 + r * math.sin(a0)))
-            pb = Vector((r * math.cos(a1), -1.1, 1.6 + r * math.sin(a1)))
+            pa = Vector((r * math.cos(a0), -2.5, 1.6 + r * math.sin(a0)))
+            pb = Vector((r * math.cos(a1), -2.5, 1.6 + r * math.sin(a1)))
             mid = (pa + pb) / 2
-            o = caja(f'portal_{i}', ((pb - pa).length + 0.25, 0.35, 0.3), tuple(mid), metal, bisel=0.04)
+            o = caja(f'portal_{i}', ((pb - pa).length + 0.16, 0.3, 0.16), tuple(mid), metal, bisel=0.03)
             o.rotation_euler = (0, -math.atan2(pb.z - pa.z, pb.x - pa.x), 0)
-            f = caja(f'portal_filo_{i}', ((pb - pa).length, 0.37, 0.05), tuple(mid), borde)
+            f = caja(f'portal_filo_{i}', ((pb - pa).length, 0.32, 0.035), tuple(mid), borde)
             f.rotation_euler = o.rotation_euler
             piezas.append(f)
         extra['portal'] = borde.node_tree.nodes['Principled BSDF'].inputs['Emission Strength']
@@ -479,8 +497,9 @@ def decoracion(p):
     if 'logo_centro' in p['decoracion']:
         ruta = textura_texto(f'logo_{p["id"]}', [p.get('texto_logo', 'EVENTO')], p['acento'], w=1024, h=1024, tam=260,
                              fondo=tuple(int(255 * c ** (1 / 2.2)) for c in p['sobre_color']))
-        m, fuerza = mat_imagen(f'logo_{p["id"]}', ruta)
-        plano_imagen('logo_centro', 5.6, 5.6, (0, CY, 0.004), (0, 0, 0), m)
+        circular(ruta, p['acento'])
+        m, fuerza = mat_imagen(f'logo_{p["id"]}', ruta, alfa=True)
+        plano_imagen('logo_centro', 5.6, 5.6, (0, CY, 0.0085), (0, 0, 0), m)   # sobre el parquet (tapa en 0.006)
         extra['logo'] = fuerza
     return extra
 
@@ -504,13 +523,14 @@ def armar_pabellon(p):
     focos, conos = focos_moviles(p)
     # Luces de "sector" para revelar el pabellón por partes.
     sectores = {}
-    for nombre, pos, obj in (('arco_lejano', (0, Y1 - 7, 9), (0, Y1, 1)), ('arco_cercano', (0, Y0 + 7, 9), (0, Y0, 1)),
-                             ('gradas_i', (-6, CY, 12), (-17, CY, 3)), ('gradas_d', (6, CY, 12), (17, CY, 3)),
+    # (las de grada, anchas y hacia el fondo: se ven desde la cámara baja de Leyenda)
+    for nombre, pos, obj in (('arco_lejano', (0, Y1 - 12, 11), (0, Y1, 1)), ('arco_cercano', (0, Y0 + 7, 9), (0, Y0, 1)),
+                             ('gradas_i', (-2, CY + 4, 14), (-15, CY + 10, 3)), ('gradas_d', (2, CY + 4, 14), (15, CY + 10, 3)),
                              ('centro', (0, CY, 13.5), (0, CY, 0))):
         bpy.ops.object.light_add(type='SPOT', location=pos)
         s = bpy.context.active_object
         s.name = f'sector_{nombre}'
-        s.data.spot_size = math.radians(48 if nombre.startswith('gradas') else 34 if nombre != 'centro' else 20)
+        s.data.spot_size = math.radians(100 if nombre.startswith('gradas') else 60 if nombre == 'arco_lejano' else 34 if nombre != 'centro' else 20)
         s.data.spot_blend = 0.5
         s.data.color = tuple(p['haz']) if nombre == 'centro' else tuple(p['luz_pabellon'])
         s.data.energy = 0
@@ -704,8 +724,8 @@ def guion_epico(p, h, sobre, cam, dest):
         for f, objetivo in ((118, (lado * 14, 6 + i * 6, 4)), (160, (-lado * 6, 30 - i * 3, 0)), (192, (0, CY, 0))):
             mirar(s, objetivo)
             s.keyframe_insert('rotation_euler', frame=f)
-    encender(h['sectores']['gradas_i'], 132, 2600, golpe=False, dur=14)
-    encender(h['sectores']['gradas_d'], 138, 2600, golpe=False, dur=14)
+    encender(h['sectores']['gradas_i'], 132, 9000, golpe=False, dur=14)
+    encender(h['sectores']['gradas_d'], 138, 9000, golpe=False, dur=14)
     encender(h['led'], 126, 6, golpe=False, dur=16)
     for j, fila in enumerate(h['filas']):
         for luz, soc in fila:
@@ -723,17 +743,17 @@ def guion_leyenda(p, h, sobre, cam, dest):
     arco. Se rompe y el pabellón se revela por sectores, con su golpe: el arco
     lejano, una grada, la otra, la cancha. La cámara avanza al ras del parquet
     y termina en una composición central, con un único haz dorado."""
-    animar_sobre(sobre, p, (0, 5.4, 1.3), (0, 4.6, 1.3), 6, 64, giro=-8)
+    animar_sobre(sobre, p, (0, 9.6, 1.3), (0, 8.8, 1.3), 6, 64, giro=-8)
     camara_por(cam,
-               [(1, (0, 2.6, 1.2)), (64, (0, 3.0, 1.2)), (86, (0, 4.8, 0.85)), (150, (0, 9.5, 0.6)),
-                (205, (0, 14.0, 1.15)), (240, (0, 15.0, 1.3))],
-               [(1, (0, 5.4, 1.3)), (60, (0, 4.6, 1.3)), (110, (0, 30, 0.8)), (205, (0, CY, 0.6)), (240, (0, CY, 0.7))],
+               [(1, (0, 6.8, 1.2)), (64, (0, 7.2, 1.2)), (86, (0, 8.8, 0.85)), (150, (0, 12.0, 0.6)),
+                (205, (0, 15.0, 1.15)), (240, (0, 15.8, 1.3))],
+               [(1, (0, 9.6, 1.3)), (60, (0, 8.8, 1.3)), (110, (0, 34, 0.8)), (205, (0, CY, 0.6)), (240, (0, CY, 0.7))],
                lente=[(1, 28), (86, 26), (205, 32), (240, 34)])
     balanceo(cam, 0.003)
     sec = h['sectores']
-    encender(sec['arco_lejano'], 94, 3200, golpe=True, dur=10)
-    encender(sec['gradas_i'], 118, 3000, golpe=True, dur=10)
-    encender(sec['gradas_d'], 138, 3000, golpe=True, dur=10)
+    encender(sec['arco_lejano'], 94, 16000, golpe=True, dur=10)
+    encender(sec['gradas_i'], 118, 20000, golpe=True, dur=10)
+    encender(sec['gradas_d'], 138, 20000, golpe=True, dur=10)
     for j, fila in enumerate(h['filas']):
         for luz, soc in fila:
             encender(luz, 160, p['luz_pabellon_w'] * 0.55, golpe=True, dur=10); encender(soc, 160, 12, golpe=True, dur=10)
@@ -742,7 +762,7 @@ def guion_leyenda(p, h, sobre, cam, dest):
     encender(h['pantalla'], 172, 3, golpe=False, dur=14)
     encender(h['marcador'], 172, 3, golpe=False, dur=14)
     for nombre in ('arco_lejano', 'gradas_i', 'gradas_d'):
-        fijar(sec[nombre], 200, 3000); fijar(sec[nombre], 222, 1200)
+        fijar(sec[nombre], 200, 18000); fijar(sec[nombre], 222, 6000)
     encender(sec['centro'], 196, 7000, golpe=False, dur=18)
     encender(h['cono_central'], 196, 1.4, golpe=False, dur=18)
     destello(dest, 226, 240)
@@ -803,13 +823,14 @@ def guion_excepcional(p, h, sobre, cam, dest):
     sec = h['sectores']
     encender(sec['centro'], 30, 3600, golpe=False, dur=40)
     encender(h['cono_central'], 30, 1.0, golpe=False, dur=40)
-    fijar(sec['centro'], 160, 3600); fijar(sec['centro'], 170, 9000); fijar(sec['centro'], 238, 9000)
+    fijar(sec['centro'], 160, 3600); fijar(sec['centro'], 170, 6000); fijar(sec['centro'], 238, 6500)
+    fijar(h['cono_central'], 168, 1.0); fijar(h['cono_central'], 190, 0.55)
     # Anillos: filas del centro hacia los extremos.
     orden = [3, 2, 4, 1, 5, 0, 6]
     for k, j in enumerate(orden):
         for luz, soc in h['filas'][j]:
             encender(luz, 172 + k * 5, p['luz_pabellon_w'], golpe=True); encender(soc, 172 + k * 5, 24, golpe=True)
-    encender(sec['gradas_i'], 200, 2600); encender(sec['gradas_d'], 204, 2600)
+    encender(sec['gradas_i'], 200, 9000); encender(sec['gradas_d'], 204, 9000)
     encender(h['led'], 196, 7, golpe=False, dur=12)
     encender(h['marcador'], 186, 4); encender(h['pantalla'], 200, 4)
     encender(h['conos'], 214, 2.6, golpe=False, dur=10)
