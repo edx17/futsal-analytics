@@ -16,8 +16,9 @@ Todo se sintetiza con numpy/scipy:
     aplausos y silbidos, que entran con el clímax y crecen con la mejor carta;
   - reverb por convolución con una respuesta sintética, y un master suave.
 
-Uso:  python3 cine/musica.py [variante ...]   (sin argumentos: todas)
-Sale: public/cine/musica/<variante>.m4a (AAC 160 kb/s, estéreo, 48 kHz).
+Uso:  python3 cine/musica.py [variante|efecto ...]   (sin argumentos: todas)
+Sale: public/cine/musica/<variante>.m4a (AAC 160 kb/s, estéreo, 48 kHz), y los
+efectos de las cartas (el público) en public/cine/efectos/<efecto>.m4a.
 """
 import os
 import subprocess
@@ -422,7 +423,7 @@ def silbido(dur=0.7):
     return x * envolvente(n, 0.05, 0.1, 0.8, soltar=0.25)
 
 
-def festejo(p, s, fuerza=1.0, voces=36):
+def festejo(p, s, fuerza=1.0, voces=36, vocales=('ah', 'ah', 'oh'), palmas=True, silbidos=True):
     """La hinchada, desde el segundo `s` hasta el final de la pieza: el grito de
     gol (graves y agudos, cada uno a su tiempo y en su lugar), el rumor de la
     tribuna, aplausos y un par de silbidos."""
@@ -430,15 +431,15 @@ def festejo(p, s, fuerza=1.0, voces=36):
     for _ in range(voces):
         f0 = rng.uniform(105, 190) if rng.random() < 0.6 else rng.uniform(210, 360)
         tarde = rng.uniform(0, 0.35)
-        p.poner(s + tarde, grito(dur - tarde, f0, rng.choice(['ah', 'ah', 'oh']), rng.uniform(0.12, 0.4)),
+        p.poner(s + tarde, grito(dur - tarde, f0, rng.choice(list(vocales)), rng.uniform(0.12, 0.4)),
                 0.05 * fuerza, pan=rng.uniform(-0.9, 0.9), reverb=0.55)
     n = muestras(dur)
     rumor = pasaaltos(pasabajos(ruido(n), 2800), 260)
     rumor *= np.clip(1 + 0.3 * _suave(n, 2), 0.3, 2) / (np.std(rumor) + 1e-9)
     p.poner(s, rumor * envolvente(n, 0.35, 0.5, 0.7, soltar=dur * 0.5), 0.09 * fuerza, reverb=0.6, ancho=1.5)
-    for pan in (-0.7, -0.25, 0.25, 0.7):
+    for pan in ((-0.7, -0.25, 0.25, 0.7) if palmas else ()):
         p.poner(s + 0.35 + rng.uniform(0, 0.3), aplausos(dur - 0.6), 0.05 * fuerza, pan=pan, reverb=0.5)
-    for tarde, pan in ((0.7, -0.5), (1.8, 0.6)):
+    for tarde, pan in (((0.7, -0.5), (1.8, 0.6)) if silbidos else ()):
         if tarde < dur - 0.8:
             p.poner(s + tarde, silbido(), 0.05 * fuerza, pan=pan, reverb=0.5)
 
@@ -656,6 +657,25 @@ PIEZAS = {'vdraft': pieza_vdraft, 'elite': pieza_elite, 'epico': pieza_epico, 'l
           'evento_goleadores': pieza_evento_goleadores, 'evento_recuperadores': pieza_evento_recuperadores}
 
 
+# ── los efectos de las cartas (public/cine/efectos) ───────────────────────────
+
+def efecto_publico_especial():
+    """Una carta especial: el "¡AAAAHH!" de la tribuna, con palmas y un silbido."""
+    p = Pista(2.6)
+    festejo(p, 0.0, voces=44)
+    return p.mezclar(2.2, 5600)
+
+
+def efecto_publico_carta():
+    """Una carta común: un "ooh" corto y suave de la tribuna."""
+    p = Pista(1.4)
+    festejo(p, 0.0, voces=16, vocales=('oh', 'oo'), palmas=False, silbidos=False)
+    return p.mezclar(1.6, 4200)
+
+
+EFECTOS = {'publico_especial': efecto_publico_especial, 'publico_carta': efecto_publico_carta}
+
+
 def ffmpeg():
     try:
         import imageio_ffmpeg
@@ -665,16 +685,18 @@ def ffmpeg():
 
 
 def generar(nombre):
-    audio = PIEZAS[nombre]()
-    os.makedirs(SALIDA, exist_ok=True)
+    efecto = nombre in EFECTOS
+    audio = (EFECTOS if efecto else PIEZAS)[nombre]()
+    carpeta = os.path.join(AQUI, '..', 'public', 'cine', 'efectos') if efecto else SALIDA
+    os.makedirs(carpeta, exist_ok=True)
     wav = os.path.join('/tmp', f'musica_{nombre}.wav')
     wavfile.write(wav, SR, audio.T.astype(np.float32))
-    destino = os.path.join(SALIDA, f'{nombre}.m4a')
+    destino = os.path.join(carpeta, f'{nombre}.m4a')
     subprocess.run([ffmpeg(), '-y', '-loglevel', 'error', '-i', wav, '-c:a', 'aac', '-b:a', '160k',
                     '-movflags', '+faststart', destino], check=True)
     print(f'{nombre}: {audio.shape[1] / SR:.1f} s → {os.path.relpath(destino)} ({os.path.getsize(destino) // 1024} KB)')
 
 
 if __name__ == '__main__':
-    for nombre in (sys.argv[1:] or PIEZAS):
+    for nombre in (sys.argv[1:] or [*PIEZAS, *EFECTOS]):
         generar(nombre)
