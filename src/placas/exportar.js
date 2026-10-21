@@ -90,6 +90,8 @@ export async function exportarPlaca(nodo, { nombre = 'placa', ancho, alto, fondo
           const bg = n.style?.backgroundImage || '';
           if (bg.includes('repeating-linear-gradient')) n.style.backgroundImage = 'none';
         });
+
+        fotosComoFondo(doc);
       },
     });
   } finally {
@@ -111,6 +113,31 @@ export async function exportarPlaca(nodo, { nombre = 'placa', ancho, alto, fondo
   }
 
   descargar(lienzo.toDataURL('image/png'), archivo);
+}
+
+/* html2canvas no entiende `object-fit`: una foto con `object-fit: cover` (las
+   de los jugadores en las cartas, los escudos) sale estirada para llenar su
+   caja, y las caras quedan aplastadas. En la copia, cada una de esas <img>
+   pasa a ser un <div> con la foto de fondo y `background-size` (eso sí lo
+   dibuja bien), con la misma caja y el mismo encuadre. */
+function fotosComoFondo(doc) {
+  const vista = doc.defaultView;
+  doc.querySelectorAll('img').forEach((img) => {
+    const cs = vista.getComputedStyle(img);
+    const ajuste = cs.objectFit;
+    const src = img.currentSrc || img.src;
+    if (!src || (ajuste !== 'cover' && ajuste !== 'contain')) return;
+    const div = doc.createElement('div');
+    ['position', 'top', 'right', 'bottom', 'left', 'zIndex', 'width', 'height', 'margin', 'borderRadius', 'opacity', 'filter', 'transform', 'flex']
+      .forEach((k) => { div.style[k] = cs[k]; });
+    div.style.display = cs.display === 'inline' ? 'inline-block' : cs.display;
+    div.style.boxSizing = 'border-box';
+    div.style.backgroundImage = `url("${src.replace(/"/g, '%22')}")`;
+    div.style.backgroundSize = ajuste;
+    div.style.backgroundPosition = cs.objectPosition || '50% 50%';
+    div.style.backgroundRepeat = 'no-repeat';
+    img.replaceWith(div);
+  });
 }
 
 function descargar(href, archivo) {
