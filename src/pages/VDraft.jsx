@@ -460,9 +460,11 @@ function PartidoVivo({ partida, onCerrar, kiosco }) {
         </div>
       )}
 
-      {terminado
-        ? <button className="vd-btn" onClick={onCerrar} style={{ marginTop: 22 }}>{fin ? 'LISTO' : 'SEGUIR'}</button>
-        : <button className="vd-btn vd-btn-sec" onClick={saltar} style={{ marginTop: 18 }}>SALTAR</button>}
+      <div className="vd-escena-pie">
+        {terminado
+          ? <button className="vd-btn" onClick={onCerrar}>{fin ? 'LISTO' : 'SEGUIR'}</button>
+          : <button className="vd-btn vd-btn-sec" onClick={saltar}>SALTAR</button>}
+      </div>
     </div>
   );
 }
