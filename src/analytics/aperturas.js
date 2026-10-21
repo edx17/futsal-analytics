@@ -55,6 +55,14 @@ export const VIDEOS = {
     sonidos: [[0, 'latido', 2], [2.13, 'golpeSuave', 0.5], [3.13, 'golpe', 0.6], [3.93, 'golpe', 0.6], [4.6, 'golpe', 0.6],
       [5.33, 'solemne', 1.2], [6.53, 'golpeFuerte', 1], [7.53, 'brillo', 0.5]],
   },
+  /* Excepcional: el haz central, el sobre dorado que se rompe y los anillos de luz. */
+  excepcional: {
+    fuentes: [{ src: '/cine/excepcional.webm', tipo: 'video/webm' }, { src: '/cine/excepcional.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/excepcional.jpg',
+    duracion: 8.5,
+    musica: '/cine/musica/excepcional.m4a',
+    sonidos: [[0, 'latido', 3], [3.4, 'carga', 1.9], [5.33, 'golpeFuerte', 1], [5.73, 'brillo', 0.5], [7.13, 'solemne', 1.2], [8.0, 'brillo', 0.5]],
+  },
   /* Los eventos (guion 'evento'): pasillo, pabellón vestido y órbita. */
   evento_goleadores: {
     fuentes: [{ src: '/cine/evento_goleadores.webm', tipo: 'video/webm' }, { src: '/cine/evento_goleadores.mp4', tipo: 'video/mp4' }],
