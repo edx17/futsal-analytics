@@ -8,11 +8,13 @@ import { resultadoDePrueba, aplicarAjuste, mediaDudosa, pendientesDePublicar } f
 import { listarHistorial } from '../../utils/cartasDestacadas';
 import { publicarCatalogo } from '../../utils/sobres';
 import {
-  listarCatalogo, activarCartas, MENSAJE_SIN_GOD, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, guardarConfigSobres,
+  listarCatalogo, activarCartas, MENSAJE_SIN_GOD, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres,
 } from '../../utils/god';
 import { listarFotos, subirFotoEspecial, quitarFotoEspecial } from '../../utils/cartasFotos';
 import { prepararVideo } from '../../utils/videoApertura';
 import GodEventos from './GodEventos';
+import GodSobres from './GodSobres';
+import { normalizarTipo } from '../../analytics/tiposSobre';
 
 /* MODO GOD (sólo superusuario)
  *
@@ -21,7 +23,9 @@ import GodEventos from './GodEventos';
  *   CARTAS    dar de baja / de alta (no se borran: quien las tiene las
  *             conserva), corregir la media cuando los datos no la sostienen y
  *             cambiar la foto de cualquier carta.
- *   SOBRES    suspender tipos de sobre y activar un evento para el club.
+ *   EVENTOS   sobres propios con sus cartas, reglas y escena (GodEventos).
+ *   SOBRES    suspender tipos de sobre, una cinemática para todo el club y
+ *             editar cada sobre: presentación, cartas, rarezas, colores (GodSobres).
  *
  * Las reglas de quién puede escribir están en la base (políticas de la
  * migración 20261022130000_mysquad_god.sql): esta pantalla sólo se muestra.
@@ -47,6 +51,7 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
   const [ajustes, setAjustes] = useState(new Map());
   const [fotos, setFotos] = useState(new Map());
   const [aviso, setAviso] = useState(null);
+  const [config, setConfig] = useState(null); // sobres_config: suspendidos, escena del club, cada sobre
   /* Premios guardados en HISTORIAL que todavía no están en el catálogo de sobres. */
   const [pendientes, setPendientes] = useState([]);
   const [publicando, setPublicando] = useState(false);
@@ -54,9 +59,10 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
   const cargar = useCallback(async () => {
     if (!clubId) return;
     try {
-      const [k, a, f, h] = await Promise.all([listarCatalogo(clubId), listarAjustes(clubId), listarFotos(clubId).catch(() => new Map()),
-        listarHistorial(clubId).catch(() => [])]);
+      const [k, a, f, h, cfg] = await Promise.all([listarCatalogo(clubId), listarAjustes(clubId), listarFotos(clubId).catch(() => new Map()),
+        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null)]);
       setCatalogo(k); setAjustes(a); setFotos(f);
+      setConfig(cfg || { suspendidos: [], evento_activo: null, tipos: {}, sinTipos: true });
       setPendientes(pendientesDePublicar(h, k, f));
     } catch (err) {
       setAviso({ texto: err?.message || 'No se pudo leer el catálogo.', error: true });
@@ -99,14 +105,17 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
               }}>{publicando ? 'PUBLICANDO…' : `PUBLICAR LAS ${pendientes.length}`}</button>
             </div>
           )}
-          {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} alProbar={alProbar} />}
+          {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} tipos={config?.tipos || {}} alProbar={alProbar} />}
           {pestana === 'cartas' && (
             <Cartas clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
           )}
           {pestana === 'eventos' && (
             <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
           )}
-          {pestana === 'sobres' && <Config clubId={clubId} estado={estado} avisar={setAviso} alCambiar={alCambiar} />}
+          {pestana === 'sobres' && (
+            <GodSobres clubId={clubId} estado={estado} config={config} setConfig={setConfig} catalogo={catalogo} ajustes={ajustes}
+              avisar={setAviso} alCambiar={alCambiar} alProbar={alProbar} />
+          )}
         </div>
       )}
     </div>
@@ -114,15 +123,16 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
 }
 
 /* ── PROBAR: cualquier sobre, cualquier escena, sin gastar ── */
-function Probar({ catalogo, ajustes, alProbar }) {
+function Probar({ catalogo, ajustes, tipos, alProbar }) {
   const [tipo, setTipo] = useState('mega');
   const [escena, setEscena] = useState('');
   const activas = (catalogo || []).filter((k) => k.activa !== false);
 
   const probar = (t = tipo, e = escena) => {
     if (!activas.length) return;
-    const resultado = resultadoDePrueba({ catalogo: activas, tipo: t, ajustes });
-    alProbar({ resultado, forzar: e || null, evento: null });
+    // Con lo que el club le cambió a ese sobre (cartas, rarezas, escena).
+    const resultado = resultadoDePrueba({ catalogo: activas, tipo: t, ajustes, config: tipos[t] });
+    alProbar({ resultado, forzar: e || null, evento: null, escenaTipo: normalizarTipo(tipos[t] || {}, t).escena || null });
   };
 
   if (catalogo === null) return <div style={dim}>Leyendo el catálogo…</div>;
@@ -131,7 +141,7 @@ function Probar({ catalogo, ajustes, alProbar }) {
       <div style={dim}>Abre un sobre de prueba con cartas reales del catálogo activo ({activas.length}). No gasta V-Coins, no suma a ninguna colección y no queda registrado.</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={select} aria-label="Tipo de sobre">
-          {Object.values(SOBRES).map((s) => <option key={s.id} value={s.id}>{s.nombre} · {s.cartas} cartas</option>)}
+          {Object.values(SOBRES).map((s) => <option key={s.id} value={s.id}>{tipos[s.id]?.nombre || s.nombre} · {tipos[s.id]?.cartas || s.cartas} cartas</option>)}
         </select>
         <select value={escena} onChange={(e) => setEscena(e.target.value)} style={select} aria-label="Escena">
           {ESCENAS.map(([id, t]) => <option key={id} value={id}>{t}</option>)}
@@ -254,49 +264,6 @@ function FilaCarta({ f, ajuste, foto, ocupado, alternar, ajustar, desajustar, su
           {foto && <button style={chip(false)} disabled={ocupado} onClick={quitarFoto}>QUITAR FOTO</button>}
         </div>
       </div>
-    </div>
-  );
-}
-
-/* ── SOBRES Y EVENTOS ── */
-function Config({ clubId, estado, avisar, alCambiar }) {
-  const [cfg, setCfg] = useState(null);
-  const [guardando, setGuardando] = useState(false);
-  useEffect(() => { leerConfigSobres(clubId).then(setCfg).catch((err) => avisar({ texto: err?.message, error: true })); }, [clubId, avisar]);
-  if (!cfg) return <div style={dim}>Leyendo…</div>;
-
-  const alternar = (t) => setCfg((c) => ({ ...c, suspendidos: c.suspendidos.includes(t) ? c.suspendidos.filter((x) => x !== t) : [...c.suspendidos, t] }));
-  const guardar = async () => {
-    setGuardando(true); avisar(null);
-    try { await guardarConfigSobres(clubId, cfg); avisar({ texto: 'Guardado. Ya rige para todos los del club.' }); alCambiar?.(); } catch (err) {
-      avisar({ texto: err?.message || 'No se pudo guardar.', error: true });
-    } finally { setGuardando(false); }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {cfg.sinTabla && <Aviso texto="Falta la migración 20261022130000_mysquad_god.sql: hasta correrla esto no se puede guardar." error />}
-      <div style={rotulo}>SOBRES ACTIVOS</div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {Object.values(SOBRES).map((s) => {
-          const suspendido = cfg.suspendidos.includes(s.id);
-          return (
-            <button key={s.id} onClick={() => alternar(s.id)} style={{ ...chip(!suspendido), borderColor: suspendido ? '#ef4444' : 'var(--accent)', color: suspendido ? '#ef4444' : 'var(--accent)' }}>
-              {suspendido ? '⏸' : '▶'} {s.nombre}
-            </button>
-          );
-        })}
-      </div>
-      <div style={rotulo}>ESCENA PARA TODAS LAS APERTURAS (opcional; los eventos con sobre propio se arman en EVENTOS)</div>
-      <select value={cfg.evento_activo || ''} onChange={(e) => setCfg((c) => ({ ...c, evento_activo: e.target.value || null }))} style={select}>
-        <option value="">NINGUNA (cada sobre con la suya)</option>
-        {CINEMATICAS.map((c) => <option key={c.id} value={c.id}>{nombreCinematica(c)}</option>)}
-        {cfg.evento_activo && !CINEMATICAS.some((c) => c.id === cfg.evento_activo) && <option value={cfg.evento_activo}>{cfg.evento_activo}</option>}
-      </select>
-      <div style={dim}>Ahora: {estado?.evento ? (CINEMATICAS.find((c) => c.id === estado.evento)?.nombre || estado.evento) : 'cada sobre con su cinemática'} · suspendidos: {(estado?.suspendidos || []).join(', ') || 'ninguno'}</div>
-      <button onClick={guardar} disabled={guardando || cfg.sinTabla} style={{ ...btn, background: '#fbbf24', color: '#1a1205', alignSelf: 'flex-start' }}>
-        {guardando ? 'GUARDANDO…' : 'GUARDAR'}
-      </button>
     </div>
   );
 }

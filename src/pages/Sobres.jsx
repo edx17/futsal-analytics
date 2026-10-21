@@ -8,7 +8,8 @@ import { varianteDeApertura, EVENTOS } from '../analytics/aperturas';
 import { prepararVideo, liberarVideos } from '../utils/videoApertura';
 import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasApertura';
 import { prepararAudio, sonidoActivo, cargarMusica } from '../utils/sonidoApertura';
-import { RAREZAS, SOBRES, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, probabilidades, nombreDeCarta } from '../analytics/sobres';
+import { RAREZAS, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, probabilidades, nombreDeCarta } from '../analytics/sobres';
+import { sobreDelClub } from '../analytics/tiposSobre';
 import { estadoSobres, abrirSobre, abrirSobreEvento, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
 import { varianteDeEventoDb, varianteDeEscena } from '../analytics/eventos';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
@@ -86,7 +87,7 @@ export default function Sobres() {
   const abrir = async (tipo) => {
     if (abriendo || resultado) return; // nunca dos aperturas a la vez
     prepararAudio(prefs.sonido);       // en el toque: el navegador sólo deja sonar así
-    precargarVideo(tipo, evento, escenaClub); // el video baja mientras la base sortea las cartas
+    precargarVideo(tipo, evento, escenaClub, estado?.tipos?.[tipo]?.escena); // el video baja mientras la base sortea las cartas
     setAbriendo(tipo);
     setError(null);
     const r = await abrirSobre(tipo);
@@ -150,7 +151,7 @@ export default function Sobres() {
         )}
         {prueba && (
           <AperturaSobre key={prueba.resultado.sobre_id} resultado={prueba.resultado} prefs={{ ...prefs, cine: true }}
-            evento={prueba.evento} forzar={prueba.forzar} onCerrar={() => setPrueba(null)} />
+            evento={prueba.evento} forzar={prueba.forzar} escenaTipo={prueba.escenaTipo} onCerrar={() => setPrueba(null)} />
         )}
       </div>
     );
@@ -178,14 +179,15 @@ export default function Sobres() {
       {estado && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
-            <Dato rotulo="V-COINS" valor={estado.puntos} extra={`${COSTO_SOBRE_PUNTOS} = 1 sobre · ${COSTO_MEGA} = 1 mega`} />
+            <Dato rotulo="V-COINS" valor={estado.puntos} extra={`${estado.costo_puntos ?? COSTO_SOBRE_PUNTOS} = 1 sobre · ${estado.costo_mega ?? COSTO_MEGA} = 1 mega`} />
             <Dato rotulo="RACHA" valor={`${estado.racha}/${RACHA_PARA_PREMIO}`} extra="días seguidos" />
             <Dato rotulo="COLECCIÓN" valor={`${estado.cartas_tengo}/${estado.cartas_total}`} extra="cartas" />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
             {ORDEN_SOBRES.filter((t) => seMuestra(t, estado)).map((t) => (
-              <Sobre key={t} sobre={SOBRES[t]} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t} alApuntar={() => precargarVideo(t, evento, escenaClub)}
+              <Sobre key={t} sobre={sobreDelClub(t, estado.tipos?.[t])} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t}
+                alApuntar={() => precargarVideo(t, evento, escenaClub, estado.tipos?.[t]?.escena)}
                 alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
             ))}
           </div>
@@ -201,8 +203,8 @@ export default function Sobres() {
             {verProbs ? 'OCULTAR' : 'VER'} PROBABILIDADES
           </button>
           <PreferenciasApertura prefs={prefs} cambiar={cambiarPref} />
-          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} />}
-          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} soloEspeciales />}
+          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} reglas={estado.tipos?.diario} />}
+          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} soloEspeciales reglas={estado.tipos?.mega} />}
         </>
       )}
 
@@ -254,10 +256,10 @@ export default function Sobres() {
       )}
 
       {resultado && <AperturaSobre key={resultado.sobre_id} resultado={resultado} prefs={prefs} evento={evento}
-        forzar={resultado.evento ? null : escenaClub} onCerrar={cerrarResultado} />}
+        forzar={resultado.evento ? null : escenaClub} escenaTipo={estado?.tipos?.[resultado.tipo]?.escena} onCerrar={cerrarResultado} />}
       {prueba && (
         <AperturaSobre key={prueba.resultado.sobre_id} resultado={prueba.resultado} prefs={{ ...prefs, cine: true }}
-          evento={prueba.evento} forzar={prueba.forzar} onCerrar={() => setPrueba(null)} />
+          evento={prueba.evento} forzar={prueba.forzar} escenaTipo={prueba.escenaTipo} onCerrar={() => setPrueba(null)} />
       )}
     </div>
   );
@@ -274,8 +276,8 @@ function eventoDeLaDireccion() {
 /* Cuando alguien apunta a un sobre con cinemática (o lo toca), el navegador
    empieza a bajar SU video (un solo formato, una sola vez): al abrirlo ya
    está o falta poco. Los demás videos no se bajan. */
-function precargarVideo(tipo, evento, escena = null) {
-  const v = (escena && varianteDeEscena(escena)) || varianteDeApertura({ tipo, evento });
+function precargarVideo(tipo, evento, escena = null, escenaTipo = null) {
+  const v = (escena && varianteDeEscena(escena)) || varianteDeApertura({ tipo, evento, escena: escenaTipo });
   if (v.video) {
     prepararVideo(v.video);
     if (v.video.musica) cargarMusica(v.video.musica);
@@ -285,13 +287,14 @@ function precargarVideo(tipo, evento, escena = null) {
 const notaDe = (tipo, e) => {
   if ((e.suspendidos || []).includes(tipo)) return 'Suspendido por el club por ahora.';
   if (tipo === 'premio') return `Ganado en el V-Draft. Tenés ${e.sobres_premio} para abrir.`;
-  if (tipo === 'premio_especial') return `Ganado en el V-Draft: 5 especiales. Tenés ${e.sobres_especiales} para abrir.`;
+  if (tipo === 'premio_especial') return `Ganado en el V-Draft: ${e.tipos?.premio_especial?.cartas ?? 5} especiales. Tenés ${e.sobres_especiales} para abrir.`;
+  if (e.tipos?.[tipo] && e.tipos[tipo].total_cartas === 0) return 'Este sobre todavía no tiene cartas.';
   if (tipo === 'wellness' && !e.disponibles?.wellness) return e.wellness_hecho ? 'Ya lo abriste hoy.' : 'Completá el wellness de hoy.';
   if (tipo === 'racha' && !e.disponibles?.racha) return `Llevás ${e.racha} de ${RACHA_PARA_PREMIO} días seguidos.`;
-  if (tipo === 'puntos' && !e.disponibles?.puntos) return e.cartas_total === 0 ? 'No hay cartas.' : `Te faltan ${Math.max(0, COSTO_SOBRE_PUNTOS - e.puntos)} ${MONEDA}.`;
+  if (tipo === 'puntos' && !e.disponibles?.puntos) return e.cartas_total === 0 ? 'No hay cartas.' : `Te faltan ${Math.max(0, (e.costo_puntos ?? COSTO_SOBRE_PUNTOS) - e.puntos)} ${MONEDA}.`;
   if (tipo === 'mega' && !e.disponibles?.mega) {
     if (e.cartas_especiales === 0) return 'El club todavía no tiene cartas especiales.';
-    return `Te faltan ${Math.max(0, COSTO_MEGA - e.puntos)} ${MONEDA}. Juntalas con las repetidas.`;
+    return `Te faltan ${Math.max(0, (e.costo_mega ?? COSTO_MEGA) - e.puntos)} ${MONEDA}. Juntalas con las repetidas.`;
   }
   if (tipo === 'diario' && !e.disponibles?.diario) return 'Ya lo abriste hoy. Volvé mañana.';
   return '';
@@ -302,28 +305,36 @@ const cartasDePorRareza = (coleccion) => Object.entries(coleccion?.por_rareza ||
   .flatMap(([rareza, v]) => Array.from({ length: v.total }, () => ({ rareza })));
 
 function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas, alApuntar }) {
-  const mega = !!sobre.soloEspeciales && !sobre.premio;
+  const mega = sobre.id === 'mega';
   const dorado = mega;
   const violeta = sobre.id === 'premio' || sobre.id === 'premio_especial';
-  const avance = mega ? Math.min(100, ((monedas || 0) / sobre.costo) * 100) : null;
+  const costo = Number(sobre.costo) || 0;
+  const avance = mega && costo > 0 ? Math.min(100, ((monedas || 0) / costo) * 100) : null;
+  // Los colores que le puso el club (Modo GOD · SOBRES), si le puso.
+  const col = sobre.escena?.colores || {};
+  const luz = col.luz || null;
+  const borde = luz || (dorado ? '#fbbf24' : violeta ? '#c084fc' : 'var(--accent)');
+  const fondoBoton = luz ? { background: `linear-gradient(90deg, ${col.principal || luz}, ${luz})`, color: col.texto || '#fff' }
+    : dorado ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : violeta ? { background: 'linear-gradient(90deg, #7c3aed, #c084fc)', color: '#fff' } : null;
+  const queTrae = sobre.soloEspeciales ? 'ESPECIALES' : 'CARTAS';
   return (
-    <div className={`bento-card${dorado ? ' sb-mega' : ''} sb-t-${sobre.id}`} style={{ padding: 14, opacity: disponible || mega ? 1 : 0.6, border: disponible ? `1px solid ${dorado ? '#fbbf24' : violeta ? '#c084fc' : 'var(--accent)'}` : undefined }}>
-      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: dorado ? '#fbbf24' : violeta ? '#c084fc' : disponible ? 'var(--accent)' : 'var(--text)' }}>
-        {(dorado || violeta) && '★ '}{sobre.nombre}
+    <div className={`bento-card${dorado ? ' sb-mega' : ''} sb-t-${sobre.id}`} style={{ padding: 14, opacity: disponible || mega ? 1 : 0.6, border: disponible ? `1px solid ${borde}` : undefined,
+      ...(col.secundario ? { background: `linear-gradient(160deg, ${col.secundario} 0%, var(--panel) 70%)` } : null) }}>
+      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: luz || (dorado ? '#fbbf24' : violeta ? '#c084fc' : disponible ? 'var(--accent)' : 'var(--text)') }}>
+        {(dorado || violeta || luz) && '★ '}{sobre.nombre}
       </div>
       <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '4px 0 10px', minHeight: '2.4em', lineHeight: 1.4 }}>{nota || sobre.ayuda}</div>
-      {mega && (
+      {avance !== null && (
         <div style={{ marginBottom: 10 }}>
           <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ width: `${avance}%`, height: '100%', background: 'linear-gradient(90deg, #f59e0b, #fde68a)' }} />
           </div>
-          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', marginTop: 4, fontFamily: MONO }}>{Math.min(monedas || 0, sobre.costo)} / {sobre.costo} {MONEDA}</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', marginTop: 4, fontFamily: MONO }}>{Math.min(monedas || 0, costo)} / {costo} {MONEDA}</div>
         </div>
       )}
       <button disabled={!disponible || abriendo} onClick={alAbrir} onPointerEnter={alApuntar} onFocus={alApuntar} onTouchStart={alApuntar}
-        style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...(dorado ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : violeta ? { background: 'linear-gradient(90deg, #7c3aed, #c084fc)', color: '#fff' } : null) }}>
-        {abriendo ? 'ABRIENDO…' : mega ? `ABRIR · ${sobre.cartas} ESPECIALES · ${sobre.costo} V-COINS`
-          : sobre.soloEspeciales ? `ABRIR · ${sobre.cartas} ESPECIALES` : `ABRIR · ${sobre.cartas} CARTAS`}
+        style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...fondoBoton }}>
+        {abriendo ? 'ABRIENDO…' : `ABRIR · ${sobre.cartas} ${queTrae}${mega && costo ? ` · ${costo} V-COINS` : ''}`}
       </button>
     </div>
   );
@@ -369,8 +380,8 @@ function Dato({ rotulo: r, valor, extra }) {
   );
 }
 
-function Probabilidades({ catalogo, soloEspeciales = false }) {
-  const filas = probabilidades(catalogo, { soloEspeciales });
+function Probabilidades({ catalogo, soloEspeciales = false, reglas = null }) {
+  const filas = probabilidades(catalogo, { soloEspeciales, rarezas: reglas?.rarezas, pesos: reglas?.pesos });
   if (!filas.length) return null;
   return (
     <div className="bento-card" style={{ padding: 12, marginBottom: 6 }}>

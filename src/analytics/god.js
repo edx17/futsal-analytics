@@ -15,14 +15,23 @@
 
 import { SOBRES, sortearSobre, catalogoDeCartas } from './sobres';
 import { cartasDeHistorial, claveCarta } from './premiosCartas';
+import { reglasDeTipo } from './tiposSobre';
 
-/** Un sobre de prueba con cartas reales del catálogo activo. No toca la base. */
-export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = new Map(), azar = Math.random, n = Date.now(), evento = null }) {
-  const sobre = evento ? { id: 'evento', cartas: evento.sobre?.cartas || 3 } : SOBRES[tipo] || SOBRES.diario;
-  // El sobre de un evento: sólo sus cartas.
+/**
+ * Un sobre de prueba con cartas reales del catálogo activo. No toca la base.
+ * `config`: lo que el club cambió de ese tipo de sobre (sobres_config.tipos[tipo]).
+ */
+export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = new Map(), azar = Math.random, n = Date.now(), evento = null, config = null }) {
+  const reglas = evento ? null : reglasDeTipo(SOBRES[tipo] ? tipo : 'diario', config || {});
+  const sobre = evento ? { id: 'evento', cartas: evento.sobre?.cartas || 3 } : { ...(SOBRES[tipo] || SOBRES.diario), cartas: reglas.cartas };
+  // El sobre de un evento: sólo sus cartas. Los demás saltean las exclusivas de evento (salvo que se las incluya a mano).
   const claves = evento ? new Set(evento.cartas || []) : null;
-  const activas = catalogo.filter((k) => k.activa !== false && (!claves || claves.has(k.clave)));
-  const { cartas } = sortearSobre({ catalogo: activas, cantidad: sobre.cartas, soloEspeciales: !!sobre.soloEspeciales, azar });
+  const activas = catalogo.filter((k) => k.activa !== false
+    && (claves ? claves.has(k.clave) : reglas.incluidas.length > 0 || !k.exclusiva_evento));
+  const { cartas } = sortearSobre({
+    catalogo: activas, cantidad: sobre.cartas, soloEspeciales: !!sobre.soloEspeciales, azar,
+    ...(reglas ? { rarezas: reglas.rarezas, pesos: reglas.pesos, incluidas: reglas.incluidas } : {}),
+  });
   return {
     sobre_id: `prueba-${n}`,
     tipo: sobre.id,

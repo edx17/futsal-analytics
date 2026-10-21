@@ -63,6 +63,13 @@ export const VIDEOS = {
     musica: '/cine/musica/evento_goleadores.m4a',
     sonidos: [[0, 'carga', 1.5], [1.6, 'golpeSuave', 0.5], [3.07, 'pabellon', 3], [6.2, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
   },
+  evento_recuperadores: {
+    fuentes: [{ src: '/cine/evento_recuperadores.webm', tipo: 'video/webm' }, { src: '/cine/evento_recuperadores.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/evento_recuperadores.jpg',
+    duracion: 7,
+    musica: '/cine/musica/evento_recuperadores.m4a',
+    sonidos: [[0, 'carga', 1.5], [1.6, 'golpeSuave', 0.5], [3.07, 'pabellon', 3], [6.2, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
+  },
 };
 
 /* ── tiempos (ms) ──────────────────────────────────────────────────────────── */
@@ -248,10 +255,10 @@ export function varianteDeEvento(id, def = {}, videos = VIDEOS) {
  * La variante de una apertura.
  * @param {{ tipo: string, cartas?: Array<{ rareza: string }>, evento?: string, eventos?: object, videos?: object }} datos
  */
-export function varianteDeApertura({ tipo, cartas = [], evento = null, eventos = EVENTOS, videos = VIDEOS } = {}) {
+export function varianteDeApertura({ tipo, cartas = [], evento = null, escena = null, eventos = EVENTOS, videos = VIDEOS } = {}) {
   if (evento && eventos[evento]) return varianteDeEvento(evento, eventos[evento], videos);
   const rarezas = cartas.map((c) => c?.rareza);
-  const delTipo = VARIANTES[VARIANTE_DE_TIPO[tipo]] || VARIANTES.puntos;
+  const delTipo = conEscena(VARIANTES[VARIANTE_DE_TIPO[tipo]] || VARIANTES.puntos, escena);
   if (rarezas.includes('toty')) {
     const tops = rarezas.filter((r) => RAREZAS_TOP.has(r)).length;
     const escena = tops >= 2 ? VARIANTES.excepcional : VARIANTES.leyenda;
@@ -263,6 +270,27 @@ export function varianteDeApertura({ tipo, cartas = [], evento = null, eventos =
     return v.video ? v : completarVariante({ ...delTipo, colores: escena.colores, particulas: escena.particulas, escena: escena.id }, videos);
   }
   return completarVariante(delTipo, videos);
+}
+
+/**
+ * La escena que el club le puso a un tipo de sobre (Modo GOD, sobres_config.tipos):
+ * { video, titulo, colores, particulas, intensidad }, todo opcional, sobre la de siempre.
+ * Si el video elegido no está, queda el del sobre.
+ */
+export function conEscena(def, escena) {
+  if (!escena || typeof escena !== 'object') return def;
+  const colores = { ...def.colores, ...(escena.colores || {}) };
+  if (escena.colores?.luz || escena.colores?.acento) {
+    colores.particulas = [colores.luz, colores.acento, '#ffffff'].filter(esColor);
+  }
+  return {
+    ...def,
+    ...(escena.video ? { modo: 'video', video: escena.video, videoAlternativo: def.modo === 'video' ? def.video : null } : {}),
+    ...(escena.titulo ? { nombre: String(escena.titulo).slice(0, 40) } : {}),
+    colores,
+    ...(Number.isFinite(Number(escena.particulas)) && escena.particulas !== null ? { particulas: Number(escena.particulas) } : {}),
+    ...(Number.isFinite(Number(escena.intensidad)) && escena.intensidad !== null ? { intensidad: Number(escena.intensidad) } : {}),
+  };
 }
 
 /** Una variante elegida a mano (modo GOD): una de VARIANTES o 'evento:<id>'. null si no existe. */

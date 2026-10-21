@@ -71,10 +71,19 @@
 .vd-gano .vd-ronda-resultado { color: var(--accent); }
 .vd-perdio .vd-ronda-resultado { color: #ef4444; }
 
-/* el partido */
-.vd-escena { position: fixed; inset: 0; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 20px 16px; color: #fff; overflow-y: auto;
+/* el partido: por encima de la barra de abajo de la app (z-index 1000). Centrado
+   con márgenes automáticos (no justify-content: center), así un partido con
+   muchos goles se puede recorrer entero y no se corta arriba ni abajo. */
+.vd-escena { position: fixed; inset: 0; z-index: 1100; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  padding: 20px 16px 0; color: #fff; overflow-y: auto; overscroll-behavior: contain;
   background: radial-gradient(circle at 50% 35%, rgb(10,42,28) 0%, rgb(2,7,10) 75%); }
+/* Nada se achica: si no entra, se scrollea (si no, la lista de goles se encima con lo de abajo). */
+.vd-escena > * { flex-shrink: 0; }
+.vd-escena > :first-child { margin-top: auto; }
+/* SEGUIR / SALTAR: siempre a la vista, pegado abajo aunque la lista de goles sea larga. */
+.vd-escena-pie { position: sticky; bottom: 0; margin-bottom: auto; width: 100%; display: flex; justify-content: center;
+  padding: 14px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to bottom, rgba(2,7,10,0) 0%, rgba(2,7,10,.92) 40%); }
 .vd-escena-ronda { font-size: 11px; font-weight: 900; letter-spacing: .2em; color: #9ca3af; margin-bottom: 14px; }
 .vd-marcador { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; width: 100%; max-width: 460px; }
 .vd-marcador > div:not(.vd-reloj) { display: flex; flex-direction: column; align-items: center; text-align: center; }
