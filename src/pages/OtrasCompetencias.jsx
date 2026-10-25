@@ -7,6 +7,7 @@ import { fetchPaginado } from '../utils/supaPaginado';
 import {
   DIVISIONES, CATEGORIAS_LIGA, esMiEquipo, esFinalizado, tablaPosiciones, tablaGoleadores,
   fixturePorJornada, jornadaActual, reportesLiga, partidosDeEquipo, parsearGoleadores, zonasDe,
+  soloRegular, soloPlayoff, cuadroPlayoff, etiquetaCorta,
 } from '../analytics/liga';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -15,6 +16,8 @@ import {
    La liga entera, no solo el torneo del club: Primera A, B, C y D, de 1ra a
    8va, con tabla, fixture, goleadores y reportes. Los datos salen de
    liga_partidos, que llena la función liga-sync bajando segundopalo.com.
+   Tabla, fixture y reportes son del torneo regular; los playoffs (los
+   partidos con fase) van en su pestaña, como cuadro de cruces.
    No dependen de qué club administre la app: son los mismos para todos.
 
    Lo ve todo el mundo. Actualizar desde segundopalo solo lo puede el staff
@@ -128,6 +131,8 @@ export default function OtrasCompetencias({ kiosco = false }) {
   const estado = errorCompetencias || crudo === 'error' ? 'error'
     : !competencias.length || crudo === undefined ? 'cargando' : 'ok';
   const partidos = Array.isArray(crudo) ? crudo : SIN_PARTIDOS;
+  const regular = useMemo(() => soloRegular(partidos), [partidos]);
+  const playoff = useMemo(() => cuadroPlayoff(partidos), [partidos]);
 
   const elegirDivision = (d) => { setDivision(d); guardar(LS_DIVISION, d); setEquipoAbierto(null); setJornadaVista(null); setZonaElegida(null); };
   const elegirCategoria = (c) => { setCategoria(c); guardar(LS_CATEGORIA, c); setEquipoAbierto(null); setJornadaVista(null); };
@@ -138,15 +143,20 @@ export default function OtrasCompetencias({ kiosco = false }) {
   const zonas = useMemo(() => {
     const zonaPorEquipo = {};
     primera.forEach((p) => { if (p.zona) { zonaPorEquipo[p.local] = p.zona; zonaPorEquipo[p.visitante] = p.zona; } });
-    return zonasDe(partidos, zonaPorEquipo);
-  }, [partidos, primera]);
+    return zonasDe(regular, zonaPorEquipo);
+  }, [regular, primera]);
   const zonaActiva = zonas.find((z) => z.zona === zonaElegida)
     || zonas.find((z) => [...z.equipos].some((e) => esMiEquipo(e, miClub)))
     || zonas[0] || null;
-  const vista = zonaActiva ? zonaActiva.partidos : partidos;
+  const vista = zonaActiva ? zonaActiva.partidos : regular;
+  // Los goles de los playoffs también cuentan para los goleadores (de los equipos de la zona).
+  const conPlayoff = useMemo(() => {
+    const po = soloPlayoff(partidos);
+    return zonaActiva ? [...vista, ...po.filter((p) => zonaActiva.equipos.has(p.local) || zonaActiva.equipos.has(p.visitante))] : [...vista, ...po];
+  }, [vista, partidos, zonaActiva]);
 
   const tabla = useMemo(() => tablaPosiciones(vista, ambito), [vista, ambito]);
-  const goleadores = useMemo(() => tablaGoleadores(vista), [vista]);
+  const goleadores = useMemo(() => tablaGoleadores(conPlayoff), [conPlayoff]);
   const fixture = useMemo(() => fixturePorJornada(vista), [vista]);
   const reportes = useMemo(() => reportesLiga(vista), [vista]);
   const jornadaHoy = useMemo(() => jornadaActual(fixture), [fixture]);
@@ -210,7 +220,7 @@ export default function OtrasCompetencias({ kiosco = false }) {
       )}
 
       <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-        {[['tabla', 'TABLA'], ['fixture', 'FIXTURE'], ['goleadores', 'GOLEADORES'], ['reportes', 'REPORTES']].map(([id, txt]) => (
+        {[['tabla', 'TABLA'], ['fixture', 'FIXTURE'], ...(playoff.length ? [['playoff', 'PLAYOFF']] : []), ['goleadores', 'GOLEADORES'], ['reportes', 'REPORTES']].map(([id, txt]) => (
           <button key={id} onClick={() => setTab(id)} style={btnTab(tab === id)}>{txt}</button>
         ))}
       </div>
@@ -297,6 +307,12 @@ export default function OtrasCompetencias({ kiosco = false }) {
             {fechaVista.partidos.map((p) => <TarjetaPartido key={p.id_externo} p={p} esMio={esMio} conGoleadores={conGoleadores} />)}
           </div>
         </>
+      )}
+
+      {estado === 'ok' && partidos.length > 0 && tab === 'playoff' && (
+        playoff.length
+          ? <CuadroPlayoff fases={playoff} esMio={esMio} />
+          : <p style={vacio}>Todavía no hay partidos de playoff en Primera {division} · {categoria}.</p>
       )}
 
       {estado === 'ok' && partidos.length > 0 && tab === 'goleadores' && (
@@ -398,6 +414,63 @@ function TarjetaPartido({ p, esMio, conGoleadores }) {
   );
 }
 
+/* Los playoffs: cada fase con sus cruces (ida, vuelta, global y quién pasa). */
+function CuadroPlayoff({ fases, esMio }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {fases.map((f) => (
+        <div key={f.fase}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 900, letterSpacing: '1px', color: 'var(--text-dim)', marginBottom: '8px' }}>
+            {f.fase.toUpperCase()} · {f.cruces.length} {f.cruces.length === 1 ? 'CRUCE' : 'CRUCES'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '8px' }}>
+            {f.cruces.map((c) => <Cruce key={c.llave ?? c.equipos.join('|')} c={c} esMio={esMio} />)}
+          </div>
+        </div>
+      ))}
+      <p style={nota}>Si el global queda igualado y no hay penales cargados, en AFA define la ventaja deportiva (el mejor ubicado en la tabla).</p>
+    </div>
+  );
+}
+
+function Cruce({ c, esMio }) {
+  const mio = c.equipos.some(esMio);
+  const fila = (eq, i) => {
+    const gano = c.pasa === eq;
+    const quedo = c.pasa && !gano;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', opacity: quedo ? 0.55 : 1 }}>
+        <span style={{ flex: 1, fontSize: '0.84rem', fontWeight: esMio(eq) || gano ? 900 : 600, color: esMio(eq) ? 'var(--accent)' : 'var(--text)' }}>
+          {gano && '▸ '}{eq}
+        </span>
+        {c.partidos.map((p) => {
+          const fin = esFinalizado(p);
+          const g = p.local === eq ? p.goles_local : p.goles_visitante;
+          return <span key={p.id_externo} style={{ width: '26px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-dim)' }}>{fin ? g : '–'}</span>;
+        })}
+        <span style={{ width: '30px', textAlign: 'center', fontWeight: 900, fontSize: '0.95rem' }}>
+          {c.global ? c.global[i] : '–'}{c.penales ? <sup style={{ fontSize: '0.6rem', marginLeft: 1 }}>({c.penales[i]})</sup> : null}
+        </span>
+      </div>
+    );
+  };
+  return (
+    <div style={{ ...tarjeta, background: mio ? 'rgba(0,255,136,0.07)' : tarjeta.background, borderColor: mio ? 'rgba(0,255,136,0.3)' : undefined }}>
+      <div style={{ display: 'flex', gap: '8px', fontSize: '0.58rem', fontWeight: 900, color: 'var(--text-dim)' }}>
+        <span style={{ flex: 1 }}>{c.llave ? `LLAVE ${c.llave}` : 'CRUCE'}</span>
+        {c.partidos.map((p) => <span key={p.id_externo} style={{ width: '26px', textAlign: 'center' }}>{/ida/i.test(p.partido_playoff || '') ? 'IDA' : /vuelta/i.test(p.partido_playoff || '') ? 'VTA' : 'PJ'}</span>)}
+        <span style={{ width: '30px', textAlign: 'center' }}>GLOB</span>
+      </div>
+      {fila(c.equipos[0], 0)}
+      <div style={{ borderTop: '1px solid var(--border)' }} />
+      {fila(c.equipos[1], 1)}
+      <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+        {c.partidos.map((p) => `${/vuelta/i.test(p.partido_playoff || '') ? 'Vuelta' : /ida/i.test(p.partido_playoff || '') ? 'Ida' : 'Partido'}: ${esFinalizado(p) ? 'jugado' : `${fechaCorta(p.fecha)}${p.hora ? ` ${p.hora}` : ''}`}${p.estadio ? ` · ${p.estadio}` : ''}`).join('  ·  ')}
+      </div>
+    </div>
+  );
+}
+
 function PartidosDeEquipo({ partidos, equipo }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.72rem' }}>
@@ -410,7 +483,7 @@ function PartidosDeEquipo({ partidos, equipo }) {
         const r = fin ? (gf > gc ? 'G' : gf === gc ? 'E' : 'P') : null;
         return (
           <div key={p.id_externo} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ width: '30px', color: 'var(--text-dim)' }}>F{p.jornada}</span>
+            <span style={{ width: '44px', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>{etiquetaCorta(p)}</span>
             <span style={{ width: '14px', color: 'var(--text-dim)' }}>{local ? 'L' : 'V'}</span>
             <span style={{ flex: 1 }}>{rival}</span>
             <span style={{ fontWeight: 800 }}>{fin ? `${gf}-${gc}` : fechaCorta(p.fecha)}</span>

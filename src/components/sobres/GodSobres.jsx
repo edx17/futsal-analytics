@@ -8,6 +8,7 @@ import {
 } from '../../analytics/tiposSobre';
 import { guardarConfigSobres } from '../../utils/god';
 import SelectorCartas from './SelectorCartas';
+import GodEventos from './GodEventos';
 
 /* MODO GOD · SOBRES
  *
@@ -22,7 +23,7 @@ const MONO = 'JetBrains Mono, monospace';
 const COLORES = [['principal', 'Principal'], ['secundario', 'Fondo del sobre'], ['acento', 'Acento'], ['luz', 'Luz'], ['fondo', 'Fondo'], ['texto', 'Texto']];
 const nombreCinematica = (c) => `${c.nombre}${VIDEOS[c.video] ? '' : ' · todavía con otro video'}`;
 
-export default function GodSobres({ clubId, estado, config, setConfig, catalogo, ajustes, avisar, alCambiar, alProbar }) {
+export default function GodSobres({ clubId, estado, config, setConfig, catalogo, ajustes, fotos, avisar, alCambiar, alProbar, recargar }) {
   const [editando, setEditando] = useState(null); // tipo
   const [guardando, setGuardando] = useState(false);
   if (!config) return <div style={dim}>Leyendo…</div>;
@@ -42,7 +43,7 @@ export default function GodSobres({ clubId, estado, config, setConfig, catalogo,
   };
 
   const probar = (tipo, cfgTipo) => alProbar({
-    resultado: resultadoDePrueba({ catalogo: catalogo || [], tipo, ajustes, config: cfgTipo }),
+    resultado: resultadoDePrueba({ catalogo: catalogo || [], tipo, ajustes, fotos, config: cfgTipo }),
     escenaTipo: normalizarTipo(cfgTipo || {}, tipo).escena || null,
   });
 
@@ -119,6 +120,10 @@ export default function GodSobres({ clubId, estado, config, setConfig, catalogo,
           </div>
         );
       })}
+
+      {/* Sobres nuevos: se arman como un evento, pero sin fechas y siempre a la vista. */}
+      <div style={{ ...rotulo, marginTop: 10 }}>SOBRES CREADOS</div>
+      <GodEventos soloSobres clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={recargar} avisar={avisar} alProbar={alProbar} />
     </div>
   );
 }

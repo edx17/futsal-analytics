@@ -206,11 +206,93 @@ export function reportesLiga(partidos) {
   };
 }
 
-/** Los partidos de un equipo, del más viejo al más nuevo. */
+/** Los partidos de un equipo, del más viejo al más nuevo (los playoffs, después del regular). */
 export function partidosDeEquipo(partidos, equipo) {
   return (partidos || [])
     .filter((p) => p.local === equipo || p.visitante === equipo)
-    .sort((a, b) => (a.jornada ?? 0) - (b.jornada ?? 0) || String(a.fecha || '').localeCompare(String(b.fecha || '')));
+    .sort((a, b) => ordenFase(a.fase) - ordenFase(b.fase) || (a.jornada ?? 0) - (b.jornada ?? 0)
+      || String(a.fecha || '').localeCompare(String(b.fecha || '')));
+}
+
+/* ── PLAYOFFS ──────────────────────────────────────────────────────────────
+   segundopalo marca los partidos de playoff con la fase ("Cuartos de final",
+   "Semifinal", "Final"…), el número de cruce (llave) y si es ida o vuelta.
+   El torneo regular (tabla, fixture por fecha, reportes) es lo que no tiene
+   fase. */
+
+export const esPlayoff = (p) => !!p?.fase;
+export const soloRegular = (partidos) => (partidos || []).filter((p) => !esPlayoff(p));
+export const soloPlayoff = (partidos) => (partidos || []).filter(esPlayoff);
+
+const FASES = [['32', 1], ['16', 2], ['octavo', 3], ['cuarto', 4], ['semi', 5], ['tercer', 6], ['final', 7]];
+
+/** El orden de una fase (el regular primero; la final al final). */
+export function ordenFase(fase) {
+  if (!fase) return 0;
+  const t = sinTildes(fase).toLowerCase();
+  const hit = FASES.find(([k]) => t.includes(k));
+  return hit ? hit[1] : 6.5;
+}
+
+const ORDEN_PARTIDO = (p) => (/ida/i.test(p.partido_playoff || '') ? 0 : /vuelta/i.test(p.partido_playoff || '') ? 1 : 2);
+
+/**
+ * Los playoffs como cuadro: las fases en orden y, en cada una, sus cruces
+ * con los partidos (ida y vuelta), el global y quién pasa.
+ *   pasa: el equipo, o null si falta jugar o el global quedó igualado sin
+ *   penales (en AFA puede definir la ventaja deportiva).
+ * @returns {Array<{ fase, cruces: Array<{ llave, equipos: [string, string], partidos, global: [number, number]|null, penales, pasa, jugados }> }>}
+ */
+export function cuadroPlayoff(partidos) {
+  const porFase = new Map();
+  soloPlayoff(partidos).forEach((p) => {
+    if (!porFase.has(p.fase)) porFase.set(p.fase, []);
+    porFase.get(p.fase).push(p);
+  });
+  return [...porFase.entries()]
+    .sort((a, b) => ordenFase(a[0]) - ordenFase(b[0])
+      || String(a[1][0]?.fecha || '').localeCompare(String(b[1][0]?.fecha || '')))
+    .map(([fase, lista]) => {
+      const porCruce = new Map();
+      lista.forEach((p) => {
+        const k = p.llave ?? [clave(p.local), clave(p.visitante)].sort().join('|');
+        if (!porCruce.has(k)) porCruce.set(k, []);
+        porCruce.get(k).push(p);
+      });
+      const cruces = [...porCruce.entries()].map(([k, ps]) => {
+        const orden = [...ps].sort((a, b) => ORDEN_PARTIDO(a) - ORDEN_PARTIDO(b) || String(a.fecha || '').localeCompare(String(b.fecha || '')));
+        const equipos = [orden[0].local, orden[0].visitante];
+        const jugadosC = orden.filter(jugado);
+        const golesDe = (eq) => jugadosC.reduce((s, p) => s + (p.local === eq ? p.goles_local : p.visitante === eq ? p.goles_visitante : 0), 0);
+        const global = jugadosC.length ? [golesDe(equipos[0]), golesDe(equipos[1])] : null;
+        const ultimo = orden.at(-1);
+        const conPenales = ultimo && ultimo.penales_local !== null && ultimo.penales_local !== undefined
+          && ultimo.penales_visitante !== null && ultimo.penales_visitante !== undefined;
+        const penales = conPenales
+          ? [ultimo.local === equipos[0] ? ultimo.penales_local : ultimo.penales_visitante,
+            ultimo.local === equipos[0] ? ultimo.penales_visitante : ultimo.penales_local]
+          : null;
+        let pasa = null;
+        if (global && jugadosC.length === orden.length) {
+          if (global[0] !== global[1]) pasa = global[0] > global[1] ? equipos[0] : equipos[1];
+          else if (penales && penales[0] !== penales[1]) pasa = penales[0] > penales[1] ? equipos[0] : equipos[1];
+        }
+        return { llave: typeof k === 'number' ? k : null, equipos, partidos: orden, global, penales, pasa, jugados: jugadosC.length };
+      }).sort((a, b) => (a.llave ?? 99) - (b.llave ?? 99) || a.equipos[0].localeCompare(b.equipos[0]));
+      return { fase, cruces };
+    });
+}
+
+/** Cómo se llama un partido de playoff: "Cuartos de final · Ida". */
+export const etiquetaPlayoff = (p) => [p?.fase, p?.partido_playoff].filter(Boolean).join(' · ');
+
+/** Para listas angostas: "F7" en el regular; "4tos I", "Semi V", "Final" en los playoffs. */
+export function etiquetaCorta(p) {
+  if (!esPlayoff(p)) return `F${p?.jornada ?? '?'}`;
+  const o = ordenFase(p.fase);
+  const fase = { 3: '8vos', 4: '4tos', 5: 'Semi', 6: '3º', 7: 'Final' }[o] || 'PO';
+  const iv = /ida/i.test(p.partido_playoff || '') ? ' I' : /vuelta/i.test(p.partido_playoff || '') ? ' V' : '';
+  return fase + iv;
 }
 
 /** "Primera", "TERCERA", "4ta", "Quinta división" → '1ra', '3ra', '4ta', '5ta'. */

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import CartaJugador from '../quinteto/CartaJugador';
 import { PREMIOS } from '../../analytics/premiosCartas';
+import { RAREZAS } from '../../analytics/sobres';
 import { aplicarAjuste } from '../../analytics/god';
 
 /* MODO GOD · ELEGIR CARTAS DEL CATÁLOGO
@@ -12,11 +13,12 @@ import { aplicarAjuste } from '../../analytics/god';
 export default function SelectorCartas({ catalogo = [], ajustes = new Map(), elegidas = [], cambiar }) {
   const [tipo, setTipo] = useState('TODAS');
   const [buscar, setBuscar] = useState('');
+  const [rareza, setRareza] = useState('TODAS');
   const set = useMemo(() => new Set(elegidas), [elegidas]);
   const activas = useMemo(() => catalogo.filter((k) => k.activa !== false), [catalogo]);
   const tipos = useMemo(() => ['TODAS', ...new Set(activas.map((k) => k.tipo))], [activas]);
-  const candidatas = useMemo(() => activas.filter((k) => (tipo === 'TODAS' || k.tipo === tipo)
-    && (!buscar || `${k.carta?.apellido} ${k.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase()))), [activas, tipo, buscar]);
+  const candidatas = useMemo(() => activas.filter((k) => (tipo === 'TODAS' || k.tipo === tipo) && (rareza === 'TODAS' || k.rareza === rareza)
+    && (!buscar || `${k.carta?.apellido} ${k.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase()))), [activas, tipo, rareza, buscar]);
 
   const alternar = (clave) => cambiar(set.has(clave) ? elegidas.filter((c) => c !== clave) : [...elegidas, clave]);
 
@@ -24,6 +26,10 @@ export default function SelectorCartas({ catalogo = [], ajustes = new Map(), ele
     <>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={campo}>{tipos.map((t) => <option key={t} value={t}>{PREMIOS[t]?.sigla || t}</option>)}</select>
+        <select value={rareza} onChange={(e) => setRareza(e.target.value)} style={campo} aria-label="Rareza">
+          <option value="TODAS">TODAS LAS RAREZAS</option>
+          {RAREZAS.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+        </select>
         <input value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Buscar jugador" style={{ ...campo, width: 160 }} />
         <button style={chip} onClick={() => cambiar([...new Set([...elegidas, ...candidatas.map((k) => k.clave)])])}>AGREGAR LAS {candidatas.length} FILTRADAS</button>
         <button style={chip} onClick={() => cambiar(elegidas.filter((cl) => !candidatas.some((k) => k.clave === cl)))}>QUITAR LAS FILTRADAS</button>

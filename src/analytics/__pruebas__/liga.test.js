@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   esMiEquipo, tablaPosiciones, parsearGoleadores, tablaGoleadores, fixturePorJornada, jornadaActual, reportesLiga, zonasDe, nombreZona,
+  soloRegular, soloPlayoff, cuadroPlayoff, etiquetaCorta, etiquetaPlayoff, ordenFase,
 } from '../liga';
-import { normalizarPrimera, normalizarInferiores, consultaDe, planificar } from '../../../supabase/functions/liga-sync/logica.js';
+import { ordenarJornadas, ruedaDeJornada } from '../../utils/ruedas';
+import { crucesDeLiga } from '../../utils/importarFixtureJson';
+import { normalizarPrimera, normalizarInferiores, consultaDe, planificar, bloqueDeFase } from '../../../supabase/functions/liga-sync/logica.js';
 
 const p = (o) => ({ jornada: 1, fecha: '2026-03-28', hora: '20:00', estado: 'Finalizado', goleadores_local: null, goleadores_visitante: null, ...o });
 
@@ -72,7 +75,8 @@ describe('liga: fixture y reportes', () => {
 describe('liga-sync: lo que viene de segundopalo', () => {
   it('normaliza primera e inferiores', () => {
     expect(normalizarPrimera({ id: 18963, jornada: 1, fecha: '2026-03-28', hora: '19:30:00', equipos_local_nombre: 'Dep Moron ', equipos_visitante_nombre: 'Rosario Ctral', goles_local: 2, goles_visitante: 0, estados_partido_nombre: 'Finalizado', estadios_nombre: 'Parque', goleadores_local: 'L.Gonzalez1', goleadores_visitante: null }))
-      .toEqual({ id_externo: 18963, jornada: 1, fecha: '2026-03-28', hora: '19:30', local: 'Dep Moron', visitante: 'Rosario Ctral', goles_local: 2, goles_visitante: 0, estado: 'Finalizado', estadio: 'Parque', goleadores_local: 'L.Gonzalez1', goleadores_visitante: null, zona: null });
+      .toEqual({ id_externo: 18963, jornada: 1, fecha: '2026-03-28', hora: '19:30', local: 'Dep Moron', visitante: 'Rosario Ctral', goles_local: 2, goles_visitante: 0, estado: 'Finalizado', estadio: 'Parque', goleadores_local: 'L.Gonzalez1', goleadores_visitante: null, zona: null,
+        fase: null, llave: null, partido_playoff: null, penales_local: null, penales_visitante: null });
     expect(normalizarInferiores({ ID: 7, jornada: 'Fecha 3', fecha: '2026-04-11', hora: '10:00:00', equipolocal: 'A', equipovisitante: 'B', goleslocal: null, golesvisitante: '', estado: 'Pendiente' }))
       .toMatchObject({ id_externo: 7, jornada: 3, hora: '10:00', goles_local: null, goles_visitante: null, estadio: null });
   });
@@ -135,5 +139,84 @@ describe('liga: zonas', () => {
     expect(zonasDe([cruce('A', 'B', 'z1'), cruce('B', 'A', 'z1')])).toEqual([]);
     expect(zonasDe([cruce('A', 'B'), cruce('B', 'C')])).toEqual([]);
     expect(nombreZona('z2')).toBe('Zona 2');
+  });
+});
+
+describe('liga: playoffs', () => {
+  const real = { id: 20828, jornada: 1, fecha: '2026-11-01', hora: '16:30:00', equipos_local_nombre: 'Kimberley', equipos_visitante_nombre: 'Barracas Ctral',
+    goles_local: null, goles_visitante: null, estados_partido_nombre: 'Pendiente', fase_copas: 'Cuartos de final', llave_playoff: 2, partido_playoff: 'Vuelta',
+    penales_local: null, penales_visitante: null };
+
+  it('el sync guarda la fase, la llave y si es ida o vuelta', () => {
+    expect(normalizarPrimera(real)).toMatchObject({ fase: 'Cuartos de final', llave: 2, partido_playoff: 'Vuelta', jornada: 1 });
+    expect(normalizarPrimera({ ...real, fase_copas: null }).fase).toBeNull();
+  });
+
+  it('en inferiores, el cruce de playoff no pisa al mismo cruce del regular', () => {
+    const inf = { ID: 'inf-123-2-1-36-20', equipolocal: 'A', equipovisitante: 'B', estado: 'Pendiente', jornada: 1, equipo_local_id: 36, equipo_visitante_id: 20 };
+    const regular = normalizarInferiores(inf).id_externo;
+    const cuartos = normalizarInferiores({ ...inf, fase_copas: 'Cuartos de final' }).id_externo;
+    const semi = normalizarInferiores({ ...inf, fase_copas: 'Semifinal' }).id_externo;
+    expect(new Set([regular, cuartos, semi]).size).toBe(3);
+    expect(bloqueDeFase(null)).toBe(0);
+  });
+
+  it('una fase nueva en un partido ya guardado se actualiza', () => {
+    const previo = { ...normalizarPrimera(real), fase: null, llave: null, partido_playoff: null };
+    expect(planificar([previo], [normalizarPrimera(real)]).guardar).toHaveLength(1);
+  });
+
+  const p = (o) => ({ estado: 'Finalizado', jornada: 1, ...o });
+  const partidos = [
+    p({ id_externo: 1, local: 'A', visitante: 'B', goles_local: 3, goles_visitante: 0 }),            // regular
+    p({ id_externo: 10, fase: 'Cuartos de final', llave: 1, partido_playoff: 'Ida', local: 'B', visitante: 'A', goles_local: 2, goles_visitante: 1 }),
+    p({ id_externo: 11, fase: 'Cuartos de final', llave: 1, partido_playoff: 'Vuelta', local: 'A', visitante: 'B', goles_local: 2, goles_visitante: 0 }),
+    p({ id_externo: 12, fase: 'Cuartos de final', llave: 2, partido_playoff: 'Ida', local: 'C', visitante: 'D', goles_local: 1, goles_visitante: 1 }),
+    p({ id_externo: 13, fase: 'Cuartos de final', llave: 2, partido_playoff: 'Vuelta', local: 'D', visitante: 'C', goles_local: 0, goles_visitante: 0, penales_local: 4, penales_visitante: 3 }),
+    p({ id_externo: 14, fase: 'Semifinal', llave: 1, partido_playoff: 'Ida', local: 'A', visitante: 'D', estado: 'Pendiente', goles_local: null, goles_visitante: null }),
+  ];
+
+  it('la tabla y el fixture del regular no cuentan los playoffs', () => {
+    expect(tablaPosiciones(soloRegular(partidos)).find((f) => f.equipo === 'A').pj).toBe(1);
+    expect(soloPlayoff(partidos)).toHaveLength(5);
+  });
+
+  it('arma el cuadro: fases en orden, global, penales y quién pasa', () => {
+    const c = cuadroPlayoff(partidos);
+    expect(c.map((f) => f.fase)).toEqual(['Cuartos de final', 'Semifinal']);
+    const [l1, l2] = c[0].cruces;
+    expect(l1).toMatchObject({ llave: 1, equipos: ['B', 'A'], global: [2, 3], pasa: 'A' });
+    expect(l1.partidos.map((x) => x.partido_playoff)).toEqual(['Ida', 'Vuelta']);
+    expect(l2).toMatchObject({ equipos: ['C', 'D'], global: [1, 1], penales: [3, 4], pasa: 'D' });
+    expect(c[1].cruces[0]).toMatchObject({ global: null, pasa: null });
+  });
+
+  it('etiquetas y orden de fases', () => {
+    expect(etiquetaCorta(partidos[0])).toBe('F1');
+    expect(etiquetaCorta(partidos[1])).toBe('4tos I');
+    expect(etiquetaPlayoff(partidos[2])).toBe('Cuartos de final · Vuelta');
+    expect(ordenFase('Final')).toBeGreaterThan(ordenFase('Semifinal'));
+    expect(ordenFase('Semifinal')).toBeGreaterThan(ordenFase('Cuartos de final'));
+  });
+});
+
+describe('torneos: jornadas de playoff', () => {
+  it('van después de las fechas, en orden de fase, la ida antes que la vuelta', () => {
+    expect(ordenarJornadas(['Final', 'Fecha 10', 'Cuartos de final · Vuelta', 'Fecha 2', 'Cuartos de final · Ida', 'Semifinal · Ida']))
+      .toEqual(['Fecha 2', 'Fecha 10', 'Cuartos de final · Ida', 'Cuartos de final · Vuelta', 'Semifinal · Ida', 'Final']);
+  });
+
+  it('no son de ninguna rueda', () => {
+    expect(ruedaDeJornada('Cuartos de final · Ida', 9, ['Fecha 1', 'Cuartos de final · Ida'])).toBeNull();
+    expect(ruedaDeJornada('Fecha 3', 9)).toBe(1);
+  });
+
+  it('el sync del fixture trae los playoffs con su fase como jornada', () => {
+    const { cruces, avisos } = crucesDeLiga([
+      { id_externo: 1, jornada: 1, local: 'A', visitante: 'B', estado: 'Pendiente' },
+      { id_externo: 2, jornada: 1, local: 'A', visitante: 'B', estado: 'Pendiente', fase: 'Cuartos de final', partido_playoff: 'Ida' },
+    ]);
+    expect(avisos).toEqual([]);
+    expect(cruces.map((c) => c.jornada)).toEqual(['Fecha 1', 'Cuartos de final · Ida']);
   });
 });

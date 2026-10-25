@@ -78,6 +78,13 @@ export const VIDEOS = {
     musica: '/cine/musica/evento_recuperadores.m4a',
     sonidos: [[0, 'carga', 1.5], [1.6, 'golpeSuave', 0.5], [3.07, 'pabellon', 3], [6.2, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
   },
+  evento_heroes: {
+    fuentes: [{ src: '/cine/evento_heroes.webm', tipo: 'video/webm' }, { src: '/cine/evento_heroes.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/evento_heroes.jpg',
+    duracion: 7,
+    musica: '/cine/musica/evento_heroes.m4a',
+    sonidos: [[0, 'carga', 1.5], [1.6, 'golpeSuave', 0.5], [3.07, 'pabellon', 3], [6.2, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
+  },
 };
 
 /* ── tiempos (ms) ──────────────────────────────────────────────────────────── */

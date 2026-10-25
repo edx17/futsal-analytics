@@ -20,8 +20,9 @@ import { reglasDeTipo } from './tiposSobre';
 /**
  * Un sobre de prueba con cartas reales del catálogo activo. No toca la base.
  * `config`: lo que el club cambió de ese tipo de sobre (sobres_config.tipos[tipo]).
+ * `fotos`: las fotos subidas (cartas_fotos, clave → url), como las suma la base al abrir.
  */
-export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = new Map(), azar = Math.random, n = Date.now(), evento = null, config = null }) {
+export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = new Map(), fotos = new Map(), azar = Math.random, n = Date.now(), evento = null, config = null }) {
   const reglas = evento ? null : reglasDeTipo(SOBRES[tipo] ? tipo : 'diario', config || {});
   const sobre = evento ? { id: 'evento', cartas: evento.sobre?.cartas || 3 } : { ...(SOBRES[tipo] || SOBRES.diario), cartas: reglas.cartas };
   // El sobre de un evento: sólo sus cartas. Los demás saltean las exclusivas de evento (salvo que se las incluya a mano).
@@ -40,7 +41,7 @@ export function resultadoDePrueba({ catalogo = [], tipo = 'diario', ajustes = ne
     puntos_ganados: 0,
     cartas: cartas.map((k) => ({
       catalogo_id: k.id, rareza: k.rareza, tipo: k.tipo, nueva: true, puntos: 0,
-      carta: aplicarAjuste(k.carta || {}, ajustes.get(k.clave)),
+      carta: aplicarAjuste(fotos.has(k.clave) ? { ...(k.carta || {}), foto: fotos.get(k.clave), fotoEspecial: true } : (k.carta || {}), ajustes.get(k.clave)),
     })),
   };
 }

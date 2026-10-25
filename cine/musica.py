@@ -651,9 +651,17 @@ def pieza_evento_recuperadores():
         return pieza_evento_demo()
 
 
+def pieza_evento_heroes():
+    """Héroes del club: el himno del evento en Si bemol mayor, tibio y nostálgico
+    (mismo guion 'evento': los golpes caen en los mismos cuadros)."""
+    with en_tono(-2):
+        return pieza_evento_demo()
+
+
 PIEZAS = {'vdraft': pieza_vdraft, 'elite': pieza_elite, 'epico': pieza_epico, 'leyenda': pieza_leyenda,
           'evento_demo': pieza_evento_demo, 'excepcional': pieza_excepcional,
-          'evento_goleadores': pieza_evento_goleadores, 'evento_recuperadores': pieza_evento_recuperadores}
+          'evento_goleadores': pieza_evento_goleadores, 'evento_recuperadores': pieza_evento_recuperadores,
+          'evento_heroes': pieza_evento_heroes}
 
 
 def ffmpeg():

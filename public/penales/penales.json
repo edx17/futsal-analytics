@@ -1,0 +1,89 @@
+{
+ "ancho": 960,
+ "alto": 720,
+ "arco": {
+  "arriba_izq": [
+   232.7,
+   187.0
+  ],
+  "arriba_der": [
+   727.3,
+   187.0
+  ],
+  "abajo_izq": [
+   235.1,
+   515.1
+  ],
+  "abajo_der": [
+   724.9,
+   515.1
+  ]
+ },
+ "red_fondo": {
+  "arriba_izq": [
+   260.3,
+   261.2
+  ],
+  "arriba_der": [
+   699.7,
+   261.2
+  ],
+  "abajo_izq": [
+   267.6,
+   490.1
+  ],
+  "abajo_der": [
+   692.4,
+   490.1
+  ]
+ },
+ "pelota_en_arco": 18.0,
+ "red": {
+  "x": 232,
+  "y": 186,
+  "w": 496,
+  "h": 320
+ },
+ "arquero": {
+  "x": 233,
+  "y": 196,
+  "w": 438,
+  "h": 360,
+  "columnas": 6,
+  "fps": 30,
+  "equipos": [
+   "propio",
+   "rival"
+  ],
+  "anims": {
+   "espera": {
+    "cuadros": 24,
+    "loop": true
+   },
+   "izq_alta": {
+    "cuadros": 20,
+    "loop": false
+   },
+   "izq_media": {
+    "cuadros": 20,
+    "loop": false
+   },
+   "izq_baja": {
+    "cuadros": 20,
+    "loop": false
+   },
+   "centro_alto": {
+    "cuadros": 20,
+    "loop": false
+   },
+   "centro_medio": {
+    "cuadros": 20,
+    "loop": false
+   },
+   "centro_bajo": {
+    "cuadros": 20,
+    "loop": false
+   }
+  }
+ }
+}

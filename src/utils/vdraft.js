@@ -32,3 +32,5 @@ export const elegirCarta = (partida, catalogoId) => llamar('vdraft_elegir', { p_
 export const hacerCambio = (partida, lugar, banco) => llamar('vdraft_cambio', { p_partida: partida, p_lugar: lugar, p_banco: banco });
 export const jugarPartido = (partida) => llamar('vdraft_jugar', { p_partida: partida });
 export const abandonarPartida = (partida) => llamar('vdraft_abandonar', { p_partida: partida });
+/* Un tiro de la tanda: el cuadrante (0-8) si pateás, el lado (0-2) si atajás. */
+export const patearPenal = (partida, eleccion) => llamar('vdraft_penal', { p_partida: partida, p_eleccion: eleccion });

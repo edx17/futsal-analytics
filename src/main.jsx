@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App.jsx'
 import './index.css'
+import { escucharInstalacion } from './utils/instalarApp'
+
+// El aviso de "se puede instalar" llega una sola vez, apenas carga: se guarda
+// para el botón INSTALAR del menú del jugador.
+escucharInstalacion()
 
 // Configuración del cliente de React Query
 const queryClient = new QueryClient({

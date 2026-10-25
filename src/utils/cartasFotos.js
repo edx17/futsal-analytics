@@ -9,6 +9,8 @@ import { supabase } from '../supabase';
  * "foto", el mismo del plantel, en cartas/<club>/.
  */
 
+import { aSepia } from './sepia';
+
 const BUCKET = 'foto';
 const MAX_LADO = 700;
 
@@ -28,26 +30,37 @@ export async function listarFotos(clubId) {
 }
 
 /* Achica la imagen (las fotos del celular pesan varios MB). Si es PNG o WebP se
-   mantiene el formato, para no perder el fondo transparente de los recortes. */
-export async function reducirImagen(archivo, maxLado = MAX_LADO) {
+   mantiene el formato, para no perder el fondo transparente de los recortes.
+   `sepia`: la pasa a sepia (las cartas de Héroes). Se hace acá, en la imagen, y
+   no con un filtro CSS, porque las placas exportadas no ven los filtros. */
+export async function reducirImagen(archivo, maxLado = MAX_LADO, { sepia = false } = {}) {
   const bitmap = await createImageBitmap(archivo);
   const escala = Math.min(1, maxLado / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(bitmap.width * escala));
   canvas.height = Math.max(1, Math.round(bitmap.height * escala));
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  if (sepia) {
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    aSepia(img.data);
+    ctx.putImageData(img, 0, 0);
+  }
   const conAlfa = /png|webp/i.test(archivo.type);
   const tipo = conAlfa ? 'image/png' : 'image/jpeg';
   const blob = await new Promise((ok, mal) => canvas.toBlob((b) => (b ? ok(b) : mal(new Error('No se pudo achicar la imagen.'))), tipo, 0.88));
   return { blob, ext: conAlfa ? 'png' : 'jpg', tipo };
 }
 
+/* Las cartas de Héroes llevan la foto en sepia. */
+const vaEnSepia = (clave) => String(clave || '').startsWith('HERO|');
+
 const nombreSeguro = (clave) => String(clave).replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
 
 /** Sube la foto y la deja asociada a la carta. Devuelve la url pública. */
 export async function subirFotoEspecial({ clubId, clave, archivo }) {
   if (!archivo || !/^image\//.test(archivo.type)) throw new Error('Elegí una imagen (PNG, JPG o WebP).');
-  const { blob, ext, tipo } = await reducirImagen(archivo);
+  const { blob, ext, tipo } = await reducirImagen(archivo, MAX_LADO, { sepia: vaEnSepia(clave) });
   const ruta = `cartas/${clubId}/${nombreSeguro(clave)}-${Date.now()}.${ext}`;
   const { error: errSubida } = await supabase.storage.from(BUCKET).upload(ruta, blob, { contentType: tipo, upsert: false });
   if (errSubida) throw errSubida;

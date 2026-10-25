@@ -63,6 +63,8 @@ const ResumenPlantel      = lazy(() => import('./pages/Resumenplantel'));
 const MiQuinteto          = lazy(() => import('./pages/MiQuinteto'));
 const Sobres              = lazy(() => import('./pages/Sobres'));
 const VDraft              = lazy(() => import('./pages/VDraft'));
+const Juegos              = lazy(() => import('./pages/Juegos'));
+const PenalesJuego        = lazy(() => import('./pages/PenalesJuego'));
 
 // MySquad es para jugar con el plantel: lo ven superuser, manager, administrador y cuerpo técnico.
 const ROLES_JUEGO = ['superuser', 'manager', 'admin', 'ct'];
@@ -180,6 +182,8 @@ function AppRoutes() {
       {/* El superusuario entra al Modo GOD del club que tenga elegido. */}
       <Route path="/sobres" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Sobres /></ProtectedRoute>} />
       <Route path="/vdraft" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><VDraft /></ProtectedRoute>} />
+      <Route path="/juegos" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><Juegos /></ProtectedRoute>} />
+      <Route path="/penales" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><PenalesJuego /></ProtectedRoute>} />
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
       <Route path="/agenda" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Agenda /></ProtectedRoute>} />
@@ -230,7 +234,6 @@ function AppLayout() {
     planificacion: false,
     plantel: false,
     administracion: false,
-    juego: false,
     sistema: false
   });
 
@@ -334,6 +337,16 @@ useEffect(() => {
   const isAceptarTerminosPath = location.pathname === '/aceptar-terminos';
 
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
+
+  /* Los atajos del ícono instalado (Sobres, V-Draft) abren /kiosco/…: sin la
+     sesión del jugador, el staff va a su pantalla del juego y el resto entra
+     por el kiosco y sigue de largo al juego. */
+  const atajo = location.pathname.match(/^\/kiosco\/(sobres|vdraft|penales|juegos)$/);
+  if (atajo && !isKioscoMode) {
+    const esStaff = perfil && !['kiosco', 'jugador'].includes(String(perfil.rol || '').toLowerCase());
+    return <Navigate to={esStaff ? `/${atajo[1]}` : `/kiosco?ir=${atajo[1]}`} replace />;
+  }
+
   const club = perfil?.clubes;
   const isVencido = club?.fecha_vencimiento ? new Date(club.fecha_vencimiento) < new Date() : false;
 
@@ -389,6 +402,8 @@ useEffect(() => {
             <Route path="/kiosco/mis-pagos" element={<KioscoMisPagos />} />
             <Route path="/kiosco/sobres" element={<Sobres />} />
             <Route path="/kiosco/vdraft" element={<VDraft />} />
+            <Route path="/kiosco/juegos" element={<Juegos kiosco />} />
+            <Route path="/kiosco/penales" element={<PenalesJuego />} />
             <Route path="/kiosco/afa-stats" element={<OtrasCompetencias kiosco />} />
             <Route path="/kiosco/*" element={<Navigate to="/kiosco" replace />} />
           </Routes>
@@ -515,23 +530,13 @@ useEffect(() => {
           </>
         )}
 
+        {/* JUEGOS: un solo botón, a la pantalla con un botón grande por juego.
+            Queda marcado también adentro de cada juego. */}
         {permisos.puedeJugar && (
-          <>
-            <div style={titleStyle} onClick={() => toggleMenu('juego')} title={isCollapsed ? "Juego" : ""}>
-              {isCollapsed ? <Icono nombre="juego" size={22} /> : <><span>JUEGO</span> <Icono nombre={menusAbiertos.juego ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
-            </div>
-            {menusAbiertos.juego && !isCollapsed && (
-              <>
-                <NavLink to="/mysquad" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>MYSQUAD</span></NavLink>
-                <NavLink to="/sobres" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>
-                  <Icono nombre="juego" /> <span>{permisos.esSuperUser ? 'SOBRES · MODO GOD' : 'SOBRES'}</span>
-                </NavLink>
-                {!permisos.esSuperUser && (
-                  <NavLink to="/vdraft" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>V-DRAFT</span></NavLink>
-                )}
-              </>
-            )}
-          </>
+          <NavLink to="/juegos" style={linkStyle} title={isCollapsed ? "Juegos" : ""}
+            className={() => (/^\/(juegos|mysquad|sobres|vdraft|penales)(\/|$)/.test(location.pathname) ? 'nav-item active' : 'nav-item')}>
+            <Icono nombre="juego" size={22} /> {!isCollapsed && <span>JUEGOS</span>}
+          </NavLink>
         )}
 
         {!permisos.esJugador && (permisos.puedeControlarAdmin || permisos.manejaPlata) && (

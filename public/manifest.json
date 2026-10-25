@@ -34,5 +34,46 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Sobres",
+      "short_name": "Sobres",
+      "description": "Abrí tu sobre de hoy",
+      "url": "/kiosco/sobres",
+      "icons": [
+        {
+          "src": "/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "V-Draft",
+      "short_name": "V-Draft",
+      "description": "Armá tu equipo y salí campeón",
+      "url": "/kiosco/vdraft",
+      "icons": [
+        {
+          "src": "/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Penales",
+      "short_name": "Penales",
+      "description": "Una tanda contra el arquero",
+      "url": "/kiosco/penales",
+      "icons": [
+        {
+          "src": "/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }
