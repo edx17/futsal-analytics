@@ -242,7 +242,7 @@ PARADAS = {
                       hombro_i=(-14, 92, 0), codo_i=(-10, 0, 0), hombro_d=(-14, -104, 0), codo_d=(-14, 0, 0)),
     # el split: la pierna del palo estirada contra el piso, la otra rodilla abajo
     'izq_baja': pose(-0.3, 0.34, -4, torso=(18, 0, 0), cabeza=(-14, 6, 0),
-                     cadera_i=(-6, 80, 0), rodilla_i=(4, 0, 0), tobillo_i=(-2, 0, 0),
+                     cadera_i=(-6, 62, 0), rodilla_i=(4, 0, 0), tobillo_i=(-2, 0, 0),
                      cadera_d=(-48, -28, 0), rodilla_d=(100, 0, 0), tobillo_d=(-48, 0, 0),
                      hombro_i=(-20, 48, 0), codo_i=(-10, 0, 0), hombro_d=(-16, -112, 0), codo_d=(-14, 0, 0)),
     # al medio: estirarse arriba con los dos brazos
@@ -425,9 +425,12 @@ def main():
             for f in range(desde, desde + n + 1):
                 escena.frame_set(f)
                 rt.posar(j, f)
+    # Sólo la sombra del arquero: lo demás no proyecta sombra (si no, el
+    # parquet "atrapa" las del arco, las líneas y las tribunas).
     for o in escena.objects:
         if o.type != 'MESH' or o.name in nuestras:
             continue
+        o.visible_shadow = False
         if o.name == 'parquet_cancha':
             o.is_shadow_catcher = True
         elif es_palo(o):
@@ -435,6 +438,13 @@ def main():
         else:
             o.visible_camera = False
     escena.cycles.samples = a.muestras or 24
+    # Se renderiza sólo la zona donde puede estar el arquero (del palo
+    # izquierdo al derecho, del travesaño al piso): la imagen queda del mismo
+    # tamaño y el resto, transparente. Es ~3 veces más rápido.
+    escena.render.use_border = True
+    escena.render.use_crop_to_border = False
+    escena.render.border_min_x, escena.render.border_max_x = 0.17, 0.83
+    escena.render.border_min_y, escena.render.border_max_y = 0.2, 0.8
     for anim in anims:
         desde, n = ANIMS[anim]
         cuadros = [int(c) for c in a.cuadros.split(',') if c] if a.cuadros else range(1, n + 1)

@@ -57,17 +57,21 @@ def main():
                 raise SystemExit(f'faltan los cuadros de arquero_{eq}_{anim}')
             cuadros[(eq, anim)] = fs
             for fp in fs:
-                b = Image.open(fp).getchannel('A').point(lambda v: 255 if v > 4 else 0).getbbox()
+                # el cuerpo (opaco), no el velo casi invisible que deja el "atrapa sombras"
+                b = Image.open(fp).getchannel('A').point(lambda v: 255 if v > 40 else 0).getbbox()
                 if b:
                     caja = b if caja is None else (min(caja[0], b[0]), min(caja[1], b[1]), max(caja[2], b[2]), max(caja[3], b[3]))
-    x0, y0, x1, y1 = caja[0] - 4, caja[1] - 4, caja[2] + 4, caja[3] + 4
+    # margen para la sombra en el piso
+    x0, y0, x1, y1 = max(0, caja[0] - 24), max(0, caja[1] - 8), min(geo['ancho'], caja[2] + 24), min(geo['alto'], caja[3] + 16)
     w, h = round((x1 - x0) * ESCALA_ARQUERO), round((y1 - y0) * ESCALA_ARQUERO)
     anims = {}
     for (eq, anim), fs in cuadros.items():
         filas = -(-len(fs) // COLUMNAS)
         tira = Image.new('RGBA', (w * COLUMNAS, h * filas), (0, 0, 0, 0))
         for i, fp in enumerate(fs):
-            c = Image.open(fp).convert('RGBA').crop((x0, y0, x1, y1)).resize((w, h), Image.LANCZOS)
+            c = Image.open(fp).convert('RGBA').crop((x0, y0, x1, y1))
+            r, g, b, al = c.split()
+            c = Image.merge('RGBA', (r, g, b, al.point(lambda v: 0 if v < 10 else v))).resize((w, h), Image.LANCZOS)
             tira.paste(c, ((i % COLUMNAS) * w, (i // COLUMNAS) * h))
         tira.save(os.path.join(DESTINO, f'arquero_{eq}_{anim}.webp'), quality=82, method=6)
         anims[anim] = {'cuadros': len(fs), 'loop': ANIMS[anim]}
