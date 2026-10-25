@@ -19,6 +19,17 @@ const jornadaNum = (j) => {
   return m ? Number(m[0]) : null;
 };
 
+/* PLAYOFFS. Vienen en la misma consulta que el torneo regular, con la fase en
+   `fase_copas` ("Cuartos de final", "Semifinal", "Final"…), el número de
+   cruce en `llave_playoff` y si es "Ida" / "Vuelta" en `partido_playoff`. La
+   jornada viene en 1, así que sin la fase se mezclarían con la fecha 1. */
+const fasePlayoff = (p) => texto(p?.fase_copas ?? p?.faseCopas);
+const idaVuelta = (v) => {
+  const t = texto(v);
+  if (!t || /^(true|false|0|1)$/i.test(t)) return null;
+  return t;
+};
+
 /* Primera: rpc partidos_por_competencia_y_año (los mismos campos que
    1ra-scraper.js). */
 export function normalizarPrimera(p) {
@@ -36,6 +47,11 @@ export function normalizarPrimera(p) {
     goleadores_local: texto(p?.goleadores_local),
     goleadores_visitante: texto(p?.goleadores_visitante),
     zona: texto(p?.zona),
+    fase: fasePlayoff(p),
+    llave: numero(p?.llave_playoff ?? p?.llavePlayOff),
+    partido_playoff: idaVuelta(p?.partido_playoff),
+    penales_local: numero(p?.penales_local),
+    penales_visitante: numero(p?.penales_visitante),
   };
 }
 
@@ -52,14 +68,27 @@ export function idInferiores(id) {
   return m ? Number(m[1]) * 1000000 + Number(m[2]) : null;
 }
 
+/* Un cruce de playoff entre los mismos dos equipos que ya se enfrentaron en el
+   regular tendría el mismo número: se le suma un bloque por fase (los ids del
+   regular no pasan de 10^12). */
+const FASES_ORDEN = ['octavos', 'cuartos', 'semi', 'tercer', 'final'];
+export function bloqueDeFase(fase) {
+  if (!fase) return 0;
+  const t = String(fase).toLowerCase();
+  const i = FASES_ORDEN.findIndex((f) => t.includes(f));
+  return (i >= 0 ? i + 1 : FASES_ORDEN.length + 1) * 1e12;
+}
+
 /* Inferiores: rpc get_partidos_inferiores_por_edicion_categoria_tipo_inferiores
    (los campos de inf-scraper.js). No trae estadio ni goleadores. */
 export function normalizarInferiores(p) {
   const local = numero(p?.equipo_local_id);
   const visitante = numero(p?.equipo_visitante_id);
+  const fase = fasePlayoff(p);
+  const base = idInferiores(p?.ID ?? p?.id)
+    ?? (local !== null && visitante !== null ? local * 1000000 + visitante : null);
   return {
-    id_externo: idInferiores(p?.ID ?? p?.id)
-      ?? (local !== null && visitante !== null ? local * 1000000 + visitante : null),
+    id_externo: base === null ? null : base + bloqueDeFase(fase),
     jornada: jornadaNum(p?.jornada),
     fecha: fechaIso(p?.fecha),
     hora: horaCorta(p?.hora),
@@ -72,6 +101,11 @@ export function normalizarInferiores(p) {
     goleadores_local: null,
     goleadores_visitante: null,
     zona: texto(p?.zona),
+    fase,
+    llave: numero(p?.llave_playoff),
+    partido_playoff: idaVuelta(p?.partido_playoff ?? p?.tipo_partido),
+    penales_local: numero(p?.penaleslocal ?? p?.penales_local),
+    penales_visitante: numero(p?.penalesvisitante ?? p?.penales_visitante),
   };
 }
 
@@ -93,7 +127,8 @@ export function consultaDe(competencia) {
 }
 
 const esFinal = (estado) => /^finalizado$/i.test(String(estado || ''));
-const CAMPOS = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'goles_local', 'goles_visitante', 'estado', 'estadio', 'goleadores_local', 'goleadores_visitante', 'zona'];
+const CAMPOS = ['jornada', 'fecha', 'hora', 'local', 'visitante', 'goles_local', 'goles_visitante', 'estado', 'estadio', 'goleadores_local', 'goleadores_visitante', 'zona',
+  'fase', 'llave', 'partido_playoff', 'penales_local', 'penales_visitante'];
 
 /**
  * Compara lo que vino de la fuente con lo que ya tenemos guardado.

@@ -266,11 +266,9 @@ function Torneos() {
       return;
     }
 
-    partidosData.sort((a, b) => {
-      const jA = a.jornada || '';
-      const jB = b.jornada || '';
-      return jA.localeCompare(jB, undefined, { numeric: true, sensitivity: 'base' });
-    });
+    // Fechas en orden natural; los playoffs (cuartos, semi, final) después.
+    const ordenJ = ordenarJornadas(partidosData.map((p) => p.jornada));
+    partidosData.sort((a, b) => ordenJ.indexOf(a.jornada) - ordenJ.indexOf(b.jornada));
 
     // Antes esto disparaba UNA consulta de count POR PARTIDO: un torneo de 200
     // cruces eran 200 requests en paralelo, y era lo que mas tardaba en abrir la
@@ -1344,8 +1342,7 @@ function Torneos() {
   };
 
   const jornadasUnicas = useMemo(() => {
-    const arr = [...new Set(fixture.map(f => f.jornada))].filter(Boolean);
-    return arr.sort((a,b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    return ordenarJornadas(fixture.map(f => f.jornada));
   }, [fixture]);
 
   const equiposUnicos = useMemo(() => {

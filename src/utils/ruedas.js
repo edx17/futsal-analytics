@@ -16,10 +16,28 @@ export const numeroJornada = (jornada) => {
   return m ? parseInt(m[0], 10) : null;
 };
 
-/* Lista única de jornadas ordenada naturalmente (Fecha 2 antes que Fecha 10) */
+/* ¿Es una jornada de playoff? ("Cuartos de final · Ida", "Semifinal", "Final"…) */
+const FASES_PLAYOFF = [['octavo', 1], ['cuarto', 2], ['semi', 3], ['tercer', 4], ['final', 5], ['playoff', 0]];
+export const fasePlayoff = (jornada) => {
+  const t = String(jornada || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (/\bfecha\b|\d/.test(t)) return null;
+  const hit = FASES_PLAYOFF.find(([k]) => t.includes(k));
+  return hit ? hit[1] : null;
+};
+
+/* Lista única de jornadas ordenada naturalmente (Fecha 2 antes que Fecha 10);
+   los playoffs van después, de octavos a la final, la ida antes que la vuelta. */
 export const ordenarJornadas = (jornadas) =>
   [...new Set((jornadas || []).filter(Boolean))]
-    .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+    .sort((a, b) => {
+      const fa = fasePlayoff(a);
+      const fb = fasePlayoff(b);
+      if (fa === null && fb === null) return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+      if (fa === null) return -1;
+      if (fb === null) return 1;
+      const iv = (j) => (/vuelta/i.test(j) ? 1 : 0);
+      return fa - fb || iv(a) - iv(b) || String(a).localeCompare(String(b));
+    });
 
 /* Devuelve 1 (primera rueda), 2 (segunda) o null si no se puede determinar.
    Estrategia: primero el número escrito en la jornada; si la jornada no tiene
@@ -30,6 +48,7 @@ export const ruedaDeJornada = (jornada, fechasPrimeraRueda, jornadasOrdenadas) =
 
   const n = numeroJornada(jornada);
   if (n != null) return n <= corte ? 1 : 2;
+  if (fasePlayoff(jornada) !== null) return null;   // los playoffs no son de ninguna rueda
 
   if (Array.isArray(jornadasOrdenadas)) {
     const idx = jornadasOrdenadas.indexOf(jornada);

@@ -28,6 +28,10 @@ import { normalizarNombre, ID_MI_CLUB } from './parseFixturePegado';
 
 const numero = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
 const numJornada = (j) => (String(j ?? '').match(/\d+/) || [''])[0];
+/* Los playoffs no tienen número de fecha: su jornada es la fase ("Cuartos de
+   final · Ida"), y así se reconocen. */
+const etiquetaPlayoff = (p) => (p?.fase ? [p.fase, p.partido_playoff].filter(Boolean).join(' · ') : '');
+const claveJornada = (j) => numJornada(j) || String(j ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 /** "19:30:00" → "19:30" */
 const horaCorta = (h) => {
@@ -56,8 +60,9 @@ export function parseFixtureJson(texto) {
   datos.forEach((p, i) => {
     const local = String(p?.equipo_local || '').trim();
     const visitante = String(p?.equipo_visitante || '').trim();
+    const playoff = etiquetaPlayoff(p);
     const n = numJornada(p?.jornada);
-    if (!local || !visitante || !n) {
+    if (!local || !visitante || (!n && !playoff)) {
       avisos.push(`El partido ${i + 1} del archivo no tiene local, visitante o jornada: se saltea.`);
       return;
     }
@@ -69,7 +74,7 @@ export function parseFixtureJson(texto) {
     const finalizado = /^finalizado$/i.test(estadoFuente) && golesLocal !== null && golesVisitante !== null;
     cruces.push({
       idExterno: p?.id_externo ?? null,
-      jornada: `Fecha ${n}`,
+      jornada: playoff || `Fecha ${n}`,
       fecha: /^\d{4}-\d{2}-\d{2}$/.test(String(p?.fecha || '')) ? p.fecha : null,
       hora: horaCorta(p?.hora),
       local,
@@ -102,7 +107,7 @@ function ladosDeFila(p) {
   return { local: ID_MI_CLUB, visitante: normalizarNombre(p.rival), gl: numero(p.goles_propios), gv: numero(p.goles_rival), propio: true };
 }
 
-const clave = (jornada, local, visitante) => `${numJornada(jornada)}|${local}|${visitante}`;
+const clave = (jornada, local, visitante) => `${claveJornada(jornada)}|${local}|${visitante}`;
 
 /* Los goles del archivo, llevados a las columnas de la fila (que guarda los
    tuyos en goles_propios aunque juegues de visitante). */
@@ -304,6 +309,8 @@ export function crucesDeLiga(filas) {
     estadio: p.estadio,
     goleadores_local: p.goleadores_local,
     goleadores_visitante: p.goleadores_visitante,
+    fase: p.fase || null,
+    partido_playoff: p.partido_playoff || null,
   }))));
 }
 
