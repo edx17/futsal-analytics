@@ -70,8 +70,8 @@ export default function Penales({ partida, rival, alDefinir }) {
 
       <div className={`vd-penales-paso${tiro ? ` vd-penales-${tiro.gol === (tiro.equipo === 'propio') ? 'bien' : 'mal'}` : ''}`}>{pasoTexto}</div>
 
-      <div className="vd-arco" style={{ aspectRatio: `${AW + 24} / ${AH + 14}` }}>
-        <svg viewBox={`-12 -12 ${AW + 24} ${AH + 14}`} className="vd-arco-svg" aria-hidden="true">
+      <div className="vd-tanda-arco" style={{ aspectRatio: `${AW + 24} / ${AH + 14}` }}>
+        <svg viewBox={`-12 -12 ${AW + 24} ${AH + 14}`} className="vd-tanda-arco-svg" aria-hidden="true">
           <defs>
             <pattern id="vd-red" width="12" height="12" patternUnits="userSpaceOnUse">
               <path d="M0,0 L12,12 M12,0 L0,12" stroke="#fff" strokeOpacity="0.22" strokeWidth="1" />
@@ -111,16 +111,16 @@ export default function Penales({ partida, rival, alDefinir }) {
 
         {/* lo que se toca: 9 cuadrantes para patear, 3 franjas para atajar */}
         {puedo && turno === 'propio' && (
-          <div className="vd-arco-grilla">
+          <div className="vd-tanda-grilla">
             {Array.from({ length: 9 }, (_, i) => (
-              <button key={i} className="vd-arco-celda" onClick={() => elegir(i)} aria-label={`Patear al cuadrante ${i + 1}`} />
+              <button key={i} className="vd-tanda-celda" onClick={() => elegir(i)} aria-label={`Patear al cuadrante ${i + 1}`} />
             ))}
           </div>
         )}
         {puedo && turno === 'rival' && (
-          <div className="vd-arco-lados">
+          <div className="vd-tanda-lados">
             {LADOS.map((l, i) => (
-              <button key={l} className="vd-arco-lado" onClick={() => elegir(i)}>{l}</button>
+              <button key={l} className="vd-tanda-lado" onClick={() => elegir(i)}>{l}</button>
             ))}
           </div>
         )}

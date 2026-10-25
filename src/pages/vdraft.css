@@ -224,17 +224,17 @@
 .vd-penales-paso { min-height: 1.6em; font-size: 1rem; font-weight: 900; letter-spacing: .06em; text-align: center; color: #e5e7eb; }
 .vd-penales-paso.vd-penales-bien { color: #00ff88; animation: vd-golpe .5s cubic-bezier(.2,.8,.3,1.4); }
 .vd-penales-paso.vd-penales-mal { color: #ef4444; animation: vd-golpe .5s cubic-bezier(.2,.8,.3,1.4); }
-.vd-arco { position: relative; width: 100%; }
-.vd-arco-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.vd-tanda-arco { position: relative; width: 100%; }
+.vd-tanda-arco-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .vd-arquero { transition: transform .45s cubic-bezier(.3,.9,.4,1.1); }
 .vd-pelota-penal { animation: vd-pelota-entra .35s ease-out; }
 @keyframes vd-pelota-entra { from { opacity: 0; } to { opacity: 1; } }
 /* Lo tocable cubre el interior del arco (sin los palos): mismo margen que el viewBox (12 de 324 × 12 de 214). */
-.vd-arco-grilla, .vd-arco-lados { position: absolute; left: 3.7%; right: 3.7%; top: 5.6%; bottom: 0; display: grid; }
-.vd-arco-grilla { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
-.vd-arco-lados { grid-template-columns: repeat(3, 1fr); }
-.vd-arco-celda, .vd-arco-lado { border: 1px solid transparent; background: transparent; cursor: pointer; border-radius: 6px; transition: background .15s, border-color .15s; }
-.vd-arco-celda:hover, .vd-arco-celda:focus-visible { background: rgba(0,255,136,.18); border-color: rgba(0,255,136,.6); }
-.vd-arco-lado { color: rgba(255,255,255,.75); font-weight: 900; font-size: 11px; letter-spacing: .12em; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; }
-.vd-arco-lado:hover, .vd-arco-lado:focus-visible { background: rgba(251,191,36,.18); border-color: rgba(251,191,36,.6); color: #fbbf24; }
+.vd-tanda-grilla, .vd-tanda-lados { position: absolute; left: 3.7%; right: 3.7%; top: 5.6%; bottom: 0; display: grid; }
+.vd-tanda-grilla { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+.vd-tanda-lados { grid-template-columns: repeat(3, 1fr); }
+.vd-tanda-celda, .vd-tanda-lado { border: 1px solid transparent; background: transparent; cursor: pointer; border-radius: 6px; transition: background .15s, border-color .15s; }
+.vd-tanda-celda:hover, .vd-tanda-celda:focus-visible { background: rgba(0,255,136,.18); border-color: rgba(0,255,136,.6); }
+.vd-tanda-lado { color: rgba(255,255,255,.75); font-weight: 900; font-size: 11px; letter-spacing: .12em; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; }
+.vd-tanda-lado:hover, .vd-tanda-lado:focus-visible { background: rgba(251,191,36,.18); border-color: rgba(251,191,36,.6); color: #fbbf24; }
 .vd-penales-nota { font-size: .72rem; color: #9ca3af; text-align: center; }
