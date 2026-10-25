@@ -17,6 +17,8 @@ import {
 } from '../components/kiosco/TarjetasKiosco';
 import { telefonoWhatsApp } from '../utils/telefono';
 import VisorManual from '../components/VisorManual';
+import JuegoEnElCelular from '../components/kiosco/JuegoEnElCelular';
+import { recordarDestino, tomarDestino } from '../utils/instalarApp';
 import { Icono } from '../iconos';
 
 const IconWellness = () => (
@@ -191,6 +193,8 @@ export default function LoginKiosco() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [searchParams] = useSearchParams();
+  // El link del celular trae ?ir=sobres: después de entrar, directo al juego.
+  useEffect(() => { recordarDestino(searchParams.get('ir')); }, [searchParams]);
 
   const [clubId, setClubId] = useState(
     searchParams.get('club') || localStorage.getItem('kiosco_club_id')
@@ -372,6 +376,8 @@ export default function LoginKiosco() {
           fetchNovedadesKiosco(id, categoria);
           cargarDatosFinancieros(id, jugador.id);
           setMostrarMenu(true);
+          const destino = tomarDestino();
+          if (destino) navigate(destino);
         }
       }
     }
@@ -442,6 +448,8 @@ export default function LoginKiosco() {
 
     setMostrarMenu(true);
     setLoading(false);
+    const destino = tomarDestino();
+    if (destino) navigate(destino);
   };
 
   const procesarPagoMP = () => {
@@ -672,6 +680,8 @@ export default function LoginKiosco() {
         {estadoFicha === 'ok' && (
           <TarjetaNotificaciones estado={push.estado} mensaje={push.mensaje} detalle={push.detalle} onActivar={activarPush} />
         )}
+
+        <JuegoEnElCelular clubId={clubId} />
 
         <div className="hub-grid">
           {ACCESOS.map(({ ruta, titulo, icono, ancho }) => (

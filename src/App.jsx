@@ -334,6 +334,16 @@ useEffect(() => {
   const isAceptarTerminosPath = location.pathname === '/aceptar-terminos';
 
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
+
+  /* Los atajos del ícono instalado (Sobres, V-Draft) abren /kiosco/…: sin la
+     sesión del jugador, el staff va a su pantalla del juego y el resto entra
+     por el kiosco y sigue de largo al juego. */
+  const atajo = location.pathname.match(/^\/kiosco\/(sobres|vdraft)$/);
+  if (atajo && !isKioscoMode) {
+    const esStaff = perfil && !['kiosco', 'jugador'].includes(String(perfil.rol || '').toLowerCase());
+    return <Navigate to={esStaff ? `/${atajo[1]}` : `/kiosco?ir=${atajo[1]}`} replace />;
+  }
+
   const club = perfil?.clubes;
   const isVencido = club?.fecha_vencimiento ? new Date(club.fecha_vencimiento) < new Date() : false;
 
