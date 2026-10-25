@@ -1,71 +1,244 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import CartaJugador from '../components/quinteto/CartaJugador';
+import { GameButton, Badge, ProgressBar, Countdown } from '../juegos/ui';
+import useFeedback from '../juegos/useFeedback';
+import { useEsMovil } from '../utils/useEsMovil';
+import { estadoSobres, coleccionSobres } from '../utils/sobres';
+import { estadoVDraft } from '../utils/vdraft';
+import { misionesDelDia, cobrarMision } from '../utils/juegos';
+import { mejorCarta, modosDelMenu, resumenMisiones } from '../analytics/juegosHub';
+import '../components/quinteto/quinteto.css';
+import './juegos.css';
 
-/* JUEGOS: la puerta de entrada a todos los juegos, un botón grande cada uno.
- *   staff (/juegos): MySquad, Sobres, V-Draft y Penales;
- *   kiosco (/kiosco/juegos): Sobres, V-Draft y Penales (MySquad es del CT);
- *   superusuario: MODO GOD (administra cartas, sobres y usuarios) y los
- *   juegos sólo para probar: no compite en nada. Sobres es el Modo GOD (con
- *   las aperturas de prueba) y el V-Draft no lo puede jugar (la base no le
- *   abre partidas): queda a la vista, sin entrar.
- * Las imágenes son cuadros de las cinemáticas (public/juegos/) y el fondo de los penales.
+/* JUEGOS · EL MENÚ
+ *
+ * Una sola fuente de datos (modosDelMenu) y dos vistas:
+ *   PC / tablet → HUB: la mejor carta de tu colección girando en el centro y
+ *                 los modos alrededor, con las misiones del día abajo.
+ *   celular     → CARRUSEL: una tarjeta gigante por modo, que se pasa con el
+ *                 dedo, y las misiones plegables.
+ * Arriba: V-Coins y racha. Staff y kiosco usan la misma pantalla (en el kiosco
+ * no está MySquad); el superusuario ve el Modo GOD y no compite.
  */
 
-const MODO_GOD = { id: 'sobres', titulo: 'MODO GOD', bajada: 'Cartas, héroes, eventos, sobres, usuarios y V-Coins. Las aperturas de prueba están acá.',
-  imagen: '/juegos/sobres.jpg', acento: '#fbbf24' };
-
-const JUEGOS = [
-  { id: 'mysquad', titulo: 'MYSQUAD', bajada: 'Armá el quinteto ideal, confirmá los premios de la semana y mirá las cartas del plantel.',
-    imagen: '/juegos/mysquad.jpg', acento: '#00ff88', soloStaff: true },
-  { id: 'sobres', titulo: 'SOBRES', bajada: 'Abrí tu sobre de hoy, juntá las cartas del club y completá el álbum.',
-    imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
-  { id: 'vdraft', titulo: 'V-DRAFT', bajada: 'Armá tu equipo carta por carta y salí campeón contra los equipos de la liga.',
-    imagen: '/juegos/vdraft.jpg', acento: '#38bdf8', sinSuperusuario: true },
-  { id: 'penales', titulo: 'PENALES', bajada: 'Una tanda contra el arquero: pateá al ángulo y adiviná el lado para atajar.',
-    imagen: '/penales/fondo.webp', acento: '#f97316', nuevo: true },
-];
+const aCarta = (c) => ({ atributos: [], stats: {}, ...(c?.carta || {}) });
 
 export default function Juegos({ kiosco = false }) {
   const navigate = useNavigate();
   const { perfil } = useAuth() || {};
-  const esSuper = String(perfil?.rol || '').toLowerCase() === 'superuser';
-  const lista = esSuper && !kiosco
-    ? [MODO_GOD, ...JUEGOS.filter((j) => j.id !== 'sobres').map((j) => (j.sinSuperusuario
-      ? { ...j, bloqueado: 'El superusuario no compite: probalo con una cuenta del club.' }
-      : { ...j, prueba: true }))]
-    : JUEGOS.filter((j) => !j.soloStaff || !kiosco);
-  const ir = (id) => navigate(kiosco ? `/kiosco/${id}` : `/${id}`);
+  const esSuper = !kiosco && String(perfil?.rol || '').toLowerCase() === 'superuser';
+  const esMovil = useEsMovil();
+  const { feedback, prefs, setPrefs, puedeVibrar } = useFeedback();
+
+  const [sobres, setSobres] = useState(null);
+  const [vdraft, setVDraft] = useState(null);
+  const [protagonista, setProtagonista] = useState(null);
+  const [misiones, setMisiones] = useState(null);
+  const [cobrando, setCobrando] = useState(null);
+  const [aviso, setAviso] = useState(null);
+
+  useEffect(() => {
+    if (esSuper) return undefined;
+    let vivo = true;
+    estadoSobres().then((r) => { if (vivo && r.data) setSobres(r.data); });
+    estadoVDraft().then((r) => { if (vivo && r.data) setVDraft(r.data); });
+    coleccionSobres().then((r) => { if (vivo && r.data) setProtagonista(mejorCarta(r.data.cartas)); });
+    misionesDelDia().then((r) => { if (vivo) setMisiones(r.data || []); });
+    return () => { vivo = false; };
+  }, [esSuper]);
+
+  const modos = modosDelMenu({ sobres, vdraft, kiosco, esSuper });
+  const ir = (m) => {
+    if (m.bloqueado) return;
+    feedback('elegir');
+    navigate(kiosco ? `/kiosco/${m.id}` : `/${m.id}`);
+  };
+
+  const cobrar = useCallback(async (id) => {
+    setCobrando(id);
+    const r = await cobrarMision(id);
+    setCobrando(null);
+    if (r.error) { setAviso(r.error.message); return; }
+    feedback('premio');
+    setMisiones(r.data.misiones);
+    setSobres((s) => (s ? { ...s, puntos: r.data.puntos } : s));
+    setAviso(`+${r.data.premio} V-Coins`);
+    setTimeout(() => setAviso(null), 2200);
+  }, [feedback]);
+
+  const puntos = sobres?.puntos ?? vdraft?.puntos;
+  const barra = (
+    <header className="jh-barra jg-entra">
+      <div className="jh-saldo">
+        {!esSuper && <Dato rotulo="V-COINS" valor={puntos ?? '—'} tono="oro" />}
+        {!esSuper && <Dato rotulo="RACHA" valor={sobres ? `${sobres.racha ?? 0}/7` : '—'} tono="neon" />}
+        {esSuper && <Dato rotulo="MODO" valor="SUPERUSUARIO" tono="oro" />}
+      </div>
+      <div className="jg-prefs">
+        <button className="jg-pref" aria-pressed={prefs.sonido} onClick={() => setPrefs({ sonido: !prefs.sonido })} aria-label={prefs.sonido ? 'Apagar el sonido' : 'Prender el sonido'}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 5 6 9H2v6h4l5 4z" />{prefs.sonido ? <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" /> : <path d="m22 9-6 6m0-6 6 6" />}</svg>
+        </button>
+        {puedeVibrar && (
+          <button className="jg-pref" aria-pressed={prefs.vibracion} onClick={() => setPrefs({ vibracion: !prefs.vibracion })} aria-label={prefs.vibracion ? 'Apagar la vibración' : 'Prender la vibración'}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="7" y="3" width="10" height="18" rx="2" /><path d="M3 8v8M21 8v8" /></svg>
+          </button>
+        )}
+      </div>
+    </header>
+  );
+
+  const panelMisiones = !esSuper && <Misiones misiones={misiones} cobrando={cobrando} cobrar={cobrar} plegable={esMovil} />;
 
   return (
-    <div style={{ padding: '16px', maxWidth: '900px', margin: '0 auto', boxSizing: 'border-box', paddingBottom: '80px' }}>
-      <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '1px' }}>VIRTUAL.CLUB</div>
-      <h1 style={{ margin: '4px 0 16px', fontSize: '1.6rem', fontWeight: 900, color: 'var(--text)' }}>Juegos</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-        {lista.map((j) => (
-          <button key={j.titulo} onClick={() => !j.bloqueado && ir(j.id)} className="juegos-tarjeta" disabled={!!j.bloqueado}
-            style={{ opacity: j.bloqueado ? 0.5 : 1, cursor: j.bloqueado ? 'not-allowed' : 'pointer',
-              position: 'relative', minHeight: '190px', padding: 0, border: `1px solid ${j.acento}55`, borderRadius: '16px',
-              overflow: 'hidden', textAlign: 'left', color: '#fff',
-              background: `#000 url(${j.imagen}) center / cover no-repeat`,
-              boxShadow: `0 10px 28px rgba(0,0,0,.45), inset 0 0 0 1px ${j.acento}22`,
-            }}>
-            <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,.05) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,.88) 100%)' }} />
-            {(j.prueba || j.bloqueado) && (
-              <span style={{ position: 'absolute', top: 12, left: 12, padding: '4px 9px', borderRadius: '999px', background: 'rgba(0,0,0,.7)', color: '#fff', fontSize: '0.6rem', fontWeight: 900, letterSpacing: '.08em', border: '1px solid rgba(255,255,255,.3)' }}>
-                {j.bloqueado ? 'NO COMPITE' : 'SÓLO PRUEBA'}
+    <div className="jg-ui jh">
+      {barra}
+      {aviso && <div className="jh-aviso" role="status">{aviso}</div>}
+      {esMovil ? (
+        <>
+          {protagonista && (
+            <div className="jh-mini jg-entra" style={{ '--i': 1 }}>
+              <div className="jh-mini-carta"><CartaJugador carta={aCarta(protagonista)} /></div>
+              <div><span className="jh-rotulo">TU MEJOR CARTA</span><b>{protagonista.carta.apellido}</b></div>
+            </div>
+          )}
+          <Carrusel modos={modos} ir={ir} />
+          {panelMisiones}
+        </>
+      ) : (
+        <>
+          <div className={`jh-hub jh-hub-${modos.length}`}>
+            {modos.map((m, i) => <TarjetaModo key={m.clave || m.id} modo={m} ir={ir} style={{ gridArea: `m${i}`, '--i': i + 1 }} />)}
+            <div className="jh-centro jg-entra" style={{ '--i': 0 }}>
+              {protagonista ? (
+                <>
+                  <div className="jh-luz" aria-hidden="true" />
+                  <div className="jh-protagonista"><CartaJugador carta={aCarta(protagonista)} /></div>
+                  <span className="jh-rotulo">TU MEJOR CARTA</span>
+                </>
+              ) : (
+                esSuper ? (
+                  <div className="jh-god">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z" /></svg>
+                    <b>MODO GOD</b>
+                    <small>Probás todo sin competir.</small>
+                  </div>
+                ) : <div className="jh-sin-carta">Abrí tu primer sobre para tener tu carta acá.</div>
+              )}
+            </div>
+          </div>
+          {panelMisiones}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Dato({ rotulo, valor, tono }) {
+  return (
+    <div className="jh-dato">
+      <span>{rotulo}</span>
+      <b className={`jh-${tono}`}>{valor}</b>
+    </div>
+  );
+}
+
+function BadgeModo({ badge }) {
+  if (!badge) return null;
+  return (
+    <Badge tono={badge.tono} latido={badge.latido}>
+      {badge.texto}{badge.cuenta && <> <Countdown /></>}
+    </Badge>
+  );
+}
+
+function TarjetaModo({ modo, ir, style }) {
+  return (
+    <button className={`jh-modo jg-entra${modo.bloqueado ? ' jh-bloqueado' : ''}`} style={{ ...style, '--acento': modo.acento, backgroundImage: `url(${modo.imagen})` }}
+      onClick={() => ir(modo)} disabled={!!modo.bloqueado} aria-label={`${modo.titulo}: ${modo.bloqueado || modo.bajada}`}>
+      <span className="jh-modo-sombra" />
+      <span className="jh-modo-badge"><BadgeModo badge={modo.badge} /></span>
+      <span className="jh-modo-texto">
+        <b>{modo.titulo}</b>
+        <small>{modo.bloqueado || modo.bajada}</small>
+      </span>
+    </button>
+  );
+}
+
+/* El carrusel del celular: una tarjeta por modo, con scroll-snap y puntitos. */
+function Carrusel({ modos, ir }) {
+  const pista = useRef(null);
+  const [actual, setActual] = useState(0);
+  const alDeslizar = () => {
+    const el = pista.current;
+    if (!el) return;
+    setActual(Math.round(el.scrollLeft / el.clientWidth));
+  };
+  const irA = (i) => pista.current?.scrollTo({ left: i * pista.current.clientWidth, behavior: 'smooth' });
+  return (
+    <section className="jh-carrusel jg-entra" style={{ '--i': 2 }} aria-label="Modos de juego">
+      <div className="jh-pista" ref={pista} onScroll={alDeslizar}>
+        {modos.map((m) => (
+          <div key={m.clave || m.id} className="jh-slide">
+            <div className={`jh-gigante${m.bloqueado ? ' jh-bloqueado' : ''}`} style={{ '--acento': m.acento, backgroundImage: `url(${m.imagen})` }}>
+              <span className="jh-modo-sombra" />
+              <span className="jh-modo-badge"><BadgeModo badge={m.badge} /></span>
+              <span className="jh-gigante-texto">
+                <b>{m.titulo}</b>
+                <small>{m.bloqueado || m.bajada}</small>
+                <GameButton grande ancho disabled={!!m.bloqueado} onClick={() => ir(m)} style={{ background: m.acento, boxShadow: `0 0 22px ${m.acento}88` }}>
+                  {m.bloqueado ? 'NO DISPONIBLE' : 'JUGAR'}
+                </GameButton>
               </span>
-            )}
-            {j.nuevo && (
-              <span style={{ position: 'absolute', top: 12, right: 12, padding: '4px 9px', borderRadius: '999px', background: j.acento, color: '#120800', fontSize: '0.62rem', fontWeight: 900, letterSpacing: '.08em' }}>NUEVO</span>
-            )}
-            <span style={{ position: 'absolute', left: 18, right: 18, bottom: 16, display: 'block' }}>
-              <span style={{ display: 'block', fontSize: '1.7rem', fontWeight: 900, letterSpacing: '.04em', color: j.acento, textShadow: '0 2px 12px rgba(0,0,0,.6)' }}>{j.titulo}</span>
-              <span style={{ display: 'block', fontSize: '0.8rem', lineHeight: 1.35, color: 'rgba(255,255,255,.85)', marginTop: 4 }}>{j.bloqueado || j.bajada}</span>
-            </span>
-          </button>
+            </div>
+          </div>
         ))}
       </div>
-    </div>
+      <div className="jh-puntos">
+        {modos.map((m, i) => (
+          <button key={m.clave || m.id} className={i === actual ? 'activo' : ''} onClick={() => irA(i)} aria-label={`Ir a ${m.titulo}`} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Misiones({ misiones, cobrando, cobrar, plegable }) {
+  const [abierta, setAbierta] = useState(!plegable);
+  const r = resumenMisiones(misiones || []);
+  if (misiones && !misiones.length) return null;
+  return (
+    <section className="jg-panel jh-misiones jg-entra" style={{ '--i': 5 }}>
+      <button className="jh-misiones-cab" onClick={() => plegable && setAbierta((v) => !v)} aria-expanded={abierta}>
+        <span>
+          <span className="jg-panel-titulo" style={{ margin: 0 }}>MISIONES DEL DÍA</span>
+          <small>{misiones ? `${r.cumplidas}/${r.total} cumplidas · se renuevan en ` : 'Cargando…'}{misiones && <Countdown />}</small>
+        </span>
+        {r.paraCobrar > 0 && <Badge tono="neon" latido>RECOMPENSA DISPONIBLE</Badge>}
+        {plegable && <span className="jh-flecha">{abierta ? '▲' : '▼'}</span>}
+      </button>
+      {abierta && misiones && (
+        <ul className="jh-lista">
+          {misiones.map((m) => {
+            const lista = m.progreso >= m.meta;
+            return (
+              <li key={m.id} className={m.cobrada ? 'cobrada' : ''}>
+                <div className="jh-mision-texto">
+                  <b>{m.titulo}</b>
+                  <ProgressBar valor={m.progreso / m.meta} tono={lista ? undefined : 'oro'} />
+                  <small>{m.progreso}/{m.meta} · +{m.premio} V-Coins</small>
+                </div>
+                {m.cobrada ? <span className="jh-cobrada">✓ COBRADA</span>
+                  : <GameButton variante={lista ? 'primary' : 'secondary'} disabled={!lista || cobrando === m.id} onClick={() => cobrar(m.id)}>
+                    {cobrando === m.id ? '…' : lista ? 'COBRAR' : 'EN CURSO'}
+                  </GameButton>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
