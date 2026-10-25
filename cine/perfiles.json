@@ -435,5 +435,74 @@
       "1ª RUEDA"
     ],
     "texto_logo": "REC"
+  },
+  "evento_heroes": {
+    "guion": "evento",
+    "nombre": "HÉROES DEL CLUB",
+    "sobre_titulo": [
+      "HÉROES",
+      "DEL CLUB"
+    ],
+    "sobre_subtitulo": "LEYENDAS",
+    "sobre_color": [
+      0.2,
+      0.12,
+      0.05
+    ],
+    "acento": [
+      0.96,
+      0.8,
+      0.52
+    ],
+    "luz_techo": [
+      1.0,
+      0.86,
+      0.64
+    ],
+    "luz_pabellon": [
+      1.0,
+      0.82,
+      0.58
+    ],
+    "luz_pabellon_w": 560,
+    "haz": [
+      1.0,
+      0.74,
+      0.42
+    ],
+    "destello": [
+      1.0,
+      0.9,
+      0.7
+    ],
+    "piso_margen": [
+      0.09,
+      0.055,
+      0.025
+    ],
+    "asientos": [
+      0.1,
+      0.068,
+      0.036
+    ],
+    "cuadros": 210,
+    "muestras": 16,
+    "decoracion": [
+      "banderas",
+      "logo_centro"
+    ],
+    "graficas": [
+      "HÉROES DEL CLUB",
+      "LEYENDAS",
+      "MYSQUAD",
+      "FUTSAL"
+    ],
+    "texto_banderas": [
+      "HÉROES",
+      "LEYENDAS",
+      "DEL CLUB"
+    ],
+    "texto_logo": "H",
+    "filtro_video": "format=rgb24,colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131,eq=contrast=1.06:brightness=0.01,vignette=PI/4.5,noise=alls=7:allf=t"
   }
 }

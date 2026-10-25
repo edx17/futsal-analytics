@@ -8,6 +8,8 @@
  *   Presencia (mes y 1ª rueda)     acero, grafito y esmeralda · chaflanes y remaches · tilde en octógono · acero cepillado
  *   MVP 1ª rueda                   negro y dorado      · corona                    · corona            · filigrana y laureles
  *   Recuperadores (serie)          grafito, verde azulado y plata · escudo        · escudo con flecha · malla hexagonal
+ *   Héroes del club                sepia y oro viejo   · retrato antiguo (esquinas cóncavas, foto en arco) · laurel con estrella · papel envejecido
+ *                                  y ornamentos en las esquinas. Son ex jugadores: no hay estadísticas, van sus rasgos.
  *
  * Rareza en los sobres: cada tipo nuevo cae en una de las rarezas que YA
  * existen, así que los pesos del sorteo y las V-Coins por repetida no cambian
@@ -82,6 +84,19 @@ export const FAMILIAS = {
     secundarios: (c) => [['PJ', n(c.pj)], ['REC/PJ', c.pj && c.rec != null ? (c.rec / c.pj).toFixed(1) : '—'], ['NOTA', nota1(c.nota)]],
   },
 };
+/* Héroes: figuras que ya no están en el club. Sin datos de partidos: la carta
+   muestra sus rasgos (los carga el superusuario), y si fue capitán, la "C". */
+FAMILIAS.heroe = {
+  forma: 'retrato', textura: 'papel', adorno: 'ornamento', insignia: 'laurel', serie: false, stat: null, titulo: 'HÉROE DEL CLUB', rasgos: true,
+  colores: {
+    fondo: ['#7a5733', '#4a321b', '#20140a'], luz: '#f0d29a', detalle: '#c99a5b', metal: ['#fbefd2', '#d2a865', '#7c5627', '#ecd29b'],
+    filo: '#ecd29b', texto: '#fbf1dc', suave: 'rgba(251,241,220,.78)', media: '#fbefd2', fundido: 'rgba(32,20,10,.96)', contraluz: 'rgba(240,210,154,.28)',
+    cinta: '#7c5627', cintaTexto: '#fbefd2', insigniaFondo: '#2a1a0c', medallaFondo: '#2a1a0c', medallaTexto: '#fbefd2',
+  },
+  etiqueta: () => '',
+  secundarios: () => [],
+};
+
 // La serie de goleadores es la familia goleador, con distintivo de puesto.
 FAMILIAS.goleadorSerie = { ...FAMILIAS.goleador, serie: true, titulo: 'GOLEADORES' };
 
@@ -96,6 +111,8 @@ export const ESPECIALES = {
   MVPR: { sigla: 'MVP 1R', titulo: 'MVP · 1ª RUEDA', familia: 'mvp', rareza: 'potm', periodo: 'rueda' },
   SGOL: { sigla: 'GOLEADORES', titulo: 'SERIE GOLEADORES', familia: 'goleadorSerie', rareza: 'totw', periodo: 'rueda', serie: true },
   SREC: { sigla: 'RECUPERADORES', titulo: 'SERIE RECUPERADORES', familia: 'recuperador', rareza: 'totw', periodo: 'rueda', serie: true },
+  // Los crea el superusuario (Modo GOD · HÉROES); van con la rareza más alta y, por defecto, sólo en su evento.
+  HERO: { sigla: 'HÉROE', titulo: 'HÉROE DEL CLUB', familia: 'heroe', rareza: 'toty', periodo: null },
 };
 
 export const esEspecial = (tipo) => !!ESPECIALES[String(tipo || '').toUpperCase()];

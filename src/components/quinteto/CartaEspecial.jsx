@@ -1,7 +1,7 @@
 import React, { useId, useState } from 'react';
 import { FAMILIAS, familiaDe } from '../../analytics/especialesCartas';
 
-/* LAS CARTAS ESPECIALES (Goleadores, Asistidores, Presencia, MVP, Recuperadores)
+/* LAS CARTAS ESPECIALES (Goleadores, Asistidores, Presencia, MVP, Recuperadores, Héroes)
  *
  * Misma técnica que CartaPremio, para que se exporten igual en las placas:
  *   · capa de atrás: un <svg> con la forma, el metal y la luz de la familia;
@@ -13,6 +13,10 @@ import { FAMILIAS, familiaDe } from '../../analytics/especialesCartas';
  * Grilla de 320×480 escalada con `ancho`. Cada familia tiene su silueta, su
  * insignia y su textura (ver FAMILIAS en analytics/especialesCartas.js): no
  * son recoloreos de una misma carta.
+ *
+ * Los Héroes (ex jugadores, sin datos de partidos) muestran sus rasgos en vez
+ * de números, y la "C" si fueron capitanes. Su foto se sube ya en sepia
+ * (utils/cartasFotos), así se ve igual en pantalla y en la placa exportada.
  *
  * `compacta`: la del banco (media, foto, apellido, insignia y puesto).
  * Todos los números salen de la carta: no se inventa nada si falta un dato.
@@ -30,6 +34,8 @@ const FORMAS = {
   chaflan: 'M58,0 L262,0 L320,58 L320,422 L262,480 L58,480 L0,422 L0,58 Z',
   corona: 'M0,64 L44,64 L80,22 L118,52 L160,0 L202,52 L240,22 L276,64 L320,64 L320,440 L160,480 L0,440 Z',
   escudo: 'M0,0 L320,0 L320,300 C320,392 238,450 160,480 C82,450 0,392 0,300 Z',
+  // retrato antiguo: las cuatro esquinas cóncavas
+  retrato: 'M26,0 L294,0 A26,26 0 0 0 320,26 L320,454 A26,26 0 0 0 294,480 L26,480 A26,26 0 0 0 0,454 L0,26 A26,26 0 0 0 26,0 Z',
 };
 /* El borde interior: la misma silueta, un poco adentro. */
 const INTERIOR = 'translate(11,11) scale(0.93125,0.954)';
@@ -42,6 +48,7 @@ const FOTO = {
   chaflan: { top: 30, left: 30, w: 260, h: 244, radio: '40px 40px 0 0' },
   corona: { top: 66, left: 26, w: 268, h: 210, radio: '4px 4px 0 0' },
   escudo: { top: 26, left: 26, w: 268, h: 236, radio: '6px 6px 0 0' },
+  retrato: { top: 40, left: 32, w: 256, h: 234, radio: '128px 128px 0 0' }, // la foto en arco, como un retrato de época
 };
 
 /* Dónde va cada bloque de texto (el escudo se angosta abajo, la corona tiene laureles). */
@@ -49,6 +56,7 @@ const LAYOUT = {
   base: { cinta: 316, numero: 344, secundarios: 398, pie: 446, margen: 34, margenPie: 44 },
   escudo: { cinta: 306, numero: 332, secundarios: 382, pie: 428, margen: 62, margenPie: 92 },
   corona: { cinta: 316, numero: 344, secundarios: 394, pie: 440, margen: 40, margenPie: 70 },
+  retrato: { cinta: 314, numero: 350, secundarios: 398, pie: 440, margen: 36, margenPie: 60 },
 };
 
 const iniciales = (c) => `${(c.nombre || '?')[0] || ''}${(c.apellido || '')[0] || ''}`.toUpperCase();
@@ -97,6 +105,14 @@ export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false
           <pattern id={g('cepillado')} width="320" height="4" patternUnits="userSpaceOnUse">
             <rect width="320" height="1" fill="#ffffff" fillOpacity="0.05" />
           </pattern>
+          <pattern id={g('grano')} width="9" height="9" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="3" r="0.7" fill="#1a0f05" fillOpacity="0.35" />
+            <circle cx="7" cy="7" r="0.5" fill="#fff4dc" fillOpacity="0.12" />
+          </pattern>
+          <radialGradient id={g('vineta')} cx="0.5" cy="0.45" r="0.7">
+            <stop offset="0.55" stopColor="#000" stopOpacity="0" />
+            <stop offset="1" stopColor="#000" stopOpacity="0.55" />
+          </radialGradient>
           <clipPath id={g('recorte')}><path d={forma} /></clipPath>
         </defs>
         <g clipPath={`url(#${g('recorte')})`}>
@@ -130,6 +146,7 @@ export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false
         <g clipPath={`url(#${g('recorte2')})`}><Adorno fam={fam} g={g} /></g>
         <g transform="translate(268,92)"><Insignia fam={fam} g={g} /></g>
         {enSerie && <Medalla fam={fam} g={g} puesto={puesto} empate={!!e.empate} />}
+        {fam.rasgos && carta.capitan && <Capitan fam={fam} g={g} />}
       </svg>
 
       {/* media y puesto (como todas las cartas del juego) */}
@@ -155,16 +172,30 @@ export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false
             </span>
           </div>
 
+          {/* los Héroes: sus rasgos en vez de números */}
+          {fam.rasgos && (
+            <div style={{ position: 'absolute', left: px(L.margen - 6), right: px(L.margen - 6), top: px(mediana ? L.numero + 4 : L.numero),
+                          display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: px(6) }}>
+              {(carta.rasgos || []).slice(0, mediana ? 2 : 4).map((r) => (
+                <span key={r} style={{ padding: `${px(4)}px ${px(9)}px`, borderRadius: px(3), border: `${Math.max(1, px(1.4))}px solid ${c.filo}`,
+                                       background: 'rgba(20,12,5,.35)', fontSize: px(mediana ? 17 : 12.5), fontWeight: 900, letterSpacing: '0.1em',
+                                       color: c.texto, whiteSpace: 'nowrap', lineHeight: 1.1 }}>
+                  {String(r).toUpperCase()}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* el número que lo hizo ganar */}
-          <div style={{ position: 'absolute', left: 0, right: 0, top: px(mediana ? L.numero + 22 : L.numero), textAlign: 'center', lineHeight: 1 }}>
+          {!fam.rasgos && <div style={{ position: 'absolute', left: 0, right: 0, top: px(mediana ? L.numero + 22 : L.numero), textAlign: 'center', lineHeight: 1 }}>
             <span style={{ fontSize: px(mediana ? 58 : 46), fontWeight: 900, color: c.media }}>{valor ?? '—'}</span>
             <span style={{ fontSize: px(mediana ? 18 : 14), fontWeight: 900, letterSpacing: '0.14em', marginLeft: px(8), color: c.suave }}>
               {mediana && fam.etiquetaCorta ? fam.etiquetaCorta : fam.etiqueta(valor, e)}
             </span>
-          </div>
+          </div>}
 
           {/* el resto, de los mismos datos */}
-          {!mediana && <div style={{ position: 'absolute', left: px(L.margen), right: px(L.margen), top: px(L.secundarios),
+          {!mediana && !fam.rasgos && <div style={{ position: 'absolute', left: px(L.margen), right: px(L.margen), top: px(L.secundarios),
                         display: 'flex', justifyContent: 'space-between' }}>
             {fam.secundarios(carta).map(([k, v]) => (
               <div key={k} style={{ flex: 1, textAlign: 'center', lineHeight: 1 }}>
@@ -232,6 +263,16 @@ function Textura({ fam, g }) {
       );
     case 'malla': // recuperadores: malla hexagonal
       return <rect width={W} height={H} fill={`url(#${g('hex')})`} />;
+    case 'papel': // héroes: papel envejecido (grano, guilloché detrás del retrato y viñeta)
+      return (
+        <g>
+          <rect width={W} height={H} fill={`url(#${g('grano')})`} />
+          <g fill="none" stroke={c.detalle} strokeOpacity="0.16" strokeWidth="1.2">
+            {[70, 100, 130, 160, 190].map((r) => <circle key={r} cx="160" cy="160" r={r} />)}
+          </g>
+          <rect width={W} height={H} fill={`url(#${g('vineta')})`} />
+        </g>
+      );
     default:
       return null;
   }
@@ -275,6 +316,20 @@ function Adorno({ fam }) {
       return <path d="M128,0 L160,24 L192,0" fill="none" stroke={c.filo} strokeWidth="4" />;
     case 'bisel': // recuperadores: bisel plateado bajo el borde de arriba
       return <path d="M24,24 L296,24" stroke={c.filo} strokeOpacity="0.55" strokeWidth="2" />;
+    case 'ornamento': // héroes: florones en las cuatro esquinas
+      return (
+        <g>
+          {[[0, 0, 1, 1], [320, 0, -1, 1], [0, 480, 1, -1], [320, 480, -1, -1]].map(([x, y, sx, sy], i) => (
+            <g key={i} transform={`translate(${x},${y}) scale(${sx},${sy})`} fill="none" stroke={c.filo} strokeWidth="2" strokeLinecap="round">
+              <path d="M30,22 C30,34 40,40 52,40" />
+              <path d="M22,30 C34,30 40,40 40,52" />
+              <path d="M36,36 L44,44" strokeWidth="3" />
+              <circle cx="47" cy="47" r="3" fill={c.filo} stroke="none" />
+              <path d="M56,40 L84,40 M40,56 L40,84" strokeOpacity="0.55" />
+            </g>
+          ))}
+        </g>
+      );
     default:
       return null;
   }
@@ -325,6 +380,23 @@ function Insignia({ fam, g }) {
           <rect x="-16" y="11" width="32" height="5" fill={c.detalle} />
         </g>
       );
+    case 'laurel': // héroes: estrella dentro de una corona de laurel
+      return (
+        <g>
+          {fondo}
+          <polygon points="0,-13 3.8,-4.2 13,-4 5.8,2.2 8.2,11.5 0,6.2 -8.2,11.5 -5.8,2.2 -13,-4 -3.8,-4.2" fill={c.filo} />
+          {[-1, 1].map((sx) => (
+            <g key={sx} transform={`scale(${sx},1)`} fill={c.detalle}>
+              {[0, 1, 2, 3, 4].map((i) => {
+                const a = (110 + i * 28) * (Math.PI / 180);
+                const x = Math.cos(a) * 19;
+                const y = Math.sin(a) * 19;
+                return <ellipse key={i} cx={x} cy={y} rx="5" ry="2.2" transform={`rotate(${110 + i * 28 + 90} ${x} ${y})`} />;
+              })}
+            </g>
+          ))}
+        </g>
+      );
     case 'escudo':
       return (
         <g>
@@ -336,6 +408,17 @@ function Insignia({ fam, g }) {
     default:
       return fondo;
   }
+}
+
+/* ── la "C" de capitán (Héroes) ── */
+function Capitan({ fam, g }) {
+  const c = fam.colores;
+  return (
+    <g transform="translate(60,250)">
+      <circle r="25" fill={c.medallaFondo} stroke={`url(#${g('metal')})`} strokeWidth="4.5" />
+      <text x="0" y="11" textAnchor="middle" fontFamily={FUENTE} fontWeight="900" fontSize="31" fill={c.medallaTexto}>C</text>
+    </g>
+  );
 }
 
 /* ── el distintivo de puesto de las series (1 a 10) ── */

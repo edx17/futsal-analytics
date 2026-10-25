@@ -14,6 +14,7 @@ import { listarFotos, subirFotoEspecial, quitarFotoEspecial } from '../../utils/
 import { prepararVideo } from '../../utils/videoApertura';
 import GodEventos from './GodEventos';
 import GodSobres from './GodSobres';
+import GodHeroes from './GodHeroes';
 import { normalizarTipo } from '../../analytics/tiposSobre';
 
 /* MODO GOD (sólo superusuario)
@@ -24,6 +25,7 @@ import { normalizarTipo } from '../../analytics/tiposSobre';
  *             conserva), corregir la media cuando los datos no la sostienen y
  *             cambiar la foto de cualquier carta.
  *   EVENTOS   sobres propios con sus cartas, reglas y escena (GodEventos).
+ *   HÉROES    cartas de figuras que ya no están en el club, cargadas a mano (GodHeroes).
  *   SOBRES    suspender tipos de sobre, una cinemática para todo el club y
  *             editar cada sobre: presentación, cartas, rarezas, colores (GodSobres).
  *
@@ -32,7 +34,7 @@ import { normalizarTipo } from '../../analytics/tiposSobre';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['sobres', 'SOBRES']];
+const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['sobres', 'SOBRES']];
 const POR_PAGINA = 40;
 
 /* Las escenas que se pueden forzar, con aviso si su video todavía no está. */
@@ -111,6 +113,9 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
           )}
           {pestana === 'eventos' && (
             <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
+          )}
+          {pestana === 'heroes' && (
+            <GodHeroes clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
           )}
           {pestana === 'sobres' && (
             <GodSobres clubId={clubId} estado={estado} config={config} setConfig={setConfig} catalogo={catalogo} ajustes={ajustes}

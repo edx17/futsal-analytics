@@ -32,6 +32,7 @@ export const ESCENAS_BASE = [
   { id: '', nombre: 'Apertura estándar (sin video)' },
   { id: 'evento_goleadores', nombre: 'Evento Goleadores (pabellón rojo y dorado)' },
   { id: 'evento_recuperadores', nombre: 'Evento Recuperadores (pabellón verde azulado)' },
+  { id: 'evento_heroes', nombre: 'Héroes del club (pabellón en sepia)' },
   { id: 'evento_demo', nombre: 'Evento (pabellón rojo y ámbar)' },
   { id: 'elite', nombre: 'Élite (pabellón azul)' },
   { id: 'epico', nombre: 'Épico (pabellón violeta, portal)' },
@@ -128,7 +129,7 @@ export function cambiosDeExclusivas(evento, otros = [], antes = []) {
 export const clavesDeTipo = (catalogo = [], tipos = []) =>
   catalogo.filter((k) => tipos.includes(k.tipo) && k.activa !== false).map((k) => k.clave);
 
-/* Plantillas: los dos eventos pedidos, listos para crear (las cartas se toman del catálogo). */
+/* Plantillas: listas para crear (las cartas se toman del catálogo). */
 export const PLANTILLAS = {
   goleadores: {
     nombre: 'EVENTO GOLEADORES',
@@ -148,6 +149,16 @@ export const PLANTILLAS = {
       video: 'evento_recuperadores', video_alternativo: 'elite', titulo: 'EVENTO RECUPERADORES',
       colores: { principal: '#0f766e', secundario: '#0b1214', acento: '#e2e8f0', fondo: '#020607', luz: '#2dd4bf', texto: '#effaf8' },
       particulas: 80, intensidad: 1.15,
+    },
+  },
+  heroes: {
+    nombre: 'HÉROES DEL CLUB',
+    tipos: ['HERO'],
+    sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
+    escena: {
+      video: 'evento_heroes', video_alternativo: 'leyenda', titulo: 'HÉROES DEL CLUB',
+      colores: { principal: '#7c5627', secundario: '#20140a', acento: '#fbefd2', fondo: '#0d0804', luz: '#e8c48a', texto: '#fbf1dc' },
+      particulas: 70, intensidad: 1.05,
     },
   },
 };
