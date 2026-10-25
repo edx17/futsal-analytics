@@ -13,6 +13,9 @@ import { cargarEscena } from '../../utils/escenaPenales';
  * se muestra: la pelota va al cuadrante, el arquero ataja, y el cartel. Se ve
  * la escena renderizada (EscenaPenales); si no cargó, el arco dibujado.
  * `partida`: la vista con `tanda`. `alDefinir(partida)`: cuando se terminó.
+ * `patear(eleccion)`: quién decide el tiro (por defecto, la base del V-Draft;
+ * el modo Penales de práctica lo resuelve en el navegador). `nombre`: el
+ * equipo propio en el marcador.
  */
 
 /* El arco de futsal: 3 × 2 m. La grilla de 3 × 3 cubre el interior. */
@@ -24,7 +27,7 @@ const CARTEL = {
   rival: { gol: 'GOL DEL RIVAL', atajada: '¡LA ATAJASTE!', afuera: '¡AFUERA!' },
 };
 
-export default function Penales({ partida, rival, alDefinir }) {
+export default function Penales({ partida, rival, alDefinir, patear, nombre = 'MI EQUIPO' }) {
   const [tanda, setTanda] = useState(partida.tanda);
   const [tiro, setTiro] = useState(null);       // el último, mientras se anima
   const [ocupado, setOcupado] = useState(false);
@@ -40,7 +43,7 @@ export default function Penales({ partida, rival, alDefinir }) {
   const elegir = async (eleccion) => {
     if (!puedo) return;
     setOcupado(true); setError(null);
-    const r = await patearPenal(partida.id, eleccion);
+    const r = patear ? await patear(eleccion) : await patearPenal(partida.id, eleccion);
     setOcupado(false);
     if (r.error || r.vencida) { setError(r.error?.message || 'Tu sesión venció.'); return; }
     const d = r.data;
@@ -63,7 +66,7 @@ export default function Penales({ partida, rival, alDefinir }) {
     <div className="vd-penales-caja">
       <div className="vd-penales-titulo">PENALES</div>
       <div className="vd-penales-marcador">
-        <Fila nombre="MI EQUIPO" goles={tanda?.propio ?? 0} puntos={marcadorDeTiros(tiros, 'propio')} />
+        <Fila nombre={nombre} goles={tanda?.propio ?? 0} puntos={marcadorDeTiros(tiros, 'propio')} />
         <Fila nombre={String(rival || 'RIVAL').toUpperCase()} goles={tanda?.rival ?? 0} puntos={marcadorDeTiros(tiros, 'rival')} />
       </div>
 

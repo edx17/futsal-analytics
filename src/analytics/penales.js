@@ -70,3 +70,41 @@ export function marcadorDeTiros(tiros = [], equipo) {
   const largo = Math.max(5, propios.length, tiros.length - propios.length);
   return Array.from({ length: largo }, (_, i) => (i < propios.length ? propios[i] : null));
 }
+
+/* ── EL MODO PENALES (práctica, sin base) ─────────────────────────────────
+   La misma tanda del V-Draft, pero jugada entera en el navegador: no da
+   V-Coins, así que no hace falta que la decida la base. Devuelve lo mismo
+   que vdraft_penal para que la pantalla sea la misma. */
+
+export const NIVELES = [
+  { id: 0, nombre: 'AMATEUR', detalle: 'El arquero llega poco; vos atajás seguido.' },
+  { id: 1, nombre: 'PRIMERA C', detalle: 'Un poco más parejo.' },
+  { id: 2, nombre: 'PRIMERA B', detalle: 'El arquero adivina más y el rival define mejor.' },
+  { id: 3, nombre: 'PRIMERA A', detalle: 'Como la final del V-Draft.' },
+];
+
+/** Una tanda nueva. `primero`: quién patea primero ('propio' | 'rival'). */
+export function tandaNueva(nivel = 0, primero = 'propio') {
+  const t = { nivel, primero, tiros: [], propio: 0, rival: 0 };
+  return { ...t, turno: turno(t) };
+}
+
+/** Un tiro: patea (cuadrante) o ataja (lado) según el turno. Misma forma que la respuesta de vdraft_penal. */
+export function tiroDePractica(tanda, eleccion, azar = Math.random) {
+  const d = DIFICULTAD[Math.max(0, Math.min(3, tanda.nivel ?? 0))];
+  const quien = turno(tanda);
+  const r = quien === 'propio' ? patear(eleccion, d, azar) : atajar(eleccion, d, azar);
+  const tiro = { equipo: quien, ...r };
+  const tiros = [...tanda.tiros, tiro];
+  const propio = tanda.propio + (quien === 'propio' && tiro.gol ? 1 : 0);
+  const rival = tanda.rival + (quien === 'rival' && tiro.gol ? 1 : 0);
+  const gana = ganador(tiros);
+  const nueva = { ...tanda, tiros, propio, rival };
+  return {
+    tiro,
+    tanda: gana ? null : { ...nueva, turno: turno(nueva) },
+    marcador: { propio, rival },
+    definida: !!gana,
+    ultimo: gana ? { gano: gana === 'propio', penales: `${propio}-${rival}`, tanda: tiros } : null,
+  };
+}

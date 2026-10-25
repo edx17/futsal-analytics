@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DIFICULTAD, patear, atajar, turno, ganador, marcadorDeTiros } from '../penales';
+import { DIFICULTAD, patear, atajar, turno, ganador, marcadorDeTiros, tandaNueva, tiroDePractica } from '../penales';
 
 const fijo = (...v) => { let i = 0; return () => v[i++ % v.length]; };
 const t = (equipo, gol) => ({ equipo, gol });
@@ -49,5 +49,30 @@ describe('penales: la tanda', () => {
     expect(marcadorDeTiros([t('propio', true), t('rival', false)], 'propio')).toEqual([true, null, null, null, null]);
     const largo = Array.from({ length: 6 }, () => [t('propio', true), t('rival', true)]).flat();
     expect(marcadorDeTiros(largo, 'rival')).toHaveLength(6);
+  });
+});
+
+describe('modo penales (práctica)', () => {
+  it('alterna los turnos y termina con un ganador', () => {
+    let t = tandaNueva(3, 'propio');
+    expect(t.turno).toBe('propio');
+    let r;
+    let n = 0;
+    do {
+      r = tiroDePractica(t, t.turno === 'propio' ? n % 9 : n % 3);
+      if (!r.definida) {
+        expect(r.tanda.turno).not.toBe(r.tiro.equipo);
+        t = r.tanda;
+      }
+      n += 1;
+    } while (!r.definida && n < 200);
+    expect(r.definida).toBe(true);
+    expect(r.ultimo.penales).toBe(`${r.marcador.propio}-${r.marcador.rival}`);
+    expect(r.ultimo.gano).toBe(r.marcador.propio > r.marcador.rival);
+  });
+
+  it('el tiro tiene la misma forma que el de la base', () => {
+    const r = tiroDePractica(tandaNueva(0, 'rival'), 1, () => 0.99);
+    expect(r.tiro).toMatchObject({ equipo: 'rival', lado: 1, gol: true, motivo: 'gol' });
   });
 });

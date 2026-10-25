@@ -128,16 +128,6 @@ const IconSobres = () => (
   </svg>
 );
 
-const IconVDraft = () => (
-  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 21h8"></path>
-    <path d="M12 17v4"></path>
-    <path d="M7 4h10v5a5 5 0 0 1-10 0z"></path>
-    <path d="M17 6h3v2a3 3 0 0 1-3 3"></path>
-    <path d="M7 6H4v2a3 3 0 0 0 3 3"></path>
-  </svg>
-);
-
 const ACCESOS = [
   { ruta: '/kiosco/wellness',       titulo: 'WELLNESS',     icono: IconWellness },
   { ruta: '/kiosco/rendimiento',    titulo: 'RENDIMIENTO',  icono: IconRendimiento },
@@ -149,8 +139,7 @@ const ACCESOS = [
   { ruta: '/kiosco/videoanalisis',  titulo: 'VIDEOS',       icono: IconVideos },
   { ruta: '/kiosco/libro-tactico',  titulo: 'LIBRO TÁCTICO', icono: IconLibro },
   // Ancho, abajo de todo: son diez accesos y en tres columnas quedaba uno suelto.
-  { ruta: '/kiosco/sobres',         titulo: 'SOBRES · ABRÍ TU SOBRE DE HOY Y JUNTÁ CARTAS', icono: IconSobres, ancho: true },
-  { ruta: '/kiosco/vdraft',         titulo: 'V-DRAFT · ARMÁ TU EQUIPO Y SALÍ CAMPEÓN CONTRA LA LIGA', icono: IconVDraft, ancho: true },
+  { ruta: '/kiosco/juegos',         titulo: 'JUEGOS · SOBRES, V-DRAFT Y PENALES', icono: IconSobres, ancho: true },
   { ruta: '/kiosco/afa-stats',      titulo: 'AFA STATS · TABLAS, FIXTURE Y GOLEADORES DE TODA LA LIGA', icono: IconAfa, ancho: true },
   { ruta: '/kiosco/mis-datos',      titulo: 'MIS DATOS · CORREGÍ TU CELULAR, EMERGENCIA U OBRA SOCIAL', icono: IconDatos, ancho: true },
   { ruta: '/kiosco/mis-pagos',      titulo: 'MIS PAGOS · SALDO Y RECIBOS', icono: IconPagos, ancho: true },

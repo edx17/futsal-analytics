@@ -51,7 +51,7 @@ export const esCelular = (ua = typeof navigator !== 'undefined' ? navigator.user
 
 /* ── entrar directo al juego ─────────────────────────────────────────── */
 
-export const DESTINOS_JUEGO = ['sobres', 'vdraft', 'afa-stats'];
+export const DESTINOS_JUEGO = ['juegos', 'sobres', 'vdraft', 'penales', 'afa-stats'];
 
 /** El link para el celular: el kiosco del club y, después del PIN, el juego. */
 export function linkAlJuego(origen, clubId, destino = 'sobres') {
