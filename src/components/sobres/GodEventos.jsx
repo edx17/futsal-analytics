@@ -24,7 +24,7 @@ const NUEVO = normalizarEvento({ nombre: '', activo: false, cartas: [], escena: 
 const NUEVO_SOBRE = normalizarEvento({ ...NUEVO, activo: true, sobre: { cartas: 3, costo: 100, por_dia: 1, exclusivas: false, permanente: true } });
 
 /* `soloSobres`: la lista y el editor de los sobres creados (los eventos `sobre.permanente`). */
-export default function GodEventos({ clubId, catalogo, ajustes, recargar, avisar, alProbar, soloSobres = false }) {
+export default function GodEventos({ clubId, catalogo, ajustes, fotos, recargar, avisar, alProbar, soloSobres = false }) {
   const [eventos, setEventos] = useState(null);
   const [editando, setEditando] = useState(null);
 
@@ -36,7 +36,7 @@ export default function GodEventos({ clubId, catalogo, ajustes, recargar, avisar
   }, [clubId, avisar, soloSobres]);
   useEffect(() => { const t = setTimeout(cargar, 0); return () => clearTimeout(t); }, [cargar]);
 
-  const probar = (ev) => alProbar({ resultado: resultadoDePrueba({ catalogo: catalogo || [], ajustes, evento: { ...normalizarEvento(ev), id: ev.id || 'nuevo' } }) });
+  const probar = (ev) => alProbar({ resultado: resultadoDePrueba({ catalogo: catalogo || [], ajustes, fotos, evento: { ...normalizarEvento(ev), id: ev.id || 'nuevo' } }) });
 
   const alternar = async (ev) => {
     try { await activarEvento(ev.id, !ev.activo); await cargar(); avisar({ texto: `${ev.nombre}: ${ev.activo ? 'suspendido' : 'activo'}.` }); } catch (err) {

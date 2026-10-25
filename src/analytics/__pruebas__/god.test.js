@@ -28,6 +28,11 @@ describe('god: sobre de prueba', () => {
     const r = resultadoDePrueba({ catalogo: [k('a', 'bronce')], tipo: 'diario', ajustes: new Map([['X|a', { ovr: 61, motivo: 'm' }]]), azar: () => 0 });
     expect(r.cartas[0].carta).toMatchObject({ ovr: 61, ovrCalculada: 70, ovrAjustada: true });
   });
+
+  it('lleva la foto subida (como la suma la base al abrir)', () => {
+    const r = resultadoDePrueba({ catalogo: [k('a', 'bronce')], tipo: 'diario', fotos: new Map([['X|a', 'https://f/a.jpg']]), azar: () => 0 });
+    expect(r.cartas[0].carta).toMatchObject({ foto: 'https://f/a.jpg', fotoEspecial: true, apellido: 'a' });
+  });
 });
 
 describe('god: ajustes de media', () => {

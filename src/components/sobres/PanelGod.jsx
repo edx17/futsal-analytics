@@ -109,19 +109,19 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
               }}>{publicando ? 'PUBLICANDO…' : `PUBLICAR LAS ${pendientes.length}`}</button>
             </div>
           )}
-          {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} tipos={config?.tipos || {}} alProbar={alProbar} />}
+          {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} fotos={fotos} tipos={config?.tipos || {}} alProbar={alProbar} />}
           {pestana === 'cartas' && (
             <Cartas clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
           )}
           {pestana === 'eventos' && (
-            <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
+            <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
           )}
           {pestana === 'usuarios' && <GodUsuarios clubId={clubId} avisar={setAviso} />}
           {pestana === 'heroes' && (
             <GodHeroes clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
           )}
           {pestana === 'sobres' && (
-            <GodSobres clubId={clubId} estado={estado} config={config} setConfig={setConfig} catalogo={catalogo} ajustes={ajustes}
+            <GodSobres clubId={clubId} estado={estado} config={config} setConfig={setConfig} catalogo={catalogo} ajustes={ajustes} fotos={fotos}
               avisar={setAviso} alCambiar={alCambiar} alProbar={alProbar} recargar={cargar} />
           )}
         </div>
@@ -131,7 +131,7 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
 }
 
 /* ── PROBAR: cualquier sobre, cualquier escena, sin gastar ── */
-function Probar({ catalogo, ajustes, tipos, alProbar }) {
+function Probar({ catalogo, ajustes, fotos, tipos, alProbar }) {
   const [tipo, setTipo] = useState('mega');
   const [escena, setEscena] = useState('');
   const activas = (catalogo || []).filter((k) => k.activa !== false);
@@ -139,7 +139,7 @@ function Probar({ catalogo, ajustes, tipos, alProbar }) {
   const probar = (t = tipo, e = escena) => {
     if (!activas.length) return;
     // Con lo que el club le cambió a ese sobre (cartas, rarezas, escena).
-    const resultado = resultadoDePrueba({ catalogo: activas, tipo: t, ajustes, config: tipos[t] });
+    const resultado = resultadoDePrueba({ catalogo: activas, tipo: t, ajustes, fotos, config: tipos[t] });
     alProbar({ resultado, forzar: e || null, evento: null, escenaTipo: normalizarTipo(tipos[t] || {}, t).escena || null });
   };
 
