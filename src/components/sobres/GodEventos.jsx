@@ -20,14 +20,20 @@ import { guardarAjuste, quitarAjuste } from '../../utils/god';
 const MONO = 'JetBrains Mono, monospace';
 const COLORES = [['principal', 'Principal'], ['secundario', 'Fondo del sobre'], ['acento', 'Acento'], ['luz', 'Luz'], ['fondo', 'Fondo'], ['texto', 'Texto']];
 const NUEVO = normalizarEvento({ nombre: '', activo: false, cartas: [], escena: { video: 'elite', colores: { principal: '#2563eb', luz: '#60a5fa', acento: '#e0f2fe', secundario: '#0b1640', fondo: '#020617', texto: '#ffffff' } } });
+/* Un sobre nuevo (Modo GOD · SOBRES): igual que un evento, pero sin fechas, siempre a la vista y con sus cartas no exclusivas. */
+const NUEVO_SOBRE = normalizarEvento({ ...NUEVO, activo: true, sobre: { cartas: 3, costo: 100, por_dia: 1, exclusivas: false, permanente: true } });
 
-export default function GodEventos({ clubId, catalogo, ajustes, recargar, avisar, alProbar }) {
+/* `soloSobres`: la lista y el editor de los sobres creados (los eventos `sobre.permanente`). */
+export default function GodEventos({ clubId, catalogo, ajustes, recargar, avisar, alProbar, soloSobres = false }) {
   const [eventos, setEventos] = useState(null);
   const [editando, setEditando] = useState(null);
 
   const cargar = useCallback(async () => {
-    try { setEventos(await listarEventos(clubId)); } catch (err) { avisar({ texto: err?.message, error: true }); setEventos([]); }
-  }, [clubId, avisar]);
+    try {
+      const todos = await listarEventos(clubId);
+      setEventos(todos.filter((e) => !!e.sobre?.permanente === soloSobres));
+    } catch (err) { avisar({ texto: err?.message, error: true }); setEventos([]); }
+  }, [clubId, avisar, soloSobres]);
   useEffect(() => { const t = setTimeout(cargar, 0); return () => clearTimeout(t); }, [cargar]);
 
   const probar = (ev) => alProbar({ resultado: resultadoDePrueba({ catalogo: catalogo || [], ajustes, evento: { ...normalizarEvento(ev), id: ev.id || 'nuevo' } }) });
@@ -48,16 +54,18 @@ export default function GodEventos({ clubId, catalogo, ajustes, recargar, avisar
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={dim}>Cada evento es un sobre propio: lo ven todos los del club en Sobres mientras esté activo (y dentro de sus fechas).</div>
+      <div style={dim}>{soloSobres
+        ? 'Sobres creados por el club: sus cartas, su precio, cuántos por día, su cinemática y sus colores. Están siempre en Sobres mientras estén activos.'
+        : 'Cada evento es un sobre propio: lo ven todos los del club en Sobres mientras esté activo (y dentro de sus fechas).'}</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button style={{ ...boton, background: '#fbbf24', color: '#1a1205' }} onClick={() => setEditando(NUEVO)}>+ CREAR EVENTO</button>
-        {Object.entries(PLANTILLAS).map(([id, p]) => (
+        <button style={{ ...boton, background: '#fbbf24', color: '#1a1205' }} onClick={() => setEditando(soloSobres ? NUEVO_SOBRE : NUEVO)}>{soloSobres ? '+ CREAR SOBRE' : '+ CREAR EVENTO'}</button>
+        {!soloSobres && Object.entries(PLANTILLAS).map(([id, p]) => (
           <button key={id} style={chip(false)} disabled={!catalogo}
             onClick={() => setEditando(eventoDePlantilla(id, catalogo || []))}>+ {p.nombre}</button>
         ))}
       </div>
       {eventos === null ? <div style={dim}>Leyendo eventos…</div> : eventos.length === 0 ? (
-        <div style={dim}>Todavía no hay eventos.</div>
+        <div style={dim}>{soloSobres ? 'Todavía no hay sobres creados.' : 'Todavía no hay eventos.'}</div>
       ) : eventos.map((ev) => (
         <div key={ev.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: 10, borderRadius: 10,
           border: `1px solid ${ev.activo ? ev.escena?.colores?.luz || 'var(--accent)' : 'var(--border)'}` }}>
@@ -119,13 +127,15 @@ function Editor({ inicial, catalogo, ajustes, clubId, avisar, probar, otros, rec
   const c = ev.escena.colores;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={rotulo}>{inicial.id ? 'EDITAR EVENTO' : 'CREAR EVENTO'}</div>
+      <div style={rotulo}>{inicial.sobre?.permanente ? (inicial.id ? 'EDITAR SOBRE' : 'CREAR SOBRE') : inicial.id ? 'EDITAR EVENTO' : 'CREAR EVENTO'}</div>
 
       {/* nombre y fechas */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input value={ev.nombre} onChange={(e) => cambiar('nombre', e.target.value)} placeholder="Nombre del evento" maxLength={60} style={{ ...campo, width: 240 }} />
-        <label style={etiqueta}>Desde <input type="date" value={ev.desde || ''} onChange={(e) => cambiar('desde', e.target.value || null)} style={campo} /></label>
-        <label style={etiqueta}>Hasta <input type="date" value={ev.hasta || ''} onChange={(e) => cambiar('hasta', e.target.value || null)} style={campo} /></label>
+        <input value={ev.nombre} onChange={(e) => cambiar('nombre', e.target.value)} placeholder={inicial.sobre?.permanente ? 'Nombre del sobre' : 'Nombre del evento'} maxLength={60} style={{ ...campo, width: 240 }} />
+        {!inicial.sobre?.permanente && <>
+          <label style={etiqueta}>Desde <input type="date" value={ev.desde || ''} onChange={(e) => cambiar('desde', e.target.value || null)} style={campo} /></label>
+          <label style={etiqueta}>Hasta <input type="date" value={ev.hasta || ''} onChange={(e) => cambiar('hasta', e.target.value || null)} style={campo} /></label>
+        </>}
         <label style={etiqueta}><input type="checkbox" checked={ev.activo} onChange={(e) => cambiar('activo', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> Activo</label>
       </div>
 
@@ -138,7 +148,7 @@ function Editor({ inicial, catalogo, ajustes, clubId, avisar, probar, otros, rec
       </div>
       <label style={etiqueta}>
         <input type="checkbox" checked={ev.sobre.exclusivas !== false} onChange={(e) => cambiarSobre('exclusivas', e.target.checked)} style={{ width: 'auto', margin: 0 }} />
-        Cartas exclusivas del evento (no salen en los demás sobres ni en el V-Draft; quien ya las tiene las conserva)
+        Cartas exclusivas de este sobre (no salen en los demás sobres ni en el V-Draft; quien ya las tiene las conserva)
       </label>
       <div style={dim}>Sale con los mismos pesos por rareza que los demás sobres, pero sólo entre las cartas del evento. Una repetida da las V-Coins de siempre.</div>
 

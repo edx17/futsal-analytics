@@ -73,7 +73,9 @@ export function normalizarEvento(ev = {}) {
     hasta: ev.hasta || null,
     // En el estado de los sobres `cartas` es cuántas trae cada sobre (un número): acá sólo sirven las claves.
     cartas: Array.isArray(ev.cartas) ? [...new Set(ev.cartas.map(String).filter(Boolean))] : [],
-    sobre: { ...Object.fromEntries(Object.entries(REGLAS).map(([k, r]) => [k, entero(ev.sobre?.[k], r)])), exclusivas: ev.sobre?.exclusivas !== false },
+    // `permanente`: un sobre creado en el Modo GOD (sin fechas, siempre en Sobres), no un evento.
+    sobre: { ...Object.fromEntries(Object.entries(REGLAS).map(([k, r]) => [k, entero(ev.sobre?.[k], r)])), exclusivas: ev.sobre?.exclusivas !== false,
+      ...(ev.sobre?.permanente ? { permanente: true } : {}) },
     escena: {
       video: ESCENAS_BASE.some((e) => e.id === escena.video) ? escena.video : '',
       video_alternativo: escena.video_alternativo || null,

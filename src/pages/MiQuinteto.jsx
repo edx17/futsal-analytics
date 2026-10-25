@@ -69,7 +69,11 @@ export default function MiQuinteto() {
   useEffect(() => { cargarFotos(); }, [cargarFotos]);
   /* Las cartas especiales salen del HISTORIAL: sólo existen los premios guardados ahí. */
   const [historial, setHistorial] = useState([]);
-  const [seccion, setSeccion] = useState('cancha');
+  // ?seccion=premios: desde "Cartas y sobres del club" se llega directo a confirmar.
+  const [seccion, setSeccion] = useState(() => {
+    const s = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('seccion');
+    return SECCIONES.some(([id]) => id === s) ? s : 'cancha';
+  });
   const [versionHistorial, setVersionHistorial] = useState(0);
   useEffect(() => {
     if (!clubId || seccion === 'historial') return undefined;

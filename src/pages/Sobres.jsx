@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import CartaGiratoria from '../components/quinteto/CartaGiratoria';
 import AperturaSobre from '../components/sobres/AperturaSobre';
 import PanelGod from '../components/sobres/PanelGod';
+import PanelClub from '../components/sobres/PanelClub';
 import { useAuth } from '../context/AuthContext';
 import { varianteDeApertura, EVENTOS } from '../analytics/aperturas';
 import { prepararVideo, liberarVideos } from '../utils/videoApertura';
@@ -258,6 +259,11 @@ export default function Sobres() {
         </div>
       )}
 
+      {/* El manager: la vista simple de las cartas y los sobres de su club. */}
+      {!kiosco && !esGod && ['manager', 'admin'].includes(perfil?.rol) && perfil?.club_id && (
+        <PanelClub clubId={perfil.club_id} alCambiar={cargar} />
+      )}
+
       {esGod && (
         <PanelGod clubId={clubGod} estado={estado} alCambiar={cargar}
           alProbar={(p) => { prepararAudio(prefs.sonido); setPrueba(p); }} />
@@ -354,9 +360,10 @@ function SobreEvento({ ev, abriendo, alAbrir, alApuntar, monedas }) {
   const luz = col.luz || '#fbbf24';
   const agotado = ev.abiertos_hoy >= ev.por_dia;
   const nota = agotado ? `Ya abriste ${ev.por_dia === 1 ? 'el de hoy' : `los ${ev.por_dia} de hoy`}. Volvé mañana.`
-    : ev.total_cartas === 0 ? 'El evento todavía no tiene cartas.'
+    : ev.total_cartas === 0 ? (ev.permanente ? 'Este sobre todavía no tiene cartas.' : 'El evento todavía no tiene cartas.')
       : ev.costo > (monedas || 0) ? `Te faltan ${ev.costo - (monedas || 0)} ${MONEDA}.`
-        : `Evento: ${ev.total_cartas} cartas para juntar. ${ev.costo ? `${ev.costo} ${MONEDA}` : 'Gratis'} · ${ev.por_dia} por día${ev.hasta ? ` · hasta el ${String(ev.hasta).split('-').reverse().join('/')}` : ''}.`;
+        // Un sobre creado por el club (sin fechas) no se anuncia como evento.
+        : `${ev.permanente ? '' : 'Evento: '}${ev.total_cartas} cartas para juntar. ${ev.costo ? `${ev.costo} ${MONEDA}` : 'Gratis'} · ${ev.por_dia} por día${ev.hasta ? ` · hasta el ${String(ev.hasta).split('-').reverse().join('/')}` : ''}.`;
   return (
     <div className="bento-card" style={{ padding: 14, opacity: ev.disponible ? 1 : 0.6, border: `1px solid ${luz}`,
       background: `linear-gradient(160deg, ${col.secundario || '#111'} 0%, var(--panel) 70%)` }}>

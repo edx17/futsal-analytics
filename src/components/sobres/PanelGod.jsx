@@ -122,7 +122,7 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
           )}
           {pestana === 'sobres' && (
             <GodSobres clubId={clubId} estado={estado} config={config} setConfig={setConfig} catalogo={catalogo} ajustes={ajustes}
-              avisar={setAviso} alCambiar={alCambiar} alProbar={alProbar} />
+              avisar={setAviso} alCambiar={alCambiar} alProbar={alProbar} recargar={cargar} />
           )}
         </div>
       )}
