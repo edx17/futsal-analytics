@@ -178,6 +178,14 @@ export default function Sobres() {
 
       {estado && (
         <>
+          {estado.multiplicador && (
+            <div className="bento-card" style={{ padding: '10px 14px', marginBottom: 12, border: '1px solid #fbbf24', color: '#fbbf24', fontWeight: 900, letterSpacing: '.04em' }}>
+              ⚡ {estado.multiplicador.nombre} · todo lo que ganes vale x{estado.multiplicador.factor}
+              <span style={{ color: 'var(--text-dim)', fontWeight: 700, marginLeft: 8, fontSize: '0.75rem' }}>
+                hasta el {new Date(estado.multiplicador.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
             <Dato rotulo="V-COINS" valor={estado.puntos} extra={`${estado.costo_puntos ?? COSTO_SOBRE_PUNTOS} = 1 sobre · ${estado.costo_mega ?? COSTO_MEGA} = 1 mega`} />
             <Dato rotulo="RACHA" valor={`${estado.racha}/${RACHA_PARA_PREMIO}`} extra="días seguidos" />
