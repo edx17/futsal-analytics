@@ -1,0 +1,170 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   JUEGOS · DESIGN SYSTEM
+   Sólo para la sección de juegos (Juegos, Sobres, V-Draft, Penales). Todo
+   cuelga de `.jg` (el contenedor de LayoutJuegos), así no toca el resto de
+   la app. Misma estética: fondo negro, verde neón.
+   Breakpoints: móvil < 768 · tablet 768–1199 · PC ≥ 1200.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.jg {
+  /* fondo y superficies */
+  --jg-fondo: #000;
+  --jg-fondo-2: #05080a;
+  --jg-sup: #0d1013;
+  --jg-sup-2: #14181c;
+  --jg-borde: rgba(255, 255, 255, .08);
+  --jg-borde-fuerte: rgba(255, 255, 255, .16);
+  --jg-texto: #fff;
+  --jg-texto-2: #b7bec7;
+  --jg-texto-3: #6b7280;
+
+  /* acentos */
+  --jg-neon: #00ff88;
+  --jg-neon-2: #00b862;
+  --jg-oro: #fbbf24;
+  --jg-plata: #cbd5e1;
+  --jg-bronce: #d08a4e;
+  --jg-penales: #f97316;
+  --jg-vdraft: #38bdf8;
+  --jg-peligro: #ef4444;
+
+  /* un color por rareza (los de las cinemáticas) */
+  --jg-r-bronce: #d08a4e;
+  --jg-r-plata: #cbd5e1;
+  --jg-r-oro: #fbbf24;
+  --jg-r-totw: #60a5fa;
+  --jg-r-potw: #22d3ee;
+  --jg-r-totm: #c084fc;
+  --jg-r-potm: #f472b6;
+  --jg-r-toty: #fde68a;
+
+  /* brillo, radios, sombras */
+  --jg-glow: 0 0 18px rgba(0, 255, 136, .45), 0 0 2px rgba(0, 255, 136, .9);
+  --jg-glow-oro: 0 0 18px rgba(251, 191, 36, .45), 0 0 2px rgba(251, 191, 36, .9);
+  --jg-sombra: 0 14px 34px rgba(0, 0, 0, .55);
+  --jg-r-s: 10px;
+  --jg-r-m: 16px;
+  --jg-r-l: 24px;
+
+  /* tipografía */
+  --jg-display: 'Outfit', system-ui, sans-serif;
+  --jg-cuerpo: 'Outfit', system-ui, sans-serif;
+  --jg-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --jg-toque: 44px;
+  --jg-barra: 64px;           /* alto de la barra inferior en el celular */
+
+  color: var(--jg-texto);
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 520px at 50% -10%, rgba(0, 255, 136, .10), transparent 60%),
+    var(--jg-fondo);
+}
+/* Las pantallas nuevas usan .jg-ui: texto base de 16 px en el celular (las
+   viejas, mientras se rediseñan, conservan sus tamaños). */
+.jg-ui { font-family: var(--jg-cuerpo); font-size: 16px; }
+@media (min-width: 768px) { .jg-ui { font-size: 15px; } }
+
+/* el contenido deja lugar a la barra de abajo en el celular */
+.jg-contenido { padding-bottom: calc(var(--jg-barra) + env(safe-area-inset-bottom, 0px) + 12px); }
+@media (min-width: 768px) { .jg-contenido { padding-bottom: 24px; } }
+
+/* ── barra inferior (sólo celular) ───────────────────────────────────────── */
+.jg-barra {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+  height: calc(var(--jg-barra) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: rgba(5, 8, 10, .92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--jg-borde);
+}
+@media (min-width: 768px) { .jg-barra { display: none; } }
+.jg-barra a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: var(--jg-toque); color: var(--jg-texto-3); text-decoration: none;
+  font-size: 11px; font-weight: 800; letter-spacing: .06em;
+}
+.jg-barra a svg { width: 24px; height: 24px; }
+.jg-barra a.activo { color: var(--jg-neon); }
+.jg-barra a.activo svg { filter: drop-shadow(0 0 6px rgba(0, 255, 136, .7)); }
+
+/* ── botones ─────────────────────────────────────────────────────────────── */
+.jg-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: var(--jg-toque); padding: 0 20px; border-radius: var(--jg-r-s);
+  font-family: var(--jg-display); font-weight: 900; font-size: 15px; letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid transparent; cursor: pointer; user-select: none;
+  transition: transform .12s ease, box-shadow .2s ease, background .2s ease, opacity .2s;
+}
+.jg-btn:active:not(:disabled) { transform: scale(.97); }
+.jg-btn:disabled { opacity: .45; cursor: not-allowed; }
+.jg-btn-primary { background: var(--jg-neon); color: #02130a; box-shadow: var(--jg-glow); }
+.jg-btn-primary:hover:not(:disabled) { box-shadow: 0 0 28px rgba(0, 255, 136, .7), 0 0 3px rgba(0, 255, 136, 1); }
+.jg-btn-oro { background: var(--jg-oro); color: #1a1205; box-shadow: var(--jg-glow-oro); }
+.jg-btn-secondary { background: var(--jg-sup-2); color: var(--jg-texto); border-color: var(--jg-borde-fuerte); }
+.jg-btn-secondary:hover:not(:disabled) { border-color: var(--jg-neon); box-shadow: 0 0 12px rgba(0, 255, 136, .25); }
+.jg-btn-ghost { background: transparent; color: var(--jg-texto-2); }
+.jg-btn-ghost:hover:not(:disabled) { color: var(--jg-neon); }
+.jg-btn-grande { min-height: 56px; font-size: 17px; padding: 0 28px; border-radius: var(--jg-r-m); }
+.jg-btn-ancho { width: 100%; }
+
+/* ── panel, badge ────────────────────────────────────────────────────────── */
+.jg-panel { background: linear-gradient(180deg, var(--jg-sup-2), var(--jg-sup)); border: 1px solid var(--jg-borde); border-radius: var(--jg-r-m); padding: 16px; box-shadow: var(--jg-sombra); }
+.jg-panel-titulo { font-size: 12px; font-weight: 900; letter-spacing: .14em; color: var(--jg-texto-3); margin: 0 0 12px; text-transform: uppercase; }
+
+.jg-badge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
+  background: rgba(0, 0, 0, .65); color: var(--jg-texto); border: 1px solid var(--jg-borde-fuerte);
+}
+.jg-badge-neon { background: var(--jg-neon); color: #02130a; border-color: transparent; box-shadow: var(--jg-glow); }
+.jg-badge-oro { background: var(--jg-oro); color: #1a1205; border-color: transparent; }
+.jg-badge-naranja { background: var(--jg-penales); color: #160800; border-color: transparent; }
+.jg-badge-latido { animation: jg-latido 1.6s ease-in-out infinite; }
+@keyframes jg-latido { 50% { transform: scale(1.06); } }
+
+/* ── barra de progreso ───────────────────────────────────────────────────── */
+.jg-progreso { position: relative; height: 10px; border-radius: 999px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.jg-progreso > i {
+  position: absolute; inset: 0 auto 0 0; border-radius: inherit;
+  background: linear-gradient(90deg, var(--jg-neon-2), var(--jg-neon)); box-shadow: 0 0 10px rgba(0, 255, 136, .6);
+  transition: width .8s cubic-bezier(.2, .8, .2, 1);
+}
+.jg-progreso.jg-progreso-oro > i { background: linear-gradient(90deg, #d97706, var(--jg-oro)); box-shadow: 0 0 10px rgba(251, 191, 36, .6); }
+
+/* ── cuenta regresiva ────────────────────────────────────────────────────── */
+.jg-countdown { font-family: var(--jg-mono); font-weight: 800; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+
+/* ── hoja: BottomSheet en el celular, panel lateral en tablet/PC ─────────── */
+.jg-hoja-fondo { position: fixed; inset: 0; z-index: 950; background: rgba(0, 0, 0, .55); animation: jg-aparece .2s ease; }
+.jg-hoja {
+  position: fixed; z-index: 951; background: var(--jg-sup); border: 1px solid var(--jg-borde-fuerte);
+  display: flex; flex-direction: column; box-shadow: 0 -10px 40px rgba(0, 0, 0, .6);
+}
+.jg-hoja-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--jg-borde); }
+.jg-hoja-cuerpo { overflow: auto; padding: 14px 16px; -webkit-overflow-scrolling: touch; }
+.jg-hoja-tirador { width: 44px; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, .25); margin: 8px auto 0; }
+@media (max-width: 767px) {
+  .jg-hoja { left: 0; right: 0; bottom: 0; max-height: 82vh; border-radius: var(--jg-r-l) var(--jg-r-l) 0 0; animation: jg-sube .28s cubic-bezier(.2, .8, .2, 1); padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+@media (min-width: 768px) {
+  .jg-hoja { top: 0; right: 0; bottom: 0; width: min(440px, 92vw); border-radius: var(--jg-r-l) 0 0 var(--jg-r-l); animation: jg-entra-der .28s cubic-bezier(.2, .8, .2, 1); }
+  .jg-hoja-tirador { display: none; }
+}
+@keyframes jg-sube { from { transform: translateY(100%); } }
+@keyframes jg-entra-der { from { transform: translateX(100%); } }
+@keyframes jg-aparece { from { opacity: 0; } }
+
+/* ── entrada escalonada (usar style="--i: n") ────────────────────────────── */
+.jg-entra { animation: jg-entra .5s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes jg-entra { from { opacity: 0; transform: translateY(18px) scale(.98); } }
+
+/* ── preferencias (sonido / vibración) ───────────────────────────────────── */
+.jg-prefs { display: inline-flex; gap: 6px; }
+.jg-pref { min-width: var(--jg-toque); min-height: var(--jg-toque); border-radius: var(--jg-r-s); border: 1px solid var(--jg-borde-fuerte); background: rgba(0, 0, 0, .4); color: var(--jg-texto-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.jg-pref[aria-pressed="false"] { color: var(--jg-texto-3); opacity: .6; }
+.jg-pref svg { width: 20px; height: 20px; }
+
+/* ── movimiento reducido: sin animaciones largas ni loops ────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .jg *, .jg *::before, .jg *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
