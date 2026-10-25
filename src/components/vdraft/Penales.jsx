@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LADOS, marcadorDeTiros } from '../../analytics/penales';
 import { patearPenal } from '../../utils/vdraft';
+import EscenaPenales from './EscenaPenales';
+import { cargarEscena } from '../../utils/escenaPenales';
 
 /* LA TANDA DE PENALES DEL V-DRAFT
  *
@@ -8,7 +10,8 @@ import { patearPenal } from '../../utils/vdraft';
  *   · te toca patear: tocás uno de los 9 cuadrantes del arco;
  *   · te toca atajar: tocás izquierda, centro o derecha.
  * La base decide qué hace la CPU (vdraft_penal) y devuelve el tiro; acá sólo
- * se muestra: la pelota va al cuadrante, el arquero se tira, y el cartel.
+ * se muestra: la pelota va al cuadrante, el arquero ataja, y el cartel. Se ve
+ * la escena renderizada (EscenaPenales); si no cargó, el arco dibujado.
  * `partida`: la vista con `tanda`. `alDefinir(partida)`: cuando se terminó.
  */
 
@@ -27,6 +30,8 @@ export default function Penales({ partida, rival, alDefinir }) {
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
   const [definida, setDefinida] = useState(null); // la partida, cuando terminó la tanda
+  const [geo, setGeo] = useState(undefined);       // la escena renderizada (null: no está)
+  useEffect(() => { let vivo = true; cargarEscena().then((g) => { if (vivo) setGeo(g); }); return () => { vivo = false; }; }, []);
 
   const turno = tanda?.turno;
   const tiros = tanda?.tiros || [];
@@ -46,19 +51,13 @@ export default function Penales({ partida, rival, alDefinir }) {
     setTimeout(() => {
       setTiro(null);
       if (d.definida) { setDefinida(d); setTimeout(() => alDefinir(d), 1300); }
-    }, 1500);
+    }, 1900);
   };
 
   const pasoTexto = definida
     ? (definida.ultimo?.gano ? `¡GANASTE LA TANDA ${definida.ultimo.penales}!` : `PERDISTE LA TANDA ${definida.ultimo?.penales || ''}`)
     : tiro ? CARTEL[tiro.equipo][tiro.motivo]
       : turno === 'propio' ? 'TE TOCA PATEAR · elegí dónde' : 'ATAJÁS VOS · elegí un lado';
-
-  const pelota = tiro ? centro(tiro.celda) : null;
-  // El arquero: en tu tiro, la CPU (a su cuadrante); en el del rival, vos (a tu lado).
-  const arquero = tiro ? (tiro.equipo === 'propio' ? centro(tiro.arquero) : { x: (tiro.lado + 0.5) * (AW / 3), y: AH * 0.62 }) : { x: AW / 2, y: AH * 0.62 };
-  // Se tira: cuanto más al costado, más se inclina.
-  const inclinacion = ((arquero.x - AW / 2) / (AW / 3)) * 38;
 
   return (
     <div className="vd-penales-caja">
@@ -70,6 +69,29 @@ export default function Penales({ partida, rival, alDefinir }) {
 
       <div className={`vd-penales-paso${tiro ? ` vd-penales-${tiro.gol === (tiro.equipo === 'propio') ? 'bien' : 'mal'}` : ''}`}>{pasoTexto}</div>
 
+      {geo
+        ? <EscenaPenales key={tiro ? `tiro${tiros.length}` : `espera-${turno}`} geo={geo} tiro={tiro} turno={turno} puedo={!!puedo} elegir={elegir} />
+        : geo === null && <ArcoPlano tiro={tiro} turno={turno} puedo={puedo} elegir={elegir} />}
+
+      {ocupado && <div className="vd-penales-nota">…</div>}
+      {error && <div className="vd-error" style={{ marginTop: 10 }}>{error}</div>}
+      {!definida && !error && (
+        <div className="vd-penales-nota">
+          {turno === 'propio' ? 'Los ángulos son más difíciles de atajar, pero pueden ir al palo.' : 'Si adivinás el lado, tenés buenas chances de atajarla.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* El arco dibujado, por si la escena renderizada no está (o no cargó). */
+function ArcoPlano({ tiro, turno, puedo, elegir }) {
+  const pelota = tiro ? centro(tiro.celda) : null;
+  // El arquero: en tu tiro, la CPU (a su cuadrante); en el del rival, vos (a tu lado).
+  const arquero = tiro ? (tiro.equipo === 'propio' ? centro(tiro.arquero) : { x: (tiro.lado + 0.5) * (AW / 3), y: AH * 0.62 }) : { x: AW / 2, y: AH * 0.62 };
+  // Se tira: cuanto más al costado, más se inclina.
+  const inclinacion = ((arquero.x - AW / 2) / (AW / 3)) * 38;
+  return (
       <div className="vd-tanda-arco" style={{ aspectRatio: `${AW + 24} / ${AH + 14}` }}>
         <svg viewBox={`-12 -12 ${AW + 24} ${AH + 14}`} className="vd-tanda-arco-svg" aria-hidden="true">
           <defs>
@@ -125,15 +147,6 @@ export default function Penales({ partida, rival, alDefinir }) {
           </div>
         )}
       </div>
-
-      {ocupado && <div className="vd-penales-nota">…</div>}
-      {error && <div className="vd-error" style={{ marginTop: 10 }}>{error}</div>}
-      {!definida && !error && (
-        <div className="vd-penales-nota">
-          {turno === 'propio' ? 'Los ángulos son más difíciles de atajar, pero pueden ir al palo.' : 'Si adivinás el lado, tenés buenas chances de atajarla.'}
-        </div>
-      )}
-    </div>
   );
 }
 
