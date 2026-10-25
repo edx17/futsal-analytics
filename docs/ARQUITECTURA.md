@@ -14,7 +14,7 @@ no se describe acá.
 | Backend | Supabase (Postgres). **Toda la lógica que da premios corre en la base** (funciones `security definer`): sorteos, V-Coins, partidas, penales. El front muestra lo que devuelve. |
 | Auth | Supabase Auth para el staff (`perfiles.rol`: superuser, manager, admin, ct, jugador). Los jugadores entran por el **kiosco** (`/kiosco`): eligen su nombre y ponen el PIN; `kiosco_abrir_sesion` devuelve un token que dura 120 días y viaja como `p_token` en cada llamada (`src/utils/kiosco.js`). |
 | Tests | Vitest. Las reglas puras viven en `src/analytics/*.js` y se prueban en `src/analytics/__pruebas__/`. |
-| Renders | Blender 4.2 (`cine/`): cinemáticas de sobres, escena de penales y el arquero (`cine/modelos/arquero.glb`). Salen a `public/cine/` y `public/penales/`. |
+| Renders | Blender 4.2 (`cine/`): cinemáticas de sobres, escena de penales y el arquero (`cine/modelos/arquero.glb`). Salen a `public/cine/` y `public/penales/`; los paquetes de sobres (`cine/sobres3d.py`) a `public/juegos/sobres/<tipo>.webp` (el `neutro` se tiñe por CSS para eventos y sobres del club). |
 
 ## 2. Dónde vive cada cosa
 
@@ -22,7 +22,8 @@ no se describe acá.
 src/pages/
   Juegos.jsx            menú de juegos (/juegos, /kiosco/juegos)
   MiQuinteto.jsx        MySquad (sólo staff)
-  Sobres.jsx            sobres + colección (+ Modo GOD para el superusuario)
+  Sobres.jsx            pestañas SOBRES (paquetes 3D, disponibles/bloqueados) y COLECCIÓN
+                        (álbum con siluetas, filtros por rareza y posición) + Modo GOD
   VDraft.jsx            V-Draft: inicio, draft, torneo, partido en vivo
   PenalesJuego.jsx      modo Penales suelto
   vdraft.css            estilos de V-Draft y penales
@@ -32,7 +33,7 @@ src/components/
                         Modo GOD (PanelGod, God*), PanelClub (manager)
   vdraft/               CanchaPlana, Penales (la tanda), EscenaPenales (la escena 3D)
   kiosco/               JuegoEnElCelular (QR / instalar)
-src/analytics/          reglas puras: sobres.js, aperturas.js, vdraft.js, penales.js, penales3d.js,
+src/analytics/          reglas puras: sobres.js, sobresVista.js, aperturas.js, vdraft.js, penales.js, penales3d.js,
                         especialesCartas.js, eventos.js, god.js
 src/utils/              llamadas a la base: sobres.js, vdraft.js, god.js, usuarios.js, eventos.js;
                         sonidoApertura.js (audio), escenaPenales.js (carga de la escena)
