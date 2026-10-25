@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import CartaJugador from '../components/quinteto/CartaJugador';
 import CanchaPerspectiva from '../components/quinteto/CanchaPerspectiva';
 import CanchaPlana from '../components/vdraft/CanchaPlana';
+import Penales from '../components/vdraft/Penales';
 import { FORMACIONES } from '../analytics/quinteto';
 import { MONEDA } from '../analytics/sobres';
 import {
@@ -52,6 +53,14 @@ export default function VDraft() {
   const cargar = useCallback(() => estadoVDraft().then(aplicar), [aplicar]);
 
   useEffect(() => { estadoVDraft().then(aplicar); }, [aplicar]);
+
+  /* Una tanda de penales que quedó a medias (se cerró la app): se retoma directo. */
+  const tandaPendiente = partida?.estado === 'torneo' && !!partida?.tanda && !vivo;
+  useEffect(() => {
+    if (!tandaPendiente) return undefined;
+    const t = setTimeout(() => setVivo({ ...partida, ultimo: partida.partidos[partida.partidos.length - 1], directo: true }), 0);
+    return () => clearTimeout(t);
+  }, [tandaPendiente, partida]);
 
   /* Cada acción devuelve la partida actualizada. */
   const accion = async (fn) => {
@@ -131,7 +140,8 @@ export default function VDraft() {
         <Torneo partida={partida} jugar={jugar} ocupado={ocupado} abandonar={abandonar} cambio={cambio} tocarCambio={tocarCambio} />
       )}
 
-      {vivo && <PartidoVivo partida={vivo} onCerrar={cerrarVivo} kiosco={kiosco} />}
+      {vivo && <PartidoVivo partida={vivo} onCerrar={cerrarVivo} kiosco={kiosco}
+        alDefinirPenales={(p) => { setPartida(p); setVivo({ ...p, directo: true }); }} />}
     </div>
   );
 }
@@ -363,11 +373,12 @@ const reducido = () => typeof window !== 'undefined' && window.matchMedia?.('(pr
 const PAUSA_GOL = 1300;
 const TICK = 120;
 
-function PartidoVivo({ partida, onCerrar, kiosco }) {
+function PartidoVivo({ partida, onCerrar, kiosco, alDefinirPenales }) {
   const p = partida.ultimo;
   const sinMovimiento = reducido();
-  const [fase, setFase] = useState(() => (!p ? 'fin' : sinMovimiento ? 'fin' : 'previa'));
-  const [minuto, setMinuto] = useState(() => (!p || sinMovimiento ? 40 : 0));
+  // `directo`: sin el partido de nuevo (se retoma una tanda, o se acaba de definir).
+  const [fase, setFase] = useState(() => (!p || sinMovimiento || partida.directo ? 'fin' : 'previa'));
+  const [minuto, setMinuto] = useState(() => (!p || sinMovimiento || partida.directo ? 40 : 0));
   const goles = useMemo(() => p?.goles || [], [p]);
   const semilla = goles.length * 7 + (p?.goles_propios || 0) * 3 + (p?.rival?.length || 0);
 
@@ -396,6 +407,8 @@ function PartidoVivo({ partida, onCerrar, kiosco }) {
   const fin = partida.estado === 'terminada';
   const premio = partida.premio;
   const campeon = fin && partida.victorias >= 3;
+  // Empate: la tanda la juega el jugador.
+  const penalesPendientes = terminado && !!p?.pendiente && !!partida.tanda;
 
   return (
     <div className={`vd-escena${golAhora.some((g) => g.equipo === 'rival') ? ' vd-temblor' : ''}`}>
@@ -438,12 +451,13 @@ function PartidoVivo({ partida, onCerrar, kiosco }) {
               </div>
             ))}
           </div>
-          {terminado && p.penales && <div className="vd-penales">Empate · penales {p.penales}</div>}
-          {terminado && <div className={`vd-veredicto ${p.gano ? 'vd-si' : 'vd-no'}`}>{p.gano ? '¡GANASTE!' : 'PERDISTE'}</div>}
+          {penalesPendientes && <Penales partida={partida} rival={p.rival} alDefinir={alDefinirPenales} />}
+          {terminado && !penalesPendientes && p.penales && <div className="vd-penales">Empate · penales {p.penales}</div>}
+          {terminado && !penalesPendientes && <div className={`vd-veredicto ${p.gano ? 'vd-si' : 'vd-no'}`}>{p.gano ? '¡GANASTE!' : 'PERDISTE'}</div>}
         </>
       )}
 
-      {terminado && p?.gano && !sinMovimiento && <Papelitos dorados={campeon} semilla={semilla} />}
+      {terminado && !penalesPendientes && p?.gano && !sinMovimiento && <Papelitos dorados={campeon} semilla={semilla} />}
 
       {terminado && fin && premio && (
         <div className={`vd-final${campeon ? ' vd-final-campeon' : ''}`}>
@@ -461,7 +475,7 @@ function PartidoVivo({ partida, onCerrar, kiosco }) {
       )}
 
       <div className="vd-escena-pie">
-        {terminado
+        {penalesPendientes ? null : terminado
           ? <button className="vd-btn" onClick={onCerrar}>{fin ? 'LISTO' : 'SEGUIR'}</button>
           : <button className="vd-btn vd-btn-sec" onClick={saltar}>SALTAR</button>}
       </div>
