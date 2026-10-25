@@ -9,9 +9,11 @@ capas, todas con la MISMA cámara, para que en la app encajen al píxel:
   red       sólo la red del arco, sobre transparente (los palos la tapan):
             la app la "infla" donde entra la pelota;
   arquero   un arquero 3D (cuerpo, camiseta de manga larga, short, medias,
-            guantes y botines) animado: espera (en loop), tirada a la
-            izquierda alta / media / baja, salto al medio, quedarse al medio
-            y achicar abajo. La derecha es el espejo (la cámara está centrada).
+            guantes y botines) animado: espera (en loop) y las paradas a la
+            izquierda alta / media / baja y al medio alta / media / baja,
+            como juega un arquero de futsal: sin volar, con un paso al palo y
+            bloqueando parado (split, cruz). La derecha es el espejo (la
+            cámara está centrada).
             Con dos equipos: 'rival' (naranja) y 'propio' (verde).
             Sobre transparente, con su sombra (piso "atrapa sombras");
   pelota    la pelota de futsal sola, para animarla en la app.
@@ -58,9 +60,9 @@ ANIMS = {
 }
 
 EQUIPOS = {
-    'rival': {'camiseta': (0.95, 0.32, 0.03), 'detalle': (0.08, 0.08, 0.09), 'short': (0.05, 0.05, 0.06), 'medias': (0.95, 0.32, 0.03),
+    'rival': {'camiseta': (0.7, 0.13, 0.01), 'detalle': (0.08, 0.08, 0.09), 'short': (0.05, 0.05, 0.06), 'medias': (0.7, 0.13, 0.01),
               'guantes': (0.92, 0.92, 0.9)},
-    'propio': {'camiseta': (0.03, 0.55, 0.24), 'detalle': (0.95, 0.85, 0.1), 'short': (0.03, 0.12, 0.07), 'medias': (0.03, 0.55, 0.24),
+    'propio': {'camiseta': (0.01, 0.32, 0.1), 'detalle': (0.95, 0.85, 0.1), 'short': (0.03, 0.12, 0.07), 'medias': (0.01, 0.32, 0.1),
                'guantes': (0.95, 0.85, 0.1)},
 }
 
@@ -112,7 +114,7 @@ def mat_tela(nombre, color, rug=0.75, brillo=0.0):
     pr = base.principled(m)
     pr.inputs['Base Color'].default_value = (*color, 1)
     pr.inputs['Roughness'].default_value = rug
-    pr.inputs['Sheen Weight'].default_value = 0.4
+    pr.inputs['Sheen Weight'].default_value = 0.15
     pr.inputs['Coat Weight'].default_value = brillo
     return m
 
@@ -150,7 +152,7 @@ def pieza(nombre, tipo, dims, pos, mat, padre, giro=(0, 0, 0)):
 
 def armar_arquero(equipo):
     k = EQUIPOS[equipo]
-    piel = mat_tela('piel', (0.56, 0.37, 0.26), 0.55)
+    piel = mat_tela('piel', (0.4, 0.22, 0.13), 0.55)
     pelo = mat_tela('pelo', (0.03, 0.025, 0.02), 0.6)
     camiseta = mat_tela('camiseta', k['camiseta'], 0.7)
     detalle = mat_tela('detalle', k['detalle'], 0.6)
@@ -208,55 +210,75 @@ def con(base_pose, **cambios):
     return p
 
 
-def estirado(x, z, incl):
-    """En el aire, todo estirado hacia el lado de la tirada."""
-    return {
-        'raiz': (x, z, incl), 'torso': (0, 0, 0), 'cabeza': (0, 8, 0),
-        'hombro_i': (-8, 172, 0), 'codo_i': (-6, 0, 0),
-        'hombro_d': (-8, -168, 0), 'codo_d': (-6, 0, 0),
-        'cadera_i': (-12, 6, 0), 'rodilla_i': (18, 0, 0), 'tobillo_i': (-10, 0, 0),
-        'cadera_d': (-28, -14, 0), 'rodilla_d': (46, 0, 0), 'tobillo_d': (-20, 0, 0),
-    }
+def pose(x, z, incl=0, **partes):
+    """Una pose completa: parte de LISTO y cambia lo que se pase."""
+    p = dict(LISTO)
+    p['raiz'] = (x, z, incl)
+    p.update(partes)
+    return p
 
 
-CARGA = con(LISTO, raiz=(0.06, 0.72, 6.0), cadera_d=(-46, -10, 0), rodilla_d=(84, 0, 0))
-EN_EL_PISO = {
-    'raiz': (-1.38, 0.17, -90), 'torso': (0, 0, 0), 'cabeza': (-6, 14, 0),
-    'hombro_i': (-10, 165, 0), 'codo_i': (-20, 0, 0), 'hombro_d': (-25, -150, 0), 'codo_d': (-35, 0, 0),
-    'cadera_i': (-10, 4, 0), 'rodilla_i': (25, 0, 0), 'tobillo_i': (-10, 0, 0),
-    'cadera_d': (-35, -8, 0), 'rodilla_d': (60, 0, 0), 'tobillo_d': (-25, 0, 0),
+# El arquero de futsal no vuela: da un paso hacia el palo y bloquea parado,
+# abriendo la pierna del lado del tiro (abajo, el "split" con la pierna
+# pegada al piso) y los brazos en cruz. Las "_i" son las del lado izquierdo
+# de la pantalla; abrir un brazo o una pierna hacia afuera es +y en las "_i"
+# y -y en las "_d". La derecha es el espejo (en la app).
+PASO = pose(-0.12, 0.74, -3, cadera_i=(-30, 22, 0), rodilla_i=(55, 0, 0), cadera_d=(-40, -10, 0), rodilla_d=(75, 0, 0),
+            hombro_i=(-25, 55, 0), hombro_d=(-25, -50, 0), codo_i=(-35, 0, 0), codo_d=(-35, 0, 0))
+
+PARADAS = {
+    # paso al palo, cuerpo erguido, el brazo de ese lado arriba y afuera
+    'izq_alta': pose(-0.38, 0.86, -14, torso=(4, 0, 0), cabeza=(-4, 10, 0),
+                     cadera_i=(-6, 34, 0), rodilla_i=(14, 0, 0), tobillo_i=(-6, 0, 0),
+                     cadera_d=(-24, -10, 0), rodilla_d=(40, 0, 0), tobillo_d=(-16, 0, 0),
+                     hombro_i=(-8, 150, 0), codo_i=(-12, 0, 0), hombro_d=(-12, -100, 0), codo_d=(-18, 0, 0)),
+    # pierna abierta hacia el palo, la otra flexionada, brazos en cruz
+    'izq_media': pose(-0.36, 0.6, -8, torso=(12, 0, 0), cabeza=(-10, 6, 0),
+                      cadera_i=(-8, 58, 0), rodilla_i=(10, 0, 0), tobillo_i=(-4, 0, 0),
+                      cadera_d=(-52, -12, 0), rodilla_d=(88, 0, 0), tobillo_d=(-30, 0, 0),
+                      hombro_i=(-14, 92, 0), codo_i=(-10, 0, 0), hombro_d=(-14, -104, 0), codo_d=(-14, 0, 0)),
+    # el split: la pierna del palo estirada contra el piso, la otra rodilla abajo
+    'izq_baja': pose(-0.3, 0.34, -4, torso=(18, 0, 0), cabeza=(-14, 6, 0),
+                     cadera_i=(-6, 80, 0), rodilla_i=(4, 0, 0), tobillo_i=(-2, 0, 0),
+                     cadera_d=(-22, -46, 0), rodilla_d=(108, 0, 0), tobillo_d=(-18, 0, 0),
+                     hombro_i=(-20, 48, 0), codo_i=(-10, 0, 0), hombro_d=(-16, -112, 0), codo_d=(-14, 0, 0)),
+    # al medio: estirarse arriba con los dos brazos
+    'centro_alto': pose(0, 0.95, 0, torso=(0, 0, 0), cabeza=(-8, 0, 0),
+                        cadera_i=(-6, 10, 0), rodilla_i=(8, 0, 0), tobillo_i=(-4, 0, 0),
+                        cadera_d=(-6, -10, 0), rodilla_d=(8, 0, 0), tobillo_d=(-4, 0, 0),
+                        hombro_i=(-10, 158, 0), codo_i=(-8, 0, 0), hombro_d=(-10, -158, 0), codo_d=(-8, 0, 0)),
+    # la cruz: piernas y brazos abiertos
+    'centro_medio': pose(0, 0.68, 0, torso=(8, 0, 0), cabeza=(-8, 0, 0),
+                         cadera_i=(-14, 36, 0), rodilla_i=(22, 0, 0), tobillo_i=(-8, 0, 0),
+                         cadera_d=(-14, -36, 0), rodilla_d=(22, 0, 0), tobillo_d=(-8, 0, 0),
+                         hombro_i=(-12, 90, 0), codo_i=(-8, 0, 0), hombro_d=(-12, -90, 0), codo_d=(-8, 0, 0)),
+    # abajo al medio: rodilla al piso y las piernas cerrando el hueco
+    'centro_bajo': pose(0, 0.4, 0, torso=(22, 0, 0), cabeza=(-18, 0, 0),
+                        cadera_i=(-30, 62, 0), rodilla_i=(70, 0, 0), tobillo_i=(-20, 0, 0),
+                        cadera_d=(-30, -62, 0), rodilla_d=(70, 0, 0), tobillo_d=(-20, 0, 0),
+                        hombro_i=(-30, 46, 0), codo_i=(-12, 0, 0), hombro_d=(-30, -46, 0), codo_d=(-12, 0, 0)),
 }
 
 
-def tirada(x, z, incl):
-    medio = estirado(x * 0.55, (z + 0.75) / 2 + 0.05, incl * 0.6)
-    medio.update({'hombro_i': (-15, 120, 0), 'hombro_d': (-15, -110, 0), 'codo_i': (-25, 0, 0), 'codo_d': (-30, 0, 0)})
-    cae = estirado(x * 1.12, max(0.22, z * 0.5), incl - 6)
-    return [(1, LISTO), (4, CARGA), (8, medio), (12, estirado(x, z, incl)), (16, cae), (20, EN_EL_PISO)]
+def mezcla(a, b, t):
+    """La pose a mitad de camino (t de 0 a 1)."""
+    return {k: tuple(va + (vb - va) * t for va, vb in zip(a[k], b[k])) for k in a}
+
+
+def parada(nombre):
+    """Arranque, paso, la parada (llega rápido) y se queda clavado, apenas asentándose."""
+    fin = PARADAS[nombre]
+    asentado = dict(fin)
+    x, z, i = fin['raiz']
+    asentado['raiz'] = (x, z - 0.02, i)
+    arranque = PASO if nombre.startswith('izq') else pose(0, 0.72, 0)
+    return [(1, LISTO), (3, arranque), (6, mezcla(arranque, fin, 0.65)), (9, fin), (20, asentado)]
 
 
 GUIONES = {
     'espera': [(1, LISTO), (7, con(LISTO, raiz=(-0.07, 0.77, -2.5))), (13, con(LISTO, raiz=(0.0, 0.8, 0))),
                (19, con(LISTO, raiz=(0.07, 0.77, 2.5))), (25, LISTO)],
-    'izq_alta': tirada(-1.05, 1.32, -60),
-    'izq_media': tirada(-1.2, 0.86, -82),
-    'izq_baja': tirada(-1.12, 0.42, -96),
-    'centro_alto': [(1, LISTO), (5, con(LISTO, raiz=(0, 0.66, 0), rodilla_i=(90, 0, 0), rodilla_d=(90, 0, 0))),
-                    (11, {**estirado(0, 1.38, 0), 'hombro_i': (-6, 172, 0), 'hombro_d': (-6, -172, 0),
-                          'cadera_i': (-25, 8, 0), 'cadera_d': (-25, -8, 0), 'rodilla_i': (45, 0, 0), 'rodilla_d': (45, 0, 0)}),
-                    (16, {**estirado(0, 1.05, 0), 'hombro_i': (-30, 150, 0), 'hombro_d': (-30, -150, 0)}),
-                    (20, con(LISTO, raiz=(0, 0.74, 0)))],
-    'centro_medio': [(1, LISTO), (6, con(LISTO, torso=(10, 0, 0), hombro_i=(-75, 14, 0), hombro_d=(-75, -14, 0),
-                                        codo_i=(-85, 0, 0), codo_d=(-85, 0, 0))),
-                     (20, con(LISTO, torso=(14, 0, 0), raiz=(0, 0.76, 0), hombro_i=(-70, 10, 0), hombro_d=(-70, -10, 0),
-                              codo_i=(-95, 0, 0), codo_d=(-95, 0, 0)))],
-    'centro_bajo': [(1, LISTO), (5, con(LISTO, raiz=(0, 0.6, 0))),
-                    (10, con(LISTO, raiz=(0, 0.42, 0), torso=(32, 0, 0), cabeza=(-30, 0, 0),
-                             cadera_i=(-55, 48, 0), cadera_d=(-55, -48, 0), rodilla_i=(105, 0, 0), rodilla_d=(105, 0, 0),
-                             hombro_i=(-35, 24, 0), hombro_d=(-35, -24, 0), codo_i=(-12, 0, 0), codo_d=(-12, 0, 0))),
-                    (20, con(LISTO, raiz=(0, 0.4, 0), torso=(34, 0, 0), cabeza=(-32, 0, 0),
-                             cadera_i=(-58, 50, 0), cadera_d=(-58, -50, 0), rodilla_i=(108, 0, 0), rodilla_d=(108, 0, 0),
-                             hombro_i=(-30, 26, 0), hombro_d=(-30, -26, 0), codo_i=(-8, 0, 0), codo_d=(-8, 0, 0)))],
+    **{n: parada(n) for n in PARADAS},
 }
 
 
