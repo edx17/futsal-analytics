@@ -268,7 +268,10 @@ function Oferta({ oferta, elegir, ocupado, capitan }) {
         return (
           <button key={c.catalogo_id} className={`vd-opcion${estado}`} disabled={ocupado || !!elegida} onClick={() => tocar(c)}
             style={{ animationDelay: `${i * 0.11}s` }}>
-            <div className="vd-carta-grande"><CartaJugador carta={aCarta(c)} /></div>
+            <div className="vd-carta-grande">
+              <CartaJugador carta={aCarta(c)} />
+              {c.nueva && <span className="vd-nueva">NUEVA</span>}
+            </div>
           </button>
         );
       })}
@@ -434,8 +437,8 @@ function PartidoVivo({ partida, onCerrar, kiosco, alDefinirPenales }) {
           <div className="vd-tiempo"><i style={{ width: `${(minuto / 40) * 100}%` }} /></div>
           <div className="vd-plana-caja">
             <CanchaPlana pelota={terminado ? null : pelota} gol={golAhora[0]?.equipo} />
-            {golAhora.map((g) => (
-              <div key={`${g.minuto}-${g.equipo}`} className={`vd-cartel vd-cartel-${g.equipo}`}>
+            {golAhora.map((g, i) => (
+              <div key={`${g.minuto}-${g.equipo}-${i}`}className={`vd-cartel vd-cartel-${g.equipo}`}>
                 <b>{g.equipo === 'propio' ? '¡GOOOL!' : `GOL DE ${p.rival.toUpperCase()}`}</b>
                 {g.equipo === 'propio' && <span>{g.autor}{g.asistencia ? ` · asist. ${g.asistencia}` : ''}</span>}
               </div>

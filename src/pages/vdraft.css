@@ -57,6 +57,11 @@
 .vd-opcion:hover:not(:disabled) { transform: translateY(-4px) scale(1.03); }
 .vd-opcion:disabled { opacity: .6; cursor: default; }
 .vd-carta-grande { position: relative; width: 122px; height: 184px; }
+.vd-nueva {
+  position: absolute; top: -7px; right: -7px; z-index: 3; padding: 3px 7px; border-radius: 999px;
+  background: #00ff88; color: #04140b; font-size: 9px; font-weight: 900; letter-spacing: .08em;
+  box-shadow: 0 0 12px rgba(0,255,136,.55);
+}
 
 /* torneo */
 .vd-llave { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
