@@ -234,7 +234,6 @@ function AppLayout() {
     planificacion: false,
     plantel: false,
     administracion: false,
-    juego: false,
     sistema: false
   });
 
@@ -531,25 +530,13 @@ useEffect(() => {
           </>
         )}
 
+        {/* JUEGOS: un solo botón, a la pantalla con un botón grande por juego.
+            Queda marcado también adentro de cada juego. */}
         {permisos.puedeJugar && (
-          <>
-            <div style={titleStyle} onClick={() => toggleMenu('juego')} title={isCollapsed ? "Juegos" : ""}>
-              {isCollapsed ? <Icono nombre="juego" size={22} /> : <><span>JUEGOS</span> <Icono nombre={menusAbiertos.juego ? 'grupoAbierto' : 'grupoCerrado'} size={14} /></>}
-            </div>
-            {menusAbiertos.juego && !isCollapsed && (
-              <>
-                <NavLink to="/juegos" end className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>TODOS LOS JUEGOS</span></NavLink>
-                <NavLink to="/mysquad" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>MYSQUAD</span></NavLink>
-                <NavLink to="/sobres" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}>
-                  <Icono nombre="juego" /> <span>{permisos.esSuperUser ? 'SOBRES · MODO GOD' : 'SOBRES'}</span>
-                </NavLink>
-                {!permisos.esSuperUser && (
-                  <NavLink to="/vdraft" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>V-DRAFT</span></NavLink>
-                )}
-                <NavLink to="/penales" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="juego" /> <span>PENALES</span></NavLink>
-              </>
-            )}
-          </>
+          <NavLink to="/juegos" style={linkStyle} title={isCollapsed ? "Juegos" : ""}
+            className={() => (/^\/(juegos|mysquad|sobres|vdraft|penales)(\/|$)/.test(location.pathname) ? 'nav-item active' : 'nav-item')}>
+            <Icono nombre="juego" size={22} /> {!isCollapsed && <span>JUEGOS</span>}
+          </NavLink>
         )}
 
         {!permisos.esJugador && (permisos.puedeControlarAdmin || permisos.manejaPlata) && (
