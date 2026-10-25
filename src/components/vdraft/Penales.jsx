@@ -63,7 +63,7 @@ export default function Penales({ partida, rival, alDefinir, patear, nombre = 'M
       : turno === 'propio' ? 'TE TOCA PATEAR · elegí dónde' : 'ATAJÁS VOS · elegí un lado';
 
   return (
-    <div className="vd-penales-caja">
+    <div className={`vd-penales-caja${geo ? ' vd-penales-caja-3d' : ''}`}>
       <div className="vd-penales-titulo">PENALES</div>
       <div className="vd-penales-marcador">
         <Fila nombre={nombre} goles={tanda?.propio ?? 0} puntos={marcadorDeTiros(tiros, 'propio')} />
@@ -145,7 +145,7 @@ function ArcoPlano({ tiro, turno, puedo, elegir }) {
         {puedo && turno === 'rival' && (
           <div className="vd-tanda-lados">
             {LADOS.map((l, i) => (
-              <button key={l} className="vd-tanda-lado" onClick={() => elegir(i)}>{l}</button>
+              <button key={l} className="vd-tanda-lado" onClick={() => elegir(i)} aria-label={`Atajar a la ${l.toLowerCase()}`} />
             ))}
           </div>
         )}

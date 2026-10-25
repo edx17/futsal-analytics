@@ -120,7 +120,8 @@ export default function EscenaPenales({ geo, tiro, turno, puedo, elegir }) {
             </div>
           ) : (
             <div className="vd-tanda-lados vd-ep-grilla">
-              {LADOS.map((l, i) => <button key={l} className="vd-tanda-lado" onClick={() => elegir(i)}>{l}</button>)}
+              {/* Sin rótulos: se toca el lado del arco (el nombre queda para lectores de pantalla). */}
+              {LADOS.map((l, i) => <button key={l} className="vd-tanda-lado" onClick={() => elegir(i)} aria-label={`Atajar a la ${l.toLowerCase()}`} />)}
             </div>
           )}
         </div>

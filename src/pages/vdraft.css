@@ -253,3 +253,8 @@
   filter: drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
 .vd-ep-toques { position: absolute; }
 .vd-ep-grilla { inset: 0; left: 0; right: 0; top: 0; bottom: 0; }
+
+/* Con la escena renderizada, la tanda usa el ancho disponible (en la PC, hasta
+   que el arco entra en la altura de la pantalla). */
+.vd-penales-caja.vd-penales-caja-3d { max-width: min(1000px, calc((100vh - 320px) * 4 / 3)); min-width: min(100%, 320px); }
+.vd-penales-caja-3d .vd-penales-marcador { max-width: 560px; }

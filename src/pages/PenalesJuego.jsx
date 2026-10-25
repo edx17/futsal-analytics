@@ -54,7 +54,7 @@ export default function PenalesJuego() {
   const rec = record[String(nivel)];
 
   return (
-    <div className="vd-pagina" style={{ padding: '16px', maxWidth: '560px', margin: '0 auto', boxSizing: 'border-box', paddingBottom: '80px' }}>
+    <div className="vd-pagina" style={{ padding: '16px', maxWidth: jugando && !final ? '1040px' : '560px', margin: '0 auto', boxSizing: 'border-box', paddingBottom: '80px', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
       <div style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-dim)', letterSpacing: '1px' }}>JUEGOS</div>
       <h1 style={{ margin: '4px 0 14px', fontSize: '1.5rem', fontWeight: 900, color: 'var(--text)' }}>Penales</h1>
 
@@ -95,8 +95,10 @@ export default function PenalesJuego() {
       )}
 
       {jugando && !final && (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
         <Penales key={jugando.n} partida={{ id: null, tanda: jugando.tanda }} rival={`Arquero · ${NIVELES[nivel].nombre}`}
           nombre="VOS" patear={patear} alDefinir={alDefinir} />
+        </div>
       )}
     </div>
   );
