@@ -42,6 +42,9 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
 import escena_pasillo as base  # noqa: E402
 import escena_pabellon as pab  # noqa: E402
+import arquero_modelo  # noqa: E402
+
+MODELO = os.path.join(AQUI, 'modelos', 'arquero.glb')
 
 ANCHO, ALTO = 960, 720
 FPS = 30
@@ -231,7 +234,7 @@ PARADAS = {
     'izq_alta': pose(-0.38, 0.86, -14, torso=(4, 0, 0), cabeza=(-4, 10, 0),
                      cadera_i=(-6, 34, 0), rodilla_i=(14, 0, 0), tobillo_i=(-6, 0, 0),
                      cadera_d=(-24, -10, 0), rodilla_d=(40, 0, 0), tobillo_d=(-16, 0, 0),
-                     hombro_i=(-8, 150, 0), codo_i=(-12, 0, 0), hombro_d=(-12, -100, 0), codo_d=(-18, 0, 0)),
+                     hombro_i=(-6, 166, 0), codo_i=(-8, 0, 0), hombro_d=(-12, -112, 0), codo_d=(-18, 0, 0)),
     # pierna abierta hacia el palo, la otra flexionada, brazos en cruz
     'izq_media': pose(-0.36, 0.6, -8, torso=(12, 0, 0), cabeza=(-10, 6, 0),
                       cadera_i=(-8, 58, 0), rodilla_i=(10, 0, 0), tobillo_i=(-4, 0, 0),
@@ -240,7 +243,7 @@ PARADAS = {
     # el split: la pierna del palo estirada contra el piso, la otra rodilla abajo
     'izq_baja': pose(-0.3, 0.34, -4, torso=(18, 0, 0), cabeza=(-14, 6, 0),
                      cadera_i=(-6, 80, 0), rodilla_i=(4, 0, 0), tobillo_i=(-2, 0, 0),
-                     cadera_d=(-22, -46, 0), rodilla_d=(108, 0, 0), tobillo_d=(-18, 0, 0),
+                     cadera_d=(-48, -28, 0), rodilla_d=(100, 0, 0), tobillo_d=(-48, 0, 0),
                      hombro_i=(-20, 48, 0), codo_i=(-10, 0, 0), hombro_d=(-16, -112, 0), codo_d=(-14, 0, 0)),
     # al medio: estirarse arriba con los dos brazos
     'centro_alto': pose(0, 0.95, 0, torso=(0, 0, 0), cabeza=(-8, 0, 0),
@@ -352,6 +355,7 @@ def main():
     ap.add_argument('--cuadros', default='')
     ap.add_argument('--muestras', type=int, default=0)
     ap.add_argument('--salida', default=SALIDA)
+    ap.add_argument('--muneco', action='store_true', help='el cuerpo de prueba hecho de piezas, en vez del modelo')
     a = ap.parse_args(argv)
     with open(os.path.join(AQUI, 'perfiles.json')) as f:
         p = json.load(f)['penales']
@@ -399,12 +403,28 @@ def main():
         return
 
     # arquero: sólo él, con su sombra sobre el parquet ("atrapa sombras").
+    # Las poses van en un esqueleto guía; el modelo (cine/modelos/arquero.glb)
+    # las copia cuadro por cuadro (arquero_modelo.py).
     j = armar_arquero(a.equipo)
     animar(j)
+    anims = [a.anim] if a.anim else list(ANIMS)
     nuestras = set()
     for e in j.values():
         nuestras.add(e.name)
         nuestras.update(c.name for c in e.children_recursive)
+    if not a.muneco:
+        for e in j.values():
+            for c in e.children:
+                if c.type == 'MESH':
+                    c.hide_render = True
+        arm, malla = arquero_modelo.importar(MODELO, a.equipo)
+        nuestras.add(malla.name)
+        rt = arquero_modelo.Retarget(arm, malla)
+        for anim in anims:
+            desde, n = ANIMS[anim]
+            for f in range(desde, desde + n + 1):
+                escena.frame_set(f)
+                rt.posar(j, f)
     for o in escena.objects:
         if o.type != 'MESH' or o.name in nuestras:
             continue
@@ -415,7 +435,6 @@ def main():
         else:
             o.visible_camera = False
     escena.cycles.samples = a.muestras or 24
-    anims = [a.anim] if a.anim else list(ANIMS)
     for anim in anims:
         desde, n = ANIMS[anim]
         cuadros = [int(c) for c in a.cuadros.split(',') if c] if a.cuadros else range(1, n + 1)
