@@ -12,6 +12,7 @@ import {
 } from '../analytics/vdraft';
 import { estadoVDraft, nuevaPartida, elegirCarta, hacerCambio, jugarPartido, abandonarPartida } from '../utils/vdraft';
 import { caminoDePremios, podioDelRanking, destinoDeCarta, avanceDelDraft } from '../analytics/vdraftVista';
+import { perfilEquipo, parte, favorito, cartaDelAutor, despuesDelPartido, monedasQueCaen } from '../analytics/partidoVista';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
 import { GameButton, ProgressBar, Countdown } from '../juegos/ui';
 import useFeedback from '../juegos/useFeedback';
@@ -492,18 +493,27 @@ function Torneo({ partida, jugar, ocupado, abandonar, cambio, tocarCambio }) {
 }
 
 /* ── EL PARTIDO ─────────────────────────────────────────────────────────────
-   1. La previa: mi equipo contra el rival, con sus fuerzas.
-   2. El reloj corre (40'), la pelota se mueve por la cancha y en cada gol se
-      frena: la pelota entra al arco, se ilumina la red y aparece el cartel.
-   3. El final: ganaste (papelitos) o perdiste; si terminó el torneo, el premio. */
+   Con el motor de siempre (la base simula el partido y devuelve los goles):
+   1. La previa: tu capitán contra el escudo del rival, con la fuerza de cada
+      uno en barras enfrentadas y el perfil de tu equipo (ataque, defensa, arco).
+   2. El partido: marcador grande, el reloj de 40', la pelota en la cancha y
+      la lista de goles. Gol tuyo: ¡GOOOL! con la carta del que lo hizo.
+   3. El resultado: ganaste o perdiste, qué sigue y, si terminó el torneo, el
+      premio con las monedas que caen. */
 
 const reducido = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const PAUSA_GOL = 1300;
+const PREVIA = 3200;
+const PAUSA_GOL = 2300;
+const PAUSA_GOL_RIVAL = 1300;
 const TICK = 120;
+
+const sigla = (nombre) => String(nombre || '?').split(/\s+/).filter((p) => p.length > 2 || /^[A-Z0-9]/.test(p))
+  .slice(0, 3).map((p) => p[0]).join('').toUpperCase() || '?';
 
 function PartidoVivo({ partida, onCerrar, kiosco, alDefinirPenales }) {
   const p = partida.ultimo;
   const sinMovimiento = reducido();
+  const { feedback, vibrate } = useFeedback();
   // `directo`: sin el partido de nuevo (se retoma una tanda, o se acaba de definir).
   const [fase, setFase] = useState(() => (!p || sinMovimiento || partida.directo ? 'fin' : 'previa'));
   const [minuto, setMinuto] = useState(() => (!p || sinMovimiento || partida.directo ? 40 : 0));
@@ -512,7 +522,7 @@ function PartidoVivo({ partida, onCerrar, kiosco, alDefinirPenales }) {
 
   useEffect(() => {
     if (fase === 'previa') {
-      const t = setTimeout(() => setFase('juego'), 1800);
+      const t = setTimeout(() => setFase('juego'), PREVIA);
       return () => clearTimeout(t);
     }
     if (fase !== 'juego') return undefined;
@@ -520,10 +530,24 @@ function PartidoVivo({ partida, onCerrar, kiosco, alDefinirPenales }) {
       const t = setTimeout(() => setFase('fin'), 500);
       return () => clearTimeout(t);
     }
-    const hayGol = goles.some((g) => g.minuto === minuto);
-    const t = setTimeout(() => setMinuto((m) => m + 1), hayGol ? PAUSA_GOL : TICK);
+    const ahora = goles.filter((g) => g.minuto === minuto);
+    const pausa = ahora.some((g) => g.equipo === 'propio') ? PAUSA_GOL : ahora.length ? PAUSA_GOL_RIVAL : TICK;
+    const t = setTimeout(() => setMinuto((m) => m + 1), pausa);
     return () => clearTimeout(t);
   }, [fase, minuto, goles]);
+
+  /* Sonido y vibración: en cada gol y al final. */
+  useEffect(() => {
+    if (fase !== 'juego') return;
+    const ahora = goles.filter((g) => g.minuto === minuto);
+    if (ahora.some((g) => g.equipo === 'propio')) feedback('gol');
+    else if (ahora.length) vibrate('derrota');
+  }, [fase, minuto, goles, feedback, vibrate]);
+  const pendiente = !!p?.pendiente && !!partida.tanda;
+  useEffect(() => {
+    if (fase !== 'fin' || !p || pendiente || partida.directo) return;
+    feedback(p.gano ? 'victoria' : 'derrota');
+  }, [fase, p, pendiente, partida.directo, feedback]);
 
   const saltar = () => { setMinuto(40); setFase('fin'); };
   const terminado = fase === 'fin';
@@ -531,45 +555,41 @@ function PartidoVivo({ partida, onCerrar, kiosco, alDefinirPenales }) {
   const gp = vistos.filter((g) => g.equipo === 'propio').length;
   const gr = vistos.length - gp;
   const golAhora = fase === 'juego' ? goles.filter((g) => g.minuto === minuto) : [];
+  const golPropio = golAhora.find((g) => g.equipo === 'propio');
   const pelota = pelotaEn(fase === 'juego' ? minuto : -1, fase === 'juego' ? goles : [], semilla);
-  const fin = partida.estado === 'terminada';
-  const premio = partida.premio;
-  const campeon = fin && partida.victorias >= 3;
+  const despues = despuesDelPartido(partida);
   // Empate: la tanda la juega el jugador.
-  const penalesPendientes = terminado && !!p?.pendiente && !!partida.tanda;
+  const penalesPendientes = terminado && pendiente;
 
   return (
     <div className={`vd-escena${golAhora.some((g) => g.equipo === 'rival') ? ' vd-temblor' : ''}`}>
-      {p && fase === 'previa' && (
-        <div className="vd-previa">
-          <div className="vd-escena-ronda">{p.ronda}</div>
-          <div className="vd-vs">
-            <div className="vd-vs-lado vd-vs-izq"><span>MI EQUIPO</span><b>{p.fuerza_propia}</b><em>fuerza</em></div>
-            <div className="vd-vs-x">VS</div>
-            <div className="vd-vs-lado vd-vs-der"><span>{p.rival.toUpperCase()}</span><b>{p.fuerza_rival}</b><em>Primera {p.division}</em></div>
-          </div>
-        </div>
-      )}
+      {p && fase === 'previa' && <Previa partida={partida} p={p} alEmpezar={() => setFase('juego')} />}
 
       {p && fase !== 'previa' && (
         <>
-          <div className="vd-escena-ronda">{p.ronda}</div>
+          <div className="vd-escena-ronda">{p.ronda} · PRIMERA {p.division}</div>
           <div className="vd-marcador">
-            <div><span>MI EQUIPO</span><b key={`p${gp}`} className="vd-salta">{gp}</b></div>
+            <div className="vd-marcador-lado"><span>MI EQUIPO</span><b key={`p${gp}`} className="vd-salta">{gp}</b></div>
             <div className="vd-reloj">{terminado ? 'FINAL' : `${minuto}'`}</div>
-            <div><span>{p.rival.toUpperCase()}</span><b key={`r${gr}`} className="vd-salta">{gr}</b></div>
+            <div className="vd-marcador-lado vd-marcador-rival"><span>{p.rival.toUpperCase()}</span><b key={`r${gr}`} className="vd-salta">{gr}</b></div>
           </div>
-          <div className="vd-tiempo"><i style={{ width: `${(minuto / 40) * 100}%` }} /></div>
-          <div className="vd-plana-caja">
-            <CanchaPlana pelota={terminado ? null : pelota} gol={golAhora[0]?.equipo} />
-            {golAhora.map((g, i) => (
-              <div key={`${g.minuto}-${g.equipo}-${i}`}className={`vd-cartel vd-cartel-${g.equipo}`}>
-                <b>{g.equipo === 'propio' ? '¡GOOOL!' : `GOL DE ${p.rival.toUpperCase()}`}</b>
-                {g.equipo === 'propio' && <span>{g.autor}{g.asistencia ? ` · asist. ${g.asistencia}` : ''}</span>}
+          {/* Terminado, la cancha se va: arriba queda el resultado. */}
+          {!terminado && (
+            <>
+              <div className="vd-tiempo"><i style={{ width: `${(minuto / 40) * 100}%` }} /></div>
+              <div className="vd-plana-caja">
+                <CanchaPlana pelota={pelota} gol={golAhora[0]?.equipo} />
+                {golAhora.filter((g) => g.equipo === 'rival').map((g, i) => (
+                  <div key={`${g.minuto}-r-${i}`} className="vd-cartel vd-cartel-rival"><b>GOL DE {p.rival.toUpperCase()}</b></div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="vd-goles">
+            </>
+          )}
+          {penalesPendientes && <Penales partida={partida} rival={p.rival} alDefinir={alDefinirPenales} />}
+          {terminado && !penalesPendientes && (
+            <Resultado partida={partida} p={p} despues={despues} kiosco={kiosco} sinMovimiento={sinMovimiento} semilla={semilla} />
+          )}
+          <div className="vd-goles" aria-live="polite">
             {vistos.map((g, i) => (
               <div key={i} className={`vd-gol vd-gol-${g.equipo}`}>
                 <span style={{ fontFamily: MONO }}>{g.minuto}'</span>
@@ -579,34 +599,136 @@ function PartidoVivo({ partida, onCerrar, kiosco, alDefinirPenales }) {
               </div>
             ))}
           </div>
-          {penalesPendientes && <Penales partida={partida} rival={p.rival} alDefinir={alDefinirPenales} />}
-          {terminado && !penalesPendientes && p.penales && <div className="vd-penales">Empate · penales {p.penales}</div>}
-          {terminado && !penalesPendientes && <div className={`vd-veredicto ${p.gano ? 'vd-si' : 'vd-no'}`}>{p.gano ? '¡GANASTE!' : 'PERDISTE'}</div>}
         </>
       )}
 
-      {terminado && !penalesPendientes && p?.gano && !sinMovimiento && <Papelitos dorados={campeon} semilla={semilla} />}
+      {/* Sin partido (abandonaste): sólo el premio. */}
+      {!p && terminado && despues.fin && <Resultado partida={partida} p={null} despues={despues} kiosco={kiosco} sinMovimiento={sinMovimiento} semilla={semilla} />}
 
-      {terminado && fin && premio && (
-        <div className={`vd-final${campeon ? ' vd-final-campeon' : ''}`}>
-          {campeon && <div className="vd-copa">🏆</div>}
+      {golPropio && <CartelGol key={`g-${golPropio.minuto}`} gol={golPropio} carta={cartaDelAutor(partida, golPropio.autor)} />}
+
+      <div className="vd-escena-pie">
+        {penalesPendientes ? null : terminado
+          ? <GameButton grande onClick={onCerrar}>{despues.fin ? 'LISTO' : 'SEGUIR'}</GameButton>
+          : <GameButton variante="secondary" onClick={saltar}>SALTAR</GameButton>}
+      </div>
+    </div>
+  );
+}
+
+/* La previa: tu capitán contra el escudo del rival. */
+function Previa({ partida, p, alEmpezar }) {
+  const capitan = (partida.equipo || []).find((c) => c && c.catalogo_id === partida.capitan) || (partida.equipo || []).find(Boolean);
+  const perfil = perfilEquipo(partida.equipo);
+  const fav = favorito(p.fuerza_propia, p.fuerza_rival);
+  const reparto = parte(p.fuerza_propia, p.fuerza_rival);
+  return (
+    <div className="vd-previa">
+      <div className="vd-escena-ronda">{p.ronda}</div>
+      <div className="vd-vs">
+        <div className="vd-vs-lado vd-vs-izq">
+          {capitan && <div className="vd-vs-carta"><CartaJugador carta={aCarta(capitan)} /></div>}
+          <span>MI EQUIPO</span>
+          <small>Capitán: {capitan?.carta?.apellido || '—'}</small>
+        </div>
+        <div className="vd-vs-x">VS</div>
+        <div className="vd-vs-lado vd-vs-der">
+          <div className="vd-escudo"><b>{sigla(p.rival)}</b></div>
+          <span>{p.rival.toUpperCase()}</span>
+          <small>Primera {p.division}</small>
+        </div>
+      </div>
+
+      <div className="vd-comparar">
+        <div className="vd-comparar-fila">
+          <b className="vd-c-propio">{p.fuerza_propia}</b>
+          <span>FUERZA</span>
+          <b className="vd-c-rival">{p.fuerza_rival}</b>
+        </div>
+        <div className="vd-enfrentada" style={{ '--parte': `${reparto * 100}%` }}><i /><i /></div>
+        <div className={`vd-favorito vd-fav-${fav}`}>
+          {fav === 'parejo' ? 'PARTIDO PAREJO' : fav === 'propio' ? 'SOS FAVORITO' : `FAVORITO: ${p.rival.toUpperCase()}`}
+        </div>
+        <div className="vd-perfil">
+          {[['ATAQUE', perfil.ataque], ['DEFENSA', perfil.defensa], ['ARCO', perfil.arco]].map(([r, v]) => (
+            <div key={r}>
+              <span>{r}</span>
+              <ProgressBar valor={(v || 0) / 99} alto={6} />
+              <b>{v ?? '—'}</b>
+            </div>
+          ))}
+          <small>Tu equipo, según tus cartas.</small>
+        </div>
+      </div>
+      <GameButton grande onClick={alEmpezar} className="vd-a-jugar">¡A JUGAR!</GameButton>
+    </div>
+  );
+}
+
+/* ¡GOOOL! con la carta del que lo hizo. */
+function CartelGol({ gol, carta }) {
+  return (
+    <div className="vd-gooool" role="status" aria-label={`Gol de ${gol.autor || 'tu equipo'}`}>
+      <div className="vd-gooool-rayos" aria-hidden="true" />
+      <b className="vd-gooool-texto">¡GOOOL!</b>
+      {carta && <div className="vd-gooool-carta"><CartaJugador carta={aCarta(carta)} /></div>}
+      <span className="vd-gooool-autor">{gol.autor}{gol.asistencia ? <em> · asist. {gol.asistencia}</em> : null}</span>
+      <span className="vd-gooool-min">{gol.minuto}'</span>
+    </div>
+  );
+}
+
+/* El resultado: veredicto, qué sigue y, si terminó, el premio con monedas que caen. */
+function Resultado({ partida, p, despues, kiosco, sinMovimiento, semilla }) {
+  const premio = despues.premio;
+  const vc = useCuenta(premio?.vcoins ?? 0, 1400);
+  return (
+    <div className="vd-resultado">
+      {p?.penales && <div className="vd-penales">Empate · penales {p.penales}</div>}
+      {p && <div className={`vd-veredicto ${p.gano ? 'vd-si' : 'vd-no'}`}>{p.gano ? '¡GANASTE!' : 'PERDISTE'}</div>}
+      {p && <div className="vd-final-marcador">{marcador(p)}</div>}
+
+      {!despues.fin && despues.siguiente && (
+        <div className="vd-sigue">
+          <span>PRÓXIMO</span>
+          <b>{despues.siguiente.ronda || RONDAS[partida.partidos.length]} · VS {despues.siguiente.equipo.toUpperCase()}</b>
+          <small>
+            Asegurado: +{despues.asegurado.vcoins} VC si te retirás · Si ganás: +{despues.proximo.vcoins} VC{despues.proximo.sobre ? ' + sobre' : ''}
+          </small>
+        </div>
+      )}
+
+      {despues.fin && premio && (
+        <div className={`vd-final${despues.campeon ? ' vd-final-campeon' : ''}`}>
+          {despues.campeon && <div className="vd-copa">🏆</div>}
           <div className="vd-rotulo" style={{ color: '#9ca3af' }}>
             {partida.victorias >= 4 ? 'CAMPEÓN DE CAMPEONES' : partida.victorias === 3 ? 'CAMPEÓN' : 'FIN DEL TORNEO'} · {partida.victorias} {partida.victorias === 1 ? 'victoria' : 'victorias'}
           </div>
-          <div className="vd-final-premio">{premio.vcoins ? `+${premio.vcoins} ${MONEDA}` : 'Sin premio esta vez'}</div>
+          <div className="vd-final-premio">{premio.vcoins ? `+${Math.round(vc)} ${MONEDA}` : 'Sin premio esta vez'}</div>
           {premio.sobre && (
-            <div style={{ color: '#fbbf24', fontWeight: 900, marginTop: 6 }}>
-              + {NOMBRE_SOBRE[premio.sobre]} · <Link to={kiosco ? '/kiosco/sobres' : '/sobres'} style={{ color: '#fbbf24' }}>abrilo en Sobres</Link>
+            <div className="vd-final-sobre">
+              + {NOMBRE_SOBRE[premio.sobre]} · <Link to={kiosco ? '/kiosco/sobres' : '/sobres'}>abrilo en Sobres</Link>
             </div>
           )}
         </div>
       )}
 
-      <div className="vd-escena-pie">
-        {penalesPendientes ? null : terminado
-          ? <button className="vd-btn" onClick={onCerrar}>{fin ? 'LISTO' : 'SEGUIR'}</button>
-          : <button className="vd-btn vd-btn-sec" onClick={saltar}>SALTAR</button>}
-      </div>
+      {!sinMovimiento && p?.gano && <Papelitos dorados={despues.campeon} semilla={semilla} />}
+      {!sinMovimiento && despues.fin && premio?.vcoins > 0 && <Monedas n={monedasQueCaen(premio.vcoins)} semilla={semilla} />}
+    </div>
+  );
+}
+
+/* Las V-Coins del premio, cayendo. */
+function Monedas({ n, semilla }) {
+  return (
+    <div className="vd-monedas-caen" aria-hidden="true">
+      {Array.from({ length: n }, (_, i) => {
+        const r = (k) => pseudoAzar(semilla * 17 + i * 11 + k);
+        return (
+          <i key={i} style={{ left: `${4 + r(0) * 92}%`, animationDuration: `${1.6 + r(1) * 1.4}s`, animationDelay: `${0.4 + r(2) * 1.6}s`, '--tam': `${22 + r(3) * 14}px` }}>V</i>
+        );
+      })}
     </div>
   );
 }
