@@ -11,44 +11,54 @@ import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasAper
 import { prepararAudio, sonidoActivo, cargarMusica } from '../utils/sonidoApertura';
 import { RAREZAS, COSTO_SOBRE_PUNTOS, COSTO_MEGA, MONEDA, RACHA_PARA_PREMIO, probabilidades, nombreDeCarta } from '../analytics/sobres';
 import { sobreDelClub } from '../analytics/tiposSobre';
-import { estadoSobres, abrirSobre, abrirSobreEvento, coleccionSobres, reiniciarPruebaSobres } from '../utils/sobres';
+import { imagenDeSobre, repartirSobres, traeEspecial, filtrarAlbum, contarAlbum, POSICIONES } from '../analytics/sobresVista';
+import { estadoSobres, abrirSobre, abrirSobreEvento, coleccionSobres, albumSobres, reiniciarPruebaSobres } from '../utils/sobres';
 import { varianteDeEventoDb, varianteDeEscena } from '../analytics/eventos';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
+import { GameButton, Badge, ProgressBar, Countdown } from '../juegos/ui';
+import useFeedback from '../juegos/useFeedback';
 import '../components/quinteto/quinteto.css';
+import './juegos.css';
 import './sobres.css';
 
 /* SOBRES
  *
  * Una sola pantalla para el jugador (Kiosco, /kiosco/sobres) y para el cuerpo
- * técnico (VirtualClub, /sobres). Arriba, los sobres de hoy; abajo, la colección.
+ * técnico (VirtualClub, /sobres), en dos pestañas:
+ *   SOBRES     → los paquetes 3D: los que podés abrir hoy y los bloqueados
+ *                (con la cuenta regresiva si vuelven a medianoche).
+ *   COLECCIÓN  → el álbum: tus cartas y la silueta de las que faltan, con
+ *                filtros por rareza y posición.
+ * La apertura (cinemáticas incluidas) es components/sobres/AperturaSobre.
  * Las reglas y el sorteo viven en la base: acá sólo se pide y se muestra.
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const ORDEN_SOBRES = ['premio_especial', 'premio', 'diario', 'wellness', 'racha', 'puntos', 'mega'];
 
-/* Qué sobres se muestran: el de wellness no es para el staff, y los del V-Draft
-   sólo si tenés alguno guardado. */
-const seMuestra = (tipo, e) => {
-  if (tipo === 'wellness') return !e.es_staff;
-  if (tipo === 'premio') return (e.sobres_premio || 0) > 0;
-  if (tipo === 'premio_especial') return (e.sobres_especiales || 0) > 0;
-  return true;
+/* El color de cada sobre en la pantalla (brillo y botón). */
+const ACENTO = {
+  diario: '#00ff88', racha: '#22d3ee', wellness: '#34d399', puntos: '#60a5fa',
+  mega: '#fbbf24', premio: '#c084fc', premio_especial: '#f472b6',
 };
 
 /* Una carta del catálogo en el formato que dibuja CartaJugador. */
 const aCarta = (c) => ({ atributos: [], stats: {}, ...(c.carta || c) });
 
+/* Sin la función del álbum (migración sin aplicar): sólo las que tenés. */
+const albumDeColeccion = (col) => (col?.cartas || []).map((c) => ({ ...c, rol: c.carta?.rol, tengo: true }));
+
 export default function Sobres() {
   const navigate = useNavigate();
   const kiosco = esModoKiosco();
+  const { vibrate } = useFeedback();
   const [estado, setEstado] = useState(null);
   const [coleccion, setColeccion] = useState(null);
+  const [album, setAlbum] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [abriendo, setAbriendo] = useState(null);
   const [resultado, setResultado] = useState(null);
-  const [filtro, setFiltro] = useState('todas');
+  const [pestana, setPestana] = useState(() => (new URLSearchParams(window.location.search).get('ver') === 'coleccion' ? 'coleccion' : 'sobres'));
   const [verProbs, setVerProbs] = useState(false);
   const [prefs, setPrefs] = useState(leerPreferencias);
   const [eventoUrl] = useState(eventoDeLaDireccion); // ?evento=<id> (p. ej. la demo)
@@ -71,19 +81,37 @@ export default function Sobres() {
     if (clave === 'sonido') sonidoActivo(valor);
   };
 
-  const cargar = useCallback(async () => {
-    if (!kiosco && perfil?.rol === 'superuser') { setCargando(false); return; } // Modo GOD: no hay colección propia
-    const [e, c] = await Promise.all([estadoSobres(), coleccionSobres()]);
+  /* Lo que devuelve la base (estado, colección y álbum) en la pantalla. */
+  const aplicar = useCallback(([e, c, a]) => {
     if (e.vencida || c.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); setCargando(false); return; }
     if (e.error || c.error) { setError((e.error || c.error).message); setCargando(false); return; }
     setError(null);
     setEstado(e.data);
     setColeccion(c.data);
+    setAlbum(a.error ? albumDeColeccion(c.data) : a.data);
     setCargando(false);
-  }, [kiosco, perfil?.rol]);
+  }, []);
+  const cargar = useCallback(() => {
+    if (soloGod) return; // Modo GOD: no hay colección propia
+    Promise.all([estadoSobres(), coleccionSobres(), albumSobres()]).then(aplicar);
+  }, [soloGod, aplicar]);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    if (soloGod) return undefined;
+    let vivo = true;
+    Promise.all([estadoSobres(), coleccionSobres(), albumSobres()]).then((r) => { if (vivo) aplicar(r); });
+    return () => { vivo = false; };
+  }, [soloGod, aplicar]);
   useEffect(() => () => liberarVideos(), []); // al salir de la pantalla, nada queda bajando
+
+  /* Lo que devuelve la base al abrir: si trae una especial, el celular vibra
+     (el sonido de cada carta lo pone la apertura). */
+  const mostrar = (r) => {
+    if (r.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); return; }
+    if (r.error) { setError(r.error.message); cargar(); return; }
+    if (traeEspecial(r.data)) vibrate('especial');
+    setResultado(r.data);
+  };
 
   const abrir = async (tipo) => {
     if (abriendo || resultado) return; // nunca dos aperturas a la vez
@@ -93,9 +121,7 @@ export default function Sobres() {
     setError(null);
     const r = await abrirSobre(tipo);
     setAbriendo(null);
-    if (r.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); return; }
-    if (r.error) { setError(r.error.message); cargar(); return; }
-    setResultado(r.data);
+    mostrar(r);
   };
 
   /* El sobre de un evento (armado en el Modo GOD): sus cartas, sus reglas, su escena. */
@@ -107,9 +133,7 @@ export default function Sobres() {
     setError(null);
     const r = await abrirSobreEvento(ev.id);
     setAbriendo(null);
-    if (r.vencida) { setError('Tu sesión venció. Volvé al menú e ingresá con tu PIN.'); return; }
-    if (r.error) { setError(r.error.message); cargar(); return; }
-    setResultado(r.data);
+    mostrar(r);
   };
 
   const cerrarResultado = () => {
@@ -125,14 +149,9 @@ export default function Sobres() {
     cargar();
   };
 
-  const cartas = useMemo(() => (coleccion?.cartas || []), [coleccion]);
-  const mostradas = useMemo(
-    () => cartas.filter((c) => filtro === 'todas' || c.rareza === filtro)
-      .sort((a, b) => (b.carta?.ovr || 0) - (a.carta?.ovr || 0)),
-    [cartas, filtro],
-  );
+  const { disponibles, bloqueados } = useMemo(() => repartirSobres(estado), [estado]);
 
-  if (cargando) return <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)' }}>Abriendo el paquete…</div>;
+  if (cargando && !soloGod) return <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)' }}>Abriendo el paquete…</div>;
 
   if (soloGod) {
     return (
@@ -158,102 +177,104 @@ export default function Sobres() {
     );
   }
 
+  /* Cada sobre, normal o de evento, en el mismo formato para la tarjeta 3D. */
+  const tarjeta = (s, i, disponible) => {
+    if (s.tipo === 'evento') {
+      const ev = s.evento;
+      const col = ev.escena?.colores || {};
+      return (
+        <TarjetaSobre key={`ev-${ev.id}`} i={i} disponible={disponible} manana={s.manana}
+          nombre={ev.nombre} cartas={ev.cartas} costo={ev.costo} imagen={imagenDeSobre('evento', { luz: col.luz || col.principal || '#fbbf24' })}
+          acento={col.luz || '#fbbf24'} nota={notaEvento(ev, estado.puntos)} abriendo={abriendo === `evento:${ev.id}`}
+          alAbrir={() => abrirEvento(ev)} alApuntar={() => precargarEvento(ev)} />
+      );
+    }
+    const t = s.tipo;
+    const sobre = sobreDelClub(t, estado.tipos?.[t]);
+    const col = sobre.escena?.colores || {};
+    const mega = t === 'mega';
+    const costo = mega ? Number(sobre.costo) || 0 : 0;
+    return (
+      <TarjetaSobre key={t} i={i} disponible={disponible} manana={s.manana}
+        nombre={sobre.nombre} cartas={sobre.cartas} queTrae={sobre.soloEspeciales ? 'ESPECIALES' : 'CARTAS'} costo={costo}
+        imagen={imagenDeSobre(t, col)} acento={col.luz || ACENTO[t] || '#00ff88'}
+        nota={notaDe(t, estado) || sobre.ayuda} abriendo={abriendo === t}
+        avance={mega && costo > 0 ? { valor: (estado.puntos || 0) / costo, texto: `${Math.min(estado.puntos || 0, costo)} / ${costo} ${MONEDA}` } : null}
+        alAbrir={() => abrir(t)} alApuntar={() => precargarVideo(t, evento, escenaClub, estado.tipos?.[t]?.escena)} />
+    );
+  };
+
+  const cuenta = contarAlbum(album);
+
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: kiosco ? '16px 16px 90px' : '0 0 80px', animation: 'fadeIn 0.3s' }}>
-      <div style={{ marginBottom: 16 }}>
-        <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>SOBRES</div>
-        <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>
-          Entrá todos los días y juntá las cartas del plantel. Las repetidas te dan V-Coins para más sobres.
+    <div className="jg-ui sb">
+      <header className="sb-cab jg-entra">
+        <div>
+          <h1 className="sb-titulo">SOBRES</h1>
+          <p className="sb-bajada">Entrá todos los días y juntá las cartas del plantel. Las repetidas te dan V-Coins.</p>
         </div>
+        {estado && (
+          <div className="jh-saldo">
+            <div className="jh-dato"><span>V-COINS</span><b className="jh-oro">{estado.puntos}</b></div>
+            <div className="jh-dato"><span>RACHA</span><b className="jh-neon">{estado.racha}/{RACHA_PARA_PREMIO}</b></div>
+          </div>
+        )}
+      </header>
+
+      <div className="sb-pestanas" role="tablist" aria-label="Sobres o colección">
+        {[['sobres', 'SOBRES', disponibles.length || null], ['coleccion', 'COLECCIÓN', album ? `${cuenta.tengo}/${cuenta.total}` : null]].map(([id, texto, extra]) => (
+          <button key={id} role="tab" aria-selected={pestana === id} className={pestana === id ? 'activa' : ''} onClick={() => setPestana(id)}>
+            {texto}{extra != null && <span className="sb-pestana-extra">{extra}</span>}
+          </button>
+        ))}
       </div>
 
       {error && (
-        <div style={{ fontSize: '0.85rem', fontWeight: 700, padding: '10px 14px', borderRadius: 8, marginBottom: 14, color: '#ef4444',
-          background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.3)' }}>
+        <div className="sb-error" role="alert">
           {error}
-          {kiosco && error.includes('sesión') && (
-            <button onClick={() => navigate(RUTA_KIOSCO)} style={{ ...btn, marginLeft: 10, padding: '6px 10px' }}>IR AL MENÚ</button>
-          )}
+          {kiosco && error.includes('sesión') && <GameButton variante="secondary" onClick={() => navigate(RUTA_KIOSCO)}>IR AL MENÚ</GameButton>}
         </div>
       )}
 
-      {estado && (
+      {pestana === 'sobres' && estado && (
         <>
           {estado.multiplicador && (
-            <div className="bento-card" style={{ padding: '10px 14px', marginBottom: 12, border: '1px solid #fbbf24', color: '#fbbf24', fontWeight: 900, letterSpacing: '.04em' }}>
+            <div className="sb-multi">
               ⚡ {estado.multiplicador.nombre} · todo lo que ganes vale x{estado.multiplicador.factor}
-              <span style={{ color: 'var(--text-dim)', fontWeight: 700, marginLeft: 8, fontSize: '0.75rem' }}>
-                hasta el {new Date(estado.multiplicador.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
-              </span>
+              <small> hasta el {new Date(estado.multiplicador.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</small>
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
-            <Dato rotulo="V-COINS" valor={estado.puntos} extra={`${estado.costo_puntos ?? COSTO_SOBRE_PUNTOS} = 1 sobre · ${estado.costo_mega ?? COSTO_MEGA} = 1 mega`} />
-            <Dato rotulo="RACHA" valor={`${estado.racha}/${RACHA_PARA_PREMIO}`} extra="días seguidos" />
-            <Dato rotulo="COLECCIÓN" valor={`${estado.cartas_tengo}/${estado.cartas_total}`} extra="cartas" />
-          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
-            {ORDEN_SOBRES.filter((t) => seMuestra(t, estado)).map((t) => (
-              <Sobre key={t} sobre={sobreDelClub(t, estado.tipos?.[t])} disponible={!!estado.disponibles?.[t]} abriendo={abriendo === t}
-                alApuntar={() => precargarVideo(t, evento, escenaClub, estado.tipos?.[t]?.escena)}
-                alAbrir={() => abrir(t)} nota={notaDe(t, estado)} monedas={estado.puntos} />
-            ))}
-          </div>
-          {(estado.eventos || []).length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
-              {estado.eventos.map((ev) => (
-                <SobreEvento key={ev.id} ev={ev} abriendo={abriendo === `evento:${ev.id}`} alAbrir={() => abrirEvento(ev)}
-                  alApuntar={() => precargarEvento(ev)} monedas={estado.puntos} />
-              ))}
-            </div>
+          <h2 className="sb-seccion">DISPONIBLES <span>{disponibles.length}</span></h2>
+          {disponibles.length ? (
+            <div className="sb-grilla">{disponibles.map((s, i) => tarjeta(s, i, true))}</div>
+          ) : (
+            <div className="sb-vacio">No tenés sobres para abrir ahora. Vuelven en <Countdown /></div>
           )}
-          <button onClick={() => setVerProbs((v) => !v)} style={{ ...btn, background: 'transparent', color: 'var(--text-dim)', border: '1px solid var(--border)', marginBottom: 6 }}>
-            {verProbs ? 'OCULTAR' : 'VER'} PROBABILIDADES
-          </button>
-          <PreferenciasApertura prefs={prefs} cambiar={cambiarPref} />
+
+          {bloqueados.length > 0 && (
+            <>
+              <h2 className="sb-seccion sb-seccion-gris">BLOQUEADOS <span>{bloqueados.length}</span></h2>
+              <div className="sb-grilla">{bloqueados.map((s, i) => tarjeta(s, disponibles.length + i, false))}</div>
+            </>
+          )}
+
+          <div className="sb-ajustes">
+            <PreferenciasApertura prefs={prefs} cambiar={cambiarPref} />
+            <GameButton variante="ghost" onClick={() => setVerProbs((v) => !v)}>{verProbs ? 'OCULTAR' : 'VER'} PROBABILIDADES</GameButton>
+          </div>
           {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} reglas={estado.tipos?.diario} />}
           {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} soloEspeciales reglas={estado.tipos?.mega} />}
+          <p className="sb-costos">{estado.costo_puntos ?? COSTO_SOBRE_PUNTOS} {MONEDA} = 1 sobre · {estado.costo_mega ?? COSTO_MEGA} {MONEDA} = 1 mega sobre</p>
         </>
       )}
 
-      {/* ── colección ── */}
-      <div style={{ marginTop: 22 }}>
-        <div style={rotulo}>MI COLECCIÓN · {cartas.length}</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-          {[{ id: 'todas', nombre: 'TODAS' }, ...RAREZAS].map((r) => {
-            const pr = coleccion?.por_rareza?.[r.id];
-            return (
-              <button key={r.id} onClick={() => setFiltro(r.id)} style={{
-                padding: '5px 10px', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', borderRadius: 6, cursor: 'pointer',
-                border: `1px solid ${filtro === r.id ? 'var(--accent)' : 'var(--border)'}`,
-                color: filtro === r.id ? 'var(--accent)' : 'var(--text-dim)',
-                background: filtro === r.id ? 'rgba(0,255,136,.08)' : 'transparent',
-              }}>{r.nombre}{pr ? ` ${pr.tengo}/${pr.total}` : ''}</button>
-            );
-          })}
-        </div>
-        {mostradas.length === 0 ? (
-          <div className="bento-card" style={{ textAlign: 'center', padding: 30, color: 'var(--text-dim)', fontSize: '0.85rem' }}>
-            {cartas.length === 0 ? 'Todavía no tenés cartas. ¡Abrí tu primer sobre!' : 'No tenés cartas de este tipo.'}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '14px 10px', justifyItems: 'center' }}>
-            {mostradas.map((c) => (
-              <div key={c.catalogo_id} style={{ paddingBottom: 30 }}>
-                <CartaGiratoria carta={aCarta(c)} etiqueta={nombreDeCarta(c)} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {pestana === 'coleccion' && <Album album={album} cuenta={cuenta} />}
 
       {!kiosco && estado?.es_staff && (
         <div style={{ marginTop: 30, textAlign: 'center' }}>
-          <button onClick={reiniciar} style={{ ...btn, background: 'transparent', color: 'var(--text-dim)', border: '1px dashed var(--border)' }}>
-            REINICIAR MI PRUEBA
-          </button>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: 6 }}>
+          <GameButton variante="ghost" onClick={reiniciar} style={{ border: '1px dashed var(--jg-borde-fuerte)' }}>REINICIAR MI PRUEBA</GameButton>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 6 }}>
             Borra tu colección, tus V-Coins y tus sobres de hoy para volver a probar. No toca a los jugadores.
           </div>
         </div>
@@ -278,6 +299,106 @@ export default function Sobres() {
     </div>
   );
 }
+
+/* Un sobre en 3D: flota, se inclina al apuntarlo y brilla con su color si está
+   para abrir. Bloqueado: en gris, con un candado y la cuenta regresiva si
+   vuelve a medianoche (si no, el motivo). */
+function TarjetaSobre({ i, nombre, cartas, queTrae = 'CARTAS', costo = 0, imagen, acento, nota, disponible, manana, abriendo, avance, alAbrir, alApuntar }) {
+  return (
+    <article className={`sb-tarjeta jg-entra${disponible ? ' sb-disponible' : ' sb-bloqueado'}`} style={{ '--i': i, '--acento': acento }}>
+      <button className="sb-paquete" onClick={alAbrir} disabled={!disponible || abriendo}
+        onPointerEnter={alApuntar} onFocus={alApuntar} onTouchStart={alApuntar} aria-label={`Abrir ${nombre}`}>
+        <span className="sb-halo" aria-hidden="true" />
+        <span className="sb-flota">
+          <img src={imagen.src} alt="" draggable={false} />
+          {imagen.tinte && <span className="sb-tinte" style={{ '--tinte': imagen.tinte, '--img': `url(${imagen.src})` }} />}
+          <span className="sb-reflejo" style={{ '--img': `url(${imagen.src})` }} />
+        </span>
+        {!disponible && (
+          <span className="sb-candado" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+          </span>
+        )}
+        <span className="sb-cantidad">{cartas} {queTrae}</span>
+      </button>
+      <div className="sb-info">
+        <b className="sb-nombre">{nombre}</b>
+        {manana && !disponible && <Badge className="sb-vuelve">VUELVE EN <Countdown /></Badge>}
+        {nota && <small className="sb-nota">{nota}</small>}
+        {avance && <><ProgressBar valor={avance.valor} tono="oro" /><small className="sb-avance">{avance.texto}</small></>}
+        <GameButton ancho variante={disponible ? 'primary' : 'secondary'} disabled={!disponible || abriendo} onClick={alAbrir}
+          style={disponible ? { background: 'var(--acento)', boxShadow: '0 0 18px color-mix(in srgb, var(--acento) 55%, transparent)' } : undefined}>
+          {abriendo ? 'ABRIENDO…' : disponible ? `ABRIR${costo ? ` · ${costo} VC` : ''}` : 'BLOQUEADO'}
+        </GameButton>
+      </div>
+    </article>
+  );
+}
+
+/* El álbum: las cartas que tenés (se dan vuelta con un toque) y la silueta de
+   las que faltan, con su rareza y su posición. */
+function Album({ album, cuenta }) {
+  const [rareza, setRareza] = useState('todas');
+  const [rol, setRol] = useState('todas');
+  const [soloFaltan, setSoloFaltan] = useState(false);
+  const mostradas = useMemo(() => filtrarAlbum(album, { rareza, rol, soloFaltan }), [album, rareza, rol, soloFaltan]);
+  if (!album) return <div className="sb-vacio">Cargando la colección…</div>;
+  const chip = (clave, activo, onClick, texto, color) => (
+    <button key={clave} className={`sb-chip${activo ? ' activo' : ''}`} onClick={onClick} aria-pressed={activo} style={color ? { '--chip': color } : undefined}>{texto}</button>
+  );
+  return (
+    <section className="sb-album">
+      <div className="sb-contador jg-entra">
+        <div><b>{cuenta.tengo}</b><span> / {cuenta.total}</span></div>
+        <ProgressBar valor={cuenta.total ? cuenta.tengo / cuenta.total : 0} alto={10} />
+        <small>{cuenta.total - cuenta.tengo ? `Te faltan ${cuenta.total - cuenta.tengo} cartas.` : '¡Completaste el álbum!'}</small>
+      </div>
+      <div className="sb-filtros" aria-label="Filtrar por rareza">
+        {chip('todas', rareza === 'todas', () => setRareza('todas'), 'TODAS')}
+        {RAREZAS.filter((r) => cuenta.porRareza[r.id]).map((r) => chip(r.id, rareza === r.id, () => setRareza(r.id),
+          <>{r.nombre} <em>{cuenta.porRareza[r.id].tengo}/{cuenta.porRareza[r.id].total}</em></>, `var(--jg-r-${r.id})`))}
+      </div>
+      <div className="sb-filtros" aria-label="Filtrar por posición">
+        {chip('todas', rol === 'todas', () => setRol('todas'), 'TODAS')}
+        {POSICIONES.map((p) => chip(p.id, rol === p.id, () => setRol(p.id), p.nombre))}
+        {chip('faltan', soloFaltan, () => setSoloFaltan((v) => !v), 'SÓLO LAS QUE FALTAN')}
+      </div>
+      {mostradas.length === 0 ? (
+        <div className="sb-vacio">{cuenta.tengo === 0 ? 'Todavía no tenés cartas. ¡Abrí tu primer sobre!' : 'No hay cartas con estos filtros.'}</div>
+      ) : (
+        <div className="sb-grilla sb-grilla-album">
+          {mostradas.map((c) => (
+            <div key={c.catalogo_id} className="sb-lugar">
+              {c.tengo
+                ? <CartaGiratoria carta={aCarta(c)} etiqueta={nombreDeCarta(c)} />
+                : <Silueta c={c} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Silueta({ c }) {
+  const nombre = RAREZAS.find((r) => r.id === c.rareza)?.nombre || c.rareza;
+  return (
+    <div className="sb-silueta" style={{ '--r': `var(--jg-r-${c.rareza}, #64748b)` }} aria-label={`Te falta una carta ${nombre}${c.rol ? ` (${c.rol})` : ''}`}>
+      <svg viewBox="0 0 64 80" aria-hidden="true"><circle cx="32" cy="24" r="13" /><path d="M8 78c0-16 10-28 24-28s24 12 24 28z" /></svg>
+      <b>?</b>
+      <span>{nombre}{c.rol ? ` · ${c.rol}` : ''}</span>
+    </div>
+  );
+}
+
+/* Por qué no se puede abrir un sobre de evento (o qué trae). */
+const notaEvento = (ev, monedas) => (
+  ev.abiertos_hoy >= ev.por_dia ? `Ya abriste ${ev.por_dia === 1 ? 'el de hoy' : `los ${ev.por_dia} de hoy`}.`
+    : ev.total_cartas === 0 ? (ev.permanente ? 'Este sobre todavía no tiene cartas.' : 'El evento todavía no tiene cartas.')
+      : ev.costo > (monedas || 0) ? `Te faltan ${ev.costo - (monedas || 0)} ${MONEDA}.`
+        // Un sobre creado por el club (sin fechas) no se anuncia como evento.
+        : `${ev.permanente ? '' : 'Evento: '}${ev.total_cartas} cartas para juntar · ${ev.por_dia} por día${ev.hasta ? ` · hasta el ${String(ev.hasta).split('-').reverse().join('/')}` : ''}.`
+);
 
 /* Un evento se activa sólo a mano, desde la dirección (?evento=demo) y si
    está cargado en EVENTOS: cambia la puesta en escena, nunca las cartas. */
@@ -318,81 +439,12 @@ const notaDe = (tipo, e) => {
 const cartasDePorRareza = (coleccion) => Object.entries(coleccion?.por_rareza || {})
   .flatMap(([rareza, v]) => Array.from({ length: v.total }, () => ({ rareza })));
 
-function Sobre({ sobre, disponible, abriendo, alAbrir, nota, monedas, alApuntar }) {
-  const mega = sobre.id === 'mega';
-  const dorado = mega;
-  const violeta = sobre.id === 'premio' || sobre.id === 'premio_especial';
-  const costo = Number(sobre.costo) || 0;
-  const avance = mega && costo > 0 ? Math.min(100, ((monedas || 0) / costo) * 100) : null;
-  // Los colores que le puso el club (Modo GOD · SOBRES), si le puso.
-  const col = sobre.escena?.colores || {};
-  const luz = col.luz || null;
-  const borde = luz || (dorado ? '#fbbf24' : violeta ? '#c084fc' : 'var(--accent)');
-  const fondoBoton = luz ? { background: `linear-gradient(90deg, ${col.principal || luz}, ${luz})`, color: col.texto || '#fff' }
-    : dorado ? { background: 'linear-gradient(90deg, #f59e0b, #fbbf24)' } : violeta ? { background: 'linear-gradient(90deg, #7c3aed, #c084fc)', color: '#fff' } : null;
-  const queTrae = sobre.soloEspeciales ? 'ESPECIALES' : 'CARTAS';
-  return (
-    <div className={`bento-card${dorado ? ' sb-mega' : ''} sb-t-${sobre.id}`} style={{ padding: 14, opacity: disponible || mega ? 1 : 0.6, border: disponible ? `1px solid ${borde}` : undefined,
-      ...(col.secundario ? { background: `linear-gradient(160deg, ${col.secundario} 0%, var(--panel) 70%)` } : null) }}>
-      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: luz || (dorado ? '#fbbf24' : violeta ? '#c084fc' : disponible ? 'var(--accent)' : 'var(--text)') }}>
-        {(dorado || violeta || luz) && '★ '}{sobre.nombre}
-      </div>
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '4px 0 10px', minHeight: '2.4em', lineHeight: 1.4 }}>{nota || sobre.ayuda}</div>
-      {avance !== null && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${avance}%`, height: '100%', background: 'linear-gradient(90deg, #f59e0b, #fde68a)' }} />
-          </div>
-          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-dim)', marginTop: 4, fontFamily: MONO }}>{Math.min(monedas || 0, costo)} / {costo} {MONEDA}</div>
-        </div>
-      )}
-      <button disabled={!disponible || abriendo} onClick={alAbrir} onPointerEnter={alApuntar} onFocus={alApuntar} onTouchStart={alApuntar}
-        style={{ ...btn, width: '100%', opacity: disponible ? 1 : 0.5, ...fondoBoton }}>
-        {abriendo ? 'ABRIENDO…' : `ABRIR · ${sobre.cartas} ${queTrae}${mega && costo ? ` · ${costo} V-COINS` : ''}`}
-      </button>
-    </div>
-  );
-}
-
-/* El sobre de un evento: con los colores de su escena. */
-function SobreEvento({ ev, abriendo, alAbrir, alApuntar, monedas }) {
-  const col = ev.escena?.colores || {};
-  const luz = col.luz || '#fbbf24';
-  const agotado = ev.abiertos_hoy >= ev.por_dia;
-  const nota = agotado ? `Ya abriste ${ev.por_dia === 1 ? 'el de hoy' : `los ${ev.por_dia} de hoy`}. Volvé mañana.`
-    : ev.total_cartas === 0 ? (ev.permanente ? 'Este sobre todavía no tiene cartas.' : 'El evento todavía no tiene cartas.')
-      : ev.costo > (monedas || 0) ? `Te faltan ${ev.costo - (monedas || 0)} ${MONEDA}.`
-        // Un sobre creado por el club (sin fechas) no se anuncia como evento.
-        : `${ev.permanente ? '' : 'Evento: '}${ev.total_cartas} cartas para juntar. ${ev.costo ? `${ev.costo} ${MONEDA}` : 'Gratis'} · ${ev.por_dia} por día${ev.hasta ? ` · hasta el ${String(ev.hasta).split('-').reverse().join('/')}` : ''}.`;
-  return (
-    <div className="bento-card" style={{ padding: 14, opacity: ev.disponible ? 1 : 0.6, border: `1px solid ${luz}`,
-      background: `linear-gradient(160deg, ${col.secundario || '#111'} 0%, var(--panel) 70%)` }}>
-      <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '.06em', color: luz }}>★ {ev.nombre}</div>
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '4px 0 10px', minHeight: '2.4em', lineHeight: 1.4 }}>{nota}</div>
-      <button disabled={!ev.disponible || abriendo} onClick={alAbrir} onPointerEnter={alApuntar} onFocus={alApuntar} onTouchStart={alApuntar}
-        style={{ ...btn, width: '100%', opacity: ev.disponible ? 1 : 0.5, background: `linear-gradient(90deg, ${col.principal || luz}, ${luz})`, color: col.texto || '#fff' }}>
-        {abriendo ? 'ABRIENDO…' : `ABRIR · ${ev.cartas} CARTAS${ev.costo ? ` · ${ev.costo} V-COINS` : ''}`}
-      </button>
-    </div>
-  );
-}
-
 function precargarEvento(ev) {
   const v = varianteDeEventoDb(ev);
   if (v.video) {
     prepararVideo(v.video);
     if (v.video.musica) cargarMusica(v.video.musica);
   }
-}
-
-function Dato({ rotulo: r, valor, extra }) {
-  return (
-    <div className="bento-card" style={{ padding: 12 }}>
-      <div style={rotulo}>{r}</div>
-      <div style={{ fontSize: 28, fontWeight: 900, fontFamily: MONO, color: 'var(--accent)', lineHeight: 1 }}>{valor}</div>
-      <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)', marginTop: 4 }}>{extra}</div>
-    </div>
-  );
 }
 
 function Probabilidades({ catalogo, soloEspeciales = false, reglas = null }) {
@@ -422,7 +474,7 @@ function Probabilidades({ catalogo, soloEspeciales = false, reglas = null }) {
 /* Las preferencias de la apertura: de quien mira, nunca cambian qué sale. */
 function PreferenciasApertura({ prefs, cambiar }) {
   const opcion = (activo) => ({
-    padding: '5px 10px', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', borderRadius: 6, cursor: 'pointer',
+    padding: '5px 12px', minHeight: 'var(--jg-toque, 44px)', fontSize: 12, fontWeight: 800, letterSpacing: '.06em', borderRadius: 8, cursor: 'pointer',
     border: `1px solid ${activo ? 'var(--accent)' : 'var(--border)'}`, color: activo ? 'var(--accent)' : 'var(--text-dim)',
     background: activo ? 'rgba(0,255,136,.08)' : 'transparent',
   });
@@ -443,4 +495,4 @@ function PreferenciasApertura({ prefs, cambiar }) {
 }
 
 const rotulo = { fontSize: 10, fontWeight: 800, letterSpacing: '.18em', color: 'var(--text-dim)', marginBottom: 8 };
-const btn = { padding: '10px 14px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', minHeight: 40 };
+

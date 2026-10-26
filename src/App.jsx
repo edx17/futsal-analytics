@@ -79,6 +79,7 @@ const OtrasCompetencias   = lazy(() => import('./pages/OtrasCompetencias'));
 import './App.css';
 import LimiteDeError from './components/LimiteDeError';
 import BarraKiosco from './components/BarraKiosco';
+import LayoutJuegos from './juegos/LayoutJuegos';
 import VisorManual from './components/VisorManual';
 import { ROLES_PLATA, manejaPlata } from './analytics/tesoreria';
 import { Icono } from './iconos';
@@ -176,14 +177,14 @@ function AppRoutes() {
       <Route path="/admin/suscripciones" element={<ProtectedRoute allowedRoles={['superuser']}><AdmSuscripciones /></ProtectedRoute>} />
       
       {/* JUEGO: superuser, manager, administrador y cuerpo técnico. */}
-      <Route path="/mysquad" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><MiQuinteto /></ProtectedRoute>} />
+      <Route path="/mysquad" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><LayoutJuegos><MiQuinteto /></LayoutJuegos></ProtectedRoute>} />
       {/* La primera versión se llamó "Mi Quinteto": el link viejo sigue andando. */}
       <Route path="/mi-quinteto" element={<Navigate to="/mysquad" replace />} />
       {/* El superusuario entra al Modo GOD del club que tenga elegido. */}
-      <Route path="/sobres" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Sobres /></ProtectedRoute>} />
-      <Route path="/vdraft" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><VDraft /></ProtectedRoute>} />
-      <Route path="/juegos" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><Juegos /></ProtectedRoute>} />
-      <Route path="/penales" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><PenalesJuego /></ProtectedRoute>} />
+      <Route path="/sobres" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><LayoutJuegos><Sobres /></LayoutJuegos></ProtectedRoute>} />
+      <Route path="/vdraft" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><LayoutJuegos><VDraft /></LayoutJuegos></ProtectedRoute>} />
+      <Route path="/juegos" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><LayoutJuegos><Juegos /></LayoutJuegos></ProtectedRoute>} />
+      <Route path="/penales" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><LayoutJuegos><PenalesJuego /></LayoutJuegos></ProtectedRoute>} />
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
       <Route path="/agenda" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Agenda /></ProtectedRoute>} />
@@ -400,10 +401,10 @@ useEffect(() => {
             <Route path="/kiosco/torneo" element={<KioscoTorneo />} />
             <Route path="/kiosco/mis-datos" element={<KioscoMisDatos />} />
             <Route path="/kiosco/mis-pagos" element={<KioscoMisPagos />} />
-            <Route path="/kiosco/sobres" element={<Sobres />} />
-            <Route path="/kiosco/vdraft" element={<VDraft />} />
-            <Route path="/kiosco/juegos" element={<Juegos kiosco />} />
-            <Route path="/kiosco/penales" element={<PenalesJuego />} />
+            <Route path="/kiosco/sobres" element={<LayoutJuegos kiosco><Sobres /></LayoutJuegos>} />
+            <Route path="/kiosco/vdraft" element={<LayoutJuegos kiosco><VDraft /></LayoutJuegos>} />
+            <Route path="/kiosco/juegos" element={<LayoutJuegos kiosco><Juegos kiosco /></LayoutJuegos>} />
+            <Route path="/kiosco/penales" element={<LayoutJuegos kiosco><PenalesJuego /></LayoutJuegos>} />
             <Route path="/kiosco/afa-stats" element={<OtrasCompetencias kiosco />} />
             <Route path="/kiosco/*" element={<Navigate to="/kiosco" replace />} />
           </Routes>

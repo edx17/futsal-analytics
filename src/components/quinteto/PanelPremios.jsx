@@ -12,6 +12,7 @@ import {
 import { especialesDelMes, especialesPrimeraRueda, ruedaCerrada } from '../../analytics/especiales';
 import { tieneRuedasConfiguradas } from '../../utils/ruedas';
 import { guardarRegistros } from '../../utils/cartasDestacadas';
+import { publicarPremiosPendientes } from '../../utils/publicarPremios';
 import { hoyISO } from '../../utils/disponibilidad';
 
 /* PREMIOS DE MYSQUAD
@@ -90,9 +91,15 @@ export default function PanelPremios({
     setGuardando(true); setAviso(null);
     try {
       const { escritas, total } = await guardarRegistros({ clubId, categoria, torneoId, registros: lista, porId, sobrescribir });
-      if (sobrescribir) avisar('Guardado en el historial.');
-      else if (escritas === 0) avisar(`Ya estaba todo guardado (${total} premios).`);
-      else avisar(`Se guardaron ${escritas} premios nuevos en el historial${escritas < total ? ` (los otros ${total - escritas} ya estaban)` : ''}.`);
+      // Y para los sobres: lo guardado se publica en el catálogo (aparece en el Modo GOD).
+      let publicadas = 0;
+      let sinPublicar = false;
+      try { publicadas = await publicarPremiosPendientes(clubId); } catch (err) { console.error('Publicar premios:', err); sinPublicar = true; }
+      const sobres = sinPublicar ? ' No se pudieron publicar para los sobres: publicalas desde el Modo GOD.'
+        : publicadas ? ` Se publicaron ${publicadas} cartas para los sobres.` : '';
+      if (sobrescribir) avisar(`Guardado en el historial.${sobres}`, sinPublicar);
+      else if (escritas === 0) avisar(`Ya estaba todo guardado (${total} premios).${sobres}`, sinPublicar);
+      else avisar(`Se guardaron ${escritas} premios nuevos en el historial${escritas < total ? ` (los otros ${total - escritas} ya estaban)` : ''}.${sobres}`, sinPublicar);
       alGuardar?.();
     } catch (err) {
       console.error('Guardar premios:', err);
@@ -213,7 +220,7 @@ export function Premio({ registro, porId, esMovil, onExportar, onGuardar, onQuit
       <div className="bento-card" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, letterSpacing: '.18em', color: 'var(--accent)' }}>{meta.sigla}</span>
         <span style={{ fontSize: 13, fontWeight: 900 }}>{meta.titulo}</span>
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>✓ Guardado. Está en HISTORIAL y en ESPECIALES.</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>✓ Guardado. Está en HISTORIAL, en ESPECIALES y en los sobres (Modo GOD).</span>
       </div>
     );
   }

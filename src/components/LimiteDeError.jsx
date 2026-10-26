@@ -23,7 +23,9 @@ const CLAVE_RECARGA = 'vc_recarga_por_chunk';
 
 const esFalloDeCarga = (error) => {
   const txt = `${error?.name || ''} ${error?.message || ''}`;
-  return /ChunkLoadError|Loading chunk|dynamically imported module|Importing a module script failed|Failed to fetch/i.test(txt);
+  // Safari (iPhone) avisa "'text/html' is not a valid JavaScript MIME type":
+  // pidió un archivo que ya no existe y le llegó una página en su lugar.
+  return /ChunkLoadError|Loading chunk|dynamically imported module|Importing a module script failed|Failed to fetch|not a valid JavaScript MIME type/i.test(txt);
 };
 
 export default class LimiteDeError extends React.Component {

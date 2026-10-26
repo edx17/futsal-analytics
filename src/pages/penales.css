@@ -1,0 +1,68 @@
+/* PENALES (modo con cartas y práctica). La tanda: components/vdraft/Penales + vdraft.css. */
+.pj { max-width: 1100px; margin: 0 auto; padding: 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px; }
+.pj-cargando { text-align: center; padding: 50px; color: var(--text-dim); }
+.pj-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pj-titulo { margin: 0; font-family: var(--jg-display); font-size: clamp(28px, 4vw, 40px); font-weight: 900; letter-spacing: .06em; color: var(--jg-penales); text-shadow: 0 0 22px rgba(249, 115, 22, .4); }
+.pj-bajada { margin: 2px 0 0; color: var(--jg-texto-2); font-size: 14px; }
+.pj .jg-panel-titulo small { font-size: 11px; color: var(--jg-texto-3); letter-spacing: .1em; margin-left: 6px; }
+
+.pj-fila { display: flex; gap: 12px; overflow-x: auto; padding: 6px 2px 10px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.pj-opcion { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; border-radius: var(--jg-r-m); cursor: pointer; scroll-snap-align: start;
+  background: transparent; border: 1px solid var(--jg-borde); color: var(--jg-texto); transition: border-color .2s, box-shadow .2s, transform .15s; }
+.pj-opcion:hover { transform: translateY(-2px); }
+.pj-opcion.activa { border-color: var(--jg-penales); box-shadow: 0 0 0 1px var(--jg-penales), 0 0 20px rgba(249, 115, 22, .35); background: rgba(249, 115, 22, .08); }
+.pj-mini { position: relative; width: 92px; height: 139px; margin-bottom: 12px; }
+.pj-mini .mq-carta { transform: scale(.754); transform-origin: 0 0; }
+.pj-valor { font-size: 11px; font-weight: 900; letter-spacing: .1em; color: var(--jg-texto-2); }
+.pj-valor b { font-family: var(--jg-mono); font-size: 16px; color: var(--jg-penales); }
+
+.pj-niveles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.pj-nivel { display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 12px; border-radius: var(--jg-r-m); cursor: pointer; min-height: var(--jg-toque);
+  background: var(--jg-sup-2); border: 1px solid var(--jg-borde); color: var(--jg-texto); }
+.pj-nivel b { font-size: 14px; letter-spacing: .06em; }
+.pj-nivel small { font-size: 12px; color: var(--jg-texto-2); line-height: 1.35; }
+.pj-nivel.activo { border-color: var(--jg-penales); box-shadow: 0 0 0 1px var(--jg-penales); background: rgba(249, 115, 22, .1); }
+.pj-cpu { font-family: var(--jg-mono); font-size: 12px; color: var(--jg-texto-3); }
+.pj-premio { font-family: var(--jg-mono); font-size: 15px; font-weight: 900; color: var(--jg-oro); }
+.pj-duelo { margin: 10px 0 0; font-size: 13.5px; color: var(--jg-texto-2); }
+.pj-duelo b { font-family: var(--jg-mono); }
+.pj-primero { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.pj-empezar { background: var(--jg-penales); color: #160800; box-shadow: 0 0 22px rgba(249, 115, 22, .45); }
+.pj-aviso { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--jg-r-m); font-size: 14px; color: var(--jg-texto-2);
+  background: rgba(251, 191, 36, .06); border: 1px solid rgba(251, 191, 36, .3); }
+
+/* la tanda */
+.pj-juego { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.pj-abandonar { margin-top: 4px; }
+.vd-penales-cab { display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%; }
+.vd-penales-paso small { display: block; font-size: 12px; color: #fbbf24; }
+.pj-protagonista { display: flex; align-items: center; gap: 10px; }
+.pj-protagonista .pj-mini { width: 61px; height: 92px; margin-bottom: 0; }
+.pj-protagonista .pj-mini .mq-carta { transform: scale(.5); }
+.pj-protagonista span { display: flex; flex-direction: column; font-size: 11px; font-weight: 900; letter-spacing: .12em; color: var(--jg-texto-3); }
+.pj-protagonista b { font-size: 15px; color: var(--jg-texto); letter-spacing: .04em; }
+.pj-protagonista em { font-style: normal; font-family: var(--jg-mono); color: var(--jg-penales); font-size: 15px; }
+.vd-reloj-tiro { position: relative; width: 100%; max-width: 560px; height: 22px; border-radius: 999px; overflow: hidden; background: #1f2937; }
+.vd-reloj-tiro i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #00ff88, #fbbf24); transition: width .1s linear; }
+.vd-reloj-tiro b { position: relative; display: block; text-align: center; font-family: var(--jg-mono); font-size: 14px; line-height: 22px; color: #04110a; }
+.vd-reloj-apurado i { background: linear-gradient(90deg, #ef4444, #f97316); }
+.vd-reloj-apurado b { color: #fff; animation: vd-pop .5s ease-out infinite; }
+
+/* el final */
+.pj-final { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px; border-radius: var(--jg-r-l); text-align: center;
+  background: rgba(239, 68, 68, .06); border: 1px solid rgba(239, 68, 68, .35); animation: vd-golpe .5s cubic-bezier(.2, .8, .3, 1.4); }
+.pj-final.pj-gano { background: rgba(0, 255, 136, .06); border-color: rgba(0, 255, 136, .4); }
+.pj-veredicto { font-size: clamp(24px, 6vw, 36px); font-weight: 900; color: #ef4444; }
+.pj-gano .pj-veredicto { color: var(--jg-neon); }
+.pj-penales { font-family: var(--jg-mono); font-size: 20px; }
+.pj-premio-grande { font-family: var(--jg-mono); font-size: 30px; font-weight: 900; color: var(--jg-oro); text-shadow: 0 0 20px rgba(251, 191, 36, .5); }
+.pj-final small { color: var(--jg-texto-2); }
+
+@media (max-width: 767px) {
+  .pj { padding: 12px 16px; }
+  .pj-niveles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pj-protagonista .pj-mini { display: none; }
+}
+.pj-chip { min-height: var(--jg-toque); padding: 0 16px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 900; letter-spacing: .08em;
+  border: 1px solid var(--jg-borde-fuerte); background: transparent; color: var(--jg-texto-2); }
+.pj-chip.activo { border-color: var(--jg-penales); color: var(--jg-penales); background: rgba(249, 115, 22, .12); }
