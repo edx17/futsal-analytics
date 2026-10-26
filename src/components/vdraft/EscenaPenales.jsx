@@ -40,7 +40,7 @@ function useReloj() {
 
 const pct = (v, total) => `${(v / total) * 100}%`;
 
-export default function EscenaPenales({ geo, tiro, turno, puedo, elegir }) {
+export default function EscenaPenales({ geo, tiro, turno, puedo, elegir, nueve = false }) {
   const ms = useReloj();
   const desde = ms;   // desde el remate (o desde que se mostró, en la espera)
 
@@ -109,13 +109,14 @@ export default function EscenaPenales({ geo, tiro, turno, puedo, elegir }) {
         }} />
       {pelota && !detras && <Pelota geo={geo} p={pelota} ms={ms} />}
 
-      {/* lo que se toca, sobre el arco: 9 cuadrantes para patear, 3 franjas para atajar */}
+      {/* lo que se toca, sobre el arco: 9 cuadrantes para patear, 3 franjas para atajar (9 en el modo con cartas) */}
       {puedo && (
         <div className="vd-ep-toques" style={{ left: pct(ai[0], geo.ancho), top: pct(ai[1], geo.alto), width: pct(ad[0] - ai[0], geo.ancho), height: pct(bi[1] - ai[1], geo.alto) }}>
-          {turno === 'propio' ? (
+          {turno === 'propio' || nueve ? (
             <div className="vd-tanda-grilla vd-ep-grilla">
               {Array.from({ length: 9 }, (_, i) => (
-                <button key={i} className="vd-tanda-celda" onClick={() => elegir(i)} aria-label={`Patear al cuadrante ${i + 1}`} />
+                <button key={i} className="vd-tanda-celda" onClick={() => elegir(i)}
+                  aria-label={`${turno === 'propio' ? 'Patear' : 'Atajar'} al cuadrante ${i + 1}`} />
               ))}
             </div>
           ) : (

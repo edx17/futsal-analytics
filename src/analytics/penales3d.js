@@ -43,13 +43,15 @@ export function fondoDeLaRed(geo, celda) {
 
 /**
  * La parada del arquero en un tiro. En el tuyo ataja la CPU (va al cuadrante
- * `tiro.arquero`); en el del rival atajás vos (el lado `tiro.lado`, y si es la
- * columna de la pelota, a su altura).
+ * `tiro.arquero`); en el del rival atajás vos: al cuadrante `tiro.arquero` (modo
+ * con cartas) o al lado `tiro.lado` (V-Draft), y si es la columna de la pelota,
+ * a su altura.
  */
 export function paradaDelArquero(tiro) {
   let col;
   let fila;
-  if (tiro.equipo === 'propio') {
+  // En tu tiro ataja la CPU; en el modo con cartas también atajás a un cuadrante (`arquero`).
+  if (tiro.equipo === 'propio' || Number.isInteger(tiro.arquero)) {
     col = tiro.arquero % 3;
     fila = Math.floor(tiro.arquero / 3);
   } else {
@@ -65,7 +67,7 @@ export const equipoDelArquero = (pateador) => (pateador === 'propio' ? 'rival' :
 
 /** Adónde va la pelota cuando la atajan: a las manos (el cuadrante al que fue el arquero). */
 export function destinoAtajada(geo, tiro) {
-  if (tiro.equipo === 'propio') return destinoDeLaPelota(geo, tiro.arquero, 'atajada');
+  if (tiro.equipo === 'propio' || Number.isInteger(tiro.arquero)) return destinoDeLaPelota(geo, tiro.arquero, 'atajada');
   return destinoDeLaPelota(geo, tiro.celda, 'atajada');
 }
 

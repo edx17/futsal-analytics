@@ -18,6 +18,7 @@ import { GameButton, ProgressBar, Countdown } from '../juegos/ui';
 import useFeedback from '../juegos/useFeedback';
 import useCuenta from '../juegos/useCuenta';
 import { volarCarta } from '../juegos/volar';
+import Monedas from '../juegos/Monedas';
 import '../components/quinteto/quinteto.css';
 import './juegos.css';
 import './vdraft.css';
@@ -715,20 +716,6 @@ function Resultado({ partida, p, despues, kiosco, sinMovimiento, semilla }) {
 
       {!sinMovimiento && p?.gano && <Papelitos dorados={despues.campeon} semilla={semilla} />}
       {!sinMovimiento && despues.fin && premio?.vcoins > 0 && <Monedas n={monedasQueCaen(premio.vcoins)} semilla={semilla} />}
-    </div>
-  );
-}
-
-/* Las V-Coins del premio, cayendo. */
-function Monedas({ n, semilla }) {
-  return (
-    <div className="vd-monedas-caen" aria-hidden="true">
-      {Array.from({ length: n }, (_, i) => {
-        const r = (k) => pseudoAzar(semilla * 17 + i * 11 + k);
-        return (
-          <i key={i} style={{ left: `${4 + r(0) * 92}%`, animationDuration: `${1.6 + r(1) * 1.4}s`, animationDelay: `${0.4 + r(2) * 1.6}s`, '--tam': `${22 + r(3) * 14}px` }}>V</i>
-        );
-      })}
     </div>
   );
 }

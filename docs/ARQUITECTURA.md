@@ -25,7 +25,7 @@ src/pages/
   Sobres.jsx            pestañas SOBRES (paquetes 3D, disponibles/bloqueados) y COLECCIÓN
                         (álbum con siluetas, filtros por rareza y posición) + Modo GOD
   VDraft.jsx            V-Draft: inicio, draft, torneo, partido en vivo
-  PenalesJuego.jsx      modo Penales suelto
+  PenalesJuego.jsx      modo Penales: pateador y arquero de tus cartas, con premio (o práctica)
   vdraft.css            estilos de V-Draft y penales
 src/components/
   quinteto/             cartas (CartaJugador, CartaEspecial, CartaGiratoria…), cancha en perspectiva
@@ -33,7 +33,7 @@ src/components/
                         Modo GOD (PanelGod, God*), PanelClub (manager)
   vdraft/               CanchaPlana, Penales (la tanda), EscenaPenales (la escena 3D)
   kiosco/               JuegoEnElCelular (QR / instalar)
-src/analytics/          reglas puras: sobres.js, sobresVista.js, vdraftVista.js, aperturas.js, vdraft.js, penales.js, penales3d.js,
+src/analytics/          reglas puras: sobres.js, sobresVista.js, vdraftVista.js, partidoVista.js, penalesCartas.js, aperturas.js, vdraft.js, penales.js, penales3d.js,
                         especialesCartas.js, eventos.js, god.js
 src/utils/              llamadas a la base: sobres.js, vdraft.js, god.js, usuarios.js, eventos.js;
                         sonidoApertura.js (audio), escenaPenales.js (carga de la escena)
@@ -41,7 +41,7 @@ src/juegos/             design system de juegos (§6)
 cine/                   scripts de Blender y audio de las cinemáticas
 public/cine/            videos, pósters, música y efectos de las aperturas
 public/penales/         fondo, red, pelota y tiras del arquero (penales.json = medidas)
-supabase/migrations/    sobres_*, vdraft_*, usuarios_vcoins, admin_club…
+supabase/migrations/    sobres_*, vdraft_*, juegos_misiones, penales_cartas, usuarios_vcoins, admin_club…
 ```
 
 ### Rutas

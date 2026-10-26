@@ -25,7 +25,7 @@ const SOBRES_GRATIS = ['diario', 'racha', 'wellness', 'premio', 'premio_especial
 
 export const MODOS = {
   vdraft: { id: 'vdraft', titulo: 'V-DRAFT', bajada: 'Armá tu equipo carta por carta y salí campeón contra la liga.', imagen: '/juegos/vdraft.jpg', acento: '#38bdf8' },
-  penales: { id: 'penales', titulo: 'PENALES', bajada: 'Pateá al ángulo y adiviná el lado para atajar.', imagen: '/penales/fondo.webp', acento: '#f97316' },
+  penales: { id: 'penales', titulo: 'PENALES', bajada: 'Tu pateador y tu arquero contra la CPU. Ganá V-Coins.', imagen: '/penales/fondo.webp', acento: '#f97316' },
   sobres: { id: 'sobres', titulo: 'SOBRES', bajada: 'Abrí tus sobres y completá la colección.', imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
   mysquad: { id: 'mysquad', titulo: 'MYSQUAD', bajada: 'El quinteto ideal y los premios de la semana.', imagen: '/juegos/mysquad.jpg', acento: '#00ff88' },
   god: { id: 'sobres', clave: 'god', titulo: 'MODO GOD', bajada: 'Cartas, héroes, eventos, sobres, usuarios y V-Coins.', imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
@@ -59,7 +59,7 @@ export function modosDelMenu({ sobres = null, vdraft = null, kiosco = false, esS
 
   const modos = [
     { ...MODOS.vdraft, badge: badgeVDraft },
-    { ...MODOS.penales, badge: { texto: 'NUEVO', tono: 'naranja' } },
+    { ...MODOS.penales, badge: { texto: 'CON PREMIO', tono: 'naranja' } },
     { ...MODOS.sobres, badge: badgeSobres },
   ];
   if (!kiosco) modos.push({ ...MODOS.mysquad, badge: null });

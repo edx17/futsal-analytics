@@ -46,6 +46,8 @@ describe('penales 3d: el arquero', () => {
   it('en tu tiro, la CPU va a su cuadrante; la derecha es la izquierda espejada', () => {
     expect(paradaDelArquero({ equipo: 'propio', arquero: 0 })).toEqual({ anim: 'izq_alta', espejo: false });
     expect(paradaDelArquero({ equipo: 'propio', arquero: 5 })).toEqual({ anim: 'izq_media', espejo: true });
+    // modo con cartas: atajás a un cuadrante (abajo a la derecha)
+    expect(paradaDelArquero({ equipo: 'rival', arquero: 8, lado: 2, celda: 0 })).toEqual({ anim: 'izq_baja', espejo: true });
     expect(paradaDelArquero({ equipo: 'propio', arquero: 7 })).toEqual({ anim: 'centro_bajo', espejo: false });
   });
 

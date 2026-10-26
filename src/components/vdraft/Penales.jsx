@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { LADOS, marcadorDeTiros } from '../../analytics/penales';
 import { patearPenal } from '../../utils/vdraft';
 import EscenaPenales from './EscenaPenales';
@@ -16,6 +16,9 @@ import { cargarEscena } from '../../utils/escenaPenales';
  * `patear(eleccion)`: quién decide el tiro (por defecto, la base del V-Draft;
  * el modo Penales de práctica lo resuelve en el navegador). `nombre`: el
  * equipo propio en el marcador.
+ * Modo con cartas: `nueve` (atajás a uno de los 9 cuadrantes, no a un lado),
+ * `segundos` (reloj por tiro: si se acaba, se manda -1) y `carta(turno)`
+ * (la carta que patea o ataja, al lado del cartel).
  */
 
 /* El arco de futsal: 3 × 2 m. La grilla de 3 × 3 cubre el interior. */
@@ -27,7 +30,7 @@ const CARTEL = {
   rival: { gol: 'GOL DEL RIVAL', atajada: '¡LA ATAJASTE!', afuera: '¡AFUERA!' },
 };
 
-export default function Penales({ partida, rival, alDefinir, patear, nombre = 'MI EQUIPO' }) {
+export default function Penales({ partida, rival, alDefinir, patear, nombre = 'MI EQUIPO', nueve = false, segundos = null, carta = null }) {
   const [tanda, setTanda] = useState(partida.tanda);
   const [tiro, setTiro] = useState(null);       // el último, mientras se anima
   const [ocupado, setOcupado] = useState(false);
@@ -60,7 +63,7 @@ export default function Penales({ partida, rival, alDefinir, patear, nombre = 'M
   const pasoTexto = definida
     ? (definida.ultimo?.gano ? `¡GANASTE LA TANDA ${definida.ultimo.penales}!` : `PERDISTE LA TANDA ${definida.ultimo?.penales || ''}`)
     : tiro ? CARTEL[tiro.equipo][tiro.motivo]
-      : turno === 'propio' ? 'TE TOCA PATEAR · elegí dónde' : 'ATAJÁS VOS · elegí un lado';
+      : turno === 'propio' ? 'TE TOCA PATEAR · elegí dónde' : nueve ? 'ATAJÁS VOS · elegí dónde tirarte' : 'ATAJÁS VOS · elegí un lado';
 
   return (
     <div className={`vd-penales-caja${geo ? ' vd-penales-caja-3d' : ''}`}>
@@ -70,17 +73,24 @@ export default function Penales({ partida, rival, alDefinir, patear, nombre = 'M
         <Fila nombre={String(rival || 'RIVAL').toUpperCase()} goles={tanda?.rival ?? 0} puntos={marcadorDeTiros(tiros, 'rival')} />
       </div>
 
-      <div className={`vd-penales-paso${tiro ? ` vd-penales-${tiro.gol === (tiro.equipo === 'propio') ? 'bien' : 'mal'}` : ''}`}>{pasoTexto}</div>
+      <div className="vd-penales-cab">
+        {carta && turno && !definida && <div className="vd-penales-carta">{carta(tiro ? tiro.equipo : turno)}</div>}
+        <div className={`vd-penales-paso${tiro ? ` vd-penales-${tiro.gol === (tiro.equipo === 'propio') ? 'bien' : 'mal'}` : ''}`}>
+          {pasoTexto}
+          {tiro?.sin_tiempo && <small className="vd-penales-tarde">¡Se te acabó el tiempo!</small>}
+        </div>
+      </div>
+      {segundos && puedo && <Reloj key={`r${tiros.length}`} segundos={segundos} alTerminar={() => elegir(-1)} />}
 
       {geo
-        ? <EscenaPenales key={tiro ? `tiro${tiros.length}` : `espera-${turno}`} geo={geo} tiro={tiro} turno={turno} puedo={!!puedo} elegir={elegir} />
-        : geo === null && <ArcoPlano tiro={tiro} turno={turno} puedo={puedo} elegir={elegir} />}
+        ? <EscenaPenales key={tiro ? `tiro${tiros.length}` : `espera-${turno}`} geo={geo} tiro={tiro} turno={turno} puedo={!!puedo} elegir={elegir} nueve={nueve} />
+        : geo === null && <ArcoPlano tiro={tiro} turno={turno} puedo={puedo} elegir={elegir} nueve={nueve} />}
 
       {ocupado && <div className="vd-penales-nota">…</div>}
       {error && <div className="vd-error" style={{ marginTop: 10 }}>{error}</div>}
       {!definida && !error && (
         <div className="vd-penales-nota">
-          {turno === 'propio' ? 'Los ángulos son más difíciles de atajar, pero pueden ir al palo.' : 'Si adivinás el lado, tenés buenas chances de atajarla.'}
+          {turno === 'propio' ? 'Los ángulos son más difíciles de atajar, pero pueden ir al palo.' : nueve ? 'Si adivinás el cuadrante (o te tirás al de al lado), podés atajarla.' : 'Si adivinás el lado, tenés buenas chances de atajarla.'}
         </div>
       )}
     </div>
@@ -88,10 +98,10 @@ export default function Penales({ partida, rival, alDefinir, patear, nombre = 'M
 }
 
 /* El arco dibujado, por si la escena renderizada no está (o no cargó). */
-function ArcoPlano({ tiro, turno, puedo, elegir }) {
+function ArcoPlano({ tiro, turno, puedo, elegir, nueve }) {
   const pelota = tiro ? centro(tiro.celda) : null;
   // El arquero: en tu tiro, la CPU (a su cuadrante); en el del rival, vos (a tu lado).
-  const arquero = tiro ? (tiro.equipo === 'propio' ? centro(tiro.arquero) : { x: (tiro.lado + 0.5) * (AW / 3), y: AH * 0.62 }) : { x: AW / 2, y: AH * 0.62 };
+  const arquero = tiro ? (tiro.equipo === 'propio' || Number.isInteger(tiro.arquero) ? centro(tiro.arquero) : { x: (tiro.lado + 0.5) * (AW / 3), y: AH * 0.62 }) : { x: AW / 2, y: AH * 0.62 };
   // Se tira: cuanto más al costado, más se inclina.
   const inclinacion = ((arquero.x - AW / 2) / (AW / 3)) * 38;
   return (
@@ -135,14 +145,15 @@ function ArcoPlano({ tiro, turno, puedo, elegir }) {
         </svg>
 
         {/* lo que se toca: 9 cuadrantes para patear, 3 franjas para atajar */}
-        {puedo && turno === 'propio' && (
+        {puedo && (turno === 'propio' || nueve) && (
           <div className="vd-tanda-grilla">
             {Array.from({ length: 9 }, (_, i) => (
-              <button key={i} className="vd-tanda-celda" onClick={() => elegir(i)} aria-label={`Patear al cuadrante ${i + 1}`} />
+              <button key={i} className="vd-tanda-celda" onClick={() => elegir(i)}
+                aria-label={`${turno === 'propio' ? 'Patear' : 'Atajar'} al cuadrante ${i + 1}`} />
             ))}
           </div>
         )}
-        {puedo && turno === 'rival' && (
+        {puedo && turno === 'rival' && !nueve && (
           <div className="vd-tanda-lados">
             {LADOS.map((l, i) => (
               <button key={l} className="vd-tanda-lado" onClick={() => elegir(i)} aria-label={`Atajar a la ${l.toLowerCase()}`} />
@@ -150,6 +161,29 @@ function ArcoPlano({ tiro, turno, puedo, elegir }) {
           </div>
         )}
       </div>
+  );
+}
+
+/* El reloj del tiro: una barra que se vacía; al llegar a 0, avisa una vez. */
+function Reloj({ segundos, alTerminar }) {
+  const [quedan, setQuedan] = useState(segundos * 1000);
+  const fin = useRef(alTerminar);
+  useEffect(() => { fin.current = alTerminar; }, [alTerminar]);
+  useEffect(() => {
+    const t0 = Date.now();
+    const id = setInterval(() => {
+      const q = Math.max(0, segundos * 1000 - (Date.now() - t0));
+      setQuedan(q);
+      if (q === 0) { clearInterval(id); fin.current?.(); }
+    }, 100);
+    return () => clearInterval(id);
+  }, [segundos]);
+  const s = Math.ceil(quedan / 1000);
+  return (
+    <div className={`vd-reloj-tiro${s <= 2 ? ' vd-reloj-apurado' : ''}`} role="timer" aria-label={`Quedan ${s} segundos`}>
+      <i style={{ width: `${(quedan / (segundos * 1000)) * 100}%` }} />
+      <b>{s}</b>
+    </div>
   );
 }
 
