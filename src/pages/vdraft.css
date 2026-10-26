@@ -418,7 +418,7 @@
 @keyframes vd-gira { to { transform: rotate(360deg); } }
 .vd-gooool-texto { position: relative; font-size: clamp(54px, 15vw, 120px); font-weight: 900; font-style: italic; color: #00ff88; line-height: 1;
   text-shadow: 0 6px 0 rgba(0, 0, 0, .5), 0 0 40px rgba(0, 255, 136, .9); animation: vd-golpe .5s cubic-bezier(.2, .8, .3, 1.4); }
-.vd-gooool-carta { position: relative; width: 122px; height: 184px; transform: scale(1.25); margin: 26px 0 40px; animation: vd-gooool-carta .8s .15s cubic-bezier(.2, .8, .3, 1.2) backwards;
+.vd-gooool-carta { position: relative; width: 122px; height: 184px; zoom: 1.25; margin: 8px 0 26px; animation: vd-gooool-carta .8s .15s cubic-bezier(.2, .8, .3, 1.2) backwards;
   filter: drop-shadow(0 0 30px rgba(0, 255, 136, .8)); }
 .vd-gooool-carta .mq-carta { position: relative; }
 @keyframes vd-gooool-carta { from { opacity: 0; transform: scale(.4) rotateY(540deg); } }

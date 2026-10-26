@@ -94,9 +94,33 @@ export function mediaDudosa(carta = {}) {
  * filas del catálogo (de ahí salen las cartas BASE, con sus atributos);
  * `fotos`: Map clave → url. Lo mismo que publica MySquad, sin recalcular nada.
  */
-export function pendientesDePublicar(historial = [], catalogo = [], fotos = new Map()) {
+export function pendientesDePublicar(historial = [], catalogo = [], fotos = new Map(), calculadas = []) {
   const publicadas = new Set(catalogo.map((k) => k.clave));
-  const base = catalogo.filter((k) => k.tipo === 'BASE').map((k) => ({ ...(k.carta || {}), id: String(k.carta?.id ?? k.jugador_id) }));
-  const premios = cartasDeHistorial(historial, base, fotos).filter((c) => !publicadas.has(c.clave));
+  // Las cartas BASE del catálogo y, si vienen de MySquad, las calculadas (tienen
+  // los atributos de todos los jugadores, aunque no tengan BASE publicada).
+  const porId = new Map(catalogo.filter((k) => k.tipo === 'BASE').map((k) => [String(k.carta?.id ?? k.jugador_id), { ...(k.carta || {}), id: String(k.carta?.id ?? k.jugador_id) }]));
+  (calculadas || []).filter(conAtributos).forEach((c) => porId.set(String(c.id), c));
+  const premios = cartasDeHistorial(historial, [...porId.values()], fotos).filter((c) => !publicadas.has(c.clave));
   return catalogoDeCartas([], premios);
+}
+
+const conAtributos = (c) => Array.isArray(c?.atributos) && c.atributos.length > 0 && !c.enEvaluacion;
+
+/**
+ * Las cartas del catálogo que quedaron sin atributos (TIR, PAS…: se publicaron
+ * sin la carta BASE del jugador), completadas con los de la carta calculada en
+ * MySquad. Devuelve las filas listas para publicar (mismo formato que
+ * catalogoDeCartas). Los Héroes no tienen datos: no se tocan.
+ */
+export function completarAtributos(catalogo = [], calculadas = []) {
+  const porId = new Map((calculadas || []).filter(conAtributos).map((c) => [String(c.id), c]));
+  return (catalogo || [])
+    .filter((k) => k.tipo !== 'HERO' && !(k.carta?.atributos?.length) && porId.has(String(k.jugador_id)))
+    .map((k) => {
+      const c = porId.get(String(k.jugador_id));
+      return {
+        clave: k.clave, jugador_id: String(k.jugador_id), tipo: k.tipo, rareza: k.rareza,
+        carta: { ...k.carta, atributos: c.atributos, ...(k.carta?.pie || !c.pie ? {} : { pie: c.pie }) },
+      };
+    });
 }

@@ -25,9 +25,10 @@
 .jh-centro { grid-area: c; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; perspective: 900px; }
 .jh-luz { position: absolute; inset: 10% 0; background: radial-gradient(closest-side, rgba(0, 255, 136, .28), transparent 70%); filter: blur(10px); animation: jh-respira 4s ease-in-out infinite; }
 @keyframes jh-respira { 50% { opacity: .55; transform: scale(.92); } }
-.jh-protagonista { position: relative; width: 122px; height: 184px; transform: scale(1.75); transform-style: preserve-3d; animation: jh-gira 7s ease-in-out infinite; margin: 70px 0; }
+/* `zoom` y no `scale`: la carta se dibuja de nuevo a ese tamaño (nítida), no se estira la de 122 px. */
+.jh-protagonista { position: relative; width: 122px; height: 184px; zoom: 1.75; transform-style: preserve-3d; animation: jh-gira 7s ease-in-out infinite; margin: 8px 0 12px; }
 .jh-protagonista .mq-carta { position: relative; }
-@keyframes jh-gira { 0%, 100% { transform: scale(1.75) rotateY(-22deg) rotateX(4deg); } 50% { transform: scale(1.75) rotateY(22deg) rotateX(-2deg); } }
+@keyframes jh-gira { 0%, 100% { transform: rotateY(-22deg) rotateX(4deg); } 50% { transform: rotateY(22deg) rotateX(-2deg); } }
 .jh-protagonista::after { content: ''; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
   background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .45) 50%, transparent 65%); background-size: 260% 100%;
   clip-path: polygon(0 6%, 10% 0, 90% 0, 100% 6%, 100% 86%, 50% 100%, 0 86%); animation: jh-brillo 3.5s linear infinite; }
@@ -91,6 +92,5 @@
 }
 @media (min-width: 768px) and (max-width: 1199px) {
   .jh-hub { grid-template-columns: 1fr minmax(220px, 260px) 1fr; }
-  .jh-protagonista { transform: scale(1.4); animation-name: jh-gira-t; margin: 50px 0; }
-  @keyframes jh-gira-t { 0%, 100% { transform: scale(1.4) rotateY(-22deg); } 50% { transform: scale(1.4) rotateY(22deg); } }
+  .jh-protagonista { zoom: 1.4; }
 }

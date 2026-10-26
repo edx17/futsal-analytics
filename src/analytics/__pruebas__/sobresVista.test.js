@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { completarAtributos, pendientesDePublicar } from '../god';
 import { imagenDeSobre, repartirSobres, traeEspecial, filtrarAlbum, contarAlbum } from '../sobresVista';
 
 describe('sobres: disponibles y bloqueados', () => {
@@ -68,5 +69,31 @@ describe('sobres: el álbum', () => {
   it('avisa si el sobre trae especiales', () => {
     expect(traeEspecial({ cartas: [{ rareza: 'oro' }, { rareza: 'totw' }] })).toBe(true);
     expect(traeEspecial({ cartas: [{ rareza: 'plata' }] })).toBe(false);
+  });
+});
+
+describe('catálogo: cartas sin atributos', () => {
+  const atr = [['TIR', 90], ['PAS', 80]];
+  const catalogo = [
+    { clave: 'TOTY|2026|41', jugador_id: '41', tipo: 'TOTY', rareza: 'toty', carta: { id: '41', apellido: 'X', atributos: [] } },
+    { clave: 'TOTW|1|7', jugador_id: '7', tipo: 'TOTW', rareza: 'totw', carta: { id: '7', apellido: 'Y', atributos: atr } },
+    { clave: 'HERO|1|99', jugador_id: '99', tipo: 'HERO', rareza: 'toty', carta: { id: '99', apellido: 'Z' } },
+  ];
+  const calculadas = [{ id: 41, atributos: atr, pie: 'Zurdo' }, { id: 99, atributos: atr }, { id: 7, atributos: [['TIR', 1]] }];
+
+  it('completa sólo las que no tienen, con la carta calculada del jugador (no los Héroes)', () => {
+    const r = completarAtributos(catalogo, calculadas);
+    expect(r.map((f) => f.clave)).toEqual(['TOTY|2026|41']);
+    expect(r[0].carta.atributos).toEqual(atr);
+    expect(r[0].carta.pie).toBe('Zurdo');
+    expect(r[0].carta.apellido).toBe('X');
+  });
+
+  it('sin carta calculada con atributos, no hay nada que completar', () => {
+    expect(completarAtributos(catalogo, [{ id: 41, atributos: [], enEvaluacion: true }])).toEqual([]);
+  });
+
+  it('sin historial no hay pendientes', () => {
+    expect(pendientesDePublicar([], catalogo, new Map(), calculadas)).toEqual([]);
   });
 });
