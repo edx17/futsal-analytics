@@ -494,6 +494,10 @@ def decoracion(p):
                 b = plano_imagen(f'bandera_{i}_{lado}', 2.2, 5.5, (lado * 7.5, y, TECHO - 5.2), (math.radians(90), 0, math.radians(-90 * lado)), m)
                 curva = b.modifiers.new('caida', 'SIMPLE_DEFORM'); curva.deform_method = 'BEND'; curva.angle = math.radians(12)
         extra['banderas'] = fuerza
+    if 'calabazas' in p['decoracion']:
+        extra['calabazas'] = calabazas(p)
+    if 'murcielagos' in p['decoracion']:
+        murcielagos()
     if 'logo_centro' in p['decoracion']:
         ruta = textura_texto(f'logo_{p["id"]}', [p.get('texto_logo', 'EVENTO')], p['acento'], w=1024, h=1024, tam=260,
                              fondo=tuple(int(255 * c ** (1 / 2.2)) for c in p['sobre_color']))
@@ -502,6 +506,124 @@ def decoracion(p):
         plano_imagen('logo_centro', 5.6, 5.6, (0, CY, 0.0085), (0, 0, 0), m)   # sobre el parquet (tapa en 0.006)
         extra['logo'] = fuerza
     return extra
+
+
+def calabaza(nombre, pos, r, mira, cascara, cara, tallo):
+    """Una calabaza tallada: cuerpo con gajos, tallo y la cara (ojos y boca
+    emisivos) mirando hacia `mira`. Adentro, una luz naranja."""
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=40, v_segments=20, radius=r)
+    for v in bm.verts:
+        a = math.atan2(v.co.y, v.co.x)
+        k = 1 + 0.075 * math.cos(10 * a)                    # los gajos
+        v.co.x *= k; v.co.y *= k; v.co.z *= 0.78
+        if v.co.z > 0.7 * r * 0.78:                          # el hueco del tallo
+            v.co.z -= 0.08 * r
+    me = bpy.data.meshes.new(nombre); bm.to_mesh(me); bm.free()
+    cuerpo = bpy.data.objects.new(nombre, me); bpy.context.scene.collection.objects.link(cuerpo)
+    for f in me.polygons:
+        f.use_smooth = True
+    me.materials.append(cascara)
+    piezas = [cuerpo]
+    # la cara: triángulos y la boca dentada, apenas delante de la cáscara (hacia -y local)
+    d = -r * 1.02
+    tri = lambda cx, cz, w, h, arriba=True: [(cx - w / 2, d, cz - h / 2 if arriba else cz + h / 2), (cx + w / 2, d, cz - h / 2 if arriba else cz + h / 2), (cx, d, cz + h / 2 if arriba else cz - h / 2)]
+    caras = [tri(-0.38 * r, 0.22 * r, 0.32 * r, 0.3 * r), tri(0.38 * r, 0.22 * r, 0.32 * r, 0.3 * r), tri(0, -0.02 * r, 0.16 * r, 0.14 * r)]
+    boca = []
+    for i in range(7):
+        x = -0.5 * r + i * (r / 6)
+        boca.append((x, d, -0.24 * r - (0.08 * r if i % 2 else 0)))
+    for i in range(6, -1, -1):
+        x = -0.5 * r + i * (r / 6)
+        boca.append((x, d, -0.4 * r + (0.06 * r if i % 2 else 0)))
+    verts, polys = [], []
+    for c in caras + [boca]:
+        polys.append(list(range(len(verts), len(verts) + len(c)))); verts += c
+    mf = bpy.data.meshes.new(nombre + '_cara'); mf.from_pydata(verts, [], polys)
+    oc = bpy.data.objects.new(nombre + '_cara', mf); bpy.context.scene.collection.objects.link(oc)
+    mf.materials.append(cara)
+    piezas.append(oc)
+    t = cilindro(nombre + '_tallo', Vector((0, 0, 0.62 * r)), Vector((0.06 * r, 0.04 * r, 0.98 * r)), 0.09 * r, tallo)
+    piezas.append(t)
+    raiz = bpy.data.objects.new(nombre + '_raiz', None); bpy.context.scene.collection.objects.link(raiz)
+    for o in piezas:
+        o.parent = raiz
+    raiz.location = pos
+    dx, dy = mira[0] - pos[0], mira[1] - pos[1]
+    raiz.rotation_euler = (0, 0, math.atan2(dx, -dy))
+    bpy.ops.object.light_add(type='POINT', location=(pos[0], pos[1], pos[2]))
+    luz = bpy.context.active_object; luz.name = nombre + '_luz'
+    luz.data.color = (1.0, 0.42, 0.05); luz.data.energy = 0; luz.data.shadow_soft_size = r * 0.4
+    return luz
+
+
+def calabazas(p):
+    """Calabazas talladas en la boca del pasillo y a los costados de la cancha."""
+    cascara = base.mat_simple('calabaza', (0.62, 0.15, 0.008), 0.45)
+    pc = cascara.node_tree.nodes['Principled BSDF']
+    pc.inputs['Subsurface Weight'].default_value = 0.25
+    pc.inputs['Subsurface Radius'].default_value = (1.0, 0.35, 0.1)
+    cara = base.mat_emisor('calabaza_cara', (1.0, 0.55, 0.08), 0.0)
+    tallo = base.mat_simple('calabaza_tallo', (0.06, 0.08, 0.02), 0.8)
+    lugares = [((-2.6, 1.6, 0.42), 0.48), ((2.5, 1.2, 0.36), 0.4), ((-1.6, 3.0, 0.3), 0.32), ((3.3, 3.2, 0.5), 0.55)]
+    for y in (10, 18, 30, 38):
+        for lado in (-1, 1):
+            lugares.append(((lado * (ANCHO_C / 2 + 1.6), y + (1.2 if lado > 0 else 0), 0.62), 0.7))
+    luces = []
+    for i, (pos, r) in enumerate(lugares):
+        mira = (0, -8) if pos[1] < 5 else (0, pos[1])
+        luces.append(calabaza(f'calabaza_{i}', pos, r, mira, cascara, cara, tallo))
+    return {'luces': luces, 'cara': cara.node_tree.nodes['Principled BSDF'].inputs['Emission Strength']}
+
+
+def murcielagos(n=26):
+    """Murciélagos negros colgados del techo, en vuelo, con las alas abiertas."""
+    negro = base.mat_simple('murcielago', (0.004, 0.003, 0.006), 0.6)
+    contorno = [(0, 0.12), (0.06, 0.2), (0.1, 0.1), (0.3, 0.22), (0.55, 0.18), (0.75, 0.3), (0.7, 0.05), (0.55, -0.02), (0.45, 0.04),
+                (0.32, -0.05), (0.2, 0.02), (0.08, -0.12), (0, -0.04)]
+    pts = contorno + [(-x, z) for x, z in reversed(contorno[1:-1])]
+    for i in range(n):
+        k = math.sin(i * 12.9898) * 43758.5453
+        a = k - math.floor(k)
+        b = (math.sin(i * 7.233) * 9134.1) % 1
+        esc = 0.7 + 0.8 * b
+        verts = [(x * esc, 0, z * esc) for x, z in pts]
+        me = bpy.data.meshes.new(f'murcielago_{i}'); me.from_pydata(verts, [], [list(range(len(verts)))])
+        o = bpy.data.objects.new(f'murcielago_{i}', me); bpy.context.scene.collection.objects.link(o)
+        me.materials.append(negro)
+        o.location = ((a - 0.5) * 22, 6 + b * 36, 8.5 + ((a * 7) % 1) * 4.5)
+        o.rotation_euler = (math.radians(-10 + 30 * b), 0, math.radians(360 * a))
+        sol = o.modifiers.new('grosor', 'SOLIDIFY'); sol.thickness = 0.01
+
+
+def emblema_calabaza():
+    """Halloween: la etiqueta del sobre lleva una calabaza tallada en vez de la
+    estrella (se pinta encima de la que dibujó escena_pasillo, que no se toca)."""
+    from PIL import Image, ImageDraw, ImageFilter
+    img_bl = next(i for i in bpy.data.images if os.path.basename(i.filepath).startswith('sobre_'))
+    ruta = bpy.path.abspath(img_bl.filepath)
+    im = Image.open(ruta).convert('RGB')
+    d = ImageDraw.Draw(im)
+    cx, cy, r = 512, 470, 235
+    brillo = Image.new('RGBA', im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(brillo).ellipse([cx - r * 1.3, cy - r * 1.05, cx + r * 1.3, cy + r * 1.05], fill=(255, 120, 0, 140))
+    brillo = brillo.filter(ImageFilter.GaussianBlur(50))
+    im.paste(brillo, (0, 0), brillo)
+    d = ImageDraw.Draw(im)
+    for dx, w, col in ((-0.55, 0.62, (196, 72, 6)), (0.55, 0.62, (196, 72, 6)), (-0.28, 0.66, (232, 101, 10)), (0.28, 0.66, (232, 101, 10)), (0, 0.6, (255, 138, 31))):
+        d.ellipse([cx + dx * r - w * r, cy - r * 0.84, cx + dx * r + w * r, cy + r * 0.84], fill=col)
+    d.polygon([(cx - r * 0.06, cy - r * 0.8), (cx + r * 0.08, cy - r * 0.8), (cx + r * 0.2, cy - r * 1.12), (cx + r * 0.06, cy - r * 1.14)], fill=(77, 124, 15))
+    cara = (255, 224, 102)
+    d.polygon([(cx - r * 0.55, cy - r * 0.05), (cx - r * 0.15, cy - r * 0.05), (cx - r * 0.35, cy - r * 0.42)], fill=cara)
+    d.polygon([(cx + r * 0.15, cy - r * 0.05), (cx + r * 0.55, cy - r * 0.05), (cx + r * 0.35, cy - r * 0.42)], fill=cara)
+    d.polygon([(cx - r * 0.08, cy + r * 0.12), (cx + r * 0.08, cy + r * 0.12), (cx, cy - r * 0.02)], fill=cara)
+    boca = [(cx - r * 0.62, cy + r * 0.22)]
+    for i in range(1, 8):
+        boca.append((cx - r * 0.62 + i * r * 0.155, cy + r * (0.22 if i % 2 == 0 else 0.34)))
+    boca += [(cx + r * 0.5, cy + r * 0.5), (cx, cy + r * 0.62), (cx - r * 0.5, cy + r * 0.5)]
+    d.polygon(boca, fill=cara)
+    im.save(ruta)
+    img_bl.reload()
 
 
 def armar_pabellon(p):
@@ -794,6 +916,11 @@ def guion_evento(p, h, sobre, cam, dest):
     for clave_deco in ('banderas', 'logo'):
         if clave_deco in h:
             encender(h[clave_deco], 100, 2.5 if clave_deco == 'banderas' else 1.6, golpe=False, dur=16)
+    if 'calabazas' in h:
+        # Las calabazas se prenden con el pasillo: primero las de la boca, después las de la cancha.
+        encender(h['calabazas']['cara'], 52, 9, golpe=False, dur=10)
+        for i, luz in enumerate(h['calabazas']['luces']):
+            encender(luz, 52 + (0 if i < 4 else 40 + i * 2), 45, golpe=False, dur=10)
     encender(h['marcador'], 100, 4)
     encender(h['pantalla'], 100, 4)
     encender(h['conos'], 104, 1.8, golpe=False, dur=12)
@@ -862,6 +989,8 @@ def armar(p):
     h.update(decoracion(p))
     var = dict(p)
     sobre = base.armar_sobre(var)
+    if p.get('emblema') == 'calabaza':
+        emblema_calabaza()
     cam, dest = base.armar_camara(var)
     cam.rotation_euler = (0, 0, 0)
     GUIONES[p['guion']](p, h, sobre, cam, dest)

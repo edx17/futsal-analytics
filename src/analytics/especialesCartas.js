@@ -10,6 +10,8 @@
  *   Recuperadores (serie)          grafito, verde azulado y plata · escudo        · escudo con flecha · malla hexagonal
  *   Héroes del club                sepia y oro viejo   · retrato antiguo (esquinas cóncavas, foto en arco) · laurel con estrella · papel envejecido
  *                                  y ornamentos en las esquinas. Son ex jugadores: no hay estadísticas, van sus rasgos.
+ *   Halloween (evento)             violeta, negro y naranja · alas de murciélago arriba · calabaza tallada · telarañas,
+ *                                  luna y gotas verdes. Van los seis atributos del jugador.
  *
  * Rareza en los sobres: cada tipo nuevo cae en una de las rarezas que YA
  * existen, así que los pesos del sorteo y las V-Coins por repetida no cambian
@@ -97,6 +99,19 @@ FAMILIAS.heroe = {
   secundarios: () => [],
 };
 
+/* Halloween: la versión de noche de brujas de una carta. Violeta y negro con
+   naranja de calabaza; muestra los seis atributos del jugador (no un premio). */
+FAMILIAS.halloween = {
+  forma: 'murcielago', textura: 'telarana', adorno: 'goteo', insignia: 'calabaza', serie: false, stat: null, titulo: 'HALLOWEEN', atributos: true,
+  colores: {
+    fondo: ['#3b1257', '#170722', '#050208'], luz: '#ff7a00', detalle: '#c4b5fd', metal: ['#ffe0b8', '#ff8a1f', '#8a3300', '#ffb35c'],
+    filo: '#ffb35c', texto: '#fff3e6', suave: 'rgba(255,236,214,.75)', media: '#ffb35c', fundido: 'rgba(12,4,18,.97)', contraluz: 'rgba(255,122,0,.4)',
+    cinta: '#ff7a00', cintaTexto: '#1a0800', insigniaFondo: '#14061c', medallaFondo: '#14061c', medallaTexto: '#ffb35c', goteo: '#a3e635',
+  },
+  etiqueta: () => '',
+  secundarios: () => [],
+};
+
 // La serie de goleadores es la familia goleador, con distintivo de puesto.
 FAMILIAS.goleadorSerie = { ...FAMILIAS.goleador, serie: true, titulo: 'GOLEADORES' };
 
@@ -113,6 +128,8 @@ export const ESPECIALES = {
   SREC: { sigla: 'RECUPERADORES', titulo: 'SERIE RECUPERADORES', familia: 'recuperador', rareza: 'totw', periodo: 'rueda', serie: true },
   // Los crea el superusuario (Modo GOD · HÉROES); van con la rareza más alta y, por defecto, sólo en su evento.
   HERO: { sigla: 'HÉROE', titulo: 'HÉROE DEL CLUB', familia: 'heroe', rareza: 'toty', periodo: null },
+  // Edición de evento: la crea el superusuario para el evento de Halloween.
+  HALW: { sigla: 'HALLOWEEN', titulo: 'HALLOWEEN', familia: 'halloween', rareza: 'potm', periodo: null },
 };
 
 export const esEspecial = (tipo) => !!ESPECIALES[String(tipo || '').toUpperCase()];

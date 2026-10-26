@@ -34,6 +34,8 @@ TIPOS = {
     'premio': ('#7c3aed', '#12052a', '#fbbf24'),
     'premio_especial': ('#be185d', '#1a0410', '#fde68a'),
     'neutro': ('#cbd5e1', '#111418', '#ffffff'),
+    # evento: violeta de noche, naranja de calabaza y verde ácido
+    'halloween': ('#5b1a8a', '#0c0412', '#ff7a00'),
 }
 
 ANCHO, ALTO = 2.0, 3.0      # el cuerpo del sobre, en metros de escena
@@ -75,6 +77,10 @@ def arte(tipo, ruta):
         d.line([(x0, H), (x0 + W * 0.9, 0)], fill=acento, width=ancho)
     # las líneas de la V
     d.line([(0, H * 0.55), (W / 2, H * 0.92), (W, H * 0.55)], fill=acento, width=14)
+    if tipo == 'halloween':
+        calabaza_arte(im, W, H)
+        im.save(ruta)
+        return
     # la estrella con brillo
     cx, cy, R = W / 2, H * 0.36, W * 0.25
     pts = []
@@ -92,6 +98,44 @@ def arte(tipo, ruta):
         a, b = pts[i], pts[(i + 1) % 10]
         d.polygon([(cx, cy), a, b], fill=tuple(int(v * 0.8) for v in acento))
     im.save(ruta)
+
+
+def calabaza_arte(im, W, H):
+    """Halloween: luna, murciélagos y una calabaza tallada que brilla por dentro."""
+    d = ImageDraw.Draw(im)
+    luna = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(luna).ellipse([W * 0.56, H * 0.06, W * 0.9, H * 0.06 + W * 0.34], fill=(253, 231, 194, 230))
+    halo = luna.filter(ImageFilter.GaussianBlur(50))
+    im.paste(halo, (0, 0), halo)
+    im.paste(luna, (0, 0), luna)
+    for bx, by, k in ((0.2, 0.12, 1.0), (0.38, 0.2, 0.7), (0.12, 0.26, 0.55)):
+        x, y, s = W * bx, H * by, 70 * k
+        d.polygon([(x, y), (x + s * 0.3, y - s * 0.3), (x + s, y - s * 0.25), (x + s * 0.75, y + s * 0.05), (x + s * 0.45, y - s * 0.02),
+                   (x + s * 0.2, y + s * 0.25), (x, y + s * 0.12), (x - s * 0.2, y + s * 0.25), (x - s * 0.45, y - s * 0.02),
+                   (x - s * 0.75, y + s * 0.05), (x - s, y - s * 0.25), (x - s * 0.3, y - s * 0.3)], fill=(8, 3, 12))
+    # la calabaza: gajos, tallo y la cara encendida
+    cx, cy, r = W / 2, H * 0.4, W * 0.27
+    brillo = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(brillo).ellipse([cx - r * 1.3, cy - r * 1.1, cx + r * 1.3, cy + r * 1.1], fill=(255, 120, 0, 150))
+    brillo = brillo.filter(ImageFilter.GaussianBlur(70))
+    im.paste(brillo, (0, 0), brillo)
+    for dx, w, col in ((-0.55, 0.62, (196, 72, 6)), (0.55, 0.62, (196, 72, 6)), (-0.28, 0.66, (232, 101, 10)), (0.28, 0.66, (232, 101, 10)), (0, 0.6, (255, 138, 31))):
+        d.ellipse([cx + dx * r - w * r, cy - r * 0.82, cx + dx * r + w * r, cy + r * 0.82], fill=col)
+    d.polygon([(cx - r * 0.06, cy - r * 0.78), (cx + r * 0.08, cy - r * 0.78), (cx + r * 0.2, cy - r * 1.12), (cx + r * 0.06, cy - r * 1.14)], fill=(77, 124, 15))
+    cara = (255, 224, 102)
+    d.polygon([(cx - r * 0.55, cy - r * 0.05), (cx - r * 0.15, cy - r * 0.05), (cx - r * 0.35, cy - r * 0.42)], fill=cara)
+    d.polygon([(cx + r * 0.15, cy - r * 0.05), (cx + r * 0.55, cy - r * 0.05), (cx + r * 0.35, cy - r * 0.42)], fill=cara)
+    d.polygon([(cx - r * 0.08, cy + r * 0.12), (cx + r * 0.08, cy + r * 0.12), (cx, cy - r * 0.02)], fill=cara)
+    boca = [(cx - r * 0.62, cy + r * 0.22)]
+    for i in range(1, 8):
+        boca.append((cx - r * 0.62 + i * r * 0.155, cy + r * (0.22 if i % 2 == 0 else 0.34)))
+    boca += [(cx + r * 0.5, cy + r * 0.5), (cx, cy + r * 0.62), (cx - r * 0.5, cy + r * 0.5)]
+    d.polygon(boca, fill=cara)
+    # gotas verdes en las líneas de la V
+    for gx in (0.18, 0.33, 0.67, 0.82):
+        x = W * gx
+        y = H * (0.55 + (0.92 - 0.55) * (1 - abs(gx - 0.5) * 2))
+        d.ellipse([x - 12, y, x + 12, y + 46], fill=(163, 230, 53))
 
 
 def limpiar():
