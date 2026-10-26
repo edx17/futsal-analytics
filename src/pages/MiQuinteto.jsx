@@ -315,7 +315,7 @@ export default function MiQuinteto() {
         <PanelPremios partidosJugados={analisis.partidosJugados} jugadores={raw.jugadores} club={datosDelClub(perfil)}
           clubId={clubId} categoria={filtroCategoria} torneoId={filtroTorneo} esMovil={esMovil}
           historial={historial} alGuardar={() => setVersionHistorial((v) => v + 1)}
-          raw={raw} partidosFiltro={partidosFiltro} partidosCategoria={partidosScopeCat} misCategorias={misCategorias}
+          raw={raw} partidosFiltro={partidosFiltro} partidosCategoria={partidosScopeCat} misCategorias={misCategorias} cartas={cartasCalculadas}
           torneo={filtroTorneo === 'Todos' ? null : (raw.torneos || []).find((t) => t.id === filtroTorneo) || null} />
       ) : seccion === 'especiales' ? (
         <FotosEspeciales premios={premios} fotos={fotos} clubId={clubId} alCambiar={cargarFotos} esMovil={esMovil} />

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import CartaPremio from './CartaPremio';
 import CartaEspecial from './CartaEspecial';
 import { ModalPlacaPremio } from '../../placas/PlacaPremio';
@@ -12,7 +12,7 @@ import {
 import { especialesDelMes, especialesPrimeraRueda, ruedaCerrada } from '../../analytics/especiales';
 import { tieneRuedasConfiguradas } from '../../utils/ruedas';
 import { guardarRegistros } from '../../utils/cartasDestacadas';
-import { publicarPremiosPendientes } from '../../utils/publicarPremios';
+import { publicarPremiosPendientes, cartasSinAtributos } from '../../utils/publicarPremios';
 import { hoyISO } from '../../utils/disponibilidad';
 
 /* PREMIOS DE MYSQUAD
@@ -36,7 +36,7 @@ const MONO = 'JetBrains Mono, monospace';
    para cortar la primera rueda) y el torneo elegido. */
 export default function PanelPremios({
   partidosJugados = [], jugadores = [], club, clubId, categoria = 'Todas', torneoId = 'Todos', esMovil, historial = [], alGuardar,
-  raw = null, partidosFiltro = [], partidosCategoria = [], torneo = null, misCategorias = [],
+  raw = null, partidosFiltro = [], partidosCategoria = [], torneo = null, misCategorias = [], cartas = [],
 }) {
   const [mesElegido, setMesElegido] = useState(null);
   const [placa, setPlaca] = useState(null);
@@ -44,6 +44,32 @@ export default function PanelPremios({
   const [aviso, setAviso] = useState(null);
 
   const porId = useMemo(() => indicePorId(jugadores), [jugadores]);
+
+  /* Las cartas de los sobres que quedaron sin atributos (TIR, PAS…) y se pueden completar con las de MySquad. */
+  const [sinDatos, setSinDatos] = useState(0);
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    cartasSinAtributos(clubId, cartas).then((n) => { if (vivo) setSinDatos(n); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [clubId, cartas, version]);
+  const sobresTexto = ({ publicadas, completadas }) => [
+    publicadas ? ` Se publicaron ${publicadas} cartas para los sobres.` : '',
+    completadas ? ` Se completaron los datos de ${completadas} cartas.` : '',
+  ].join('');
+  const completar = async () => {
+    setGuardando(true); setAviso(null);
+    try {
+      const r = await publicarPremiosPendientes(clubId, cartas);
+      avisar(`Listo.${sobresTexto(r)}`);
+    } catch (err) {
+      console.error('Completar cartas:', err);
+      avisar(err?.message || 'No se pudieron completar las cartas.', true);
+    } finally {
+      setGuardando(false);
+      setVersion((v) => v + 1);
+    }
+  };
   const meses = useMemo(() => mesesConPartidos(partidosJugados), [partidosJugados]);
   const mes = mesElegido && meses.includes(mesElegido) ? mesElegido : meses[meses.length - 1];
 
@@ -92,11 +118,11 @@ export default function PanelPremios({
     try {
       const { escritas, total } = await guardarRegistros({ clubId, categoria, torneoId, registros: lista, porId, sobrescribir });
       // Y para los sobres: lo guardado se publica en el catálogo (aparece en el Modo GOD).
-      let publicadas = 0;
       let sinPublicar = false;
-      try { publicadas = await publicarPremiosPendientes(clubId); } catch (err) { console.error('Publicar premios:', err); sinPublicar = true; }
-      const sobres = sinPublicar ? ' No se pudieron publicar para los sobres: publicalas desde el Modo GOD.'
-        : publicadas ? ` Se publicaron ${publicadas} cartas para los sobres.` : '';
+      let r = { publicadas: 0, completadas: 0 };
+      try { r = await publicarPremiosPendientes(clubId, cartas); } catch (err) { console.error('Publicar premios:', err); sinPublicar = true; }
+      setVersion((v) => v + 1);
+      const sobres = sinPublicar ? ' No se pudieron publicar para los sobres: publicalas desde el Modo GOD.' : sobresTexto(r);
       if (sobrescribir) avisar(`Guardado en el historial.${sobres}`, sinPublicar);
       else if (escritas === 0) avisar(`Ya estaba todo guardado (${total} premios).${sobres}`, sinPublicar);
       else avisar(`Se guardaron ${escritas} premios nuevos en el historial${escritas < total ? ` (los otros ${total - escritas} ya estaban)` : ''}.${sobres}`, sinPublicar);
@@ -132,6 +158,18 @@ export default function PanelPremios({
           {guardando ? 'GUARDANDO…' : 'GUARDAR TODO LO DEFINITIVO'}
         </button>
       </div>
+
+      {sinDatos > 0 && (
+        <div className="bento-card" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', padding: 14, border: '1px solid rgba(251,191,36,.5)' }}>
+          <div style={{ flex: 1, minWidth: 220, fontSize: '0.78rem', color: 'var(--text)', lineHeight: 1.5 }}>
+            Hay <b>{sinDatos}</b> cartas de los sobres sin datos abajo (TIR, PAS, REG…): se publicaron sin la carta base del jugador.
+            Se completan con las de MySquad{torneoId === 'Todos' ? '' : ' (conviene hacerlo con TODA LA TEMPORADA elegida arriba)'}.
+          </div>
+          <button onClick={completar} disabled={guardando} className="btn-secondary" style={btnChico}>
+            {guardando ? 'COMPLETANDO…' : `COMPLETAR LAS ${sinDatos}`}
+          </button>
+        </div>
+      )}
 
       {aviso && (
         <div style={{ fontSize: '0.8rem', fontWeight: 700, padding: '10px 14px', borderRadius: 8,
