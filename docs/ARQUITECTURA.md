@@ -33,7 +33,7 @@ src/components/
                         Modo GOD (PanelGod, God*), PanelClub (manager)
   vdraft/               CanchaPlana, Penales (la tanda), EscenaPenales (la escena 3D)
   kiosco/               JuegoEnElCelular (QR / instalar)
-src/analytics/          reglas puras: sobres.js, sobresVista.js, aperturas.js, vdraft.js, penales.js, penales3d.js,
+src/analytics/          reglas puras: sobres.js, sobresVista.js, vdraftVista.js, aperturas.js, vdraft.js, penales.js, penales3d.js,
                         especialesCartas.js, eventos.js, god.js
 src/utils/              llamadas a la base: sobres.js, vdraft.js, god.js, usuarios.js, eventos.js;
                         sonidoApertura.js (audio), escenaPenales.js (carga de la escena)
@@ -100,4 +100,6 @@ Las especiales (`premio` en `especialesCartas.ESPECIALES`) se dibujan con `Carta
 - `juegos.css`: tokens `--jg-*` (fondo, superficies, neón, oro/plata/bronce, un color por rareza, glows, radios, tipografías), breakpoints (móvil < 768, tablet 768–1199, PC ≥ 1200), toques de 44 px y texto base de 16 px en el celular, `prefers-reduced-motion`.
 - `ui.jsx`: `GameButton` (primary / secondary / ghost), `Panel`, `Badge`, `Countdown`, `ProgressBar`, `Hoja` (BottomSheet en el celular, panel lateral en tablet/PC).
 - `useFeedback()`: `sound(id)` y `vibrate(patron)` con preferencias (sonido / vibración) guardadas en el dispositivo. Eventos: `click`, `gol`, `especial`, `victoria`, `derrota`, `premio`.
+- `useCuenta(valor)`: un número que cuenta hasta su valor nuevo (química, fuerza, marcador).
+- `volarCarta(origen, destino)` (`volar.js`): la carta elegida vuela a su lugar; la copia queda hasta que llega la respuesta de la base.
 - `LayoutJuegos`: en el celular, barra inferior fija con Juegos, Sobres, V-Draft y Penales (sólo dentro de los juegos; la app del staff mantiene su menú lateral).
