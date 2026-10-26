@@ -91,7 +91,7 @@
 .sb-contador small { grid-column: 1 / -1; color: var(--jg-texto-2); font-size: 13px; }
 .sb-filtros { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .sb-filtros::-webkit-scrollbar { display: none; }
-.sb-chip { --chip: var(--jg-neon); flex: 0 0 auto; min-height: 36px; padding: 0 12px; border-radius: 999px; cursor: pointer; font-size: 12px; font-weight: 900; letter-spacing: .06em;
+.sb-chip { --chip: var(--jg-neon); flex: 0 0 auto; min-height: var(--jg-toque); padding: 0 12px; border-radius: 999px; cursor: pointer; font-size: 12px; font-weight: 900; letter-spacing: .06em;
   border: 1px solid var(--jg-borde-fuerte); background: transparent; color: var(--jg-texto-2); }
 .sb-chip em { font-style: normal; font-family: var(--jg-mono); opacity: .8; }
 .sb-chip.activo { border-color: var(--chip); color: var(--chip); background: color-mix(in srgb, var(--chip) 12%, transparent); }

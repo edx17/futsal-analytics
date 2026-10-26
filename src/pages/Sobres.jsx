@@ -474,7 +474,7 @@ function Probabilidades({ catalogo, soloEspeciales = false, reglas = null }) {
 /* Las preferencias de la apertura: de quien mira, nunca cambian qué sale. */
 function PreferenciasApertura({ prefs, cambiar }) {
   const opcion = (activo) => ({
-    padding: '5px 10px', fontSize: 11, fontWeight: 800, letterSpacing: '.06em', borderRadius: 6, cursor: 'pointer',
+    padding: '5px 12px', minHeight: 'var(--jg-toque, 44px)', fontSize: 12, fontWeight: 800, letterSpacing: '.06em', borderRadius: 8, cursor: 'pointer',
     border: `1px solid ${activo ? 'var(--accent)' : 'var(--border)'}`, color: activo ? 'var(--accent)' : 'var(--text-dim)',
     background: activo ? 'rgba(0,255,136,.08)' : 'transparent',
   });

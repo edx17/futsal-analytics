@@ -66,8 +66,8 @@
   border: 1px solid color-mix(in srgb, var(--acento) 50%, transparent); box-shadow: var(--jg-sombra), 0 0 30px color-mix(in srgb, var(--acento) 25%, transparent); }
 .jh-gigante-texto { position: absolute; left: 18px; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
 .jh-gigante-texto .jg-btn { color: #04110a; margin-top: 6px; }
-.jh-puntos { display: flex; justify-content: center; gap: 4px; margin-top: 10px; }
-.jh-puntos button { width: 44px; height: 28px; border: 0; background: none; cursor: pointer; position: relative; padding: 0; }
+.jh-puntos { display: flex; justify-content: center; gap: 4px; margin-top: 2px; }
+.jh-puntos button { width: 44px; height: 44px; border: 0; background: none; cursor: pointer; position: relative; padding: 0; }
 .jh-puntos button::after { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; border-radius: 999px; transform: translate(-50%, -50%); background: rgba(255, 255, 255, .25); transition: width .2s, background .2s; }
 .jh-puntos button.activo::after { width: 22px; background: var(--jg-neon); box-shadow: 0 0 8px rgba(0, 255, 136, .7); }
 
