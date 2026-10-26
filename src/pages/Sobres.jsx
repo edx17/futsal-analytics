@@ -184,7 +184,7 @@ export default function Sobres() {
       const col = ev.escena?.colores || {};
       return (
         <TarjetaSobre key={`ev-${ev.id}`} i={i} disponible={disponible} manana={s.manana}
-          nombre={ev.nombre} cartas={ev.cartas} costo={ev.costo} imagen={imagenDeSobre('evento', { luz: col.luz || col.principal || '#fbbf24' })}
+          nombre={ev.nombre} cartas={ev.cartas} costo={ev.costo} imagen={imagenDeSobre('evento', { luz: col.luz || col.principal || '#fbbf24' }, ev.escena?.video)}
           acento={col.luz || '#fbbf24'} nota={notaEvento(ev, estado.puntos)} abriendo={abriendo === `evento:${ev.id}`}
           alAbrir={() => abrirEvento(ev)} alApuntar={() => precargarEvento(ev)} />
       );

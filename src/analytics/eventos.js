@@ -33,6 +33,7 @@ export const ESCENAS_BASE = [
   { id: 'evento_goleadores', nombre: 'Evento Goleadores (pabellón rojo y dorado)' },
   { id: 'evento_recuperadores', nombre: 'Evento Recuperadores (pabellón verde azulado)' },
   { id: 'evento_heroes', nombre: 'Héroes del club (pabellón en sepia)' },
+  { id: 'evento_halloween', nombre: 'Noche de Halloween (pabellón violeta, calabazas y murciélagos)' },
   { id: 'evento_demo', nombre: 'Evento (pabellón rojo y ámbar)' },
   { id: 'elite', nombre: 'Élite (pabellón azul)' },
   { id: 'epico', nombre: 'Épico (pabellón violeta, portal)' },
@@ -161,6 +162,16 @@ export const PLANTILLAS = {
       video: 'evento_heroes', video_alternativo: 'leyenda', titulo: 'HÉROES DEL CLUB',
       colores: { principal: '#7c5627', secundario: '#20140a', acento: '#fbefd2', fondo: '#0d0804', luz: '#e8c48a', texto: '#fbf1dc' },
       particulas: 70, intensidad: 1.05,
+    },
+  },
+  halloween: {
+    nombre: 'NOCHE DE HALLOWEEN',
+    tipos: ['HALW'],
+    sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
+    escena: {
+      video: 'evento_halloween', video_alternativo: 'epico', titulo: 'NOCHE DE HALLOWEEN',
+      colores: { principal: '#5b1a8a', secundario: '#14061c', acento: '#ff7a00', fondo: '#07020b', luz: '#ff8a1f', texto: '#fff3e6' },
+      particulas: 90, intensidad: 1.2,
     },
   },
 };

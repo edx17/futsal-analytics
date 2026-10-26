@@ -658,10 +658,103 @@ def pieza_evento_heroes():
         return pieza_evento_demo()
 
 
+# ── Halloween ───────────────────────────────────────────────────────────────
+
+def caja_de_musica(f, vol=1.0, largo=1.6):
+    """Una nota de cajita de música, apenas desafinada (FM con un parcial inarmónico)."""
+    n = muestras(largo)
+    t = np.arange(n) / SR
+    f = f * (1 + 0.004 * np.sin(2 * np.pi * 0.7 * t))
+    x = np.sin(2 * np.pi * f * t + 1.4 * np.exp(-t * 6) * np.sin(2 * np.pi * f * 3.98 * t))
+    x += 0.25 * np.sin(2 * np.pi * f * 5.4 * t) * np.exp(-t * 9)
+    return x * np.exp(-t * 3.2) * vol
+
+
+def trino_cuerdas(frecs, dur, brillo=2600):
+    """Cuerdas en trémolo nervioso (arco cortado muy rápido), disonantes."""
+    n = muestras(dur)
+    t = np.arange(n) / SR
+    x = sum(sierra(f * (1 + 0.003 * i), n) for i, f in enumerate(frecs)) / len(frecs)
+    x = filtro_variable(x, rampa(n, [(0, 500), (1, brillo)]))
+    tremolo = 0.55 + 0.45 * np.sign(np.sin(2 * np.pi * 13 * t))
+    return x * pasabajos(tremolo, 60) * envolvente(n, dur * 0.3, 0.1, 1.0, dur * 0.2)
+
+
+def chirrido(dur=0.9, f0=1800, f1=3400):
+    """Un violín que chirría hacia arriba (el golpe de las películas de terror)."""
+    n = muestras(dur)
+    f = rampa(n, [(0, f0), (1, f1)]) * (1 + 0.01 * _suave(n, 18))
+    x = sierra(f, n) + 0.6 * sierra(f * 1.01, n)
+    x = pasabanda(x, 3000, 1.2)
+    return x * envolvente(n, 0.02, 0.1, 0.9, soltar=dur * 0.3)
+
+
+def susurros(dur, vol=1.0):
+    """Susurros: ruido por formantes graves que va y viene."""
+    n = muestras(dur)
+    x = sum(g * pasabanda(ruido(n), fc, 6.0) for fc, g in FORMANTES['oo'])
+    x *= np.clip(0.4 + 0.6 * _suave(n, 2.5), 0, 2)
+    return x / (np.std(x) + 1e-9) * envolvente(n, dur * 0.3, 0.1, 1.0, dur * 0.3) * vol
+
+
+def grito_mujer(dur=2.2, f0=820):
+    """El grito: una voz aguda que sube de golpe, se sostiene temblando y se quiebra,
+    con mucho aire (formantes de voz femenina en "aaa")."""
+    n = muestras(dur)
+    t = np.arange(n) / SR
+    tono = rampa(n, [(0, f0 * 0.7), (0.08, f0 * 1.25), (0.55, f0 * 1.35), (1, f0 * 0.95)])
+    temblor = 1 + 0.03 * np.sin(2 * np.pi * 7.5 * t) + 0.02 * _suave(n, 12)
+    fuente = sierra(tono * temblor, n) + 0.3 * sierra(tono * temblor * 2.01, n)
+    voz = sum(g * pasabanda(fuente, fc, 5.0) for fc, g in ((1000, 1.0), (1500, 0.7), (3100, 0.45), (4200, 0.2)))
+    voz /= np.std(voz) + 1e-9
+    aire = pasabanda(ruido(n), 2600, 1.0)
+    voz += 0.55 * aire / (np.std(aire) + 1e-9)
+    voz = np.tanh(1.8 * voz)                                    # se quiebra
+    return voz * envolvente(n, 0.06, 0.2, 0.85, soltar=dur * 0.5)
+
+
+def pieza_evento_halloween():
+    """Noche de Halloween (guion 'evento', 7 s): una cajita de música desafinada
+    sobre un dron grave, el corazón que se acelera, cuerdas en trémolo y susurros;
+    chirrido cuando se prenden las calabazas, el golpe del clímax y, cuando
+    aparece la carta, el grito de una mujer de fondo. Re menor, disonante."""
+    dur = 7.0
+    p = Pista(dur + COLA)
+    p.poner(0.0, dron(nota('D1'), dur + COLA, brillo=260), 0.9, reverb=0.4, ancho=1)
+    p.poner(0.0, dron(nota('Eb1') * 1.003, dur + COLA, brillo=200), 0.35, reverb=0.4)
+    for i, (s, n) in enumerate([(0.0, 'A5'), (0.33, 'F5'), (0.66, 'E5'), (0.99, 'D5'), (1.15, 'C#5')]):
+        p.poner(s, caja_de_musica(nota(n), 0.9), 0.5, pan=0.3, reverb=0.6)
+    p.poner(0.6, plato_reves(0.73), 0.4, reverb=0.4)
+    p.poner(1.33, impacto(0.9, 38, 2.4), 0.9, reverb=0.5)                                # se rompe el sobre
+    p.poner(1.33, braam(acorde('D1', 'A1', 'Eb2'), 1.6, abre=0.2, pico=1800), 0.6, reverb=0.5)
+    s, k = 1.6, 0
+    while s < 6.1:                                                 # el corazón, cada vez más rápido
+        p.poner(s, latido(1.0), 0.9, reverb=0.2)
+        p.poner(s + 0.16, latido(0.7), 0.7, reverb=0.2)
+        s += max(0.38, 0.95 - k * 0.07); k += 1
+    p.poner(1.6, trino_cuerdas(acorde('D3', 'Eb3', 'A3', 'Bb3'), 4.6), 0.45, pan=-0.2, reverb=0.45)
+    p.poner(2.0, susurros(3.8, 1.0), 0.18, pan=0.5, reverb=0.7, ancho=1.5)
+    p.poner(2.8, susurros(3.0, 1.0), 0.14, pan=-0.6, reverb=0.7, ancho=1.5)
+    p.poner(3.2, chirrido(0.9), 0.32, pan=0.4, reverb=0.6)                               # las calabazas
+    p.poner(3.3, impacto(0.6, 44, 1.5), 0.6, reverb=0.5)
+    for i, n in enumerate(['D6', 'F6', 'E6', 'Bb5']):
+        p.poner(3.6 + i * 0.4, caja_de_musica(nota(n), 0.7, 1.2), 0.35, pan=-0.4, reverb=0.7)
+    p.poner(4.8, subida(1.4, 180, 3600), 0.55, reverb=0.4, ancho=1)
+    p.poner(6.2, impacto(1.0, 36, 3.6), 1.0, reverb=0.55)                                 # clímax
+    p.poner(6.2, braam(acorde('D1', 'A1', 'D2', 'Eb2', 'A2'), 3.4, abre=0.15, pico=2400), 0.85, reverb=0.55)
+    p.poner(6.2, coro(acorde('D3', 'F3', 'A3', 'Bb3'), 4.0, 'oo', ataque=0.15, soltar=2.4), 0.45, reverb=0.75)
+    p.poner(6.25, chirrido(1.4, 1400, 3800), 0.3, pan=-0.3, reverb=0.6)
+    p.poner(6.9, grito_mujer(2.3, 830), 0.42, pan=0.35, reverb=0.75)                      # aparece la carta
+    p.poner(7.25, grito_mujer(1.6, 700), 0.12, pan=-0.6, reverb=0.9)                     # su eco, lejos
+    for i, n in enumerate(['A5', 'F5', 'E5', 'D5']):
+        p.poner(8.1 + i * 0.45, caja_de_musica(nota(n), 0.6), 0.3, pan=0.2, reverb=0.7)
+    return p.mezclar(3.2, brillo=5000, dinamica=[(0, -8), (6.1, -4), (6.2, 0)])
+
+
 PIEZAS = {'vdraft': pieza_vdraft, 'elite': pieza_elite, 'epico': pieza_epico, 'leyenda': pieza_leyenda,
           'evento_demo': pieza_evento_demo, 'excepcional': pieza_excepcional,
           'evento_goleadores': pieza_evento_goleadores, 'evento_recuperadores': pieza_evento_recuperadores,
-          'evento_heroes': pieza_evento_heroes}
+          'evento_heroes': pieza_evento_heroes, 'evento_halloween': pieza_evento_halloween}
 
 
 def ffmpeg():
