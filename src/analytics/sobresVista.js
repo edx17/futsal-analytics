@@ -14,8 +14,12 @@ export const ORDEN_SOBRES = ['premio_especial', 'premio', 'diario', 'wellness', 
    sobres creados por el club) usa el neutro teñido con sus colores. */
 const CON_IMAGEN = new Set(ORDEN_SOBRES);
 
-/** La imagen del sobre y, si va el neutro, el color con que se tiñe. */
-export function imagenDeSobre(tipo, colores = null) {
+/* Los eventos con sobre propio (por la escena que usan). */
+const SOBRE_DE_ESCENA = { evento_halloween: 'halloween' };
+
+/** La imagen del sobre y, si va el neutro, el color con que se tiñe. `escena`: el video del evento. */
+export function imagenDeSobre(tipo, colores = null, escena = null) {
+  if (SOBRE_DE_ESCENA[escena]) return { src: `/juegos/sobres/${SOBRE_DE_ESCENA[escena]}.webp`, tinte: null };
   const propio = colores?.principal || colores?.luz || null;
   if (CON_IMAGEN.has(tipo) && !propio) return { src: `/juegos/sobres/${tipo}.webp`, tinte: null };
   return { src: '/juegos/sobres/neutro.webp', tinte: propio || '#fbbf24' };

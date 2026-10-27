@@ -1,7 +1,7 @@
 import React, { useId, useState } from 'react';
 import { FAMILIAS, familiaDe } from '../../analytics/especialesCartas';
 
-/* LAS CARTAS ESPECIALES (Goleadores, Asistidores, Presencia, MVP, Recuperadores, Héroes)
+/* LAS CARTAS ESPECIALES (Goleadores, Asistidores, Presencia, MVP, Recuperadores, Héroes, Halloween)
  *
  * Misma técnica que CartaPremio, para que se exporten igual en las placas:
  *   · capa de atrás: un <svg> con la forma, el metal y la luz de la familia;
@@ -36,6 +36,8 @@ const FORMAS = {
   escudo: 'M0,0 L320,0 L320,300 C320,392 238,450 160,480 C82,450 0,392 0,300 Z',
   // retrato antiguo: las cuatro esquinas cóncavas
   retrato: 'M26,0 L294,0 A26,26 0 0 0 320,26 L320,454 A26,26 0 0 0 294,480 L26,480 A26,26 0 0 0 0,454 L0,26 A26,26 0 0 0 26,0 Z',
+  // Halloween: el borde de arriba son las alas de un murciélago (orejas al centro)
+  murcielago: 'M0,18 Q36,58 72,30 Q100,62 128,34 L144,6 L152,26 L168,26 L176,6 L192,34 Q220,62 248,30 Q284,58 320,18 L320,446 L286,480 L34,480 L0,446 Z',
 };
 /* El borde interior: la misma silueta, un poco adentro. */
 const INTERIOR = 'translate(11,11) scale(0.93125,0.954)';
@@ -49,6 +51,7 @@ const FOTO = {
   corona: { top: 66, left: 26, w: 268, h: 210, radio: '4px 4px 0 0' },
   escudo: { top: 26, left: 26, w: 268, h: 236, radio: '6px 6px 0 0' },
   retrato: { top: 40, left: 32, w: 256, h: 234, radio: '128px 128px 0 0' }, // la foto en arco, como un retrato de época
+  murcielago: { top: 56, left: 26, w: 268, h: 218, radio: '10px 10px 0 0' },
 };
 
 /* Dónde va cada bloque de texto (el escudo se angosta abajo, la corona tiene laureles). */
@@ -57,6 +60,7 @@ const LAYOUT = {
   escudo: { cinta: 306, numero: 332, secundarios: 382, pie: 428, margen: 62, margenPie: 92 },
   corona: { cinta: 316, numero: 344, secundarios: 394, pie: 440, margen: 40, margenPie: 70 },
   retrato: { cinta: 314, numero: 350, secundarios: 398, pie: 440, margen: 36, margenPie: 60 },
+  murcielago: { cinta: 312, numero: 346, secundarios: 398, pie: 446, margen: 34, margenPie: 50 },
 };
 
 const iniciales = (c) => `${(c.nombre || '?')[0] || ''}${(c.apellido || '')[0] || ''}`.toUpperCase();
@@ -150,7 +154,7 @@ export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false
       </svg>
 
       {/* media y puesto (como todas las cartas del juego) */}
-      <div style={{ position: 'absolute', left: px(36), top: px(fam.forma === 'corona' ? 78 : 48), lineHeight: 1, textShadow: '0 2px 8px rgba(0,0,0,.65)' }}>
+      <div style={{ position: 'absolute', left: px(36), top: px(fam.forma === 'corona' ? 78 : fam.forma === 'murcielago' ? 62 : 48), lineHeight: 1, textShadow: '0 2px 8px rgba(0,0,0,.65)' }}>
         <div style={{ fontSize: px(60), fontWeight: 900, letterSpacing: '-0.03em', color: c.media }}>{carta.ovr ?? '—'}</div>
         <div style={{ fontSize: px(20), fontWeight: 800, letterSpacing: '0.1em', marginTop: px(4) }}>{carta.rol}</div>
       </div>
@@ -186,8 +190,21 @@ export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false
             </div>
           )}
 
+          {/* Halloween: los seis atributos del jugador, en dos filas */}
+          {fam.atributos && (
+            <div style={{ position: 'absolute', left: px(L.margen), right: px(L.margen), top: px(mediana ? L.numero + 26 : L.numero - 2),
+                          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', rowGap: px(mediana ? 4 : 8), columnGap: px(10) }}>
+              {(carta.atributos || []).slice(0, mediana ? 3 : 6).map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: px(6), lineHeight: 1 }}>
+                  <span style={{ fontSize: px(mediana ? 26 : 22), fontWeight: 900, color: c.media }}>{v}</span>
+                  <span style={{ fontSize: px(mediana ? 13 : 11), fontWeight: 800, letterSpacing: '0.12em', color: c.suave }}>{k}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* el número que lo hizo ganar */}
-          {!fam.rasgos && <div style={{ position: 'absolute', left: 0, right: 0, top: px(mediana ? L.numero + 22 : L.numero), textAlign: 'center', lineHeight: 1 }}>
+          {!fam.rasgos && !fam.atributos && <div style={{ position: 'absolute', left: 0, right: 0, top: px(mediana ? L.numero + 22 : L.numero), textAlign: 'center', lineHeight: 1 }}>
             <span style={{ fontSize: px(mediana ? 58 : 46), fontWeight: 900, color: c.media }}>{valor ?? '—'}</span>
             <span style={{ fontSize: px(mediana ? 18 : 14), fontWeight: 900, letterSpacing: '0.14em', marginLeft: px(8), color: c.suave }}>
               {mediana && fam.etiquetaCorta ? fam.etiquetaCorta : fam.etiqueta(valor, e)}
@@ -195,7 +212,7 @@ export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false
           </div>}
 
           {/* el resto, de los mismos datos */}
-          {!mediana && !fam.rasgos && <div style={{ position: 'absolute', left: px(L.margen), right: px(L.margen), top: px(L.secundarios),
+          {!mediana && !fam.rasgos && !fam.atributos && <div style={{ position: 'absolute', left: px(L.margen), right: px(L.margen), top: px(L.secundarios),
                         display: 'flex', justifyContent: 'space-between' }}>
             {fam.secundarios(carta).map(([k, v]) => (
               <div key={k} style={{ flex: 1, textAlign: 'center', lineHeight: 1 }}>
@@ -273,6 +290,27 @@ function Textura({ fam, g }) {
           <rect width={W} height={H} fill={`url(#${g('vineta')})`} />
         </g>
       );
+    case 'telarana': // halloween: luna llena, telarañas en las esquinas de arriba y niebla abajo
+      return (
+        <g>
+          <circle cx="238" cy="120" r="58" fill="#fde7c2" fillOpacity="0.16" />
+          <circle cx="238" cy="120" r="40" fill="#fde7c2" fillOpacity="0.22" />
+          {[[0, 0, 1], [320, 0, -1]].map(([x, y, sx]) => (
+            <g key={x} transform={`translate(${x},${y}) scale(${sx},1)`} fill="none" stroke={c.detalle} strokeOpacity="0.4" strokeWidth="1.2">
+              {[0, 18, 36, 54, 72, 90].map((a) => <line key={a} x1="0" y1="0" x2={150 * Math.cos((a * Math.PI) / 180)} y2={150 * Math.sin((a * Math.PI) / 180)} />)}
+              {[30, 60, 92, 126].map((r) => (
+                <path key={r} d={[0, 18, 36, 54, 72, 90].map((a, i) => {
+                  const t = (a * Math.PI) / 180;
+                  const rr = r * (i % 2 ? 0.92 : 1);
+                  return `${i ? 'L' : 'M'}${(rr * Math.cos(t)).toFixed(1)},${(rr * Math.sin(t)).toFixed(1)}`;
+                }).join(' ')} />
+              ))}
+            </g>
+          ))}
+          <rect y="380" width={W} height="100" fill={c.detalle} fillOpacity="0.07" />
+          <rect width={W} height={H} fill={`url(#${g('vineta')})`} />
+        </g>
+      );
     default:
       return null;
   }
@@ -327,6 +365,18 @@ function Adorno({ fam }) {
               <circle cx="47" cy="47" r="3" fill={c.filo} stroke="none" />
               <path d="M56,40 L84,40 M40,56 L40,84" strokeOpacity="0.55" />
             </g>
+          ))}
+        </g>
+      );
+    case 'goteo': // halloween: baba verde que cae desde las alas sobre la foto, y dos murciélagos
+      return (
+        <g>
+          <path d="M26,52 L294,52 L294,60 Q286,60 284,74 Q282,86 278,74 Q274,62 252,62 Q238,62 236,82 Q234,98 230,82 Q226,63 198,63
+                   Q170,63 168,72 Q166,80 162,72 Q158,63 126,63 Q98,63 96,86 Q94,102 90,86 Q86,62 62,62 Q46,62 44,72 Q42,80 38,72 Q34,60 26,60 Z"
+                fill={c.goteo} fillOpacity="0.92" />
+          {[[214, 248, 1], [250, 226, 0.7]].map(([x, y, k], i) => (
+            <path key={i} transform={`translate(${x},${y}) scale(${k})`} fill="#0a0410"
+                  d="M0,0 C6,-8 14,-10 22,-6 C18,-2 16,2 18,6 C12,4 8,6 6,10 C4,6 2,6 0,8 C-2,6 -4,6 -6,10 C-8,6 -12,4 -18,6 C-16,2 -18,-2 -22,-6 C-14,-10 -6,-8 0,0 Z" />
           ))}
         </g>
       );
@@ -403,6 +453,19 @@ function Insignia({ fam, g }) {
           <path d="M-24,-26 L24,-26 L24,2 C24,16 12,25 0,30 C-12,25 -24,16 -24,2 Z" fill={c.insigniaFondo} stroke={`url(#${g('metal')})`} strokeWidth="4" />
           <path d="M-12,-6 L10,-6 M2,-14 L10,-6 L2,2" fill="none" stroke={c.detalle} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M-12,8 L12,8" stroke={c.detalle} strokeWidth="4" strokeLinecap="round" />
+        </g>
+      );
+    case 'calabaza': // halloween: calabaza tallada con la cara encendida
+      return (
+        <g>
+          {fondo}
+          <ellipse cx="-7" cy="3" rx="10" ry="13" fill="#e8650a" />
+          <ellipse cx="7" cy="3" rx="10" ry="13" fill="#e8650a" />
+          <ellipse cx="0" cy="3" rx="9" ry="14" fill="#ff8a1f" />
+          <path d="M-1,-11 Q0,-17 4,-19" stroke="#4d7c0f" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <polygon points="-9,-3 -4,-3 -6.5,-8" fill="#fde047" />
+          <polygon points="4,-3 9,-3 6.5,-8" fill="#fde047" />
+          <path d="M-10,5 L-6,9 L-3,6 L0,10 L3,6 L6,9 L10,5 L6,12 L0,13 L-6,12 Z" fill="#fde047" />
         </g>
       );
     default:

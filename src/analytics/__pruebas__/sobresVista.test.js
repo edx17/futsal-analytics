@@ -38,6 +38,8 @@ describe('sobres: la imagen', () => {
     expect(imagenDeSobre('diario')).toEqual({ src: '/juegos/sobres/diario.webp', tinte: null });
     expect(imagenDeSobre('diario', { principal: '#123456' }).tinte).toBe('#123456');
     expect(imagenDeSobre('evento', { luz: '#ff0000' })).toEqual({ src: '/juegos/sobres/neutro.webp', tinte: '#ff0000' });
+    // el evento de Halloween tiene su sobre
+    expect(imagenDeSobre('evento', { luz: '#ff8a1f' }, 'evento_halloween')).toEqual({ src: '/juegos/sobres/halloween.webp', tinte: null });
   });
 });
 

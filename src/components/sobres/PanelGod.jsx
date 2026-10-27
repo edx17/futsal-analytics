@@ -15,6 +15,7 @@ import { prepararVideo } from '../../utils/videoApertura';
 import GodEventos from './GodEventos';
 import GodSobres from './GodSobres';
 import GodHeroes from './GodHeroes';
+import GodHalloween from './GodHalloween';
 import GodUsuarios from './GodUsuarios';
 import { normalizarTipo } from '../../analytics/tiposSobre';
 
@@ -27,6 +28,7 @@ import { normalizarTipo } from '../../analytics/tiposSobre';
  *             cambiar la foto de cualquier carta.
  *   EVENTOS   sobres propios con sus cartas, reglas y escena (GodEventos).
  *   HÉROES    cartas de figuras que ya no están en el club, cargadas a mano (GodHeroes).
+ *   HALLOWEEN las cartas de noche de brujas de los jugadores que se elijan (GodHalloween).
  *   USUARIOS  quién juega, V-Coins, bloqueos, regalos y eventos de V-Coins x2 (GodUsuarios).
  *   SOBRES    suspender tipos de sobre, una cinemática para todo el club y
  *             editar cada sobre: presentación, cartas, rarezas, colores (GodSobres).
@@ -36,7 +38,7 @@ import { normalizarTipo } from '../../analytics/tiposSobre';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['sobres', 'SOBRES'], ['usuarios', 'USUARIOS']];
+const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['halloween', 'HALLOWEEN'], ['sobres', 'SOBRES'], ['usuarios', 'USUARIOS']];
 const POR_PAGINA = 40;
 
 /* Las escenas que se pueden forzar, con aviso si su video todavía no está. */
@@ -117,6 +119,9 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
             <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
           )}
           {pestana === 'usuarios' && <GodUsuarios clubId={clubId} avisar={setAviso} />}
+          {pestana === 'halloween' && (
+            <GodHalloween clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
+          )}
           {pestana === 'heroes' && (
             <GodHeroes clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
           )}

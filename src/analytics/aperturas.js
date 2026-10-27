@@ -85,6 +85,14 @@ export const VIDEOS = {
     musica: '/cine/musica/evento_heroes.m4a',
     sonidos: [[0, 'carga', 1.5], [1.6, 'golpeSuave', 0.5], [3.07, 'pabellon', 3], [6.2, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
   },
+  /* Halloween: la música trae el terror (cajita de música, corazón, susurros) y el grito cuando aparece la carta. */
+  evento_halloween: {
+    fuentes: [{ src: '/cine/evento_halloween.webm', tipo: 'video/webm' }, { src: '/cine/evento_halloween.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/evento_halloween.jpg',
+    duracion: 7,
+    musica: '/cine/musica/evento_halloween.m4a',
+    sonidos: [[1.33, 'golpeSuave', 0.5], [6.2, 'golpeFuerte', 1]],
+  },
 };
 
 /* ── tiempos (ms) ──────────────────────────────────────────────────────────── */

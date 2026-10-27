@@ -563,5 +563,76 @@
       "FUTSAL",
       "PENALES"
     ]
+  },
+  "evento_halloween": {
+    "nombre": "NOCHE DE HALLOWEEN",
+    "guion": "evento",
+    "cuadros": 210,
+    "muestras": 16,
+    "sobre_titulo": [
+      "NOCHE DE",
+      "HALLOWEEN"
+    ],
+    "sobre_subtitulo": "31 · 10",
+    "sobre_color": [
+      0.32,
+      0.06,
+      0.003
+    ],
+    "acento": [
+      1.0,
+      0.34,
+      0.0
+    ],
+    "destello": [
+      1.0,
+      0.72,
+      0.38
+    ],
+    "haz": [
+      0.55,
+      0.12,
+      1.0
+    ],
+    "luz_pabellon": [
+      0.62,
+      0.42,
+      1.0
+    ],
+    "luz_pabellon_w": 300,
+    "luz_techo": [
+      0.75,
+      0.55,
+      1.0
+    ],
+    "asientos": [
+      0.04,
+      0.008,
+      0.06
+    ],
+    "piso_margen": [
+      0.03,
+      0.006,
+      0.045
+    ],
+    "decoracion": [
+      "banderas",
+      "logo_centro",
+      "calabazas",
+      "murcielagos"
+    ],
+    "graficas": [
+      "HALLOWEEN",
+      "NOCHE DE BRUJAS",
+      "MYSQUAD",
+      "FUTSAL"
+    ],
+    "texto_banderas": [
+      "HALLOWEEN",
+      "31 · 10",
+      "MYSQUAD"
+    ],
+    "texto_logo": "BOO!",
+    "emblema": "calabaza"
   }
 }
