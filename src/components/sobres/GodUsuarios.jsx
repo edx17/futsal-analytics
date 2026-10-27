@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { MONEDA } from '../../analytics/sobres';
+import { AREAS, TODAS, textoAreas } from '../../analytics/avisosVCoins';
 import {
   FILTROS_USUARIOS, FACTORES, filtrarUsuarios, resumenUsuarios, multiplicadorVigente, erroresMultiplicador, estadoMultiplicador,
 } from '../../analytics/usuarios';
@@ -164,9 +165,12 @@ function Multiplicadores({ multis, ocupado, sinTabla, guardar, alternar }) {
     <div style={caja}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={rotulo}>EVENTOS DE {MONEDA.toUpperCase()} MULTIPLICADAS</div>
-        {!nuevo && <button style={{ ...chip, marginLeft: 'auto' }} onClick={() => setNuevo({ nombre: `${MONEDA.toUpperCase()} X2`, factor: 2, desde: ahoraLocal(), hasta: ahoraLocal(48) })}>+ CREAR</button>}
+        {!nuevo && <button style={{ ...chip, marginLeft: 'auto' }} onClick={() => setNuevo({ nombre: `${MONEDA.toUpperCase()} X2`, factor: 2, desde: ahoraLocal(), hasta: ahoraLocal(48), aplica: [...TODAS] })}>+ CREAR</button>}
       </div>
-      <div style={{ ...dim, marginTop: 4 }}>Mientras corre, todo lo que se gana (repetidas en los sobres y premios del V-Draft) se multiplica. Los jugadores lo ven en Sobres.</div>
+      <div style={{ ...dim, marginTop: 4 }}>
+        Mientras corre, lo que se gana en los juegos elegidos se multiplica. Los jugadores ven un cartel en todos los Juegos:
+        desde 7 días antes (con la cuenta regresiva) y mientras dura.
+      </div>
       {nuevo && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 10 }}>
           <input value={nuevo.nombre} onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} maxLength={60} style={{ ...campo, width: 180 }} aria-label="Nombre" />
@@ -175,6 +179,18 @@ function Multiplicadores({ multis, ocupado, sinTabla, guardar, alternar }) {
           </select>
           <label style={etiqueta}>Desde <input type="datetime-local" value={nuevo.desde} onChange={(e) => setNuevo({ ...nuevo, desde: e.target.value })} style={campo} /></label>
           <label style={etiqueta}>Hasta <input type="datetime-local" value={nuevo.hasta} onChange={(e) => setNuevo({ ...nuevo, hasta: e.target.value })} style={campo} /></label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', flexBasis: '100%' }} role="group" aria-label="Dónde aplica">
+            <span style={etiqueta}>Aplica a</span>
+            {AREAS.map((a) => {
+              const on = nuevo.aplica.includes(a.id);
+              return (
+                <button key={a.id} type="button" style={chipOn(on)} aria-pressed={on} title={a.ayuda}
+                  onClick={() => setNuevo({ ...nuevo, aplica: on ? nuevo.aplica.filter((x) => x !== a.id) : [...nuevo.aplica, a.id] })}>
+                  {on ? '✓ ' : ''}{a.nombre}
+                </button>
+              );
+            })}
+          </div>
           <button style={boton} disabled={ocupado || errores.length > 0}
             onClick={() => { guardar({ ...nuevo, desde: new Date(nuevo.desde).toISOString(), hasta: new Date(nuevo.hasta).toISOString() }); setNuevo(null); }}>GUARDAR</button>
           <button style={chip} onClick={() => setNuevo(null)}>CANCELAR</button>
@@ -188,6 +204,7 @@ function Multiplicadores({ multis, ocupado, sinTabla, guardar, alternar }) {
             return (
               <div key={m.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12 }}>
                 <b>{m.nombre}</b><span style={{ fontFamily: MONO }}>x{m.factor}</span>
+                <span style={{ ...tag, background: '#1f2937' }}>{textoAreas(m.aplica)}</span>
                 <span style={dim}>{new Date(m.desde).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })} → {new Date(m.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</span>
                 <span style={{ ...tag, background: estado === 'CORRIENDO' ? '#b45309' : '#374151' }}>{estado}</span>
                 <button style={{ ...chip, marginLeft: 'auto' }} disabled={ocupado} onClick={() => alternar(m)}>{m.activo ? 'APAGAR' : 'PRENDER'}</button>

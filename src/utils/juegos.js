@@ -21,3 +21,5 @@ async function llamar(fn, params = {}) {
 
 export const misionesDelDia = () => llamar('juegos_misiones');
 export const cobrarMision = (id) => llamar('juegos_cobrar_mision', { p_mision: id });
+/* El evento de V-Coins en curso y el próximo (migración 20261105120000_vcoins_eventos.sql). */
+export const avisosJuegos = () => llamar('juegos_avisos');

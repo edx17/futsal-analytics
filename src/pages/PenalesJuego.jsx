@@ -9,6 +9,8 @@ import { estadoPenales, nuevaTanda, tirarPenal, abandonarTanda } from '../utils/
 import { GameButton, Badge, Countdown } from '../juegos/ui';
 import useFeedback from '../juegos/useFeedback';
 import Monedas from '../juegos/Monedas';
+import useAvisosVCoins from '../juegos/useAvisosVCoins';
+import { conFactor } from '../analytics/avisosVCoins';
 import { monedasQueCaen } from '../analytics/partidoVista';
 import '../components/quinteto/quinteto.css';
 import './juegos.css';
@@ -81,6 +83,7 @@ function ConCartas({ estado, recargar }) {
 
   const pat = pateadores.find((c) => c.catalogo_id === pateador) || pateadores[0];
   const arq = arqueros.find((c) => c.catalogo_id === arquero) || arqueros[0];
+  const avisos = useAvisosVCoins();
   const premiosQuedan = Math.max(0, (estado.limite ?? PREMIOS_POR_DIA) - (estado.premiadas_hoy || 0));
 
   const empezar = async () => {
@@ -149,7 +152,10 @@ function ConCartas({ estado, recargar }) {
             <button key={n.id} role="radio" aria-checked={nivel === n.id} className={`pj-nivel${nivel === n.id ? ' activo' : ''}`} onClick={() => setNivel(n.id)}>
               <b>{n.nombre}</b>
               <span className="pj-cpu">CPU {n.cpu}</span>
-              <span className="pj-premio">{premiosQuedan ? `+${n.premio} VC` : 'sin premio'}</span>
+              <span className="pj-premio">
+                {premiosQuedan ? `+${conFactor(n.premio, avisos, 'penales')} VC` : 'sin premio'}
+                {premiosQuedan && conFactor(1, avisos, 'penales') > 1 ? <em className="jg-x2">x{avisos.actual.factor}</em> : null}
+              </span>
               <small>{n.detalle}</small>
             </button>
           ))}

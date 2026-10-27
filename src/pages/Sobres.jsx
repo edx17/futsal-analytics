@@ -17,6 +17,8 @@ import { varianteDeEventoDb, varianteDeEscena } from '../analytics/eventos';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
 import { GameButton, Badge, ProgressBar, Countdown } from '../juegos/ui';
 import useFeedback from '../juegos/useFeedback';
+import useAvisosVCoins from '../juegos/useAvisosVCoins';
+import { conFactor } from '../analytics/avisosVCoins';
 import '../components/quinteto/quinteto.css';
 import './juegos.css';
 import './sobres.css';
@@ -51,6 +53,7 @@ export default function Sobres() {
   const navigate = useNavigate();
   const kiosco = esModoKiosco();
   const { vibrate } = useFeedback();
+  const avisos = useAvisosVCoins();
   const [estado, setEstado] = useState(null);
   const [coleccion, setColeccion] = useState(null);
   const [album, setAlbum] = useState(null);
@@ -238,12 +241,7 @@ export default function Sobres() {
 
       {pestana === 'sobres' && estado && (
         <>
-          {estado.multiplicador && (
-            <div className="sb-multi">
-              ⚡ {estado.multiplicador.nombre} · todo lo que ganes vale x{estado.multiplicador.factor}
-              <small> hasta el {new Date(estado.multiplicador.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</small>
-            </div>
-          )}
+          {/* El evento de V-Coins (x2…) lo avisa el cartel de arriba, en todos los Juegos (AvisoVCoins). */}
 
           <h2 className="sb-seccion">DISPONIBLES <span>{disponibles.length}</span></h2>
           {disponibles.length ? (
@@ -263,8 +261,8 @@ export default function Sobres() {
             <PreferenciasApertura prefs={prefs} cambiar={cambiarPref} />
             <GameButton variante="ghost" onClick={() => setVerProbs((v) => !v)}>{verProbs ? 'OCULTAR' : 'VER'} PROBABILIDADES</GameButton>
           </div>
-          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} reglas={estado.tipos?.diario} />}
-          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} soloEspeciales reglas={estado.tipos?.mega} />}
+          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} reglas={estado.tipos?.diario} factor={conFactor(1, avisos, 'sobres')} />}
+          {verProbs && <Probabilidades catalogo={cartasDePorRareza(coleccion)} soloEspeciales reglas={estado.tipos?.mega} factor={conFactor(1, avisos, 'sobres')} />}
           <p className="sb-costos">{estado.costo_puntos ?? COSTO_SOBRE_PUNTOS} {MONEDA} = 1 sobre · {estado.costo_mega ?? COSTO_MEGA} {MONEDA} = 1 mega sobre</p>
         </>
       )}
@@ -447,7 +445,7 @@ function precargarEvento(ev) {
   }
 }
 
-function Probabilidades({ catalogo, soloEspeciales = false, reglas = null }) {
+function Probabilidades({ catalogo, soloEspeciales = false, reglas = null, factor = 1 }) {
   const filas = probabilidades(catalogo, { soloEspeciales, rarezas: reglas?.rarezas, pesos: reglas?.pesos });
   if (!filas.length) return null;
   return (
@@ -464,7 +462,7 @@ function Probabilidades({ catalogo, soloEspeciales = false, reglas = null }) {
             <div style={{ width: `${Math.min(100, r.porCiento * 2)}%`, height: '100%', background: 'var(--accent)' }} />
           </div>
           <span style={{ fontFamily: MONO, textAlign: 'right' }}>{r.porCiento.toFixed(1)}%</span>
-          <span style={{ color: 'var(--text-dim)', textAlign: 'right' }}>+{r.puntos} VC</span>
+          <span style={{ color: 'var(--text-dim)', textAlign: 'right' }}>+{Math.round(r.puntos * factor)} VC</span>
         </div>
       ))}
     </div>

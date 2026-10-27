@@ -168,3 +168,28 @@
 @media (prefers-reduced-motion: reduce) {
   .jg *, .jg *::before, .jg *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* El cartel del evento de V-Coins (AvisoVCoins), arriba de todos los Juegos. */
+.jg-aviso-vc { display: flex; align-items: center; gap: 12px; margin: 12px 16px 0; padding: 10px 14px; border-radius: var(--jg-r-m);
+  max-width: 1248px; box-sizing: border-box; animation: jg-aparece .3s ease; }
+@media (min-width: 1280px) { .jg-aviso-vc { margin-left: auto; margin-right: auto; } }
+.jg-aviso-curso { background: linear-gradient(100deg, #fbbf24, #f59e0b 55%, #fde68a); color: #1a1205; box-shadow: var(--jg-glow-oro); }
+.jg-aviso-proximo { background: rgba(251, 191, 36, .07); border: 1px dashed rgba(251, 191, 36, .55); color: var(--jg-texto); }
+.jg-aviso-icono { width: 26px; height: 26px; flex: 0 0 26px; }
+.jg-aviso-proximo .jg-aviso-icono { color: var(--jg-oro); }
+.jg-aviso-curso .jg-aviso-icono { animation: jg-latido 1.6s ease-in-out infinite; }
+.jg-aviso-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.jg-aviso-texto small { font-size: 10px; font-weight: 900; letter-spacing: .18em; color: var(--jg-oro); }
+.jg-aviso-texto b { font-size: 15px; font-weight: 900; letter-spacing: .06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jg-aviso-texto span { font-size: 12px; font-weight: 700; opacity: .85; }
+.jg-aviso-cuenta { display: flex; flex-direction: column; align-items: flex-end; font-family: var(--jg-mono); font-weight: 900; font-size: 15px; white-space: nowrap; }
+.jg-aviso-cuenta small { font-family: var(--jg-display); font-size: 9.5px; letter-spacing: .14em; opacity: .75; }
+@media (max-width: 767px) {
+  .jg-aviso-vc { margin: 10px 16px 0; padding: 8px 12px; gap: 10px; }
+  .jg-aviso-texto b { font-size: 13.5px; }
+  .jg-aviso-cuenta { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .jg-aviso-curso .jg-aviso-icono { animation: none; } }
+/* La marca del evento junto a un premio multiplicado ("+50 VC x2"). */
+.jg-x2 { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-style: normal; font-size: .78em; font-weight: 900;
+  background: var(--jg-oro); color: #1a1205; vertical-align: middle; }

@@ -19,6 +19,8 @@ import useFeedback from '../juegos/useFeedback';
 import useCuenta from '../juegos/useCuenta';
 import { volarCarta } from '../juegos/volar';
 import Monedas from '../juegos/Monedas';
+import useAvisosVCoins from '../juegos/useAvisosVCoins';
+import { conFactor } from '../analytics/avisosVCoins';
 import '../components/quinteto/quinteto.css';
 import './juegos.css';
 import './vdraft.css';
@@ -267,6 +269,8 @@ function Trofeo({ tono }) {
 }
 
 function Camino() {
+  const avisos = useAvisosVCoins();
+  const x2 = conFactor(1, avisos, 'vdraft') > 1;
   return (
     <ol className="vd-camino">
       {caminoDePremios().map((e, i) => (
@@ -274,7 +278,7 @@ function Camino() {
           <Trofeo tono={e.trofeo} />
           <span className="vd-escalon-titulo">{e.titulo}</span>
           <span className="vd-escalon-victorias">{e.victorias} {e.victorias === 1 ? 'victoria' : 'victorias'}</span>
-          <b className="vd-escalon-premio">+{e.vcoins} VC</b>
+          <b className="vd-escalon-premio">+{conFactor(e.vcoins, avisos, 'vdraft')} VC{x2 && <em className="jg-x2">x{avisos.actual.factor}</em>}</b>
           {e.sobre && <span className="vd-escalon-sobre">+ {e.sobre}</span>}
         </li>
       ))}

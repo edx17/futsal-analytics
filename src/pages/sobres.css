@@ -30,8 +30,6 @@
 
 .sb-error { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 700; padding: 10px 14px; border-radius: var(--jg-r-m);
   color: #ef4444; background: rgba(239, 68, 68, .08); border: 1px solid rgba(239, 68, 68, .3); }
-.sb-multi { padding: 10px 14px; border-radius: var(--jg-r-m); border: 1px solid var(--jg-oro); color: var(--jg-oro); font-weight: 900; letter-spacing: .04em; }
-.sb-multi small { color: var(--jg-texto-2); font-weight: 700; }
 
 .sb-seccion { margin: 6px 0 0; font-size: 13px; font-weight: 900; letter-spacing: .18em; color: var(--jg-neon); display: flex; align-items: center; gap: 8px; }
 .sb-seccion span { font-family: var(--jg-mono); padding: 1px 8px; border-radius: 999px; background: rgba(0, 255, 136, .12); }
