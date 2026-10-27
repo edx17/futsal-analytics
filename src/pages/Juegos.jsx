@@ -49,7 +49,9 @@ export default function Juegos({ kiosco = false }) {
     return () => { vivo = false; };
   }, [esSuper]);
 
-  const modos = modosDelMenu({ sobres, vdraft, kiosco, esSuper });
+  // Con Gmail (jugador vinculado o hincha) el menú es el del kiosco: sin MySquad.
+  const cuentaJuego = String(perfil?.rol || '').toLowerCase() === 'juego';
+  const modos = modosDelMenu({ sobres, vdraft, kiosco: kiosco || cuentaJuego, esSuper });
   const ir = (m) => {
     if (m.bloqueado) return;
     feedback('elegir');

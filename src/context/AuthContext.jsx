@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '../supabase';
+import { miCuentaJuego, tomarPendiente, resolverPendiente } from '../utils/cuentasJuego';
 
 const AuthContext = createContext({});
 
@@ -43,6 +44,30 @@ export const AuthProvider = ({ children }) => {
         .eq('id', userId)
         .maybeSingle(); // Usamos maybeSingle para evitar errores si no existe la fila
 
+      /* JUEGOS CON GMAIL: una cuenta sin rol en un club (las de Google nacen
+         'jugador' y sin club) puede ser un jugador vinculado o un hincha. Con
+         esa cuenta se ven sólo los juegos (rol 'juego'). Al volver de Google
+         primero se hace lo pendiente (vincular el PIN o unirse con el link). */
+      const enKiosco = localStorage.getItem('kiosco_mode') === 'true';
+      // Siempre se resuelve: con un Gmail del cuerpo técnico la base dice que no y queda el motivo.
+      if (!enKiosco) await resolverPendiente(tomarPendiente());
+      const sinRolDeClub = !data || String(data.rol || '').toLowerCase() === 'jugador';
+      if (sinRolDeClub && !enKiosco) {
+        const cuenta = await miCuentaJuego();
+        if (cuenta) {
+          setPerfil({
+            id: userId,
+            rol: 'juego',
+            club_id: cuenta.club_id,
+            nombre_completo: cuenta.nombre,
+            jugador_id: cuenta.jugador_id || null,
+            clubes: { nombre: cuenta.club_nombre, escudo_url: cuenta.escudo_url },
+            cuenta,
+          });
+          return;
+        }
+      }
+
       if (data) {
         const esSesionKiosco = data.rol === 'kiosco' || localStorage.getItem('kiosco_mode') === 'true';
         if (esSesionKiosco) {
@@ -85,8 +110,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Después de unirse con un link estando ya logueado: vuelve a leer quién es.
+  const recargarPerfil = async () => { if (user?.id) await cargarPerfil(user.id); };
+
   return (
-    <AuthContext.Provider value={{ user, perfil, logout, loading }}>
+    <AuthContext.Provider value={{ user, perfil, logout, loading, recargarPerfil }}>
       {children}
     </AuthContext.Provider>
   );

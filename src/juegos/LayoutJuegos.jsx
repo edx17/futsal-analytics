@@ -11,6 +11,7 @@ import './juegos.css';
  * del evento de V-Coins (si hay) y, en el celular, la barra inferior fija con
  * los accesos. En tablet y PC la barra no
  * aparece: la app mantiene su menú lateral (y el kiosco, su barra de arriba).
+ * Con una cuenta de juego (`soloJuego`, Gmail) no hay menú: la barra va siempre.
  */
 
 const I = {
@@ -26,11 +27,11 @@ const Icono = ({ n }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{I[n]}</svg>
 );
 
-export default function LayoutJuegos({ kiosco = false, children }) {
+export default function LayoutJuegos({ kiosco = false, soloJuego = false, children }) {
   const { perfil } = useAuth() || {};
   const esSuper = String(perfil?.rol || '').toLowerCase() === 'superuser';
   return (
-    <div className="jg">
+    <div className={soloJuego ? 'jg jg-solo' : 'jg'}>
       <div className="jg-contenido">
         {/* El evento de V-Coins (anticipado o en curso). El superusuario no juega: no lo pide. */}
         <AvisoVCoins activo={!esSuper} />

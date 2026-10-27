@@ -11,6 +11,7 @@ import { listarCatalogo, activarCartas, listarAjustes, guardarAjuste, quitarAjus
 import { listarFotos, subirFotoEspecial } from '../../utils/cartasFotos';
 import { listarHistorial } from '../../utils/cartasDestacadas';
 import { publicarCatalogo } from '../../utils/sobres';
+import InvitacionesJuego from './InvitacionesJuego';
 
 /* CARTAS Y SOBRES DEL CLUB (la vista simple, para el manager)
  *
@@ -20,6 +21,7 @@ import { publicarCatalogo } from '../../utils/sobres';
  *              sacarla / volverla a los sobres.
  *   SOBRES  cada sobre: activo o no, nombre, cuántas cartas, precio y
  *           cinemática.
+ *   GMAIL   los links para hinchas y quiénes juegan con Gmail.
  * Lo fino (rarezas y pesos, cartas elegidas, colores, eventos, usuarios) está
  * en el Modo GOD del superusuario. Lo de acá lo guarda la base con los
  * permisos del manager (migración 20261028120000_admin_club.sql).
@@ -56,10 +58,11 @@ export default function PanelClub({ clubId, alCambiar }) {
       {abierto && (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', gap: 6 }}>
-            {[['cartas', 'CARTAS'], ['sobres', 'SOBRES']].map(([id, t]) => <button key={id} onClick={() => setPestana(id)} style={chip(pestana === id)}>{t}</button>)}
+            {[['cartas', 'CARTAS'], ['sobres', 'SOBRES'], ['gmail', 'GMAIL · HINCHAS']].map(([id, t]) => <button key={id} onClick={() => setPestana(id)} style={chip(pestana === id)}>{t}</button>)}
           </div>
           {aviso && <div style={{ ...dim, fontWeight: 800, color: aviso.error ? '#ef4444' : 'var(--accent)' }}>{aviso.texto}</div>}
-          {!datos ? <div style={dim}>Leyendo…</div>
+          {pestana === 'gmail' ? <InvitacionesJuego clubId={clubId} avisar={setAviso} />
+            : !datos ? <div style={dim}>Leyendo…</div>
             : pestana === 'cartas' ? <Cartas clubId={clubId} datos={datos} recargar={cargar} avisar={setAviso} />
               : <Sobres clubId={clubId} config={datos.config} recargar={cargar} avisar={setAviso} alCambiar={alCambiar} />}
         </div>
