@@ -57,5 +57,6 @@ export function erroresMultiplicador(m = {}) {
   if (!(Number(m.factor) >= 1 && Number(m.factor) <= 5)) e.push('El factor va de 1 a 5.');
   if (!m.desde || !m.hasta) e.push('Poné desde y hasta.');
   else if (+new Date(m.hasta) <= +new Date(m.desde)) e.push('El fin tiene que ser después del inicio.');
+  if (Array.isArray(m.aplica) && m.aplica.length === 0) e.push('Elegí al menos un juego.');
   return e;
 }

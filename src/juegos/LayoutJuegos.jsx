@@ -2,12 +2,14 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { accesosJuegos } from './accesos';
+import AvisoVCoins from './AvisoVCoins';
 import './juegos.css';
 
 /* JUEGOS · EL MARCO
  *
- * Envuelve cada pantalla de juegos con el design system (`.jg`) y, en el
- * celular, la barra inferior fija con los accesos. En tablet y PC la barra no
+ * Envuelve cada pantalla de juegos con el design system (`.jg`), el cartel
+ * del evento de V-Coins (si hay) y, en el celular, la barra inferior fija con
+ * los accesos. En tablet y PC la barra no
  * aparece: la app mantiene su menú lateral (y el kiosco, su barra de arriba).
  */
 
@@ -29,7 +31,11 @@ export default function LayoutJuegos({ kiosco = false, children }) {
   const esSuper = String(perfil?.rol || '').toLowerCase() === 'superuser';
   return (
     <div className="jg">
-      <div className="jg-contenido">{children}</div>
+      <div className="jg-contenido">
+        {/* El evento de V-Coins (anticipado o en curso). El superusuario no juega: no lo pide. */}
+        <AvisoVCoins activo={!esSuper} />
+        {children}
+      </div>
       <nav className="jg-barra" aria-label="Juegos">
         {accesosJuegos({ kiosco, esSuper }).map(([icono, texto, ruta]) => (
           <NavLink key={ruta} to={ruta} end className={({ isActive }) => (isActive ? 'activo' : '')}>

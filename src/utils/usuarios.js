@@ -53,6 +53,8 @@ export async function listarMultiplicadores(clubId) {
 
 export async function guardarMultiplicador(clubId, m) {
   const fila = { club_id: clubId, nombre: m.nombre, factor: m.factor, desde: m.desde, hasta: m.hasta, activo: m.activo !== false };
+  // Dónde aplica (migración 20261105120000): si son todos los juegos, vale el de la base (todos).
+  if (Array.isArray(m.aplica) && m.aplica.length < 4) fila.aplica = m.aplica;
   const q = m.id ? supabase.from('vcoins_multiplicadores').update(fila).eq('id', m.id) : supabase.from('vcoins_multiplicadores').insert(fila);
   const { error } = await q;
   if (error) lanzar(error);

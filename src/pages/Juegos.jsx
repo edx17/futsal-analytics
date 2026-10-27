@@ -228,7 +228,10 @@ function Misiones({ misiones, cobrando, cobrar, plegable }) {
                 <div className="jh-mision-texto">
                   <b>{m.titulo}</b>
                   <ProgressBar valor={m.progreso / m.meta} tono={lista ? undefined : 'oro'} />
-                  <small>{m.progreso}/{m.meta} · +{m.premio} V-Coins</small>
+                  <small>
+                    {m.progreso}/{m.meta} · +{m.premio} V-Coins
+                    {m.premio_base && m.premio > m.premio_base ? <em className="jg-x2">x{Math.round((m.premio / m.premio_base) * 10) / 10}</em> : null}
+                  </small>
                 </div>
                 {m.cobrada ? <span className="jh-cobrada">✓ COBRADA</span>
                   : <GameButton variante={lista ? 'primary' : 'secondary'} disabled={!lista || cobrando === m.id} onClick={() => cobrar(m.id)}>
