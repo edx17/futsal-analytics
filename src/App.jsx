@@ -65,6 +65,7 @@ const Sobres              = lazy(() => import('./pages/Sobres'));
 const VDraft              = lazy(() => import('./pages/VDraft'));
 const Juegos              = lazy(() => import('./pages/Juegos'));
 const PenalesJuego        = lazy(() => import('./pages/PenalesJuego'));
+const EntrarAlJuego       = lazy(() => import('./pages/EntrarAlJuego'));
 
 // MySquad es para jugar con el plantel: lo ven superuser, manager, administrador y cuerpo técnico.
 const ROLES_JUEGO = ['superuser', 'manager', 'admin', 'ct'];
@@ -80,6 +81,8 @@ import './App.css';
 import LimiteDeError from './components/LimiteDeError';
 import BarraKiosco from './components/BarraKiosco';
 import LayoutJuegos from './juegos/LayoutJuegos';
+import BarraCuentaJuego from './juegos/BarraCuentaJuego';
+import { errorDeEntrada } from './utils/cuentasJuego';
 import VisorManual from './components/VisorManual';
 import { ROLES_PLATA, manejaPlata } from './analytics/tesoreria';
 import { Icono } from './iconos';
@@ -339,6 +342,35 @@ useEffect(() => {
 
   const isKioscoMode = localStorage.getItem('kiosco_mode') === 'true';
 
+  /* JUEGOS CON GMAIL: el jugador que vinculó su Gmail y el hincha que entró
+     por un link ven sólo los juegos (sin MySquad ni nada del club). Los
+     atajos del ícono instalado (/kiosco/sobres…) van a lo mismo. */
+  if (String(perfil?.rol || '').toLowerCase() === 'juego') {
+    const atajoJuego = location.pathname.match(/^\/kiosco\/(sobres|vdraft|penales|juegos)$/);
+    if (atajoJuego) return <Navigate to={`/${atajoJuego[1]}`} replace />;
+    return (
+      <main className="app-content-fullscreen">
+        <BarraCuentaJuego />
+        <LimiteDeError>
+        <Suspense fallback={<CargandoPantalla />}>
+          <Routes>
+            <Route path="/juegos" element={<LayoutJuegos soloJuego><Juegos /></LayoutJuegos>} />
+            <Route path="/sobres" element={<LayoutJuegos soloJuego><Sobres /></LayoutJuegos>} />
+            <Route path="/vdraft" element={<LayoutJuegos soloJuego><VDraft /></LayoutJuegos>} />
+            <Route path="/penales" element={<LayoutJuegos soloJuego><PenalesJuego /></LayoutJuegos>} />
+            <Route path="*" element={<Navigate to="/juegos" replace />} />
+          </Routes>
+        </Suspense>
+        </LimiteDeError>
+      </main>
+    );
+  }
+
+  /* Volvió de Google y no pudo entrar al juego: a la pantalla de entrada, con el motivo. */
+  const isUnirse = location.pathname.startsWith('/unirse/');
+  const errorJuego = !isUnirse ? errorDeEntrada() : null;
+  if (errorJuego) return <Navigate to={`/unirse/${errorJuego.codigo || 'error'}`} replace />;
+
   /* Los atajos del ícono instalado (Sobres, V-Draft) abren /kiosco/…: sin la
      sesión del jugador, el staff va a su pantalla del juego y el resto entra
      por el kiosco y sigue de largo al juego. */
@@ -355,11 +387,11 @@ useEffect(() => {
     return <Navigate to="/mi-suscripcion" replace />;
   }
 
-  if (perfil && perfil.terminos_aceptados === false && !isAceptarTerminosPath && !isLanding && !isLogin && !isRegistro && !isKioscoMode && !isKioscoAuth) {
+  if (perfil && perfil.terminos_aceptados === false && !isAceptarTerminosPath && !isLanding && !isLogin && !isRegistro && !isKioscoMode && !isKioscoAuth && !isUnirse) {
     return <Navigate to="/aceptar-terminos" replace />;
   }
 
-  if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth) {
+  if (isLanding || isLogin || isRegistro || isTomaDatos || isKioscoAuth || isUnirse) {
     return (
       <main className="app-content-fullscreen">
         <LimiteDeError>
@@ -369,6 +401,7 @@ useEffect(() => {
             <Route path="/login" element={perfil ? <Navigate to="/inicio" replace /> : <Login />} />
             <Route path="/registro" element={perfil ? <Navigate to="/inicio" replace /> : <Registro />} />
             <Route path="/kiosco" element={<LoginKiosco />} />
+            <Route path="/unirse/:codigo" element={<EntrarAlJuego />} />
             <Route path="/toma-datos" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><TomaDatos /></ProtectedRoute>} />
           </Routes>
         </Suspense>

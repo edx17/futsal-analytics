@@ -269,7 +269,7 @@ export default function Sobres() {
 
       {pestana === 'coleccion' && <Album album={album} cuenta={cuenta} />}
 
-      {!kiosco && estado?.es_staff && (
+      {!kiosco && estado?.es_staff && perfil?.rol !== 'juego' && (
         <div style={{ marginTop: 30, textAlign: 'center' }}>
           <GameButton variante="ghost" onClick={reiniciar} style={{ border: '1px dashed var(--jg-borde-fuerte)' }}>REINICIAR MI PRUEBA</GameButton>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 6 }}>

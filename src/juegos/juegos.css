@@ -193,3 +193,22 @@
 /* La marca del evento junto a un premio multiplicado ("+50 VC x2"). */
 .jg-x2 { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-style: normal; font-size: .78em; font-weight: 900;
   background: var(--jg-oro); color: #1a1205; vertical-align: middle; }
+
+/* ── cuenta de juego (Gmail de un jugador o de un hincha) ────────────────── */
+.jg-cuenta { position: sticky; top: 0; z-index: 901; display: flex; align-items: center; gap: 10px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px; background: rgba(5, 8, 10, .92);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--jg-borde); color: var(--jg-texto); }
+.jg-cuenta-escudo { width: 30px; height: 30px; flex: 0 0 30px; object-fit: contain; border-radius: 50%; }
+.jg-cuenta-sigla { display: inline-flex; align-items: center; justify-content: center; background: var(--jg-sup-2);
+  border: 1px solid var(--jg-borde-fuerte); font-weight: 900; font-size: 11px; }
+.jg-cuenta-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.jg-cuenta-texto b { font-family: var(--jg-display); font-size: 14px; letter-spacing: .04em; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jg-cuenta-texto span { font-size: 12px; color: var(--jg-texto-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jg-cuenta-salir { min-height: 36px; padding: 0 12px; border-radius: var(--jg-r-s); border: 1px solid var(--jg-borde-fuerte);
+  background: transparent; color: var(--jg-texto-2); font-weight: 900; font-size: 12px; letter-spacing: .08em; cursor: pointer; }
+/* Sin el menú de la app, la barra de los juegos se ve también en tablet y PC. */
+@media (min-width: 768px) {
+  .jg-solo .jg-barra { display: grid; max-width: 560px; margin: 0 auto; border: 1px solid var(--jg-borde); border-bottom: 0; border-radius: 16px 16px 0 0; }
+  .jg-solo .jg-contenido { padding-bottom: calc(var(--jg-barra) + 24px); }
+}

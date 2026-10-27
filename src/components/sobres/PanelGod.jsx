@@ -17,6 +17,7 @@ import GodSobres from './GodSobres';
 import GodHeroes from './GodHeroes';
 import GodHalloween from './GodHalloween';
 import GodUsuarios from './GodUsuarios';
+import InvitacionesJuego from './InvitacionesJuego';
 import { normalizarTipo } from '../../analytics/tiposSobre';
 
 /* MODO GOD (sólo superusuario)
@@ -38,7 +39,7 @@ import { normalizarTipo } from '../../analytics/tiposSobre';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['halloween', 'HALLOWEEN'], ['sobres', 'SOBRES'], ['usuarios', 'USUARIOS']];
+const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['halloween', 'HALLOWEEN'], ['sobres', 'SOBRES'], ['usuarios', 'USUARIOS'], ['gmail', 'GMAIL · HINCHAS']];
 const POR_PAGINA = 40;
 
 /* Las escenas que se pueden forzar, con aviso si su video todavía no está. */
@@ -119,6 +120,7 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
             <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
           )}
           {pestana === 'usuarios' && <GodUsuarios clubId={clubId} avisar={setAviso} />}
+          {pestana === 'gmail' && <InvitacionesJuego clubId={clubId} avisar={setAviso} />}
           {pestana === 'halloween' && (
             <GodHalloween clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
           )}

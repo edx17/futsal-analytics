@@ -18,6 +18,7 @@ import {
 import { telefonoWhatsApp } from '../utils/telefono';
 import VisorManual from '../components/VisorManual';
 import JuegoEnElCelular from '../components/kiosco/JuegoEnElCelular';
+import VincularGmail from '../components/kiosco/VincularGmail';
 import { recordarDestino, tomarDestino } from '../utils/instalarApp';
 import { Icono } from '../iconos';
 
@@ -671,6 +672,7 @@ export default function LoginKiosco() {
         )}
 
         <JuegoEnElCelular clubId={clubId} />
+        <VincularGmail />
 
         <div className="hub-grid">
           {ACCESOS.map(({ ruta, titulo, icono, ancho }) => (
