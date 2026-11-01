@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
   esMiEquipo, tablaPosiciones, parsearGoleadores, tablaGoleadores, fixturePorJornada, jornadaActual, reportesLiga, zonasDe, nombreZona,
-  soloRegular, soloPlayoff, cuadroPlayoff, etiquetaCorta, etiquetaPlayoff, ordenFase,
+  soloRegular, soloPlayoff, cuadroPlayoff, etiquetaCorta, etiquetaPlayoff, ordenFase, etapasDe, textoPenales,
 } from '../liga';
 import { ordenarJornadas, ruedaDeJornada } from '../../utils/ruedas';
 import { crucesDeLiga } from '../../utils/importarFixtureJson';
-import { normalizarPrimera, normalizarInferiores, consultaDe, planificar, bloqueDeFase } from '../../../supabase/functions/liga-sync/logica.js';
+import { normalizarPrimera, normalizarInferiores, consultaDe, consultasDe, planificar, bloqueDeFase, etapaInferiores } from '../../../supabase/functions/liga-sync/logica.js';
 
 const p = (o) => ({ jornada: 1, fecha: '2026-03-28', hora: '20:00', estado: 'Finalizado', goleadores_local: null, goleadores_visitante: null, ...o });
 
@@ -76,7 +76,8 @@ describe('liga-sync: lo que viene de segundopalo', () => {
   it('normaliza primera e inferiores', () => {
     expect(normalizarPrimera({ id: 18963, jornada: 1, fecha: '2026-03-28', hora: '19:30:00', equipos_local_nombre: 'Dep Moron ', equipos_visitante_nombre: 'Rosario Ctral', goles_local: 2, goles_visitante: 0, estados_partido_nombre: 'Finalizado', estadios_nombre: 'Parque', goleadores_local: 'L.Gonzalez1', goleadores_visitante: null }))
       .toEqual({ id_externo: 18963, jornada: 1, fecha: '2026-03-28', hora: '19:30', local: 'Dep Moron', visitante: 'Rosario Ctral', goles_local: 2, goles_visitante: 0, estado: 'Finalizado', estadio: 'Parque', goleadores_local: 'L.Gonzalez1', goleadores_visitante: null, zona: null,
-        fase: null, llave: null, partido_playoff: null, penales_local: null, penales_visitante: null });
+        fase: null, llave: null, partido_playoff: null, penales_local: null, penales_visitante: null,
+        etapa: null, etapa_tabla: null, grupo: null, torneo_tipo: null });
     expect(normalizarInferiores({ ID: 7, jornada: 'Fecha 3', fecha: '2026-04-11', hora: '10:00:00', equipolocal: 'A', equipovisitante: 'B', goleslocal: null, golesvisitante: '', estado: 'Pendiente' }))
       .toMatchObject({ id_externo: 7, jornada: 3, hora: '10:00', goles_local: null, goles_visitante: null, estadio: null });
   });
@@ -114,6 +115,104 @@ describe('liga-sync: lo que viene de segundopalo', () => {
   it('cuenta las reprogramaciones', () => {
     const a = { id_externo: 1, jornada: 1, fecha: '2026-03-28', hora: '20:00', local: 'A', visitante: 'B', estado: 'Pendiente' };
     expect(planificar([a], [{ ...a, hora: '21:00' }]).resumen.reprogramados).toBe(1);
+  });
+});
+
+describe('liga-sync: etapas (playoffs, desempates, Copa Futuro)', () => {
+  const pri = { id: 1, jornada: 1, equipos_local_nombre: 'A', equipos_visitante_nombre: 'B', estados_partido_nombre: 'Pendiente' };
+
+  it('primera: el regular no tiene etapa; el resto, la de segundopalo', () => {
+    expect(normalizarPrimera({ ...pri, ediciones_partidos_fases_id: 1 })).toMatchObject({ etapa: null, torneo_tipo: 1 });
+    expect(normalizarPrimera({ ...pri, ediciones_partidos_fases_id: 17, zona: 'z1' })).toMatchObject({ etapa: null, zona: 'z1' });
+    expect(normalizarPrimera({ ...pri, ediciones_partidos_fases_id: 11, fase_nombre_fases_web: 'Playoff', fase_copas: 'Semifinal', fase_mostrar_tabla_posiciones: false }))
+      .toMatchObject({ etapa: 'Playoff', fase: 'Semifinal', etapa_tabla: false });
+    // Un triangular de desempate: con tabla y sin fase de copa.
+    expect(normalizarPrimera({ ...pri, ediciones_partidos_fases_id: 4, fase_nombre_fases_web: 'Desempate Descenso', fase_mostrar_tabla_posiciones: true, grupo_copas: 'Triangular 1', penales_local: 4, penales_visitante: 3 }))
+      .toMatchObject({ etapa: 'Desempate Descenso', fase: null, etapa_tabla: true, grupo: 'Triangular 1', penales_local: 4 });
+  });
+
+  it('inferiores: cada tipo de torneo es una etapa, con sus ids aparte', () => {
+    expect(etapaInferiores('copafuturooro', 8)).toBe('Copa Futuro de Oro');
+    expect(etapaInferiores('copafuturoplata', 9)).toBe('Copa Futuro de Plata');
+    expect(etapaInferiores('regular', 1)).toBe(null);
+    expect(etapaInferiores('torneo nuevo', 12)).toBe('Torneo nuevo');
+    const ida = { ID: 'cp-123-5-2-1-cuartosdefinal-ida-9-5', tipo_torneo_nombre: 'playoff', tipo_torneo_inferiores_id: 5, fase_copas: 'Cuartos de Final', tipo_partido: 'Ida', equipolocal: 'América del Sud', equipovisitante: 'Boca', equipo_local_id: 9, equipo_visitante_id: 5 };
+    const n = normalizarInferiores(ida);
+    expect(n).toMatchObject({ etapa: 'Playoff', fase: 'Cuartos de Final', partido_playoff: 'Ida', torneo_tipo: 5 });
+    // El mismo cruce en la Copa Futuro de Oro no pisa al del playoff.
+    expect(normalizarInferiores({ ...ida, tipo_torneo_nombre: 'copafuturooro', tipo_torneo_inferiores_id: 8 }).id_externo).not.toBe(n.id_externo);
+    // El regular conserva los ids de siempre.
+    expect(normalizarInferiores({ ID: 'inf-127-3-1-28-144', equipolocal: 'A', equipovisitante: 'B' }, 1).id_externo).toBe(28000144);
+  });
+
+  it('inferiores: una consulta por tipo de torneo', () => {
+    const comp = { fuente: 'inferiores', fuente_params: { edicion_id: 123, categoria_id: 2, tipo: 1 } };
+    expect(consultasDe(comp, [1, 5, 8]).map((c) => c.cuerpo.p_tipo_torneo_inferiores_id)).toEqual([1, 5, 8]);
+    expect(consultasDe({ ...comp, fuente_params: { ...comp.fuente_params, tipos: [1, 4] } }, [1, 5]).map((c) => c.tipo)).toEqual([1, 4]);
+    expect(consultasDe({ fuente: 'primera', fuente_params: { competencia_id: 10 } })).toHaveLength(1);
+  });
+});
+
+describe('liga: etapas en pantalla', () => {
+  const p = (local, visitante, gl, gv, extra = {}) => ({ local, visitante, goles_local: gl, goles_visitante: gv, estado: 'Finalizado', fecha: '2026-11-01', ...extra });
+
+  it('el regular queda aparte; triangular en tabla, playoff en cruces', () => {
+    const partidos = [
+      p('A', 'B', 1, 0),
+      p('C', 'D', 2, 2, { etapa: 'Desempate Descenso', etapa_tabla: true, jornada: 1, penales_local: 4, penales_visitante: 3 }),
+      p('D', 'E', 0, 1, { etapa: 'Desempate Descenso', etapa_tabla: true, jornada: 2 }),
+      p('F', 'G', 3, 1, { etapa: 'Playoff', fase: 'Semifinal', partido_playoff: 'Ida', llave: 1, fecha: '2026-11-08' }),
+    ];
+    expect(soloRegular(partidos)).toHaveLength(1);
+    const e = etapasDe(partidos);
+    expect(e.map((x) => x.nombre)).toEqual(['Desempate Descenso', 'Playoff']);
+    expect(e[0].tablas[0].filas.map((f) => f.equipo)).toEqual(['E', 'C', 'D']);
+    expect(e[0].cuadro).toEqual([]);
+    expect(e[0].conPenales).toBe(true);
+    expect(e[1].tablas).toEqual([]);
+    expect(e[1].cuadro[0].fase).toBe('Semifinal');
+    expect(textoPenales(partidos[1])).toBe('(pen. 4-3)');
+  });
+
+  it('una copa con grupos y después cruces: las dos cosas', () => {
+    const e = etapasDe([
+      p('A', 'B', 1, 0, { etapa: 'Copa Futuro de Oro', grupo: 'Grupo 1' }),
+      p('C', 'D', 1, 0, { etapa: 'Copa Futuro de Oro', grupo: 'Grupo 2' }),
+      p('A', 'C', 2, 1, { etapa: 'Copa Futuro de Oro', fase: 'Final', fecha: '2026-12-01' }),
+    ]);
+    expect(e).toHaveLength(1);
+    expect(e[0].tablas.map((t) => t.grupo)).toEqual(['Grupo 1', 'Grupo 2']);
+    expect(e[0].cuadro.map((f) => f.fase)).toEqual(['Final']);
+  });
+
+  it('playoff de la A: serie al mejor de 3 (como el real de 2026)', () => {
+    const c = (llave, pp, local, visitante, gl, gv, extra = {}) => p(local, visitante, gl, gv, { etapa: 'Playoff', fase: 'Cuartos de final', llave, partido_playoff: pp, ...extra });
+    const [f] = etapasDe([
+      c(4, 'Ida', 'América del Sud', '17deAgosto', 4, 1),
+      c(4, 'Vuelta', '17deAgosto', 'América del Sud', 3, 3, { penales_local: 3, penales_visitante: 4 }),
+      c(3, 'Ida', 'Boca', 'River', 3, 2),
+      c(3, 'Vuelta', 'River', 'Boca', 1, 0),
+      c(3, 'Tercer partido', 'Boca', 'River', null, null, { estado: 'Pendiente', fecha: null }),
+    ])[0].cuadro;
+    expect(f.serie).toBe(true);
+    const [boca, america] = f.cruces;
+    expect(boca.ganados).toEqual([1, 1]);
+    expect(boca.pasa).toBe(null);
+    expect(america.ganados).toEqual([2, 0]);
+    expect(america.pasa).toBe('América del Sud');
+  });
+
+  it('por global si nada indica serie', () => {
+    const c = (pp, local, visitante, gl, gv) => p(local, visitante, gl, gv, { fase: 'Cuartos de Final', partido_playoff: pp });
+    const [f] = cuadroPlayoff([c('Ida', 'A', 'B', 0, 3), c('Vuelta', 'B', 'A', 1, 4)]);
+    expect(f.serie).toBe(false);
+    expect(f.cruces[0].global).toEqual([4, 4]);
+    expect(f.cruces[0].pasa).toBe(null);
+  });
+
+  it('los playoffs viejos (sólo con fase) siguen siendo el Playoff', () => {
+    const e = etapasDe([p('A', 'B', 1, 0, { fase: 'Cuartos de final' })]);
+    expect(e.map((x) => x.nombre)).toEqual(['Playoff']);
   });
 });
 

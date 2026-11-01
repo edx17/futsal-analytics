@@ -15,7 +15,7 @@
 // lo puede todo el mundo (ver la migración liga_afa).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { consultaDe, planificar } from "./logica.js";
+import { consultasDe, planificar, TIPOS_INFERIORES } from "./logica.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -26,8 +26,9 @@ const SEGUNDOPALO_URL = "https://api.segundopalo.com/rest/v1/rpc/";
 const SEGUNDOPALO_KEY = Deno.env.get("SEGUNDOPALO_ANON_KEY") ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFyaWtxdmt2YW1rd3puY29qenJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjg1MzE4NTIsImV4cCI6MjA0NDEwNzg1Mn0.N51Fk5my1gPmPfSuL92yQhWEQZCdrjwTCj_dTCn6xdo";
 
-/* Una consulta atrás de la otra con una pausa corta: son 28 pedidos y no
-   queremos que segundopalo nos vea como un ataque. */
+/* Una competencia atrás de la otra con una pausa corta (las de inferiores
+   piden sus tipos de torneo juntos): no queremos que segundopalo nos vea
+   como un ataque. */
 const PAUSA_MS = 150;
 
 const CORS = {
@@ -41,21 +42,43 @@ const responder = (cuerpo: unknown, status = 200) =>
 
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function consultarSegundopalo(competencia: Record<string, unknown>) {
-  const { rpc, cuerpo, normalizar } = consultaDe(competencia);
-  const res = await fetch(SEGUNDOPALO_URL + rpc, {
-    method: "POST",
-    headers: {
-      apikey: SEGUNDOPALO_KEY,
-      Authorization: `Bearer ${SEGUNDOPALO_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(cuerpo),
-  });
+const CABECERAS = {
+  apikey: SEGUNDOPALO_KEY,
+  Authorization: `Bearer ${SEGUNDOPALO_KEY}`,
+  "Content-Type": "application/json",
+};
+
+async function consultarUna({ rpc, cuerpo, normalizar }: { rpc: string; cuerpo: unknown; normalizar: (x: unknown) => unknown }) {
+  const res = await fetch(SEGUNDOPALO_URL + rpc, { method: "POST", headers: CABECERAS, body: JSON.stringify(cuerpo) });
   if (!res.ok) throw new Error(`la fuente de AFA Futsal respondió ${res.status}`);
   const datos = await res.json();
   if (!Array.isArray(datos)) throw new Error("la fuente de AFA Futsal no devolvió una lista");
   return datos.map(normalizar);
+}
+
+/* Los tipos de torneo de inferiores que tiene segundopalo (regular, playoff,
+   Copa Futuro, de Oro, de Plata…). Si agregan uno, se consulta solo. */
+async function tiposInferiores(): Promise<number[]> {
+  try {
+    const res = await fetch(SEGUNDOPALO_URL.replace("/rpc/", "/") + "tipo_torneo_inferiores?select=id", { headers: CABECERAS });
+    const filas = res.ok ? await res.json() : null;
+    const ids = Array.isArray(filas) ? filas.map((f) => Number(f?.id)).filter((n) => Number.isInteger(n) && n > 0) : [];
+    return ids.length ? ids : TIPOS_INFERIORES;
+  } catch {
+    return TIPOS_INFERIORES;
+  }
+}
+
+/* Una competencia puede ser varias consultas (en inferiores, una por tipo de
+   torneo, en paralelo). La del regular (o la única) tiene que andar; las
+   demás, si fallan, se reintentan en la próxima actualización. */
+async function consultarSegundopalo(competencia: Record<string, unknown>, tipos: number[]) {
+  const consultas = consultasDe(competencia, tipos);
+  const resultados = await Promise.allSettled(consultas.map(consultarUna));
+  const principal = consultas.findIndex((c: { tipo?: number }) => !c.tipo || c.tipo === 1);
+  const fallo = resultados[principal >= 0 ? principal : 0];
+  if (fallo.status === "rejected") throw fallo.reason;
+  return resultados.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
 }
 
 Deno.serve(async (req) => {
@@ -85,12 +108,14 @@ Deno.serve(async (req) => {
   const { data: competencias, error: errComp } = await consulta;
   if (errComp) return responder({ error: errComp.message }, 500);
 
+  const tipos = (competencias || []).some((c) => c.fuente === "inferiores") ? await tiposInferiores() : TIPOS_INFERIORES;
+
   const resultado = [];
   for (const [i, comp] of (competencias || []).entries()) {
     if (i > 0) await dormir(PAUSA_MS);
     const fila: Record<string, unknown> = { id: comp.id, nombre: comp.nombre };
     try {
-      const recibidos = await consultarSegundopalo(comp);
+      const recibidos = await consultarSegundopalo(comp, tipos);
       const { data: existentes, error: errEx } = await admin
         .from("liga_partidos").select("*").eq("competencia_id", comp.id);
       if (errEx) throw new Error(errEx.message);
@@ -104,7 +129,7 @@ Deno.serve(async (req) => {
       fila.muestra = guardar
         .filter((p) => /^finalizado$/i.test(p.estado || "") && !/^finalizado$/i.test(previos.get(p.id_externo)?.estado || ""))
         .slice(0, 8)
-        .map((p) => `F${p.jornada ?? "?"} · ${p.local} ${p.goles_local ?? "-"}-${p.goles_visitante ?? "-"} ${p.visitante}`);
+        .map((p) => `${p.etapa ? `${[p.etapa, p.fase].filter(Boolean).join(" · ")}` : `F${p.jornada ?? "?"}`} · ${p.local} ${p.goles_local ?? "-"}-${p.goles_visitante ?? "-"} ${p.visitante}${p.penales_local != null ? ` (pen. ${p.penales_local}-${p.penales_visitante})` : ""}`);
 
       if (aplicar) {
         const ahora = new Date().toISOString();
