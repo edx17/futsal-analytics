@@ -18,6 +18,9 @@
 .rp-dorsal { color: var(--rp-acento); margin-right: 10px; }
 .rp-sub { color: var(--rp-dim); font-weight: 700; }
 .rp-escudo { width: 64px; height: 64px; object-fit: contain; }
+.rp-portada-doble .rp-portada-texto { text-align: center; }
+.rp-diapo .rp-portada-doble { flex-direction: row; justify-content: center; }
+@media (max-width: 560px) { .rp-portada-doble { flex-wrap: nowrap; } .rp-portada-doble .rp-foto { width: 64px; height: 64px; flex-basis: 64px; } }
 
 /* números */
 .rp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }

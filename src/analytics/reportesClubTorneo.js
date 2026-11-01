@@ -184,6 +184,7 @@ export function reporteComparativo(d) {
   const { secciones, sumar } = armador(audiencia);
   const nA = nombreCompleto(a); const nB = nombreCompleto(b);
   sumar('portada', `${nA} vs ${nB}`, [{ tipo: 'portada', nombre: `${a.apellido || nA} vs ${b.apellido || nB}`, foto: a.foto || null,
+    foto2: b.foto || null, inicial: a.apellido || nA, nombre2: b.apellido || nB,
     posicion: [a.posicion, b.posicion].filter(Boolean).join(' / '), categoria: [...new Set([a.categoria, b.categoria].filter(Boolean))].join(' / '),
     temporada, club: club.nombre || '', titulo: `Comparativo · Temporada ${temporada}` }]);
 
@@ -197,7 +198,9 @@ export function reporteComparativo(d) {
   ];
   const gana = (f) => (f.va > f.vb ? 'a' : f.vb > f.va ? 'b' : null);
   sumar('numeros', 'Cara a cara', [{ tipo: 'tabla', columnas: ['', nA, nB],
-    filas: filas.map((f) => [f.rotulo, `${f.fmt(f.va)}${gana(f) === 'a' ? ' ◀' : ''}`, `${f.fmt(f.vb)}${gana(f) === 'b' ? ' ◀' : ''}`]) }]);
+    filas: filas.map((f) => [f.rotulo,
+      { v: `${f.fmt(f.va)}${gana(f) === 'a' ? ' ◀' : ''}`, fuerte: gana(f) === 'a' },
+      { v: `${f.fmt(f.vb)}${gana(f) === 'b' ? ' ◀' : ''}`, fuerte: gana(f) === 'b' }]) }]);
   sumar('barras', 'Métrica por métrica', [{ tipo: 'barras', titulo: `La barra: ${nA} · la raya: ${nB}`, leyendaReferencia: nB,
     items: metricas.map((m) => {
       const va = Number(m.valor(a)) || 0; const vb = Number(m.valor(b)) || 0;

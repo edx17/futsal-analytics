@@ -43,8 +43,10 @@ describe('reporte comparativo', () => {
   it('quién es mejor en cada métrica', () => {
     const r = reporteComparativo({ a: F(1, { goles: 8, gPorPJ: 2 }), b: F(2, { goles: 1, gPorPJ: 0.25, ratingProm: 7 }), temporada: '2026' });
     const tabla = r.secciones.find((s) => s.id === 'numeros').bloques[0];
-    expect(tabla.filas.find((f) => f[0] === 'Goles')).toEqual(['Goles', '8 ◀', '1']);
-    expect(tabla.filas.find((f) => f[0] === 'Rating promedio')[2]).toMatch(/◀/);
+    expect(tabla.filas.find((f) => f[0] === 'Goles')).toEqual(['Goles', { v: '8 ◀', fuerte: true }, { v: '1', fuerte: false }]);
+    expect(tabla.filas.find((f) => f[0] === 'Rating promedio')[2]).toEqual({ v: '7 ◀', fuerte: true });
+    const portada = r.secciones[0].bloques[0];
+    expect(portada).toMatchObject({ foto2: null, nombre2: 'A2' });
     expect(r.secciones.find((s) => s.id === 'cierre').bloques).toHaveLength(2);
   });
 });

@@ -13,16 +13,22 @@ export function Bloque({ b, grande = false }) {
   return C ? <C b={b} grande={grande} /> : null;
 }
 
+const FotoPortada = ({ src, nombre }) => (src
+  ? <img className="rp-foto" src={src} alt="" />
+  : <div className="rp-foto rp-foto-vacia">{(nombre || '?').slice(0, 1)}</div>);
+
+/* `foto2` / `nombre2`: el comparativo, con las dos fotos (una a cada lado). */
 function Portada({ b, grande }) {
+  const doble = 'foto2' in b;
   return (
-    <div className={`rp-portada${grande ? ' rp-grande' : ''}`}>
-      {b.foto ? <img className="rp-foto" src={b.foto} alt="" /> : <div className="rp-foto rp-foto-vacia">{(b.nombre || '?').slice(0, 1)}</div>}
+    <div className={`rp-portada${grande ? ' rp-grande' : ''}${doble ? ' rp-portada-doble' : ''}`}>
+      <FotoPortada src={b.foto} nombre={b.inicial || b.nombre} />
       <div className="rp-portada-texto">
         <div className="rp-rotulo">{[b.club, b.titulo].filter(Boolean).join(' · ')}</div>
         <h1 className="rp-nombre">{b.dorsal != null && <span className="rp-dorsal">{b.dorsal}</span>}{b.nombre}</h1>
         <div className="rp-sub">{[b.posicion, b.categoria].filter(Boolean).join(' · ')}</div>
       </div>
-      {b.escudo && <img className="rp-escudo" src={b.escudo} alt="" />}
+      {doble ? <FotoPortada src={b.foto2} nombre={b.nombre2} /> : b.escudo && <img className="rp-escudo" src={b.escudo} alt="" />}
     </div>
   );
 }
@@ -132,7 +138,11 @@ function Tabla({ b }) {
           <tbody>
             {b.filas.map((f, i) => (
               <tr key={i} className={b.resaltarFila === i ? 'rp-tr-propia' : ''}>
-                {f.map((v, k) => <td key={b.columnas[k]} className={fuerte(k, f.length) ? 'rp-td-fuerte' : ''}>{v}</td>)}
+                {f.map((v, k) => {
+                  // Una celda puede ser { v, fuerte }: el ganador de la fila en el comparativo.
+                  const celda = v && typeof v === 'object' && !React.isValidElement(v) ? v : { v };
+                  return <td key={b.columnas[k] || k} className={fuerte(k, f.length) || celda.fuerte ? 'rp-td-fuerte' : ''}>{celda.v}</td>;
+                })}
               </tr>
             ))}
           </tbody>
