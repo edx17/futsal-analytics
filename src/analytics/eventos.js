@@ -174,6 +174,16 @@ export const PLANTILLAS = {
       particulas: 90, intensidad: 1.2,
     },
   },
+  copaFuturo: {
+    nombre: 'COPA FUTURO DE ORO',
+    tipos: ['CFOR'],
+    sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
+    escena: {
+      video: 'leyenda', video_alternativo: 'elite', titulo: 'COPA FUTURO DE ORO',
+      colores: { principal: '#1838c4', secundario: '#071451', acento: '#f5d77a', fondo: '#030820', luz: '#e9c46a', texto: '#fffaf0' },
+      particulas: 90, intensidad: 1.2,
+    },
+  },
 };
 
 /** Un evento nuevo a partir de una plantilla y el catálogo. */

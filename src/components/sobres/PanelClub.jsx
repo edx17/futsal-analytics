@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import CartaJugador from '../quinteto/CartaJugador';
 import CartaEspecial from '../quinteto/CartaEspecial';
 import { SOBRES, MONEDA } from '../../analytics/sobres';
-import { esEspecial } from '../../analytics/especialesCartas';
+import { conDisenoEspecial } from '../../analytics/especialesCartas';
 import { ESCENAS_BASE } from '../../analytics/eventos';
 import { aplicarAjuste, pendientesDePublicar } from '../../analytics/god';
 import { TIPOS_EDITABLES, CON_COSTO, REGLAS_TIPO, normalizarTipo, reglasDeTipo } from '../../analytics/tiposSobre';
@@ -128,7 +128,7 @@ function Cartas({ clubId, datos, recargar, avisar }) {
           const fuera = k.activa === false;
           return (
             <div key={k.clave} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, opacity: fuera ? 0.5 : 1 }}>
-              {esEspecial(k.tipo) ? <CartaEspecial carta={c} tipo={k.tipo} ancho={130} /> : <CartaJugador carta={c} chica />}
+              {conDisenoEspecial(k.tipo) ? <CartaEspecial carta={c} tipo={k.tipo} ancho={130} /> : <CartaJugador carta={c} chica />}
               {c.ovrAjustada && <span style={{ ...dim, fontSize: 10 }}>media corregida (era {c.ovrCalculada})</span>}
               {media?.clave === k.clave ? (
                 <div style={{ display: 'flex', gap: 4 }}>

@@ -1,6 +1,6 @@
 import React from 'react';
 import CartaEspecial from './CartaEspecial';
-import { esEspecial } from '../../analytics/especialesCartas';
+import { conDisenoEspecial } from '../../analytics/especialesCartas';
 
 /* UNA CARTA AL ESTILO ULTIMATE TEAM
  *
@@ -25,9 +25,9 @@ export default function CartaJugador({
   const titulo = `${carta.apellido} ${carta.nombre}`.trim();
   const badge = fueraDePuesto ? 'FUERA DE PUESTO' : BADGE[carta.tier];
 
-  /* Las cartas especiales (Goleadores, Asistidores, Presencia, MVP, Recuperadores)
+  /* Las cartas especiales (Goleadores, Asistidores, Presencia, MVP, Recuperadores, TOTY…)
      tienen su propio diseño: el mismo de las placas, a la medida de la carta. */
-  if (esEspecial(carta.premio)) {
+  if (conDisenoEspecial(carta.premio)) {
     return (
       <div className={`${clase} mq-especial`} style={style} onClick={onClick} title={titulo} role="button" tabIndex={0}
         onContextMenu={(e) => e.preventDefault()}

@@ -112,6 +112,35 @@ FAMILIAS.halloween = {
   secundarios: () => [],
 };
 
+/* TOTY (Team of the Year): azul profundo con destellos, un ala de cristales
+   azules con filo dorado que cruza la carta, y el marco dorado con la cresta
+   arriba y las puntas abajo. Muestra los seis atributos. */
+FAMILIAS.toty = {
+  forma: 'trofeo', textura: 'cristales', adorno: 'cresta', insignia: 'ninguna', serie: false, stat: null, titulo: 'TEAM OF THE YEAR', atributos: true,
+  colores: {
+    fondo: ['#1838c4', '#0b1c78', '#040a33'], luz: '#3d6bff', detalle: '#e9c46a', metal: ['#fff3c4', '#e2b54f', '#8a6418', '#f8dc8a'],
+    filo: '#f3d27a', texto: '#ffffff', suave: 'rgba(225,232,255,.8)', media: '#f5d77a', fundido: 'rgba(6,14,64,.97)', contraluz: 'rgba(61,107,255,.45)',
+    cinta: '#e9c46a', cintaTexto: '#071451', insigniaFondo: '#071451', medallaFondo: '#071451', medallaTexto: '#f5d77a',
+    cristal: ['#5f86ff', '#2342d8', '#0c1f8f'], estrellas: '#cfe0ff',
+  },
+  etiqueta: () => '',
+  secundarios: () => [],
+};
+
+/* TOTY ICONS · COPA FUTURO DE ORO: la misma silueta que la TOTY, en mármol
+   blanco con vetas doradas y cristales azules en las esquinas; letras azul
+   noche. Para los de inferiores que juegan la Copa Futuro de Oro. */
+FAMILIAS.icono = {
+  ...FAMILIAS.toty,
+  textura: 'marmol', adorno: 'cristalesIcono', titulo: 'COPA FUTURO DE ORO',
+  colores: {
+    fondo: ['#ffffff', '#efe9dd', '#d9d1c1'], luz: '#ffffff', detalle: '#c99a36', metal: ['#fff3c4', '#e2b54f', '#8a6418', '#f8dc8a'],
+    filo: '#c99a36', texto: '#0b1a52', suave: 'rgba(11,26,82,.7)', media: '#0b1a52', fundido: 'rgba(238,232,220,.98)', contraluz: 'rgba(255,255,255,.35)',
+    cinta: '#0b1a52', cintaTexto: '#f5d77a', insigniaFondo: '#0b1a52', medallaFondo: '#0b1a52', medallaTexto: '#f5d77a',
+    cristal: ['#7aa0ff', '#2a4fe0', '#0e2196'], estrellas: '#c99a36',
+  },
+};
+
 // La serie de goleadores es la familia goleador, con distintivo de puesto.
 FAMILIAS.goleadorSerie = { ...FAMILIAS.goleador, serie: true, titulo: 'GOLEADORES' };
 
@@ -130,10 +159,20 @@ export const ESPECIALES = {
   HERO: { sigla: 'HÉROE', titulo: 'HÉROE DEL CLUB', familia: 'heroe', rareza: 'toty', periodo: null },
   // Edición de evento: la crea el superusuario para el evento de Halloween.
   HALW: { sigla: 'HALLOWEEN', titulo: 'HALLOWEEN', familia: 'halloween', rareza: 'potm', periodo: null },
+  // Edición de evento: los de inferiores de la Copa Futuro de Oro (diseño TOTY Icons).
+  CFOR: { sigla: 'COPA FUTURO', titulo: 'COPA FUTURO DE ORO', familia: 'icono', rareza: 'toty', periodo: null },
 };
 
+/* Premios que no son especiales (su lógica es la de MySquad) pero se dibujan
+   con una familia de CartaEspecial: la TOTY. */
+const FAMILIA_DE_PREMIO = { TOTY: 'toty' };
+export const conDisenoEspecial = (tipo) => !!familiaDe(tipo);
+
 export const esEspecial = (tipo) => !!ESPECIALES[String(tipo || '').toUpperCase()];
-export const familiaDe = (tipo) => ESPECIALES[String(tipo || '').toUpperCase()]?.familia || null;
+export const familiaDe = (tipo) => {
+  const t = String(tipo || '').toUpperCase();
+  return ESPECIALES[t]?.familia || FAMILIA_DE_PREMIO[t] || null;
+};
 
 /** '3º' o '3º · EMPATE'. */
 export const textoPuesto = (puesto, empate = false) => (puesto ? `${puesto}º${empate ? ' · EMPATE' : ''}` : '');
