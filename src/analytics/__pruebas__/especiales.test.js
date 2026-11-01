@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   rankear, rankingPresencia, ganadores, topSerie, partidosPrimeraRueda, ruedaCerrada, periodoRueda, torneoDePeriodo,
-  partidosDelMes, TIPOS_ESPECIALES,
+  partidosDelMes, TIPOS_ESPECIALES, partidosDeRueda, ruedaDePeriodo, tipoDeRueda, TIPOS_RUEDA2, TIPOS_SERIE2,
 } from '../especiales';
+import { ESPECIALES, FAMILIAS } from '../especialesCartas';
+import { periodoEspecial, criterioEspecial } from '../premiosCartas';
 
 const f = (apellido, datos) => ({ id: apellido, apellido, nombre: '', rol: 'ALA', pj: 1, goles: 0, asistencias: 0, rec: 0, mvp: 0, nota: 6, ...datos });
 
@@ -70,6 +72,37 @@ describe('especiales: períodos', () => {
     expect(periodoRueda('t1')).not.toContain('|');
     expect(torneoDePeriodo('R1:t1')).toBe('t1');
     expect(torneoDePeriodo('2026-03')).toBeNull();
+  });
+  it('segunda rueda: después del corte, sin playoffs, con su propio período y tipos', () => {
+    const conPlayoff = [...partidos, { id: 5, torneo_id: 't1', jornada: 'Semifinal', fecha: '2026-05-01' }];
+    expect(partidosDeRueda(conPlayoff, torneo, 2).map((p) => p.id)).toEqual([3]);
+    expect(periodoRueda('t1', 2)).toBe('R2:t1');
+    expect(torneoDePeriodo('R2:t1')).toBe('t1');
+    expect(ruedaDePeriodo('R2:t1')).toBe(2);
+    expect(ruedaDePeriodo('2026-03')).toBeNull();
+    expect(tipoDeRueda('SGOL', 2)).toBe('SGOL2');
+    expect(tipoDeRueda('SGOL', 1)).toBe('SGOL');
+    expect(periodoEspecial({ periodo: 'R2:t1', contexto: { torneo: 'Apertura' } })).toBe('Apertura · 2ª rueda');
+  });
+  it('la segunda rueda se cierra con un playoff jugado o con todas sus fechas con datos', () => {
+    const t = { id: 't1', fechas_primera_rueda: 2 };
+    const ps = [1, 2, 3, 4].map((n) => ({ id: n, torneo_id: 't1', jornada: `Fecha ${n}` }));
+    expect(ruedaCerrada(ps, t, new Set(['1', '2', '3']), 2)).toBe(false);
+    expect(ruedaCerrada(ps, t, new Set(['1', '2', '3', '4']), 2)).toBe(true);
+    const conSemi = [...ps, { id: 9, torneo_id: 't1', jornada: 'Semifinal' }];
+    expect(ruedaCerrada(conSemi, t, new Set(['3', '9']), 2)).toBe(true);
+  });
+  it('los seis tipos de la 2ª rueda tienen carta (otro tono, misma forma) y criterio', () => {
+    [...TIPOS_RUEDA2, ...TIPOS_SERIE2].forEach((tipo) => {
+      expect(TIPOS_ESPECIALES).toContain(tipo);
+      const e = ESPECIALES[tipo];
+      const base = ESPECIALES[tipo.slice(0, -1)];
+      expect(e.titulo).toContain('2ª RUEDA');
+      expect(e.rareza).toBe(base.rareza);
+      expect(FAMILIAS[e.familia].forma).toBe(FAMILIAS[base.familia].forma);
+      expect(FAMILIAS[e.familia].colores.luz).not.toBe(FAMILIAS[base.familia].colores.luz);
+      expect(criterioEspecial(tipo, {})).not.toBe('');
+    });
   });
   it('mes', () => {
     expect(partidosDelMes(partidos, '2026-03').map((p) => p.id)).toEqual([1, 2, 4]);

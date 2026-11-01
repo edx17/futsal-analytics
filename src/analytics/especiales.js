@@ -18,6 +18,9 @@
  *   mes           'YYYY-MM', con los partidos del filtro (categoría y torneo);
  *   primera rueda las fechas hasta `torneos.fechas_primera_rueda` de UN torneo
  *                 (utils/ruedas.js). Sin ese corte configurado no hay rueda.
+ *   segunda rueda las fechas después del corte, sin los playoffs. Mismos
+ *                 premios con su propio tipo (GOLR2, ASIR2, PRER2, MVPR2,
+ *                 SGOL2, SREC2) y periodo 'R2:<torneo>'.
  *
  * Los criterios (los mismos que se acordaron):
  *   GOLEADOR / ASISTIDOR  más goles / más asistencias. Con empate en el
@@ -39,23 +42,31 @@
 import { procesarPlantel } from './plantel';
 import { analizarPartidos, rolDe } from './quinteto';
 import { premiosDelPartido, claveMes, minimoPartidosMes } from './premios';
-import { ruedaDePartido, ordenarJornadas, tieneRuedasConfiguradas } from '../utils/ruedas';
+import { ruedaDePartido, ordenarJornadas, tieneRuedasConfiguradas, fasePlayoff } from '../utils/ruedas';
 import { diasDelMes } from '../utils/resumenMensual';
 
 const redondear = (n, d = 2) => Number(Number(n).toFixed(d));
 
 /* Los tipos de carta especial (se guardan en cartas_destacadas.tipo). */
-export const TIPOS_ESPECIALES = ['GOLM', 'ASIM', 'PREM', 'GOLR', 'ASIR', 'PRER', 'MVPR', 'SGOL', 'SREC'];
+export const TIPOS_ESPECIALES = ['GOLM', 'ASIM', 'PREM', 'GOLR', 'ASIR', 'PRER', 'MVPR', 'SGOL', 'SREC',
+  'GOLR2', 'ASIR2', 'PRER2', 'MVPR2', 'SGOL2', 'SREC2'];
 export const TIPOS_MES = ['GOLM', 'ASIM', 'PREM'];
 export const TIPOS_RUEDA = ['GOLR', 'ASIR', 'PRER', 'MVPR'];
 export const TIPOS_SERIE = ['SGOL', 'SREC'];
+/* La segunda rueda: los mismos premios, con su tipo (otra carta, otro tono). */
+export const TIPOS_RUEDA2 = ['GOLR2', 'ASIR2', 'PRER2', 'MVPR2'];
+export const TIPOS_SERIE2 = ['SGOL2', 'SREC2'];
+/** El tipo de un premio de rueda en la rueda pedida: GOLR → GOLR2 en la segunda. */
+export const tipoDeRueda = (tipo, rueda = 1) => (rueda === 2 ? `${tipo}2` : tipo);
 export const TOPE_SERIE = 10;
 
 /* La clave del período de la primera rueda: el torneo va adentro porque cada
    torneo tiene la suya (y la clave de la carta es TIPO|periodo|jugador: sin
    barras verticales acá). */
-export const periodoRueda = (torneoId) => `R1:${torneoId}`;
-export const torneoDePeriodo = (periodo) => (String(periodo).startsWith('R1:') ? String(periodo).slice(3) : null);
+export const periodoRueda = (torneoId, rueda = 1) => `R${rueda === 2 ? 2 : 1}:${torneoId}`;
+export const torneoDePeriodo = (periodo) => (/^R[12]:/.test(String(periodo)) ? String(periodo).slice(3) : null);
+/** 1 o 2 si el período es de una rueda ('R1:…' / 'R2:…'); null si no. */
+export const ruedaDePeriodo = (periodo) => (/^R[12]:/.test(String(periodo)) ? Number(String(periodo)[1]) : null);
 
 /* ══════════════════════════════════════════════════════════════════════════
    LOS PARTIDOS DE CADA PERÍODO
@@ -64,24 +75,32 @@ export const torneoDePeriodo = (periodo) => (String(periodo).startsWith('R1:') ?
 /** Los partidos de un mes ('YYYY-MM') dentro de los que se le pasen. */
 export const partidosDelMes = (partidos = [], mes) => partidos.filter((p) => claveMes(p.fecha) === mes);
 
-/** Los partidos de la primera rueda de un torneo (vacío si el torneo no tiene el corte configurado). */
-export function partidosPrimeraRueda(partidos = [], torneo) {
+/** Los partidos de una rueda (1 o 2) de un torneo (vacío si el torneo no tiene el corte configurado). Los playoffs no son de ninguna. */
+export function partidosDeRueda(partidos = [], torneo, rueda = 1) {
   if (!tieneRuedasConfiguradas(torneo)) return [];
   const delTorneo = partidos.filter((p) => p.torneo_id === torneo.id);
   const jornadas = ordenarJornadas(delTorneo.map((p) => p.jornada));
-  return delTorneo.filter((p) => ruedaDePartido(p, torneo, jornadas) === 1);
+  return delTorneo.filter((p) => ruedaDePartido(p, torneo, jornadas) === rueda);
 }
+export const partidosPrimeraRueda = (partidos = [], torneo) => partidosDeRueda(partidos, torneo, 1);
 
 /**
  * ¿Terminó la primera rueda? Cuando ya hay un partido CON DATOS de la segunda
  * (como un mes: está cerrado cuando empezó otro). Antes de eso los premios de
  * la rueda pueden cambiar.
  */
-export function ruedaCerrada(partidos = [], torneo, conDatos = new Set()) {
+export function ruedaCerrada(partidos = [], torneo, conDatos = new Set(), rueda = 1) {
   if (!tieneRuedasConfiguradas(torneo)) return false;
   const delTorneo = partidos.filter((p) => p.torneo_id === torneo.id);
   const jornadas = ordenarJornadas(delTorneo.map((p) => p.jornada));
-  return delTorneo.some((p) => conDatos.has(String(p.id)) && ruedaDePartido(p, torneo, jornadas) === 2);
+  const jugado = (p) => conDatos.has(String(p.id));
+  if (rueda === 1) return delTorneo.some((p) => jugado(p) && ruedaDePartido(p, torneo, jornadas) === 2);
+  // La segunda: cerrada cuando ya se jugó un partido de playoff, o cuando tiene
+  // con datos tantas fechas como la primera (y no le queda ninguna sin datos).
+  if (delTorneo.some((p) => jugado(p) && fasePlayoff(p.jornada) !== null)) return true;
+  const deLa2 = delTorneo.filter((p) => ruedaDePartido(p, torneo, jornadas) === 2);
+  const fechas = new Set(deLa2.filter(jugado).map((p) => p.jornada));
+  return deLa2.length > 0 && deLa2.every(jugado) && fechas.size >= Number(torneo.fechas_primera_rueda);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -235,25 +254,28 @@ export function especialesDelMes({ raw, partidos = [], mes, misCategorias = [] }
  * MVP y las dos series (GOLEADORES y RECUPERADORES, del 1 al 10).
  * `partidos`: los del filtro de categoría (se recortan acá al torneo y la rueda).
  */
-export function especialesPrimeraRueda({ raw, partidos = [], torneo, misCategorias = [] }) {
-  const deLaRueda = partidosPrimeraRueda(partidos, torneo);
+export function especialesDeRueda({ raw, partidos = [], torneo, misCategorias = [], rueda = 1 }) {
+  const deLaRueda = partidosDeRueda(partidos, torneo, rueda);
   if (deLaRueda.length === 0) return { estadisticas: null, registros: [], sinCorte: !tieneRuedasConfiguradas(torneo) };
   const est = estadisticasDelPeriodo({ raw, partidos: deLaRueda, misCategorias });
   if (est.partidosEquipo === 0) return { estadisticas: est, registros: [] };
   const base = {
-    periodo: periodoRueda(torneo.id),
+    periodo: periodoRueda(torneo.id, rueda),
     fechaRef: est.ultimaFecha,
-    contexto: { torneo: torneo.nombre || '', torneoId: torneo.id, rueda: 1, fechas: Number(torneo.fechas_primera_rueda), partidos: est.partidosEquipo },
+    contexto: { torneo: torneo.nombre || '', torneoId: torneo.id, rueda, fechas: Number(torneo.fechas_primera_rueda), partidos: est.partidosEquipo },
   };
+  const t = (tipo) => tipoDeRueda(tipo, rueda);
   const goles = rankear(est.filas, (f) => f.goles);
   const recuperaciones = rankear(est.filas, (f) => f.rec);
   const registros = [
-    individual('GOLR', goles, base),
-    individual('ASIR', rankear(est.filas, (f) => f.asistencias), base),
-    individual('PRER', rankingPresencia(est.filas), base),
-    individual('MVPR', rankear(est.filas, (f) => f.mvp), { ...base, contexto: { ...base.contexto, figuras: est.figuras } }),
-    serie('SGOL', goles, base),
-    serie('SREC', recuperaciones, base),
+    individual(t('GOLR'), goles, base),
+    individual(t('ASIR'), rankear(est.filas, (f) => f.asistencias), base),
+    individual(t('PRER'), rankingPresencia(est.filas), base),
+    individual(t('MVPR'), rankear(est.filas, (f) => f.mvp), { ...base, contexto: { ...base.contexto, figuras: est.figuras } }),
+    serie(t('SGOL'), goles, base),
+    serie(t('SREC'), recuperaciones, base),
   ].filter(Boolean);
   return { estadisticas: est, registros };
 }
+export const especialesPrimeraRueda = (args) => especialesDeRueda({ ...args, rueda: 1 });
+export const especialesSegundaRueda = (args) => especialesDeRueda({ ...args, rueda: 2 });

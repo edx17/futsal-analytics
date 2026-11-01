@@ -136,7 +136,7 @@ export const clavesDeTipo = (catalogo = [], tipos = []) =>
 export const PLANTILLAS = {
   goleadores: {
     nombre: 'EVENTO GOLEADORES',
-    tipos: ['SGOL'],
+    tipos: ['SGOL', 'SGOL2'],
     sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
     escena: {
       video: 'evento_goleadores', video_alternativo: 'elite', titulo: 'EVENTO GOLEADORES',
@@ -146,7 +146,7 @@ export const PLANTILLAS = {
   },
   recuperadores: {
     nombre: 'EVENTO RECUPERADORES',
-    tipos: ['SREC'],
+    tipos: ['SREC', 'SREC2'],
     sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
     escena: {
       video: 'evento_recuperadores', video_alternativo: 'elite', titulo: 'EVENTO RECUPERADORES',

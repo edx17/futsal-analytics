@@ -26,6 +26,11 @@ export async function listarCatalogo(clubId) {
   const leer = (columnas) => fetchPaginado(() => supabase.from('cartas_catalogo')
     .select(columnas).eq('club_id', clubId).order('clave', { ascending: true }));
   try {
+    return await leer('id, clave, jugador_id, tipo, rareza, carta, activa, exclusiva_evento, actualizada_at, creada_at');
+  } catch (errCreada) {
+    if (!falta(errCreada)) throw errCreada;   // sin 20261111120000 todavía: sin creada_at (se ordena por actualizada_at)
+  }
+  try {
     return await leer('id, clave, jugador_id, tipo, rareza, carta, activa, exclusiva_evento, actualizada_at');
   } catch (err0) {
     if (!falta(err0)) throw err0;

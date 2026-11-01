@@ -144,6 +144,39 @@ FAMILIAS.icono = {
 // La serie de goleadores es la familia goleador, con distintivo de puesto.
 FAMILIAS.goleadorSerie = { ...FAMILIAS.goleador, serie: true, titulo: 'GOLEADORES' };
 
+/* LA SEGUNDA RUEDA: la misma forma, textura e insignia de cada familia de la
+   1ª rueda, en otro tono (para distinguirlas en la colección):
+     Goleador   bordó y platino (en vez de rojo y dorado)
+     Asistidor  violeta eléctrico y plata (en vez de azul)
+     Presencia  acero y ámbar (en vez de esmeralda)
+     MVP        negro y platino helado (en vez de dorado)
+     Recuperador grafito e índigo (en vez de verde azulado) */
+const enOtroTono = (base, colores) => ({ ...base, colores: { ...base.colores, ...colores } });
+const PLATINO = ['#ffffff', '#cfd6df', '#7d8794', '#eef2f6'];
+FAMILIAS.goleador2 = enOtroTono(FAMILIAS.goleador, {
+  fondo: ['#3a0614', '#120508', '#000000'], luz: '#ff4d6d', detalle: '#be123c', metal: PLATINO,
+  filo: '#e5e9ef', media: '#eef2f6', contraluz: 'rgba(190,18,60,.38)', cinta: '#9f1239', cintaTexto: '#fff1f2',
+  insigniaFondo: '#16040a', medallaFondo: '#16040a', medallaTexto: '#eef2f6',
+});
+FAMILIAS.goleadorSerie2 = { ...FAMILIAS.goleador2, serie: true, titulo: 'GOLEADORES' };
+FAMILIAS.asistidor2 = enOtroTono(FAMILIAS.asistidor, {
+  fondo: ['#6d28d9', '#2e1065', '#12052e'], luz: '#a855f7', detalle: '#d8b4fe', fundido: 'rgba(18,5,46,.96)',
+  contraluz: 'rgba(168,85,247,.42)', cintaTexto: '#2e1065', insigniaFondo: '#1e0a45', medallaFondo: '#1e0a45',
+});
+FAMILIAS.presencia2 = enOtroTono(FAMILIAS.presencia, {
+  luz: '#f59e0b', detalle: '#fbbf24', media: '#fcd34d', contraluz: 'rgba(245,158,11,.3)', cinta: '#b45309', cintaTexto: '#fffbeb',
+  medallaTexto: '#fcd34d',
+});
+FAMILIAS.mvp2 = enOtroTono(FAMILIAS.mvp, {
+  fondo: ['#0f1a24', '#05080b', '#000000'], luz: '#bae6fd', detalle: '#e0f2fe', metal: PLATINO, filo: '#eef2f6', texto: '#f8fbff',
+  suave: 'rgba(225,240,255,.74)', media: '#e0f2fe', contraluz: 'rgba(186,230,253,.3)', cinta: '#cbd5e1', cintaTexto: '#0f1a24',
+  insigniaFondo: '#070c10', medallaFondo: '#070c10', medallaTexto: '#e0f2fe',
+});
+FAMILIAS.recuperador2 = enOtroTono(FAMILIAS.recuperador, {
+  fondo: ['#262a5c', '#1a1c2e', '#0a0b14'], luz: '#6366f1', detalle: '#a5b4fc', media: '#c7d2fe', contraluz: 'rgba(99,102,241,.34)',
+  cinta: '#4338ca', cintaTexto: '#eef2ff', insigniaFondo: '#0d0e1c', medallaFondo: '#0d0e1c',
+});
+
 /* Cada tipo: su sigla, su título, su familia y la rareza (existente) con la que va a los sobres. */
 export const ESPECIALES = {
   GOLM: { sigla: 'GOL MES', titulo: 'GOLEADOR DEL MES', familia: 'goleadorMes', rareza: 'totm', periodo: 'mes' },
@@ -155,6 +188,13 @@ export const ESPECIALES = {
   MVPR: { sigla: 'MVP 1R', titulo: 'MVP · 1ª RUEDA', familia: 'mvp', rareza: 'potm', periodo: 'rueda' },
   SGOL: { sigla: 'GOLEADORES', titulo: 'SERIE GOLEADORES', familia: 'goleadorSerie', rareza: 'totw', periodo: 'rueda', serie: true },
   SREC: { sigla: 'RECUPERADORES', titulo: 'SERIE RECUPERADORES', familia: 'recuperador', rareza: 'totw', periodo: 'rueda', serie: true },
+  // La segunda rueda: los mismos premios y rarezas, en otro tono.
+  GOLR2: { sigla: 'GOL 2R', titulo: 'GOLEADOR · 2ª RUEDA', familia: 'goleador2', rareza: 'potm', periodo: 'rueda' },
+  ASIR2: { sigla: 'ASI 2R', titulo: 'ASISTIDOR · 2ª RUEDA', familia: 'asistidor2', rareza: 'potm', periodo: 'rueda' },
+  PRER2: { sigla: 'PRE 2R', titulo: 'PRESENCIA · 2ª RUEDA', familia: 'presencia2', rareza: 'potm', periodo: 'rueda' },
+  MVPR2: { sigla: 'MVP 2R', titulo: 'MVP · 2ª RUEDA', familia: 'mvp2', rareza: 'potm', periodo: 'rueda' },
+  SGOL2: { sigla: 'GOLEADORES 2R', titulo: 'SERIE GOLEADORES · 2ª RUEDA', familia: 'goleadorSerie2', rareza: 'totw', periodo: 'rueda', serie: true },
+  SREC2: { sigla: 'RECUPERADORES 2R', titulo: 'SERIE RECUPERADORES · 2ª RUEDA', familia: 'recuperador2', rareza: 'totw', periodo: 'rueda', serie: true },
   // Los crea el superusuario (Modo GOD · HÉROES); van con la rareza más alta y, por defecto, sólo en su evento.
   HERO: { sigla: 'HÉROE', titulo: 'HÉROE DEL CLUB', familia: 'heroe', rareza: 'toty', periodo: null },
   // Edición de evento: la crea el superusuario para el evento de Halloween.

@@ -9,7 +9,7 @@ import {
 import {
   PREMIOS, etiquetaMes, fechaCorta, indicePorId, cartasDeRegistro, datosDePlaca, criterioEspecial,
 } from '../../analytics/premiosCartas';
-import { especialesDelMes, especialesPrimeraRueda, ruedaCerrada } from '../../analytics/especiales';
+import { especialesDelMes, especialesPrimeraRueda, especialesSegundaRueda, ruedaCerrada } from '../../analytics/especiales';
 import { tieneRuedasConfiguradas } from '../../utils/ruedas';
 import { guardarRegistros } from '../../utils/cartasDestacadas';
 import { publicarPremiosPendientes, cartasSinAtributos } from '../../utils/publicarPremios';
@@ -92,8 +92,13 @@ export default function PanelPremios({
     () => (raw && torneo ? especialesPrimeraRueda({ raw, partidos: partidosCategoria, torneo, misCategorias }) : null),
     [raw, partidosCategoria, torneo, misCategorias],
   );
+  const espRueda2 = useMemo(
+    () => (raw && torneo ? especialesSegundaRueda({ raw, partidos: partidosCategoria, torneo, misCategorias }) : null),
+    [raw, partidosCategoria, torneo, misCategorias],
+  );
   const conDatos = useMemo(() => new Set((raw?.eventos || []).map((e) => String(e.id_partido))), [raw]);
   const ruedaTerminada = useMemo(() => (torneo ? ruedaCerrada(partidosCategoria, torneo, conDatos) : false), [torneo, partidosCategoria, conDatos]);
+  const rueda2Terminada = useMemo(() => (torneo ? ruedaCerrada(partidosCategoria, torneo, conDatos, 2) : false), [torneo, partidosCategoria, conDatos]);
   const yaGuardado = (r) => !!r && guardados.has(`${r.tipo}|${r.periodo}`);
 
   if (partidosJugados.length === 0) {
@@ -136,13 +141,14 @@ export default function PanelPremios({
   };
 
   /* Lo definitivo: premios de partidos y meses cerrados, las especiales de los
-     meses cerrados y las de la primera rueda si ya terminó. */
+     meses cerrados y las de cada rueda si ya terminó. */
   const congelar = () => {
     const hoy = hoyISO();
     const especiales = raw ? meses.filter((m) => mesCerrado(m, hoy))
       .flatMap((m) => especialesDelMes({ raw, partidos: partidosFiltro, mes: m, misCategorias }).registros) : [];
     const deRueda = espRueda && ruedaTerminada ? espRueda.registros : [];
-    return guardar([...registrosDefinitivos(partidosJugados, hoy), ...especiales, ...deRueda], { sobrescribir: false });
+    const deRueda2 = espRueda2 && rueda2Terminada ? espRueda2.registros : [];
+    return guardar([...registrosDefinitivos(partidosJugados, hoy), ...especiales, ...deRueda, ...deRueda2], { sobrescribir: false });
   };
   const mesAbierto = mes && !mesCerrado(mes, hoyISO());
 
@@ -234,6 +240,17 @@ export default function PanelPremios({
             onGuardar={() => guardar([r], { sobrescribir: true })} guardando={guardando} nota={criterioEspecial(r.tipo, r.contexto)} />
         )) : <Vacio texto="Todavía no hay partidos con datos de la primera rueda." />}
       </Seccion>
+
+      {/* ── SEGUNDA RUEDA (sólo cuando ya hay partidos con datos después del corte) ── */}
+      {torneo && tieneRuedasConfiguradas(torneo) && espRueda2?.estadisticas && (
+        <Seccion titulo="SEGUNDA RUEDA"
+          detalle={`${torneo.nombre} · desde la fecha ${Number(torneo.fechas_primera_rueda) + 1}, sin playoffs · ${espRueda2.estadisticas.partidosEquipo} partidos con datos${rueda2Terminada ? '' : ' · todavía en juego'}`}>
+          {espRueda2.registros.length ? espRueda2.registros.map((r) => (
+            <Premio key={r.tipo} registro={r} guardado={yaGuardado(r)} porId={porId} esMovil={esMovil} onExportar={exportar}
+              onGuardar={() => guardar([r], { sobrescribir: true })} guardando={guardando} nota={criterioEspecial(r.tipo, r.contexto)} />
+          )) : <Vacio texto="Todavía no hay partidos con datos de la segunda rueda." />}
+        </Seccion>
+      )}
 
       {/* ── TEMPORADA ── */}
       <Seccion titulo="TEMPORADA" detalle={temporada ? `${temporada.partidos} partidos · hay que haber jugado ${temporada.minimo} (65%)` : ''}>

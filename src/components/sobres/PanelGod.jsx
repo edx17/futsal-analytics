@@ -4,7 +4,7 @@ import { SOBRES, rarezaPorId } from '../../analytics/sobres';
 import { VARIANTES, VIDEOS } from '../../analytics/aperturas';
 import { CINEMATICAS, varianteDeEscena } from '../../analytics/eventos';
 import { PREMIOS } from '../../analytics/premiosCartas';
-import { resultadoDePrueba, aplicarAjuste, mediaDudosa, pendientesDePublicar } from '../../analytics/god';
+import { resultadoDePrueba, aplicarAjuste, mediaDudosa, pendientesDePublicar, ordenarCatalogo, ORDENES_CATALOGO, esNueva, DIAS_NUEVA } from '../../analytics/god';
 import { listarHistorial } from '../../utils/cartasDestacadas';
 import { publicarCatalogo } from '../../utils/sobres';
 import {
@@ -189,6 +189,7 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   const [soloDudosas, setSoloDudosas] = useState(false);
   const [limite, setLimite] = useState(POR_PAGINA);
   const [ocupado, setOcupado] = useState(null);
+  const [orden, setOrden] = useState('nuevas'); // las recién publicadas arriba
   const [factor, setFactor] = useState(2); // V-Coins devueltas por copia al eliminar: puntos de la rareza × factor
 
   const filas = useMemo(() => (catalogo || []).map((k) => {
@@ -197,11 +198,12 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   }), [catalogo, ajustes, fotos]);
 
   const tipos = useMemo(() => ['TODAS', ...new Set(filas.map((f) => f.tipo))], [filas]);
-  const lista = useMemo(() => filas.filter((f) => (tipo === 'TODAS' || f.tipo === tipo)
+  const filtradas = useMemo(() => filas.filter((f) => (tipo === 'TODAS' || f.tipo === tipo)
     && (estado === 'todas' || (estado === 'activas' ? f.activa !== false : f.activa === false))
     && (!soloDudosas || f.dudosa)
-    && (!buscar || `${f.carta?.apellido} ${f.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase())))
-    .sort((a, b) => (b.dudosa ? 1 : 0) - (a.dudosa ? 1 : 0) || (b.cartaVista.ovr || 0) - (a.cartaVista.ovr || 0)), [filas, tipo, estado, soloDudosas, buscar]);
+    && (!buscar || `${f.carta?.apellido} ${f.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase()))), [filas, tipo, estado, soloDudosas, buscar]);
+  const lista = useMemo(() => ordenarCatalogo(filtradas, orden, (f) => f.cartaVista.ovr), [filtradas, orden]);
+  const nuevas = useMemo(() => filas.filter((f) => esNueva(f)).length, [filas]);
 
   const hacer = async (id, fn, ok) => {
     setOcupado(id); avisar(null);
@@ -246,7 +248,12 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
         <label style={{ ...dim, display: 'flex', gap: 6, alignItems: 'center' }}>
           <input type="checkbox" checked={soloDudosas} onChange={(e) => setSoloDudosas(e.target.checked)} style={{ width: 'auto', margin: 0 }} />sólo a revisar ({filas.filter((f) => f.dudosa).length})
         </label>
-        <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 11, color: 'var(--text-dim)' }}>{lista.length} cartas</span>
+        <select value={orden} onChange={(e) => setOrden(e.target.value)} style={select} aria-label="Orden">
+          {ORDENES_CATALOGO.map(([id, t]) => <option key={id} value={id}>{t}</option>)}
+        </select>
+        <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 11, color: 'var(--text-dim)' }}>
+          {lista.length} cartas{nuevas ? ` · ${nuevas} nuevas (últimos ${DIAS_NUEVA} días)` : ''}
+        </span>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button style={chip(false)} disabled={!lista.length || !!ocupado}
@@ -292,6 +299,7 @@ function FilaCarta({ f, ajuste, foto, ocupado, alternar, eliminar, ajustar, desa
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
           <b style={{ fontSize: 14 }}>{(c.apellido || '').toUpperCase()} {c.nombre}</b>
           <span style={{ fontFamily: MONO, fontSize: 11, color: 'var(--text-dim)' }}>{PREMIOS[f.tipo]?.sigla || f.tipo} · {rarezaPorId[f.rareza]?.nombre} · {c.edicion || c.categoria || ''}</span>
+          {esNueva(f) && <span style={{ ...tag, background: '#22c55e', color: '#052e16' }} title={`Apareció en los últimos ${DIAS_NUEVA} días`}>NUEVA</span>}
           {baja && <span style={{ ...tag, background: '#ef4444' }}>DE BAJA</span>}
           {f.exclusiva_evento && <span style={{ ...tag, background: '#7c3aed' }} title="Sólo sale en el sobre de su evento">SÓLO EVENTO</span>}
           {f.dudosa && <span style={{ ...tag, background: '#f97316' }} title="La media no cuadra con sus datos">REVISAR · {f.dudosa}</span>}

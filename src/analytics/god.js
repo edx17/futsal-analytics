@@ -125,3 +125,27 @@ export function completarAtributos(catalogo = [], calculadas = []) {
       };
     });
 }
+
+/* ── EL ORDEN DE LA LISTA DE CARTAS (Modo GOD y panel del club) ── */
+
+/** Cuándo apareció la carta en el catálogo (creada_at; sin esa columna, la última publicación). */
+export const aparicion = (k) => Date.parse(k?.creada_at || k?.actualizada_at || '') || 0;
+
+export const DIAS_NUEVA = 7;
+/** ¿Apareció en los últimos DIAS_NUEVA días? */
+export const esNueva = (k, ahora = Date.now()) => aparicion(k) > 0 && ahora - aparicion(k) <= DIAS_NUEVA * 864e5;
+
+export const ORDENES_CATALOGO = [['nuevas', 'MÁS NUEVAS PRIMERO'], ['viejas', 'MÁS VIEJAS PRIMERO'], ['media', 'POR MEDIA'], ['nombre', 'POR APELLIDO']];
+
+/** Ordena una copia de la lista. `media(k)`: la media que se muestra (con el ajuste). Desempata por apellido. */
+export function ordenarCatalogo(lista = [], orden = 'nuevas', media = (k) => k?.carta?.ovr) {
+  const ape = (k) => String(k?.carta?.apellido || '');
+  const porNombre = (a, b) => ape(a).localeCompare(ape(b), 'es', { sensitivity: 'base' });
+  const cmp = {
+    nuevas: (a, b) => aparicion(b) - aparicion(a),
+    viejas: (a, b) => aparicion(a) - aparicion(b),
+    media: (a, b) => (Number(media(b)) || 0) - (Number(media(a)) || 0),
+    nombre: () => 0,
+  }[orden] || (() => 0);
+  return [...lista].sort((a, b) => cmp(a, b) || porNombre(a, b));
+}
