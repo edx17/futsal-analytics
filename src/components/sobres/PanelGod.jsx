@@ -8,7 +8,7 @@ import { resultadoDePrueba, aplicarAjuste, mediaDudosa, pendientesDePublicar } f
 import { listarHistorial } from '../../utils/cartasDestacadas';
 import { publicarCatalogo } from '../../utils/sobres';
 import {
-  listarCatalogo, activarCartas, MENSAJE_SIN_GOD, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres,
+  listarCatalogo, activarCartas, MENSAJE_SIN_GOD, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, eliminarCartas, listarEliminadas,
 } from '../../utils/god';
 import { listarFotos, subirFotoEspecial, quitarFotoEspecial } from '../../utils/cartasFotos';
 import { prepararVideo } from '../../utils/videoApertura';
@@ -68,11 +68,11 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
   const cargar = useCallback(async () => {
     if (!clubId) return;
     try {
-      const [k, a, f, h, cfg] = await Promise.all([listarCatalogo(clubId), listarAjustes(clubId), listarFotos(clubId).catch(() => new Map()),
-        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null)]);
+      const [k, a, f, h, cfg, el] = await Promise.all([listarCatalogo(clubId), listarAjustes(clubId), listarFotos(clubId).catch(() => new Map()),
+        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null), listarEliminadas(clubId)]);
       setCatalogo(k); setAjustes(a); setFotos(f);
       setConfig(cfg || { suspendidos: [], evento_activo: null, tipos: {}, sinTipos: true });
-      setPendientes(pendientesDePublicar(h, k, f));
+      setPendientes(pendientesDePublicar(h, k, f, [], el));
     } catch (err) {
       setAviso({ texto: err?.message || 'No se pudo leer el catálogo.', error: true });
       setCatalogo([]);
@@ -189,6 +189,7 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   const [soloDudosas, setSoloDudosas] = useState(false);
   const [limite, setLimite] = useState(POR_PAGINA);
   const [ocupado, setOcupado] = useState(null);
+  const [factor, setFactor] = useState(2); // V-Coins devueltas por copia al eliminar: puntos de la rareza × factor
 
   const filas = useMemo(() => (catalogo || []).map((k) => {
     const carta = aplicarAjuste({ atributos: [], stats: {}, ...(k.carta || {}), foto: fotos.get(k.clave) || k.carta?.foto }, ajustes.get(k.clave));
@@ -207,6 +208,24 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
     try { await fn(); await recargar(); if (ok) avisar({ texto: ok }); } catch (err) { avisar({ texto: err?.message || 'No se pudo.', error: true }); } finally { setOcupado(null); }
   };
 
+  /* Eliminar para siempre: primero se simula (cuántos la tienen y cuánto se devuelve) y se confirma escribiendo ELIMINAR. */
+  const eliminar = async (id, filas) => {
+    const ids = filas.map((f) => f.id);
+    const fac = Math.min(100, Math.max(0, Number(factor) || 0));
+    const nombre = filas.length === 1 ? `la carta de ${(filas[0].carta?.apellido || '').toUpperCase()} (${PREMIOS[filas[0].tipo]?.sigla || filas[0].tipo})` : `las ${filas.length} cartas filtradas`;
+    setOcupado(id); avisar(null);
+    try {
+      const s = await eliminarCartas(clubId, ids, { factor: fac, simular: true });
+      const quien = s.duenos ? `La tienen ${s.duenos} persona${s.duenos > 1 ? 's' : ''} (${s.copias} copia${s.copias > 1 ? 's' : ''}): se les saca de la colección y se les devuelven ${s.vcoins} V-Coins en total.`
+        : 'Nadie la tiene todavía.';
+      const ok = window.prompt(`Vas a ELIMINAR PARA SIEMPRE ${nombre}.\n${quien}\nNo se puede deshacer. Escribí ELIMINAR para confirmar.`);
+      if ((ok || '').trim().toUpperCase() !== 'ELIMINAR') return;
+      const r = await eliminarCartas(clubId, ids, { factor: fac, motivo: `Carta eliminada: ${nombre}` });
+      await recargar();
+      avisar({ texto: `Eliminada${r.cartas > 1 ? 's' : ''} ${r.cartas} carta${r.cartas > 1 ? 's' : ''}.${r.duenos ? ` Se devolvieron ${r.vcoins} V-Coins a ${r.duenos} persona${r.duenos > 1 ? 's' : ''}.` : ''}` });
+    } catch (err) { avisar({ texto: err?.message || 'No se pudo eliminar.', error: true }); } finally { setOcupado(null); }
+  };
+
   if (catalogo === null) return <div style={dim}>Leyendo el catálogo…</div>;
   if (catalogo[0]?.sinMigracion) return <Aviso texto={MENSAJE_SIN_GOD} error />;
   const visibles = lista.slice(0, limite);
@@ -214,7 +233,8 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={dim}>
-        Dar de baja saca la carta de los sobres y del V-Draft, pero quien ya la tiene la conserva. La media corregida reemplaza a la calculada
+        Dar de baja saca la carta de los sobres y del V-Draft, pero quien ya la tiene la conserva. <b style={{ color: '#ef4444' }}>Eliminar</b> la borra
+        para siempre, también de las colecciones, y a cada dueño le devuelve V-Coins. La media corregida reemplaza a la calculada
         en los sobres (la rareza con la que sale no cambia). Las marcadas <b style={{ color: '#f97316' }}>REVISAR</b> tienen una media que sus propios datos no sostienen.
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -233,11 +253,19 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
           onClick={() => window.confirm(`¿Dar de BAJA las ${lista.length} cartas filtradas?`) && hacer('lote', () => activarCartas(lista.map((f) => f.id), false), 'Cartas dadas de baja.')}>DAR DE BAJA LAS FILTRADAS</button>
         <button style={chip(false)} disabled={!lista.length || !!ocupado}
           onClick={() => hacer('lote', () => activarCartas(lista.map((f) => f.id), true), 'Cartas dadas de alta.')}>DAR DE ALTA LAS FILTRADAS</button>
+        <button style={{ ...chip(false), color: '#ef4444', borderColor: 'rgba(239,68,68,.5)' }} disabled={!lista.length || !!ocupado}
+          onClick={() => eliminar('lote', lista)}>ELIMINAR LAS FILTRADAS</button>
+        <label style={{ ...dim, display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }} title="Por cada copia que pierde, el dueño recibe los puntos de la rareza × este factor (bronce 5, plata 10, oro 25, TOTW 40, POTW 50, TOTM 60, POTM 75, TOTY 100)">
+          Al eliminar, devolver
+          <input type="number" min={0} max={100} step={0.5} value={factor} onChange={(e) => setFactor(e.target.value)} style={{ ...select, width: 64 }} aria-label="Factor de devolución" />
+          × puntos de la rareza en V-Coins
+        </label>
       </div>
 
       {visibles.map((f) => (
         <FilaCarta key={f.id} f={f} ajuste={ajustes.get(f.clave)} foto={fotos.get(f.clave)} ocupado={ocupado === f.id}
           alternar={() => hacer(f.id, () => activarCartas([f.id], f.activa === false))}
+          eliminar={() => eliminar(f.id, [f])}
           ajustar={(ovr, motivo) => hacer(f.id, () => guardarAjuste(clubId, f.clave, ovr, motivo), `Media de ${f.carta?.apellido} corregida a ${ovr}.`)}
           desajustar={() => hacer(f.id, () => quitarAjuste(clubId, f.clave), 'Vuelve la media calculada.')}
           subirFoto={(archivo) => hacer(f.id, () => subirFotoEspecial({ clubId, clave: f.clave, archivo }), 'Foto guardada.')}
@@ -248,7 +276,7 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   );
 }
 
-function FilaCarta({ f, ajuste, foto, ocupado, alternar, ajustar, desajustar, subirFoto, quitarFoto }) {
+function FilaCarta({ f, ajuste, foto, ocupado, alternar, eliminar, ajustar, desajustar, subirFoto, quitarFoto }) {
   const c = f.cartaVista;
   const [ovr, setOvr] = useState(ajuste?.ovr ?? '');
   const [motivo, setMotivo] = useState(ajuste?.motivo ?? '');
@@ -283,6 +311,7 @@ function FilaCarta({ f, ajuste, foto, ocupado, alternar, ajustar, desajustar, su
             <input type="file" accept="image/*" hidden disabled={ocupado} onChange={(e) => { subirFoto(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
           {foto && <button style={chip(false)} disabled={ocupado} onClick={quitarFoto}>QUITAR FOTO</button>}
+          <button style={{ ...chip(false), color: '#ef4444', borderColor: 'rgba(239,68,68,.5)' }} disabled={ocupado} onClick={eliminar}>ELIMINAR</button>
         </div>
       </div>
     </div>

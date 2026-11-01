@@ -94,8 +94,9 @@ export function mediaDudosa(carta = {}) {
  * filas del catálogo (de ahí salen las cartas BASE, con sus atributos);
  * `fotos`: Map clave → url. Lo mismo que publica MySquad, sin recalcular nada.
  */
-export function pendientesDePublicar(historial = [], catalogo = [], fotos = new Map(), calculadas = []) {
-  const publicadas = new Set(catalogo.map((k) => k.clave));
+export function pendientesDePublicar(historial = [], catalogo = [], fotos = new Map(), calculadas = [], eliminadas = new Set()) {
+  // Las eliminadas desde el Modo GOD tampoco se vuelven a ofrecer.
+  const publicadas = new Set([...catalogo.map((k) => k.clave), ...eliminadas]);
   // Las cartas BASE del catálogo y, si vienen de MySquad, las calculadas (tienen
   // los atributos de todos los jugadores, aunque no tengan BASE publicada).
   const porId = new Map(catalogo.filter((k) => k.tipo === 'BASE').map((k) => [String(k.carta?.id ?? k.jugador_id), { ...(k.carta || {}), id: String(k.carta?.id ?? k.jugador_id) }]));

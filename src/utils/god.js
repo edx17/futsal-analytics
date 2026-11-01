@@ -44,6 +44,27 @@ export async function activarCartas(ids, activa) {
   return (data || []).length;
 }
 
+export const MENSAJE_SIN_ELIMINAR = 'Falta la migración 20261110120000_cartas_eliminar.sql en Supabase (eliminar cartas).';
+
+/** Elimina cartas para siempre y devuelve V-Coins a sus dueños (puntos de la rareza × factor por copia).
+    Con `simular` no toca nada: devuelve { cartas, duenos, copias, vcoins } para confirmar antes. */
+export async function eliminarCartas(clubId, ids, { factor = 2, motivo = null, simular = false } = {}) {
+  const { data, error } = await supabase.rpc('god_eliminar_cartas',
+    { p_club: clubId, p_ids: ids, p_factor: factor, p_motivo: motivo, p_simular: simular });
+  if (error) {
+    if (falta(error) || error.code === 'PGRST202') throw new Error(MENSAJE_SIN_ELIMINAR);
+    throw error;
+  }
+  return data;
+}
+
+/** Las claves de las cartas eliminadas (para no volver a ofrecerlas). Sin la migración, ninguna. */
+export async function listarEliminadas(clubId) {
+  const { data, error } = await supabase.from('cartas_eliminadas').select('clave').eq('club_id', clubId);
+  if (error) return new Set();
+  return new Set((data || []).map((f) => f.clave));
+}
+
 /** Map clave → { ovr, motivo }. */
 export async function listarAjustes(clubId) {
   const { data, error } = await supabase.from('cartas_ajustes').select('clave, ovr, motivo, actualizado_at').eq('club_id', clubId);

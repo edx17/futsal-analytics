@@ -7,7 +7,7 @@ import { conDisenoEspecial } from '../../analytics/especialesCartas';
 import { ESCENAS_BASE } from '../../analytics/eventos';
 import { aplicarAjuste, pendientesDePublicar } from '../../analytics/god';
 import { TIPOS_EDITABLES, CON_COSTO, REGLAS_TIPO, normalizarTipo, reglasDeTipo } from '../../analytics/tiposSobre';
-import { listarCatalogo, activarCartas, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, guardarConfigSobres } from '../../utils/god';
+import { listarCatalogo, activarCartas, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, guardarConfigSobres, listarEliminadas } from '../../utils/god';
 import { listarFotos, subirFotoEspecial } from '../../utils/cartasFotos';
 import { listarHistorial } from '../../utils/cartasDestacadas';
 import { publicarCatalogo } from '../../utils/sobres';
@@ -38,14 +38,14 @@ export default function PanelClub({ clubId, alCambiar }) {
 
   const cargar = useCallback(async () => {
     try {
-      const [catalogo, ajustes, fotos, historial, config] = await Promise.all([
+      const [catalogo, ajustes, fotos, historial, config, eliminadas] = await Promise.all([
         listarCatalogo(clubId), listarAjustes(clubId).catch(() => new Map()), listarFotos(clubId).catch(() => new Map()),
-        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null),
+        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null), listarEliminadas(clubId),
       ]);
-      setDatos({ catalogo, ajustes, fotos, historial, config: config || { suspendidos: [], evento_activo: null, tipos: {} } });
+      setDatos({ catalogo, ajustes, fotos, historial, eliminadas, config: config || { suspendidos: [], evento_activo: null, tipos: {} } });
     } catch (err) {
       setAviso({ texto: err?.message || 'No se pudo leer.', error: true });
-      setDatos({ catalogo: [], ajustes: new Map(), fotos: new Map(), historial: [], config: { suspendidos: [], tipos: {} } });
+      setDatos({ catalogo: [], ajustes: new Map(), fotos: new Map(), historial: [], eliminadas: new Set(), config: { suspendidos: [], tipos: {} } });
     }
   }, [clubId]);
 
@@ -73,14 +73,14 @@ export default function PanelClub({ clubId, alCambiar }) {
 
 /* ── CARTAS ── */
 function Cartas({ clubId, datos, recargar, avisar }) {
-  const { catalogo, ajustes, fotos, historial } = datos;
+  const { catalogo, ajustes, fotos, historial, eliminadas } = datos;
   const [filtro, setFiltro] = useState('todas');
   const [buscar, setBuscar] = useState('');
   const [limite, setLimite] = useState(POR_PAGINA);
   const [ocupado, setOcupado] = useState(null);
   const [media, setMedia] = useState(null); // { clave, valor }
 
-  const pendientes = useMemo(() => pendientesDePublicar(historial, catalogo, fotos), [historial, catalogo, fotos]);
+  const pendientes = useMemo(() => pendientesDePublicar(historial, catalogo, fotos, [], eliminadas), [historial, catalogo, fotos, eliminadas]);
   const lista = useMemo(() => catalogo
     .filter((k) => (filtro === 'todas' ? k.activa !== false : filtro === 'especiales' ? k.tipo !== 'BASE' && k.activa !== false : k.activa === false))
     .filter((k) => !buscar || `${k.carta?.apellido} ${k.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase()))
