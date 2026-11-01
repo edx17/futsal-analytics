@@ -6,6 +6,8 @@ import { fetchPaginado } from '../utils/supaPaginado';
 import { procesarPlantel } from '../analytics/plantel';
 import { reporteJugador, AUDIENCIAS } from '../analytics/reporteJugador';
 import { reporteCategoria } from '../analytics/reporteCategoria';
+import { reporteClub, reporteTorneo, reporteComparativo } from '../analytics/reportesClubTorneo';
+import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas } from '../utils/ruedas';
 import { esMiEquipo, categoriaLiga } from '../analytics/liga';
 import { Bloque } from '../reportes/Bloques';
 import Presentacion from '../reportes/Presentacion';
@@ -18,16 +20,15 @@ import '../reportes/reportes.css';
  * el PDF (se imprime el documento) y la presentación a pantalla completa.
  * Todos son para todos: se elige para quién es y cambia el tono y el detalle.
  *
- * Listos: JUGADOR y CATEGORÍA. Los demás (club, torneo, comparativos) usan
- * las mismas piezas.
+ * Jugador, categoría, club, torneo y comparativo (jugador contra jugador).
  */
 
 const TIPOS_REPORTE = [
   { id: 'jugador', nombre: 'Jugador', listo: true },
   { id: 'categoria', nombre: 'Categoría', listo: true },
-  { id: 'club', nombre: 'Club' },
-  { id: 'torneo', nombre: 'Torneo' },
-  { id: 'comparativo', nombre: 'Comparativos' },
+  { id: 'club', nombre: 'Club', listo: true },
+  { id: 'torneo', nombre: 'Torneo', listo: true },
+  { id: 'comparativo', nombre: 'Jugador vs jugador', listo: true },
 ];
 
 const anioDe = (f) => String(f || '').slice(0, 4);
@@ -47,34 +48,42 @@ function useDatosCompromiso(clubId) {
   return datos;
 }
 
-/* La liga de la categoría (Otras competencias): la competencia de su división
-   y categoría en esa temporada, con todos sus partidos. La división es la
-   Primera donde aparece el club. null si no hay datos. */
-function useLiga(categoria, anio, miClub) {
+/* La liga de cada categoría (Otras competencias): la competencia de su
+   división y categoría en esa temporada, con todos sus partidos. La división
+   es la Primera donde aparece el club. { categoría → liga | null }. */
+function useLigas(categorias, anio, miClub) {
   const [porClave, setPorClave] = useState({});
-  const clave = `${anio}|${categoria}`;
+  const faltan = categorias.filter((c) => !(`${anio}|${c}` in porClave));
+  const pedido = faltan.join('|');
   useEffect(() => {
-    if (!categoria || !miClub || clave in porClave) return undefined;
+    if (!pedido || !miClub) return undefined;
     let vivo = true;
+    const lista = pedido.split('|');
     (async () => {
-      const cat = categoriaLiga(categoria);
       const { data: comps } = await supabase.from('liga_competencias').select('*').eq('anio', Number(anio));
       const primeras = (comps || []).filter((c) => c.categoria === '1ra');
-      if (!cat || !primeras.length) return null;
-      const { data: j } = await supabase.from('liga_partidos').select('competencia_id, local, visitante')
-        .in('competencia_id', primeras.map((c) => c.id)).lte('jornada', 2);
-      const hit = (j || []).find((p) => esMiEquipo(p.local, miClub) || esMiEquipo(p.visitante, miClub));
-      const division = hit ? primeras.find((c) => c.id === hit.competencia_id)?.division : null;
-      const comp = division ? comps.find((c) => c.division === division && c.categoria === cat) : null;
-      if (!comp) return null;
-      const partidos = await fetchPaginado(() => supabase.from('liga_partidos').select('*').eq('competencia_id', comp.id).order('id_externo'));
-      return { partidos, miClub, nombre: `Primera ${division} · ${cat}` };
+      let division = null;
+      if (primeras.length) {
+        const { data: j } = await supabase.from('liga_partidos').select('competencia_id, local, visitante')
+          .in('competencia_id', primeras.map((c) => c.id)).lte('jornada', 2);
+        const hit = (j || []).find((p) => esMiEquipo(p.local, miClub) || esMiEquipo(p.visitante, miClub));
+        division = hit ? primeras.find((c) => c.id === hit.competencia_id)?.division : null;
+      }
+      const res = {};
+      for (const categoria of lista) {
+        const cat = categoriaLiga(categoria);
+        const comp = division && cat ? (comps || []).find((c) => c.division === division && c.categoria === cat) : null;
+        res[`${anio}|${categoria}`] = comp
+          ? { partidos: await fetchPaginado(() => supabase.from('liga_partidos').select('*').eq('competencia_id', comp.id).order('id_externo')), miClub, nombre: `Primera ${division} · ${cat}` }
+          : null;
+      }
+      return res;
     })()
-      .catch(() => null)
-      .then((r) => { if (vivo) setPorClave((m) => ({ ...m, [clave]: r })); });
+      .catch(() => Object.fromEntries(lista.map((c) => [`${anio}|${c}`, null])))
+      .then((r) => { if (vivo) setPorClave((m) => ({ ...m, ...r })); });
     return () => { vivo = false; };
-  }, [clave, categoria, anio, miClub, porClave]);
-  return porClave[clave] ?? null;
+  }, [pedido, anio, miClub]);
+  return useMemo(() => Object.fromEntries(categorias.map((c) => [c, porClave[`${anio}|${c}`] ?? null])), [categorias, anio, porClave]);
 }
 
 export default function Reportes() {
@@ -88,6 +97,8 @@ export default function Reportes() {
   const [temporada, setTemporada] = useState('');
   const [categoria, setCategoria] = useState('');
   const [jugadorId, setJugadorId] = useState('');
+  const [jugadorB, setJugadorB] = useState('');
+  const [torneoId, setTorneoId] = useState('');
   const [audiencia, setAudiencia] = useState('ct');
   const [presentando, setPresentando] = useState(false);
 
@@ -107,22 +118,35 @@ export default function Reportes() {
   const partidosScope = useMemo(() => partidosAnio.filter((p) => p.categoria === cat), [partidosAnio, cat]);
 
   /* Los números de la temporada: los mismos que Resumen Plantel. */
-  const procesado = useMemo(() => {
-    if (!cat || !partidosScope.length) return { jugadoresProc: [], arquerosProc: [] };
-    return procesarPlantel({
-      raw, partidosScopeCat: partidosScope, filtroTorneo: 'Todos', filtroCategoria: cat, misCategorias,
-      hayRuedas: false, filtroRueda: 'Todas', torneoElegido: null, jornadasOrdenadas: [],
+  const procesar = useMemo(() => (partidosCat, categoriaP, torneo = null) => {
+    if (!categoriaP || !partidosCat.length) return [];
+    const r = procesarPlantel({
+      raw, partidosScopeCat: partidosCat, filtroTorneo: torneo ? torneo.id : 'Todos', filtroCategoria: categoriaP, misCategorias,
+      hayRuedas: false, filtroRueda: 'Todas', torneoElegido: torneo, jornadasOrdenadas: [],
     });
-  }, [raw, partidosScope, cat, misCategorias]);
-  const filas = useMemo(() => [...procesado.jugadoresProc, ...procesado.arquerosProc], [procesado]);
+    return [...r.jugadoresProc, ...r.arquerosProc];
+  }, [raw, misCategorias]);
+  const filas = useMemo(() => procesar(partidosScope, cat), [procesar, partidosScope, cat]);
   const elegibles = useMemo(
     () => filas.filter((f) => f.jugados > 0).sort((a, b) => String(a.apellido || '').localeCompare(String(b.apellido || ''))),
     [filas]
   );
   const idElegido = elegibles.some((f) => String(f.id) === String(jugadorId)) ? jugadorId : String(elegibles[0]?.id ?? '');
+  const idB = elegibles.some((f) => String(f.id) === String(jugadorB) && String(f.id) !== idElegido) ? jugadorB
+    : String(elegibles.find((f) => String(f.id) !== idElegido)?.id ?? '');
+
+  /* Los torneos del club con partidos en la temporada. */
+  const torneos = useMemo(() => {
+    const conPartidos = new Set(partidosAnio.map((p) => p.torneo_id).filter(Boolean));
+    return raw.torneos.filter((t) => conPartidos.has(t.id) && (!misCategorias.length || !t.categoria || misCategorias.includes(t.categoria)))
+      .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')));
+  }, [raw.torneos, partidosAnio, misCategorias]);
+  const torneo = torneos.find((t) => t.id === torneoId) || torneos[0] || null;
 
   const miClub = localStorage.getItem('mi_club') || perfil?.clubes?.nombre || '';
-  const liga = useLiga(tipo === 'categoria' ? cat : '', anio, miClub);
+  const catsLiga = useMemo(() => (tipo === 'categoria' ? [cat].filter(Boolean) : tipo === 'club' ? categorias : []), [tipo, cat, categorias]);
+  const ligas = useLigas(catsLiga, anio, miClub);
+  const liga = ligas[cat] ?? null;
   const club = useMemo(() => ({
     nombre: perfil?.clubes?.nombre || localStorage.getItem('mi_club') || '',
     escudo: perfil?.clubes?.escudo_url || localStorage.getItem('escudo_url') || null,
@@ -130,6 +154,34 @@ export default function Reportes() {
   const hasta = anio === hoyISO().slice(0, 4) ? hoyISO() : `${anio}-12-31`;
 
   const reporte = useMemo(() => {
+    const evDe = (ps) => { const ids = new Set(ps.map((p) => p.id)); return raw.eventos.filter((e) => ids.has(e.id_partido)); };
+    if (tipo === 'club') {
+      return reporteClub({
+        temporada: anio, club, audiencia, hasta,
+        categorias: categorias.map((c) => {
+          const ps = partidosAnio.filter((p) => p.categoria === c);
+          return { categoria: c, partidos: ps, filas: procesar(ps, c), liga: ligas[c] ?? null };
+        }),
+        asistencias: compromiso.asistencias.filter((a) => anioDe(a.fecha) === anio),
+        lesiones: compromiso.lesiones.filter((l) => anioDe(l.fecha_lesion) === anio),
+      });
+    }
+    if (tipo === 'torneo') {
+      if (!torneo) return null;
+      const ps = partidosAnio.filter((p) => p.torneo_id === torneo.id);
+      const catT = torneo.categoria || ps[0]?.categoria || '';
+      const jornadas = ordenarJornadas(ps.map((p) => p.jornada));
+      return reporteTorneo({
+        torneo, temporada: anio, club, audiencia, hasta, partidos: ps, eventos: evDe(ps),
+        filas: procesar(partidosAnio.filter((p) => p.categoria === catT), catT, torneo),
+        rueda: (p) => (p && tieneRuedasConfiguradas(torneo) ? ruedaDePartido(p, torneo, jornadas) : null),
+      });
+    }
+    if (tipo === 'comparativo') {
+      const a = filas.find((f) => String(f.id) === idElegido);
+      const b = filas.find((f) => String(f.id) === idB);
+      return a && b ? reporteComparativo({ a, b, temporada: anio, club, audiencia }) : null;
+    }
     if (tipo === 'categoria') {
       if (!cat || !partidosScope.length) return null;
       const ids = new Set(partidosScope.map((p) => p.id));
@@ -156,7 +208,7 @@ export default function Reportes() {
       temporada: anio,
       club, audiencia, hasta,
     });
-  }, [tipo, idElegido, raw, filas, partidosScope, compromiso, anio, audiencia, club, hasta, liga, cat]);
+  }, [tipo, idElegido, idB, raw, filas, partidosScope, partidosAnio, categorias, procesar, ligas, torneo, compromiso, anio, audiencia, club, hasta, liga, cat]);
 
   return (
     <div className="rp">
@@ -180,14 +232,24 @@ export default function Reportes() {
                 {(temporadas.length ? temporadas : [anio]).map((a) => <option key={a}>{a}</option>)}
               </select>
             </label>
-            <label className="rp-campo">Categoría
-              <select value={cat} onChange={(e) => { setCategoria(e.target.value); setJugadorId(''); }}>
+            {['jugador', 'categoria', 'comparativo'].includes(tipo) && <label className="rp-campo">Categoría
+              <select value={cat} onChange={(e) => { setCategoria(e.target.value); setJugadorId(''); setJugadorB(''); }}>
                 {categorias.map((c) => <option key={c}>{c}</option>)}
               </select>
-            </label>
-            {tipo === 'jugador' && <label className="rp-campo" style={{ flexBasis: 220 }}>Jugador
+            </label>}
+            {tipo === 'torneo' && <label className="rp-campo" style={{ flexBasis: 220 }}>Torneo
+              <select value={torneo?.id || ''} onChange={(e) => setTorneoId(e.target.value)}>
+                {torneos.map((t) => <option key={t.id} value={t.id}>{t.nombre}{t.categoria ? ` · ${t.categoria}` : ''}</option>)}
+              </select>
+            </label>}
+            {['jugador', 'comparativo'].includes(tipo) && <label className="rp-campo" style={{ flexBasis: 220 }}>{tipo === 'comparativo' ? 'Jugador A' : 'Jugador'}
               <select value={idElegido} onChange={(e) => setJugadorId(e.target.value)}>
                 {elegibles.map((f) => <option key={f.id} value={String(f.id)}>{[f.apellido, f.nombre].filter(Boolean).join(', ')}{f.dorsal != null ? ` · ${f.dorsal}` : ''}</option>)}
+              </select>
+            </label>}
+            {tipo === 'comparativo' && <label className="rp-campo" style={{ flexBasis: 220 }}>Jugador B
+              <select value={idB} onChange={(e) => setJugadorB(e.target.value)}>
+                {elegibles.filter((f) => String(f.id) !== idElegido).map((f) => <option key={f.id} value={String(f.id)}>{[f.apellido, f.nombre].filter(Boolean).join(', ')}{f.dorsal != null ? ` · ${f.dorsal}` : ''}</option>)}
               </select>
             </label>}
             <label className="rp-campo">Para
@@ -206,7 +268,8 @@ export default function Reportes() {
 
         {loading && <p style={{ color: 'var(--text-dim)' }}>Cargando la temporada… {avance.total ? `${Math.round((avance.traidas / avance.total) * 100)}%` : ''}</p>}
         {!loading && !categorias.length && <p style={{ color: 'var(--text-dim)' }}>No hay partidos en {anio}.</p>}
-        {!loading && tipo === 'jugador' && cat && !elegibles.length && <p style={{ color: 'var(--text-dim)' }}>Nadie jugó con datos cargados en {cat} en {anio}.</p>}
+        {!loading && tipo === 'torneo' && !torneos.length && <p style={{ color: 'var(--text-dim)' }}>No hay torneos con partidos en {anio}.</p>}
+        {!loading && ['jugador', 'comparativo'].includes(tipo) && cat && !elegibles.length && <p style={{ color: 'var(--text-dim)' }}>Nadie jugó con datos cargados en {cat} en {anio}.</p>}
 
         {reporte && (
           <div className="rp-imprimible" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>

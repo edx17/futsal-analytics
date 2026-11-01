@@ -78,7 +78,7 @@ export function partidosDelJugador(jugador, partidos = [], eventos = []) {
 }
 
 /* Qué se compara con los compañeros. `por`: por partido jugado. */
-const METRICAS_CAMPO = [
+export const METRICAS_CAMPO = [
   { id: 'rating', rotulo: 'Rating promedio', valor: (f) => f.ratingProm, fmt: r1, tope: 10 },
   { id: 'goles', rotulo: 'Goles por partido', valor: (f) => f.gPorPJ, fmt: (v) => v.toFixed(2) },
   { id: 'asist', rotulo: 'Asistencias por partido', valor: (f) => f.aPorPJ, fmt: (v) => v.toFixed(2) },
@@ -89,7 +89,7 @@ const METRICAS_CAMPO = [
   { id: 'ofe', rotulo: 'Duelos ofensivos ganados', valor: (f) => f.ofePct, fmt: (v) => `${Math.round(v)}%`, minimo: (f) => f.duelOfeTot >= 5, tope: 100 },
   { id: 'min', rotulo: 'Minutos jugados (% posible)', valor: (f) => f.pctMin, fmt: (v) => `${Math.round(v)}%`, tope: 100 },
 ];
-const METRICAS_ARQUERO = [
+export const METRICAS_ARQUERO = [
   { id: 'rating', rotulo: 'Rating promedio', valor: (f) => f.ratingProm, fmt: r1, tope: 10 },
   { id: 'atajadas', rotulo: 'Atajadas (% de remates al arco)', valor: (f) => f.pctAtajadas, fmt: (v) => `${Math.round(v)}%`, minimo: (f) => f.atajadas + f.golesRecibidos >= 5, tope: 100 },
   { id: 'evitables', rotulo: 'Goles evitados (xG − recibidos)', valor: (f) => f.golesEvitables, fmt: (v) => (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) },
