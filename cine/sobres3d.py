@@ -36,6 +36,8 @@ TIPOS = {
     'neutro': ('#cbd5e1', '#111418', '#ffffff'),
     # evento: violeta de noche, naranja de calabaza y verde ácido
     'halloween': ('#5b1a8a', '#0c0412', '#ff7a00'),
+    # evento: Copa Futuro de Oro (como las cartas TOTY Icons): azul profundo, cristales y oro
+    'copafuturo': ('#1838c4', '#040a33', '#e9c46a'),
 }
 
 ANCHO, ALTO = 2.0, 3.0      # el cuerpo del sobre, en metros de escena
@@ -81,6 +83,10 @@ def arte(tipo, ruta):
         calabaza_arte(im, W, H)
         im.save(ruta)
         return
+    if tipo == 'copafuturo':
+        copa_arte(im, W, H)
+        im.save(ruta)
+        return
     # la estrella con brillo
     cx, cy, R = W / 2, H * 0.36, W * 0.25
     pts = []
@@ -98,6 +104,63 @@ def arte(tipo, ruta):
         a, b = pts[i], pts[(i + 1) % 10]
         d.polygon([(cx, cy), a, b], fill=tuple(int(v * 0.8) for v in acento))
     im.save(ruta)
+
+
+def copa_arte(im, W, H):
+    """Copa Futuro de Oro: destellos, un ala de cristales azules con filo dorado y la copa dorada."""
+    import random
+    rnd = random.Random(7)
+    d = ImageDraw.Draw(im)
+    oro, oro_claro, oro_oscuro = (233, 196, 106), (255, 240, 190), (138, 100, 24)
+    # destellos
+    for _ in range(160):
+        x, y, r = rnd.random() * W, rnd.random() * H * 0.9, rnd.random() * 3 + 0.6
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(207, 224, 255))
+    # el ala: chevrons que siguen una curva de abajo a la izquierda hacia arriba a la derecha
+    capa = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    dc = ImageDraw.Draw(capa)
+    azules = [(95, 134, 255), (35, 66, 216), (12, 31, 143)]
+    n = 26
+    for fila, (dy, esc, oscura) in enumerate(((60, 0.8, True), (0, 1.0, False))):
+        for i in range(n):
+            t = -0.05 + 1.1 * i / (n - 1)
+            x = -40 + t * (W + 80)
+            y = H * 0.72 - H * 0.42 * math.sin(t * math.pi * 0.82) - t * 120 + dy
+            ang = math.radians(-42 + t * 64)
+            h = (90 + 40 * math.sin(t * math.pi)) * esc
+            pts = [(0, -h), (h * 0.62, 0), (0, h), (h * 0.3, 0)]
+            rot = [(x + px * math.cos(ang) - py * math.sin(ang), y + px * math.sin(ang) + py * math.cos(ang)) for px, py in pts]
+            dorado = (not oscura) and i < 5
+            col = oro if dorado else (azules[2] if oscura else azules[i % 2])
+            dc.polygon(rot, fill=col + (255,), outline=oro_claro if dorado else oro)
+            dc.line(rot + [rot[0]], fill=(oro_claro if dorado else oro) + (255,), width=3)
+    brillo = capa.filter(ImageFilter.GaussianBlur(18))
+    im.paste(brillo, (0, 0), brillo)
+    im.paste(capa, (0, 0), capa)
+    # la copa: brillo detrás, asas, cuerpo con luz y sombra, pie y la "CF"
+    cx, cy, r = W / 2, H * 0.36, W * 0.2
+    halo = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(halo).ellipse([cx - r * 1.6, cy - r * 1.4, cx + r * 1.6, cy + r * 1.6], fill=(255, 200, 90, 90))
+    halo = halo.filter(ImageFilter.GaussianBlur(70))
+    im.paste(halo, (0, 0), halo)
+    d = ImageDraw.Draw(im)
+    for lado in (-1, 1):
+        ex = cx + lado * r * 0.95
+        d.ellipse([ex - r * 0.42, cy - r * 0.62, ex + r * 0.42, cy + r * 0.32], outline=oro_oscuro, width=34)
+        d.ellipse([ex - r * 0.42, cy - r * 0.62, ex + r * 0.42, cy + r * 0.32], outline=oro, width=22)
+    cuerpo = [(cx - r, cy - r * 0.75), (cx + r, cy - r * 0.75), (cx + r * 0.78, cy + r * 0.25), (cx + r * 0.3, cy + r * 0.7), (cx - r * 0.3, cy + r * 0.7), (cx - r * 0.78, cy + r * 0.25)]
+    d.polygon(cuerpo, fill=oro, outline=oro_oscuro, width=8)
+    d.polygon([(cx + r * 0.25, cy - r * 0.75), (cx + r, cy - r * 0.75), (cx + r * 0.78, cy + r * 0.25), (cx + r * 0.3, cy + r * 0.7), (cx + r * 0.1, cy + r * 0.7)], fill=(196, 150, 60))
+    d.polygon([(cx - r * 0.85, cy - r * 0.7), (cx - r * 0.55, cy - r * 0.7), (cx - r * 0.5, cy + r * 0.3), (cx - r * 0.7, cy + r * 0.2)], fill=oro_claro)
+    d.rectangle([cx - r * 0.12, cy + r * 0.7, cx + r * 0.12, cy + r * 1.15], fill=oro_oscuro)
+    d.polygon([(cx - r * 0.55, cy + r * 1.15), (cx + r * 0.55, cy + r * 1.15), (cx + r * 0.7, cy + r * 1.4), (cx - r * 0.7, cy + r * 1.4)], fill=oro, outline=oro_oscuro, width=6)
+    d.ellipse([cx - r * 1.0, cy - r * 0.86, cx + r * 1.0, cy - r * 0.64], fill=oro_claro, outline=oro_oscuro, width=6)
+    try:
+        from PIL import ImageFont
+        f = ImageFont.truetype(FUENTE, int(r * 0.62))
+        d.text((cx, cy - r * 0.08), 'CF', font=f, fill=(7, 20, 81), anchor='mm')
+    except OSError:
+        pass
 
 
 def calabaza_arte(im, W, H):

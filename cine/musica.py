@@ -751,10 +751,52 @@ def pieza_evento_halloween():
     return p.mezclar(3.2, brillo=5000, dinamica=[(0, -8), (6.1, -4), (6.2, 0)])
 
 
+def pieza_evento_copa_futuro():
+    """Copa Futuro de Oro (guion 'evento', 7 s): triunfal y luminosa, para los
+    pibes. Re mayor. Campanitas y cuerdas mientras avanza el pasillo; al
+    entrar al pabellón, la fanfarria de metales y los timbales; cuando se
+    enciende el ala de cristales, una cascada de campanas; clímax con coro,
+    metales y la hinchada cuando aparece la carta."""
+    dur = 7.0
+    p = Pista(dur + COLA)
+    p.poner(0.0, dron(nota('D2'), 2.0, 700), 0.45, reverb=0.4)
+    p.poner(0.0, cuerdas(acorde('D3', 'A3', 'F#4'), 1.9, ataque=0.8, brillo=2600), 0.45, reverb=0.55)
+    for i, n in enumerate(['A5', 'D6', 'F#6', 'A6']):                                  # destellos del sobre
+        p.poner(0.2 + i * 0.28, campana(nota(n), 0.45, 1.8), 0.32, pan=-0.3 + i * 0.2, reverb=0.7)
+    p.poner(0.7, plato_reves(0.63), 0.45, reverb=0.4, ancho=1)
+    p.poner(1.33, impacto(0.85, 42, 2.0), 0.8, reverb=0.45)                            # se rompe el sobre
+    p.poner(1.33, timbal(nota('D2'), 0.9), 0.85, reverb=0.5)
+    tempo = 120
+    negra = 60 / tempo
+    p.poner(1.6, ostinato(acorde('D4', 'A4', 'F#4', 'E4', 'B4'), [0, 1, 2, 1, 0, 1, 3, 4], tempo * 1.5, 1.6, brillo=3400), 0.4, pan=0.25, reverb=0.35)
+    p.poner(1.6, cuerdas(acorde('D3', 'A3', 'D4', 'F#4'), 1.7, ataque=0.25, brillo=3000), 0.5, reverb=0.45)
+    # el pabellón: fanfarria de metales en dos frases (D — G — A — D)
+    for s, ac, d in ((3.07, ('D3', 'A3', 'F#4'), 0.45), (3.55, ('D3', 'A3', 'F#4'), 0.22), (3.8, ('G3', 'B3', 'D4'), 0.5),
+                     (4.33, ('A3', 'C#4', 'E4'), 0.5), (4.85, ('D3', 'A3', 'F#4', 'A4'), 0.9)):
+        p.poner(s, metales(acorde(*ac), d, ataque=0.03, brillo=3600), 0.75, reverb=0.45)
+    for k in range(8):                                                                  # timbales con la fanfarria
+        p.poner(3.07 + k * negra / 2, timbal(nota('D2') * (1.5 if k % 4 == 3 else 1), 0.7 if k % 2 else 0.95), 0.75, reverb=0.4)
+    p.poner(3.07, coro(acorde('D4', 'F#4', 'A4'), 2.6, 'ah', ataque=0.5, soltar=0.6), 0.35, reverb=0.7)
+    for j, n in enumerate(['D6', 'E6', 'F#6', 'A6', 'B6', 'D7', 'F#7']):              # se enciende el ala de cristales
+        p.poner(3.2 + j * 0.12, campana(nota(n), 0.5, 1.6), 0.3, pan=-0.6 + j * 0.2, reverb=0.75)
+    p.poner(5.0, subida(1.2, 220, 4800), 0.6, reverb=0.4, ancho=1)
+    p.poner(5.3, plato_reves(0.9), 0.5, ancho=1)
+    for j, s in enumerate((5.75, 5.87, 5.98, 6.08)):                                   # redoble
+        p.poner(s, timbal(nota('A1') * (1 + j * 0.06), 0.8), 0.8, reverb=0.3)
+    p.poner(6.2, impacto(1.0, 40, 3.6), 1.0, reverb=0.5)                                # clímax: la carta
+    p.poner(6.2, metales(acorde('D3', 'A3', 'D4', 'F#4', 'A4'), 3.8, ataque=0.02, brillo=4000), 0.9, reverb=0.5)
+    p.poner(6.2, coro(acorde('D4', 'F#4', 'A4', 'D5', 'F#5'), 4.0, 'ah', ataque=0.06, soltar=2.4), 0.6, reverb=0.75)
+    p.poner(6.2, braam(acorde('D1', 'A1', 'D2'), 3.2, abre=0.12, pico=2200), 0.55, reverb=0.5)
+    p.poner(6.3, brillo_agudo(acorde('D6', 'F#6', 'A6'), 3.4), 0.5, reverb=0.7, ancho=1)
+    festejo(p, 6.2)                                                                      # la hinchada
+    return p.mezclar(2.8, brillo=6000, dinamica=[(0, -7), (3.0, -5), (6.1, -3), (6.2, 0)])
+
+
 PIEZAS = {'vdraft': pieza_vdraft, 'elite': pieza_elite, 'epico': pieza_epico, 'leyenda': pieza_leyenda,
           'evento_demo': pieza_evento_demo, 'excepcional': pieza_excepcional,
           'evento_goleadores': pieza_evento_goleadores, 'evento_recuperadores': pieza_evento_recuperadores,
-          'evento_heroes': pieza_evento_heroes, 'evento_halloween': pieza_evento_halloween}
+          'evento_heroes': pieza_evento_heroes, 'evento_halloween': pieza_evento_halloween,
+          'evento_copa_futuro': pieza_evento_copa_futuro}
 
 
 def ffmpeg():

@@ -15,7 +15,7 @@ export const ORDEN_SOBRES = ['premio_especial', 'premio', 'diario', 'wellness', 
 const CON_IMAGEN = new Set(ORDEN_SOBRES);
 
 /* Los eventos con sobre propio (por la escena que usan). */
-const SOBRE_DE_ESCENA = { evento_halloween: 'halloween' };
+const SOBRE_DE_ESCENA = { evento_halloween: 'halloween', evento_copa_futuro: 'copafuturo' };
 
 /** La imagen del sobre y, si va el neutro, el color con que se tiñe. `escena`: el video del evento. */
 export function imagenDeSobre(tipo, colores = null, escena = null) {

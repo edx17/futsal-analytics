@@ -498,6 +498,8 @@ def decoracion(p):
         extra['calabazas'] = calabazas(p)
     if 'murcielagos' in p['decoracion']:
         murcielagos()
+    if 'cristales' in p['decoracion']:
+        extra['cristales'] = cristales(p)
     if 'logo_centro' in p['decoracion']:
         ruta = textura_texto(f'logo_{p["id"]}', [p.get('texto_logo', 'EVENTO')], p['acento'], w=1024, h=1024, tam=260,
                              fondo=tuple(int(255 * c ** (1 / 2.2)) for c in p['sobre_color']))
@@ -594,6 +596,75 @@ def murcielagos(n=26):
         o.location = ((a - 0.5) * 22, 6 + b * 36, 8.5 + ((a * 7) % 1) * 4.5)
         o.rotation_euler = (math.radians(-10 + 30 * b), 0, math.radians(360 * a))
         sol = o.modifiers.new('grosor', 'SOLIDIFY'); sol.thickness = 0.01
+
+
+def cristales(p, n=30):
+    """Copa Futuro de Oro (como las cartas TOTY): un ala gigante de cristales
+    azules con filo dorado que flota sobre la cancha, de un lado al otro, en
+    curva. Los primeros cristales son de oro. Los filos se encienden con el
+    pabellón (devuelve su intensidad de emisión)."""
+    azul = base.mat_simple('cristal_azul', (0.06, 0.18, 1.0), 0.1, metal=0.55)
+    azul_osc = base.mat_simple('cristal_azul_osc', (0.02, 0.06, 0.5), 0.12, metal=0.55)
+    oro = base.mat_simple('cristal_oro', (0.85, 0.55, 0.12), 0.18, metal=1.0)
+    filo = base.mat_emisor('cristal_filo', (1.0, 0.58, 0.14), 0.0)
+    def chevron(nombre, h, mat, pos, rot, grosor=0.12):
+        verts = [(0, 0, -h), (h * 0.9, 0, 0), (0, 0, h), (h * 0.45, 0, 0)]
+        me = bpy.data.meshes.new(nombre); me.from_pydata(verts, [], [[0, 1, 2, 3]])
+        o = bpy.data.objects.new(nombre, me); bpy.context.scene.collection.objects.link(o)
+        me.materials.append(mat)
+        o.location = pos; o.rotation_euler = rot
+        sol = o.modifiers.new('grosor', 'SOLIDIFY'); sol.thickness = grosor
+        borde = o.copy(); borde.data = o.data.copy(); borde.name = nombre + '_filo'
+        bpy.context.scene.collection.objects.link(borde)
+        borde.data.materials.clear(); borde.data.materials.append(filo)
+        borde.modifiers.clear()
+        w = borde.modifiers.new('filo', 'WIREFRAME'); w.thickness = 0.08; w.use_replace = True
+        return o
+    for fila, (dz, esc, oscura) in enumerate(((-1.4, 0.8, True), (0.0, 1.0, False))):
+        for i in range(n):
+            t = i / (n - 1)
+            # en arco detrás del círculo central, a la altura de la mirada de la cámara
+            x = -8.0 + t * 16
+            y = CY + 8.0 - 3.5 * math.sin(t * math.pi)
+            z = 2.0 + 3.2 * math.sin(t * math.pi * 0.85) + t * 1.4 + dz * 0.8
+            h = (1.7 + 0.8 * math.sin(t * math.pi)) * esc
+            dorado = (not oscura) and i < 6
+            mat = oro if dorado else (azul_osc if oscura else azul)
+            chevron(f'cristal_{fila}_{i}', h, mat, (x, y, z),
+                    (math.radians(8), math.radians(-38 + t * 60), math.radians(-12 + 24 * t)))
+    return filo.node_tree.nodes['Principled BSDF'].inputs['Emission Strength']
+
+
+def emblema_copa():
+    """Copa Futuro de Oro: la etiqueta del sobre lleva la copa dorada con la
+    "CF" en vez de la estrella (se pinta encima, como la calabaza)."""
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
+    img_bl = next(i for i in bpy.data.images if os.path.basename(i.filepath).startswith('sobre_'))
+    ruta = bpy.path.abspath(img_bl.filepath)
+    im = Image.open(ruta).convert('RGB')
+    oro, oro_claro, oro_osc = (233, 196, 106), (255, 240, 190), (138, 100, 24)
+    cx, cy, r = 512, 470, 190
+    halo = Image.new('RGBA', im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(halo).ellipse([cx - r * 1.6, cy - r * 1.4, cx + r * 1.6, cy + r * 1.6], fill=(255, 200, 90, 110))
+    halo = halo.filter(ImageFilter.GaussianBlur(50))
+    im.paste(halo, (0, 0), halo)
+    d = ImageDraw.Draw(im)
+    for lado in (-1, 1):
+        ex = cx + lado * r * 0.95
+        d.ellipse([ex - r * 0.42, cy - r * 0.62, ex + r * 0.42, cy + r * 0.32], outline=oro_osc, width=30)
+        d.ellipse([ex - r * 0.42, cy - r * 0.62, ex + r * 0.42, cy + r * 0.32], outline=oro, width=20)
+    d.polygon([(cx - r, cy - r * 0.75), (cx + r, cy - r * 0.75), (cx + r * 0.78, cy + r * 0.25), (cx + r * 0.3, cy + r * 0.7), (cx - r * 0.3, cy + r * 0.7), (cx - r * 0.78, cy + r * 0.25)],
+              fill=oro, outline=oro_osc, width=8)
+    d.polygon([(cx - r * 0.85, cy - r * 0.7), (cx - r * 0.55, cy - r * 0.7), (cx - r * 0.5, cy + r * 0.3), (cx - r * 0.7, cy + r * 0.2)], fill=oro_claro)
+    d.rectangle([cx - r * 0.12, cy + r * 0.7, cx + r * 0.12, cy + r * 1.15], fill=oro_osc)
+    d.polygon([(cx - r * 0.55, cy + r * 1.15), (cx + r * 0.55, cy + r * 1.15), (cx + r * 0.7, cy + r * 1.4), (cx - r * 0.7, cy + r * 1.4)], fill=oro, outline=oro_osc, width=6)
+    d.ellipse([cx - r, cy - r * 0.86, cx + r, cy - r * 0.64], fill=oro_claro, outline=oro_osc, width=6)
+    try:
+        d.text((cx, cy - r * 0.08), 'CF', font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', int(r * 0.62)), fill=(7, 20, 81), anchor='mm')
+    except OSError:
+        pass
+    im.save(ruta)
+    img_bl.reload()
 
 
 def emblema_calabaza():
@@ -916,6 +987,10 @@ def guion_evento(p, h, sobre, cam, dest):
     for clave_deco in ('banderas', 'logo'):
         if clave_deco in h:
             encender(h[clave_deco], 100, 2.5 if clave_deco == 'banderas' else 1.6, golpe=False, dur=16)
+    if 'cristales' in h:
+        # El ala de cristales se enciende con el pabellón y brilla más con el haz central.
+        encender(h['cristales'], 96, 1.8, golpe=False, dur=16)
+        fijar(h['cristales'], 186, 1.8); fijar(h['cristales'], 196, 4.5)
     if 'calabazas' in h:
         # Las calabazas se prenden con el pasillo: primero las de la boca, después las de la cancha.
         encender(h['calabazas']['cara'], 52, 9, golpe=False, dur=10)
@@ -991,6 +1066,8 @@ def armar(p):
     sobre = base.armar_sobre(var)
     if p.get('emblema') == 'calabaza':
         emblema_calabaza()
+    if p.get('emblema') == 'copa':
+        emblema_copa()
     cam, dest = base.armar_camara(var)
     cam.rotation_euler = (0, 0, 0)
     GUIONES[p['guion']](p, h, sobre, cam, dest)
