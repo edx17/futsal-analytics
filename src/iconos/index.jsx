@@ -10,7 +10,7 @@
 //                     verde de acento (para iconos sobre tarjetas de color).
 //   girar             lo hace girar (indicadores de carga).
 // ==========================================
-import {
+import { PresentationChart,
   Airplane, ArrowBendUpRight, ArrowClockwise, ArrowCounterClockwise, ArrowDown,
   ArrowLeft, ArrowRight, ArrowSquareOut, ArrowUp, ArrowsClockwise,
   ArrowsDownUp, ArrowsLeftRight, Backspace, Bandaids, Bank, Barbell, Barricade,
@@ -82,6 +82,7 @@ const ICONOS = {
   plantelGrupo: Camiseta,
   plantel: Users,
   resumenPlantel: Table,
+  reportes: PresentationChart,
   comparar: Scales,
   transferencias: ArrowsLeftRight,
   presentismo: UserCheck,
