@@ -66,6 +66,7 @@
 .rp-tabla th { text-align: left; font-size: 0.64rem; letter-spacing: .08em; text-transform: uppercase; color: var(--rp-dim); padding: 8px 10px; }
 .rp-tabla td { padding: 8px 10px; border-top: 1px solid var(--rp-borde); white-space: nowrap; }
 .rp-td-fuerte { font-weight: 900; color: var(--rp-acento); }
+.rp-tr-propia td { background: color-mix(in srgb, var(--rp-acento) 12%, transparent); font-weight: 900; }
 
 /* listas y texto */
 .rp-lista ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; line-height: 1.45; }

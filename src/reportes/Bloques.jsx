@@ -60,15 +60,16 @@ function Serie({ b, grande }) {
         {marcas.map((m) => (
           <g key={m}>
             <line x1={P.l} x2={W - P.r} y1={y(m)} y2={y(m)} className="rp-eje" />
-            <text x={P.l - 6} y={y(m) + 4} textAnchor="end" className="rp-eje-texto">{Math.round(m)}</text>
+            <text x={P.l - 6} y={y(m) + 4} textAnchor="end" className="rp-eje-texto">{Math.round(m) > 0 && b.referencia === 0 ? '+' : ''}{Math.round(m)}</text>
           </g>
         ))}
         {b.promedio != null && <line x1={P.l} x2={W - P.r} y1={y(b.promedio)} y2={y(b.promedio)} className="rp-promedio" />}
+        {b.referencia != null && <line x1={P.l} x2={W - P.r} y1={y(b.referencia)} y2={y(b.referencia)} className="rp-promedio" />}
         <path d={linea} className="rp-linea" />
         {pts.map((p, i) => (
           <g key={`${p.x}-${i}`}>
             <circle cx={x(i)} cy={y(p.y)} r={p.goles ? 5 : 3.5} className={`rp-punto rp-punto-${p.resultado || 'n'}`}>
-              <title>{`${p.x} vs ${p.rival}: ${p.y}${p.goles ? ` · ${p.goles} gol${p.goles > 1 ? 'es' : ''}` : ''}`}</title>
+              <title>{`${p.x} vs ${p.rival}: ${p.y > 0 && b.referencia === 0 ? '+' : ''}${p.y}${p.goles ? ` · ${p.goles} gol${p.goles > 1 ? 'es' : ''}` : ''}`}</title>
             </circle>
             {i % cada === 0 && <text x={x(i)} y={H - 8} textAnchor="middle" className="rp-eje-texto">{p.x}</text>}
           </g>
@@ -77,7 +78,8 @@ function Serie({ b, grande }) {
       <div className="rp-leyenda">
         <span><i className="rp-punto-G" /> ganado</span><span><i className="rp-punto-E" /> empatado</span><span><i className="rp-punto-P" /> perdido</span>
         {b.promedio != null && <span><i className="rp-raya" /> su promedio ({b.promedio})</span>}
-        <span>punto grande: hizo gol</span>
+        {b.referencia != null && <span><i className="rp-raya" /> {b.etiquetaReferencia || 'referencia'}</span>}
+        {b.marcarGoles !== false && <span>punto grande: hizo gol</span>}
       </div>
     </figure>
   );
@@ -94,12 +96,12 @@ function Barras({ b }) {
           <div className="rp-barra-rotulo">{i.rotulo}</div>
           <div className="rp-barra-pista">
             <div className="rp-barra-valor" style={{ width: `${Math.min(100, Math.max(2, (Math.abs(i.valor) / (i.tope || tope)) * 100))}%` }} />
-            {i.referencia != null && <div className="rp-barra-ref" style={{ left: `${Math.min(100, (Math.abs(i.referencia) / (i.tope || tope)) * 100)}%` }} title={`Promedio: ${i.textoReferencia}`} />}
+            {i.referencia != null && <div className="rp-barra-ref" style={{ left: `${Math.min(100, (Math.abs(i.referencia) / (i.tope || tope)) * 100)}%` }} title={`${b.leyendaReferencia || 'Promedio'}: ${i.textoReferencia}`} />}
           </div>
           <div className="rp-barra-texto">{i.texto}{i.textoReferencia != null && <small> / {i.textoReferencia}</small>}</div>
         </div>
       ))}
-      {items.some((i) => i.referencia != null) && <div className="rp-leyenda"><span><i className="rp-raya-v" /> promedio de la categoría</span></div>}
+      {items.some((i) => i.referencia != null) && <div className="rp-leyenda"><span><i className="rp-raya-v" /> {b.leyendaReferencia || 'promedio de la categoría'}</span></div>}
     </div>
   );
 }
@@ -120,16 +122,22 @@ function Ranking({ b }) {
 }
 
 function Tabla({ b }) {
+  const fuerte = (k, n) => (b.resaltarUltima && k === n - 1) || b.resaltarColumna === k;
   return (
-    <div className="rp-tabla-caja">
-      <table className="rp-tabla">
-        <thead><tr>{b.columnas.map((c) => <th key={c}>{c}</th>)}</tr></thead>
-        <tbody>
-          {b.filas.map((f, i) => (
-            <tr key={i}>{f.map((v, k) => <td key={b.columnas[k]} className={b.resaltarUltima && k === f.length - 1 ? 'rp-td-fuerte' : ''}>{v}</td>)}</tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      {b.titulo && <div className="rp-bloque-titulo">{b.titulo}</div>}
+      <div className="rp-tabla-caja">
+        <table className="rp-tabla">
+          <thead><tr>{b.columnas.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+          <tbody>
+            {b.filas.map((f, i) => (
+              <tr key={i} className={b.resaltarFila === i ? 'rp-tr-propia' : ''}>
+                {f.map((v, k) => <td key={b.columnas[k]} className={fuerte(k, f.length) ? 'rp-td-fuerte' : ''}>{v}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

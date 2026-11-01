@@ -5,6 +5,8 @@ import { useDatosPlantel } from '../utils/useDatosPlantel';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { procesarPlantel } from '../analytics/plantel';
 import { reporteJugador, AUDIENCIAS } from '../analytics/reporteJugador';
+import { reporteCategoria } from '../analytics/reporteCategoria';
+import { esMiEquipo, categoriaLiga } from '../analytics/liga';
 import { Bloque } from '../reportes/Bloques';
 import Presentacion from '../reportes/Presentacion';
 import '../reportes/reportes.css';
@@ -16,13 +18,13 @@ import '../reportes/reportes.css';
  * el PDF (se imprime el documento) y la presentación a pantalla completa.
  * Todos son para todos: se elige para quién es y cambia el tono y el detalle.
  *
- * Primero: el reporte de JUGADOR. Los demás (categoría, club, torneo,
- * comparativos) usan las mismas piezas.
+ * Listos: JUGADOR y CATEGORÍA. Los demás (club, torneo, comparativos) usan
+ * las mismas piezas.
  */
 
 const TIPOS_REPORTE = [
   { id: 'jugador', nombre: 'Jugador', listo: true },
-  { id: 'categoria', nombre: 'Categoría' },
+  { id: 'categoria', nombre: 'Categoría', listo: true },
   { id: 'club', nombre: 'Club' },
   { id: 'torneo', nombre: 'Torneo' },
   { id: 'comparativo', nombre: 'Comparativos' },
@@ -43,6 +45,36 @@ function useDatosCompromiso(clubId) {
     return () => { vivo = false; };
   }, [clubId]);
   return datos;
+}
+
+/* La liga de la categoría (Otras competencias): la competencia de su división
+   y categoría en esa temporada, con todos sus partidos. La división es la
+   Primera donde aparece el club. null si no hay datos. */
+function useLiga(categoria, anio, miClub) {
+  const [porClave, setPorClave] = useState({});
+  const clave = `${anio}|${categoria}`;
+  useEffect(() => {
+    if (!categoria || !miClub || clave in porClave) return undefined;
+    let vivo = true;
+    (async () => {
+      const cat = categoriaLiga(categoria);
+      const { data: comps } = await supabase.from('liga_competencias').select('*').eq('anio', Number(anio));
+      const primeras = (comps || []).filter((c) => c.categoria === '1ra');
+      if (!cat || !primeras.length) return null;
+      const { data: j } = await supabase.from('liga_partidos').select('competencia_id, local, visitante')
+        .in('competencia_id', primeras.map((c) => c.id)).lte('jornada', 2);
+      const hit = (j || []).find((p) => esMiEquipo(p.local, miClub) || esMiEquipo(p.visitante, miClub));
+      const division = hit ? primeras.find((c) => c.id === hit.competencia_id)?.division : null;
+      const comp = division ? comps.find((c) => c.division === division && c.categoria === cat) : null;
+      if (!comp) return null;
+      const partidos = await fetchPaginado(() => supabase.from('liga_partidos').select('*').eq('competencia_id', comp.id).order('id_externo'));
+      return { partidos, miClub, nombre: `Primera ${division} · ${cat}` };
+    })()
+      .catch(() => null)
+      .then((r) => { if (vivo) setPorClave((m) => ({ ...m, [clave]: r })); });
+    return () => { vivo = false; };
+  }, [clave, categoria, anio, miClub, porClave]);
+  return porClave[clave] ?? null;
 }
 
 export default function Reportes() {
@@ -89,7 +121,25 @@ export default function Reportes() {
   );
   const idElegido = elegibles.some((f) => String(f.id) === String(jugadorId)) ? jugadorId : String(elegibles[0]?.id ?? '');
 
+  const miClub = localStorage.getItem('mi_club') || perfil?.clubes?.nombre || '';
+  const liga = useLiga(tipo === 'categoria' ? cat : '', anio, miClub);
+  const club = useMemo(() => ({
+    nombre: perfil?.clubes?.nombre || localStorage.getItem('mi_club') || '',
+    escudo: perfil?.clubes?.escudo_url || localStorage.getItem('escudo_url') || null,
+  }), [perfil]);
+  const hasta = anio === hoyISO().slice(0, 4) ? hoyISO() : `${anio}-12-31`;
+
   const reporte = useMemo(() => {
+    if (tipo === 'categoria') {
+      if (!cat || !partidosScope.length) return null;
+      const ids = new Set(partidosScope.map((p) => p.id));
+      return reporteCategoria({
+        categoria: cat, temporada: anio, club, audiencia, hasta, liga,
+        partidos: partidosScope, eventos: raw.eventos.filter((e) => ids.has(e.id_partido)), filas,
+        asistencias: compromiso.asistencias.filter((a) => anioDe(a.fecha) === anio),
+        lesiones: compromiso.lesiones.filter((l) => anioDe(l.fecha_lesion) === anio),
+      });
+    }
     if (tipo !== 'jugador' || !idElegido) return null;
     const jugador = raw.jugadores.find((j) => String(j.id) === idElegido);
     const fila = filas.find((f) => String(f.id) === idElegido);
@@ -104,10 +154,9 @@ export default function Reportes() {
       lesiones: compromiso.lesiones.filter((l) => delAnio(l, 'fecha_lesion')),
       sanciones: raw.sanciones.filter((s) => delAnio(s, 'fecha_sancion')),
       temporada: anio,
-      club: { nombre: perfil?.clubes?.nombre || localStorage.getItem('mi_club') || '', escudo: perfil?.clubes?.escudo_url || localStorage.getItem('escudo_url') || null },
-      audiencia, hasta: anio === hoyISO().slice(0, 4) ? hoyISO() : `${anio}-12-31`,
+      club, audiencia, hasta,
     });
-  }, [tipo, idElegido, raw, filas, partidosScope, compromiso, anio, audiencia, perfil]);
+  }, [tipo, idElegido, raw, filas, partidosScope, compromiso, anio, audiencia, club, hasta, liga, cat]);
 
   return (
     <div className="rp">
@@ -136,11 +185,11 @@ export default function Reportes() {
                 {categorias.map((c) => <option key={c}>{c}</option>)}
               </select>
             </label>
-            <label className="rp-campo" style={{ flexBasis: 220 }}>Jugador
+            {tipo === 'jugador' && <label className="rp-campo" style={{ flexBasis: 220 }}>Jugador
               <select value={idElegido} onChange={(e) => setJugadorId(e.target.value)}>
                 {elegibles.map((f) => <option key={f.id} value={String(f.id)}>{[f.apellido, f.nombre].filter(Boolean).join(', ')}{f.dorsal != null ? ` · ${f.dorsal}` : ''}</option>)}
               </select>
-            </label>
+            </label>}
             <label className="rp-campo">Para
               <select value={audiencia} onChange={(e) => setAudiencia(e.target.value)}>
                 {AUDIENCIAS.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
@@ -157,7 +206,7 @@ export default function Reportes() {
 
         {loading && <p style={{ color: 'var(--text-dim)' }}>Cargando la temporada… {avance.total ? `${Math.round((avance.traidas / avance.total) * 100)}%` : ''}</p>}
         {!loading && !categorias.length && <p style={{ color: 'var(--text-dim)' }}>No hay partidos en {anio}.</p>}
-        {!loading && cat && !elegibles.length && <p style={{ color: 'var(--text-dim)' }}>Nadie jugó con datos cargados en {cat} en {anio}.</p>}
+        {!loading && tipo === 'jugador' && cat && !elegibles.length && <p style={{ color: 'var(--text-dim)' }}>Nadie jugó con datos cargados en {cat} en {anio}.</p>}
 
         {reporte && (
           <div className="rp-imprimible" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
