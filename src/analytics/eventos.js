@@ -34,6 +34,7 @@ export const ESCENAS_BASE = [
   { id: 'evento_recuperadores', nombre: 'Evento Recuperadores (pabellón verde azulado)' },
   { id: 'evento_heroes', nombre: 'Héroes del club (pabellón en sepia)' },
   { id: 'evento_halloween', nombre: 'Noche de Halloween (pabellón violeta, calabazas y murciélagos)' },
+  { id: 'evento_copa_futuro', nombre: 'Copa Futuro de Oro (pabellón azul y oro, ala de cristales)' },
   { id: 'evento_demo', nombre: 'Evento (pabellón rojo y ámbar)' },
   { id: 'elite', nombre: 'Élite (pabellón azul)' },
   { id: 'epico', nombre: 'Épico (pabellón violeta, portal)' },
@@ -179,7 +180,7 @@ export const PLANTILLAS = {
     tipos: ['CFOR'],
     sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
     escena: {
-      video: 'leyenda', video_alternativo: 'elite', titulo: 'COPA FUTURO DE ORO',
+      video: 'evento_copa_futuro', video_alternativo: 'elite', titulo: 'COPA FUTURO DE ORO',
       colores: { principal: '#1838c4', secundario: '#071451', acento: '#f5d77a', fondo: '#030820', luz: '#e9c46a', texto: '#fffaf0' },
       particulas: 90, intensidad: 1.2,
     },

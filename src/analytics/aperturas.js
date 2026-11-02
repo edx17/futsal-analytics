@@ -93,6 +93,14 @@ export const VIDEOS = {
     musica: '/cine/musica/evento_halloween.m4a',
     sonidos: [[1.33, 'golpeSuave', 0.5], [6.2, 'golpeFuerte', 1]],
   },
+  /* Copa Futuro de Oro: pabellón azul y oro, el ala de cristales se enciende y la fanfarria trae la carta. */
+  evento_copa_futuro: {
+    fuentes: [{ src: '/cine/evento_copa_futuro.webm', tipo: 'video/webm' }, { src: '/cine/evento_copa_futuro.mp4', tipo: 'video/mp4' }],
+    poster: '/cine/evento_copa_futuro.jpg',
+    duracion: 7,
+    musica: '/cine/musica/evento_copa_futuro.m4a',
+    sonidos: [[1.33, 'golpeSuave', 0.5], [6.2, 'golpeFuerte', 1], [6.6, 'brillo', 0.5]],
+  },
 };
 
 /* ── tiempos (ms) ──────────────────────────────────────────────────────────── */
