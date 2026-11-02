@@ -10,7 +10,7 @@ import { reporteCategoria } from '../analytics/reporteCategoria';
 import { reporteClub, reporteTorneo, reporteComparativo } from '../analytics/reportesClubTorneo';
 import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas } from '../utils/ruedas';
 import { esMiEquipo, categoriaLiga } from '../analytics/liga';
-import { Bloque } from '../reportes/Bloques';
+import DocumentoReporte from '../reportes/Documento';
 import Presentacion from '../reportes/Presentacion';
 import '../reportes/reportes.css';
 
@@ -23,36 +23,6 @@ import '../reportes/reportes.css';
  *
  * Jugador, categoría, club, torneo y comparativo (jugador contra jugador).
  */
-
-function DocumentoReporte({ reporte, paraImprimir = false }) {
-  const pie = `${reporte.titulo} · ${reporte.subtitulo} · para ${AUDIENCIAS.find((a) => a.id === reporte.audiencia)?.nombre.toLowerCase()} · VirtualClub`;
-  const cuerpo = (
-    <div className="rp-imprimible" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {reporte.secciones.map((s) => (
-        <section key={s.id} className="rp-seccion">
-          {s.id !== 'portada' && <h2 className="rp-seccion-titulo">{s.titulo}</h2>}
-          {s.bloques.map((b, k) => <Bloque key={`${s.id}-${k}`} b={b} />)}
-        </section>
-      ))}
-      {!paraImprimir && <p className="rp-pie">{pie}</p>}
-    </div>
-  );
-  if (!paraImprimir) return cuerpo;
-  /* En el PDF, el logo arriba y el pie abajo se repiten en cada hoja (fijos);
-     el thead y el tfoot vacíos, que el navegador repite en cada hoja, les
-     guardan el lugar para que no tapen el reporte. */
-  return (
-    <>
-      <div className="rp-hoja-cabeza"><img src="/android-chrome-192x192.png" alt="VF" /></div>
-      <div className="rp-hoja-pie">{pie}</div>
-      <table className="rp-hoja">
-        <thead><tr><td><div className="rp-hoja-lugar-cabeza" /></td></tr></thead>
-        <tfoot><tr><td><div className="rp-hoja-lugar-pie" /></td></tr></tfoot>
-        <tbody><tr><td>{cuerpo}</td></tr></tbody>
-      </table>
-    </>
-  );
-}
 
 const TIPOS_REPORTE = [
   { id: 'jugador', nombre: 'Jugador', listo: true },

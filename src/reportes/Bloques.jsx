@@ -17,16 +17,31 @@ const FotoPortada = ({ src, nombre }) => (src
   ? <img className="rp-foto" src={src} alt="" />
   : <div className="rp-foto rp-foto-vacia">{(nombre || '?').slice(0, 1)}</div>);
 
-/* `foto2` / `nombre2`: el comparativo, con las dos fotos (una a cada lado). */
+/* El nombre en dos líneas (tapa de revista): el apellido, o la última
+   palabra, abajo y en naranja. En el comparativo, cada jugador en su línea. */
+function lineasDelNombre(nombre = '') {
+  const t = String(nombre).trim();
+  const vs = t.split(/\s+vs\s+/i);
+  if (vs.length === 2) return [vs[0], `vs ${vs[1]}`];
+  const p = t.split(/\s+/);
+  return p.length > 1 ? [p.slice(0, -1).join(' '), p[p.length - 1]] : [t];
+}
+
+/* `foto2` / `nombre2`: el comparativo, con las dos fotos (una a cada lado).
+   El dorsal va gigante de fondo, recortado por el borde. */
 function Portada({ b, grande }) {
   const doble = 'foto2' in b;
   return (
     <div className={`rp-portada${grande ? ' rp-grande' : ''}${doble ? ' rp-portada-doble' : ''}`}>
+      {b.dorsal != null && !doble && <div className="rp-portada-fondo" aria-hidden="true">{b.dorsal}</div>}
       <FotoPortada src={b.foto} nombre={b.inicial || b.nombre} />
       <div className="rp-portada-texto">
         <div className="rp-rotulo">{[b.club, b.titulo].filter(Boolean).join(' · ')}</div>
-        <h1 className="rp-nombre">{b.dorsal != null && <span className="rp-dorsal">{b.dorsal}</span>}{b.nombre}</h1>
-        <div className="rp-sub">{[b.posicion, b.categoria].filter(Boolean).join(' · ')}</div>
+        <h1 className="rp-nombre">
+          {b.dorsal != null && doble && <span className="rp-dorsal">{b.dorsal}</span>}
+          {lineasDelNombre(b.nombre).map((l) => <span key={l} className="rp-nombre-linea">{l}</span>)}
+        </h1>
+        <div className="rp-sub">{[b.dorsal != null && !doble ? `#${b.dorsal}` : null, b.posicion, b.categoria].filter(Boolean).join(' · ')}</div>
       </div>
       {doble ? <FotoPortada src={b.foto2} nombre={b.nombre2} /> : b.escudo && <img className="rp-escudo" src={b.escudo} alt="" />}
     </div>
@@ -52,7 +67,7 @@ function Kpis({ b }) {
 function Serie({ b, grande }) {
   const pts = b.puntos || [];
   if (pts.length < 2) return null;
-  const W = 640; const H = grande ? 260 : 200; const P = { l: 30, r: 10, t: 14, b: 26 };
+  const W = 640; const H = grande ? 260 : 200; const P = { l: 34, r: 10, t: 14, b: 32 };
   const min = b.min ?? Math.min(...pts.map((p) => p.y)); const max = b.max ?? Math.max(...pts.map((p) => p.y));
   const x = (i) => P.l + (i * (W - P.l - P.r)) / (pts.length - 1);
   const y = (v) => P.t + (1 - (v - min) / (max - min || 1)) * (H - P.t - P.b);
@@ -74,10 +89,10 @@ function Serie({ b, grande }) {
         <path d={linea} className="rp-linea" />
         {pts.map((p, i) => (
           <g key={`${p.x}-${i}`}>
-            <circle cx={x(i)} cy={y(p.y)} r={p.goles ? 5 : 3.5} className={`rp-punto rp-punto-${p.resultado || 'n'}`}>
+            <circle cx={x(i)} cy={y(p.y)} r={p.goles ? 5 : 3.5} className={`rp-punto rp-punto-${p.resultado || 'n'}${p.goles ? ' rp-punto-gol' : ''}`}>
               <title>{`${p.x} vs ${p.rival}: ${p.y > 0 && b.referencia === 0 ? '+' : ''}${p.y}${p.goles ? ` · ${p.goles} gol${p.goles > 1 ? 'es' : ''}` : ''}`}</title>
             </circle>
-            {i % cada === 0 && <text x={x(i)} y={H - 8} textAnchor="middle" className="rp-eje-texto">{p.x}</text>}
+            {i % cada === 0 && <text x={x(i)} y={H - 6} textAnchor="middle" className={`rp-eje-texto${(i / cada) % 2 ? ' rp-eje-alterna' : ''}`}>{p.x}</text>}
           </g>
         ))}
       </svg>
