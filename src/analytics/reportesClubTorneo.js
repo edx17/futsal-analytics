@@ -141,7 +141,7 @@ export function reporteTorneo(d) {
   const base = reporteCategoria({ ...d, categoria: nombre, liga: null, asistencias: [], lesiones: [] });
   const secciones = base.secciones.filter((s) => s.id !== 'compromiso');
   const portada = secciones.find((s) => s.id === 'portada');
-  if (portada) portada.bloques[0] = { ...portada.bloques[0], posicion: torneo.categoria || '', categoria: torneo.categoria || '' };
+  if (portada) portada.bloques[0] = { ...portada.bloques[0], posicion: '', categoria: torneo.categoria || '' };
   const res = resultados(d.partidos || []);
   const extra = [];
 
