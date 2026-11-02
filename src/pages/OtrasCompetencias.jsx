@@ -7,7 +7,7 @@ import { fetchPaginado } from '../utils/supaPaginado';
 import {
   DIVISIONES, CATEGORIAS_LIGA, esMiEquipo, esFinalizado, tablaPosiciones, tablaGoleadores,
   fixturePorJornada, jornadaActual, reportesLiga, partidosDeEquipo, parsearGoleadores, zonasDe,
-  soloRegular, soloPlayoff, cuadroPlayoff, etiquetaCorta,
+  soloRegular, soloPlayoff, etapasDe, etiquetaCorta, textoPenales,
 } from '../analytics/liga';
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -16,8 +16,10 @@ import {
    La liga entera, no solo el torneo del club: Primera A, B, C y D, de 1ra a
    8va, con tabla, fixture, goleadores y reportes. Los datos salen de
    liga_partidos, que llena la función liga-sync bajando segundopalo.com.
-   Tabla, fixture y reportes son del torneo regular; los playoffs (los
-   partidos con fase) van en su pestaña, como cuadro de cruces.
+   Tabla, fixture y reportes son del torneo regular. Lo demás (playoff,
+   desempates, triangulares, Copa Futuro…) va en una pestaña por etapa, tal
+   como la trae segundopalo: en tabla (triangular, grupos) o en cruces (ida,
+   vuelta, global y penales). Un formato nuevo aparece solo.
    No dependen de qué club administre la app: son los mismos para todos.
 
    Lo ve todo el mundo. Actualizar desde segundopalo solo lo puede el staff
@@ -132,10 +134,13 @@ export default function OtrasCompetencias({ kiosco = false }) {
     : !competencias.length || crudo === undefined ? 'cargando' : 'ok';
   const partidos = Array.isArray(crudo) ? crudo : SIN_PARTIDOS;
   const regular = useMemo(() => soloRegular(partidos), [partidos]);
-  const playoff = useMemo(() => cuadroPlayoff(partidos), [partidos]);
+  const etapas = useMemo(() => etapasDe(partidos), [partidos]);
+  const etapaVista = tab.startsWith('etapa:') ? etapas.find((e) => `etapa:${e.nombre}` === tab) || null : null;
 
-  const elegirDivision = (d) => { setDivision(d); guardar(LS_DIVISION, d); setEquipoAbierto(null); setJornadaVista(null); setZonaElegida(null); };
-  const elegirCategoria = (c) => { setCategoria(c); guardar(LS_CATEGORIA, c); setEquipoAbierto(null); setJornadaVista(null); };
+  // Las etapas cambian de una competencia a otra: al cambiar, la pestaña de una etapa vuelve a la tabla.
+  const salirDeEtapa = () => setTab((t) => (t.startsWith('etapa:') ? 'tabla' : t));
+  const elegirDivision = (d) => { setDivision(d); guardar(LS_DIVISION, d); setEquipoAbierto(null); setJornadaVista(null); setZonaElegida(null); salirDeEtapa(); };
+  const elegirCategoria = (c) => { setCategoria(c); guardar(LS_CATEGORIA, c); setEquipoAbierto(null); setJornadaVista(null); salirDeEtapa(); };
   const elegirZona = (z) => { setZonaElegida(z); setEquipoAbierto(null); setJornadaVista(null); };
 
   /* Zonas (Primera D se juega en dos). Por defecto, la de mi club. */
@@ -219,9 +224,9 @@ export default function OtrasCompetencias({ kiosco = false }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-        {[['tabla', 'TABLA'], ['fixture', 'FIXTURE'], ...(playoff.length ? [['playoff', 'PLAYOFF']] : []), ['goleadores', 'GOLEADORES'], ['reportes', 'REPORTES']].map(([id, txt]) => (
-          <button key={id} onClick={() => setTab(id)} style={btnTab(tab === id)}>{txt}</button>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap' }}>
+        {[['tabla', 'TABLA'], ['fixture', 'FIXTURE'], ...etapas.map((e) => [`etapa:${e.nombre}`, e.nombre.toUpperCase()]), ['goleadores', 'GOLEADORES'], ['reportes', 'REPORTES']].map(([id, txt]) => (
+          <button key={id} onClick={() => setTab(id)} style={{ ...btnTab(tab === id), flex: '1 1 auto' }}>{txt}</button>
         ))}
       </div>
 
@@ -309,10 +314,10 @@ export default function OtrasCompetencias({ kiosco = false }) {
         </>
       )}
 
-      {estado === 'ok' && partidos.length > 0 && tab === 'playoff' && (
-        playoff.length
-          ? <CuadroPlayoff fases={playoff} esMio={esMio} />
-          : <p style={vacio}>Todavía no hay partidos de playoff en Primera {division} · {categoria}.</p>
+      {estado === 'ok' && partidos.length > 0 && tab.startsWith('etapa:') && (
+        etapaVista
+          ? <Etapa etapa={etapaVista} esMio={esMio} conGoleadores={conGoleadores} />
+          : <p style={vacio}>Esa etapa no está en Primera {division} · {categoria}.</p>
       )}
 
       {estado === 'ok' && partidos.length > 0 && tab === 'goleadores' && (
@@ -408,7 +413,60 @@ function TarjetaPartido({ p, esMio, conGoleadores }) {
         </div>
       )}
       <div style={{ textAlign: 'center', fontSize: '0.6rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-        {[fin && p.fecha ? fechaCorta(p.fecha) : null, p.estadio, enJuego ? 'EN JUEGO' : null, raro ? p.estado.toUpperCase() : null].filter(Boolean).join(' · ')}
+        {[textoPenales(p) ? textoPenales(p).replace(/[()]/g, '').toUpperCase() : null, fin && p.fecha ? fechaCorta(p.fecha) : null, p.estadio, enJuego ? 'EN JUEGO' : null, raro ? p.estado.toUpperCase() : null].filter(Boolean).join(' · ')}
+      </div>
+    </div>
+  );
+}
+
+/* Una etapa (playoff, desempate, triangular, Copa Futuro…): las tablas de lo
+   que se juega todos contra todos y después los cruces. */
+function Etapa({ etapa, esMio, conGoleadores }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+      {etapa.tablas.map((t) => <TablaEtapa key={t.grupo || '-'} t={t} esMio={esMio} conGoleadores={conGoleadores} />)}
+      {etapa.cuadro.length > 0 && <CuadroPlayoff fases={etapa.cuadro} esMio={esMio} />}
+      {etapa.conPenales && etapa.tablas.length > 0 && (
+        <p style={nota}>Los empates que se definieron por penales llevan el resultado de los penales debajo del partido. La tabla cuenta el resultado del partido.</p>
+      )}
+    </div>
+  );
+}
+
+function TablaEtapa({ t, esMio, conGoleadores }) {
+  return (
+    <div>
+      {t.grupo && <div style={{ fontSize: '0.72rem', fontWeight: 900, letterSpacing: '1px', color: 'var(--text-dim)', marginBottom: '8px' }}>{t.grupo.toUpperCase()}</div>}
+      <div style={{ border: '1px solid var(--border)', borderRadius: '10px', overflowX: 'auto', marginBottom: '10px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', minWidth: '320px' }}>
+          <thead>
+            <tr style={{ background: 'var(--panel)', color: 'var(--text-dim)', fontSize: '0.62rem' }}>
+              {['#', 'EQUIPO', 'PJ', 'G', 'E', 'P', 'DG', 'PTS'].map((h) => (
+                <th key={h} style={{ padding: '8px 5px', textAlign: h === 'EQUIPO' ? 'left' : 'center', fontWeight: 900 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {t.filas.map((f) => {
+              const mio = esMio(f.equipo);
+              return (
+                <tr key={f.equipo} style={{ borderTop: '1px solid var(--border)', background: mio ? 'rgba(0,255,136,0.08)' : 'transparent' }}>
+                  <td style={celda}>{f.pos}</td>
+                  <td style={{ ...celda, textAlign: 'left', fontWeight: mio ? 900 : 600, color: mio ? 'var(--accent)' : 'var(--text)', whiteSpace: 'nowrap' }}>{f.equipo}</td>
+                  <td style={celda}>{f.pj}</td>
+                  <td style={celda}>{f.pg}</td>
+                  <td style={celda}>{f.pe}</td>
+                  <td style={celda}>{f.pp}</td>
+                  <td style={celda}>{f.dg > 0 ? `+${f.dg}` : f.dg}</td>
+                  <td style={{ ...celda, fontWeight: 900 }}>{f.pts}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {t.partidos.map((p) => <TarjetaPartido key={p.id_externo} p={p} esMio={esMio} conGoleadores={conGoleadores} />)}
       </div>
     </div>
   );
@@ -428,7 +486,8 @@ function CuadroPlayoff({ fases, esMio }) {
           </div>
         </div>
       ))}
-      <p style={nota}>Si el global queda igualado y no hay penales cargados, en AFA define la ventaja deportiva (el mejor ubicado en la tabla).</p>
+      {fases.some((f) => f.serie) && <p style={nota}>SERIE: partidos ganados. Gana la serie el que gana 2; un empate se define por penales en ese partido (entre paréntesis).</p>}
+      {fases.some((f) => !f.serie) && <p style={nota}>Si el global queda igualado y no hay penales cargados, en AFA define la ventaja deportiva (el mejor ubicado en la tabla).</p>}
     </div>
   );
 }
@@ -446,10 +505,17 @@ function Cruce({ c, esMio }) {
         {c.partidos.map((p) => {
           const fin = esFinalizado(p);
           const g = p.local === eq ? p.goles_local : p.goles_visitante;
-          return <span key={p.id_externo} style={{ width: '26px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-dim)' }}>{fin ? g : '–'}</span>;
+          const pen = p.penales_local != null && p.penales_visitante != null ? (p.local === eq ? p.penales_local : p.penales_visitante) : null;
+          return (
+            <span key={p.id_externo} style={{ width: '30px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-dim)' }}>
+              {fin ? g : '–'}{c.serie && fin && pen != null ? <sup style={{ fontSize: '0.55rem', marginLeft: 1 }}>({pen})</sup> : null}
+            </span>
+          );
         })}
-        <span style={{ width: '30px', textAlign: 'center', fontWeight: 900, fontSize: '0.95rem' }}>
-          {c.global ? c.global[i] : '–'}{c.penales ? <sup style={{ fontSize: '0.6rem', marginLeft: 1 }}>({c.penales[i]})</sup> : null}
+        <span style={{ width: '34px', textAlign: 'center', fontWeight: 900, fontSize: '0.95rem' }}>
+          {c.serie
+            ? (c.ganados ? c.ganados[i] : '–')
+            : <>{c.global ? c.global[i] : '–'}{c.penales ? <sup style={{ fontSize: '0.6rem', marginLeft: 1 }}>({c.penales[i]})</sup> : null}</>}
         </span>
       </div>
     );
@@ -458,14 +524,14 @@ function Cruce({ c, esMio }) {
     <div style={{ ...tarjeta, background: mio ? 'rgba(0,255,136,0.07)' : tarjeta.background, borderColor: mio ? 'rgba(0,255,136,0.3)' : undefined }}>
       <div style={{ display: 'flex', gap: '8px', fontSize: '0.58rem', fontWeight: 900, color: 'var(--text-dim)' }}>
         <span style={{ flex: 1 }}>{c.llave ? `LLAVE ${c.llave}` : 'CRUCE'}</span>
-        {c.partidos.map((p) => <span key={p.id_externo} style={{ width: '26px', textAlign: 'center' }}>{/ida/i.test(p.partido_playoff || '') ? 'IDA' : /vuelta/i.test(p.partido_playoff || '') ? 'VTA' : 'PJ'}</span>)}
-        <span style={{ width: '30px', textAlign: 'center' }}>GLOB</span>
+        {c.partidos.map((p) => <span key={p.id_externo} style={{ width: '30px', textAlign: 'center' }}>{/ida/i.test(p.partido_playoff || '') ? 'IDA' : /vuelta/i.test(p.partido_playoff || '') ? 'VTA' : /tercer/i.test(p.partido_playoff || '') ? '3º' : 'PJ'}</span>)}
+        <span style={{ width: '34px', textAlign: 'center' }}>{c.serie ? 'SERIE' : 'GLOB'}</span>
       </div>
       {fila(c.equipos[0], 0)}
       <div style={{ borderTop: '1px solid var(--border)' }} />
       {fila(c.equipos[1], 1)}
       <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-        {c.partidos.map((p) => `${/vuelta/i.test(p.partido_playoff || '') ? 'Vuelta' : /ida/i.test(p.partido_playoff || '') ? 'Ida' : 'Partido'}: ${esFinalizado(p) ? 'jugado' : `${fechaCorta(p.fecha)}${p.hora ? ` ${p.hora}` : ''}`}${p.estadio ? ` · ${p.estadio}` : ''}`).join('  ·  ')}
+        {c.partidos.map((p) => `${/vuelta/i.test(p.partido_playoff || '') ? 'Vuelta' : /ida/i.test(p.partido_playoff || '') ? 'Ida' : /tercer/i.test(p.partido_playoff || '') ? 'Tercer partido' : 'Partido'}: ${esFinalizado(p) ? `jugado${textoPenales(p) ? ` ${textoPenales(p)}` : ''}` : p.fecha ? `${fechaCorta(p.fecha)}${p.hora ? ` ${p.hora}` : ''}` : 'a confirmar'}${p.estadio ? ` · ${p.estadio}` : ''}`).join('  ·  ')}
       </div>
     </div>
   );
@@ -600,7 +666,7 @@ function ModalSync({ onCerrar, onListo, showToast }) {
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '12px', width: '100%', maxWidth: '560px', maxHeight: '86vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', fontWeight: 900 }}>ACTUALIZAR DATOS DE AFA FUTSAL</div>
         <div style={{ padding: '14px 16px', overflowY: 'auto', flex: 1, fontSize: '0.8rem' }}>
-          {fase === 'consultando' && <p style={vacio}>Consultando AFA Futsal (Primera A a D, de 1ra a 8va)… tarda unos segundos.</p>}
+          {fase === 'consultando' && <p style={vacio}>Consultando AFA Futsal (Primera A a D, de 1ra a 8va, con playoffs, desempates y Copa Futuro)… tarda unos segundos.</p>}
           {fase === 'aplicando' && <p style={vacio}>Guardando…</p>}
           {fase === 'error' && <p style={{ ...vacio, color: '#ef4444' }}>{res?.error || 'Algo falló.'}</p>}
           {fase === 'previa' && (

@@ -1,4 +1,4 @@
-import { listarCatalogo } from './god';
+import { listarCatalogo, listarEliminadas } from './god';
 import { listarHistorial } from './cartasDestacadas';
 import { listarFotos } from './cartasFotos';
 import { publicarCatalogo } from './sobres';
@@ -17,10 +17,11 @@ import { pendientesDePublicar, completarAtributos } from '../analytics/god';
  */
 export async function publicarPremiosPendientes(clubId, calculadas = []) {
   if (!clubId) return { publicadas: 0, completadas: 0 };
-  const [historial, catalogo, fotos] = await Promise.all([
-    listarHistorial(clubId), listarCatalogo(clubId), listarFotos(clubId).catch(() => new Map()),
+  const [historial, catalogo, fotos, eliminadas] = await Promise.all([
+    listarHistorial(clubId), listarCatalogo(clubId), listarFotos(clubId).catch(() => new Map()), listarEliminadas(clubId),
   ]);
-  const pendientes = pendientesDePublicar(historial, catalogo, fotos, calculadas);
+  // Las eliminadas desde el Modo GOD no se vuelven a publicar solas.
+  const pendientes = pendientesDePublicar(historial, catalogo, fotos, calculadas, eliminadas);
   const completar = completarAtributos(catalogo, calculadas);
   const publicadas = pendientes.length ? await publicarCatalogo(clubId, pendientes) : 0;
   const completadas = completar.length ? await publicarCatalogo(clubId, completar) : 0;

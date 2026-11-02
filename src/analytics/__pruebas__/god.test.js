@@ -95,6 +95,9 @@ describe('god: premios guardados sin publicar', () => {
     expect(p[0]).toMatchObject({ tipo: 'SGOL', rareza: 'totw' });
     expect(p[0].carta).toMatchObject({ foto: 'https://f/1.png', atributos: [['TIR', 80]], especial: { puesto: 1 } });
   });
+  it('las eliminadas desde el Modo GOD no se vuelven a ofrecer', () => {
+    expect(pendientesDePublicar(historial, catalogo, new Map(), [], new Set(['SGOL|R1:t|1']))).toEqual([]);
+  });
 });
 
 describe('conFotosYAjustes', () => {

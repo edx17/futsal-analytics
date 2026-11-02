@@ -4,11 +4,11 @@ import { SOBRES, rarezaPorId } from '../../analytics/sobres';
 import { VARIANTES, VIDEOS } from '../../analytics/aperturas';
 import { CINEMATICAS, varianteDeEscena } from '../../analytics/eventos';
 import { PREMIOS } from '../../analytics/premiosCartas';
-import { resultadoDePrueba, aplicarAjuste, mediaDudosa, pendientesDePublicar } from '../../analytics/god';
+import { resultadoDePrueba, aplicarAjuste, mediaDudosa, pendientesDePublicar, ordenarCatalogo, ORDENES_CATALOGO, esNueva, DIAS_NUEVA } from '../../analytics/god';
 import { listarHistorial } from '../../utils/cartasDestacadas';
 import { publicarCatalogo } from '../../utils/sobres';
 import {
-  listarCatalogo, activarCartas, MENSAJE_SIN_GOD, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres,
+  listarCatalogo, activarCartas, MENSAJE_SIN_GOD, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, eliminarCartas, listarEliminadas,
 } from '../../utils/god';
 import { listarFotos, subirFotoEspecial, quitarFotoEspecial } from '../../utils/cartasFotos';
 import { prepararVideo } from '../../utils/videoApertura';
@@ -16,6 +16,8 @@ import GodEventos from './GodEventos';
 import GodSobres from './GodSobres';
 import GodHeroes from './GodHeroes';
 import GodHalloween from './GodHalloween';
+import GodEdicion from './GodEdicion';
+import { EDICIONES } from '../../analytics/edicionesEspeciales';
 import GodUsuarios from './GodUsuarios';
 import InvitacionesJuego from './InvitacionesJuego';
 import { normalizarTipo } from '../../analytics/tiposSobre';
@@ -39,7 +41,7 @@ import { normalizarTipo } from '../../analytics/tiposSobre';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['halloween', 'HALLOWEEN'], ['sobres', 'SOBRES'], ['usuarios', 'USUARIOS'], ['gmail', 'GMAIL · HINCHAS']];
+const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['halloween', 'HALLOWEEN'], ['toty', 'TOTY'], ['copafuturo', 'COPA FUTURO'], ['sobres', 'SOBRES'], ['usuarios', 'USUARIOS'], ['gmail', 'GMAIL · HINCHAS']];
 const POR_PAGINA = 40;
 
 /* Las escenas que se pueden forzar, con aviso si su video todavía no está. */
@@ -66,11 +68,11 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
   const cargar = useCallback(async () => {
     if (!clubId) return;
     try {
-      const [k, a, f, h, cfg] = await Promise.all([listarCatalogo(clubId), listarAjustes(clubId), listarFotos(clubId).catch(() => new Map()),
-        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null)]);
+      const [k, a, f, h, cfg, el] = await Promise.all([listarCatalogo(clubId), listarAjustes(clubId), listarFotos(clubId).catch(() => new Map()),
+        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null), listarEliminadas(clubId)]);
       setCatalogo(k); setAjustes(a); setFotos(f);
       setConfig(cfg || { suspendidos: [], evento_activo: null, tipos: {}, sinTipos: true });
-      setPendientes(pendientesDePublicar(h, k, f));
+      setPendientes(pendientesDePublicar(h, k, f, [], el));
     } catch (err) {
       setAviso({ texto: err?.message || 'No se pudo leer el catálogo.', error: true });
       setCatalogo([]);
@@ -121,6 +123,10 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
           )}
           {pestana === 'usuarios' && <GodUsuarios clubId={clubId} avisar={setAviso} />}
           {pestana === 'gmail' && <InvitacionesJuego clubId={clubId} avisar={setAviso} />}
+          {(pestana === 'toty' || pestana === 'copafuturo') && (
+            <GodEdicion key={pestana} cfg={EDICIONES[pestana === 'toty' ? 'TOTY' : 'CFOR']} color={pestana === 'toty' ? '#e9c46a' : '#7aa0ff'}
+              clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
+          )}
           {pestana === 'halloween' && (
             <GodHalloween clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
           )}
@@ -183,6 +189,8 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   const [soloDudosas, setSoloDudosas] = useState(false);
   const [limite, setLimite] = useState(POR_PAGINA);
   const [ocupado, setOcupado] = useState(null);
+  const [orden, setOrden] = useState('nuevas'); // las recién publicadas arriba
+  const [factor, setFactor] = useState(2); // V-Coins devueltas por copia al eliminar: puntos de la rareza × factor
 
   const filas = useMemo(() => (catalogo || []).map((k) => {
     const carta = aplicarAjuste({ atributos: [], stats: {}, ...(k.carta || {}), foto: fotos.get(k.clave) || k.carta?.foto }, ajustes.get(k.clave));
@@ -190,15 +198,34 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   }), [catalogo, ajustes, fotos]);
 
   const tipos = useMemo(() => ['TODAS', ...new Set(filas.map((f) => f.tipo))], [filas]);
-  const lista = useMemo(() => filas.filter((f) => (tipo === 'TODAS' || f.tipo === tipo)
+  const filtradas = useMemo(() => filas.filter((f) => (tipo === 'TODAS' || f.tipo === tipo)
     && (estado === 'todas' || (estado === 'activas' ? f.activa !== false : f.activa === false))
     && (!soloDudosas || f.dudosa)
-    && (!buscar || `${f.carta?.apellido} ${f.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase())))
-    .sort((a, b) => (b.dudosa ? 1 : 0) - (a.dudosa ? 1 : 0) || (b.cartaVista.ovr || 0) - (a.cartaVista.ovr || 0)), [filas, tipo, estado, soloDudosas, buscar]);
+    && (!buscar || `${f.carta?.apellido} ${f.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase()))), [filas, tipo, estado, soloDudosas, buscar]);
+  const lista = useMemo(() => ordenarCatalogo(filtradas, orden, (f) => f.cartaVista.ovr), [filtradas, orden]);
+  const nuevas = useMemo(() => filas.filter((f) => esNueva(f)).length, [filas]);
 
   const hacer = async (id, fn, ok) => {
     setOcupado(id); avisar(null);
     try { await fn(); await recargar(); if (ok) avisar({ texto: ok }); } catch (err) { avisar({ texto: err?.message || 'No se pudo.', error: true }); } finally { setOcupado(null); }
+  };
+
+  /* Eliminar para siempre: primero se simula (cuántos la tienen y cuánto se devuelve) y se confirma escribiendo ELIMINAR. */
+  const eliminar = async (id, filas) => {
+    const ids = filas.map((f) => f.id);
+    const fac = Math.min(100, Math.max(0, Number(factor) || 0));
+    const nombre = filas.length === 1 ? `la carta de ${(filas[0].carta?.apellido || '').toUpperCase()} (${PREMIOS[filas[0].tipo]?.sigla || filas[0].tipo})` : `las ${filas.length} cartas filtradas`;
+    setOcupado(id); avisar(null);
+    try {
+      const s = await eliminarCartas(clubId, ids, { factor: fac, simular: true });
+      const quien = s.duenos ? `La tienen ${s.duenos} persona${s.duenos > 1 ? 's' : ''} (${s.copias} copia${s.copias > 1 ? 's' : ''}): se les saca de la colección y se les devuelven ${s.vcoins} V-Coins en total.`
+        : 'Nadie la tiene todavía.';
+      const ok = window.prompt(`Vas a ELIMINAR PARA SIEMPRE ${nombre}.\n${quien}\nNo se puede deshacer. Escribí ELIMINAR para confirmar.`);
+      if ((ok || '').trim().toUpperCase() !== 'ELIMINAR') return;
+      const r = await eliminarCartas(clubId, ids, { factor: fac, motivo: `Carta eliminada: ${nombre}` });
+      await recargar();
+      avisar({ texto: `Eliminada${r.cartas > 1 ? 's' : ''} ${r.cartas} carta${r.cartas > 1 ? 's' : ''}.${r.duenos ? ` Se devolvieron ${r.vcoins} V-Coins a ${r.duenos} persona${r.duenos > 1 ? 's' : ''}.` : ''}` });
+    } catch (err) { avisar({ texto: err?.message || 'No se pudo eliminar.', error: true }); } finally { setOcupado(null); }
   };
 
   if (catalogo === null) return <div style={dim}>Leyendo el catálogo…</div>;
@@ -208,7 +235,8 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={dim}>
-        Dar de baja saca la carta de los sobres y del V-Draft, pero quien ya la tiene la conserva. La media corregida reemplaza a la calculada
+        Dar de baja saca la carta de los sobres y del V-Draft, pero quien ya la tiene la conserva. <b style={{ color: '#ef4444' }}>Eliminar</b> la borra
+        para siempre, también de las colecciones, y a cada dueño le devuelve V-Coins. La media corregida reemplaza a la calculada
         en los sobres (la rareza con la que sale no cambia). Las marcadas <b style={{ color: '#f97316' }}>REVISAR</b> tienen una media que sus propios datos no sostienen.
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -220,18 +248,31 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
         <label style={{ ...dim, display: 'flex', gap: 6, alignItems: 'center' }}>
           <input type="checkbox" checked={soloDudosas} onChange={(e) => setSoloDudosas(e.target.checked)} style={{ width: 'auto', margin: 0 }} />sólo a revisar ({filas.filter((f) => f.dudosa).length})
         </label>
-        <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 11, color: 'var(--text-dim)' }}>{lista.length} cartas</span>
+        <select value={orden} onChange={(e) => setOrden(e.target.value)} style={select} aria-label="Orden">
+          {ORDENES_CATALOGO.map(([id, t]) => <option key={id} value={id}>{t}</option>)}
+        </select>
+        <span style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 11, color: 'var(--text-dim)' }}>
+          {lista.length} cartas{nuevas ? ` · ${nuevas} nuevas (últimos ${DIAS_NUEVA} días)` : ''}
+        </span>
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button style={chip(false)} disabled={!lista.length || !!ocupado}
           onClick={() => window.confirm(`¿Dar de BAJA las ${lista.length} cartas filtradas?`) && hacer('lote', () => activarCartas(lista.map((f) => f.id), false), 'Cartas dadas de baja.')}>DAR DE BAJA LAS FILTRADAS</button>
         <button style={chip(false)} disabled={!lista.length || !!ocupado}
           onClick={() => hacer('lote', () => activarCartas(lista.map((f) => f.id), true), 'Cartas dadas de alta.')}>DAR DE ALTA LAS FILTRADAS</button>
+        <button style={{ ...chip(false), color: '#ef4444', borderColor: 'rgba(239,68,68,.5)' }} disabled={!lista.length || !!ocupado}
+          onClick={() => eliminar('lote', lista)}>ELIMINAR LAS FILTRADAS</button>
+        <label style={{ ...dim, display: 'flex', gap: 6, alignItems: 'center', marginLeft: 'auto' }} title="Por cada copia que pierde, el dueño recibe los puntos de la rareza × este factor (bronce 5, plata 10, oro 25, TOTW 40, POTW 50, TOTM 60, POTM 75, TOTY 100)">
+          Al eliminar, devolver
+          <input type="number" min={0} max={100} step={0.5} value={factor} onChange={(e) => setFactor(e.target.value)} style={{ ...select, width: 64 }} aria-label="Factor de devolución" />
+          × puntos de la rareza en V-Coins
+        </label>
       </div>
 
       {visibles.map((f) => (
         <FilaCarta key={f.id} f={f} ajuste={ajustes.get(f.clave)} foto={fotos.get(f.clave)} ocupado={ocupado === f.id}
           alternar={() => hacer(f.id, () => activarCartas([f.id], f.activa === false))}
+          eliminar={() => eliminar(f.id, [f])}
           ajustar={(ovr, motivo) => hacer(f.id, () => guardarAjuste(clubId, f.clave, ovr, motivo), `Media de ${f.carta?.apellido} corregida a ${ovr}.`)}
           desajustar={() => hacer(f.id, () => quitarAjuste(clubId, f.clave), 'Vuelve la media calculada.')}
           subirFoto={(archivo) => hacer(f.id, () => subirFotoEspecial({ clubId, clave: f.clave, archivo }), 'Foto guardada.')}
@@ -242,7 +283,7 @@ function Cartas({ clubId, catalogo, ajustes, fotos, recargar, avisar }) {
   );
 }
 
-function FilaCarta({ f, ajuste, foto, ocupado, alternar, ajustar, desajustar, subirFoto, quitarFoto }) {
+function FilaCarta({ f, ajuste, foto, ocupado, alternar, eliminar, ajustar, desajustar, subirFoto, quitarFoto }) {
   const c = f.cartaVista;
   const [ovr, setOvr] = useState(ajuste?.ovr ?? '');
   const [motivo, setMotivo] = useState(ajuste?.motivo ?? '');
@@ -258,6 +299,7 @@ function FilaCarta({ f, ajuste, foto, ocupado, alternar, ajustar, desajustar, su
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
           <b style={{ fontSize: 14 }}>{(c.apellido || '').toUpperCase()} {c.nombre}</b>
           <span style={{ fontFamily: MONO, fontSize: 11, color: 'var(--text-dim)' }}>{PREMIOS[f.tipo]?.sigla || f.tipo} · {rarezaPorId[f.rareza]?.nombre} · {c.edicion || c.categoria || ''}</span>
+          {esNueva(f) && <span style={{ ...tag, background: '#22c55e', color: '#052e16' }} title={`Apareció en los últimos ${DIAS_NUEVA} días`}>NUEVA</span>}
           {baja && <span style={{ ...tag, background: '#ef4444' }}>DE BAJA</span>}
           {f.exclusiva_evento && <span style={{ ...tag, background: '#7c3aed' }} title="Sólo sale en el sobre de su evento">SÓLO EVENTO</span>}
           {f.dudosa && <span style={{ ...tag, background: '#f97316' }} title="La media no cuadra con sus datos">REVISAR · {f.dudosa}</span>}
@@ -277,6 +319,7 @@ function FilaCarta({ f, ajuste, foto, ocupado, alternar, ajustar, desajustar, su
             <input type="file" accept="image/*" hidden disabled={ocupado} onChange={(e) => { subirFoto(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
           {foto && <button style={chip(false)} disabled={ocupado} onClick={quitarFoto}>QUITAR FOTO</button>}
+          <button style={{ ...chip(false), color: '#ef4444', borderColor: 'rgba(239,68,68,.5)' }} disabled={ocupado} onClick={eliminar}>ELIMINAR</button>
         </div>
       </div>
     </div>

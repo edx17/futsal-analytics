@@ -210,21 +210,25 @@ export function reportesLiga(partidos) {
 export function partidosDeEquipo(partidos, equipo) {
   return (partidos || [])
     .filter((p) => p.local === equipo || p.visitante === equipo)
-    .sort((a, b) => ordenFase(a.fase) - ordenFase(b.fase) || (a.jornada ?? 0) - (b.jornada ?? 0)
+    .sort((a, b) => ordenEtapa(a) - ordenEtapa(b) || (a.jornada ?? 0) - (b.jornada ?? 0)
       || String(a.fecha || '').localeCompare(String(b.fecha || '')));
 }
 
-/* ── PLAYOFFS ──────────────────────────────────────────────────────────────
+/* ── PLAYOFFS Y OTRAS ETAPAS ───────────────────────────────────────────────
    segundopalo marca los partidos de playoff con la fase ("Cuartos de final",
    "Semifinal", "Final"…), el número de cruce (llave) y si es ida o vuelta.
-   El torneo regular (tabla, fixture por fecha, reportes) es lo que no tiene
-   fase. */
+   Lo que no es el torneo regular (playoff, desempates, triangulares, Copa
+   Futuro…) trae además su etapa (migración liga_etapas). El torneo regular
+   (tabla, fixture por fecha, reportes) es lo que no tiene ni fase ni etapa. */
 
-export const esPlayoff = (p) => !!p?.fase;
+export const esPlayoff = (p) => !!(p?.fase || p?.etapa);
 export const soloRegular = (partidos) => (partidos || []).filter((p) => !esPlayoff(p));
 export const soloPlayoff = (partidos) => (partidos || []).filter(esPlayoff);
 
 const FASES = [['32', 1], ['16', 2], ['octavo', 3], ['cuarto', 4], ['semi', 5], ['tercer', 6], ['final', 7]];
+
+/* El regular primero; una etapa sin cruces (triangular, grupos) antes de los cruces. */
+const ordenEtapa = (p) => (!esPlayoff(p) ? 0 : p.fase ? ordenFase(p.fase) : 0.5);
 
 /** El orden de una fase (el regular primero; la final al final). */
 export function ordenFase(fase) {
@@ -235,17 +239,45 @@ export function ordenFase(fase) {
 }
 
 const ORDEN_PARTIDO = (p) => (/ida/i.test(p.partido_playoff || '') ? 0 : /vuelta/i.test(p.partido_playoff || '') ? 1 : 2);
+const conPenalesP = (p) => p && p.penales_local !== null && p.penales_local !== undefined
+  && p.penales_visitante !== null && p.penales_visitante !== undefined;
+
+/* Quién ganó un partido (por goles o, si empató, por penales); null si no se jugó o quedó igual. */
+function ganadorPartido(p) {
+  if (!jugado(p)) return null;
+  if (p.goles_local !== p.goles_visitante) return p.goles_local > p.goles_visitante ? p.local : p.visitante;
+  if (conPenalesP(p) && p.penales_local !== p.penales_visitante) return p.penales_local > p.penales_visitante ? p.local : p.visitante;
+  return null;
+}
+
+/* ¿La fase se juega como SERIE (gana el que gana más partidos, al mejor de 3)
+   o por GLOBAL (suma de goles)? segundopalo no lo dice: se deduce. Es serie si
+   aparece un "tercer partido", o si hubo penales en un partido que no los
+   necesitaba por global (en la ida, o con el global desigualado). */
+function esSerie(cruces) {
+  return cruces.some((orden) => orden.some((p, i) => {
+    if (/tercer/i.test(p.partido_playoff || '')) return true;
+    if (!conPenalesP(p) || !jugado(p)) return false;
+    if (i < orden.length - 1) return true;
+    const [a, b] = [orden[0].local, orden[0].visitante];
+    const goles = (eq) => orden.slice(0, i + 1).filter(jugado)
+      .reduce((s, x) => s + (x.local === eq ? x.goles_local : x.visitante === eq ? x.goles_visitante : 0), 0);
+    return goles(a) !== goles(b);
+  }));
+}
 
 /**
  * Los playoffs como cuadro: las fases en orden y, en cada una, sus cruces
  * con los partidos (ida y vuelta), el global y quién pasa.
+ *   serie: la fase se juega al mejor de 3 (gana el que gana 2 partidos; un
+ *   empate se define por penales en el partido) en vez de por global.
  *   pasa: el equipo, o null si falta jugar o el global quedó igualado sin
  *   penales (en AFA puede definir la ventaja deportiva).
- * @returns {Array<{ fase, cruces: Array<{ llave, equipos: [string, string], partidos, global: [number, number]|null, penales, pasa, jugados }> }>}
+ * @returns {Array<{ fase, serie, cruces: Array<{ llave, equipos: [string, string], partidos, global: [number, number]|null, penales, ganados, pasa, jugados, serie }> }>}
  */
 export function cuadroPlayoff(partidos) {
   const porFase = new Map();
-  soloPlayoff(partidos).forEach((p) => {
+  soloPlayoff(partidos).filter((p) => p.fase).forEach((p) => {
     if (!porFase.has(p.fase)) porFase.set(p.fase, []);
     porFase.get(p.fase).push(p);
   });
@@ -259,36 +291,97 @@ export function cuadroPlayoff(partidos) {
         if (!porCruce.has(k)) porCruce.set(k, []);
         porCruce.get(k).push(p);
       });
-      const cruces = [...porCruce.entries()].map(([k, ps]) => {
-        const orden = [...ps].sort((a, b) => ORDEN_PARTIDO(a) - ORDEN_PARTIDO(b) || String(a.fecha || '').localeCompare(String(b.fecha || '')));
+      const ordenes = [...porCruce.entries()].map(([k, ps]) => [k,
+        [...ps].sort((a, b) => ORDEN_PARTIDO(a) - ORDEN_PARTIDO(b) || String(a.fecha || '').localeCompare(String(b.fecha || '')))]);
+      const serie = esSerie(ordenes.map(([, o]) => o));
+      const cruces = ordenes.map(([k, orden]) => {
         const equipos = [orden[0].local, orden[0].visitante];
         const jugadosC = orden.filter(jugado);
         const golesDe = (eq) => jugadosC.reduce((s, p) => s + (p.local === eq ? p.goles_local : p.visitante === eq ? p.goles_visitante : 0), 0);
         const global = jugadosC.length ? [golesDe(equipos[0]), golesDe(equipos[1])] : null;
         const ultimo = orden.at(-1);
-        const conPenales = ultimo && ultimo.penales_local !== null && ultimo.penales_local !== undefined
-          && ultimo.penales_visitante !== null && ultimo.penales_visitante !== undefined;
-        const penales = conPenales
+        const penales = conPenalesP(ultimo)
           ? [ultimo.local === equipos[0] ? ultimo.penales_local : ultimo.penales_visitante,
             ultimo.local === equipos[0] ? ultimo.penales_visitante : ultimo.penales_local]
           : null;
+        const ganadores = jugadosC.map(ganadorPartido);
+        const ganados = jugadosC.length ? equipos.map((eq) => ganadores.filter((g) => g === eq).length) : null;
         let pasa = null;
-        if (global && jugadosC.length === orden.length) {
+        if (serie) {
+          // Al mejor de 3: pasa el que gana 2 (o el único partido, si era uno solo).
+          const necesita = orden.length === 1 ? 1 : 2;
+          if (ganados) pasa = ganados[0] >= necesita ? equipos[0] : ganados[1] >= necesita ? equipos[1] : null;
+        } else if (global && jugadosC.length === orden.length) {
           if (global[0] !== global[1]) pasa = global[0] > global[1] ? equipos[0] : equipos[1];
           else if (penales && penales[0] !== penales[1]) pasa = penales[0] > penales[1] ? equipos[0] : equipos[1];
         }
-        return { llave: typeof k === 'number' ? k : null, equipos, partidos: orden, global, penales, pasa, jugados: jugadosC.length };
+        return { llave: typeof k === 'number' ? k : null, equipos, partidos: orden, global, penales, ganados, pasa, jugados: jugadosC.length, serie };
       }).sort((a, b) => (a.llave ?? 99) - (b.llave ?? 99) || a.equipos[0].localeCompare(b.equipos[0]));
-      return { fase, cruces };
+      return { fase, cruces, serie };
     });
 }
 
+const nombreEtapa = (p) => p.etapa || 'Playoff';
+
+/**
+ * Las etapas fuera del torneo regular, cada una armada según lo que trae:
+ *   - los partidos con fase de copa ("Cuartos", "Semi", "Final") van como
+ *     cruces (ida, vuelta, global y penales);
+ *   - los que no tienen fase (un triangular, una fase de grupos de la Copa
+ *     Futuro) van en tabla de posiciones, una por grupo o zona.
+ * Así un formato nuevo (otro desempate, otra copa) se ve bien sin tocar la app.
+ * Las etapas, en el orden en que empiezan.
+ * @returns {Array<{ nombre, tablas: Array<{ grupo, filas, partidos }>, cuadro, partidos, conPenales }>}
+ */
+export function etapasDe(partidos) {
+  const porEtapa = new Map();
+  soloPlayoff(partidos).forEach((p) => {
+    const k = nombreEtapa(p);
+    if (!porEtapa.has(k)) porEtapa.set(k, []);
+    porEtapa.get(k).push(p);
+  });
+  const inicio = (lista) => lista.map((p) => String(p.fecha || '9999')).sort()[0];
+  return [...porEtapa.entries()]
+    .sort((a, b) => inicio(a[1]).localeCompare(inicio(b[1])) || a[0].localeCompare(b[0]))
+    .map(([nombre, lista]) => {
+      const enTabla = lista.filter((p) => !p.fase || p.etapa_tabla === true);
+      const enCruces = lista.filter((p) => p.fase && p.etapa_tabla !== true);
+      const porGrupo = new Map();
+      enTabla.forEach((p) => {
+        const g = p.grupo || (p.zona ? nombreZona(p.zona) : '');
+        if (!porGrupo.has(g)) porGrupo.set(g, []);
+        porGrupo.get(g).push(p);
+      });
+      const tablas = [...porGrupo.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0], 'es', { numeric: true }))
+        .map(([grupo, ps]) => ({
+          grupo: grupo || null,
+          filas: tablaPosiciones(ps),
+          partidos: [...ps].sort((a, b) => String(a.fecha || '').localeCompare(String(b.fecha || '')) || (a.jornada ?? 0) - (b.jornada ?? 0)),
+        }));
+      return {
+        nombre,
+        tablas,
+        cuadro: cuadroPlayoff(enCruces),
+        partidos: lista,
+        conPenales: lista.some((p) => p.penales_local != null && p.penales_visitante != null),
+      };
+    });
+}
+
+/** "(pen. 4-3)" si el partido se definió por penales; '' si no. */
+export const textoPenales = (p) => (p?.penales_local != null && p?.penales_visitante != null
+  ? `(pen. ${p.penales_local}-${p.penales_visitante})` : '');
+
 /** Cómo se llama un partido de playoff: "Cuartos de final · Ida". */
-export const etiquetaPlayoff = (p) => [p?.fase, p?.partido_playoff].filter(Boolean).join(' · ');
+export const etiquetaPlayoff = (p) => [p?.fase || (p?.etapa && p.etapa !== 'Playoff' ? p.etapa : null), p?.partido_playoff].filter(Boolean).join(' · ')
+  || (p?.etapa ? `${p.etapa}${p.jornada ? ` · F${p.jornada}` : ''}` : '');
 
 /** Para listas angostas: "F7" en el regular; "4tos I", "Semi V", "Final" en los playoffs. */
 export function etiquetaCorta(p) {
   if (!esPlayoff(p)) return `F${p?.jornada ?? '?'}`;
+  // Una etapa en tabla (triangular, grupos): sus iniciales y la fecha.
+  if (!p.fase) return `${sinTildes(p.etapa).split(/\s+/).filter((w) => w.length > 2).map((w) => w[0].toUpperCase()).join('').slice(0, 3) || 'ET'}${p.jornada ? ` F${p.jornada}` : ''}`;
   const o = ordenFase(p.fase);
   const fase = { 3: '8vos', 4: '4tos', 5: 'Semi', 6: '3º', 7: 'Final' }[o] || 'PO';
   const iv = /ida/i.test(p.partido_playoff || '') ? ' I' : /vuelta/i.test(p.partido_playoff || '') ? ' V' : '';

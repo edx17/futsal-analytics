@@ -40,6 +40,7 @@ describe('sobres: la imagen', () => {
     expect(imagenDeSobre('evento', { luz: '#ff0000' })).toEqual({ src: '/juegos/sobres/neutro.webp', tinte: '#ff0000' });
     // el evento de Halloween tiene su sobre
     expect(imagenDeSobre('evento', { luz: '#ff8a1f' }, 'evento_halloween')).toEqual({ src: '/juegos/sobres/halloween.webp', tinte: null });
+    expect(imagenDeSobre('evento', null, 'evento_copa_futuro')).toEqual({ src: '/juegos/sobres/copafuturo.webp', tinte: null });
   });
 });
 

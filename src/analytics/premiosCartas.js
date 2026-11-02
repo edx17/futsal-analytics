@@ -14,7 +14,7 @@ import {
 } from './premios';
 import { rolDe, tierDe } from './quinteto';
 import { ESPECIALES, esEspecial } from './especialesCartas';
-import { torneoDePeriodo } from './especiales';
+import { torneoDePeriodo, ruedaDePeriodo } from './especiales';
 
 /** Cómo se llama cada premio y cómo se dibuja. */
 export const PREMIOS = {
@@ -165,13 +165,13 @@ export function datosDePlaca({ tipo, periodo, fechaRef, contexto = {}, cartas = 
   return { tipo, sigla: meta?.sigla || tipo, titulo: meta?.titulo || '', quinteto: !!meta?.quinteto, especial: !!meta?.especial, subtitulo, derecha, detalle, cartas, club, sinArquero: !!contexto.sinArquero };
 }
 
-/** De qué período es una carta especial: 'Octubre 2026' o 'Torneo 2026 · 1ª rueda'. */
+/** De qué período es una carta especial: 'Octubre 2026', 'Torneo 2026 · 1ª rueda' o '· 2ª rueda'. */
 export function periodoEspecial({ periodo, contexto = {} }) {
-  if (torneoDePeriodo(periodo)) return `${contexto.torneo || 'Torneo'} · 1ª rueda`;
+  if (torneoDePeriodo(periodo)) return `${contexto.torneo || 'Torneo'} · ${ruedaDePeriodo(periodo)}ª rueda`;
   return etiquetaMes(contexto.mes || periodo);
 }
 
-/** El pie de la carta: el mes, o el torneo (la cinta ya dice "1ª RUEDA"). */
+/** El pie de la carta: el mes, o el torneo (la cinta ya dice "1ª RUEDA" o "2ª RUEDA"). */
 export const pieEspecial = (r) => String(torneoDePeriodo(r.periodo) ? (r.contexto?.torneo || 'TORNEO') : etiquetaMes(r.contexto?.mes || r.periodo)).toUpperCase();
 
 /** Cómo se eligió (va en la placa y en el panel): el criterio y los partidos que se usaron. */
@@ -179,12 +179,12 @@ export function criterioEspecial(tipo, contexto = {}) {
   const p = contexto.partidos ? ` · ${contexto.partidos} partidos con datos` : '';
   const comp = contexto.compartido ? ' · empate: la comparten' : '';
   switch (tipo) {
-    case 'GOLM': case 'GOLR': return `Más goles${p}${comp}`;
-    case 'ASIM': case 'ASIR': return `Más asistencias${p}${comp}`;
-    case 'PREM': case 'PRER': return `Más partidos jugados; a igual cantidad, mejor nota${p}${comp}`;
-    case 'MVPR': return `Más veces figura del partido${p}${comp}`;
-    case 'SGOL': return `Los ${contexto.tope || 10} primeros en goles${p} · los empatados comparten puesto`;
-    case 'SREC': return `Los ${contexto.tope || 10} primeros en recuperaciones${p} · los empatados comparten puesto`;
+    case 'GOLM': case 'GOLR': case 'GOLR2': return `Más goles${p}${comp}`;
+    case 'ASIM': case 'ASIR': case 'ASIR2': return `Más asistencias${p}${comp}`;
+    case 'PREM': case 'PRER': case 'PRER2': return `Más partidos jugados; a igual cantidad, mejor nota${p}${comp}`;
+    case 'MVPR': case 'MVPR2': return `Más veces figura del partido${p}${comp}`;
+    case 'SGOL': case 'SGOL2': return `Los ${contexto.tope || 10} primeros en goles${p} · los empatados comparten puesto`;
+    case 'SREC': case 'SREC2': return `Los ${contexto.tope || 10} primeros en recuperaciones${p} · los empatados comparten puesto`;
     default: return '';
   }
 }
@@ -206,7 +206,7 @@ export function descripcionRegistro(registro) {
   } else if (tipo === 'TOTY') {
     base = `Temporada ${periodo || String(fechaRef || '').slice(0, 4)}`;
   } else if (esEspecial(tipo)) {
-    // Los de la rueda ya dicen "1ª RUEDA" en el título: va el torneo; los del mes, el mes.
+    // Los de la rueda ya dicen "1ª RUEDA" / "2ª RUEDA" en el título: va el torneo; los del mes, el mes.
     base = `${PREMIOS[tipo].titulo} · ${torneoDePeriodo(periodo) ? contexto.torneo || 'Torneo' : etiquetaMes(contexto.mes || periodo)}`;
   }
   return categoria && categoria !== 'Todas' ? `${base} · ${categoria}` : base;

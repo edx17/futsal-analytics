@@ -634,5 +634,75 @@
     ],
     "texto_logo": "BOO!",
     "emblema": "calabaza"
+  },
+  "evento_copa_futuro": {
+    "nombre": "COPA FUTURO DE ORO",
+    "guion": "evento",
+    "cuadros": 210,
+    "muestras": 16,
+    "sobre_titulo": [
+      "COPA FUTURO",
+      "DE ORO"
+    ],
+    "sobre_subtitulo": "INFERIORES",
+    "sobre_color": [
+      0.012,
+      0.03,
+      0.42
+    ],
+    "acento": [
+      1.0,
+      0.7,
+      0.22
+    ],
+    "destello": [
+      1.0,
+      0.86,
+      0.55
+    ],
+    "haz": [
+      0.3,
+      0.45,
+      1.0
+    ],
+    "luz_pabellon": [
+      0.7,
+      0.78,
+      1.0
+    ],
+    "luz_pabellon_w": 320,
+    "luz_techo": [
+      0.85,
+      0.88,
+      1.0
+    ],
+    "asientos": [
+      0.008,
+      0.02,
+      0.2
+    ],
+    "piso_margen": [
+      0.006,
+      0.015,
+      0.16
+    ],
+    "decoracion": [
+      "banderas",
+      "logo_centro",
+      "cristales"
+    ],
+    "graficas": [
+      "COPA FUTURO DE ORO",
+      "INFERIORES",
+      "MYSQUAD",
+      "FUTSAL"
+    ],
+    "texto_banderas": [
+      "COPA FUTURO",
+      "DE ORO",
+      "MYSQUAD"
+    ],
+    "texto_logo": "CF",
+    "emblema": "copa"
   }
 }

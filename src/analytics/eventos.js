@@ -136,7 +136,7 @@ export const clavesDeTipo = (catalogo = [], tipos = []) =>
 export const PLANTILLAS = {
   goleadores: {
     nombre: 'EVENTO GOLEADORES',
-    tipos: ['SGOL'],
+    tipos: ['SGOL', 'SGOL2'],
     sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
     escena: {
       video: 'evento_goleadores', video_alternativo: 'elite', titulo: 'EVENTO GOLEADORES',
@@ -146,7 +146,7 @@ export const PLANTILLAS = {
   },
   recuperadores: {
     nombre: 'EVENTO RECUPERADORES',
-    tipos: ['SREC'],
+    tipos: ['SREC', 'SREC2'],
     sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
     escena: {
       video: 'evento_recuperadores', video_alternativo: 'elite', titulo: 'EVENTO RECUPERADORES',
@@ -171,6 +171,16 @@ export const PLANTILLAS = {
     escena: {
       video: 'evento_halloween', video_alternativo: 'epico', titulo: 'NOCHE DE HALLOWEEN',
       colores: { principal: '#5b1a8a', secundario: '#14061c', acento: '#ff7a00', fondo: '#07020b', luz: '#ff8a1f', texto: '#fff3e6' },
+      particulas: 90, intensidad: 1.2,
+    },
+  },
+  copaFuturo: {
+    nombre: 'COPA FUTURO DE ORO',
+    tipos: ['CFOR'],
+    sobre: { cartas: 3, costo: 0, por_dia: 1, exclusivas: true },
+    escena: {
+      video: 'leyenda', video_alternativo: 'elite', titulo: 'COPA FUTURO DE ORO',
+      colores: { principal: '#1838c4', secundario: '#071451', acento: '#f5d77a', fondo: '#030820', luz: '#e9c46a', texto: '#fffaf0' },
       particulas: 90, intensidad: 1.2,
     },
   },

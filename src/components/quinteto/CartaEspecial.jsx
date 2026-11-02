@@ -1,7 +1,7 @@
 import React, { useId, useState } from 'react';
 import { FAMILIAS, familiaDe } from '../../analytics/especialesCartas';
 
-/* LAS CARTAS ESPECIALES (Goleadores, Asistidores, Presencia, MVP, Recuperadores, Héroes, Halloween)
+/* LAS CARTAS ESPECIALES (Goleadores, Asistidores, Presencia, MVP, Recuperadores, Héroes, Halloween, TOTY, Copa Futuro)
  *
  * Misma técnica que CartaPremio, para que se exporten igual en las placas:
  *   · capa de atrás: un <svg> con la forma, el metal y la luz de la familia;
@@ -38,6 +38,8 @@ const FORMAS = {
   retrato: 'M26,0 L294,0 A26,26 0 0 0 320,26 L320,454 A26,26 0 0 0 294,480 L26,480 A26,26 0 0 0 0,454 L0,26 A26,26 0 0 0 26,0 Z',
   // Halloween: el borde de arriba son las alas de un murciélago (orejas al centro)
   murcielago: 'M0,18 Q36,58 72,30 Q100,62 128,34 L144,6 L152,26 L168,26 L176,6 L192,34 Q220,62 248,30 Q284,58 320,18 L320,446 L286,480 L34,480 L0,446 Z',
+  // TOTY: borde de arriba con el lugar de la cresta, costados rectos y abajo las puntas doradas, como un trofeo
+  trofeo: 'M14,34 L112,34 L128,14 L160,4 L192,14 L208,34 L306,34 L306,368 L320,384 L300,394 L314,414 L290,416 L296,438 L160,480 L24,438 L30,416 L6,414 L20,394 L0,384 L14,368 Z',
 };
 /* El borde interior: la misma silueta, un poco adentro. */
 const INTERIOR = 'translate(11,11) scale(0.93125,0.954)';
@@ -52,6 +54,7 @@ const FOTO = {
   escudo: { top: 26, left: 26, w: 268, h: 236, radio: '6px 6px 0 0' },
   retrato: { top: 40, left: 32, w: 256, h: 234, radio: '128px 128px 0 0' }, // la foto en arco, como un retrato de época
   murcielago: { top: 56, left: 26, w: 268, h: 218, radio: '10px 10px 0 0' },
+  trofeo: { top: 50, left: 30, w: 260, h: 226, radio: '8px 8px 0 0' },
 };
 
 /* Dónde va cada bloque de texto (el escudo se angosta abajo, la corona tiene laureles). */
@@ -61,6 +64,7 @@ const LAYOUT = {
   corona: { cinta: 316, numero: 344, secundarios: 394, pie: 440, margen: 40, margenPie: 70 },
   retrato: { cinta: 314, numero: 350, secundarios: 398, pie: 440, margen: 36, margenPie: 60 },
   murcielago: { cinta: 312, numero: 346, secundarios: 398, pie: 446, margen: 34, margenPie: 50 },
+  trofeo: { cinta: 310, numero: 344, secundarios: 396, pie: 432, margen: 40, margenPie: 70 },
 };
 
 const iniciales = (c) => `${(c.nombre || '?')[0] || ''}${(c.apellido || '')[0] || ''}`.toUpperCase();
@@ -154,7 +158,7 @@ export default function CartaEspecial({ carta, tipo, ancho = W, compacta = false
       </svg>
 
       {/* media y puesto (como todas las cartas del juego) */}
-      <div style={{ position: 'absolute', left: px(36), top: px(fam.forma === 'corona' ? 78 : fam.forma === 'murcielago' ? 62 : 48), lineHeight: 1, textShadow: '0 2px 8px rgba(0,0,0,.65)' }}>
+      <div style={{ position: 'absolute', left: px(36), top: px(fam.forma === 'corona' ? 78 : fam.forma === 'murcielago' ? 62 : fam.forma === 'trofeo' ? 58 : 48), lineHeight: 1, textShadow: '0 2px 8px rgba(0,0,0,.65)' }}>
         <div style={{ fontSize: px(60), fontWeight: 900, letterSpacing: '-0.03em', color: c.media }}>{carta.ovr ?? '—'}</div>
         <div style={{ fontSize: px(20), fontWeight: 800, letterSpacing: '0.1em', marginTop: px(4) }}>{carta.rol}</div>
       </div>
@@ -311,9 +315,71 @@ function Textura({ fam, g }) {
           <rect width={W} height={H} fill={`url(#${g('vineta')})`} />
         </g>
       );
+    case 'cristales': // TOTY: destellos y un ala de cristales azules con filo dorado que cruza la carta
+      return (
+        <g>
+          <Destellos color={c.estrellas} />
+          <Ala c={c} />
+          <rect y="300" width={W} height="180" fill="#020724" fillOpacity="0.35" />
+        </g>
+      );
+    case 'marmol': // Copa Futuro (TOTY Icons): mármol blanco con vetas doradas
+      return (
+        <g fill="none" stroke={c.detalle}>
+          <path d="M-10,120 C60,90 90,160 160,130 C220,104 250,150 330,118" strokeOpacity="0.55" strokeWidth="1.6" />
+          <path d="M-10,128 C70,104 96,170 166,140" strokeOpacity="0.3" strokeWidth="0.8" />
+          <path d="M-10,300 C40,270 110,330 170,296 C230,262 270,318 330,286" strokeOpacity="0.5" strokeWidth="1.4" />
+          <path d="M40,480 C70,420 40,380 96,340 C140,308 120,260 168,236" strokeOpacity="0.35" strokeWidth="1" />
+          <path d="M330,420 C280,400 290,360 236,346 C196,336 210,300 180,282" strokeOpacity="0.3" strokeWidth="0.9" />
+          <path d="M-10,40 C50,60 40,20 110,30" strokeOpacity="0.25" strokeWidth="0.8" />
+          <path d="M210,10 C230,60 290,50 330,80" strokeOpacity="0.3" strokeWidth="1" />
+          <rect width={W} height={H} fill="#ffffff" fillOpacity="0.05" stroke="none" />
+        </g>
+      );
     default:
       return null;
   }
+}
+
+/* Destellos: puntitos de luz como el fondo de la TOTY. */
+function Destellos({ color }) {
+  const puntos = [];
+  let s = 7;
+  for (let i = 0; i < 70; i += 1) {
+    s = (s * 16807) % 2147483647; const x = (s / 2147483647) * W;
+    s = (s * 16807) % 2147483647; const y = (s / 2147483647) * H;
+    s = (s * 16807) % 2147483647; const r = 0.4 + (s / 2147483647) * 1.6;
+    puntos.push([x, y, r, (i % 5) / 5]);
+  }
+  return <g fill={color}>{puntos.map(([x, y, r, o], i) => <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r={r.toFixed(2)} fillOpacity={0.25 + o * 0.6} />)}</g>;
+}
+
+/* El ala de la TOTY: dos filas de cristales en forma de chevron que siguen
+   una curva de abajo a la izquierda hasta arriba a la derecha; los primeros,
+   dorados. La de atrás, más chica y oscura, le da profundidad. */
+function Ala({ c, desde = -0.05, hasta = 1.05, n = 24, escala = 1 }) {
+  const fila = (k, dy, esc, oscura) => Array.from({ length: n }, (_, i) => {
+    const t = desde + ((hasta - desde) * i) / (n - 1);
+    const x = -14 + t * 348;
+    const y = 338 - 220 * Math.sin(t * Math.PI * 0.82) - t * 46 + dy;
+    const ang = -42 + t * 64;
+    const h = (30 + 14 * Math.sin(t * Math.PI)) * escala * esc;
+    const dorado = !oscura && i < Math.round(n * 0.2);
+    return { x, y, ang, h, dorado, key: `${k}${i}`, color: oscura ? c.cristal[2] : c.cristal[i % 2] };
+  });
+  const piezas = [...fila('b', 22, 0.78, true), ...fila('a', 0, 1, false)];
+  return (
+    <g>
+      {piezas.map((p) => (
+        <g key={p.key} transform={`translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${p.ang.toFixed(1)})`}>
+          <polygon points={`0,${(-p.h).toFixed(1)} ${(p.h * 0.62).toFixed(1)},0 0,${p.h.toFixed(1)} ${(p.h * 0.3).toFixed(1)},0`}
+            fill={p.dorado ? c.detalle : p.color}
+            stroke={p.dorado ? '#fff6d6' : c.detalle} strokeWidth="1.3" strokeOpacity="0.9" />
+          <polygon points={`0,${(-p.h).toFixed(1)} ${(p.h * 0.62).toFixed(1)},0 ${(p.h * 0.3).toFixed(1)},0`} fill="#ffffff" fillOpacity={p.dorado ? 0.35 : 0.18} />
+        </g>
+      ))}
+    </g>
+  );
 }
 
 /* ── adornos del marco (delante de la foto) ── */
@@ -380,9 +446,54 @@ function Adorno({ fam }) {
           ))}
         </g>
       );
+    case 'cresta': // TOTY: la cresta dorada arriba al centro y el ala que asoma sobre la foto
+      return (
+        <g>
+          <g opacity="0.95"><Ala c={c} desde={0.86} hasta={1.1} n={6} escala={0.85} /></g>
+          <Cresta c={c} />
+        </g>
+      );
+    case 'cristalesIcono': // Copa Futuro: cristales azules en la esquina de arriba y la de abajo
+      return (
+        <g>
+          <g transform="translate(262,58) scale(1.25)"><Racimo c={c} /></g>
+          <g transform="translate(34,446) rotate(180) scale(0.85)"><Racimo c={c} /></g>
+          <Cresta c={c} texto="CF" />
+        </g>
+      );
     default:
       return null;
   }
+}
+
+/* La cresta de la TOTY: un escudo dorado con las letras, arriba al centro. */
+function Cresta({ c, texto = null }) {
+  return (
+    <g transform="translate(160,30)">
+      <path d="M-22,-20 L22,-20 L22,4 C22,16 10,24 0,28 C-10,24 -22,16 -22,4 Z" fill={c.cinta === '#0b1a52' ? '#0b1a52' : '#071451'} stroke={c.filo} strokeWidth="2.4" />
+      {texto
+        ? <text x="0" y="8" textAnchor="middle" fontFamily={FUENTE} fontWeight="900" fontSize="15" fill={c.filo} letterSpacing="1">{texto}</text>
+        : (
+          <g fill={c.filo} fontFamily={FUENTE} fontWeight="900" fontSize="10.5" textAnchor="middle" letterSpacing="0.5">
+            <text x="0" y="-5">TO</text>
+            <text x="0" y="8">TY</text>
+          </g>
+        )}
+    </g>
+  );
+}
+
+/* Un racimo de cristales azules (TOTY Icons). */
+function Racimo({ c }) {
+  const ps = [[0, 0, 40, -20], [16, 10, 30, 10], [-14, 14, 34, -45], [28, -10, 26, 35], [6, 28, 24, -5], [-26, -4, 22, -70]];
+  return (
+    <g>
+      {ps.map(([x, y, h, a], i) => (
+        <polygon key={i} transform={`translate(${x},${y}) rotate(${a})`} points={`0,${-h} ${h * 0.4},0 0,${h} ${-h * 0.4},0`}
+          fill={c.cristal[i % 3]} fillOpacity="0.95" stroke="#e9c46a" strokeWidth="1.2" />
+      ))}
+    </g>
+  );
 }
 
 /* ── insignias (centradas en 0,0, ~56 px) ── */
@@ -468,6 +579,8 @@ function Insignia({ fam, g }) {
           <path d="M-10,5 L-6,9 L-3,6 L0,10 L3,6 L6,9 L10,5 L6,12 L0,13 L-6,12 Z" fill="#fde047" />
         </g>
       );
+    case 'ninguna': // la TOTY lleva la cresta arriba, no insignia al costado
+      return null;
     default:
       return fondo;
   }

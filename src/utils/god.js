@@ -26,6 +26,11 @@ export async function listarCatalogo(clubId) {
   const leer = (columnas) => fetchPaginado(() => supabase.from('cartas_catalogo')
     .select(columnas).eq('club_id', clubId).order('clave', { ascending: true }));
   try {
+    return await leer('id, clave, jugador_id, tipo, rareza, carta, activa, exclusiva_evento, actualizada_at, creada_at');
+  } catch (errCreada) {
+    if (!falta(errCreada)) throw errCreada;   // sin 20261111120000 todavía: sin creada_at (se ordena por actualizada_at)
+  }
+  try {
     return await leer('id, clave, jugador_id, tipo, rareza, carta, activa, exclusiva_evento, actualizada_at');
   } catch (err0) {
     if (!falta(err0)) throw err0;
@@ -42,6 +47,27 @@ export async function activarCartas(ids, activa) {
   const { data, error } = await supabase.from('cartas_catalogo').update({ activa }).in('id', ids).select('id');
   if (error) lanzar(error);
   return (data || []).length;
+}
+
+export const MENSAJE_SIN_ELIMINAR = 'Falta la migración 20261110120000_cartas_eliminar.sql en Supabase (eliminar cartas).';
+
+/** Elimina cartas para siempre y devuelve V-Coins a sus dueños (puntos de la rareza × factor por copia).
+    Con `simular` no toca nada: devuelve { cartas, duenos, copias, vcoins } para confirmar antes. */
+export async function eliminarCartas(clubId, ids, { factor = 2, motivo = null, simular = false } = {}) {
+  const { data, error } = await supabase.rpc('god_eliminar_cartas',
+    { p_club: clubId, p_ids: ids, p_factor: factor, p_motivo: motivo, p_simular: simular });
+  if (error) {
+    if (falta(error) || error.code === 'PGRST202') throw new Error(MENSAJE_SIN_ELIMINAR);
+    throw error;
+  }
+  return data;
+}
+
+/** Las claves de las cartas eliminadas (para no volver a ofrecerlas). Sin la migración, ninguna. */
+export async function listarEliminadas(clubId) {
+  const { data, error } = await supabase.from('cartas_eliminadas').select('clave').eq('club_id', clubId);
+  if (error) return new Set();
+  return new Set((data || []).map((f) => f.clave));
 }
 
 /** Map clave → { ovr, motivo }. */

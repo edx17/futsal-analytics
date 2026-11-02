@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import CartaJugador from '../quinteto/CartaJugador';
 import CartaEspecial from '../quinteto/CartaEspecial';
 import { SOBRES, MONEDA } from '../../analytics/sobres';
-import { esEspecial } from '../../analytics/especialesCartas';
+import { conDisenoEspecial } from '../../analytics/especialesCartas';
 import { ESCENAS_BASE } from '../../analytics/eventos';
-import { aplicarAjuste, pendientesDePublicar } from '../../analytics/god';
+import { aplicarAjuste, pendientesDePublicar, ordenarCatalogo, ORDENES_CATALOGO, esNueva, DIAS_NUEVA } from '../../analytics/god';
 import { TIPOS_EDITABLES, CON_COSTO, REGLAS_TIPO, normalizarTipo, reglasDeTipo } from '../../analytics/tiposSobre';
-import { listarCatalogo, activarCartas, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, guardarConfigSobres } from '../../utils/god';
+import { listarCatalogo, activarCartas, listarAjustes, guardarAjuste, quitarAjuste, leerConfigSobres, guardarConfigSobres, listarEliminadas } from '../../utils/god';
 import { listarFotos, subirFotoEspecial } from '../../utils/cartasFotos';
 import { listarHistorial } from '../../utils/cartasDestacadas';
 import { publicarCatalogo } from '../../utils/sobres';
@@ -38,14 +38,14 @@ export default function PanelClub({ clubId, alCambiar }) {
 
   const cargar = useCallback(async () => {
     try {
-      const [catalogo, ajustes, fotos, historial, config] = await Promise.all([
+      const [catalogo, ajustes, fotos, historial, config, eliminadas] = await Promise.all([
         listarCatalogo(clubId), listarAjustes(clubId).catch(() => new Map()), listarFotos(clubId).catch(() => new Map()),
-        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null),
+        listarHistorial(clubId).catch(() => []), leerConfigSobres(clubId).catch(() => null), listarEliminadas(clubId),
       ]);
-      setDatos({ catalogo, ajustes, fotos, historial, config: config || { suspendidos: [], evento_activo: null, tipos: {} } });
+      setDatos({ catalogo, ajustes, fotos, historial, eliminadas, config: config || { suspendidos: [], evento_activo: null, tipos: {} } });
     } catch (err) {
       setAviso({ texto: err?.message || 'No se pudo leer.', error: true });
-      setDatos({ catalogo: [], ajustes: new Map(), fotos: new Map(), historial: [], config: { suspendidos: [], tipos: {} } });
+      setDatos({ catalogo: [], ajustes: new Map(), fotos: new Map(), historial: [], eliminadas: new Set(), config: { suspendidos: [], tipos: {} } });
     }
   }, [clubId]);
 
@@ -73,19 +73,21 @@ export default function PanelClub({ clubId, alCambiar }) {
 
 /* ── CARTAS ── */
 function Cartas({ clubId, datos, recargar, avisar }) {
-  const { catalogo, ajustes, fotos, historial } = datos;
+  const { catalogo, ajustes, fotos, historial, eliminadas } = datos;
   const [filtro, setFiltro] = useState('todas');
   const [buscar, setBuscar] = useState('');
+  const [orden, setOrden] = useState('nuevas'); // las recién publicadas arriba
   const [limite, setLimite] = useState(POR_PAGINA);
   const [ocupado, setOcupado] = useState(null);
   const [media, setMedia] = useState(null); // { clave, valor }
 
-  const pendientes = useMemo(() => pendientesDePublicar(historial, catalogo, fotos), [historial, catalogo, fotos]);
+  const pendientes = useMemo(() => pendientesDePublicar(historial, catalogo, fotos, [], eliminadas), [historial, catalogo, fotos, eliminadas]);
   const lista = useMemo(() => catalogo
     .filter((k) => (filtro === 'todas' ? k.activa !== false : filtro === 'especiales' ? k.tipo !== 'BASE' && k.activa !== false : k.activa === false))
     .filter((k) => !buscar || `${k.carta?.apellido} ${k.carta?.nombre}`.toLowerCase().includes(buscar.toLowerCase()))
     .map((k) => ({ ...k, vista: aplicarAjuste({ atributos: [], stats: {}, ...(k.carta || {}), foto: fotos.get(k.clave) || k.carta?.foto }, ajustes.get(k.clave)) })),
   [catalogo, ajustes, fotos, filtro, buscar]);
+  const ordenadas = useMemo(() => ordenarCatalogo(lista, orden, (k) => k.vista.ovr), [lista, orden]);
 
   const hacer = async (id, fn, ok) => {
     setOcupado(id); avisar(null);
@@ -119,16 +121,20 @@ function Cartas({ clubId, datos, recargar, avisar }) {
           <button key={id} onClick={() => { setFiltro(id); setLimite(POR_PAGINA); }} style={chip(filtro === id)}>{t}</button>
         ))}
         <input value={buscar} onChange={(e) => { setBuscar(e.target.value); setLimite(POR_PAGINA); }} placeholder="Buscar jugador" style={{ ...campo, width: 170 }} />
+        <select value={orden} onChange={(e) => { setOrden(e.target.value); setLimite(POR_PAGINA); }} style={{ ...campo, width: 'auto' }} aria-label="Orden">
+          {ORDENES_CATALOGO.map(([id, t]) => <option key={id} value={id}>{t}</option>)}
+        </select>
         <span style={{ marginLeft: 'auto', ...dim, fontFamily: MONO }}>{lista.length}</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 }}>
-        {lista.slice(0, limite).map((k) => {
+        {ordenadas.slice(0, limite).map((k) => {
           const c = k.vista;
           const fuera = k.activa === false;
           return (
             <div key={k.clave} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, opacity: fuera ? 0.5 : 1 }}>
-              {esEspecial(k.tipo) ? <CartaEspecial carta={c} tipo={k.tipo} ancho={130} /> : <CartaJugador carta={c} chica />}
+              {esNueva(k) && <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '.06em', padding: '2px 6px', borderRadius: 4, background: '#22c55e', color: '#052e16' }} title={`Apareció en los últimos ${DIAS_NUEVA} días`}>NUEVA</span>}
+              {conDisenoEspecial(k.tipo) ? <CartaEspecial carta={c} tipo={k.tipo} ancho={130} /> : <CartaJugador carta={c} chica />}
               {c.ovrAjustada && <span style={{ ...dim, fontSize: 10 }}>media corregida (era {c.ovrCalculada})</span>}
               {media?.clave === k.clave ? (
                 <div style={{ display: 'flex', gap: 4 }}>

@@ -41,7 +41,7 @@ export const RACHA_PARA_PREMIO = 7;
 /* Cuántas cartas trae cada sobre. Pocas a propósito: así cuesta completar. */
 export const SOBRES = {
   diario: { id: 'diario', nombre: 'SOBRE DIARIO', cartas: 3, ayuda: 'Uno por día. Si no lo abrís hoy, se pierde.' },
-  wellness: { id: 'wellness', nombre: 'SOBRE WELLNESS', cartas: 3, ayuda: 'Completá el wellness de hoy y ganás otro. Se pierde si no lo abrís hoy.' },
+  wellness: { id: 'wellness', nombre: 'SOBRE WELLNESS', cartas: 3, ayuda: 'Completá el wellness de hoy y ganás otro: siempre trae una carta que no tenés. Se pierde si no lo abrís hoy.' },
   racha: { id: 'racha', nombre: 'SOBRE DE LA SEMANA', cartas: 4, ayuda: 'Entrá 7 días seguidos. Se abre el día que completás la semana.' },
   puntos: { id: 'puntos', nombre: 'SOBRE POR V-COINS', cartas: 3, ayuda: `Se paga con ${COSTO_SOBRE_PUNTOS} ${MONEDA} de cartas repetidas.` },
   mega: { id: 'mega', nombre: 'MEGA SOBRE ESPECIAL', cartas: 10, costo: COSTO_MEGA, soloEspeciales: true,

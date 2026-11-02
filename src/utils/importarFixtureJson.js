@@ -309,7 +309,8 @@ export function crucesDeLiga(filas) {
     estadio: p.estadio,
     goleadores_local: p.goleadores_local,
     goleadores_visitante: p.goleadores_visitante,
-    fase: p.fase || null,
+    // Una etapa sin fase de copa (triangular, grupos de la Copa Futuro) se nombra con la etapa y la fecha.
+    fase: p.fase || (p.etapa ? `${p.etapa}${p.jornada ? ` F${p.jornada}` : ''}` : null),
     partido_playoff: p.partido_playoff || null,
   }))));
 }
