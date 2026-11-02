@@ -135,5 +135,14 @@
   .rp-impresion .rp-tabla-caja { overflow: visible; }
   .rp-impresion .rp-tabla thead { display: table-header-group; }
   .rp-impresion .rp-tabla td { white-space: normal; }
-  @page { size: A4; margin: 12mm; }
+  /* logo y pie en cada hoja */
+  .rp-hoja { width: 100%; border-collapse: collapse; }
+  .rp-hoja > thead > tr > td, .rp-hoja > tfoot > tr > td, .rp-hoja > tbody > tr > td { padding: 0; }
+  .rp-hoja-lugar-cabeza { height: 14mm; }
+  .rp-hoja-lugar-pie { height: 9mm; }
+  .rp-hoja-cabeza { position: fixed; top: 0; right: 0; height: 10mm; display: flex; align-items: center; }
+  .rp-hoja-cabeza img { height: 10mm; width: 10mm; border-radius: 2mm; }
+  .rp-hoja-pie { position: fixed; bottom: 0; left: 0; right: 0; height: 6mm; display: flex; align-items: center; justify-content: center;
+    border-top: 1px solid var(--rp-borde); font-size: 0.62rem; color: var(--rp-dim); }
+  @page { size: A4; margin: 10mm 12mm; }
 }

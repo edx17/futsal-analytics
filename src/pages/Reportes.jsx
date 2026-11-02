@@ -24,8 +24,9 @@ import '../reportes/reportes.css';
  * Jugador, categoría, club, torneo y comparativo (jugador contra jugador).
  */
 
-function DocumentoReporte({ reporte }) {
-  return (
+function DocumentoReporte({ reporte, paraImprimir = false }) {
+  const pie = `${reporte.titulo} · ${reporte.subtitulo} · para ${AUDIENCIAS.find((a) => a.id === reporte.audiencia)?.nombre.toLowerCase()} · VirtualClub`;
+  const cuerpo = (
     <div className="rp-imprimible" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {reporte.secciones.map((s) => (
         <section key={s.id} className="rp-seccion">
@@ -33,10 +34,23 @@ function DocumentoReporte({ reporte }) {
           {s.bloques.map((b, k) => <Bloque key={`${s.id}-${k}`} b={b} />)}
         </section>
       ))}
-      <p className="rp-pie">
-        {reporte.titulo} · {reporte.subtitulo} · para {AUDIENCIAS.find((a) => a.id === reporte.audiencia)?.nombre.toLowerCase()} · VirtualClub
-      </p>
+      {!paraImprimir && <p className="rp-pie">{pie}</p>}
     </div>
+  );
+  if (!paraImprimir) return cuerpo;
+  /* En el PDF, el logo arriba y el pie abajo se repiten en cada hoja (fijos);
+     el thead y el tfoot vacíos, que el navegador repite en cada hoja, les
+     guardan el lugar para que no tapen el reporte. */
+  return (
+    <>
+      <div className="rp-hoja-cabeza"><img src="/android-chrome-192x192.png" alt="VF" /></div>
+      <div className="rp-hoja-pie">{pie}</div>
+      <table className="rp-hoja">
+        <thead><tr><td><div className="rp-hoja-lugar-cabeza" /></td></tr></thead>
+        <tfoot><tr><td><div className="rp-hoja-lugar-pie" /></td></tr></tfoot>
+        <tbody><tr><td>{cuerpo}</td></tr></tbody>
+      </table>
+    </>
   );
 }
 
@@ -293,7 +307,7 @@ export default function Reportes() {
       {/* El PDF se imprime desde una copia colgada del <body>: la app vive en un
           contenedor de alto fijo con overflow oculto, y desde ahí el navegador
           sólo imprimía la primera hoja. */}
-      {reporte && createPortal(<div className="rp rp-impresion"><DocumentoReporte reporte={reporte} /></div>, document.body)}
+      {reporte && createPortal(<div className="rp rp-impresion"><DocumentoReporte reporte={reporte} paraImprimir /></div>, document.body)}
       {presentando && reporte && <Presentacion reporte={reporte} onCerrar={() => setPresentando(false)} />}
     </div>
   );
