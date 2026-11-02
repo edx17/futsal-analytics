@@ -115,14 +115,25 @@
   .rp-barra-pista { grid-column: 1 / -1; grid-row: 2; }
 }
 
-/* PDF: "Descargar PDF" imprime sólo el documento, en blanco. */
+/* PDF: "Descargar PDF" imprime la copia del reporte que cuelga del <body>
+   (.rp-impresion), en blanco y en tantas hojas como haga falta. En pantalla
+   esa copia no se ve; al imprimir, se oculta todo lo demás. */
+.rp-pie { font-size: 0.68rem; color: var(--rp-dim); text-align: center; }
+.rp-impresion { display: none; }
 @media print {
-  body * { visibility: hidden !important; }
-  .rp-imprimible, .rp-imprimible * { visibility: visible !important; }
-  .rp-imprimible { position: absolute; left: 0; top: 0; width: 100%; }
-  .rp-imprimible { --rp-panel: #fff; --rp-texto: #111; --rp-dim: #555; --rp-borde: #ddd; --rp-acento: #0a7a45; background: #fff; color: #111; box-sizing: border-box; padding: 0 2mm; }
-  .rp-imprimible .rp-seccion { color: #111; }
-  .rp-no-imprimir { display: none !important; }
-  .rp-seccion { box-shadow: none; }
-  @page { margin: 12mm; }
+  html, body, #root { height: auto !important; min-height: 0 !important; overflow: visible !important; background: #fff !important; }
+  body > *:not(.rp-impresion) { display: none !important; }
+  .rp-impresion { display: block; position: static; width: 100%;
+    --rp-panel: #fff; --rp-texto: #111; --rp-dim: #555; --rp-borde: #ddd; --rp-acento: #0a7a45;
+    background: #fff; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rp-impresion .rp-imprimible { gap: 10px !important; }
+  /* las secciones largas se parten entre hojas; lo que no se corta son las piezas chicas */
+  .rp-impresion .rp-seccion { break-inside: auto; padding: 12px; border-radius: 8px; box-shadow: none; }
+  .rp-impresion .rp-seccion-titulo, .rp-impresion .rp-bloque-titulo { break-after: avoid; page-break-after: avoid; }
+  .rp-impresion .rp-portada, .rp-impresion .rp-kpi, .rp-impresion .rp-serie, .rp-impresion .rp-barra,
+  .rp-impresion .rp-rank, .rp-impresion .rp-lista li, .rp-impresion .rp-tabla tr, .rp-impresion .rp-texto { break-inside: avoid; page-break-inside: avoid; }
+  .rp-impresion .rp-tabla-caja { overflow: visible; }
+  .rp-impresion .rp-tabla thead { display: table-header-group; }
+  .rp-impresion .rp-tabla td { white-space: normal; }
+  @page { size: A4; margin: 12mm; }
 }
