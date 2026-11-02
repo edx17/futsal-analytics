@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useDatosPlantel } from '../utils/useDatosPlantel';
@@ -22,6 +23,22 @@ import '../reportes/reportes.css';
  *
  * Jugador, categoría, club, torneo y comparativo (jugador contra jugador).
  */
+
+function DocumentoReporte({ reporte }) {
+  return (
+    <div className="rp-imprimible" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {reporte.secciones.map((s) => (
+        <section key={s.id} className="rp-seccion">
+          {s.id !== 'portada' && <h2 className="rp-seccion-titulo">{s.titulo}</h2>}
+          {s.bloques.map((b, k) => <Bloque key={`${s.id}-${k}`} b={b} />)}
+        </section>
+      ))}
+      <p className="rp-pie">
+        {reporte.titulo} · {reporte.subtitulo} · para {AUDIENCIAS.find((a) => a.id === reporte.audiencia)?.nombre.toLowerCase()} · VirtualClub
+      </p>
+    </div>
+  );
+}
 
 const TIPOS_REPORTE = [
   { id: 'jugador', nombre: 'Jugador', listo: true },
@@ -271,20 +288,12 @@ export default function Reportes() {
         {!loading && tipo === 'torneo' && !torneos.length && <p style={{ color: 'var(--text-dim)' }}>No hay torneos con partidos en {anio}.</p>}
         {!loading && ['jugador', 'comparativo'].includes(tipo) && cat && !elegibles.length && <p style={{ color: 'var(--text-dim)' }}>Nadie jugó con datos cargados en {cat} en {anio}.</p>}
 
-        {reporte && (
-          <div className="rp-imprimible" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {reporte.secciones.map((s) => (
-              <section key={s.id} className="rp-seccion">
-                {s.id !== 'portada' && <h2 className="rp-seccion-titulo">{s.titulo}</h2>}
-                {s.bloques.map((b, k) => <Bloque key={`${s.id}-${k}`} b={b} />)}
-              </section>
-            ))}
-            <p style={{ fontSize: '0.68rem', color: 'var(--text-dim)', textAlign: 'center' }}>
-              {reporte.titulo} · {reporte.subtitulo} · para {AUDIENCIAS.find((a) => a.id === reporte.audiencia)?.nombre.toLowerCase()} · VirtualClub
-            </p>
-          </div>
-        )}
+        {reporte && <DocumentoReporte reporte={reporte} />}
       </div>
+      {/* El PDF se imprime desde una copia colgada del <body>: la app vive en un
+          contenedor de alto fijo con overflow oculto, y desde ahí el navegador
+          sólo imprimía la primera hoja. */}
+      {reporte && createPortal(<div className="rp rp-impresion"><DocumentoReporte reporte={reporte} /></div>, document.body)}
       {presentando && reporte && <Presentacion reporte={reporte} onCerrar={() => setPresentando(false)} />}
     </div>
   );
