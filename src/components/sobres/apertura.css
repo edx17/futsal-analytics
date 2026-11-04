@@ -6,16 +6,24 @@
  * salen de analytics/aperturas.js.
  */
 
-.ap { position: fixed; inset: 0; z-index: 300; overflow: hidden; color: var(--ap-texto, #fff);
+.ap { position: fixed; inset: 0; z-index: 1500; overflow: hidden; height: 100dvh; box-sizing: border-box; color: var(--ap-texto, #fff);
   display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px;
   background: radial-gradient(circle at 50% 42%, var(--ap-secundario) 0%, var(--ap-fondo) 72%); }
-.ap-fase-cartas { overflow-y: auto; justify-content: flex-start; padding-top: max(24px, 6vh); }
+.ap-fase-cartas, .ap-fase-figura { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding-bottom: 0; }
+.ap-fase-cartas { justify-content: flex-start; padding-top: max(24px, 6vh); }
+.ap-fase-figura { justify-content: safe center; }
+/* los botones de cada fase: pegados abajo y siempre a la vista, aunque las
+   cartas no entren en la pantalla del celular */
+.ap-acciones { position: sticky; bottom: 0; z-index: 9; align-self: stretch; margin: auto -16px 0; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 26px 16px calc(16px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--ap-fondo, #000) 55%, transparent); }
+.ap-acciones .ap-btn { min-width: min(280px, 100%); min-height: 48px; font-size: .9rem; }
+.ap-acciones-premio { color: #fbbf24; font-weight: 900; }
 
 /* el nombre del sobre, siempre escrito (no sólo el color) */
 .ap-rotulo { position: absolute; top: max(18px, 4vh); left: 0; right: 0; text-align: center; z-index: 8; pointer-events: none;
   font-size: 12px; font-weight: 900; letter-spacing: .32em; color: var(--ap-texto); text-shadow: 0 0 14px var(--ap-luz); opacity: .9; }
-.ap-saltar { position: absolute; bottom: max(22px, 5vh); left: 50%; transform: translateX(-50%); z-index: 20;
-  padding: 10px 22px; min-height: 42px; border-radius: 999px; cursor: pointer; font-weight: 900; font-size: .8rem; letter-spacing: .14em;
+.ap-saltar { position: absolute; bottom: calc(max(22px, 4vh) + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 20;
+  padding: 12px 30px; min-height: 48px; min-width: 150px; border-radius: 999px; cursor: pointer; font-weight: 900; font-size: .8rem; letter-spacing: .14em;
   background: rgba(0,0,0,.45); color: #e5e7eb; border: 1px solid rgba(255,255,255,.28); backdrop-filter: blur(4px); }
 .ap-saltar:hover, .ap-saltar:focus-visible { border-color: var(--ap-luz); color: #fff; outline: none; box-shadow: 0 0 0 2px var(--ap-luz); }
 
@@ -85,7 +93,7 @@
 
 /* ── la mejor carta: aparece sola en la luz del final del pasillo ─────────── */
 .ap-fase-figura { background: radial-gradient(ellipse at 50% 38%, color-mix(in srgb, var(--ap-luz) 22%, #000) 0%, #000 62%); }
-.ap-mejor { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.ap-mejor { position: relative; z-index: 5; width: 100%; flex: 1 0 auto; justify-content: center; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .ap-mejor-luz { position: fixed; inset: 0; pointer-events: none; background: #fff; animation: ap-mejor-destello .9s ease-out forwards; }
 .ap-mejor-rayos { position: absolute; left: 50%; top: 46%; width: 760px; height: 760px; margin: -380px 0 0 -380px; pointer-events: none; opacity: .5;
   background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--ap-luz) 55%, transparent) 0 6deg, transparent 6deg 22deg);
@@ -97,6 +105,7 @@
 .ap-mejor-datos { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; animation: ap-aparece .5s .7s both; }
 .ap-mejor-datos b { font-size: 1.6rem; letter-spacing: .14em; color: #fff; text-shadow: 0 0 18px var(--ap-luz); }
 .ap-mejor-datos span { font-size: 12px; font-weight: 900; letter-spacing: .08em; }
+.ap-mejor .ap-acciones { margin-top: 0; }
 .ap-mejor .ap-btn { animation: ap-aparece .4s 1s both; }
 .ap-excepcional .ap-mejor-rayos { opacity: .85; animation-duration: 7s, .8s; }
 @keyframes ap-mejor-destello { 0% { opacity: .95; } 100% { opacity: 0; } }
@@ -113,7 +122,7 @@
 }
 
 /* ── las cartas (la mecánica de siempre) ─────────────────────────────────── */
-.ap-cartas { position: relative; z-index: 5; display: flex; flex-direction: column; align-items: center; width: 100%; animation: ap-cartas-entra .45s ease-out; }
+.ap-cartas { position: relative; z-index: 5; flex: 1 0 auto; display: flex; flex-direction: column; align-items: center; width: 100%; animation: ap-cartas-entra .45s ease-out; }
 .ap-cartas-titulo { color: #fff; font-weight: 900; letter-spacing: .1em; margin-bottom: 6px; text-shadow: 0 0 14px var(--ap-luz); }
 .ap-cartas-ayuda { color: #9ca3af; font-size: 12px; margin-bottom: 22px; text-align: center; }
 .ap-cartas-fila { position: relative; z-index: 6; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; margin-bottom: 30px; max-width: 900px; }

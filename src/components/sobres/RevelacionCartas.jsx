@@ -81,10 +81,12 @@ export default function RevelacionCartas({ resultado, variante, onCerrar, yaDada
           </div>
         ))}
       </div>
-      {todas && resultado.puntos_ganados > 0 && (
-        <div style={{ color: '#fbbf24', fontWeight: 900, marginBottom: 14 }}>+{resultado.puntos_ganados} {MONEDA} por repetidas</div>
-      )}
-      <div style={{ display: 'flex', gap: 10 }}>
+      {/* Los botones quedan siempre a la vista, pegados abajo: en el celular
+          las cartas no entran y no hace falta bajar para encontrarlos. */}
+      <div className="ap-acciones">
+        {todas && resultado.puntos_ganados > 0 && (
+          <div className="ap-acciones-premio">+{resultado.puntos_ganados} {MONEDA} por repetidas</div>
+        )}
         {!todas && <button onClick={darTodas} className="ap-btn ap-btn-sec">DAR VUELTA TODAS</button>}
         {todas && <button onClick={onCerrar} className="ap-btn" autoFocus>LISTO</button>}
       </div>
