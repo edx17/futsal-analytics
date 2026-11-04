@@ -32,9 +32,11 @@ export default function MejorCarta({ carta, variante, restantes, onSeguir }) {
           {carta.nueva ? 'NUEVA' : `REPETIDA · +${carta.puntos} ${MONEDA.toUpperCase()}`}
         </span>
       </div>
-      <button className="ap-btn" onClick={onSeguir} autoFocus>
-        {restantes > 0 ? `VER LAS ${restantes} QUE QUEDAN` : 'SEGUIR'}
-      </button>
+      <div className="ap-acciones">
+        <button className="ap-btn" onClick={onSeguir} autoFocus>
+          {restantes > 0 ? `VER LAS ${restantes} QUE QUEDAN` : 'SEGUIR'}
+        </button>
+      </div>
     </div>
   );
 }

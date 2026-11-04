@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { varianteDeApertura, ajustarVariante, guionDe, indiceMejorCarta } from '../../analytics/aperturas';
 import { varianteDeEventoDb, varianteDeEscena } from '../../analytics/eventos';
 import { menosMovimiento, equipoLiviano } from '../../utils/preferenciasApertura';
@@ -79,7 +80,10 @@ export default function AperturaSobre({ resultado, prefs, evento = null, forzar 
     ...Object.fromEntries(Object.entries(variante.tiempos).map(([k, ms]) => [`--t-${k}`, `${ms}ms`])),
   };
 
-  return (
+  /* Va colgada del <body>: dentro de la página quedaba debajo de la barra de
+     abajo de la app (Inicio, Hoy, Stats, Menú), que tapaba SALTAR y LISTO en
+     el celular. */
+  return createPortal(
     <div className={`ap ap-modo-${variante.modo} ap-v-${claseSegura(variante.id)} ap-fase-${fase}${variante.latido ? ' ap-latido' : ''}${variante.excepcional ? ' ap-excepcional' : ''}`}
       style={vars} role="dialog" aria-modal="true" aria-label={`Apertura: ${variante.nombre}`}>
       {fase === 'video' && (
@@ -105,6 +109,7 @@ export default function AperturaSobre({ resultado, prefs, evento = null, forzar 
       {fase === 'cartas' && (
         <RevelacionCartas resultado={resultado} variante={variante} onCerrar={onCerrar} yaDada={conVideo ? mejor : -1} />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
