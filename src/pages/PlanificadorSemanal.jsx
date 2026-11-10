@@ -2113,6 +2113,7 @@ const PlanificadorSemanal = () => {
                       Mostrar solo las recomendadas para <strong style={{ color: 'var(--text)' }}>{nuevaSesion.categoria_equipo}</strong>
                     </label>
 
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', margin: '0 0 6px' }}>Tocá una tarea para ver de qué se trata · con <b style={{ color: 'var(--accent)' }}>+</b> la agregás a la sesión.</div>
                     <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', flex: 1, minHeight: esMovil ? '300px' : '400px', maxHeight: '500px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {tareasFiltradas.length === 0 && <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem', textAlign: 'center', marginTop: '30px' }}>No se encontraron tareas.</span>}
                       
@@ -2120,7 +2121,12 @@ const PlanificadorSemanal = () => {
                         const isSelected = nuevaSesion.tareas_ids?.includes(t.id);
                         const recomendadaExacta = t.categoria_recomendada && t.categoria_recomendada !== 'Todas' && t.categoria_recomendada === nuevaSesion.categoria_equipo;
                         return (
-                          <div key={t.id} onClick={() => toggleTarea(t.id)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: isSelected ? 'rgba(0, 255, 136, 0.1)' : 'var(--panel)', border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)' }}>
+                          /* Tocar la tarea abre su detalle (de qué se trata); el botón
+                             redondo de la derecha la agrega o la saca de la sesión. */
+                          <div key={t.id} role="button" tabIndex={0} onClick={() => setTareaSeleccionadaDetalle(t)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') setTareaSeleccionadaDetalle(t); }}
+                            title="Ver de qué se trata"
+                            style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: isSelected ? 'rgba(0, 255, 136, 0.1)' : 'var(--panel)', border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)' }}>
                             <div style={{ width: '50px', height: '38px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {t.video_mp4_url ? (
                                 <video src={t.video_mp4_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -2132,6 +2138,7 @@ const PlanificadorSemanal = () => {
                             </div>
                             <div style={{ flex: 1, overflow: 'hidden' }}>
                               <span style={{ display: 'block', fontSize: '0.85rem', color: isSelected ? 'var(--text)' : 'var(--text-dim)', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.titulo}</span>
+                              {resumenTarea(t) && <span style={resumenTareaStyle}>{resumenTarea(t)}</span>}
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
                                 {etiquetaFase(t) && <span style={{ ...pillStyle, color: colorFase(leerFase(t).fase), borderColor: '#2a4a3a' }}>{etiquetaFase(t)}</span>}
                                 {t.formato_tarea && <span style={{ ...pillStyle, color: '#22d3ee', borderColor: '#0e7490' }}>{etiquetaFormato(t.formato_tarea)}</span>}
@@ -2140,9 +2147,13 @@ const PlanificadorSemanal = () => {
                                 {recomendadaExacta && <span style={{ ...pillStyle, color: '#facc15', borderColor: '#ca8a0455', background: '#facc1515' }}><Icono nombre="diana" size="1.2em" relleno="propio" style={{ marginRight: 6 }} />{t.categoria_recomendada}</span>}
                               </div>
                             </div>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid', borderColor: isSelected ? 'var(--accent)' : 'var(--border)', background: isSelected ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                              {isSelected && <span style={{ color: '#000', fontSize: '0.9rem', fontWeight: '900' }}><Icono nombre="listo" size="1.2em" relleno="propio" /></span>}
-                            </div>
+                            <span aria-hidden="true" style={{ color: 'var(--text-dim)', flexShrink: 0, display: 'flex' }}><Icono nombre="ver" size="1.1em" relleno="propio" /></span>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); toggleTarea(t.id); }}
+                              aria-label={isSelected ? `Sacar "${t.titulo}" de la sesión` : `Agregar "${t.titulo}" a la sesión`}
+                              title={isSelected ? 'Sacar de la sesión' : 'Agregar a la sesión'}
+                              style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid', borderColor: isSelected ? 'var(--accent)' : 'var(--border)', background: isSelected ? 'var(--accent)' : 'transparent', color: isSelected ? '#000' : 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', padding: 0 }}>
+                              <Icono nombre={isSelected ? 'listo' : 'agregar'} size="1.2em" relleno="propio" />
+                            </button>
                           </div>
                         );
                       })}
@@ -2244,6 +2255,24 @@ const PlanificadorSemanal = () => {
                 </div>
               </div>
             </div>
+
+            {/* Desde el editor de la sesión: agregarla o sacarla sin volver a la lista. */}
+            {mostrarModal && modoModal !== 'ver' && (() => {
+              const enSesion = nuevaSesion.tareas_ids?.includes(tareaSeleccionadaDetalle.id);
+              return (
+                <div style={{ position: 'sticky', bottom: 0, display: 'flex', gap: '10px', padding: esMovil ? '12px 15px calc(12px + env(safe-area-inset-bottom))' : '15px 20px', background: 'var(--panel)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+                  <button type="button" onClick={() => setTareaSeleccionadaDetalle(null)} style={{ flex: '0 0 auto', padding: '14px 18px', borderRadius: '8px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', fontWeight: 'bold', cursor: 'pointer' }}>
+                    VOLVER
+                  </button>
+                  <button type="button" className={enSesion ? undefined : 'btn-action'}
+                    onClick={() => { toggleTarea(tareaSeleccionadaDetalle.id); setTareaSeleccionadaDetalle(null); }}
+                    style={{ flex: 1, padding: '14px', fontWeight: '900', borderRadius: '8px', cursor: 'pointer', ...(enSesion ? { background: 'transparent', border: '1px solid #ef4444', color: '#ef4444' } : {}) }}>
+                    <Icono nombre={enSesion ? 'borrar' : 'agregar'} size="1.1em" relleno="propio" style={{ marginRight: 6 }} />
+                    {enSesion ? 'SACAR DE LA SESIÓN' : 'AGREGAR A LA SESIÓN'}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -2258,6 +2287,9 @@ const labelStyle = { display: 'block', fontSize: '0.75rem', color: 'var(--text-d
 /* Mismos valores que la clase .campo de App.css. Se mantiene como objeto
    porque hay treinta usos que le agregan cosas con spread. */
 const inputStyle = { width: '100%', minHeight: '44px', padding: '11px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' };
+// Una línea para saber de qué se trata la tarea sin abrirla: el objetivo, o el principio de la descripción.
+const resumenTarea = (t) => String(t.objetivo_principal || t.descripcion || '').replace(/\s+/g, ' ').trim();
+const resumenTareaStyle = { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.35, marginTop: '2px' };
 const pillStyle = { fontSize: '0.65rem', background: 'var(--panel)', color: 'var(--text-dim)', padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--border)' };
 
 // Cabecera del bloque físico: toda la fila pliega y despliega el bloque.
