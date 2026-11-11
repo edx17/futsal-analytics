@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import NotasDe from '../components/notas/NotasDe';
+import { useVincularNotas } from '../utils/anotadorContexto';
 import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
 import { mapaDisponibilidad } from '../utils/disponibilidad';
@@ -546,6 +548,13 @@ const PlanificadorSemanal = () => {
     duracion_fisico: '',
     detalle_fisico: []
   });
+
+  // El anotador: la semana que se está viendo (microciclo) y, con una sesión abierta, esa sesión.
+  const lunesSemana = lunesDe(aFechaStr(fechaReferencia));
+  const ddmm = (str) => (str ? `${str.slice(8, 10)}/${str.slice(5, 7)}` : '');
+  useVincularNotas({ tipo: 'microciclo', id: lunesSemana, nombre: `Semana del ${ddmm(lunesSemana)}` });
+  useVincularNotas(mostrarModal && nuevaSesion.id
+    ? { tipo: 'sesion', id: nuevaSesion.id, nombre: `${ddmm(nuevaSesion.fecha)}${nuevaSesion.objetivo ? ` · ${nuevaSesion.objetivo}` : ''}` } : null);
 
   /* Los que no están disponibles cada día, para planificar sabiendo con quién
      se cuenta. Se cachea por fecha porque la grilla pregunta lo mismo muchas
@@ -1502,6 +1511,11 @@ const PlanificadorSemanal = () => {
         </div>
       )}
 
+      {/* LAS NOTAS DE LA SEMANA (las del anotador) */}
+      <div style={{ marginTop: '20px' }}>
+        <NotasDe tipo="microciclo" id={lunesSemana} nombre={`Semana del ${ddmm(lunesSemana)}`} titulo={`NOTAS DE LA SEMANA DEL ${ddmm(lunesSemana)}`} compacto />
+      </div>
+
       {/* MODAL PRINCIPAL: DETALLES / EDICIÓN DE SESIÓN */}
       {/* HOJA DE DÍA (vista mensual mobile) */}
       {diaSheet && (
@@ -1748,6 +1762,11 @@ const PlanificadorSemanal = () => {
                       <strong style={{color: 'var(--text)', fontSize: '0.95rem'}}>{nuevaSesion.objetivo || 'Sin definir'}</strong>
                     </div>
                   </div>
+
+                  {nuevaSesion.id && (
+                    <NotasDe tipo="sesion" id={nuevaSesion.id} titulo="NOTAS DE ESTA SESIÓN" compacto
+                      nombre={`${ddmm(nuevaSesion.fecha)}${nuevaSesion.objetivo ? ` · ${nuevaSesion.objetivo}` : ''}`} />
+                  )}
                   
                   {nuevaSesion.bloque_fisico && (
                     <div style={{ background: '#f59e0b20', padding: '15px', borderRadius: '8px', border: '1px solid #f59e0b50' }}>

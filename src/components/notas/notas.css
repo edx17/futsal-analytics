@@ -1,0 +1,60 @@
+/* ANOTADOR y paneles de notas (colores del tema de la app). */
+.nt-fab { position: fixed; right: 22px; bottom: 22px; z-index: 1200; width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
+  display: grid; place-items: center; background: var(--accent, #00ff88); color: #000; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); transition: transform .15s; }
+.nt-fab:hover { transform: scale(1.06); }
+.nt-fab-movil { right: 14px; bottom: calc(84px + env(safe-area-inset-bottom)); width: 48px; height: 48px; }
+.nt-fab-punto { position: absolute; top: 4px; right: 4px; width: 11px; height: 11px; border-radius: 50%; background: #f59e0b; border: 2px solid var(--bg, #000); }
+
+.nt-ventana { position: fixed; right: 22px; bottom: 22px; z-index: 1200; width: 360px; max-width: calc(100vw - 24px); display: flex; flex-direction: column;
+  background: var(--panel, #111); border: 1px solid var(--accent, #00ff88); border-radius: 12px; box-shadow: 0 14px 40px rgba(0, 0, 0, .6); }
+.nt-ventana-movil { left: 0; right: 0; bottom: 0; width: auto; max-width: none; border-radius: 16px 16px 0 0; border-width: 1px 0 0;
+  padding-bottom: env(safe-area-inset-bottom); z-index: 1300; }
+.nt-ventana-cab { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border, #2a2a2a);
+  cursor: move; user-select: none; font-size: .8rem; letter-spacing: .08em; }
+.nt-ventana-movil .nt-ventana-cab { cursor: default; }
+.nt-ventana-botones { display: flex; gap: 6px; }
+.nt-ventana-botones button { min-height: 32px; min-width: 36px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--border, #2a2a2a); background: transparent;
+  color: var(--text, #fff); cursor: pointer; font-weight: 800; font-size: .7rem; }
+.nt-ventana-cuerpo { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.nt-destino { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 8px 10px; border-radius: 8px; border-left: 3px solid var(--c);
+  background: color-mix(in srgb, var(--c) 10%, transparent); font-size: .8rem; }
+.nt-destino span { color: var(--text-dim, #999); }
+.nt-destino b { color: var(--c); }
+.nt-ayuda { color: var(--text-dim, #999); font-size: .72rem; line-height: 1.4; }
+.nt-ventana textarea, .nt-de textarea { width: 100%; box-sizing: border-box; resize: vertical; padding: 10px; border-radius: 8px; border: 1px solid var(--border, #2a2a2a);
+  background: var(--bg, #000); color: var(--text, #fff); font: inherit; font-size: .9rem; line-height: 1.45; }
+.nt-opciones { display: flex; flex-direction: column; gap: 6px; }
+.nt-check { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--text-dim, #aaa); cursor: pointer; }
+.nt-check input { width: 16px; height: 16px; }
+.nt-btn { min-height: 40px; padding: 0 16px; border-radius: 8px; border: none; background: var(--accent, #00ff88); color: #000; font-weight: 900; font-size: .78rem;
+  letter-spacing: .05em; cursor: pointer; }
+.nt-btn:disabled { opacity: .45; cursor: default; }
+.nt-btn-ancho { width: 100%; min-height: 44px; }
+.nt-link { background: none; border: none; color: var(--accent, #00ff88); cursor: pointer; font-size: .75rem; font-weight: 700; padding: 4px 0; }
+.nt-ok { color: #22c55e; font-size: .78rem; font-weight: 700; }
+.nt-error { color: #ef4444; font-size: .78rem; font-weight: 700; }
+
+/* el panel dentro de cada espacio */
+.nt-de { border: 1px solid var(--border, #2a2a2a); border-radius: 10px; padding: 12px; background: var(--panel, #111); display: flex; flex-direction: column; gap: 10px; }
+.nt-de-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .78rem; letter-spacing: .08em; }
+.nt-de-cab b { color: var(--accent, #00ff88); }
+.nt-nueva { display: flex; flex-direction: column; gap: 6px; }
+.nt-nueva-pie { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nt-vacio { font-size: .8rem; color: var(--text-dim, #999); }
+.nt-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.nt-nota { padding: 10px; border-radius: 8px; background: var(--bg, #000); border: 1px solid var(--border, #2a2a2a); }
+.nt-fijada { border-color: #f59e0b; }
+.nt-nota-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .7rem; color: var(--text-dim, #999); margin-bottom: 4px; }
+.nt-minuto { min-height: 28px; padding: 0 8px; border-radius: 999px; border: 1px solid #f43f5e; background: rgba(244, 63, 94, .12); color: #fb7185;
+  font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: .72rem; cursor: pointer; }
+.nt-minuto:disabled { cursor: default; }
+.nt-vinculo { font-weight: 800; color: var(--text, #fff); }
+.nt-autor { font-weight: 800; color: #38bdf8; }
+.nt-compartida { font-size: .6rem; font-weight: 900; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, .15); color: #38bdf8; }
+.nt-cuando { margin-left: auto; }
+.nt-texto { margin: 0; white-space: pre-wrap; font-size: .9rem; line-height: 1.45; color: var(--text, #fff); }
+.nt-acciones { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+.nt-acciones button { background: none; border: none; padding: 4px 0; min-height: 28px; color: var(--text-dim, #999); font-size: .72rem; font-weight: 700; cursor: pointer; }
+.nt-acciones button:hover { color: var(--text, #fff); }
+.nt-acciones .nt-borrar:hover { color: #ef4444; }
+.nt-compacto .nt-lista { max-height: 360px; overflow-y: auto; }

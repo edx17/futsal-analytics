@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import NotasDe from '../components/notas/NotasDe';
+import { useVincularNotas } from '../utils/anotadorContexto';
 import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
 import simpleheat from 'simpleheat';
@@ -1213,6 +1215,11 @@ return 'Todas';
   }, [analitica]);
 
 
+  // El anotador: con un partido abierto (y fuera del kiosco), las notas van a ese partido.
+  const nombrePartido = partidoSeleccionado
+    ? `vs ${partidoSeleccionado.rival || 'rival'}${partidoSeleccionado.fecha ? ` · ${String(partidoSeleccionado.fecha).slice(8, 10)}/${String(partidoSeleccionado.fecha).slice(5, 7)}` : ''}` : '';
+  useVincularNotas(!isKiosco && partidoSeleccionado ? { tipo: 'partido', id: partidoSeleccionado.id, nombre: nombrePartido } : null);
+
   if (!partidoSeleccionado) {
     return (
       <div style={{ animation: 'fadeIn 0.3s' }}>
@@ -2400,6 +2407,11 @@ const COLORS_ORIGEN = {
         </div>
       )}
 
+      {!isKiosco && (
+        <div style={{ marginTop: '20px' }}>
+          <NotasDe tipo="partido" id={partidoSeleccionado.id} nombre={nombrePartido} titulo="NOTAS DEL PARTIDO" compacto />
+        </div>
+      )}
     </div>
   );
 }

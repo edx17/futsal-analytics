@@ -74,6 +74,7 @@ const ROLES_JUEGO = ['superuser', 'manager', 'admin', 'ct'];
 const Comparar            = lazy(() => import('./pages/Comparar'));
 const Agenda              = lazy(() => import('./pages/Agenda'));
 const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
+const Notas               = lazy(() => import('./pages/Notas'));
 const KioscoTorneo        = lazy(() => import('./pages/KioscoTorneo'));
 const KioscoMisDatos      = lazy(() => import('./pages/KioscoMisDatos'));
 const KioscoMisPagos      = lazy(() => import('./pages/KioscoMisPagos'));
@@ -87,6 +88,7 @@ import BarraCuentaJuego from './juegos/BarraCuentaJuego';
 import { errorDeEntrada } from './utils/cuentasJuego';
 import VisorManual from './components/VisorManual';
 import { ROLES_PLATA, manejaPlata } from './analytics/tesoreria';
+import Anotador from './components/notas/Anotador';
 import { Icono } from './iconos';
 
 // ==========================================
@@ -170,6 +172,7 @@ function AppRoutes() {
       <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
       <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
       <Route path="/videoanalisis" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Videoanalisis /></ProtectedRoute>} />
+      <Route path="/notas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Notas /></ProtectedRoute>} />
 
       <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={ROLES_PLATA}><Tesoreria /></ProtectedRoute>} />
       <Route path="/sponsors" element={<ProtectedRoute allowedRoles={ROLES_PLATA}><Sponsors /></ProtectedRoute>} />
@@ -690,6 +693,9 @@ useEffect(() => {
         </LimiteDeError>
         </div>
       </main>
+
+      {/* EL ANOTADOR: el botón flotante para tomar notas desde cualquier pantalla (sólo el cuerpo técnico). */}
+      <Anotador esMovil={esMovil} />
 
       {/* MOBILE BOTTOM NAVIGATION */}
       {esMovil && (
