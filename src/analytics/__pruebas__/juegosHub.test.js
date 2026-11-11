@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mejorCarta, modosDelMenu, resumenMisiones } from '../juegosHub';
+import { mejorCarta, mejoresCartas, modosDelMenu, resumenMisiones } from '../juegosHub';
 
 const c = (ovr, rareza, apellido) => ({ rareza, carta: { ovr, apellido } });
 
@@ -54,6 +54,27 @@ describe('juegos: misiones', () => {
       { id: 'b', meta: 1, progreso: 1, premio: 25, cobrada: false },
       { id: 'c', meta: 2, progreso: 1, premio: 50, cobrada: false },
     ]);
-    expect(r).toEqual({ total: 3, cumplidas: 2, paraCobrar: 1, vcoinsPendientes: 25 });
+    expect(r).toMatchObject({ total: 3, cumplidas: 2, paraCobrar: 1, vcoinsPendientes: 25 });
+    expect(r.proxima.id).toBe('c');
+  });
+});
+
+describe('juegos: el menú en el celular', () => {
+  it('las 3 mejores cartas, sin repetir jugador (para el abanico del V-Draft)', () => {
+    const c = (id, jugador, ovr, rareza = 'oro') => ({ catalogo_id: id, rareza, carta: { id: jugador, ovr } });
+    const top = mejoresCartas([c('a', 1, 90), c('b', 1, 95, 'totw'), c('c', 2, 88), c('d', 3, 70), c('e', 4, 89)], 3);
+    expect(top.map((x) => x.catalogo_id)).toEqual(['b', 'e', 'c']);
+    expect(mejoresCartas([], 3)).toEqual([]);
+  });
+  it('la misión más cerca de cumplirse', () => {
+    const r = resumenMisiones([
+      { id: 'a', meta: 1, progreso: 1, premio: 25 }, { id: 'b', meta: 2, progreso: 1, premio: 50 }, { id: 'c', meta: 1, progreso: 0, premio: 25 },
+    ]);
+    expect(r.proxima.id).toBe('b');
+    expect(resumenMisiones([{ id: 'a', meta: 1, progreso: 1 }]).proxima).toBeNull();
+  });
+  it('cada modo con su color: V-Draft verde, Penales cian, Sobres oro', () => {
+    const m = Object.fromEntries(modosDelMenu({}).map((x) => [x.id, x.acento]));
+    expect([m.vdraft, m.penales, m.sobres]).toEqual(['#00ff88', '#22d3ee', '#fbbf24']);
   });
 });

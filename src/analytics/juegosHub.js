@@ -14,21 +14,34 @@ const rangoRareza = (r) => {
   return i === -1 ? ORDEN_RAREZA.length : i;
 };
 
-/** La mejor carta de la colección: la de mayor media; si empatan, la más rara. */
-export function mejorCarta(cartas = []) {
+/** Las n mejores cartas de la colección (mayor media; si empatan, la más rara), sin repetir jugador. */
+export function mejoresCartas(cartas = [], n = 3) {
+  const vistos = new Set();
   return [...(cartas || [])]
     .filter((c) => c && c.carta)
-    .sort((a, b) => (Number(b.carta.ovr) || 0) - (Number(a.carta.ovr) || 0) || rangoRareza(a.rareza) - rangoRareza(b.rareza))[0] || null;
+    .sort((a, b) => (Number(b.carta.ovr) || 0) - (Number(a.carta.ovr) || 0) || rangoRareza(a.rareza) - rangoRareza(b.rareza))
+    .filter((c) => {
+      const j = String(c.carta.id ?? c.catalogo_id);
+      if (vistos.has(j)) return false;
+      vistos.add(j);
+      return true;
+    })
+    .slice(0, n);
+}
+
+/** La mejor carta de la colección: la de mayor media; si empatan, la más rara. */
+export function mejorCarta(cartas = []) {
+  return mejoresCartas(cartas, 1)[0] || null;
 }
 
 const SOBRES_GRATIS = ['diario', 'racha', 'wellness', 'premio', 'premio_especial'];
 
 export const MODOS = {
-  vdraft: { id: 'vdraft', titulo: 'V-DRAFT', bajada: 'Armá tu equipo carta por carta. Desafío del día y torneo semanal con pozo.', imagen: '/juegos/vdraft.jpg', acento: '#38bdf8' },
-  penales: { id: 'penales', titulo: 'PENALES', bajada: 'Tu pateador y tu arquero contra la CPU. Ganá V-Coins.', imagen: '/penales/fondo.webp', acento: '#f97316' },
+  vdraft: { id: 'vdraft', titulo: 'V-DRAFT', bajada: 'Armá tu equipo carta por carta. Desafío del día y torneo semanal con pozo.', imagen: '/juegos/vdraft.jpg', acento: '#00ff88' },
+  penales: { id: 'penales', titulo: 'PENALES', bajada: 'Tu pateador y tu arquero contra la CPU. Ganá V-Coins.', imagen: '/penales/fondo.webp', acento: '#22d3ee' },
   duelos: { id: 'duelos', titulo: 'DUELOS', bajada: 'Retá a otro del club con 5 cartas de tu colección.', imagen: '/juegos/mysquad.jpg', acento: '#f43f5e' },
   sobres: { id: 'sobres', titulo: 'SOBRES', bajada: 'Abrí tus sobres y completá la colección.', imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
-  mysquad: { id: 'mysquad', titulo: 'MYSQUAD', bajada: 'El quinteto ideal y los premios de la semana.', imagen: '/juegos/mysquad.jpg', acento: '#00ff88' },
+  mysquad: { id: 'mysquad', titulo: 'MYSQUAD', bajada: 'El quinteto ideal y los premios de la semana.', imagen: '/juegos/mysquad.jpg', acento: '#a78bfa' },
   god: { id: 'sobres', clave: 'god', titulo: 'MODO GOD', bajada: 'Cartas, héroes, eventos, sobres, usuarios y V-Coins.', imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
 };
 
@@ -81,5 +94,8 @@ export function resumenMisiones(misiones = []) {
     cumplidas: lista.filter((m) => m.progreso >= m.meta).length,
     paraCobrar: lista.filter((m) => m.progreso >= m.meta && !m.cobrada).length,
     vcoinsPendientes: lista.filter((m) => m.progreso >= m.meta && !m.cobrada).reduce((s, m) => s + (m.premio || 0), 0),
+    // La que está más cerca de cumplirse (de las que faltan): para mostrarla en el resumen.
+    proxima: lista.filter((m) => m.progreso < m.meta)
+      .sort((a, b) => (b.progreso / (b.meta || 1)) - (a.progreso / (a.meta || 1)))[0] || null,
   };
 }

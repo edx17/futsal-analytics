@@ -9,7 +9,7 @@ import { estadoSobres, coleccionSobres } from '../utils/sobres';
 import { estadoVDraft } from '../utils/vdraft';
 import { estadoDuelos } from '../utils/duelos';
 import { misionesDelDia, cobrarMision } from '../utils/juegos';
-import { mejorCarta, modosDelMenu, resumenMisiones } from '../analytics/juegosHub';
+import { mejorCarta, mejoresCartas, modosDelMenu, resumenMisiones } from '../analytics/juegosHub';
 import '../components/quinteto/quinteto.css';
 import './juegos.css';
 
@@ -37,6 +37,7 @@ export default function Juegos({ kiosco = false }) {
   const [vdraft, setVDraft] = useState(null);
   const [duelos, setDuelos] = useState(null);
   const [protagonista, setProtagonista] = useState(null);
+  const [destacadas, setDestacadas] = useState([]);   // las 3 mejores: el abanico del V-Draft y el cara a cara del Duelo
   const [misiones, setMisiones] = useState(null);
   const [cobrando, setCobrando] = useState(null);
   const [aviso, setAviso] = useState(null);
@@ -47,7 +48,7 @@ export default function Juegos({ kiosco = false }) {
     estadoSobres().then((r) => { if (vivo && r.data) setSobres(r.data); });
     estadoVDraft().then((r) => { if (vivo && r.data) setVDraft(r.data); });
     estadoDuelos().then((r) => { if (vivo && r.data) setDuelos(r.data); });
-    coleccionSobres().then((r) => { if (vivo && r.data) setProtagonista(mejorCarta(r.data.cartas)); });
+    coleccionSobres().then((r) => { if (vivo && r.data) { setProtagonista(mejorCarta(r.data.cartas)); setDestacadas(mejoresCartas(r.data.cartas, 3)); } });
     misionesDelDia().then((r) => { if (vivo) setMisiones(r.data || []); });
     return () => { vivo = false; };
   }, [esSuper]);
@@ -75,7 +76,7 @@ export default function Juegos({ kiosco = false }) {
 
   const puntos = sobres?.puntos ?? vdraft?.puntos;
   const barra = (
-    <header className="jh-barra jg-entra">
+    <header className={`jh-barra jg-entra${esMovil ? ' jh-barra-movil' : ''}`}>
       <div className="jh-saldo">
         {!esSuper && <Dato rotulo="V-COINS" valor={puntos ?? '—'} tono="oro" />}
         {!esSuper && <Dato rotulo="RACHA" valor={sobres ? `${sobres.racha ?? 0}/7` : '—'} tono="neon" />}
@@ -101,16 +102,14 @@ export default function Juegos({ kiosco = false }) {
       {barra}
       {aviso && <div className="jh-aviso" role="status">{aviso}</div>}
       {esMovil ? (
-        <>
-          {protagonista && (
-            <div className="jh-mini jg-entra" style={{ '--i': 1 }}>
-              <div className="jh-mini-carta"><CartaJugador carta={aCarta(protagonista)} /></div>
-              <div><span className="jh-rotulo">TU MEJOR CARTA</span><b>{protagonista.carta.apellido}</b></div>
-            </div>
-          )}
-          <Carrusel modos={modos} ir={ir} />
+        <div className="jhm">
+          <div className="jhm-estadio" aria-hidden="true" />
+          {protagonista
+            ? <Heroe carta={protagonista} alTocar={() => { feedback('elegir'); navigate(kiosco ? '/kiosco/sobres?ver=coleccion' : '/sobres?ver=coleccion'); }} />
+            : !esSuper && <div className="jh-sin-carta jhm-sin-carta">Abrí tu primer sobre para tener tu carta acá.</div>}
+          <Carrusel modos={modos} ir={ir} destacadas={destacadas} />
           {panelMisiones}
-        </>
+        </div>
       ) : (
         <>
           <div className={`jh-hub jh-hub-${modos.length}`}>
@@ -172,43 +171,96 @@ function TarjetaModo({ modo, ir, style }) {
   );
 }
 
-/* El carrusel del celular: una tarjeta por modo, con scroll-snap y puntitos. */
-function Carrusel({ modos, ir }) {
+/* LA CARTA HÉROE DEL CELULAR: la mejor carta real, grande y centrada sobre el
+   estadio, con un halo del color de su rareza; se inclina, flota y le cruza un
+   brillo (todo en CSS; con "reducir movimiento", quieta). Tocarla lleva a la
+   colección. */
+function Heroe({ carta, alTocar }) {
+  const c = carta.carta || {};
+  return (
+    <button type="button" className="jhm-heroe jg-entra" style={{ '--i': 1, '--halo': `var(--jg-r-${carta.rareza || 'oro'}, var(--jg-oro))` }}
+      onClick={alTocar} aria-label={`Tu mejor carta: ${c.apellido || c.nombre}, ${c.ovr} de media. Ver tu colección`}>
+      <span className="jhm-halo" aria-hidden="true" />
+      <span className="jhm-heroe-carta"><CartaJugador carta={aCarta(carta)} /></span>
+      <span className="jh-rotulo">TU MEJOR CARTA · <span className="jhm-heroe-dato">{c.ovr} {c.rol}</span></span>
+      <b className="jhm-heroe-nombre">{c.apellido || c.nombre}</b>
+    </button>
+  );
+}
+
+/* El arte de cada modo en el carrusel, con assets reales: el abanico de tus
+   mejores cartas (V-Draft), el arco y la pelota del renderer (Penales), el
+   pack real (Sobres) y dos de tus cartas cara a cara (Duelos). */
+function ArteModo({ modo, destacadas }) {
+  const [a, b, c] = destacadas;
+  if (modo.id === 'vdraft' && a) {
+    return (
+      <span className="jhm-arte jhm-abanico" aria-hidden="true">
+        {[b, a, c].filter(Boolean).map((x, i) => <span key={x.catalogo_id} className={`jhm-abanico-${i}`}><CartaJugador carta={aCarta(x)} /></span>)}
+      </span>
+    );
+  }
+  if (modo.id === 'duelos' && a && b) {
+    return (
+      <span className="jhm-arte jhm-cara" aria-hidden="true">
+        <span className="jhm-cara-izq"><CartaJugador carta={aCarta(a)} /></span>
+        <b>VS</b>
+        <span className="jhm-cara-der"><CartaJugador carta={aCarta(b)} /></span>
+      </span>
+    );
+  }
+  if (modo.id === 'penales') return <span className="jhm-arte jhm-pelota" aria-hidden="true"><img src="/penales/pelota.webp" alt="" /></span>;
+  if (modo.id === 'sobres' && modo.clave !== 'god') return <span className="jhm-arte jhm-pack" aria-hidden="true"><img src="/juegos/sobres/diario.webp" alt="" /></span>;
+  return null;
+}
+
+/* El carrusel del celular: una tarjeta por modo (con el siguiente asomando),
+   scroll-snap y puntitos del color del modo. */
+function Carrusel({ modos, ir, destacadas = [] }) {
   const pista = useRef(null);
   const [actual, setActual] = useState(0);
+  const paso = () => {
+    const el = pista.current;
+    const primero = el?.firstElementChild;
+    return primero ? primero.getBoundingClientRect().width + 12 : el?.clientWidth || 1;
+  };
   const alDeslizar = () => {
     const el = pista.current;
     if (!el) return;
-    setActual(Math.round(el.scrollLeft / el.clientWidth));
+    setActual(Math.min(modos.length - 1, Math.round(el.scrollLeft / paso())));
   };
-  const irA = (i) => pista.current?.scrollTo({ left: i * pista.current.clientWidth, behavior: 'smooth' });
+  const irA = (i) => pista.current?.scrollTo({ left: i * paso(), behavior: 'smooth' });
   return (
-    <section className="jh-carrusel jg-entra" style={{ '--i': 2 }} aria-label="Modos de juego">
-      <div className="jh-pista" ref={pista} onScroll={alDeslizar}>
-        {modos.map((m) => (
-          <div key={m.clave || m.id} className="jh-slide">
-            <div className={`jh-gigante${m.bloqueado ? ' jh-bloqueado' : ''}`} style={{ '--acento': m.acento, backgroundImage: `url(${m.imagen})` }}>
-              <span className="jh-modo-sombra" />
+    <section className="jh-carrusel jhm-carrusel" aria-label="Modos de juego" aria-roledescription="carrusel">
+      <div className="jh-pista jhm-pista" ref={pista} onScroll={alDeslizar}>
+        {modos.map((m, i) => (
+          <div key={m.clave || m.id} className="jhm-slide jg-entra" style={{ '--i': i + 2 }} aria-roledescription="modo" aria-label={`${i + 1} de ${modos.length}: ${m.titulo}`}>
+            <div className={`jhm-tarjeta jhm-modo-${m.clave || m.id}${m.bloqueado ? ' jh-bloqueado' : ''}`} style={{ '--acento': m.acento, backgroundImage: `url(${m.id === 'vdraft' ? '/juegos/mysquad.jpg' : m.imagen})` }}>
+              <span className="jhm-tinte" />
+              <ArteModo modo={m} destacadas={destacadas} />
+              <span className="jhm-degradado" />
               <span className="jh-modo-badge"><BadgeModo badge={m.badge} /></span>
-              <span className="jh-gigante-texto">
+              <span className="jhm-texto">
                 <b>{m.titulo}</b>
                 <small>{m.bloqueado || m.bajada}</small>
-                <GameButton grande ancho disabled={!!m.bloqueado} onClick={() => ir(m)} style={{ background: m.acento, boxShadow: `0 0 22px ${m.acento}88` }}>
-                  {m.bloqueado ? 'NO DISPONIBLE' : 'JUGAR'}
-                </GameButton>
+                <button type="button" className="jhm-cta" disabled={!!m.bloqueado} onClick={() => ir(m)}>
+                  {m.bloqueado ? 'NO DISPONIBLE' : <>JUGAR <span aria-hidden="true">→</span></>}
+                </button>
               </span>
             </div>
           </div>
         ))}
       </div>
-      <div className="jh-puntos">
+      <div className="jh-puntos jhm-puntos">
         {modos.map((m, i) => (
-          <button key={m.clave || m.id} className={i === actual ? 'activo' : ''} onClick={() => irA(i)} aria-label={`Ir a ${m.titulo}`} />
+          <button key={m.clave || m.id} className={i === actual ? 'activo' : ''} style={{ '--acento': m.acento }} onClick={() => irA(i)} aria-label={`Ir a ${m.titulo}`} aria-current={i === actual} />
         ))}
       </div>
     </section>
   );
 }
+
+const ICONO_MISION = { sobre: '🎴', vdraft_partido: '⚽', vdraft_victorias: '🏆' };
 
 function Misiones({ misiones, cobrando, cobrar, plegable }) {
   const [abierta, setAbierta] = useState(!plegable);
@@ -219,9 +271,13 @@ function Misiones({ misiones, cobrando, cobrar, plegable }) {
       <button className="jh-misiones-cab" onClick={() => plegable && setAbierta((v) => !v)} aria-expanded={abierta}>
         <span>
           <span className="jg-panel-titulo" style={{ margin: 0 }}>MISIONES DEL DÍA</span>
-          <small>{misiones ? `${r.cumplidas}/${r.total} cumplidas · se renuevan en ` : 'Cargando…'}{misiones && <Countdown />}</small>
+          <small>
+            {misiones ? `${r.cumplidas}/${r.total} cumplidas` : 'Cargando…'}
+            {misiones && r.proxima ? ` · próxima: +${r.proxima.premio} V-Coins` : ''}
+            {misiones && <> · se renuevan en <Countdown /></>}
+          </small>
         </span>
-        {r.paraCobrar > 0 && <Badge tono="neon" latido>RECOMPENSA DISPONIBLE</Badge>}
+        {r.paraCobrar > 0 && <Badge tono="oro" latido>{plegable ? `+${r.vcoinsPendientes} PARA COBRAR` : 'RECOMPENSA DISPONIBLE'}</Badge>}
         {plegable && <span className="jh-flecha">{abierta ? '▲' : '▼'}</span>}
       </button>
       {abierta && misiones && (
@@ -230,6 +286,7 @@ function Misiones({ misiones, cobrando, cobrar, plegable }) {
             const lista = m.progreso >= m.meta;
             return (
               <li key={m.id} className={m.cobrada ? 'cobrada' : ''}>
+                <span className="jh-mision-icono" aria-hidden="true">{ICONO_MISION[m.id] || '★'}</span>
                 <div className="jh-mision-texto">
                   <b>{m.titulo}</b>
                   <ProgressBar valor={m.progreso / m.meta} tono={lista ? undefined : 'oro'} />
@@ -239,7 +296,7 @@ function Misiones({ misiones, cobrando, cobrar, plegable }) {
                   </small>
                 </div>
                 {m.cobrada ? <span className="jh-cobrada">✓ COBRADA</span>
-                  : <GameButton variante={lista ? 'primary' : 'secondary'} disabled={!lista || cobrando === m.id} onClick={() => cobrar(m.id)}>
+                  : <GameButton variante={lista ? 'primary' : 'secondary'} className={lista ? 'jh-cobrar-listo' : ''} disabled={!lista || cobrando === m.id} onClick={() => cobrar(m.id)}>
                     {cobrando === m.id ? '…' : lista ? 'COBRAR' : 'EN CURSO'}
                   </GameButton>}
               </li>
