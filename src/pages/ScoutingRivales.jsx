@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import NotasDe from '../components/notas/NotasDe';
+import { useVincularNotas } from '../utils/anotadorContexto';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 
@@ -46,6 +48,8 @@ function ScoutingRivales() {
     datos_tacticos: {} // <-- ESTRUCTURA JSON PARA GUARDAR INFO POR CATEGORÍA
   };
   const [formData, setFormData] = useState(estadoInicial);
+  // El anotador: con la ficha de un rival abierta, las notas van a ese rival.
+  useVincularNotas(mostrarModal && formData.id ? { tipo: 'rival', id: formData.id, nombre: formData.nombre } : null);
 
   // Estados para manejar el historial H2H
   const [historialRival, setHistorialRival] = useState([]);
@@ -541,6 +545,13 @@ function ScoutingRivales() {
 
               <button onClick={handleGuardar} className="btn-action" style={{ width: '100%', padding: '15px', fontSize: '1rem' }}>GUARDAR CAMBIOS</button>
               </>
+            )}
+
+            {/* MIS NOTAS DEL RIVAL (las del anotador) */}
+            {formData.id && (
+              <div style={{ marginTop: '24px' }}>
+                <NotasDe tipo="rival" id={formData.id} nombre={formData.nombre} titulo="NOTAS DEL RIVAL" compacto />
+              </div>
             )}
 
             {/* SECCIÓN H2H (FILTRADA POR LA CATEGORÍA ACTIVA) */}

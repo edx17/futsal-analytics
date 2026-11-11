@@ -65,6 +65,7 @@ const Sobres              = lazy(() => import('./pages/Sobres'));
 const VDraft              = lazy(() => import('./pages/VDraft'));
 const Juegos              = lazy(() => import('./pages/Juegos'));
 const PenalesJuego        = lazy(() => import('./pages/PenalesJuego'));
+const Duelos              = lazy(() => import('./pages/Duelos'));
 const EntrarAlJuego       = lazy(() => import('./pages/EntrarAlJuego'));
 const Reportes            = lazy(() => import('./pages/Reportes'));
 
@@ -73,6 +74,7 @@ const ROLES_JUEGO = ['superuser', 'manager', 'admin', 'ct'];
 const Comparar            = lazy(() => import('./pages/Comparar'));
 const Agenda              = lazy(() => import('./pages/Agenda'));
 const Videoanalisis       = lazy(() => import('./pages/Videoanalisis'));
+const Notas               = lazy(() => import('./pages/Notas'));
 const KioscoTorneo        = lazy(() => import('./pages/KioscoTorneo'));
 const KioscoMisDatos      = lazy(() => import('./pages/KioscoMisDatos'));
 const KioscoMisPagos      = lazy(() => import('./pages/KioscoMisPagos'));
@@ -86,6 +88,7 @@ import BarraCuentaJuego from './juegos/BarraCuentaJuego';
 import { errorDeEntrada } from './utils/cuentasJuego';
 import VisorManual from './components/VisorManual';
 import { ROLES_PLATA, manejaPlata } from './analytics/tesoreria';
+import Anotador from './components/notas/Anotador';
 import { Icono } from './iconos';
 
 // ==========================================
@@ -169,6 +172,7 @@ function AppRoutes() {
       <Route path="/creador-fisico" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'ct']}><CreadorFisico /></ProtectedRoute>} />
       <Route path="/novedades" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Novedades /></ProtectedRoute>} />
       <Route path="/videoanalisis" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Videoanalisis /></ProtectedRoute>} />
+      <Route path="/notas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Notas /></ProtectedRoute>} />
 
       <Route path="/tesoreria" element={<ProtectedRoute allowedRoles={ROLES_PLATA}><Tesoreria /></ProtectedRoute>} />
       <Route path="/sponsors" element={<ProtectedRoute allowedRoles={ROLES_PLATA}><Sponsors /></ProtectedRoute>} />
@@ -189,6 +193,7 @@ function AppRoutes() {
       <Route path="/vdraft" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><LayoutJuegos><VDraft /></LayoutJuegos></ProtectedRoute>} />
       <Route path="/juegos" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><LayoutJuegos><Juegos /></LayoutJuegos></ProtectedRoute>} />
       <Route path="/penales" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><LayoutJuegos><PenalesJuego /></LayoutJuegos></ProtectedRoute>} />
+      <Route path="/duelos" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><LayoutJuegos><Duelos /></LayoutJuegos></ProtectedRoute>} />
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/reportes" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Reportes /></ProtectedRoute>} />
       <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
@@ -348,7 +353,7 @@ useEffect(() => {
      por un link ven sólo los juegos (sin MySquad ni nada del club). Los
      atajos del ícono instalado (/kiosco/sobres…) van a lo mismo. */
   if (String(perfil?.rol || '').toLowerCase() === 'juego') {
-    const atajoJuego = location.pathname.match(/^\/kiosco\/(sobres|vdraft|penales|juegos)$/);
+    const atajoJuego = location.pathname.match(/^\/kiosco\/(sobres|vdraft|penales|duelos|juegos)$/);
     if (atajoJuego) return <Navigate to={`/${atajoJuego[1]}`} replace />;
     return (
       <main className="app-content-fullscreen">
@@ -360,6 +365,7 @@ useEffect(() => {
             <Route path="/sobres" element={<LayoutJuegos soloJuego><Sobres /></LayoutJuegos>} />
             <Route path="/vdraft" element={<LayoutJuegos soloJuego><VDraft /></LayoutJuegos>} />
             <Route path="/penales" element={<LayoutJuegos soloJuego><PenalesJuego /></LayoutJuegos>} />
+            <Route path="/duelos" element={<LayoutJuegos soloJuego><Duelos /></LayoutJuegos>} />
             <Route path="*" element={<Navigate to="/juegos" replace />} />
           </Routes>
         </Suspense>
@@ -376,7 +382,7 @@ useEffect(() => {
   /* Los atajos del ícono instalado (Sobres, V-Draft) abren /kiosco/…: sin la
      sesión del jugador, el staff va a su pantalla del juego y el resto entra
      por el kiosco y sigue de largo al juego. */
-  const atajo = location.pathname.match(/^\/kiosco\/(sobres|vdraft|penales|juegos)$/);
+  const atajo = location.pathname.match(/^\/kiosco\/(sobres|vdraft|penales|duelos|juegos)$/);
   if (atajo && !isKioscoMode) {
     const esStaff = perfil && !['kiosco', 'jugador'].includes(String(perfil.rol || '').toLowerCase());
     return <Navigate to={esStaff ? `/${atajo[1]}` : `/kiosco?ir=${atajo[1]}`} replace />;
@@ -440,6 +446,7 @@ useEffect(() => {
             <Route path="/kiosco/vdraft" element={<LayoutJuegos kiosco><VDraft /></LayoutJuegos>} />
             <Route path="/kiosco/juegos" element={<LayoutJuegos kiosco><Juegos kiosco /></LayoutJuegos>} />
             <Route path="/kiosco/penales" element={<LayoutJuegos kiosco><PenalesJuego /></LayoutJuegos>} />
+            <Route path="/kiosco/duelos" element={<LayoutJuegos kiosco><Duelos /></LayoutJuegos>} />
             <Route path="/kiosco/afa-stats" element={<OtrasCompetencias kiosco />} />
             <Route path="/kiosco/*" element={<Navigate to="/kiosco" replace />} />
           </Routes>
@@ -571,7 +578,7 @@ useEffect(() => {
             Queda marcado también adentro de cada juego. */}
         {permisos.puedeJugar && (
           <NavLink to="/juegos" style={linkStyle} title={isCollapsed ? "Juegos" : ""}
-            className={() => (/^\/(juegos|mysquad|sobres|vdraft|penales)(\/|$)/.test(location.pathname) ? 'nav-item active' : 'nav-item')}>
+            className={() => (/^\/(juegos|mysquad|sobres|vdraft|penales|duelos)(\/|$)/.test(location.pathname) ? 'nav-item active' : 'nav-item')}>
             <Icono nombre="juego" size={22} /> {!isCollapsed && <span>JUEGOS</span>}
           </NavLink>
         )}
@@ -686,6 +693,9 @@ useEffect(() => {
         </LimiteDeError>
         </div>
       </main>
+
+      {/* EL ANOTADOR: el botón flotante para tomar notas desde cualquier pantalla (sólo el cuerpo técnico). */}
+      <Anotador esMovil={esMovil} />
 
       {/* MOBILE BOTTOM NAVIGATION */}
       {esMovil && (

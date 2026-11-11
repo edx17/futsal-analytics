@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { fetchPaginado } from '../utils/supaPaginado';
 import { Icono } from '../iconos';
+import NotasDe from '../components/notas/NotasDe';
+import { useVincularNotas } from '../utils/anotadorContexto';
 
 const MONO = 'JetBrains Mono, monospace';
 const PREROLL_DEFAULT = 8; // segundos de colchón hacia atrás al marcar un clip
@@ -159,6 +161,11 @@ export default function Videoanalisis() {
       else videoElRef.current?.pause?.();
     },
   }), [videoActivo?.fuente]);
+
+  // El anotador: con un video abierto, las notas van a ese video, con el minuto.
+  const tiempoVideo = useCallback(() => adaptador.getTiempo(), [adaptador]);
+  const irAMinuto = useCallback((t) => { adaptador.seekTo(t); adaptador.play(); }, [adaptador]);
+  useVincularNotas(vista === 'trabajo' && videoActivo ? { tipo: 'video', id: videoActivo.id, nombre: videoActivo.titulo || 'Video', tiempo: tiempoVideo } : null);
 
   // Fuente real del <video> nativo: signedUrl (subido, privado) o link directo (Drive, mejor esfuerzo)
   const srcActual = useMemo(() => {
@@ -1705,6 +1712,10 @@ export default function Videoanalisis() {
             )}
           </div>
         </div>
+      </div>
+      <div style={{ marginTop: '16px' }}>
+        <NotasDe tipo="video" id={videoActivo?.id} nombre={videoActivo?.titulo || 'Video'} titulo="NOTAS DE ESTE VIDEO"
+          tiempo={tiempoVideo} onIrA={irAMinuto} compacto />
       </div>
     </div>
   );

@@ -26,6 +26,7 @@ const SOBRES_GRATIS = ['diario', 'racha', 'wellness', 'premio', 'premio_especial
 export const MODOS = {
   vdraft: { id: 'vdraft', titulo: 'V-DRAFT', bajada: 'Armá tu equipo carta por carta. Desafío del día y torneo semanal con pozo.', imagen: '/juegos/vdraft.jpg', acento: '#38bdf8' },
   penales: { id: 'penales', titulo: 'PENALES', bajada: 'Tu pateador y tu arquero contra la CPU. Ganá V-Coins.', imagen: '/penales/fondo.webp', acento: '#f97316' },
+  duelos: { id: 'duelos', titulo: 'DUELOS', bajada: 'Retá a otro del club con 5 cartas de tu colección.', imagen: '/juegos/mysquad.jpg', acento: '#f43f5e' },
   sobres: { id: 'sobres', titulo: 'SOBRES', bajada: 'Abrí tus sobres y completá la colección.', imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
   mysquad: { id: 'mysquad', titulo: 'MYSQUAD', bajada: 'El quinteto ideal y los premios de la semana.', imagen: '/juegos/mysquad.jpg', acento: '#00ff88' },
   god: { id: 'sobres', clave: 'god', titulo: 'MODO GOD', bajada: 'Cartas, héroes, eventos, sobres, usuarios y V-Coins.', imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
@@ -35,7 +36,7 @@ export const MODOS = {
  * Los modos en orden, cada uno con su cartel.
  * badge: { texto, tono: 'neon'|'oro'|'naranja'|undefined, latido, cuenta: true (mostrar la cuenta regresiva) }
  */
-export function modosDelMenu({ sobres = null, vdraft = null, kiosco = false, esSuper = false } = {}) {
+export function modosDelMenu({ sobres = null, vdraft = null, duelos = null, kiosco = false, esSuper = false } = {}) {
   if (esSuper && !kiosco) {
     return [
       { ...MODOS.god, badge: { texto: 'ADMIN', tono: 'oro' } },
@@ -57,8 +58,14 @@ export function modosDelMenu({ sobres = null, vdraft = null, kiosco = false, esS
     : vdraft?.gratis_hoy ? { texto: 'GRATIS HOY', tono: 'neon', latido: true }
       : vdraft ? { texto: `${vdraft.costo ?? 100} V-COINS`, tono: 'oro' } : null;
 
+  const retos = duelos?.recibidos?.length || 0;
+  const nuevos = (duelos?.historial || []).filter((d) => d.nuevo).length;
+  const badgeDuelos = retos ? { texto: `TE ${retos === 1 ? 'RETARON' : `RETARON ${retos} VECES`}`, tono: 'neon', latido: true }
+    : nuevos ? { texto: 'RESULTADO NUEVO', tono: 'neon' } : { texto: 'RETÁ A ALGUIEN', tono: 'naranja' };
+
   const modos = [
     { ...MODOS.vdraft, badge: badgeVDraft },
+    { ...MODOS.duelos, badge: badgeDuelos },
     { ...MODOS.penales, badge: { texto: 'CON PREMIO', tono: 'naranja' } },
     { ...MODOS.sobres, badge: badgeSobres },
   ];

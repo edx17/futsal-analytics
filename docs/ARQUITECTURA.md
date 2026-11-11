@@ -90,6 +90,7 @@ Las especiales (`premio` en `especialesCartas.ESPECIALES`) se dibujan con `Carta
   - `desafio`: una vez por día, gratis; misma regla (`_vdraft_regla_del_dia`), mismas cartas (azar fijo con `vdraft.semilla`) y mismos rivales para todos; el mismo equipo saca el mismo resultado. Premio al día siguiente (1º 1000, 2º 750, 3º 500, el resto 150), lo paga `vdraft_estado`.
   - `torneo`: semanal y automático; `vdraft_torneo_anotarse` cobra la entrada (1000) y da 5 partidas propias; la tabla suma partidos ganados; el lunes se reparte el pozo 50/30/20 (60/40 con dos; con uno se devuelve). Config en Modo GOD · V-DRAFT · TORNEO (`god_torneo_config`).
   - La partida gratis, el costo de 100 y el ranking semanal cuentan sólo las normales.
+- **Duelo de cartas** (`/duelos`, migración `20261113120000_juegos_duelos.sql`, `pages/Duelos.jsx`, espejo en `analytics/duelos.js`): retás a otro del club con 5 cartas de tu colección (arquero + 4) y una apuesta opcional (0-1000, el ganador se lleva todo, +20 al ganador hasta 3 por día). El rival arma sin ver tu equipo; `duelo_responder` simula (misma fuerza que el V-Draft) y, si empatan, penales automáticos. Vence a las 48 hs (se devuelve la apuesta).
 - **Superusuario**: no tiene colección ni compite (`_sobres_ctx` no lo deja jugar). Administra todo desde el Modo GOD.
 
 ## 5. Colores y tipografía actuales
