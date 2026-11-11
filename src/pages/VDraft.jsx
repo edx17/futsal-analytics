@@ -10,7 +10,8 @@ import {
   COSTO_PARTIDA, FORMACIONES_DRAFT, NOMBRE_SOBRE, RONDAS, pasoDelDraft, marcador, puestoRival,
   lineasDraft, pelotaEn, pseudoAzar,
 } from '../analytics/vdraft';
-import { estadoVDraft, nuevaPartida, elegirCarta, hacerCambio, jugarPartido, abandonarPartida } from '../utils/vdraft';
+import { estadoVDraft, nuevaPartida, elegirCarta, hacerCambio, jugarPartido, abandonarPartida, anotarseTorneo } from '../utils/vdraft';
+import { MODOS, PREMIOS_DESAFIO, repartoTorneo, ordinal, etiquetaDeModo, cierreDeModo, botonDeModo } from '../analytics/vdraftModos';
 import { caminoDePremios, podioDelRanking, destinoDeCarta, avanceDelDraft } from '../analytics/vdraftVista';
 import { perfilEquipo, parte, favorito, cartaDelAutor, despuesDelPartido, monedasQueCaen } from '../analytics/partidoVista';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
@@ -32,6 +33,11 @@ import './vdraft.css';
  * a la A. Perdés y se termina; cuantos más partidos ganes, más V-Coins y
  * sobres. Una sola pantalla para el Kiosco (/kiosco/vdraft) y para el cuerpo
  * técnico (/vdraft). Las reglas, el azar y los premios viven en la base.
+ *
+ * Tres modos (arriba, en el inicio): el de siempre, el DESAFÍO DEL DÍA (las
+ * mismas cartas y la misma regla para todos, una vez por día, con ranking y
+ * premio al día siguiente) y el TORNEO SEMANAL (entrada, 5 partidas propias y
+ * el pozo para los 3 mejores el lunes).
  */
 
 const MONO = 'JetBrains Mono, monospace';
@@ -52,6 +58,7 @@ export default function VDraft() {
   const [formacion, setFormacion] = useState('1-2-1');
   const [vivo, setVivo] = useState(null);           // el partido que se está mostrando
   const [cambio, setCambio] = useState(null);       // { lugar } o { banco } elegido para cambiar
+  const [modo, setModo] = useState('normal');        // en el inicio: normal, desafio o torneo
 
   const aplicar = useCallback((r) => {
     setCargando(false);
@@ -93,7 +100,23 @@ export default function VDraft() {
     return r.data;
   };
 
-  const empezar = () => { feedback('elegir'); return accion(() => nuevaPartida(formacion)); };
+  const empezar = () => {
+    feedback('elegir');
+    // El desafío puede traer la formación del día.
+    const f = modo === 'desafio' && estado?.desafio?.regla?.formacion ? estado.desafio.regla.formacion : formacion;
+    return accion(() => nuevaPartida(f, modo));
+  };
+  const anotarse = async () => {
+    if (!window.confirm(`La entrada al torneo cuesta ${estado.torneo.entrada} ${MONEDA} y te da ${estado.torneo.partidas} partidas. ¿Te anotás?`)) return;
+    setOcupado(true);
+    const r = await anotarseTorneo();
+    setOcupado(false);
+    if (r.vencida) { setError(SESION_VENCIDA); return; }
+    if (r.error) { setError(r.error.message); return; }
+    feedback('victoria');
+    setError(null);
+    setEstado(r.data);
+  };
   const elegir = (c) => accion(() => elegirCarta(partida.id, c.catalogo_id));
   const jugar = async () => {
     setCambio(null);
@@ -102,9 +125,13 @@ export default function VDraft() {
   };
   const abandonar = async () => {
     const enDraft = partida.estado === 'draft';
-    const aviso = enDraft
-      ? 'Si abandonás el draft no hay premio (y la partida del día queda usada). ¿Seguro?'
-      : 'Te llevás el premio de lo que ganaste hasta acá. ¿Abandonar el torneo?';
+    const aviso = partida.modo === 'desafio'
+      ? 'El desafío de hoy queda jugado con lo que ganaste hasta acá (no se puede volver a jugar). ¿Abandonar?'
+      : partida.modo === 'torneo'
+        ? 'Esta partida del torneo queda usada con lo que ganaste hasta acá. ¿Abandonar?'
+        : enDraft
+          ? 'Si abandonás el draft no hay premio (y la partida del día queda usada). ¿Seguro?'
+          : 'Te llevás el premio de lo que ganaste hasta acá. ¿Abandonar el torneo?';
     if (!window.confirm(aviso)) return;
     const p = await accion(() => abandonarPartida(partida.id));
     if (p) setVivo({ ...p, ultimo: null });
@@ -145,8 +172,20 @@ export default function VDraft() {
         </div>
       )}
 
+      {estado && !partida && estado.desafio && (
+        <Modos modo={modo} setModo={(m) => { sound('click'); setModo(m); }} />
+      )}
+
       {estado && !partida && (
-        <Inicio estado={estado} formacion={formacion} setFormacion={(f) => { sound('click'); setFormacion(f); }} empezar={empezar} ocupado={ocupado} />
+        <Inicio estado={estado} modo={estado.desafio ? modo : 'normal'} formacion={formacion} setFormacion={(f) => { sound('click'); setFormacion(f); }}
+          empezar={empezar} anotarse={anotarse} ocupado={ocupado} />
+      )}
+
+      {partida && etiquetaDeModo(partida) && (
+        <div className={`vd-modo-cartel vd-modo-${partida.modo}`} role="status">
+          <b>{etiquetaDeModo(partida)}</b>
+          {partida.regla?.detalle && <span>{partida.regla.detalle}</span>}
+        </div>
       )}
 
       {partida?.estado === 'draft' && (
@@ -165,23 +204,31 @@ export default function VDraft() {
 
 /* ── INICIO: formación, entrar, camino de premios y ranking ─────────────── */
 
-function Inicio({ estado, formacion, setFormacion, empezar, ocupado }) {
+/* Las pestañas de los modos, arriba del inicio. */
+function Modos({ modo, setModo }) {
+  return (
+    <div className="vd-modos jg-entra" role="tablist" aria-label="Modo de juego">
+      {MODOS.map((m) => (
+        <button key={m.id} role="tab" aria-selected={modo === m.id} onClick={() => setModo(m.id)}
+          className={`vd-modo vd-modo-${m.id}${modo === m.id ? ' vd-on' : ''}`}>
+          <b>{m.nombre}</b>
+          <small>{m.bajada}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Inicio({ estado, modo, formacion, setFormacion, empezar, anotarse, ocupado }) {
+  if (modo === 'desafio') return <InicioDesafio estado={estado} formacion={formacion} setFormacion={setFormacion} empezar={empezar} ocupado={ocupado} />;
+  if (modo === 'torneo') return <InicioTorneo estado={estado} formacion={formacion} setFormacion={setFormacion} empezar={empezar} anotarse={anotarse} ocupado={ocupado} />;
   const gratis = estado.gratis_hoy;
   const alcanza = gratis || estado.puntos >= estado.costo;
   return (
     <>
       <section className="jg-panel vd-inicio jg-entra" style={{ '--i': 1 }}>
         <h2 className="jg-panel-titulo">ELEGÍ LA FORMACIÓN</h2>
-        <div className="vd-formaciones" role="radiogroup" aria-label="Formación">
-          {FORMACIONES_DRAFT.map((f) => (
-            <button key={f.id} role="radio" aria-checked={formacion === f.id} onClick={() => setFormacion(f.id)}
-              className={`vd-formacion${formacion === f.id ? ' vd-on' : ''}`}>
-              <MiniCancha formacion={f} />
-              <span className="vd-formacion-texto"><b>{f.id}</b><span>{f.nombre}</span></span>
-              <small className="vd-formacion-roles">{resumenRoles(f)}</small>
-            </button>
-          ))}
-        </div>
+        <Formaciones formacion={formacion} setFormacion={setFormacion} />
         <p className="vd-explica">
           Capitán entre 5 especiales, después cada lugar entre 4 cartas de su puesto (el último, el comodín, trae una especial)
           y 2 suplentes. Después, 4 partidos contra la liga: Primera D, C, B y A. Si perdés, se termina.
@@ -213,10 +260,161 @@ function Inicio({ estado, formacion, setFormacion, empezar, ocupado }) {
             <h2 className="jg-panel-titulo">MIS ÚLTIMAS PARTIDAS</h2>
             {estado.ultimas.map((u, i) => (
               <div key={i} className="vd-premio">
-                <span>{u.dia} · {u.formacion} · {u.victorias} {u.victorias === 1 ? 'victoria' : 'victorias'}</span>
-                <b>{u.premio?.vcoins ? `+${u.premio.vcoins} VC` : '—'}{u.premio?.sobre ? ' + sobre' : ''}</b>
+                <span>{u.dia} · {u.modo === 'desafio' ? 'Desafío' : u.modo === 'torneo' ? 'Torneo' : u.formacion} · {u.victorias} {u.victorias === 1 ? 'victoria' : 'victorias'}</span>
+                <b>{u.premio?.pendiente ? 'se paga mañana' : u.premio?.torneo ? 'a la tabla' : u.premio?.vcoins ? `+${u.premio.vcoins} VC` : '—'}{u.premio?.sobre ? ' + sobre' : ''}</b>
               </div>
             ))}
+          </section>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* Las cuatro formaciones para elegir (o una sola, fija, si `fija`). */
+function Formaciones({ formacion, setFormacion, fija = null }) {
+  const lista = fija ? FORMACIONES_DRAFT.filter((f) => f.id === fija) : FORMACIONES_DRAFT;
+  const actual = fija || formacion;
+  return (
+    <div className="vd-formaciones" role="radiogroup" aria-label="Formación">
+      {lista.map((f) => (
+        <button key={f.id} role="radio" aria-checked={actual === f.id} onClick={() => !fija && setFormacion(f.id)}
+          className={`vd-formacion${actual === f.id ? ' vd-on' : ''}`} disabled={!!fija && actual !== f.id}>
+          <MiniCancha formacion={f} />
+          <span className="vd-formacion-texto"><b>{f.id}</b><span>{f.nombre}</span></span>
+          <small className="vd-formacion-roles">{resumenRoles(f)}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* Una tabla corta de posiciones (desafío del día o torneo). */
+function Tabla({ filas, columnas, vacio }) {
+  if (!filas?.length) return <div className="vd-nota">{vacio}</div>;
+  return (
+    <ol className="vd-tabla-modo">
+      {filas.map((f) => (
+        <li key={`${f.puesto}-${f.nombre}`} className={`${f.yo ? 'vd-yo' : ''}${f.puesto <= 3 ? ' vd-podio-fila' : ''}`}>
+          <span className="vd-pos">{ordinal(f.puesto)}</span>
+          <span className="vd-nombre">{f.yo ? `${f.nombre} (vos)` : f.nombre}{f.en_juego ? ' · jugando' : ''}</span>
+          {columnas.map(([clave, titulo, formato]) => (
+            <span key={clave} title={titulo} style={{ fontFamily: MONO }}>{formato ? formato(f[clave]) : f[clave]}</span>
+          ))}
+        </li>
+      ))}
+    </ol>
+  );
+}
+const conSigno = (n) => (n > 0 ? `+${n}` : String(n ?? 0));
+
+function InicioDesafio({ estado, formacion, setFormacion, empezar, ocupado }) {
+  const d = estado.desafio;
+  const boton = botonDeModo('desafio', estado);
+  return (
+    <>
+      <section className="jg-panel vd-inicio vd-desafio jg-entra" style={{ '--i': 1 }}>
+        <div className="vd-regla">
+          <span className="vd-rotulo">LA REGLA DE HOY</span>
+          <b>{d.regla?.nombre}</b>
+          <small>{d.regla?.detalle}</small>
+        </div>
+        <h2 className="jg-panel-titulo">{d.regla?.formacion ? 'LA FORMACIÓN DEL DÍA' : 'ELEGÍ LA FORMACIÓN'}</h2>
+        <Formaciones formacion={formacion} setFormacion={setFormacion} fija={d.regla?.formacion || null} />
+        <p className="vd-explica">
+          Todos reciben las mismas cartas para elegir y los mismos rivales. Gana el que más partidos gana; si empatan,
+          la diferencia de gol.
+        </p>
+        <GameButton grande ancho disabled={!boton.habilitado || ocupado} onClick={empezar} className="vd-empezar">
+          {ocupado ? 'ARMANDO…' : boton.texto}
+        </GameButton>
+        <small className="vd-nota">{boton.nota}</small>
+      </section>
+
+      <section className="jg-panel jg-entra" style={{ '--i': 2 }}>
+        <h2 className="jg-panel-titulo">PREMIOS DEL DÍA</h2>
+        <div className="vd-premios-modo">
+          {PREMIOS_DESAFIO.map((p, i) => (
+            <div key={i} className={`vd-premio-modo vd-premio-${i + 1}`}>
+              <span>{i < 3 ? ordinal(i + 1) : 'LOS DEMÁS'}</span>
+              <b>+{p} VC</b>
+            </div>
+          ))}
+        </div>
+        <small className="vd-nota">Se pagan mañana, solos. "Los demás": los que jugaron al menos un partido.</small>
+      </section>
+
+      <div className="vd-dos">
+        <section className="jg-panel jg-entra" style={{ '--i': 3 }}>
+          <h2 className="jg-panel-titulo">RANKING DE HOY</h2>
+          <Tabla filas={d.ranking} vacio="Nadie jugó todavía. ¡Sé el primero!"
+            columnas={[['victorias', 'Partidos ganados', (v) => `${v}G`], ['dg', 'Diferencia de gol', conSigno]]} />
+          {d.yo && <small className="vd-nota">Vas {ordinal(d.yo.puesto)}.</small>}
+        </section>
+        {d.ayer?.length > 0 && (
+          <section className="jg-panel jg-entra" style={{ '--i': 4 }}>
+            <h2 className="jg-panel-titulo">LOS MEJORES DE AYER</h2>
+            <Tabla filas={d.ayer} vacio=""
+              columnas={[['victorias', 'Partidos ganados', (v) => `${v}G`], ['premio', 'Premio', (v) => `+${v ?? 0}`]]} />
+          </section>
+        )}
+      </div>
+    </>
+  );
+}
+
+function InicioTorneo({ estado, formacion, setFormacion, empezar, anotarse, ocupado }) {
+  const t = estado.torneo;
+  const boton = botonDeModo('torneo', estado);
+  // Lo que se llevaría cada puesto con los anotados de hoy (si se anotan más, crece).
+  const reparto = repartoTorneo(Math.max(t.anotados, 3), t.pozo);
+  const corto = (f) => String(f || '').slice(8, 10) + '/' + String(f || '').slice(5, 7);
+  return (
+    <>
+      <section className="jg-panel vd-inicio vd-torneo jg-entra" style={{ '--i': 1 }}>
+        <div className="vd-regla">
+          <span className="vd-rotulo">DEL {corto(t.semana)} AL {corto(t.hasta)}</span>
+          <b>POZO: {t.pozo} VC</b>
+          <small>{t.anotados} {t.anotados === 1 ? 'anotado' : 'anotados'} · entrada {t.entrada} VC · {t.partidas} partidas{t.extra > 0 ? ` · el club pone ${t.extra}` : ''}</small>
+        </div>
+        {t.yo && t.yo.restantes > 0 && (
+          <>
+            <h2 className="jg-panel-titulo">ELEGÍ LA FORMACIÓN</h2>
+            <Formaciones formacion={formacion} setFormacion={setFormacion} />
+          </>
+        )}
+        <p className="vd-explica">
+          Cada partida es un V-Draft completo. Suman los partidos que ganes en tus {t.partidas} partidas; si empatan, la
+          diferencia de gol. El lunes el pozo se reparte: 50 % al 1º, 30 % al 2º y 20 % al 3º.
+        </p>
+        <GameButton grande ancho disabled={!boton.habilitado || ocupado} onClick={boton.anotarse ? anotarse : empezar} className="vd-empezar">
+          {ocupado ? 'UN MOMENTO…' : boton.texto}
+        </GameButton>
+        <small className="vd-nota">{boton.nota}</small>
+      </section>
+
+      <section className="jg-panel jg-entra" style={{ '--i': 2 }}>
+        <h2 className="jg-panel-titulo">LO QUE SE LLEVA CADA PUESTO HOY</h2>
+        <div className="vd-premios-modo">
+          {reparto.map((m, i) => (
+            <div key={i} className={`vd-premio-modo vd-premio-${i + 1}`}><span>{ordinal(i + 1)}</span><b>+{m} VC</b></div>
+          ))}
+        </div>
+        <small className="vd-nota">Con más anotados el pozo crece. Con 2 se reparte 60/40; si se anota uno solo, se le devuelve la entrada.</small>
+      </section>
+
+      <div className="vd-dos">
+        <section className="jg-panel jg-entra" style={{ '--i': 3 }}>
+          <h2 className="jg-panel-titulo">TABLA DE LA SEMANA</h2>
+          <Tabla filas={t.tabla} vacio="Todavía no se anotó nadie."
+            columnas={[['victorias', 'Partidos ganados', (v) => `${v}G`], ['dg', 'Diferencia de gol', conSigno], ['jugadas', 'Partidas jugadas', (v) => `${v}/${t.partidas}`]]} />
+          {t.yo && <small className="vd-nota">Vas {ordinal(t.yo.puesto)} · te quedan {t.yo.restantes} {t.yo.restantes === 1 ? 'partida' : 'partidas'}.</small>}
+        </section>
+        {t.anterior?.resultado?.length > 0 && (
+          <section className="jg-panel jg-entra" style={{ '--i': 4 }}>
+            <h2 className="jg-panel-titulo">LA SEMANA PASADA</h2>
+            <Tabla filas={t.anterior.resultado.slice(0, 3)} vacio=""
+              columnas={[['victorias', 'Partidos ganados', (v) => `${v}G`], ['premio', 'Premio', (v) => `+${v}`]]} />
           </section>
         )}
       </div>
@@ -693,7 +891,7 @@ function Resultado({ partida, p, despues, kiosco, sinMovimiento, semilla }) {
       {p && <div className={`vd-veredicto ${p.gano ? 'vd-si' : 'vd-no'}`}>{p.gano ? '¡GANASTE!' : 'PERDISTE'}</div>}
       {p && <div className="vd-final-marcador">{marcador(p)}</div>}
 
-      {!despues.fin && despues.siguiente && (
+      {!despues.fin && despues.siguiente && (!partida.modo || partida.modo === 'normal') && (
         <div className="vd-sigue">
           <span>PRÓXIMO</span>
           <b>{despues.siguiente.ronda || RONDAS[partida.partidos.length]} · VS {despues.siguiente.equipo.toUpperCase()}</b>
@@ -703,7 +901,22 @@ function Resultado({ partida, p, despues, kiosco, sinMovimiento, semilla }) {
         </div>
       )}
 
-      {despues.fin && premio && (
+      {!despues.fin && despues.siguiente && partida.modo && partida.modo !== 'normal' && (
+        <div className="vd-sigue">
+          <span>PRÓXIMO</span>
+          <b>{despues.siguiente.ronda || RONDAS[partida.partidos.length]} · VS {despues.siguiente.equipo.toUpperCase()}</b>
+          <small>{partida.modo === 'desafio' ? 'Cada partido ganado te sube en el ranking del día.' : 'Cada partido ganado suma en la tabla del torneo.'}</small>
+        </div>
+      )}
+
+      {despues.fin && cierreDeModo(partida) && (
+        <div className="vd-final">
+          <div className="vd-rotulo" style={{ color: '#9ca3af' }}>{cierreDeModo(partida).titulo}</div>
+          <div className="vd-final-sobre">{cierreDeModo(partida).detalle}</div>
+        </div>
+      )}
+
+      {despues.fin && premio && !cierreDeModo(partida) && (
         <div className={`vd-final${despues.campeon ? ' vd-final-campeon' : ''}`}>
           {despues.campeon && <div className="vd-copa">🏆</div>}
           <div className="vd-rotulo" style={{ color: '#9ca3af' }}>
