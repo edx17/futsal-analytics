@@ -161,7 +161,7 @@ function ScoutingRivales() {
     const filePath = `${fileName}`;
 
     try {
-      const { data, error } = await supabase.storage.from('escudos').upload(filePath, file);
+      const { data, error } = await supabase.storage.from('escudos').upload(filePath, file, { cacheControl: '31536000' });
       if (error) throw error;
 
       const { data: publicUrlData } = supabase.storage.from('escudos').getPublicUrl(filePath);

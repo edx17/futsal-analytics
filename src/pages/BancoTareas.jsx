@@ -10,6 +10,7 @@ import { BASE_W, getBaseH, renderPitch, renderElements, normalizarCancha } from 
 import { etiquetaFase, etiquetaFormato, pasaFiltros, colorFase, leerFase, FILTROS_VACIOS,
          NATURALEZAS, FASES, FORMATOS, subfasesDe } from '../utils/taxonomiaTareas';
 import { Icono } from '../iconos';
+import PortadaVideo from '../components/PortadaVideo';
 
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
@@ -350,7 +351,7 @@ const BancoTareas = () => {
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
         
         // Asume que tenés un bucket público llamado 'videos_tareas'
-        const { error: uploadError } = await supabase.storage.from('videos_tareas').upload(fileName, videoFile);
+        const { error: uploadError } = await supabase.storage.from('videos_tareas').upload(fileName, videoFile, { cacheControl: '31536000' });
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage.from('videos_tareas').getPublicUrl(fileName);
@@ -446,7 +447,7 @@ const BancoTareas = () => {
 
         <div style={{ flex: 1, background: '#0a0b0f', borderRadius: '8px', overflow: 'hidden', border: `1px solid ${colores.border}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           {tarea.video_mp4_url ? (
-            <video src={tarea.video_mp4_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline autoPlay />
+            <PortadaVideo grafico={tarea.url_grafico} icono={getIconoTarea(tarea)} ajuste="contain" />
           ) : tarea.url_grafico ? (
             <img src={tarea.url_grafico} alt="Gráfico Tarea" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           ) : (

@@ -96,7 +96,7 @@ const VideoTracingIA = () => {
 
     try {
       const fileName = `${Date.now()}_${videoFile.name}`;
-      const { error: uploadError } = await supabase.storage.from('futsal_videos').upload(fileName, videoFile);
+      const { error: uploadError } = await supabase.storage.from('futsal_videos').upload(fileName, videoFile, { cacheControl: '31536000' });
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from('futsal_videos').getPublicUrl(fileName);

@@ -9,6 +9,7 @@ import { puntoEnTrayecto } from '../utils/trayectoria';
 import { volverDesde, esModoKiosco } from '../utils/kiosco';
 import { mismaCategoria } from '../utils/categorias';
 import { Icono } from '../iconos';
+import PortadaVideo from '../components/PortadaVideo';
 
 // =======================================================
 // REPRODUCTOR DE JUGADAS
@@ -311,7 +312,7 @@ export default function LibroTactico() {
             >
               <div style={{ height: '180px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 {jugada.video_mp4_url ? (
-                  <video src={jugada.video_mp4_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted loop playsInline autoPlay />
+                  <PortadaVideo grafico={jugada.url_grafico} icono="jugada" ajuste="contain" />
                 ) : jugada.url_grafico ? (
                   <img src={jugada.url_grafico} alt="Táctica" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 ) : (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { reducirImagen } from '../utils/cartasFotos';
 import { TablaResponsive } from '../components/TablaResponsive';
 import { supabase } from '../supabase';
 import { puedeUsarCategoria, categoriasDe } from '../utils/planes';
@@ -107,13 +108,17 @@ function Plantel() {
 
     setSubiendoFoto(true);
     
-    const fileExt = file.name.split('.').pop();
-    const fileName = `jugador_${Date.now()}.${fileExt}`;
-    const filePath = `${fileName}`;
-
     try {
-      // 1. Subimos al Storage
-      const { data, error } = await supabase.storage.from('foto').upload(filePath, file);
+      // 1. La achicamos (las del celular pesan varios MB y salen en todas las cartas) y la subimos
+      let subir = file;
+      let fileExt = file.name.split('.').pop();
+      let tipo = file.type;
+      if (/^image\//.test(file.type) && !/svg/i.test(file.type)) {
+        const r = await reducirImagen(file);
+        subir = r.blob; fileExt = r.ext; tipo = r.tipo;
+      }
+      const filePath = `jugador_${Date.now()}.${fileExt}`;
+      const { error } = await supabase.storage.from('foto').upload(filePath, subir, { cacheControl: '31536000', contentType: tipo });
       if (error) throw error;
 
       // 2. Obtenemos la URL pública

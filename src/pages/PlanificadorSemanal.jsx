@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import FiltrosTareas from '../components/FiltrosTareas';
 import { pasaFiltros, etiquetaFase, etiquetaFormato, colorFase, leerFase, FILTROS_VACIOS } from '../utils/taxonomiaTareas';
 import { Icono } from '../iconos';
+import PortadaVideo from '../components/PortadaVideo';
 
 // =======================================================
 // UTILIDADES PARA TAREAS FÍSICAS Y CÁLCULOS
@@ -1824,7 +1825,7 @@ const PlanificadorSemanal = () => {
                           <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--accent)', color: '#000', fontSize: '0.75rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{idx + 1}</span>
                           <div style={{ width: '55px', height: '42px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             {t.video_mp4_url ? (
-                              <video src={t.video_mp4_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <PortadaVideo grafico={t.url_grafico} icono={getIconoTarea(t)} chico />
                             ) : t.url_grafico ? (
                               <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
@@ -2129,7 +2130,7 @@ const PlanificadorSemanal = () => {
                             style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', borderRadius: '6px', cursor: 'pointer', transition: '0.2s', background: isSelected ? 'rgba(0, 255, 136, 0.1)' : 'var(--panel)', border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)' }}>
                             <div style={{ width: '50px', height: '38px', borderRadius: '4px', background: 'var(--bg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {t.video_mp4_url ? (
-                                <video src={t.video_mp4_url} autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <PortadaVideo grafico={t.url_grafico} icono={getIconoTarea(t)} chico />
                               ) : t.url_grafico ? (
                                 <img src={t.url_grafico} alt="Gráfico" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : (
