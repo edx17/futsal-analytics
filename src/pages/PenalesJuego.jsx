@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Penales from '../components/vdraft/Penales';
 import CartaJugador from '../components/quinteto/CartaJugador';
 import { NIVELES, tandaNueva, tiroDePractica } from '../analytics/penales';
+import { premiosDeNivel } from '../analytics/premiosJuegos';
 import {
   NIVELES_CARTAS, SEGUNDOS_POR_TIRO, PREMIOS_POR_DIA, valorPateador, valorArquero, cartasParaPenales,
 } from '../analytics/penalesCartas';
@@ -153,7 +154,7 @@ function ConCartas({ estado, recargar }) {
               <b>{n.nombre}</b>
               <span className="pj-cpu">CPU {n.cpu}</span>
               <span className="pj-premio">
-                {premiosQuedan ? `+${conFactor(n.premio, avisos, 'penales')} VC` : 'sin premio'}
+                {premiosQuedan ? `+${conFactor(premiosDeNivel(estado)[n.id] ?? n.premio, avisos, 'penales')} VC` : 'sin premio'}
                 {premiosQuedan && conFactor(1, avisos, 'penales') > 1 ? <em className="jg-x2">x{avisos.actual.factor}</em> : null}
               </span>
               <small>{n.detalle}</small>

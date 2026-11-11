@@ -133,3 +133,18 @@ export const leerMisionesGod = (clubId) => rpcMisiones('god_misiones', { p_club:
 export const guardarMisionesGod = (clubId, misiones) => rpcMisiones('god_misiones_guardar', { p_club: clubId, p_misiones: misiones });
 /** Vuelve a las 4 de siempre. */
 export const restablecerMisionesGod = (clubId) => rpcMisiones('god_misiones_restablecer', { p_club: clubId });
+
+/* ── V-COINS POR JUEGO (Configurador GOD › V-Coins) ── */
+export const MENSAJE_SIN_PREMIOS = 'Falta la migración 20261116120000_juegos_premios.sql en Supabase (lo que paga cada juego).';
+async function rpcPremios(nombre, params) {
+  const { data, error } = await supabase.rpc(nombre, params);
+  if (error) {
+    if (error.code === 'PGRST202' || falta(error)) throw new Error(MENSAJE_SIN_PREMIOS);
+    throw error;
+  }
+  return data;
+}
+/** { defecto, valores, personalizados } */
+export const leerPremiosGod = (clubId) => rpcPremios('god_premios', { p_club: clubId });
+export const guardarPremiosGod = (clubId, valores) => rpcPremios('god_premios_guardar', { p_club: clubId, p_valores: valores });
+export const restablecerPremiosGod = (clubId) => rpcPremios('god_premios_restablecer', { p_club: clubId });

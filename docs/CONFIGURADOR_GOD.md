@@ -52,7 +52,7 @@ Decisiones tomadas con el dueño:
 | Sobres | ✅ crear, editar contenido, rarezas, colores, suspender | **carátula**: subir una imagen propia para el paquete |
 | Usuarios | ✅ suspender, V-Coins a uno/elegidos/todos, eventos x2 | **alta** (atajo a la invitación con PIN), **baja** y **baneo** con motivo y fecha de fin, **quitar** V-Coins masivo |
 | Misiones | ✅ configurables (etapa 4) | — |
-| V-Coins | ❌ fijos en la base (penales por nivel, duelos, repetidas, misiones…) | tabla de premios + pantalla |
+| V-Coins | ✅ configurables (etapa 5): penales, V-Draft, desafío, duelos y repetidas | — |
 | Torneo V-Draft | ✅ `GodTorneo` | mudarlo |
 | Gmail · Hinchas | ✅ `InvitacionesJuego` | mudarlo |
 
@@ -99,7 +99,7 @@ Cada etapa es un PR que se puede usar solo. Las migraciones las aplica el dueño
   V-Draft, ganar tandas de penales, jugar / ganar duelos, jugar el desafío del día.
 - `_juegos_misiones` las lee de la tabla (el progreso se sigue contando solo).
 
-### Etapa 5 · V-Coins por juego (migración)
+### Etapa 5 · V-Coins por juego (migración `20261116120000_juegos_premios.sql`, hecha)
 - Tabla `juegos_premios` (una fila por club) con los valores de hoy como
   base: penales por nivel, V-Draft (partido, victoria, desafío, torneo),
   duelos (premio del ganador, tope por día, apuesta máxima), repetidas por

@@ -14,12 +14,12 @@ const ESCALONES = [
   { titulo: 'CAMPEÓN DE CAMPEONES', trofeo: 'leyenda' },
 ];
 
-/** Los 4 escalones del camino: qué ganás si llegás a cada uno. */
-export function caminoDePremios() {
+/** Los 4 escalones del camino: qué ganás si llegás a cada uno. `vcoins`: los del club (de la base), si no los de siempre. */
+export function caminoDePremios(vcoins = null) {
   return PREMIOS.map((p, i) => ({
     ...ESCALONES[i],
     victorias: p.victorias,
-    vcoins: p.vcoins,
+    vcoins: Number.isFinite(Number(vcoins?.[i])) && vcoins?.[i] != null ? Number(vcoins[i]) : p.vcoins,
     sobre: p.sobre ? NOMBRE_SOBRE[p.sobre].replace(/\s*\(.*\)$/, '') : null,
   }));
 }

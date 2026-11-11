@@ -21,7 +21,7 @@ export const SECCIONES_GOD = [
   { id: 'sobres', grupo: 'CARTAS Y SOBRES', titulo: 'Sobres', texto: 'Qué trae cada sobre, cuánto cuesta y cómo se ve.', roles: SUPER, god: 'sobres' },
   { id: 'usuarios', grupo: 'JUGADORES', titulo: 'Usuarios', texto: 'Suspender, V-Coins y eventos multiplicadores.', roles: SUPER, god: 'usuarios' },
   { id: 'misiones', grupo: 'JUGADORES', titulo: 'Misiones', texto: 'Las misiones diarias: qué hay que hacer, cuánto paga y qué días.', roles: SUPER },
-  { id: 'vcoins', grupo: 'JUGADORES', titulo: 'V-Coins', texto: 'Lo que paga cada juego.', roles: SUPER, pronto: 5 },
+  { id: 'vcoins', grupo: 'JUGADORES', titulo: 'V-Coins', texto: 'Lo que paga cada juego: penales, V-Draft, desafío, duelos y repetidas.', roles: SUPER },
   { id: 'torneo', grupo: 'JUEGOS', titulo: 'Torneo V-Draft', texto: 'Entrada, partidas y premio extra.', roles: SUPER, god: 'torneo' },
   { id: 'gmail', grupo: 'JUEGOS', titulo: 'Gmail · Hinchas', texto: 'Vincular Gmail y las invitaciones a hinchas.', roles: SUPER, god: 'gmail' },
 ];

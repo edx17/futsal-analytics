@@ -15,6 +15,7 @@ import HistorialPremios from '../components/quinteto/HistorialPremios';
 import FotosEspeciales from '../components/quinteto/FotosEspeciales';
 import AltaCartasPlantel from '../components/god/AltaCartasPlantel';
 import GodMisiones from '../components/god/GodMisiones';
+import GodVcoins from '../components/god/GodVcoins';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -29,10 +30,6 @@ import '../components/quinteto/quinteto.css';
  */
 
 const ORO = '#fbbf24';
-const QUE_VIENE = {
-  vcoins: ['Lo que paga cada juego, en un solo lugar.', 'Penales por nivel · V-Draft (partido, victoria, desafío, torneo) · Duelos (premio, tope por día, apuesta máxima) · cartas repetidas por rareza · misiones.', 'Si no se toca nada, quedan los valores de hoy.'],
-};
-
 export default function God() {
   const { perfil } = useAuth();
   const esMovil = useEsMovil();
@@ -154,7 +151,7 @@ export default function God() {
 
           {seccion === 'placas' && <HistorialPremios clubId={clubId} club={datosDelClub(perfil)} esMovil={esMovil} />}
 
-          {actual?.pronto && <Pronto etapa={actual.pronto} items={QUE_VIENE[seccion] || []} />}
+          {seccion === 'vcoins' && <GodVcoins clubId={clubId} esMovil={esMovil} />}
         </main>
       </div>
 
@@ -190,17 +187,6 @@ function ConPlantel({ plantel, sinFiltros = false, children }) {
         </div>
       ) : children}
     </>
-  );
-}
-
-function Pronto({ etapa, items }) {
-  return (
-    <div className="bento-card" style={{ padding: 18, border: `1px dashed ${ORO}66` }}>
-      <div style={{ ...rotulo, color: ORO }}>EN CAMINO · ETAPA {etapa}</div>
-      <ul style={{ margin: '8px 0 0', paddingLeft: 18, color: 'var(--text-dim)', fontSize: '0.85rem', lineHeight: 1.6 }}>
-        {items.map((t) => <li key={t}>{t}</li>)}
-      </ul>
-    </div>
   );
 }
 
