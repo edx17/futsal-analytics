@@ -4,8 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { usePlantelEnCartas } from '../utils/usePlantelEnCartas';
 import { menuPorGrupo, altasPara, seccionInicial, SECCIONES_GOD } from '../analytics/configuradorGod';
-import { catalogoDeCartas, probabilidades } from '../analytics/sobres';
-import { publicarCatalogo } from '../utils/sobres';
 import { leerPreferencias, guardarPreferencias } from '../utils/preferenciasApertura';
 import { prepararAudio, sonidoActivo } from '../utils/sonidoApertura';
 import { datosDelClub } from '../placas/club';
@@ -15,6 +13,7 @@ import PreferenciasApertura from '../components/sobres/PreferenciasApertura';
 import PanelPremios from '../components/quinteto/PanelPremios';
 import HistorialPremios from '../components/quinteto/HistorialPremios';
 import FotosEspeciales from '../components/quinteto/FotosEspeciales';
+import AltaCartasPlantel from '../components/god/AltaCartasPlantel';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -117,7 +116,9 @@ export default function God() {
               {altas.map((a) => <button key={a.id} onClick={() => setAlta(a.id)} style={chip(alta === a.id)}>{a.titulo}</button>)}
             </div>
           )}
-          {seccion === 'alta' && alta === 'basicas' && <AltaBasicas plantel={plantel} clubId={clubId} />}
+          {seccion === 'alta' && alta === 'basicas' && (
+            <ConPlantel plantel={plantel}><AltaCartasPlantel plantel={plantel} clubId={clubId} esMovil={esMovil} /></ConPlantel>
+          )}
           {seccion === 'alta' && alta === 'premios' && (
             <ConPlantel plantel={plantel}>
               <PanelPremios partidosJugados={plantel.analisis.partidosJugados} jugadores={plantel.raw.jugadores} club={datosDelClub(perfil)}
@@ -190,50 +191,6 @@ function ConPlantel({ plantel, sinFiltros = false, children }) {
   );
 }
 
-/* ALTA · BÁSICAS: las cartas que salen de los partidos (con el filtro puesto) quedan disponibles para los sobres. */
-function AltaBasicas({ plantel, clubId }) {
-  const [estado, setEstado] = useState(null);
-  const filas = useMemo(() => (plantel.loading ? [] : catalogoDeCartas(plantel.cartasCalculadas, plantel.premiosCalculados)),
-    [plantel.loading, plantel.cartasCalculadas, plantel.premiosCalculados]);
-  const resumen = useMemo(() => probabilidades(filas), [filas]);
-
-  const publicar = async () => {
-    const alcance = `${plantel.filtroCategoria === 'Todas' ? 'todas las categorías' : plantel.filtroCategoria}, ${plantel.filtroTorneo === 'Todos' ? 'toda la temporada' : 'un torneo'}`;
-    if (!window.confirm(`Vas a publicar ${filas.length} cartas para los sobres (${alcance}).\n\nLas que ya estaban se actualizan; ninguna se borra. ¿Seguir?`)) return;
-    setEstado({ ocupado: true });
-    try {
-      const n = await publicarCatalogo(clubId, filas);
-      setEstado({ texto: `Se publicaron ${n} cartas para los sobres.` });
-    } catch (err) {
-      setEstado({ texto: err?.message || 'No se pudieron publicar las cartas.', error: true });
-    }
-  };
-
-  return (
-    <ConPlantel plantel={plantel}>
-      <div className="bento-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', lineHeight: 1.5 }}>
-          Las cartas de cada jugador se calculan solas con sus partidos (las mismas de MySquad). Publicarlas las deja disponibles
-          para los sobres del club; también publica las de premio que ya estén guardadas en Placas.
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {resumen.map((r) => (
-            <span key={r.nombre} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 12 }}>
-              {r.nombre}: <b>{r.cartas}</b>
-            </span>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button onClick={publicar} disabled={!filas.length || estado?.ocupado} style={{ ...boton, background: ORO, color: '#1a1205' }}>
-            {estado?.ocupado ? 'PUBLICANDO…' : `PUBLICAR ${filas.length} CARTAS PARA SOBRES`}
-          </button>
-          {estado?.texto && <span role="status" style={{ fontSize: 13, color: estado.error ? '#ef4444' : 'var(--accent)' }}>{estado.texto}</span>}
-        </div>
-      </div>
-    </ConPlantel>
-  );
-}
-
 function Pronto({ etapa, items }) {
   return (
     <div className="bento-card" style={{ padding: 18, border: `1px dashed ${ORO}66` }}>
@@ -247,7 +204,6 @@ function Pronto({ etapa, items }) {
 
 const rotulo = { fontSize: 10, fontWeight: 800, letterSpacing: '.18em', color: 'var(--text-dim)' };
 const select = { width: 'auto', maxWidth: '100%', padding: '9px 12px', borderRadius: 8, background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', fontSize: 12, fontWeight: 700 };
-const boton = { padding: '10px 16px', minHeight: 44, borderRadius: 8, border: 'none', fontWeight: 900, letterSpacing: '.06em', cursor: 'pointer', fontSize: 13 };
 const chip = (activo) => ({
   padding: '8px 14px', minHeight: 40, whiteSpace: 'nowrap', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 800, letterSpacing: '.06em',
   border: `1px solid ${activo ? ORO : 'var(--border)'}`, color: activo ? ORO : 'var(--text-dim)', background: activo ? 'rgba(251,191,36,.08)' : 'transparent',
