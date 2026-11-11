@@ -11,7 +11,8 @@ import {
   lineasDraft, pelotaEn, pseudoAzar,
 } from '../analytics/vdraft';
 import { estadoVDraft, nuevaPartida, elegirCarta, hacerCambio, jugarPartido, abandonarPartida, anotarseTorneo } from '../utils/vdraft';
-import { MODOS, PREMIOS_DESAFIO, repartoTorneo, ordinal, etiquetaDeModo, cierreDeModo, botonDeModo } from '../analytics/vdraftModos';
+import { premiosDeVictorias, premiosDelDesafio } from '../analytics/premiosJuegos';
+import { MODOS, repartoTorneo, ordinal, etiquetaDeModo, cierreDeModo, botonDeModo } from '../analytics/vdraftModos';
 import { caminoDePremios, podioDelRanking, destinoDeCarta, avanceDelDraft } from '../analytics/vdraftVista';
 import { perfilEquipo, parte, favorito, cartaDelAutor, despuesDelPartido, monedasQueCaen } from '../analytics/partidoVista';
 import { esModoKiosco, RUTA_KIOSCO } from '../utils/kiosco';
@@ -245,7 +246,7 @@ function Inicio({ estado, modo, formacion, setFormacion, empezar, anotarse, ocup
 
       <section className="jg-panel jg-entra" style={{ '--i': 2 }}>
         <h2 className="jg-panel-titulo">EL CAMINO DE PREMIOS</h2>
-        <Camino />
+        <Camino vcoins={premiosDeVictorias(estado)} />
         <small className="vd-nota">Te llevás el premio del último escalón que alcances. Los sobres se abren en <b>Sobres</b>.</small>
       </section>
 
@@ -334,7 +335,7 @@ function InicioDesafio({ estado, formacion, setFormacion, empezar, ocupado }) {
       <section className="jg-panel jg-entra" style={{ '--i': 2 }}>
         <h2 className="jg-panel-titulo">PREMIOS DEL DÍA</h2>
         <div className="vd-premios-modo">
-          {PREMIOS_DESAFIO.map((p, i) => (
+          {premiosDelDesafio(estado).map((p, i) => (
             <div key={i} className={`vd-premio-modo vd-premio-${i + 1}`}>
               <span>{i < 3 ? ordinal(i + 1) : 'LOS DEMÁS'}</span>
               <b>+{p} VC</b>
@@ -466,12 +467,12 @@ function Trofeo({ tono }) {
   );
 }
 
-function Camino() {
+function Camino({ vcoins }) {
   const avisos = useAvisosVCoins();
   const x2 = conFactor(1, avisos, 'vdraft') > 1;
   return (
     <ol className="vd-camino">
-      {caminoDePremios().map((e, i) => (
+      {caminoDePremios(vcoins).map((e, i) => (
         <li key={e.victorias} className={`vd-escalon vd-escalon-${e.trofeo} jg-entra`} style={{ '--i': i + 2 }}>
           <Trofeo tono={e.trofeo} />
           <span className="vd-escalon-titulo">{e.titulo}</span>
