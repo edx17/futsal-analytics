@@ -13,6 +13,7 @@ Decisiones tomadas con el dueño:
 | MySquad | Sólo **CANCHA**: armar el quinteto (de 5) y **publicarlo en redes**. Sin Premios, Especiales ni Historial. Se abre también a los jugadores. |
 | Misiones | Configurables, pero sólo sobre **acciones que la base ya mide** (no se pueden inflar desde el navegador). |
 | Torneo V-Draft y Gmail · Hinchas | **Quedan como están**, sólo se mudan al configurador. |
+| Carta básica | Es la **inicial** del jugador y **una carta publicada no se pisa nunca**. Lo que mejora llega como cartas nuevas: las de partido (POTW/POTM), TOTW/TOTM/TOTY o una segunda tirada. Quien no tiene partidos al empezar la temporada recibe su carta base cargada a mano. |
 
 ---
 
@@ -73,11 +74,23 @@ Cada etapa es un PR que se puede usar solo. Las migraciones las aplica el dueño
   usamos para redes) para compartir o descargar.
 - Se abre a los jugadores (también desde el kiosco y el menú de Juegos).
 
+### Etapa 1b · Alta sin pisar nada (hecha)
+- *Alta › Básicas* compara con el catálogo: **NUEVAS** (se eligen una por una
+  y se publican sólo esas), **YA PUBLICADAS** (no se tocan; si hoy daría otra
+  media se avisa), **ELIMINADAS** (no vuelven) y **SIN CARTA** (carta base a
+  mano: media y 6 stats sugeridas por puesto).
+- El aviso de "cartas guardadas sin publicar" del panel manda a elegirlas ahí.
+
 ### Etapa 3 · Modificador de cartas completo (migración)
 - `cartas_ajustes` suma `atributos` (las 6 stats) y `estilo` (TOTY, TOTW,
   TOTM, POTM, POTW, goleador, asistidor, recuperador, Halloween, Héroe…).
 - Un solo editor por carta: foto, media, stats y estilo, con la vista previa
   de la carta al lado.
+
+### Etapa 3b · Segunda tirada
+- Una tirada nueva por mes (o cuando se decida) con las stats analizadas del
+  período y umbrales propios: son cartas **nuevas** (clave propia), la básica
+  queda como está. Se eligen y publican igual que en *Alta › Básicas*.
 
 ### Etapa 4 · Misiones (migración)
 - Tabla `juegos_misiones_def`: acción, meta, premio, días de la semana,

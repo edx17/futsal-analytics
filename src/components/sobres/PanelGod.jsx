@@ -103,12 +103,14 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
             ({Object.entries(pendientes.reduce((m, f) => ({ ...m, [f.tipo]: (m[f.tipo] || 0) + 1 }), {})).map(([t, n]) => `${PREMIOS[t]?.sigla || t} ${n}`).join(' · ')}).
             Hasta publicarlas no aparecen acá ni pueden salir en un sobre.
           </span>
+          {embebido ? <span style={{ fontWeight: 800 }}>Se eligen una por una en ALTA DE CARTAS › BÁSICAS › NUEVAS.</span> : (
           <button style={{ ...btn, background: '#fbbf24', color: '#1a1205' }} disabled={publicando} onClick={async () => {
             setPublicando(true); setAviso(null);
             try { const n = await publicarCatalogo(clubId, pendientes); await cargar(); setAviso({ texto: `Se publicaron ${n} cartas.` }); } catch (err) {
               setAviso({ texto: err?.message || 'No se pudieron publicar.', error: true });
             } finally { setPublicando(false); }
           }}>{publicando ? 'PUBLICANDO…' : `PUBLICAR LAS ${pendientes.length}`}</button>
+          )}
         </div>
       )}
       {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} fotos={fotos} tipos={config?.tipos || {}} alProbar={alProbar} />}
