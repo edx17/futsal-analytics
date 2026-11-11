@@ -260,7 +260,7 @@ function Carrusel({ modos, ir, destacadas = [] }) {
   );
 }
 
-const ICONO_MISION = { sobre: '🎴', vdraft_partido: '⚽', vdraft_victorias: '🏆' };
+const ICONO_MISION = { sobre: '🎴', vdraft_partido: '⚽', vdraft_victorias: '🏆', penales: '🥅' };
 
 function Misiones({ misiones, cobrando, cobrar, plegable }) {
   const [abierta, setAbierta] = useState(!plegable);
