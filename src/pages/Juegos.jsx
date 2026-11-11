@@ -10,6 +10,7 @@ import { estadoVDraft } from '../utils/vdraft';
 import { estadoDuelos } from '../utils/duelos';
 import { misionesDelDia, cobrarMision } from '../utils/juegos';
 import { mejorCarta, mejoresCartas, modosDelMenu, resumenMisiones } from '../analytics/juegosHub';
+import { accionPorId } from '../analytics/misionesGod';
 import '../components/quinteto/quinteto.css';
 import './juegos.css';
 
@@ -287,7 +288,7 @@ function Misiones({ misiones, cobrando, cobrar, plegable }) {
             const lista = m.progreso >= m.meta;
             return (
               <li key={m.id} className={m.cobrada ? 'cobrada' : ''}>
-                <span className="jh-mision-icono" aria-hidden="true">{ICONO_MISION[m.id] || '★'}</span>
+                <span className="jh-mision-icono" aria-hidden="true">{accionPorId[m.accion]?.icono || ICONO_MISION[m.id] || '★'}</span>
                 <div className="jh-mision-texto">
                   <b>{m.titulo}</b>
                   <ProgressBar valor={m.progreso / m.meta} tono={lista ? undefined : 'oro'} />

@@ -116,3 +116,20 @@ export async function guardarConfigSobres(clubId, { suspendidos, evento_activo, 
 }
 
 export const MENSAJE_SIN_TIPOS = 'Falta la migración 20261023120000_sobres_tipos.sql en Supabase (para editar cada sobre).';
+
+/* ── MISIONES (Configurador GOD › Misiones) ── */
+export const MENSAJE_SIN_MISIONES = 'Falta la migración 20261115120000_juegos_misiones_config.sql en Supabase (misiones configurables).';
+async function rpcMisiones(nombre, params) {
+  const { data, error } = await supabase.rpc(nombre, params);
+  if (error) {
+    if (error.code === 'PGRST202' || falta(error)) throw new Error(MENSAJE_SIN_MISIONES);
+    throw error;
+  }
+  return data;
+}
+/** { personalizadas, misiones: [{ id, accion, titulo, meta, premio, dias, activa, orden }] } */
+export const leerMisionesGod = (clubId) => rpcMisiones('god_misiones', { p_club: clubId });
+/** Reemplaza todas las misiones del club (ver analytics/misionesGod.paraGuardar). */
+export const guardarMisionesGod = (clubId, misiones) => rpcMisiones('god_misiones_guardar', { p_club: clubId, p_misiones: misiones });
+/** Vuelve a las 4 de siempre. */
+export const restablecerMisionesGod = (clubId) => rpcMisiones('god_misiones_restablecer', { p_club: clubId });
