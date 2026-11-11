@@ -14,6 +14,7 @@ import PanelPremios from '../components/quinteto/PanelPremios';
 import HistorialPremios from '../components/quinteto/HistorialPremios';
 import FotosEspeciales from '../components/quinteto/FotosEspeciales';
 import AltaCartasPlantel from '../components/god/AltaCartasPlantel';
+import GodMisiones from '../components/god/GodMisiones';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -29,7 +30,6 @@ import '../components/quinteto/quinteto.css';
 
 const ORO = '#fbbf24';
 const QUE_VIENE = {
-  misiones: ['Crear, editar, apagar y borrar misiones diarias.', 'Cada misión: acción (abrir sobres, partidos y victorias del V-Draft, tandas de penales, duelos, desafío del día), meta, premio y días.', 'El progreso se sigue contando solo en la base: no se puede inflar.'],
   vcoins: ['Lo que paga cada juego, en un solo lugar.', 'Penales por nivel · V-Draft (partido, victoria, desafío, torneo) · Duelos (premio, tope por día, apuesta máxima) · cartas repetidas por rareza · misiones.', 'Si no se toca nada, quedan los valores de hoy.'],
 };
 
@@ -149,6 +149,8 @@ export default function God() {
               </ConPlantel>
             </div>
           )}
+
+          {seccion === 'misiones' && <GodMisiones clubId={clubId} esMovil={esMovil} />}
 
           {seccion === 'placas' && <HistorialPremios clubId={clubId} club={datosDelClub(perfil)} esMovil={esMovil} />}
 

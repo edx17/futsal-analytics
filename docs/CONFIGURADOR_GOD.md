@@ -51,7 +51,7 @@ Decisiones tomadas con el dueño:
 | Eventos | ✅ alta, edición, suspensión | **eliminar** (sólo si nadie lo abrió; si no, se archiva) |
 | Sobres | ✅ crear, editar contenido, rarezas, colores, suspender | **carátula**: subir una imagen propia para el paquete |
 | Usuarios | ✅ suspender, V-Coins a uno/elegidos/todos, eventos x2 | **alta** (atajo a la invitación con PIN), **baja** y **baneo** con motivo y fecha de fin, **quitar** V-Coins masivo |
-| Misiones | ❌ fijas en la base (`_juegos_misiones`) | tabla de definiciones + pantalla |
+| Misiones | ✅ configurables (etapa 4) | — |
 | V-Coins | ❌ fijos en la base (penales por nivel, duelos, repetidas, misiones…) | tabla de premios + pantalla |
 | Torneo V-Draft | ✅ `GodTorneo` | mudarlo |
 | Gmail · Hinchas | ✅ `InvitacionesJuego` | mudarlo |
@@ -92,7 +92,7 @@ Cada etapa es un PR que se puede usar solo. Las migraciones las aplica el dueño
   período y umbrales propios: son cartas **nuevas** (clave propia), la básica
   queda como está. Se eligen y publican igual que en *Alta › Básicas*.
 
-### Etapa 4 · Misiones (migración)
+### Etapa 4 · Misiones (migración `20261115120000_juegos_misiones_config.sql`, hecha)
 - Tabla `juegos_misiones_def`: acción, meta, premio, días de la semana,
   activa, orden. Se cargan las 4 de hoy para que nada cambie.
 - Acciones que se pueden usar: abrir sobres, jugar / ganar partidos de
