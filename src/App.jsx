@@ -135,7 +135,7 @@ const getSidebarGroupTitle = (isCollapsed) => ({
   textAlign: 'center'
 });
 
-const fabStyle = { position: 'absolute', top: '0px', left: '50%', transform: 'translateX(-50%)', width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)', color: '#000', border: 'none', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContext: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,255,136,0.3)', zIndex: 1002, transition: 'transform 0.2s' };
+const fabStyle = { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '44px', height: '44px', borderRadius: '50%', background: 'var(--accent)', color: '#000', border: 'none', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContext: 'center', justifyContent: 'center', boxShadow: '0 4px 15px rgba(0,255,136,0.3)', zIndex: 1002, transition: 'transform 0.2s' };
 
 // ==========================================
 // COMPONENTES DE ENRUTAMIENTO Y LAYOUT
@@ -700,15 +700,15 @@ useEffect(() => {
       {/* MOBILE BOTTOM NAVIGATION */}
       {esMovil && (
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '70px', background: 'var(--panel)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 1000, paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          <NavLink to="/inicio" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
+          <NavLink to="/inicio" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)', boxShadow: isActive ? 'inset 0 2px 0 var(--accent)' : 'none'})}>
             <Icono nombre="inicio" size={24} style={{ marginBottom: '2px' }} />
-            <span style={{fontSize: '0.65rem'}}>Inicio</span>
+            <span style={{fontSize: '11px'}}>Inicio</span>
           </NavLink>
           
           {permisos.puedeVerDeportivo && !permisos.esJugador && (
-            <NavLink to="/microciclo" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
+            <NavLink to="/microciclo" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)', boxShadow: isActive ? 'inset 0 2px 0 var(--accent)' : 'none'})}>
               <Icono nombre="hoy" size={24} style={{ marginBottom: '2px' }} />
-              <span style={{fontSize: '0.65rem'}}>Hoy</span>
+              <span style={{fontSize: '11px'}}>Hoy</span>
             </NavLink>
           )}
 
@@ -721,14 +721,14 @@ useEffect(() => {
             </button>
           </div>
 
-          <NavLink to="/resumen" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)'})}>
+          <NavLink to="/resumen" style={({isActive}) => ({...navMobileStyle, color: isActive ? 'var(--accent)' : 'var(--text-dim)', boxShadow: isActive ? 'inset 0 2px 0 var(--accent)' : 'none'})}>
             <Icono nombre="analisis" size={24} style={{ marginBottom: '2px' }} />
-            <span style={{fontSize: '0.65rem'}}>Stats</span>
+            <span style={{fontSize: '11px'}}>Stats</span>
           </NavLink>
 
           <div onClick={() => { setDrawerAbierto(true); setFabAbierto(false); }} style={{...navMobileStyle, color: drawerAbierto ? 'var(--accent)' : 'var(--text-dim)'}}>
             <Icono nombre="menu" size={24} style={{ marginBottom: '2px' }} />
-            <span style={{fontSize: '0.65rem'}}>Menú</span>
+            <span style={{fontSize: '11px'}}>Menú</span>
           </div>
         </nav>
       )}
