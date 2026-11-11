@@ -59,6 +59,7 @@ export default function Juegos({ kiosco = false }) {
   const ir = (m) => {
     if (m.bloqueado) return;
     feedback('elegir');
+    if (m.clave === 'god') { navigate('/god'); return; }
     navigate(kiosco ? `/kiosco/${m.id}` : `/${m.id}`);
   };
 

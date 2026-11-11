@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import CartaGiratoria from '../components/quinteto/CartaGiratoria';
 import AperturaSobre from '../components/sobres/AperturaSobre';
 import PanelGod from '../components/sobres/PanelGod';
 import PanelClub from '../components/sobres/PanelClub';
+import PreferenciasApertura from '../components/sobres/PreferenciasApertura';
 import { useAuth } from '../context/AuthContext';
 import { varianteDeApertura, EVENTOS } from '../analytics/aperturas';
 import { prepararVideo, liberarVideos } from '../utils/videoApertura';
@@ -156,29 +157,8 @@ export default function Sobres() {
 
   if (cargando && !soloGod) return <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)' }}>Abriendo el paquete…</div>;
 
-  if (soloGod) {
-    return (
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 0 80px', animation: 'fadeIn 0.3s' }}>
-        <div className="stat-label" style={{ color: '#fbbf24', fontSize: '1.2rem' }}>SOBRES · MODO GOD</div>
-        <div style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginBottom: 14 }}>
-          Probá cualquier sobre y cualquier cinemática sin gastar nada, manejá las cartas del catálogo y los sobres del club.
-        </div>
-        {!clubGod ? (
-          <div className="bento-card" style={{ padding: 24, color: 'var(--text-dim)' }}>Elegí un club en la app para administrar sus sobres.</div>
-        ) : (
-          <>
-            <PreferenciasApertura prefs={prefs} cambiar={cambiarPref} />
-            <PanelGod clubId={clubGod} estado={null} abiertoInicial alCambiar={cargar}
-              alProbar={(p) => { prepararAudio(prefs.sonido); setPrueba(p); }} />
-          </>
-        )}
-        {prueba && (
-          <AperturaSobre key={prueba.resultado.sobre_id} resultado={prueba.resultado} prefs={{ ...prefs, cine: true }}
-            evento={prueba.evento} forzar={prueba.forzar} escenaTipo={prueba.escenaTipo} onCerrar={() => setPrueba(null)} />
-        )}
-      </div>
-    );
-  }
+  /* El superusuario administra todo desde el Configurador GOD. */
+  if (soloGod) return <Navigate to="/god" replace />;
 
   /* Cada sobre, normal o de evento, en el mismo formato para la tarjeta 3D. */
   const tarjeta = (s, i, disponible) => {
@@ -470,27 +450,4 @@ function Probabilidades({ catalogo, soloEspeciales = false, reglas = null, facto
 }
 
 /* Las preferencias de la apertura: de quien mira, nunca cambian qué sale. */
-function PreferenciasApertura({ prefs, cambiar }) {
-  const opcion = (activo) => ({
-    padding: '5px 12px', minHeight: 'var(--jg-toque, 44px)', fontSize: 12, fontWeight: 800, letterSpacing: '.06em', borderRadius: 8, cursor: 'pointer',
-    border: `1px solid ${activo ? 'var(--accent)' : 'var(--border)'}`, color: activo ? 'var(--accent)' : 'var(--text-dim)',
-    background: activo ? 'rgba(0,255,136,.08)' : 'transparent',
-  });
-  return (
-    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '6px 0 8px' }} aria-label="Cómo se abren los sobres">
-      <span style={{ ...rotulo, marginBottom: 0, marginRight: 4 }}>APERTURA</span>
-      <button style={opcion(prefs.cine !== false)} onClick={() => cambiar('cine', true)} aria-pressed={prefs.cine !== false}>DE CINE</button>
-      <button style={opcion(prefs.cine === false)} onClick={() => cambiar('cine', false)} aria-pressed={prefs.cine === false}>SIMPLE</button>
-      <span style={{ width: 8 }} />
-      <button style={opcion(prefs.velocidad !== 'rapida')} onClick={() => cambiar('velocidad', 'normal')} aria-pressed={prefs.velocidad !== 'rapida'}>NORMAL</button>
-      <button style={opcion(prefs.velocidad === 'rapida')} onClick={() => cambiar('velocidad', 'rapida')} aria-pressed={prefs.velocidad === 'rapida'}>RÁPIDA</button>
-      <span style={{ width: 8 }} />
-      <button style={opcion(prefs.sonido)} onClick={() => cambiar('sonido', !prefs.sonido)} aria-pressed={prefs.sonido}>
-        {prefs.sonido ? 'SONIDO: SÍ' : 'SONIDO: NO'}
-      </button>
-    </div>
-  );
-}
-
-const rotulo = { fontSize: 10, fontWeight: 800, letterSpacing: '.18em', color: 'var(--text-dim)', marginBottom: 8 };
 
