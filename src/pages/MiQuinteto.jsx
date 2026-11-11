@@ -1,28 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useCategorias } from '../utils/useCategorias';
-import { useDatosPlantel } from '../utils/useDatosPlantel';
 import { useEsMovil } from '../utils/useEsMovil';
-import { procesarPlantel } from '../analytics/plantel';
+import { usePlantelEnCartas } from '../utils/usePlantelEnCartas';
 import {
-  analizarPartidos, armarCartas, FORMACIONES, quintetoIdeal, quintetoMasUsado, quimicaDe,
+  FORMACIONES, quintetoIdeal, quintetoMasUsado, quimicaDe,
   ubicar, etiquetaLugar, puedeIr, CASTIGO_FUERA_DE_PUESTO,
 } from '../analytics/quinteto';
 import { useArrastre } from '../components/quinteto/useArrastre';
 import CanchaPerspectiva from '../components/quinteto/CanchaPerspectiva';
 import CartaJugador from '../components/quinteto/CartaJugador';
-import PanelPremios from '../components/quinteto/PanelPremios';
-import HistorialPremios from '../components/quinteto/HistorialPremios';
-import FotosEspeciales from '../components/quinteto/FotosEspeciales';
-import { listarFotos } from '../utils/cartasFotos';
-import { listarHistorial } from '../utils/cartasDestacadas';
-import { datosDelClub } from '../placas/club';
-import { cartasDeHistorial, armarBanco } from '../analytics/premiosCartas';
+import { armarBanco } from '../analytics/premiosCartas';
 import { TODOS_LOS_TIPOS } from '../analytics/premios';
-import { catalogoDeCartas, probabilidades } from '../analytics/sobres';
-import { publicarCatalogo } from '../utils/sobres';
-import { listarAjustes } from '../utils/god';
-import { aplicarAjustes } from '../analytics/god';
 import { Icono } from '../iconos';
 import '../components/quinteto/quinteto.css';
 
@@ -32,10 +20,12 @@ import '../components/quinteto/quinteto.css';
  * Es para "jugar": armar quintetos, ver el ideal según los números y comparar
  * con el que más se usó de verdad. Las cartas salen de los mismos datos que
  * Resumen de plantel; las cuentas viven en analytics/quinteto.js.
+ *
+ * Sólo la CANCHA: dar de alta cartas (básicas y de premio), sus fotos y las
+ * placas para redes se hacen en el Configurador GOD (/god).
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const SECCIONES = [['cancha', 'CANCHA'], ['premios', 'PREMIOS'], ['especiales', 'ESPECIALES'], ['historial', 'HISTORIAL']];
 const COLOR_ATTR = (v) => (v >= 80 ? '#00ff88' : v >= 65 ? '#fbbf24' : '#ef4444');
 const COLOR_RATING = (r) => (r >= 7 ? '#00ff88' : r >= 6 ? '#fbbf24' : '#ef4444');
 const TEXTO_TIER = {
@@ -52,8 +42,10 @@ export default function MiQuinteto() {
   const clubId = localStorage.getItem('club_id') || perfil?.club_id;
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
-  const [filtroCategoria, setFiltroCategoria] = useState('Todas');
-  const [filtroTorneo, setFiltroTorneo] = useState('Todos');
+  const {
+    loading, avance, categorias, torneos, filtroCategoria, setFiltroCategoria, filtroTorneo, setFiltroTorneo,
+    cartasBase, minimo, partidosEquipo, analisis, premios,
+  } = usePlantelEnCartas({ clubId, misCategorias });
   const [formacionId, setFormacionId] = useState('2-2');
   const [alineacion, setAlineacion] = useState([null, null, null, null, null]);
   const [sel, setSel] = useState(null);
@@ -63,73 +55,7 @@ export default function MiQuinteto() {
      La alineación guarda ids de JUGADOR, así que en la cancha va una sola carta por jugador. */
   const [elegidas, setElegidas] = useState({});
   const [tipoBanco, setTipoBanco] = useState('TODAS');
-  /* Fotos especiales de las cartas de premio: Map clave → url (ver cartas_fotos). */
-  const [fotos, setFotos] = useState(() => new Map());
-  const cargarFotos = useCallback(async () => { if (clubId) setFotos(await listarFotos(clubId)); }, [clubId]);
-  useEffect(() => { cargarFotos(); }, [cargarFotos]);
-  /* Las cartas especiales salen del HISTORIAL: sólo existen los premios guardados ahí. */
-  const [historial, setHistorial] = useState([]);
-  // ?seccion=premios: desde "Cartas y sobres del club" se llega directo a confirmar.
-  const [seccion, setSeccion] = useState(() => {
-    const s = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('seccion');
-    return SECCIONES.some(([id]) => id === s) ? s : 'cancha';
-  });
-  const [versionHistorial, setVersionHistorial] = useState(0);
-  useEffect(() => {
-    if (!clubId || seccion === 'historial') return undefined;
-    let vivo = true;
-    listarHistorial(clubId)
-      .then((r) => { if (vivo) setHistorial(r); })
-      .catch((err) => { console.warn('Historial de premios:', err?.message); if (vivo) setHistorial([]); });
-    return () => { vivo = false; };
-  }, [clubId, seccion, versionHistorial]);
 
-  const { raw, loading, avance } = useDatosPlantel(clubId);
-  const { categorias } = useCategorias({ incluirHistoricas: true, asignadas: misCategorias });
-
-  /* ── mismos filtros que Resumen de plantel ── */
-  const partidosScopeCat = useMemo(() => {
-    let p = raw.partidos;
-    if (misCategorias.length > 0) p = p.filter((x) => !x.categoria || misCategorias.includes(x.categoria));
-    if (filtroCategoria !== 'Todas') p = p.filter((x) => x.categoria === filtroCategoria);
-    return p;
-  }, [raw.partidos, misCategorias, filtroCategoria]);
-
-  const torneos = useMemo(() => {
-    const m = new Map();
-    partidosScopeCat.forEach((p) => { if (p.torneo_id) m.set(p.torneo_id, p.competicion || 'Torneo'); });
-    return [...m.entries()].map(([id, nombre]) => ({ id, nombre }));
-  }, [partidosScopeCat]);
-
-  const partidosFiltro = useMemo(
-    () => (filtroTorneo === 'Todos' ? partidosScopeCat : partidosScopeCat.filter((p) => p.torneo_id === filtroTorneo)),
-    [partidosScopeCat, filtroTorneo],
-  );
-
-  /* Medias corregidas a mano por el superusuario (modo GOD): se ven en la
-     cancha y el banco; al publicar va siempre la calculada (la rareza no cambia). */
-  const [ajustes, setAjustes] = useState(() => new Map());
-  useEffect(() => {
-    if (!clubId) return undefined;
-    let vivo = true;
-    listarAjustes(clubId).then((a) => { if (vivo) setAjustes(a); }).catch(() => {});
-    return () => { vivo = false; };
-  }, [clubId]);
-
-  const { cartas: cartasCalculadas, minimo, partidosEquipo, analisis } = useMemo(() => {
-    const { jugadoresProc, arquerosProc } = procesarPlantel({
-      raw, partidosScopeCat, filtroTorneo, filtroCategoria, misCategorias,
-      hayRuedas: false, filtroRueda: 'Todas', torneoElegido: null, jornadasOrdenadas: [],
-    });
-    const a = analizarPartidos({ partidos: partidosFiltro, eventos: raw.eventos, jugadores: raw.jugadores });
-    return { ...armarCartas({ jugadoresProc, arquerosProc, forma: a.forma, figura: a.figura }), analisis: a };
-  }, [raw, partidosScopeCat, partidosFiltro, filtroTorneo, filtroCategoria, misCategorias]);
-
-  const cartasBase = useMemo(() => aplicarAjustes(cartasCalculadas, ajustes, (c) => `BASE|${c.id}`), [cartasCalculadas, ajustes]);
-
-  /* Las versiones de premio de cada carta (TOTY, TOTM, TOTW…): las del historial guardado. */
-  const premiosCalculados = useMemo(() => cartasDeHistorial(historial, cartasCalculadas, fotos), [historial, cartasCalculadas, fotos]);
-  const premios = useMemo(() => aplicarAjustes(premiosCalculados, ajustes), [premiosCalculados, ajustes]);
   const todasPorClave = useMemo(() => {
     const m = new Map(cartasBase.map((c) => [c.id, { ...c, clave: c.id }]));
     premios.forEach((c) => m.set(c.clave, c));
@@ -242,24 +168,6 @@ export default function MiQuinteto() {
     cambiar({ tipo: 'banco', id: c.id, clave: c.clave }, sel);
   };
 
-  /* Las cartas que pueden salir en los sobres del club: las del filtro que esté puesto. */
-  const [publicando, setPublicando] = useState(false);
-  const publicar = async () => {
-    const filas = catalogoDeCartas(cartasCalculadas, premiosCalculados);
-    const lineas = probabilidades(filas).map((r) => `${r.nombre}: ${r.cartas}`).join('\n');
-    if (!window.confirm(`Vas a publicar ${filas.length} cartas para los sobres (${filtroCategoria === 'Todas' ? 'todas las categorías' : filtroCategoria}, ${filtroTorneo === 'Todos' ? 'toda la temporada' : 'un torneo'}).\n\n${lineas}\n\nLas que ya estaban se actualizan; ninguna se borra. ¿Seguir?`)) return;
-    setPublicando(true);
-    try {
-      const n = await publicarCatalogo(clubId, filas);
-      avisar(`Se publicaron ${n} cartas para los sobres.`);
-    } catch (err) {
-      console.error('Publicar catálogo:', err);
-      avisar(err?.message || 'No se pudieron publicar las cartas.');
-    } finally {
-      setPublicando(false);
-    }
-  };
-
   const cargarIdeal = () => { setElegidas({}); setAlineacion(quintetoIdeal(cartasBase, formacion)); setSel(null); };
   const usado = quintetoMasUsado(analisis.quintetos, cartasBase, formacion);
   const cargarUsado = () => { if (usado) { setElegidas({}); setAlineacion(usado); setSel(null); } };
@@ -288,21 +196,7 @@ export default function MiQuinteto() {
         </select>
       </div>
 
-      {/* ── qué se mira: la cancha, los premios de ahora o el historial guardado ── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-        {SECCIONES.map(([id, texto]) => (
-          <button key={id} onClick={() => setSeccion(id)} style={{
-            ...btnForm, padding: '10px 18px', fontSize: 13, letterSpacing: '.08em',
-            borderColor: seccion === id ? 'var(--accent)' : 'var(--border)',
-            color: seccion === id ? 'var(--accent)' : 'var(--text-dim)',
-            background: seccion === id ? 'rgba(0,255,136,.08)' : 'transparent',
-          }}>{texto}</button>
-        ))}
-      </div>
-
-      {seccion === 'historial' ? (
-        <HistorialPremios clubId={clubId} club={datosDelClub(perfil)} esMovil={esMovil} />
-      ) : loading ? (
+      {loading ? (
         <div style={{ textAlign: 'center', padding: 50, color: 'var(--text-dim)' }}>
           Armando las cartas…
           {avance.total > 0 && (
@@ -311,14 +205,6 @@ export default function MiQuinteto() {
             </div>
           )}
         </div>
-      ) : seccion === 'premios' ? (
-        <PanelPremios partidosJugados={analisis.partidosJugados} jugadores={raw.jugadores} club={datosDelClub(perfil)}
-          clubId={clubId} categoria={filtroCategoria} torneoId={filtroTorneo} esMovil={esMovil}
-          historial={historial} alGuardar={() => setVersionHistorial((v) => v + 1)}
-          raw={raw} partidosFiltro={partidosFiltro} partidosCategoria={partidosScopeCat} misCategorias={misCategorias} cartas={cartasCalculadas}
-          torneo={filtroTorneo === 'Todos' ? null : (raw.torneos || []).find((t) => t.id === filtroTorneo) || null} />
-      ) : seccion === 'especiales' ? (
-        <FotosEspeciales premios={premios} fotos={fotos} clubId={clubId} alCambiar={cargarFotos} esMovil={esMovil} />
       ) : cartas.length === 0 ? (
         <div className="bento-card" style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)' }}>
           Todavía no hay partidos con datos para estos filtros.
@@ -372,10 +258,6 @@ export default function MiQuinteto() {
               <Icono nombre="actualizar" size="1.2em" style={{ marginRight: 8 }} />EL MÁS USADO
             </button>
 
-            <button onClick={publicar} disabled={publicando} className="btn-secondary" style={btnAccion}
-              title="Deja las cartas de este filtro disponibles para los sobres del club">
-              {publicando ? 'PUBLICANDO…' : 'PUBLICAR CARTAS PARA SOBRES'}
-            </button>
 
             <div className="bento-card" style={{ ...caja, fontSize: '0.7rem', color: 'var(--text-dim)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ ...rotulo, marginBottom: 2 }}>LÍNEAS DE QUÍMICA</div>

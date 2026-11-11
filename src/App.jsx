@@ -68,6 +68,7 @@ const PenalesJuego        = lazy(() => import('./pages/PenalesJuego'));
 const Duelos              = lazy(() => import('./pages/Duelos'));
 const EntrarAlJuego       = lazy(() => import('./pages/EntrarAlJuego'));
 const Reportes            = lazy(() => import('./pages/Reportes'));
+const God                 = lazy(() => import('./pages/God'));
 
 // MySquad es para jugar con el plantel: lo ven superuser, manager, administrador y cuerpo técnico.
 const ROLES_JUEGO = ['superuser', 'manager', 'admin', 'ct'];
@@ -186,6 +187,8 @@ function AppRoutes() {
       
       {/* JUEGO: superuser, manager, administrador y cuerpo técnico. */}
       <Route path="/mysquad" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><LayoutJuegos><MiQuinteto /></LayoutJuegos></ProtectedRoute>} />
+      {/* Configurador GOD: todo lo que se administra de Juegos. El manager ve sólo el alta de cartas de premio y las placas. */}
+      <Route path="/god" element={<ProtectedRoute allowedRoles={['superuser', 'manager']}><God /></ProtectedRoute>} />
       {/* La primera versión se llamó "Mi Quinteto": el link viejo sigue andando. */}
       <Route path="/mi-quinteto" element={<Navigate to="/mysquad" replace />} />
       {/* El superusuario entra al Modo GOD del club que tenga elegido. */}
@@ -580,6 +583,11 @@ useEffect(() => {
           <NavLink to="/juegos" style={linkStyle} title={isCollapsed ? "Juegos" : ""}
             className={() => (/^\/(juegos|mysquad|sobres|vdraft|penales|duelos)(\/|$)/.test(location.pathname) ? 'nav-item active' : 'nav-item')}>
             <Icono nombre="juego" size={22} /> {!isCollapsed && <span>JUEGOS</span>}
+          </NavLink>
+        )}
+        {(permisos.esSuperUser || permisos.rolActual === 'manager') && (
+          <NavLink to="/god" style={linkStyle} title={isCollapsed ? "Configurador GOD" : ""} className={({ isActive }) => isActive ? "nav-item active" : "nav-item"}>
+            <Icono nombre="rayo" size={22} /> {!isCollapsed && <span>CONFIGURADOR GOD</span>}
           </NavLink>
         )}
 

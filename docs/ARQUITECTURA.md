@@ -21,9 +21,10 @@ no se describe acá.
 ```
 src/pages/
   Juegos.jsx            menú de juegos (/juegos, /kiosco/juegos)
-  MiQuinteto.jsx        MySquad (sólo staff)
+  MiQuinteto.jsx        MySquad: sólo la cancha (armar el quinteto)
+  God.jsx               Configurador GOD (/god): todo lo que se administra de Juegos (ver docs/CONFIGURADOR_GOD.md)
   Sobres.jsx            pestañas SOBRES (paquetes 3D, disponibles/bloqueados) y COLECCIÓN
-                        (álbum con siluetas, filtros por rareza y posición) + Modo GOD
+                        (álbum con siluetas, filtros por rareza y posición); el superusuario va a /god
   VDraft.jsx            V-Draft: inicio, draft, torneo, partido en vivo
   PenalesJuego.jsx      modo Penales: pateador y arquero de tus cartas, con premio (o práctica)
   vdraft.css            estilos de V-Draft y penales
@@ -50,7 +51,8 @@ supabase/migrations/    sobres_*, vdraft_*, juegos_misiones, penales_cartas, usu
 |---|---|---|
 | `/juegos` | `/kiosco/juegos` | Menú de juegos |
 | `/mysquad` | — | MySquad |
-| `/sobres` | `/kiosco/sobres` | Sobres (superusuario: Modo GOD) |
+| `/sobres` | `/kiosco/sobres` | Sobres (el superusuario va a `/god`) |
+| `/god` | — | Configurador GOD (superusuario; el manager: alta de premios, fotos y placas) |
 | `/vdraft` | `/kiosco/vdraft` | V-Draft (el superusuario no juega) |
 | `/penales` | `/kiosco/penales` | Penales |
 
@@ -91,7 +93,7 @@ Las especiales (`premio` en `especialesCartas.ESPECIALES`) se dibujan con `Carta
   - `torneo`: semanal y automático; `vdraft_torneo_anotarse` cobra la entrada (1000) y da 5 partidas propias; la tabla suma partidos ganados; el lunes se reparte el pozo 50/30/20 (60/40 con dos; con uno se devuelve). Config en Modo GOD · V-DRAFT · TORNEO (`god_torneo_config`).
   - La partida gratis, el costo de 100 y el ranking semanal cuentan sólo las normales.
 - **Duelo de cartas** (`/duelos`, migración `20261113120000_juegos_duelos.sql`, `pages/Duelos.jsx`, espejo en `analytics/duelos.js`): retás a otro del club con 5 cartas de tu colección (arquero + 4) y una apuesta opcional (0-1000, el ganador se lleva todo, +20 al ganador hasta 3 por día). El rival arma sin ver tu equipo; `duelo_responder` simula (misma fuerza que el V-Draft) y, si empatan, penales automáticos. Vence a las 48 hs (se devuelve la apuesta).
-- **Superusuario**: no tiene colección ni compite (`_sobres_ctx` no lo deja jugar). Administra todo desde el Modo GOD.
+- **Superusuario**: no tiene colección ni compite (`_sobres_ctx` no lo deja jugar). Administra todo desde el Configurador GOD (`/god`).
 
 ## 5. Colores y tipografía actuales
 

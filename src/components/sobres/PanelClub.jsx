@@ -16,7 +16,7 @@ import InvitacionesJuego from './InvitacionesJuego';
 /* CARTAS Y SOBRES DEL CLUB (la vista simple, para el manager)
  *
  * Lo justo para el día a día, sin números técnicos:
- *   CARTAS  1) confirmar las de la semana y del mes (en MySquad · PREMIOS),
+ *   CARTAS  1) confirmar las de la semana y del mes (en el Configurador GOD · ALTA · PREMIOS),
  *           2) publicarlas para los sobres, y por carta: foto, media y
  *              sacarla / volverla a los sobres.
  *   SOBRES  cada sobre: activo o no, nombre, cuántas cartas, precio y
@@ -100,8 +100,8 @@ function Cartas({ clubId, datos, recargar, avisar }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
         <div style={paso}>
           <div style={rotulo}>1 · CONFIRMAR</div>
-          <div style={dim}>Las cartas de la semana y del mes (y las especiales) se confirman en MySquad, en PREMIOS.</div>
-          <Link to="/mysquad?seccion=premios" style={{ ...boton, textDecoration: 'none', textAlign: 'center' }}>IR A PREMIOS</Link>
+          <div style={dim}>Las cartas de la semana y del mes (y las especiales) se confirman en el Configurador GOD, en ALTA DE CARTAS › PREMIOS.</div>
+          <Link to="/god?s=alta&alta=premios" style={{ ...boton, textDecoration: 'none', textAlign: 'center' }}>IR A PREMIOS</Link>
         </div>
         <div style={paso}>
           <div style={rotulo}>2 · PUBLICAR PARA LOS SOBRES</div>

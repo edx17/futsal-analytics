@@ -54,9 +54,13 @@ const ESCENAS = [
   ...CINEMATICAS.map((c) => [c.id, nombreCinematica(c)]),
 ];
 
-export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoInicial = false }) {
-  const [abierto, setAbierto] = useState(abiertoInicial);
-  const [pestana, setPestana] = useState('probar');
+/* `pestana`: desde el Configurador GOD (/god) se muestra una sola sección, sin
+   el encabezado plegable ni las pestañas (el menú lo pone el configurador). */
+export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoInicial = false, pestana: pestanaFija = null }) {
+  const embebido = pestanaFija != null;
+  const [abierto, setAbierto] = useState(abiertoInicial || embebido);
+  const [pestanaPropia, setPestana] = useState('probar');
+  const pestana = pestanaFija || pestanaPropia;
   const [catalogo, setCatalogo] = useState(null);
   const [ajustes, setAjustes] = useState(new Map());
   const [fotos, setFotos] = useState(new Map());
@@ -83,10 +87,57 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
 
   // Abierto de entrada (la pantalla del superusuario): el catálogo se pide al montar.
   useEffect(() => {
-    if (!abiertoInicial) return undefined;
+    if (!abiertoInicial && !embebido) return undefined;
     const t = setTimeout(cargar, 0);
     return () => clearTimeout(t);
-  }, [abiertoInicial, cargar]);
+  }, [abiertoInicial, embebido, cargar]);
+
+  const contenido = (
+    <>
+      {aviso && <Aviso {...aviso} />}
+      {pendientes.length > 0 && (pestana === 'cartas' || pestana === 'eventos') && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px', borderRadius: 8, marginBottom: 10,
+          border: '1px solid rgba(251,191,36,.5)', background: 'rgba(251,191,36,.07)', fontSize: '0.78rem', color: 'var(--text)' }}>
+          <span style={{ flex: 1, minWidth: 220 }}>
+            Hay <b>{pendientes.length}</b> cartas guardadas en HISTORIAL que todavía no están publicadas para los sobres
+            ({Object.entries(pendientes.reduce((m, f) => ({ ...m, [f.tipo]: (m[f.tipo] || 0) + 1 }), {})).map(([t, n]) => `${PREMIOS[t]?.sigla || t} ${n}`).join(' · ')}).
+            Hasta publicarlas no aparecen acá ni pueden salir en un sobre.
+          </span>
+          <button style={{ ...btn, background: '#fbbf24', color: '#1a1205' }} disabled={publicando} onClick={async () => {
+            setPublicando(true); setAviso(null);
+            try { const n = await publicarCatalogo(clubId, pendientes); await cargar(); setAviso({ texto: `Se publicaron ${n} cartas.` }); } catch (err) {
+              setAviso({ texto: err?.message || 'No se pudieron publicar.', error: true });
+            } finally { setPublicando(false); }
+          }}>{publicando ? 'PUBLICANDO…' : `PUBLICAR LAS ${pendientes.length}`}</button>
+        </div>
+      )}
+      {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} fotos={fotos} tipos={config?.tipos || {}} alProbar={alProbar} />}
+      {pestana === 'cartas' && (
+        <Cartas clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
+      )}
+      {pestana === 'eventos' && (
+        <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
+      )}
+      {pestana === 'usuarios' && <GodUsuarios clubId={clubId} avisar={setAviso} />}
+      {pestana === 'torneo' && <GodTorneo clubId={clubId} avisar={setAviso} />}
+      {pestana === 'gmail' && <InvitacionesJuego clubId={clubId} avisar={setAviso} />}
+      {(pestana === 'toty' || pestana === 'copafuturo') && (
+        <GodEdicion key={pestana} cfg={EDICIONES[pestana === 'toty' ? 'TOTY' : 'CFOR']} color={pestana === 'toty' ? '#e9c46a' : '#7aa0ff'}
+          clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
+      )}
+      {pestana === 'halloween' && (
+        <GodHalloween clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
+      )}
+      {pestana === 'heroes' && (
+        <GodHeroes clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
+      )}
+      {pestana === 'sobres' && (
+        <GodSobres clubId={clubId} estado={estado} config={config} setConfig={setConfig} catalogo={catalogo} ajustes={ajustes} fotos={fotos}
+          avisar={setAviso} alCambiar={alCambiar} alProbar={alProbar} recargar={cargar} />
+      )}
+    </>
+  );
+  if (embebido) return <div>{contenido}</div>;
 
   return (
     <div className="bento-card" style={{ marginTop: 26, padding: 14, border: '1px solid rgba(251,191,36,.45)' }}>
@@ -98,47 +149,7 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
             {PESTANAS.map(([id, t]) => <button key={id} onClick={() => setPestana(id)} style={chip(pestana === id)}>{t}</button>)}
           </div>
-          {aviso && <Aviso {...aviso} />}
-          {pendientes.length > 0 && (pestana === 'cartas' || pestana === 'eventos') && (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 12px', borderRadius: 8, marginBottom: 10,
-              border: '1px solid rgba(251,191,36,.5)', background: 'rgba(251,191,36,.07)', fontSize: '0.78rem', color: 'var(--text)' }}>
-              <span style={{ flex: 1, minWidth: 220 }}>
-                Hay <b>{pendientes.length}</b> cartas guardadas en HISTORIAL que todavía no están publicadas para los sobres
-                ({Object.entries(pendientes.reduce((m, f) => ({ ...m, [f.tipo]: (m[f.tipo] || 0) + 1 }), {})).map(([t, n]) => `${PREMIOS[t]?.sigla || t} ${n}`).join(' · ')}).
-                Hasta publicarlas no aparecen acá ni pueden salir en un sobre.
-              </span>
-              <button style={{ ...btn, background: '#fbbf24', color: '#1a1205' }} disabled={publicando} onClick={async () => {
-                setPublicando(true); setAviso(null);
-                try { const n = await publicarCatalogo(clubId, pendientes); await cargar(); setAviso({ texto: `Se publicaron ${n} cartas.` }); } catch (err) {
-                  setAviso({ texto: err?.message || 'No se pudieron publicar.', error: true });
-                } finally { setPublicando(false); }
-              }}>{publicando ? 'PUBLICANDO…' : `PUBLICAR LAS ${pendientes.length}`}</button>
-            </div>
-          )}
-          {pestana === 'probar' && <Probar catalogo={catalogo} ajustes={ajustes} fotos={fotos} tipos={config?.tipos || {}} alProbar={alProbar} />}
-          {pestana === 'cartas' && (
-            <Cartas clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
-          )}
-          {pestana === 'eventos' && (
-            <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
-          )}
-          {pestana === 'usuarios' && <GodUsuarios clubId={clubId} avisar={setAviso} />}
-          {pestana === 'torneo' && <GodTorneo clubId={clubId} avisar={setAviso} />}
-          {pestana === 'gmail' && <InvitacionesJuego clubId={clubId} avisar={setAviso} />}
-          {(pestana === 'toty' || pestana === 'copafuturo') && (
-            <GodEdicion key={pestana} cfg={EDICIONES[pestana === 'toty' ? 'TOTY' : 'CFOR']} color={pestana === 'toty' ? '#e9c46a' : '#7aa0ff'}
-              clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
-          )}
-          {pestana === 'halloween' && (
-            <GodHalloween clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
-          )}
-          {pestana === 'heroes' && (
-            <GodHeroes clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} />
-          )}
-          {pestana === 'sobres' && (
-            <GodSobres clubId={clubId} estado={estado} config={config} setConfig={setConfig} catalogo={catalogo} ajustes={ajustes} fotos={fotos}
-              avisar={setAviso} alCambiar={alCambiar} alProbar={alProbar} recargar={cargar} />
-          )}
+          {contenido}
         </div>
       )}
     </div>
