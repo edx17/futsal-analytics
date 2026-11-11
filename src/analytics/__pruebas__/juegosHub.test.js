@@ -14,9 +14,9 @@ describe('juegos: la carta protagonista', () => {
 describe('juegos: los modos del menú', () => {
   it('sobres gratis y V-Draft gratis llevan GRATIS HOY', () => {
     const m = modosDelMenu({ sobres: { disponibles: { diario: true }, puntos: 0, costo_puntos: 300 }, vdraft: { gratis_hoy: true } });
-    expect(m.map((x) => x.id)).toEqual(['vdraft', 'penales', 'sobres', 'mysquad']);
+    expect(m.map((x) => x.id)).toEqual(['vdraft', 'duelos', 'penales', 'sobres', 'mysquad']);
     expect(m[0].badge.texto).toBe('GRATIS HOY');
-    expect(m[2].badge.texto).toBe('GRATIS HOY');
+    expect(m.find((x) => x.id === 'sobres').badge.texto).toBe('GRATIS HOY');
   });
 
   it('sin sobres gratis: con V-Coins si alcanza, si no la cuenta regresiva', () => {
@@ -26,13 +26,21 @@ describe('juegos: los modos del menú', () => {
     expect(sin.find((x) => x.id === 'sobres').badge.cuenta).toBe(true);
   });
 
+  it('un duelo que te hicieron (o un resultado nuevo) se avisa', () => {
+    const duelo = (m) => m.find((x) => x.id === 'duelos').badge.texto;
+    expect(duelo(modosDelMenu({ duelos: { recibidos: [{}], historial: [] } }))).toBe('TE RETARON');
+    expect(duelo(modosDelMenu({ duelos: { recibidos: [{}, {}], historial: [] } }))).toBe('TE RETARON 2 VECES');
+    expect(duelo(modosDelMenu({ duelos: { recibidos: [], historial: [{ nuevo: true }] } }))).toBe('RESULTADO NUEVO');
+    expect(duelo(modosDelMenu({}))).toBe('RETÁ A ALGUIEN');
+  });
+
   it('una partida a medias del V-Draft se avisa', () => {
     const m = modosDelMenu({ vdraft: { partida: { estado: 'torneo' }, gratis_hoy: false, costo: 100 } });
     expect(m[0].badge.texto).toBe('PARTIDA EN JUEGO');
   });
 
   it('en el kiosco no está MySquad; el superusuario ve Modo GOD y no compite', () => {
-    expect(modosDelMenu({ kiosco: true }).map((x) => x.id)).toEqual(['vdraft', 'penales', 'sobres']);
+    expect(modosDelMenu({ kiosco: true }).map((x) => x.id)).toEqual(['vdraft', 'duelos', 'penales', 'sobres']);
     const s = modosDelMenu({ esSuper: true });
     expect(s[0].titulo).toBe('MODO GOD');
     expect(s.find((x) => x.titulo === 'V-DRAFT').bloqueado).toBeTruthy();

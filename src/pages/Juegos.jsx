@@ -7,6 +7,7 @@ import useFeedback from '../juegos/useFeedback';
 import { useEsMovil } from '../utils/useEsMovil';
 import { estadoSobres, coleccionSobres } from '../utils/sobres';
 import { estadoVDraft } from '../utils/vdraft';
+import { estadoDuelos } from '../utils/duelos';
 import { misionesDelDia, cobrarMision } from '../utils/juegos';
 import { mejorCarta, modosDelMenu, resumenMisiones } from '../analytics/juegosHub';
 import '../components/quinteto/quinteto.css';
@@ -34,6 +35,7 @@ export default function Juegos({ kiosco = false }) {
 
   const [sobres, setSobres] = useState(null);
   const [vdraft, setVDraft] = useState(null);
+  const [duelos, setDuelos] = useState(null);
   const [protagonista, setProtagonista] = useState(null);
   const [misiones, setMisiones] = useState(null);
   const [cobrando, setCobrando] = useState(null);
@@ -44,6 +46,7 @@ export default function Juegos({ kiosco = false }) {
     let vivo = true;
     estadoSobres().then((r) => { if (vivo && r.data) setSobres(r.data); });
     estadoVDraft().then((r) => { if (vivo && r.data) setVDraft(r.data); });
+    estadoDuelos().then((r) => { if (vivo && r.data) setDuelos(r.data); });
     coleccionSobres().then((r) => { if (vivo && r.data) setProtagonista(mejorCarta(r.data.cartas)); });
     misionesDelDia().then((r) => { if (vivo) setMisiones(r.data || []); });
     return () => { vivo = false; };
@@ -51,7 +54,7 @@ export default function Juegos({ kiosco = false }) {
 
   // Con Gmail (jugador vinculado o hincha) el menú es el del kiosco: sin MySquad.
   const cuentaJuego = String(perfil?.rol || '').toLowerCase() === 'juego';
-  const modos = modosDelMenu({ sobres, vdraft, kiosco: kiosco || cuentaJuego, esSuper });
+  const modos = modosDelMenu({ sobres, vdraft, duelos, kiosco: kiosco || cuentaJuego, esSuper });
   const ir = (m) => {
     if (m.bloqueado) return;
     feedback('elegir');

@@ -1,0 +1,98 @@
+/* DUELO DE CARTAS: mismo sistema que el V-Draft (tokens --jg-* de juegos.css). */
+.du { --du: #f43f5e; max-width: 980px; margin: 0 auto; padding: 4px 0 40px; display: flex; flex-direction: column; gap: 14px; }
+.du-cabeza { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.du-titulo { margin: 0; font-family: var(--jg-display); font-size: clamp(28px, 4vw, 40px); font-weight: 900; letter-spacing: .06em; color: var(--du); text-shadow: 0 0 22px rgba(244, 63, 94, .35); }
+.du-bajada { margin: 2px 0 0; color: var(--jg-texto-2); font-size: 14px; }
+.du-error { font-size: .85rem; font-weight: 700; padding: 10px 14px; border-radius: 8px; color: #ef4444; border: 1px solid rgba(239, 68, 68, .4); background: rgba(239, 68, 68, .08); }
+.du-aviso { padding: 10px 14px; border-radius: var(--jg-r-m); border: 1px solid #f59e0b; color: #fcd34d; font-size: 14px; background: rgba(245, 158, 11, .08); }
+.du-nota { font-size: 12.5px; color: var(--jg-texto-2); margin-top: 6px; }
+.du-reglas { font-size: 12.5px; color: var(--jg-texto-3); line-height: 1.5; margin: 0; text-align: center; }
+
+.du-pestanas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.du-pestana { position: relative; min-height: 46px; border-radius: var(--jg-r-m); background: var(--jg-sup-2); border: 1px solid var(--jg-borde); color: var(--jg-texto-2);
+  font-family: var(--jg-display); letter-spacing: .08em; font-size: 14px; cursor: pointer; }
+.du-pestana.du-on { color: var(--du); border-color: var(--du); box-shadow: 0 0 0 1px var(--du), 0 0 18px rgba(244, 63, 94, .25); }
+.du-punto { position: absolute; top: 8px; right: 10px; width: 9px; height: 9px; border-radius: 50%; background: var(--jg-neon); box-shadow: 0 0 10px var(--jg-neon); }
+
+.du-buscar { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; margin-bottom: 8px; border-radius: 10px; border: 1px solid var(--jg-borde);
+  background: var(--jg-sup-2); color: var(--jg-texto); font-size: 15px; }
+.du-lista { list-style: none; margin: 0; padding: 0; }
+.du-lista li { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--jg-borde); }
+.du-avatar { flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 17px;
+  background: var(--jg-sup-2); border: 2px solid var(--jg-vdraft, #38bdf8); color: var(--jg-vdraft, #38bdf8); }
+.du-avatar-rojo { border-color: var(--du); color: var(--du); }
+.du-nombre { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.du-nombre b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.du-nombre small { font-size: 12.5px; color: var(--jg-texto-2); }
+.du-botones { display: flex; gap: 6px; }
+.du-reto { background: linear-gradient(90deg, rgba(244, 63, 94, .08), transparent 70%); border-radius: 10px; }
+.du-hist.du-gano .du-avatar { border-color: var(--jg-neon); color: var(--jg-neon); }
+.du-hist.du-perdio .du-avatar { border-color: #64748b; color: #94a3b8; }
+.du-nuevo { font-style: normal; margin-left: 8px; font-size: 10px; padding: 2px 6px; border-radius: 6px; background: var(--jg-neon); color: #04110a; letter-spacing: .06em; }
+
+/* el armado */
+.du-armado { display: flex; flex-direction: column; gap: 12px; }
+.du-armado-cab { display: flex; align-items: center; gap: 12px; }
+.du-armado-cab b { display: block; font-family: var(--jg-display); letter-spacing: .06em; color: var(--du); font-size: 18px; }
+.du-armado-cab small { color: var(--jg-texto-2); font-size: 13px; }
+.du-volver { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--jg-borde); background: transparent; color: var(--jg-texto); cursor: pointer; font-weight: 800; }
+.du-formaciones, .du-apuesta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.du-apuesta > span { font-size: 12px; font-weight: 900; letter-spacing: .1em; color: var(--jg-texto-2); margin-right: 4px; }
+.du-chip { min-height: 40px; min-width: 56px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--jg-borde); background: var(--jg-sup-2); color: var(--jg-texto);
+  font-family: var(--jg-mono); font-weight: 800; cursor: pointer; }
+.du-chip.du-on { border-color: var(--jg-neon); color: var(--jg-neon); box-shadow: 0 0 0 1px var(--jg-neon); }
+.du-chip:disabled { opacity: .35; cursor: not-allowed; }
+.du-solo { margin-left: auto; }
+.du-lugares { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.du-lugar { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px; min-height: 120px; border-radius: var(--jg-r-m); cursor: pointer;
+  border: 1px dashed var(--jg-borde-fuerte); background: rgba(255, 255, 255, .02); color: var(--jg-texto-2); }
+.du-lugar.du-lleno { border-style: solid; }
+.du-lugar.du-on { border: 2px solid var(--jg-neon); box-shadow: 0 0 16px rgba(0, 255, 136, .25); }
+.du-lugar small { font-size: 10px; font-weight: 900; letter-spacing: .08em; text-align: center; }
+.du-lugar-vacio { flex: 1; display: grid; place-items: center; font-family: var(--jg-mono); font-weight: 900; font-size: 18px; color: var(--jg-texto-3); }
+.du-numeros { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; font-weight: 900; letter-spacing: .1em; color: var(--jg-texto-2); }
+.du-numeros b { font-family: var(--jg-mono); font-size: 18px; color: var(--jg-texto); margin-left: 4px; }
+.du-opciones { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; justify-items: center; }
+.du-opcion { cursor: pointer; transition: transform .15s; }
+.du-opcion:hover { transform: translateY(-3px); }
+.du-opcion.du-fuera { opacity: .55; }
+.du-confirmar { display: flex; flex-direction: column; gap: 12px; position: sticky; bottom: 0; z-index: 5; }
+
+/* el resultado */
+.du-resultado { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 22px 14px; border-radius: var(--jg-r-l, 16px); text-align: center;
+  border: 1px solid var(--jg-borde-fuerte); background: radial-gradient(ellipse at 50% 0%, rgba(244, 63, 94, .18), transparent 60%), var(--jg-sup); }
+.du-resultado.du-gano { background: radial-gradient(ellipse at 50% 0%, rgba(0, 255, 136, .18), transparent 60%), var(--jg-sup); }
+.du-veredicto { font-family: var(--jg-display); font-size: clamp(24px, 5vw, 38px); letter-spacing: .06em; animation: du-entra .5s cubic-bezier(.2, .9, .3, 1.3) both; }
+.du-gano .du-veredicto { color: var(--jg-neon); text-shadow: 0 0 22px rgba(0, 255, 136, .5); }
+.du-perdio .du-veredicto { color: #f87171; }
+.du-marcador { display: flex; align-items: center; gap: 18px; }
+.du-marcador div { display: flex; flex-direction: column; align-items: center; min-width: 90px; }
+.du-marcador span { font-size: 11px; font-weight: 900; letter-spacing: .1em; color: var(--jg-texto-2); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.du-marcador b { font-family: var(--jg-mono); font-size: clamp(44px, 9vw, 64px); line-height: 1; animation: du-entra .6s .15s both; }
+.du-marcador i { font-style: normal; font-size: 32px; color: var(--jg-texto-3); }
+.du-penales { font-weight: 800; color: #fbbf24; }
+.du-premio { font-family: var(--jg-mono); font-size: 22px; font-weight: 900; color: var(--jg-oro); animation: du-entra .5s .35s both; }
+.du-goles { list-style: none; margin: 0; padding: 0; width: min(420px, 100%); text-align: left; }
+.du-goles li { display: flex; gap: 10px; padding: 6px 10px; border-radius: 8px; font-size: 14px; }
+.du-goles li span:first-child { font-family: var(--jg-mono); color: var(--jg-texto-3); width: 30px; }
+.du-gol-mio { background: rgba(0, 255, 136, .07); }
+.du-gol-suyo { color: var(--jg-texto-2); }
+.du-goles em { color: var(--jg-texto-3); font-style: normal; }
+.du-equipos { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.du-equipos h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .1em; color: var(--jg-texto-2); }
+.du-equipo { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+@keyframes du-entra { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 620px) {
+  .du-lugares { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+  .du-lugar { min-height: 96px; padding: 6px 2px; }
+  .du-lugar .mq-mini { transform: scale(.82); transform-origin: top center; margin-bottom: -14px; }
+  .du-lugar small { font-size: 8.5px; }
+  .du-opciones { grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); }
+  .du-solo { margin-left: 0; }
+  .du-lista li { flex-wrap: wrap; }
+  .du-botones { width: 100%; justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .du-veredicto, .du-marcador b, .du-premio { animation: none; }
+}
