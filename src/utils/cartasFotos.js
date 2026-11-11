@@ -62,7 +62,7 @@ export async function subirFotoEspecial({ clubId, clave, archivo }) {
   if (!archivo || !/^image\//.test(archivo.type)) throw new Error('Elegí una imagen (PNG, JPG o WebP).');
   const { blob, ext, tipo } = await reducirImagen(archivo, MAX_LADO, { sepia: vaEnSepia(clave) });
   const ruta = `cartas/${clubId}/${nombreSeguro(clave)}-${Date.now()}.${ext}`;
-  const { error: errSubida } = await supabase.storage.from(BUCKET).upload(ruta, blob, { contentType: tipo, upsert: false });
+  const { error: errSubida } = await supabase.storage.from(BUCKET).upload(ruta, blob, { contentType: tipo, upsert: false, cacheControl: '31536000' });
   if (errSubida) throw errSubida;
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(ruta);
   const url = data.publicUrl;
