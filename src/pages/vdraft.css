@@ -458,3 +458,53 @@
 @media (prefers-reduced-motion: reduce) {
   .vd-gooool-rayos, .vd-monedas-caen { display: none; }
 }
+
+/* ── MODOS: normal, desafío del día y torneo semanal ─────────────────────── */
+.vd-modos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.vd-modo { --m: var(--jg-vdraft, #38bdf8); display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; min-height: 64px; cursor: pointer;
+  border-radius: var(--jg-r-m); background: var(--jg-sup-2); border: 1px solid var(--jg-borde); color: var(--jg-texto); transition: border-color .2s, box-shadow .2s, transform .18s; }
+.vd-modo-desafio { --m: #f97316; }
+.vd-modo-torneo { --m: var(--jg-oro, #fbbf24); }
+.vd-modo b { font-family: var(--jg-display); font-size: 15px; letter-spacing: .06em; color: var(--m); }
+.vd-modo small { font-size: 12px; color: var(--jg-texto-2); line-height: 1.3; }
+.vd-modo:hover { transform: translateY(-2px); border-color: var(--jg-borde-fuerte); }
+.vd-modo.vd-on { border-color: var(--m); box-shadow: 0 0 0 1px var(--m), 0 0 22px color-mix(in srgb, var(--m) 30%, transparent);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--m) 14%, transparent), var(--jg-sup-2) 65%); }
+@media (max-width: 620px) {
+  .vd-modos { grid-template-columns: 1fr; gap: 6px; }
+  .vd-modo { min-height: 48px; padding: 10px 12px; }
+  .vd-modo small { display: none; }
+  .vd-modo.vd-on small { display: block; }
+}
+
+/* el cartel de la partida en juego */
+.vd-modo-cartel { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 10px 14px; margin-bottom: 12px; border-radius: var(--jg-r-m);
+  border: 1px solid var(--m, var(--jg-borde)); background: color-mix(in srgb, var(--m, #fff) 10%, transparent); }
+.vd-modo-cartel.vd-modo-desafio { --m: #f97316; }
+.vd-modo-cartel.vd-modo-torneo { --m: var(--jg-oro, #fbbf24); }
+.vd-modo-cartel b { font-family: var(--jg-display); letter-spacing: .06em; color: var(--m); }
+.vd-modo-cartel span { font-size: 13px; color: var(--jg-texto-2); }
+
+/* la regla del día / el pozo */
+.vd-regla { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: var(--jg-r-m); margin-bottom: 4px;
+  border: 1px solid color-mix(in srgb, var(--m) 55%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--m) 16%, transparent), transparent 70%); }
+.vd-desafio { --m: #f97316; }
+.vd-torneo { --m: var(--jg-oro, #fbbf24); }
+.vd-regla b { font-family: var(--jg-display); font-size: clamp(22px, 4vw, 30px); letter-spacing: .04em; color: var(--m); }
+.vd-regla small { font-size: 14px; color: var(--jg-texto-2); }
+
+/* premios por puesto */
+.vd-premios-modo { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.vd-premio-modo { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 8px; border-radius: var(--jg-r-s); background: var(--jg-sup-2); border: 1px solid var(--jg-borde); }
+.vd-premio-modo span { font-size: 11px; font-weight: 900; letter-spacing: .1em; color: var(--jg-texto-2); }
+.vd-premio-modo b { font-family: var(--jg-mono); font-size: 18px; color: var(--jg-oro); }
+.vd-premio-1 { border-color: #fbbf24; }
+.vd-premio-2 { border-color: #cbd5e1; }
+.vd-premio-3 { border-color: #d97706; }
+
+/* tabla del día / de la semana */
+.vd-tabla-modo { list-style: none; margin: 0; padding: 0; }
+.vd-tabla-modo li { display: grid; grid-template-columns: 34px 1fr repeat(3, auto); gap: 10px; align-items: center; font-size: 14px; padding: 8px 6px; border-bottom: 1px solid var(--jg-borde); }
+.vd-tabla-modo li.vd-podio-fila .vd-pos { color: var(--jg-oro); }
+.vd-tabla-modo li.vd-yo { color: var(--jg-neon); font-weight: 800; background: rgba(0, 255, 136, .07); border-radius: 8px; }
+.vd-tabla-modo .vd-nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

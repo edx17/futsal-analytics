@@ -19,6 +19,7 @@ import GodHalloween from './GodHalloween';
 import GodEdicion from './GodEdicion';
 import { EDICIONES } from '../../analytics/edicionesEspeciales';
 import GodUsuarios from './GodUsuarios';
+import GodTorneo from './GodTorneo';
 import InvitacionesJuego from './InvitacionesJuego';
 import { normalizarTipo } from '../../analytics/tiposSobre';
 
@@ -41,7 +42,7 @@ import { normalizarTipo } from '../../analytics/tiposSobre';
  */
 
 const MONO = 'JetBrains Mono, monospace';
-const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['halloween', 'HALLOWEEN'], ['toty', 'TOTY'], ['copafuturo', 'COPA FUTURO'], ['sobres', 'SOBRES'], ['usuarios', 'USUARIOS'], ['gmail', 'GMAIL · HINCHAS']];
+const PESTANAS = [['probar', 'PROBAR'], ['eventos', 'EVENTOS'], ['cartas', 'CARTAS'], ['heroes', 'HÉROES'], ['halloween', 'HALLOWEEN'], ['toty', 'TOTY'], ['copafuturo', 'COPA FUTURO'], ['sobres', 'SOBRES'], ['usuarios', 'USUARIOS'], ['torneo', 'V-DRAFT · TORNEO'], ['gmail', 'GMAIL · HINCHAS']];
 const POR_PAGINA = 40;
 
 /* Las escenas que se pueden forzar, con aviso si su video todavía no está. */
@@ -122,6 +123,7 @@ export default function PanelGod({ clubId, estado, alProbar, alCambiar, abiertoI
             <GodEventos clubId={clubId} catalogo={catalogo} ajustes={ajustes} fotos={fotos} recargar={cargar} avisar={setAviso} alProbar={alProbar} />
           )}
           {pestana === 'usuarios' && <GodUsuarios clubId={clubId} avisar={setAviso} />}
+          {pestana === 'torneo' && <GodTorneo clubId={clubId} avisar={setAviso} />}
           {pestana === 'gmail' && <InvitacionesJuego clubId={clubId} avisar={setAviso} />}
           {(pestana === 'toty' || pestana === 'copafuturo') && (
             <GodEdicion key={pestana} cfg={EDICIONES[pestana === 'toty' ? 'TOTY' : 'CFOR']} color={pestana === 'toty' ? '#e9c46a' : '#7aa0ff'}

@@ -86,6 +86,10 @@ Las especiales (`premio` en `especialesCartas.ESPECIALES`) se dibujan con `Carta
 - **Abrir**: `sobres_abrir(tipo)` / `sobres_abrir_evento(id)`: sortean en la base, registran el sobre en `sobres_abiertos`, y las repetidas pagan V-Coins.
 - **Colección**: `sobres_coleccion()` → `{ total, cartas, por_rareza }`.
 - **V-Draft**: `vdraft_estado()` → `{ puntos, costo, gratis_hoy, partida, ultimas, ranking }`. Una partida gratis por día; las siguientes cuestan 100. Premios por victorias: 1 → 25, 2 → 75, 3 → 150 + sobre, 4 → 300 + sobre (`analytics/vdraft.js · PREMIOS`). `ranking`: [{ dueno, nombre, partidas, victorias, campeonatos, yo }].
+- **V-Draft · modos** (`vdraft_partidas.modo`, migración `20261112120000_vdraft_desafio_torneo.sql`, espejo en `analytics/vdraftModos.js`):
+  - `desafio`: una vez por día, gratis; misma regla (`_vdraft_regla_del_dia`), mismas cartas (azar fijo con `vdraft.semilla`) y mismos rivales para todos; el mismo equipo saca el mismo resultado. Premio al día siguiente (1º 1000, 2º 750, 3º 500, el resto 150), lo paga `vdraft_estado`.
+  - `torneo`: semanal y automático; `vdraft_torneo_anotarse` cobra la entrada (1000) y da 5 partidas propias; la tabla suma partidos ganados; el lunes se reparte el pozo 50/30/20 (60/40 con dos; con uno se devuelve). Config en Modo GOD · V-DRAFT · TORNEO (`god_torneo_config`).
+  - La partida gratis, el costo de 100 y el ranking semanal cuentan sólo las normales.
 - **Superusuario**: no tiene colección ni compite (`_sobres_ctx` no lo deja jugar). Administra todo desde el Modo GOD.
 
 ## 5. Colores y tipografía actuales
