@@ -496,22 +496,104 @@
   </section>
 
   <section id="offline">
-    <h2>Análisis offline</h2>
+    <h2>Análisis offline <span class="nuevo">ACTUALIZADO</span></h2>
     <p class="ruta">OPERACIONES → <b>ANÁLISIS OFFLINE</b></p>
-    <p>Para analizar con calma sobre un partido que ya se cargó: cadenas de pases, pérdidas forzadas o no forzadas,
-    y el seguimiento posicional. Sirve para profundizar sin la presión del banco.</p>
+    <p>La mesa de trabajo para después del partido. Bajás un partido que ya se cargó en vivo y, sobre eso, sumás lo que en el
+    banco no da el tiempo de marcar: pases y recepciones con origen y destino, cadenas de pases que terminan en gol, pérdidas
+    forzadas o no, la <b>foto</b> de cómo estaban parados los diez y el recorrido de cada jugador.</p>
+    <p>Funciona <b>sin conexión</b>: todo queda guardado en la compu apenas lo marcás, y se sube cuando hay señal.</p>
 
-    <div class="modos">
-      <figure>
-        <img src="offline-pc.jpg" alt="Análisis offline con la barra lateral a mano." loading="lazy">
-        <figcaption><b>En la compu.</b> Análisis offline con la barra lateral a mano. Datos de ejemplo.</figcaption>
-      </figure>
-      <figure>
-        <img src="offline-cel.jpg" alt="Análisis offline en el celular" loading="lazy">
-        <figcaption><b>En el celular.</b> La misma pantalla. Datos de ejemplo.</figcaption>
-      </figure>
+    <figure>
+      <img src="offline-trabajo-pc.jpg" alt="La cancha con las fichas de los dos equipos y la pelota, la línea de la pelota y el panel de acciones a la derecha." loading="lazy">
+      <figcaption><b>La mesa de trabajo.</b> La cancha con las fichas, la línea de la pelota y, a la derecha, las acciones y las pestañas de análisis. Datos de ejemplo.</figcaption>
+    </figure>
+
+    <h3>1. Bajar el partido</h3>
+    <figure>
+      <img src="offline-pc.jpg" alt="La lista de partidos para descargar, con filtros, y los que ya están en el dispositivo." loading="lazy">
+      <figcaption><b>Elegir el partido.</b> Arriba, los que ya bajaste; abajo, los del servidor. Datos de ejemplo.</figcaption>
+    </figure>
+    <ol class="pasos">
+      <li><div><b>Filtrá</b> por torneo, categoría, cancha o rival. <b>MI EQUIPO</b> deja sólo tus partidos (el fixture trae también los de otros equipos) y
+        <b>CON DATOS</b>, sólo los que tienen acciones cargadas.</div></li>
+      <li><div>Tocá <b>DESCARGAR</b>. El partido baja con todo lo que se cargó en vivo y aparece en <b>EN ESTE DISPOSITIVO</b>.</div></li>
+      <li><div>Tocá <b>ABRIR</b>. Desde ese momento ya no hace falta internet. <b>BORRAR</b> lo saca de la compu (lo que no subiste, se pierde).</div></li>
+    </ol>
+
+    <h3>2. El reloj</h3>
+    <p>Arriba están el período (PT / ST), <b>CORRER</b> para que el reloj avance, los botones para moverlo de a 1, 10 o 60 segundos y la barra para ir a cualquier minuto.
+    <b>INICIO PT</b> marca el arranque del período. Cada cosa que marcás queda en el minuto del reloj, así que conviene tenerlo a la par del video.</p>
+
+    <h3>3. Marcar acciones</h3>
+    <p>El tablero tiene dos modos: <b>MARCAR</b> (tocás la cancha y se registra la acción) y <b>MOVER FICHAS</b> (arrastrás jugadores y pelota). Se cambia con <kbd>Tab</kbd>.</p>
+    <ol class="pasos">
+      <li><div>Elegí <b>NUESTRO</b> o <b>RIVAL</b> (verde y rojo, igual que las fichas).</div></li>
+      <li><div>Elegí <b>la acción</b> y <b>el jugador con la pelota</b>.</div></li>
+      <li><div>Tocá la cancha. <b>Pase, recepción y conducción</b> piden dos toques: de dónde sale y adónde llega. Abajo a la izquierda de la cancha dice qué toque te falta.</div></li>
+      <li><div>Si fue un pase, te pregunta si <b>llegó</b>; si fue una pérdida, si fue <b>forzada o no forzada</b>. Un toque.</div></li>
+    </ol>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Acción</th><th>Tecla</th><th>Acción</th><th>Tecla</th></tr></thead>
+      <tbody>
+        <tr><td>Pase</td><td class="num">P</td><td>Remate atajado</td><td class="num">A</td></tr>
+        <tr><td>Recepción</td><td class="num">R</td><td>Remate desviado</td><td class="num">D</td></tr>
+        <tr><td>Conducción</td><td class="num">C</td><td>Remate rebatido</td><td class="num">B</td></tr>
+        <tr><td>Recuperación</td><td class="num">E</td><td>Bloqueo</td><td class="num">I</td></tr>
+        <tr><td>Pérdida</td><td class="num">X</td><td>Duelo ganado</td><td class="num">W</td></tr>
+        <tr><td>Gol</td><td class="num">G</td><td>Duelo perdido</td><td class="num">Q</td></tr>
+      </tbody>
+    </table>
     </div>
-    <p>Funciona <b>sin conexión</b> y sincroniza cuando vuelve internet, así que se puede usar en una cancha sin señal.</p>
+    <p>Además: <kbd>Espacio</kbd> arranca y frena el reloj, <kbd>Esc</kbd> cancela un toque a medias.
+    Opcionalmente marcás el <b>tipo de jugada</b> (contraataque, posicional, pelota parada, portero-jugador, segunda jugada, salida de arquero,
+    presión alta, repliegue): queda pegado a todo lo que marques hasta que lo cambies. En <b>EN CANCHA</b> se indica si se jugó 5v5, 5v4, etc.</p>
+
+    <h3>Las zonas</h3>
+    <p>La cancha se lee en cuatro franjas de 10 metros desde nuestro arco (<b>Z1 a Z4</b>) por tres carriles (<b>I, C, D</b>, desde el que ataca): doce cuadrados.
+    Cada acción guarda su zona sola, y eso permite después preguntas como "las pérdidas no forzadas en Z2-C".</p>
+
+    <h3>Cadenas de pases</h3>
+    <p>La cadena se abre sola cuando marcás la primera acción de una jugada y se va armando con lo que sigue. Para colgarle a un gol
+    que ya cargó el tracker la jugada que lo generó: buscá el gol en <b>EVENTOS</b>, tocá el botón de cadena y cargá la jugada; se engancha sola.</p>
+
+    <h3>4. La foto: cómo estaban parados</h3>
+    <p>En <b>MOVER FICHAS</b> acomodás a los diez y la pelota (la ficha blanca). Para ayudarte:</p>
+    <ul class="lista">
+      <li><b>QUINTETO DE ESTE MINUTO</b> pone en cancha a los que estaban jugando en ese momento, según los cambios cargados.</li>
+      <li><b>Nuestra parada / Parada rival</b> acomoda a un equipo en un sistema de golpe, para después ajustar.</li>
+      <li><b>FIJAR FOTO</b> guarda la posición de todos en ese minuto.</li>
+      <li>Con <b>GRABAR AL MOVER</b> prendido, cada vez que soltás una ficha queda su posición: así se arma el recorrido y el mapa de calor de cada jugador.</li>
+      <li><b>DORSAL / APELLIDO / SIN NOMBRE</b> cambia lo que dice cada ficha; <b>ZONAS</b> muestra u oculta la grilla.</li>
+    </ul>
+    <p><b>La línea de la pelota</b> es la raya vertical que sale de la pelota: todo lo sombreado queda entre la pelota y nuestro arco. Arriba dice cuántos
+    atacan contra cuántos defienden (por ejemplo <b>2v3 · INFERIORIDAD</b>). Es la forma de ver, en cada gol, si nos agarraron mal parados.</p>
+    <p><b>REPRODUCIR</b> vuelve a pasar todo el movimiento que grabaste y <b>EXPORTAR VIDEO</b> lo baja como archivo (de la duración que elijas) para mostrarlo en la charla.</p>
+
+    <h3>5. Las pestañas de análisis</h3>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Pestaña</th><th>Qué muestra</th></tr></thead>
+      <tbody>
+        <tr><td>Eventos</td><td>Todo lo marcado, con filtros: todos, goles, en cadena, sólo lo cargado offline. Lo que todavía no se subió lleva una flechita.</td></tr>
+        <tr><td>Goles</td><td>Cada gol con su autor y asistencia, la <b>línea de la pelota</b> en ese momento y la cadena previa. <b>GUARDAR ESTA FOTO EN EL GOL</b> deja la foto pegada al gol.</td></tr>
+        <tr><td>Balance</td><td>Pases completados e incompletos, pérdidas forzadas y no forzadas por zona, y las fotos en las que quedamos en inferioridad.</td></tr>
+        <tr><td>Minutos</td><td>Los tramos en cancha de cada jugador, tomados de los cambios. Si algo no cierra, se corrige a mano.</td></tr>
+        <tr><td>Calor</td><td>Elegís un jugador: su mapa de calor, cuántas muestras hay, su centro de gravedad y cuánto ocupó cada zona.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>6. Subir</h3>
+    <p>Arriba a la derecha dice si estás <b>ONLINE</b> y cuántas cosas faltan subir. <b>SINCRONIZAR</b> las sube; lo que se sube aparece en los
+    análisis del partido para todo el cuerpo técnico.</p>
+
+    <div class="nota ojo">
+      <p><b>Usalo en la compu o en una tablet.</b> En el celular la cancha queda muy chica para marcar con precisión.</p>
+    </div>
+    <div class="nota">
+      <p><b>Dudas en el momento:</b> el botón <b>? CÓMO SE USA</b> abre un resumen con todo esto y los atajos.</p>
+    </div>
   </section>
 
   <section id="torneos">
