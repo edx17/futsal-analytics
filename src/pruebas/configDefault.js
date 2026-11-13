@@ -24,7 +24,8 @@ export const CONFIG_DEFAULT = Object.freeze({
     Ala: pesos(1.0, 1.2, 1.0, 1.1, 1.1, 1.1),
     Pivot: pesos(1.0, 1.0, 1.4, 0.9, 1.1, 1.1),
   },
-  umbrales: { incorporar: 3.8, seguir_observando: 3.0, bloque_clave_max: 2, divergencia_min: 2 },
+  // evaluadores_min: cuántos evaluadores hacen falta para cerrar la carga (1 = alcanza con el DT).
+  umbrales: { incorporar: 3.8, seguir_observando: 3.0, bloque_clave_max: 2, divergencia_min: 2, evaluadores_min: 2 },
   bloques_clave: { Cierre: 'transiciones', Ala: 'con_pelota', Pivot: 'finalizacion' },
 });
 
@@ -75,6 +76,8 @@ export function erroresDeConfig(config) {
   const u = config?.umbrales || {};
   const enRango = (k, min, max) => { const n = Number(u[k]); if (!Number.isFinite(n) || n < min || n > max) e[`umbrales.${k}`] = `Va de ${min} a ${max}.`; };
   enRango('incorporar', 1, 5); enRango('seguir_observando', 1, 5); enRango('bloque_clave_max', 1, 5); enRango('divergencia_min', 1, 4);
+  enRango('evaluadores_min', 1, 5);
+  if (!e['umbrales.evaluadores_min'] && !Number.isInteger(Number(u.evaluadores_min))) e['umbrales.evaluadores_min'] = 'Tiene que ser un número entero.';
   if (!e['umbrales.incorporar'] && !e['umbrales.seguir_observando'] && Number(u.incorporar) <= Number(u.seguir_observando)) {
     e['umbrales.incorporar'] = 'Tiene que ser mayor que el umbral de seguir observando.';
   }

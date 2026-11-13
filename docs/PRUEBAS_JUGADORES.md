@@ -27,8 +27,9 @@ de **una categoría**: nunca se mezclan candidatos ni pruebas de distintas.
    con el descriptor, dato objetivo (goles/intentos en eficacia) y comentario.
    Cada evaluador ve sólo lo suyo mientras la carga está abierta.
 3. **Cierre** (por candidato y etapa):
-   - *Cerrar carga* (mínimo 2 evaluadores, contados con `pruebas_resumen_carga`
-     sin ver los puntajes) → todos ven todo y no se carga más.
+   - *Cerrar carga* (mínimo de evaluadores **configurable**, por defecto 2; con 1
+     alcanza con el DT; contados con `pruebas_resumen_carga` sin ver los
+     puntajes) → todos ven todo y no se carga más.
    - El motor calcula con la configuración vigente. El DT confirma o cambia
      (comentario obligatorio si cambia).
    - **Queda congelado**: se guardan el resultado, el snapshot de la
@@ -38,7 +39,8 @@ de **una categoría**: nunca se mezclan candidatos ni pruebas de distintas.
      (`jugadores`, mismo alta que Plantel: usuario y PIN de kiosco).
    - La etapa 2 (juego real) se habilita sólo si la etapa 1 está decidida y no
      es "No incorporar".
-4. **Configurador**: pesos por puesto y bloque (0.0-2.0, paso 0.1), umbrales,
+4. **Configurador**: pesos por puesto y bloque (0.0-2.0, paso 0.1), umbrales
+   (incluido el mínimo de evaluadores, de 1 a 5),
    bloque clave por puesto; para el club o para la categoría (pisa a la del
    club); restaurar defaults por puesto o todo; **simulación** vigente vs.
    borrador sobre los candidatos con puntajes visibles, sin guardar nada.

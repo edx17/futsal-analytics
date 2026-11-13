@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import RadarBloques from './RadarBloques';
-import { evaluarCandidato, RECOMENDACIONES, ejesRadar, MINIMO_EVALUADORES } from '../../pruebas/evaluacionPrueba';
+import { evaluarCandidato, RECOMENDACIONES, ejesRadar, minimoEvaluadores } from '../../pruebas/evaluacionPrueba';
 import { VERSION_RUBRICA } from '../../pruebas/rubrica';
 import { edadRelativa } from '../../pruebas/edadRelativa';
 import { cerrarCarga, decidir, reabrirCierre, incorporarCandidato } from '../../pruebas/datos';
@@ -63,6 +63,7 @@ function PanelCandidato({ candidato, clubId, categoria, cierres, evaluaciones, e
   const cierre = cierres.find((c) => c.etapa === etapa) || null;
   const carga = resumen.get(`${candidato.id}|${etapa}`) || { evaluadores: 0, puntajes: 0 };
   const [ocupado, setOcupado] = useState(false);
+  const minimo = minimoEvaluadores(vigente.config);
 
   // Etapa 1: lo cargado en sesiones de etapa 1. Etapa 2: todo.
   const evs = evaluaciones.filter((e) => etapa === 2 || etapaDeSesion.get(e.sesion_id) === 1);
@@ -87,12 +88,12 @@ function PanelCandidato({ candidato, clubId, categoria, cierres, evaluaciones, e
         <div className="bento-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={rotulo}>CARGA ABIERTA · ETAPA {etapa}</div>
           <div style={{ fontSize: 14 }}>
-            Cargaron <b style={{ fontFamily: MONO, color: carga.evaluadores >= MINIMO_EVALUADORES ? ACENTO : '#fbbf24' }}>{carga.evaluadores}</b> evaluadores
-            ({carga.puntajes} puntajes). Hacen falta al menos {MINIMO_EVALUADORES}, cada uno por su lado.
+            Cargaron <b style={{ fontFamily: MONO, color: carga.evaluadores >= minimo ? ACENTO : '#fbbf24' }}>{carga.evaluadores}</b> {carga.evaluadores === 1 ? 'evaluador' : 'evaluadores'}
+            ({carga.puntajes} puntajes). {minimo === 1 ? 'Alcanza con uno (así está en el configurador).' : `Hacen falta al menos ${minimo}, cada uno por su lado.`}
           </div>
           <div style={dim}>Mientras la carga está abierta nadie ve los puntajes del otro. Al cerrarla, todo el cuerpo técnico ve el resultado y no se cargan más puntajes en esta etapa.</div>
           {puedeCargar && (
-            <button style={{ ...boton, alignSelf: 'flex-start', opacity: carga.evaluadores >= MINIMO_EVALUADORES ? 1 : 0.5 }} disabled={ocupado || carga.evaluadores < MINIMO_EVALUADORES}
+            <button style={{ ...boton, alignSelf: 'flex-start', opacity: carga.evaluadores >= minimo ? 1 : 0.5 }} disabled={ocupado || carga.evaluadores < minimo}
               onClick={() => window.confirm('¿Cerrar la carga? Ya no se van a poder cargar ni corregir puntajes de esta etapa.')
                 && accion(() => cerrarCarga({ clubId, categoria, candidatoId: candidato.id, etapa }), 'Carga cerrada. Ya se ve el resultado.')}>
               CERRAR CARGA Y VER RESULTADO
@@ -131,7 +132,7 @@ function Decision({ resultado, confirmar, ocupado }) {
   return (
     <div className="bento-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={rotulo}>DECISIÓN DEL DT</div>
-      {!resultado.suficiente && <div style={{ color: '#fbbf24', fontSize: 13 }}>Ojo: hay menos de {MINIMO_EVALUADORES} evaluadores con puntajes.</div>}
+      {!resultado.suficiente && <div style={{ color: '#fbbf24', fontSize: 13 }}>Ojo: hay menos de {resultado.minimoEvaluadores} evaluadores con puntajes.</div>}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {Object.values(RECOMENDACIONES).map((r) => (
           <button key={r.id} onClick={() => setDecision(r.id)} aria-pressed={decision === r.id}

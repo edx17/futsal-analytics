@@ -21,6 +21,7 @@ const UMBRALES = [
   ['seguir_observando', 'Seguir observando desde', 0.1, 1, 5],
   ['bloque_clave_max', 'Bloque clave: limita si queda en ≤', 0.5, 1, 5],
   ['divergencia_min', 'Divergencia: marcar si difieren ≥', 0.5, 1, 4],
+  ['evaluadores_min', 'Evaluadores mínimos para cerrar (1 = sólo el DT)', 1, 1, 5],
 ];
 const clon = (x) => JSON.parse(JSON.stringify(x));
 

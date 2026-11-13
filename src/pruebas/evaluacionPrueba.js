@@ -15,7 +15,8 @@ import { bloquesParaCierre, bloquePorId, TRANSVERSALES } from './rubrica';
  *      <= bloque_clave_max, como mucho "observar".
  *   6. Fortalezas y aspectos a mejorar: los 2 bloques (no transversales) más
  *      altos y los 2 más bajos.
- * Se necesitan al menos 2 evaluadores (`suficiente`).
+ * Mínimo de evaluadores para cerrar: `umbrales.evaluadores_min` (configurable; 1 = alcanza con el DT).
+ * Con un solo evaluador no hay divergencias que marcar.
  */
 
 export const RECOMENDACIONES = {
@@ -24,7 +25,12 @@ export const RECOMENDACIONES = {
   no_incorporar: { id: 'no_incorporar', texto: 'No incorporar', color: '#ef4444' },
 };
 
+/** El valor de siempre (si la configuración no lo trae). */
 export const MINIMO_EVALUADORES = 2;
+export const minimoEvaluadores = (config) => {
+  const n = Number(config?.umbrales?.evaluadores_min);
+  return Number.isInteger(n) && n >= 1 ? n : MINIMO_EVALUADORES;
+};
 const r2 = (n) => Math.round(n * 100) / 100;
 const prom = (xs) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
 
@@ -119,7 +125,8 @@ export function evaluarCandidato({ evaluaciones = [], puesto, config, etapa = 1 
   return {
     puesto, etapa,
     evaluadores: evaluadores.length,
-    suficiente: evaluadores.length >= MINIMO_EVALUADORES,
+    minimoEvaluadores: minimoEvaluadores(config),
+    suficiente: evaluadores.length >= minimoEvaluadores(config),
     bloques,
     transversales: bloques.filter((b) => b.transversal),
     divergencias: bloques.filter((b) => b.divergencia).map((b) => ({ id: b.id, nombre: b.nombre, diferencia: b.diferencia })),

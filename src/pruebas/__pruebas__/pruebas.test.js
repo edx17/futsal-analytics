@@ -100,6 +100,15 @@ describe('pruebas: el motor', () => {
     expect(r.divergencias).toEqual([{ id: 'con_pelota', nombre: 'Activación con pelota', diferencia: 3 }]);
     expect(evaluarCandidato({ evaluaciones: cargar('a', ['con_pelota'], 5), puesto: 'Ala', config, etapa: 1 }).suficiente).toBe(false);
   });
+  it('el mínimo de evaluadores es configurable: con 1 alcanza con el DT', () => {
+    const solo = restaurar(config); solo.umbrales.evaluadores_min = 1;
+    const r = evaluarCandidato({ evaluaciones: cargar('dt', ETAPA1, 4), puesto: 'Ala', config: solo, etapa: 1 });
+    expect(r).toMatchObject({ evaluadores: 1, minimoEvaluadores: 1, suficiente: true, divergencias: [] });
+    const mal = restaurar(config); mal.umbrales.evaluadores_min = 1.5;
+    expect(Object.keys(erroresDeConfig(mal))).toEqual(['umbrales.evaluadores_min']);
+    mal.umbrales.evaluadores_min = 0;
+    expect(Object.keys(erroresDeConfig(mal))).toEqual(['umbrales.evaluadores_min']);
+  });
   it('la etapa 2 suma el juego real; sin puntajes no hay recomendación', () => {
     const ev = [...cargar('a', [...ETAPA1, 'juego_real'], 3), ...cargar('b', [...ETAPA1, 'juego_real'], 3)];
     expect(evaluarCandidato({ evaluaciones: ev, puesto: 'Ala', config, etapa: 2 }).bloques.find((b) => b.id === 'juego_real').puntaje).toBe(3);
