@@ -69,6 +69,7 @@ const Duelos              = lazy(() => import('./pages/Duelos'));
 const EntrarAlJuego       = lazy(() => import('./pages/EntrarAlJuego'));
 const Reportes            = lazy(() => import('./pages/Reportes'));
 const God                 = lazy(() => import('./pages/God'));
+const Pruebas             = lazy(() => import('./pages/Pruebas'));
 
 // MySquad es para jugar con el plantel: lo ven superuser, manager, administrador y cuerpo técnico.
 const ROLES_JUEGO = ['superuser', 'manager', 'admin', 'ct'];
@@ -197,6 +198,8 @@ function AppRoutes() {
       <Route path="/juegos" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><LayoutJuegos><Juegos /></LayoutJuegos></ProtectedRoute>} />
       <Route path="/penales" element={<ProtectedRoute allowedRoles={ROLES_JUEGO}><LayoutJuegos><PenalesJuego /></LayoutJuegos></ProtectedRoute>} />
       <Route path="/duelos" element={<ProtectedRoute allowedRoles={['manager', 'admin', 'ct']}><LayoutJuegos><Duelos /></LayoutJuegos></ProtectedRoute>} />
+      {/* Pruebas de jugadores: ven superuser, manager, admin y ct; cargan y configuran superuser, manager y ct (lo controla la RLS). */}
+      <Route path="/pruebas" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Pruebas /></ProtectedRoute>} />
       <Route path="/plantel-resumen" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><ResumenPlantel /></ProtectedRoute>} />
       <Route path="/reportes" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Reportes /></ProtectedRoute>} />
       <Route path="/comparar" element={<ProtectedRoute allowedRoles={['superuser', 'manager', 'admin', 'ct']}><Comparar /></ProtectedRoute>} />
@@ -564,6 +567,7 @@ useEffect(() => {
               <>
                 {!permisos.esJugador && <NavLink to="/plantel" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="plantel" /> <span>MI PLANTEL</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/plantel-resumen" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="resumenPlantel" /> <span>RESUMEN PLANTEL</span></NavLink>}
+                {!permisos.esJugador && <NavLink to="/pruebas" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="objetivo" /> <span>PRUEBAS</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/reportes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="reportes" /> <span>REPORTES</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/comparar" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="comparar" /> <span>COMPARAR</span></NavLink>}
                 {!permisos.esJugador && <NavLink to="/transferencias" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle}><Icono nombre="transferencias" /> <span>TRANSFERENCIAS</span></NavLink>}
