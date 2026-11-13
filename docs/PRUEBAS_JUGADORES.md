@@ -8,7 +8,7 @@ de **una categoría**: nunca se mezclan candidatos ni pruebas de distintas.
 
 | Qué | Dónde |
 |---|---|
-| Rúbrica (bloques, criterios, descriptores 1/3/5), versionada en código | `src/pruebas/rubrica.js` (`VERSION_RUBRICA`) |
+| Rúbrica (bloques, criterios, descriptores 1/3/5; campo y arquero), versionada en código | `src/pruebas/rubrica.js` (`VERSION_RUBRICA` = 2) |
 | Configuración por defecto, resolución y validación | `src/pruebas/configDefault.js` |
 | Motor del cierre (no tiene números fijos: recibe la configuración) | `src/pruebas/evaluacionPrueba.js` |
 | Edad relativa (trimestre y edad decimal, no se guarda) | `src/pruebas/edadRelativa.js` |
@@ -64,10 +64,29 @@ Borrar candidatos y sesiones: superuser y manager. Reabrir un cierre: sólo supe
 - Si un evaluador puntúa el mismo criterio en más de una sesión, se promedia lo suyo.
 - Fortalezas y aspectos a mejorar: los 2 bloques (no transversales) más altos y más bajos.
 
+## Arquero (rúbrica v2)
+
+En la etapa 1 tiene sus propios bloques (`BLOQUES_ARQUERO`): activación y
+posición, paradas, 1v1 y achique, juego con los pies, saque con las manos,
+transiciones y espacios, y tarea jugada. Comparte el juego real y los
+transversales; en actitud suma la reacción al gol recibido. Bloque clave por
+defecto: paradas. Datos objetivos: atajadas/remates, 1v1 ganados, pases buenos
+y saques buenos.
+
+## Señas para reconocerlo
+
+`pruebas_candidatos.senas` ("camiseta naranja, botines blancos"): se ve en
+gris e itálica debajo del nombre en todas las pestañas y se edita en el
+momento desde EVALUAR (la ropa cambia de un día a otro).
+
+## Manual
+
+Sección `#pruebas` de `public/manual/index.html` (botón MANUAL en la pantalla):
+qué se analiza, la escala, cómo se aplica el método en la cancha, cómo se
+calcula la recomendación, la edad relativa, el configurador y buenas prácticas.
+
 ## Pendientes
 
-- **Arquero**: necesita sus propios criterios (atajadas, juego con los pies,
-  salidas, achique, comunicación) y ponderaciones. Está fuera de la v1.
 - **Calibración**: las ponderaciones y los umbrales por defecto son una primera
   propuesta. Con las primeras pruebas reales, usar la simulación del
   configurador para ajustarlos por categoría.

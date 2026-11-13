@@ -49,7 +49,8 @@ export function semaforo(puntaje, { umbrales }, bloqueClave = null) {
  * `puesto`: 'Cierre' | 'Ala' | 'Pivot'. `etapa`: 1 (sin juego real) o 2 (todo).
  */
 export function evaluarCandidato({ evaluaciones = [], puesto, config, etapa = 1 }) {
-  const validos = new Set(bloquesParaCierre(etapa).map((b) => b.id));
+  const deCierre = bloquesParaCierre(etapa, puesto);
+  const validos = new Set(deCierre.map((b) => b.id));
   const filas = evaluaciones.filter((e) => validos.has(e.bloque) && Number(e.puntaje) >= 1 && Number(e.puntaje) <= 5);
 
   // 1. evaluador → bloque → criterio → [puntajes]
@@ -76,7 +77,7 @@ export function evaluarCandidato({ evaluaciones = [], puesto, config, etapa = 1 
   const pesos = config.ponderaciones?.[puesto] || {};
 
   // 2 y 3. por bloque
-  const bloques = bloquesParaCierre(etapa).map((b) => {
+  const bloques = deCierre.map((b) => {
     const criterios = b.criterios.map((c) => {
       const xs = deCriterio.get(`${b.id}|${c.id}`) || [];
       return { id: c.id, nombre: c.nombre, puntaje: xs.length ? r2(prom(xs)) : null, evaluadores: xs.length };
@@ -113,14 +114,18 @@ export function evaluarCandidato({ evaluaciones = [], puesto, config, etapa = 1 
   const fortalezas = ordenados.slice(0, 2).map((b) => ({ id: b.id, nombre: b.nombre, puntaje: b.puntaje }));
   const aMejorar = ordenados.length > 2 ? ordenados.slice(-2).reverse().map((b) => ({ id: b.id, nombre: b.nombre, puntaje: b.puntaje })) : [];
 
-  // El dato objetivo de eficacia (goles / intentos) sumado entre evaluadores y sesiones (el mejor registro de cada uno).
-  const efic = new Map();
-  filas.filter((e) => e.dato_objetivo && (e.dato_objetivo.intentos != null)).forEach((e) => {
-    const prev = efic.get(e.evaluador_id);
-    const it = Number(e.dato_objetivo.intentos) || 0;
-    if (!prev || it > prev.intentos) efic.set(e.evaluador_id, { intentos: it, goles: Number(e.dato_objetivo.goles) || 0 });
-  });
-  const eficacia = efic.size ? [...efic.values()].reduce((m, x) => (x.intentos > m.intentos ? x : m)) : null;
+  // Los datos objetivos (goles/intentos, atajadas/remates…): por criterio, el registro más largo de cada
+  // evaluador y, entre evaluadores, el de más intentos. `campos`: [total, logrados].
+  const objetivos = [];
+  deCierre.forEach((b) => b.criterios.filter((c) => c.objetivo).forEach((c) => {
+    const [tot, ok] = c.objetivo.campos;
+    let mejor = null;
+    filas.filter((e) => e.bloque === b.id && e.criterio === c.id && e.dato_objetivo && e.dato_objetivo[tot] != null).forEach((e) => {
+      const t = Number(e.dato_objetivo[tot]) || 0;
+      if (!mejor || t > mejor.total) mejor = { total: t, logrados: Number(e.dato_objetivo[ok]) || 0 };
+    });
+    if (mejor) objetivos.push({ bloque: b.id, criterio: c.id, etiqueta: c.objetivo.etiqueta, ...mejor, pct: mejor.total ? Math.round((mejor.logrados / mejor.total) * 100) : null });
+  }));
 
   return {
     puesto, etapa,
@@ -135,7 +140,7 @@ export function evaluarCandidato({ evaluaciones = [], puesto, config, etapa = 1 
     limitadoPorBloqueClave: !!sem?.limitadoPorBloqueClave,
     bloqueClave: clave ? { id: clave.id, nombre: clave.nombre, puntaje: clave.puntaje } : null,
     fortalezas, aMejorar,
-    eficacia: eficacia ? { ...eficacia, pct: eficacia.intentos ? Math.round((eficacia.goles / eficacia.intentos) * 100) : null } : null,
+    objetivos,
   };
 }
 

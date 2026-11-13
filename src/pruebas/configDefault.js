@@ -1,4 +1,4 @@
-import { PUESTOS, TODOS_LOS_BLOQUES } from './rubrica';
+import { PUESTOS, bloquesDePuesto } from './rubrica';
 
 /* PRUEBAS · CONFIGURACIÓN POR DEFECTO Y SU RESOLUCIÓN
  *
@@ -23,13 +23,21 @@ export const CONFIG_DEFAULT = Object.freeze({
     Cierre: pesos(1.0, 1.1, 0.7, 1.3, 1.2, 1.3),
     Ala: pesos(1.0, 1.2, 1.0, 1.1, 1.1, 1.1),
     Pivot: pesos(1.0, 1.0, 1.4, 0.9, 1.1, 1.1),
+    Arquero: {
+      arq_activacion: 0.9, arq_paradas: 1.4, arq_uno_contra_uno: 1.3, arq_juego_pies: 1.1, arq_saque: 1.0,
+      arq_transiciones: 1.1, arq_tarea_jugada: 1.1, juego_real: 1.3, inteligencia_juego: 1.0, actitud: 1.0,
+    },
   },
   // evaluadores_min: cuántos evaluadores hacen falta para cerrar la carga (1 = alcanza con el DT).
   umbrales: { incorporar: 3.8, seguir_observando: 3.0, bloque_clave_max: 2, divergencia_min: 2, evaluadores_min: 2 },
-  bloques_clave: { Cierre: 'transiciones', Ala: 'con_pelota', Pivot: 'finalizacion' },
+  bloques_clave: { Cierre: 'transiciones', Ala: 'con_pelota', Pivot: 'finalizacion', Arquero: 'arq_paradas' },
 });
 
 const clon = (x) => JSON.parse(JSON.stringify(x));
+
+/** El bloque clave de un puesto tiene que ser uno de sus bloques (no un transversal). */
+export const bloquesClaveDe = (puesto) => bloquesDePuesto(puesto).filter((b) => !b.transversal);
+const esClaveValida = (puesto, id) => bloquesClaveDe(puesto).some((b) => b.id === id);
 
 /** Mezcla una fila guardada sobre una base (sólo pisa lo que trae y es válido en forma). */
 function sobre(base, fila) {
@@ -41,7 +49,7 @@ function sobre(base, fila) {
       if (Number.isFinite(v)) r.ponderaciones[p][b] = v;
     });
     const clave = fila.bloques_clave?.[p];
-    if (clave && TODOS_LOS_BLOQUES.some((b) => b.id === clave)) r.bloques_clave[p] = clave;
+    if (clave && esClaveValida(p, clave)) r.bloques_clave[p] = clave;
   });
   Object.keys(r.umbrales).forEach((k) => {
     const v = Number(fila.umbrales?.[k]);
@@ -71,7 +79,7 @@ export function erroresDeConfig(config) {
       const n = Number(v);
       if (!Number.isFinite(n) || n < RANGO_PESO.min || n > RANGO_PESO.max) e[`${p}.${b}`] = `El peso va de ${RANGO_PESO.min.toFixed(1)} a ${RANGO_PESO.max.toFixed(1)}.`;
     });
-    if (!TODOS_LOS_BLOQUES.some((b) => b.id === config?.bloques_clave?.[p])) e[`clave.${p}`] = 'Elegí el bloque clave.';
+    if (!esClaveValida(p, config?.bloques_clave?.[p])) e[`clave.${p}`] = 'Elegí el bloque clave.';
   });
   const u = config?.umbrales || {};
   const enRango = (k, min, max) => { const n = Number(u[k]); if (!Number.isFinite(n) || n < min || n > max) e[`umbrales.${k}`] = `Va de ${min} a ${max}.`; };

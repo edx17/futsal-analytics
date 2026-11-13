@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import RadarBloques from './RadarBloques';
+import { Senas } from './CargaPrueba';
 import { evaluarCandidato, RECOMENDACIONES, ejesRadar, minimoEvaluadores } from '../../pruebas/evaluacionPrueba';
 import { VERSION_RUBRICA } from '../../pruebas/rubrica';
 import { edadRelativa } from '../../pruebas/edadRelativa';
@@ -42,6 +43,7 @@ export default function CierrePrueba({ clubId, categoria, candidatos, sesiones, 
           return (
             <button key={c.id} style={{ ...chip(c.id === candidatoId), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 52 }} onClick={() => setCandidatoId(c.id)}>
               <span>{c.apellido || c.nombre}</span>
+              {c.senas && <Senas texto={c.senas} />}
               <small style={{ fontSize: 10, color: e.color }}>{e.texto}</small>
             </button>
           );
@@ -192,6 +194,7 @@ function Ficha({ candidato, resultado, etapa, decision = null, nota }) {
           <div style={{ fontSize: 20, fontWeight: 900 }}>{[candidato.nombre, candidato.apellido].filter(Boolean).join(' ')}</div>
           <div style={dim}>{candidato.categoria} · {candidato.puesto_principal}{candidato.puesto_alternativo ? ` / ${candidato.puesto_alternativo}` : ''} · Etapa {etapa}</div>
           {edad && <div style={{ fontFamily: MONO, fontSize: 12, color: ACENTO, marginTop: 2 }}>Edad relativa {edad.texto}</div>}
+          {candidato.senas && <Senas texto={candidato.senas} estilo={{ display: 'block', marginTop: 2 }} />}
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontFamily: MONO, fontSize: 38, fontWeight: 900, lineHeight: 1, color: rec?.color || 'var(--text)' }}>{resultado.puntaje != null ? Number(resultado.puntaje).toFixed(2) : '—'}</div>
@@ -217,7 +220,9 @@ function Ficha({ candidato, resultado, etapa, decision = null, nota }) {
               <span style={{ fontFamily: MONO, fontSize: 11, color: 'var(--text-dim)', textAlign: 'right' }}>×{Number(b.peso).toFixed(1)}</span>
             </div>
           ))}
-          {resultado.eficacia && <div style={{ fontSize: 12, ...dim }}>Eficacia: <b style={{ fontFamily: MONO, color: 'var(--text)' }}>{resultado.eficacia.goles}/{resultado.eficacia.intentos}</b> ({resultado.eficacia.pct}%)</div>}
+          {(resultado.objetivos || []).map((o) => (
+            <div key={`${o.bloque}.${o.criterio}`} style={{ fontSize: 12, ...dim }}>{o.etiqueta}: <b style={{ fontFamily: MONO, color: 'var(--text)' }}>{o.logrados}/{o.total}</b>{o.pct != null && ` (${o.pct}%)`}</div>
+          ))}
         </div>
       </div>
 

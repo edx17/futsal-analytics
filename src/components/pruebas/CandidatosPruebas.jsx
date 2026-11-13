@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TablaResponsive } from '../TablaResponsive';
-import { PUESTOS, PUESTOS_PENDIENTES } from '../../pruebas/rubrica';
+import { PUESTOS } from '../../pruebas/rubrica';
+import { Senas } from './CargaPrueba';
 import { edadRelativa } from '../../pruebas/edadRelativa';
 import { guardarCandidato, subirFotoCandidato, borrarCandidato } from '../../pruebas/datos';
 import { MONO, dim, rotulo, input, boton, botonSec, campo, ESTADOS_CANDIDATO, etiqueta } from './estilos';
@@ -15,14 +16,14 @@ import { MONO, dim, rotulo, input, boton, botonSec, campo, ESTADOS_CANDIDATO, et
 const VACIO = {
   nombre: '', apellido: '', fecha_nacimiento: '', foto_url: '', puesto_principal: 'Ala', puesto_alternativo: '',
   perfil_dominante: { pierna: '', zona: '', rol: '' }, antecedentes: { club_anterior: '', minutos: '', lesiones: '' },
-  observaciones: '', estado: 'citado',
+  observaciones: '', senas: '', estado: 'citado',
 };
 
 export default function CandidatosPruebas({ clubId, categoria, candidatos, recargar, puedeCargar, puedeBorrar, esMovil, avisar }) {
   const [editando, setEditando] = useState(null);
 
   const columnas = [
-    { k: 'nombre', t: 'CANDIDATO', r: (c) => <b>{[c.apellido, c.nombre].filter(Boolean).join(', ')}</b> },
+    { k: 'nombre', t: 'CANDIDATO', r: (c) => <span style={{ display: 'flex', flexDirection: 'column' }}><b>{[c.apellido, c.nombre].filter(Boolean).join(', ')}</b>{c.senas && <Senas texto={c.senas} />}</span> },
     { k: 'puesto', t: 'PUESTO', r: (c) => `${c.puesto_principal}${c.puesto_alternativo ? ` / ${c.puesto_alternativo}` : ''}` },
     { k: 'edad', t: 'EDAD RELATIVA', r: (c) => { const e = edadRelativa(c.fecha_nacimiento); return e ? <span style={{ fontFamily: MONO }}>{e.texto}</span> : '—'; } },
     { k: 'estado', t: 'ESTADO', r: (c) => <span style={etiqueta(ESTADOS_CANDIDATO[c.estado]?.color)}>{ESTADOS_CANDIDATO[c.estado]?.texto}</span> },
@@ -33,13 +34,13 @@ export default function CandidatosPruebas({ clubId, categoria, candidatos, recar
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ ...dim, flex: 1, minWidth: 220 }}>
-          Candidatos de <b style={{ color: 'var(--text)' }}>{categoria}</b>. Puestos de esta versión: Cierre, Ala y Pivot ({PUESTOS_PENDIENTES.join(', ')}: pendiente, necesita criterios propios).
+          Candidatos de <b style={{ color: 'var(--text)' }}>{categoria}</b>. Las <i>señas</i> (ropa, botines) ayudan a reconocerlos en la cancha.
         </span>
         {puedeCargar && <button style={boton} onClick={() => setEditando({ ...VACIO })}>+ NUEVO CANDIDATO</button>}
       </div>
 
       <TablaResponsive filas={candidatos} columnas={columnas} colsClave={['puesto', 'edad', 'estado']} getId={(c) => c.id}
-        getTitulo={(c) => [c.apellido, c.nombre].filter(Boolean).join(', ')} getSubtitulo={(c) => c.puesto_principal}
+        getTitulo={(c) => [c.apellido, c.nombre].filter(Boolean).join(', ')} getSubtitulo={(c) => [c.puesto_principal, c.senas].filter(Boolean).join(' · ')}
         onRowClick={puedeCargar ? (c) => setEditando(c) : undefined} vacio="Todavía no hay candidatos en esta categoría.">
         <div className="bento-card" style={{ padding: 0, overflowX: 'auto' }}>
           {candidatos.length === 0 ? <div style={{ padding: 24, textAlign: 'center', ...dim }}>Todavía no hay candidatos en esta categoría.</div> : (
@@ -97,7 +98,7 @@ function FichaCandidato({ inicial, clubId, categoria, esMovil, puedeBorrar, cerr
         puesto_principal: f.puesto_principal, puesto_alternativo: f.puesto_alternativo || null,
         perfil_dominante: f.perfil_dominante,
         antecedentes: { ...f.antecedentes, minutos: f.antecedentes.minutos === '' ? null : Number(f.antecedentes.minutos) },
-        observaciones: f.observaciones || null, estado: f.estado,
+        observaciones: f.observaciones || null, senas: (f.senas || '').trim() || null, estado: f.estado,
       });
       alGuardar(f.id ? 'Ficha actualizada.' : 'Candidato agregado.');
     } catch (err) { setError(err?.message || 'No se pudo guardar.'); setOcupado(false); }
@@ -173,6 +174,9 @@ function FichaCandidato({ inicial, clubId, categoria, esMovil, puedeBorrar, cerr
           <label style={campo}>MINUTOS (TEMPORADA PASADA)<input type="number" min={0} style={{ ...input, fontFamily: MONO }} value={f.antecedentes.minutos ?? ''} onChange={(e) => setSub('antecedentes', 'minutos', e.target.value)} disabled={noEditable} /></label>
         </div>
         <label style={campo}>LESIONES RECIENTES<input style={input} value={f.antecedentes.lesiones} onChange={(e) => setSub('antecedentes', 'lesiones', e.target.value)} disabled={noEditable} /></label>
+        <label style={campo}>SEÑAS PARA RECONOCERLO (ropa, botines… · se pueden cambiar cada día desde EVALUAR)
+          <input style={{ ...input, fontStyle: 'italic' }} maxLength={120} placeholder="camiseta naranja, botines blancos" value={f.senas || ''} onChange={(e) => set('senas', e.target.value)} disabled={noEditable} />
+        </label>
         <label style={campo}>OBSERVACIONES (actitud, puntualidad, cómo llega · no se puntúa)
           <textarea style={{ ...input, minHeight: 80, resize: 'vertical' }} value={f.observaciones || ''} onChange={(e) => set('observaciones', e.target.value)} disabled={noEditable} />
         </label>

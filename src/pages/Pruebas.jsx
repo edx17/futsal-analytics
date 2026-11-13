@@ -8,7 +8,8 @@ import CandidatosPruebas from '../components/pruebas/CandidatosPruebas';
 import CargaPrueba from '../components/pruebas/CargaPrueba';
 import CierrePrueba from '../components/pruebas/CierrePrueba';
 import ConfiguradorPruebas from '../components/pruebas/ConfiguradorPruebas';
-import { dim, input, chip } from '../components/pruebas/estilos';
+import { dim, input, chip, botonSec } from '../components/pruebas/estilos';
+import VisorManual from '../components/VisorManual';
 import { Icono } from '../iconos';
 
 /* PLANTEL · PRUEBAS DE JUGADORES (/pruebas)
@@ -45,6 +46,7 @@ export default function Pruebas() {
   const elegirCategoria = (c) => { setElegida(c); guardarLS('vc_pruebas_categoria', c); };
 
   const [pestana, setPestana] = useState('candidatos');
+  const [verManual, setVerManual] = useState(false);
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState(null);
   const [aviso, setAviso] = useState(null);
@@ -92,6 +94,9 @@ export default function Pruebas() {
           <div className="stat-label" style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>PRUEBAS DE JUGADORES</div>
           <div style={dim}>Evaluá candidatos con la misma rúbrica y cerrá con una recomendación.</div>
         </div>
+        <button style={botonSec} onClick={() => setVerManual(true)} title="Qué se analiza y cómo se aplica el método">
+          <Icono nombre="manual" size="1.1em" style={{ marginRight: 6 }} />MANUAL
+        </button>
         <select value={categoria} onChange={(e) => elegirCategoria(e.target.value)} style={{ ...input, width: 'auto', minWidth: 160, fontWeight: 800 }} aria-label="Categoría">
           {(categorias || []).map((c) => <option key={c} value={c}>{String(c).toUpperCase()}</option>)}
         </select>
@@ -124,6 +129,7 @@ export default function Pruebas() {
           evaluaciones={datos.evaluaciones} sesiones={datos.sesiones} cierres={datos.cierres}
           puedeEditar={puedeCargar} recargar={recargar} avisar={avisar} esMovil={esMovil} />
       )}
+      {verManual && <VisorManual seccion="pruebas" titulo="Manual: Pruebas de jugadores" onCerrar={() => setVerManual(false)} />}
     </div>
   );
 }

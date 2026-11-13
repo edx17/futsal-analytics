@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { PUESTOS, BLOQUES, TODOS_LOS_BLOQUES } from '../../pruebas/rubrica';
-import { CONFIG_DEFAULT, RANGO_PESO, resolverConfig, erroresDeConfig, distintosDelDefault, restaurar, aPaso } from '../../pruebas/configDefault';
+import { PUESTOS, bloquesDePuesto } from '../../pruebas/rubrica';
+import { CONFIG_DEFAULT, bloquesClaveDe, RANGO_PESO, resolverConfig, erroresDeConfig, distintosDelDefault, restaurar, aPaso } from '../../pruebas/configDefault';
 import { simular, RECOMENDACIONES } from '../../pruebas/evaluacionPrueba';
 import { guardarConfig, borrarConfig, nombresDePerfiles } from '../../pruebas/datos';
 import { MONO, dim, rotulo, input, boton, botonSec, chip, campo } from './estilos';
@@ -116,7 +116,7 @@ export default function ConfiguradorPruebas({ clubId, categoria, filas, candidat
               <b style={{ flex: 1, letterSpacing: '.08em' }}>{p.toUpperCase()}</b>
               {puedeEditar && <button style={{ ...chip(false), minHeight: 32 }} onClick={() => window.confirm(`¿Restaurar los defaults de ${p}?`) && setBorrador(restaurar(borrador, p))}>DEFAULTS</button>}
             </div>
-            {TODOS_LOS_BLOQUES.map((b) => {
+            {bloquesDePuesto(p).map((b) => {
               const k = `${p}.${b.id}`;
               const v = borrador.ponderaciones[p][b.id];
               return (
@@ -131,7 +131,7 @@ export default function ConfiguradorPruebas({ clubId, categoria, filas, candidat
             })}
             <label style={{ ...campo, marginTop: 6 }}>BLOQUE CLAVE
               <select style={{ ...input, ...marca(`clave.${p}`) }} value={borrador.bloques_clave[p]} disabled={!puedeEditar} onChange={(e) => setClave(p, e.target.value)}>
-                {BLOQUES.map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+                {bloquesClaveDe(p).map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}
               </select>
               {errorDe(`clave.${p}`)}
             </label>

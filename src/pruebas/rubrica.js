@@ -6,14 +6,19 @@
  * Si se cambia un bloque o un criterio, subir VERSION_RUBRICA: los cierres
  * guardan con qué versión se evaluó.
  *
- * Puestos de la v1: Cierre, Ala y Pivot. El ARQUERO queda pendiente (necesita
- * criterios propios: atajadas, juego con los pies, salidas, achique).
+ * Puestos: Cierre, Ala y Pivot comparten la rúbrica de campo. El ARQUERO
+ * tiene la suya en la etapa 1 (BLOQUES_ARQUERO); el juego real (etapa 2) y
+ * los transversales son los mismos, y en actitud suma la reacción al gol
+ * recibido.
+ *
+ * Versión 2: se sumó el arquero.
  */
 
-export const VERSION_RUBRICA = 1;
+export const VERSION_RUBRICA = 2;
 
-export const PUESTOS = ['Cierre', 'Ala', 'Pivot'];
-export const PUESTOS_PENDIENTES = ['Arquero'];
+export const PUESTOS_CAMPO = ['Cierre', 'Ala', 'Pivot'];
+export const PUESTOS = [...PUESTOS_CAMPO, 'Arquero'];
+export const PUESTOS_PENDIENTES = [];
 
 const d = (uno, tres, cinco) => ({ 1: uno, 3: tres, 5: cinco });
 
@@ -74,6 +79,70 @@ export const BLOQUES = [
   },
 ];
 
+/* EL ARQUERO (etapa 1). `objetivo.campos`: [total, logrados] (ej. remates y atajadas). */
+export const BLOQUES_ARQUERO = [
+  {
+    id: 'arq_activacion', nombre: 'Activación y posición', corto: 'Posición', etapa: 1, puesto: 'Arquero',
+    criterios: [
+      { id: 'posicion_base', nombre: 'Posición de base y perfilamiento al remate', descriptores: d('Llega mal parado al remate.', 'Se perfila bien con tiempo.', 'Siempre perfilado y equilibrado, aun en jugadas rápidas.') },
+      { id: 'desplazamientos_laterales', nombre: 'Desplazamientos laterales cortos', descriptores: d('Se cruza de piernas o llega tarde.', 'Se desplaza bien a ritmo medio.', 'Desplazamientos cortos, rápidos y sin perder la base.') },
+      { id: 'explosividad', nombre: 'Explosividad y reacción', descriptores: d('Reacciona tarde.', 'Reacciona a tiempo en lo previsible.', 'Reacciona explosivo ante lo imprevisto.') },
+    ],
+  },
+  {
+    id: 'arq_paradas', nombre: 'Paradas', corto: 'Paradas', etapa: 1, puesto: 'Arquero',
+    criterios: [
+      { id: 'remate_bajo', nombre: 'Remate a media y baja altura (pie, mano baja)', objetivo: { campos: ['remates', 'atajadas'], etiqueta: 'Atajadas / remates al arco' }, descriptores: d('Le entran los bajos o rasantes.', 'Ataja los bajos con tiempo.', 'Ataja bajos y a media altura aun a quemarropa.') },
+      { id: 'remate_alto', nombre: 'Remate alto y a corta distancia (reflejos)', descriptores: d('No llega a los altos ni a los cercanos.', 'Responde bien a los altos lejanos.', 'Reflejos de primer nivel a corta distancia.') },
+      { id: 'rebote', nombre: 'Control del rebote / desvío fuera de zona', descriptores: d('Da rebotes al medio.', 'Controla o desvía lo simple.', 'Siempre controla o desvía fuera de peligro.') },
+      { id: 'tecnica_bloqueo', nombre: 'Técnica de bloqueo (cruz, split / espagat, rodilla al piso)', descriptores: d('No usa técnica de bloqueo.', 'Usa el bloqueo en lo previsible.', 'Elige y ejecuta el bloqueo justo en cada situación.') },
+    ],
+  },
+  {
+    id: 'arq_uno_contra_uno', nombre: '1v1 y achique', corto: '1v1', etapa: 1, puesto: 'Arquero',
+    criterios: [
+      { id: 'timing_salida', nombre: 'Timing de salida', objetivo: { campos: ['duelos', 'ganados'], etiqueta: '1v1 ganados / 1v1' }, descriptores: d('Sale tarde o a destiempo.', 'Sale a tiempo en lo claro.', 'Sale siempre en el momento justo.') },
+      { id: 'achique', nombre: 'Reducción del ángulo (achique)', descriptores: d('No achica.', 'Achica bien con tiempo.', 'Achica rápido y deja sin ángulo.') },
+      { id: 'aguante', nombre: 'Aguante sin regalar el primer movimiento', descriptores: d('Se tira antes.', 'Aguanta en lo simple.', 'Aguanta hasta el final y obliga al rival a decidir.') },
+      { id: 'lectura_rematador', nombre: 'Lectura del rematador', descriptores: d('No anticipa la intención.', 'Lee los remates previsibles.', 'Anticipa la intención del rematador.') },
+    ],
+  },
+  {
+    id: 'arq_juego_pies', nombre: 'Juego con los pies', corto: 'Pies', etapa: 1, puesto: 'Arquero',
+    criterios: [
+      { id: 'control_pase_pies', nombre: 'Control y pase con los dos perfiles', objetivo: { campos: ['pases', 'buenos'], etiqueta: 'Pases buenos / intentos' }, descriptores: d('Control y pase imprecisos.', 'Correcto con su perfil hábil.', 'Preciso con los dos perfiles, aun presionado.') },
+      { id: 'pase_largo', nombre: 'Pase largo al pivot / diagonal', descriptores: d('No llega o la regala.', 'Llega con tiempo y espacio.', 'Encuentra al pivot o la diagonal con precisión.') },
+      { id: 'tranquilidad_presion', nombre: 'Tranquilidad ante la presión', descriptores: d('Se apura y la pierde.', 'Resuelve la presión simple.', 'Resuelve con calma la presión alta.') },
+      { id: 'arquero_jugador', nombre: 'Participación como jugador de campo (4v3, arquero-jugador)', descriptores: d('No se suma al juego.', 'Se suma cuando le toca.', 'Es un jugador más y genera superioridad.') },
+    ],
+  },
+  {
+    id: 'arq_saque', nombre: 'Saque con las manos', corto: 'Saque', etapa: 1, puesto: 'Arquero',
+    criterios: [
+      { id: 'saque_rapido', nombre: 'Saque rápido para iniciar el contraataque', objetivo: { campos: ['saques', 'buenos'], etiqueta: 'Saques buenos / saques' }, descriptores: d('Tarda y deja armar al rival.', 'Saca rápido cuando la ve clara.', 'Detecta y ejecuta el contraataque al instante.') },
+      { id: 'precision_saque', nombre: 'Precisión (corto, largo, picado)', descriptores: d('Saques imprecisos.', 'Preciso en corto.', 'Preciso en corto, largo y picado.') },
+      { id: 'eleccion_saque', nombre: 'Elección de la opción', descriptores: d('Elige mal a quién.', 'Elige bien la opción simple.', 'Elige siempre la opción que más ventaja da.') },
+      { id: 'cuatro_segundos', nombre: 'Respeta los 4 segundos', descriptores: d('Se pasa o se apura.', 'Los respeta sin presión.', 'Los maneja con calma aun con presión.') },
+    ],
+  },
+  {
+    id: 'arq_transiciones', nombre: 'Transiciones y espacios', corto: 'Transiciones', etapa: 1, puesto: 'Arquero',
+    criterios: [
+      { id: 'defensa_contragolpe', nombre: 'Defensa del contragolpe (2v1, 3v2)', descriptores: d('Se queda o se entrega.', 'Defiende el contragolpe simple.', 'Gana tiempo y resuelve en inferioridad.') },
+      { id: 'salidas_pase', nombre: 'Salidas a cortar pases filtrados', descriptores: d('No sale o sale mal.', 'Corta los pases evidentes.', 'Anticipa y corta los pases filtrados.') },
+      { id: 'pelota_parada', nombre: 'Pelota parada en contra (córner, falta, doble penal)', descriptores: d('Se ubica mal.', 'Se ubica bien en lo estándar.', 'Lee y ordena cada pelota parada.') },
+    ],
+  },
+  {
+    id: 'arq_tarea_jugada', nombre: 'Tarea jugada (con arquero)', corto: 'Tarea jugada', etapa: 1, puesto: 'Arquero', nota: 'Mezclar los grupos entre rondas.',
+    criterios: [
+      { id: 'lectura_anticipacion', nombre: 'Lectura y anticipación', descriptores: d('Reacciona tarde a la jugada.', 'Lee las jugadas simples.', 'Anticipa las jugadas antes que se definan.') },
+      { id: 'comunicacion_defensa', nombre: 'Comunicación y orden de la defensa', descriptores: d('No habla.', 'Avisa cuando hace falta.', 'Ordena la defensa todo el tiempo.') },
+      { id: 'intervenciones', nombre: 'Intervenciones decisivas', descriptores: d('No influye.', 'Interviene en lo previsible.', 'Salva situaciones de gol con frecuencia.') },
+    ],
+  },
+];
+
 /* Se puntúan sobre toda la prueba (en cualquier sesión). */
 export const TRANSVERSALES = [
   {
@@ -86,11 +155,28 @@ export const TRANSVERSALES = [
   },
 ];
 
-export const TODOS_LOS_BLOQUES = [...BLOQUES, ...TRANSVERSALES];
+const JUEGO_REAL = BLOQUES.find((b) => b.id === 'juego_real');
+
+/* El arquero suma en actitud la reacción al gol recibido. */
+const TRANSVERSALES_ARQUERO = TRANSVERSALES.map((t) => (t.id !== 'actitud' ? t : {
+  ...t,
+  criterios: [...t.criterios, { id: 'reaccion_gol', nombre: 'Reacción al gol recibido', descriptores: d('Se cae y arrastra al equipo.', 'Se recompone y sigue.', 'Se levanta al instante y sostiene al equipo.') }],
+}));
+
+export const esArquero = (puesto) => puesto === 'Arquero';
+export const transversalesDe = (puesto) => (esArquero(puesto) ? TRANSVERSALES_ARQUERO : TRANSVERSALES);
+
+/** Todos los bloques de un puesto (las dos etapas y los transversales). */
+export const bloquesDePuesto = (puesto) => (esArquero(puesto)
+  ? [...BLOQUES_ARQUERO, JUEGO_REAL, ...TRANSVERSALES_ARQUERO]
+  : [...BLOQUES, ...TRANSVERSALES]);
+
+/** Todos los bloques que existen (campo + arquero), para buscar nombres por id. */
+export const TODOS_LOS_BLOQUES = [...BLOQUES, ...BLOQUES_ARQUERO, ...TRANSVERSALES];
 export const bloquePorId = Object.fromEntries(TODOS_LOS_BLOQUES.map((b) => [b.id, b]));
 
-/** Los bloques que se cargan en una sesión de esa etapa (más los transversales). */
-export const bloquesDeEtapa = (etapa) => [...BLOQUES.filter((b) => b.etapa === Number(etapa)), ...TRANSVERSALES];
+/** Los bloques que se cargan en una sesión de esa etapa para ese puesto (más los transversales). */
+export const bloquesDeEtapa = (etapa, puesto = 'Ala') => bloquesDePuesto(puesto).filter((b) => b.transversal || b.etapa === Number(etapa));
 
 /** Los bloques que cuentan para cerrar una etapa: la 1 sin el juego real; la 2, todo. */
-export const bloquesParaCierre = (etapa) => (Number(etapa) === 2 ? TODOS_LOS_BLOQUES : TODOS_LOS_BLOQUES.filter((b) => b.etapa !== 2));
+export const bloquesParaCierre = (etapa, puesto = 'Ala') => bloquesDePuesto(puesto).filter((b) => Number(etapa) === 2 || b.etapa !== 2);

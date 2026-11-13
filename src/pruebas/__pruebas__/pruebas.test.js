@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BLOQUES, TRANSVERSALES, bloquesDeEtapa, bloquesParaCierre, VERSION_RUBRICA } from '../rubrica';
+import { BLOQUES, BLOQUES_ARQUERO, TRANSVERSALES, bloquesDeEtapa, bloquesParaCierre, bloquesDePuesto, transversalesDe, VERSION_RUBRICA, PUESTOS } from '../rubrica';
 import { CONFIG_DEFAULT, resolverConfig, erroresDeConfig, distintosDelDefault, restaurar, aPaso } from '../configDefault';
 import { edadRelativa } from '../edadRelativa';
 import { evaluarCandidato, semaforo, simular, ejesRadar } from '../evaluacionPrueba';
@@ -13,8 +13,8 @@ const ETAPA1 = ['sin_pelota', 'con_pelota', 'finalizacion', 'transiciones', 'tar
 
 describe('pruebas: la rúbrica', () => {
   it('cada criterio tiene descriptores 1/3/5 e ids únicos dentro del bloque', () => {
-    expect(VERSION_RUBRICA).toBe(1);
-    [...BLOQUES, ...TRANSVERSALES].forEach((b) => {
+    expect(VERSION_RUBRICA).toBe(2);
+    [...BLOQUES, ...BLOQUES_ARQUERO, ...TRANSVERSALES, ...transversalesDe('Arquero')].forEach((b) => {
       expect(b.id).toMatch(/^[a-z_]+$/);
       const ids = b.criterios.map((c) => c.id);
       expect(new Set(ids).size).toBe(ids.length);
@@ -26,6 +26,17 @@ describe('pruebas: la rúbrica', () => {
     expect(bloquesDeEtapa(2).map((b) => b.id)).toEqual(['juego_real', 'inteligencia_juego', 'actitud']);
     expect(bloquesParaCierre(1).some((b) => b.id === 'juego_real')).toBe(false);
     expect(bloquesParaCierre(2)).toHaveLength(8);
+  });
+  it('el arquero tiene su rúbrica en la etapa 1; comparte juego real y transversales', () => {
+    expect(PUESTOS).toEqual(['Cierre', 'Ala', 'Pivot', 'Arquero']);
+    expect(bloquesDeEtapa(1, 'Arquero').map((b) => b.id)).toEqual([
+      'arq_activacion', 'arq_paradas', 'arq_uno_contra_uno', 'arq_juego_pies', 'arq_saque', 'arq_transiciones', 'arq_tarea_jugada', 'inteligencia_juego', 'actitud']);
+    expect(bloquesDeEtapa(2, 'Arquero').map((b) => b.id)).toEqual(['juego_real', 'inteligencia_juego', 'actitud']);
+    expect(transversalesDe('Arquero').find((t) => t.id === 'actitud').criterios.map((c) => c.id)).toContain('reaccion_gol');
+    expect(transversalesDe('Ala').find((t) => t.id === 'actitud').criterios.map((c) => c.id)).not.toContain('reaccion_gol');
+    // cada bloque del puesto tiene su peso por defecto
+    PUESTOS.forEach((p) => bloquesDePuesto(p).forEach((b) => expect(CONFIG_DEFAULT.ponderaciones[p][b.id], `${p}.${b.id}`).toBeGreaterThan(0)));
+    expect(CONFIG_DEFAULT.bloques_clave.Arquero).toBe('arq_paradas');
   });
 });
 
@@ -50,6 +61,8 @@ describe('pruebas: configuración', () => {
     mal.umbrales.incorporar = 3;
     mal.bloques_clave.Ala = 'volar';
     expect(Object.keys(erroresDeConfig(mal)).sort()).toEqual(['Cierre.sin_pelota', 'clave.Ala', 'umbrales.incorporar']);
+    const mal2 = restaurar(CONFIG_DEFAULT); mal2.bloques_clave.Arquero = 'transiciones';   // es de campo, no del arquero
+    expect(Object.keys(erroresDeConfig(mal2))).toEqual(['clave.Arquero']);
   });
   it('marca lo distinto al default y restaura por puesto o todo', () => {
     const c = restaurar(CONFIG_DEFAULT);
@@ -115,6 +128,24 @@ describe('pruebas: el motor', () => {
     expect(evaluarCandidato({ evaluaciones: [], puesto: 'Ala', config, etapa: 1 })).toMatchObject({ puntaje: null, recomendacion: null });
     expect(semaforo(2.99, config)).toEqual({ recomendacion: 'no_incorporar', limitadoPorBloqueClave: false });
     expect(semaforo(3, config).recomendacion).toBe('observar');
+  });
+  it('arquero: sus bloques, su bloque clave y sus datos objetivos', () => {
+    const ARQ1 = bloquesDeEtapa(1, 'Arquero').map((b) => b.id);
+    const p = (id) => (id === 'arq_paradas' ? 2 : 5);
+    const conDatos = (ev) => [...cargar(ev, [], 0), ...ARQ1.flatMap((id) => {
+      const b = [...BLOQUES_ARQUERO, ...transversalesDe('Arquero')].find((x) => x.id === id);
+      return b.criterios.map((c) => ({ evaluador_id: ev, bloque: id, criterio: c.id, puntaje: p(id),
+        dato_objetivo: c.id === 'remate_bajo' ? { remates: ev === 'a' ? 10 : 8, atajadas: 6 } : null }));
+    })];
+    const r = evaluarCandidato({ evaluaciones: [...conDatos('a'), ...conDatos('b')], puesto: 'Arquero', config, etapa: 1 });
+    expect(r.bloques.map((b) => b.id)).toEqual(ARQ1);
+    expect(r).toMatchObject({ recomendacion: 'observar', limitadoPorBloqueClave: true, bloqueClave: { id: 'arq_paradas', puntaje: 2 } });
+    expect(r.objetivos).toEqual([{ bloque: 'arq_paradas', criterio: 'remate_bajo', etiqueta: 'Atajadas / remates al arco', total: 10, logrados: 6, pct: 60 }]);
+    expect(ejesRadar(r).map((e) => e.nombre)).toContain('Paradas');
+  });
+  it('los puntajes de campo no cuentan para un arquero (y al revés)', () => {
+    const r = evaluarCandidato({ evaluaciones: [...cargar('a', ETAPA1, 5), ...cargar('b', ETAPA1, 5)], puesto: 'Arquero', config, etapa: 1 });
+    expect(r.bloques.filter((b) => !b.transversal).every((b) => b.puntaje == null)).toBe(true);
   });
   it('la simulación muestra quién cambia de recomendación', () => {
     const ev = [...cargar('a', ETAPA1, 4), ...cargar('b', ETAPA1, 4)];

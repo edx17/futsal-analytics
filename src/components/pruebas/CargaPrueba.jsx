@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { bloquesDeEtapa } from '../../pruebas/rubrica';
 import { edadRelativa } from '../../pruebas/edadRelativa';
-import { crearSesion } from '../../pruebas/datos';
+import { crearSesion, guardarCandidato } from '../../pruebas/datos';
 import { useColaPruebas, claveDePuntaje } from '../../pruebas/useColaPruebas';
 import { MONO, ACENTO, dim, rotulo, input, boton, botonSec, chip, campo } from './estilos';
 
@@ -28,8 +28,6 @@ export default function CargaPrueba({ clubId, categoria, yo, sesiones, candidato
 
   const sesion = sesiones.find((s) => s.id === sesionId) || null;
   const etapa = sesion?.etapa || 1;
-  const bloques = bloquesDeEtapa(etapa);
-  const bloque = bloques[Math.min(nBloque, bloques.length - 1)];
 
   // Quién se puede evaluar en esta sesión.
   const decididos1 = useMemo(() => new Map(cierres.filter((c) => c.etapa === 1 && c.estado === 'decidido').map((c) => [c.candidato_id, c.decision])), [cierres]);
@@ -38,6 +36,9 @@ export default function CargaPrueba({ clubId, categoria, yo, sesiones, candidato
     .filter((c) => (etapa === 2 ? decididos1.has(c.id) && decididos1.get(c.id) !== 'no_incorporar' : true));
   const candidato = evaluables.find((c) => c.id === candidatoId) || null;
   const cerrada = candidato ? cerrados.has(`${candidato.id}|${etapa}`) : false;
+  // Los bloques dependen del puesto (el arquero tiene los suyos).
+  const bloques = bloquesDeEtapa(etapa, candidato?.puesto_principal);
+  const bloque = bloques[Math.min(nBloque, bloques.length - 1)];
 
   // Mis puntajes: los de la base más los que están en la cola (la cola manda).
   const mios = useMemo(() => {
@@ -119,6 +120,7 @@ export default function CargaPrueba({ clubId, categoria, yo, sesiones, candidato
                 <button key={c.id} style={{ ...chip(c.id === candidatoId), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 52 }}
                   onClick={() => { setCandidatoId(c.id); setNBloque(0); }}>
                   <span>{c.apellido || c.nombre}</span>
+                  {c.senas && <Senas texto={c.senas} />}
                   <small style={{ fontSize: 10, fontWeight: 700, opacity: 0.8 }}>{c.puesto_principal}{e ? ` · ${e.etiqueta}` : ''}{cerrados.has(`${c.id}|${etapa}`) ? ' · CERRADA' : ''}</small>
                 </button>
               );
@@ -126,6 +128,8 @@ export default function CargaPrueba({ clubId, categoria, yo, sesiones, candidato
           </div>
         </div>
       )}
+
+      {candidato && !cerrada && <EditarSenas candidato={candidato} recargar={recargar} avisar={avisar} />}
 
       {candidato && cerrada && (
         <div className="bento-card" style={{ padding: 16, ...dim }}>La carga de {candidato.apellido || candidato.nombre} en la etapa {etapa} ya se cerró: el resultado está en CIERRE.</div>
@@ -194,6 +198,38 @@ function Criterio({ criterio, actual, marcar }) {
         <textarea style={{ ...input, minHeight: 60 }} placeholder="Comentario (opcional)" defaultValue={actual?.comentario || ''}
           onBlur={(e) => marcar({ comentario: e.target.value.trim() || null })} />
       ) : <button style={{ ...chip(false), alignSelf: 'flex-start', minHeight: 32 }} onClick={() => setAbrirNota(true)}>+ COMENTARIO</button>)}
+    </div>
+  );
+}
+
+/* Las señas para reconocerlo en la cancha ("camiseta naranja, botines blancos"): gris e itálica. */
+export function Senas({ texto, estilo = null }) {
+  return <small style={{ fontSize: 11, fontStyle: 'italic', fontWeight: 500, color: 'var(--text-dim)', letterSpacing: 0, whiteSpace: 'normal', textAlign: 'left', ...estilo }}>{texto}</small>;
+}
+
+/* Editarlas en el momento (la ropa cambia de un día a otro). */
+function EditarSenas({ candidato, recargar, avisar }) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(candidato.senas || '');
+  const guardar = async () => {
+    try { await guardarCandidato({ id: candidato.id, senas: texto.trim() || null }); setEditando(false); await recargar(); } catch (err) {
+      avisar?.(err?.message || 'No se pudieron guardar las señas.', true);
+    }
+  };
+  if (!editando) {
+    return (
+      <button onClick={() => { setTexto(candidato.senas || ''); setEditando(true); }}
+        style={{ ...chip(false), minHeight: 36, alignSelf: 'flex-start', display: 'flex', gap: 6, alignItems: 'center', whiteSpace: 'normal', textAlign: 'left' }}>
+        {candidato.senas ? <Senas texto={`👕 ${candidato.senas}`} /> : <span>+ SEÑAS PARA RECONOCERLO</span>}
+        <span aria-hidden="true">✎</span>
+      </button>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <input autoFocus style={{ ...input, fontStyle: 'italic' }} maxLength={120} placeholder="camiseta naranja, botines blancos" value={texto}
+        onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') guardar(); }} aria-label="Señas para reconocerlo" />
+      <button style={boton} onClick={guardar}>OK</button>
     </div>
   );
 }

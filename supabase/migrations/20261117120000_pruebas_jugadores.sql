@@ -5,7 +5,7 @@
 --  versionada en código: la base NO guarda bloques ni criterios) y cerrar con
 --  una recomendación cuyos criterios se ajustan desde el configurador.
 --
---    pruebas_candidatos    la ficha previa (por categoría)
+--    pruebas_candidatos    la ficha previa (por categoría), con las señas para reconocerlo
 --    pruebas_sesiones      cada día de prueba (etapa 1 o 2)
 --    pruebas_evaluaciones  un puntaje 1-5 por evaluador, bloque y criterio
 --    pruebas_cierres       por candidato y etapa: 'revision' (se cerró la carga y
@@ -51,17 +51,29 @@ create table if not exists public.pruebas_candidatos (
   apellido            text not null default '',
   fecha_nacimiento    date,
   foto_url            text,
-  puesto_principal    text not null check (puesto_principal in ('Cierre', 'Ala', 'Pivot')),
-  puesto_alternativo  text check (puesto_alternativo is null or puesto_alternativo in ('Cierre', 'Ala', 'Pivot')),
+  puesto_principal    text not null,      -- Cierre | Ala | Pivot | Arquero (check más abajo)
+  puesto_alternativo  text,
   perfil_dominante    jsonb not null default '{}'::jsonb,   -- { pierna, zona, rol }
   antecedentes        jsonb not null default '{}'::jsonb,   -- { club_anterior, minutos, lesiones }
   observaciones       text,                                 -- actitud, puntualidad, cómo llega (NO puntuado)
+  senas               text,                                 -- para reconocerlo: "camiseta naranja, botines blancos"
   estado              text not null default 'citado' check (estado in ('citado', 'en_prueba', 'incorporado', 'descartado')),
   jugador_id          bigint references public.jugadores(id) on delete set null,   -- al incorporarlo
   creado_por          uuid default auth.uid(),
   created_at          timestamptz not null default now()
 );
 create index if not exists pruebas_candidatos_club_cat on public.pruebas_candidatos (club_id, categoria, estado);
+
+-- Si la tabla ya existía de la primera versión: las señas y el arquero.
+alter table public.pruebas_candidatos add column if not exists senas text;
+alter table public.pruebas_candidatos drop constraint if exists pruebas_candidatos_senas_check;
+alter table public.pruebas_candidatos add constraint pruebas_candidatos_senas_check check (senas is null or length(senas) <= 120);
+alter table public.pruebas_candidatos drop constraint if exists pruebas_candidatos_puesto_principal_check;
+alter table public.pruebas_candidatos add constraint pruebas_candidatos_puesto_principal_check
+  check (puesto_principal in ('Cierre', 'Ala', 'Pivot', 'Arquero'));
+alter table public.pruebas_candidatos drop constraint if exists pruebas_candidatos_puesto_alternativo_check;
+alter table public.pruebas_candidatos add constraint pruebas_candidatos_puesto_alternativo_check
+  check (puesto_alternativo is null or puesto_alternativo in ('Cierre', 'Ala', 'Pivot', 'Arquero'));
 
 -- ── Sesiones ───────────────────────────────────────────────────────────────
 create table if not exists public.pruebas_sesiones (
