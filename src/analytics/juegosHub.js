@@ -41,7 +41,7 @@ export const MODOS = {
   penales: { id: 'penales', titulo: 'PENALES', bajada: 'Tu pateador y tu arquero contra la CPU. Ganá V-Coins.', imagen: '/penales/fondo.webp', acento: '#22d3ee' },
   duelos: { id: 'duelos', titulo: 'DUELOS', bajada: 'Retá a otro del club con 5 cartas de tu colección.', imagen: '/juegos/mysquad.jpg', acento: '#f43f5e' },
   sobres: { id: 'sobres', titulo: 'SOBRES', bajada: 'Abrí tus sobres y completá la colección.', imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
-  mysquad: { id: 'mysquad', titulo: 'MYSQUAD', bajada: 'El quinteto ideal y los premios de la semana.', imagen: '/juegos/mysquad.jpg', acento: '#a78bfa' },
+  mysquad: { id: 'mysquad', titulo: 'MYSQUAD', bajada: 'Armá tu quinteto con el plantel y compartilo.', imagen: '/juegos/mysquad.jpg', acento: '#a78bfa' },
   god: { id: 'sobres', clave: 'god', titulo: 'MODO GOD', bajada: 'Cartas, héroes, eventos, sobres, usuarios y V-Coins.', imagen: '/juegos/sobres.jpg', acento: '#fbbf24' },
 };
 

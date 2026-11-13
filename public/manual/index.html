@@ -173,6 +173,7 @@
   <div class="grp">COMPETICIÓN</div>
   <a href="#torneos">Mis torneos</a>
   <a href="#rivales">Rivales</a>
+  <a href="#otras">Otras competencias</a>
 
   <div class="grp">ANÁLISIS</div>
   <a href="#match">Resumen por partido</a>
@@ -191,6 +192,7 @@
   <a href="#tareas">Banco de tareas</a>
   <a href="#libro">Libro táctico</a>
   <a href="#video">Videoanálisis</a>
+  <a href="#anotador">Anotador y mis notas</a>
   <a href="#novedades">Novedades</a>
 
   <div class="grp">PLANTEL</div>
@@ -199,6 +201,7 @@
   <a href="#pedidos">Cambios pedidos por jugadores</a>
   <a href="#tutores">Tutores y autorizaciones</a>
   <a href="#pruebas">Pruebas de jugadores</a>
+  <a href="#reportes">Reportes de cierre de año</a>
   <a href="#presentismo">Presentismo</a>
   <a href="#enfermeria">Enfermería</a>
   <a href="#wellness">Wellness</a>
@@ -210,6 +213,15 @@
   <a href="#staff">Staff y empleados</a>
   <a href="#config">Configuración del club</a>
   <a href="#suscripcion">Mi suscripción</a>
+
+  <div class="grp">JUEGOS</div>
+  <a href="#juegos">El menú de juegos</a>
+  <a href="#sobres">Sobres y colección</a>
+  <a href="#vdraft">V-Draft</a>
+  <a href="#penales">Penales y duelos</a>
+  <a href="#mysquad">MySquad</a>
+  <a href="#hinchas">Gmail e hinchas</a>
+  <a href="#god">Configurador GOD</a>
 
   <div class="grp">JUGADORES</div>
   <a href="#kiosco">El acceso del jugador</a>
@@ -224,7 +236,7 @@
 </nav>
 
 <main class="main">
-  <div class="eyebrow">MANUAL DE USO · VERSIÓN 2026 · ACTUALIZADO EL 24/09</div>
+  <div class="eyebrow">MANUAL DE USO · VERSIÓN 2026 · ACTUALIZADO EL 13/11</div>
   <h1>Todo lo que hace Virtual.Club, pantalla por pantalla</h1>
   <p class="lede">Una guía para el cuerpo técnico: qué hace cada módulo, en qué orden conviene usarlos
   y cómo se conectan entre sí. No hace falta leerla entera — buscá el módulo en el índice de la izquierda.</p>
@@ -331,11 +343,13 @@
     <table>
       <thead><tr><th>Rol</th><th>Para quién es</th><th>Qué puede hacer</th></tr></thead>
       <tbody>
-        <tr><td>Manager</td><td>El que dirige el club</td><td>Ve y edita todo, incluida la parte administrativa y la de dinero.</td></tr>
+        <tr><td>Manager</td><td>El que dirige el club</td><td>Ve y edita todo, incluida la parte administrativa y la de dinero. En el <a href="#god">Configurador GOD</a> da de alta las cartas básicas y de premio, sus fotos y las placas.</td></tr>
         <tr><td>CT</td><td>Cuerpo técnico</td><td>Todo lo deportivo: partidos, análisis, planificación, plantel, presentismo y enfermería. No entra a Tesorería.</td></tr>
         <tr><td>Admin</td><td>Secretaría</td><td>Administración, cobros y sponsors. Ve el análisis pero no lo carga.</td></tr>
         <tr><td>Tesorero</td><td>Tesorería</td><td>Sólo la plata: Tesorería, Empleados y Sponsors, y la caja del mes en el Inicio. En el club puede cambiar únicamente los datos de cobro (alias, CBU, WhatsApp).</td></tr>
-        <tr><td>Jugador</td><td>El plantel</td><td>Entra por el <a href="#kiosco">Kiosco</a> con su PIN, sin usuario. Ve lo suyo: su agenda, su citación, sus tarjetas, su wellness, su estado físico y los resúmenes del equipo.</td></tr>
+        <tr><td>Jugador</td><td>El plantel</td><td>Entra por el <a href="#kiosco">Kiosco</a> con su PIN, sin usuario. Ve lo suyo: su agenda, su citación, sus tarjetas, su wellness, su estado físico y los resúmenes del equipo. Si vincula su Gmail, entra a los juegos sin PIN.</td></tr>
+        <tr><td>Hincha <span class="nuevo">NUEVO</span></td><td>Invitados del club</td><td>Entra con Google desde un <a href="#hinchas">link de invitación</a> y ve <b>sólo los juegos</b>, con su propia colección. No ve nada del club.</td></tr>
+        <tr><td>Superusuario</td><td>Virtual.Club</td><td>Todo, en todos los clubes, incluido el Configurador GOD completo. En los juegos prueba pero no compite.</td></tr>
       </tbody>
     </table>
     </div>
@@ -444,6 +458,31 @@
     <p>El quinteto en cancha se actualiza con los cambios, y eso es lo que permite calcular después el rendimiento
     de cada combinación de cinco.</p>
 
+    <h3>Tres formas de cargar <span class="nuevo">NUEVO</span></h3>
+    <p>Antes de arrancar, la app pregunta <b>cómo vas a cargar el partido</b>. Elegí la que mejor se adapte a quién carga y desde dónde.</p>
+    <figure class="cel">
+      <img src="toma-modo-cel.jpg" alt="Elección del modo de carga: tradicional, simplificada o por voz." loading="lazy">
+      <figcaption><b>Al empezar.</b> Elegís el modo. Datos de ejemplo.</figcaption>
+    </figure>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Modo</th><th>Cómo se carga</th><th>Conviene cuando…</th></tr></thead>
+      <tbody>
+        <tr><td>Tradicional</td><td>Acción, autor, asistencia y contexto del remate. Es lo que ya conocés.</td><td>Hay alguien dedicado sólo a cargar y querés el análisis completo.</td></tr>
+        <tr><td>Simplificada</td><td>Tocás la cancha, la camiseta y la acción. La asistencia se pide sólo en los goles.</td><td>Carga el ayudante desde el banco y no hay tiempo para más.</td></tr>
+        <tr><td>Por voz</td><td>Tocás la cancha y decís la jugada: <i>"7 remate desviado"</i>, <i>"gol del 10 asistencia del 4"</i>, <i>"remate rival atajado"</i>, <i>"rival falta"</i>.</td><td>Querés mirar el partido y no la pantalla.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Las acciones rápidas son: <b>gol, remate atajado, desviado, rebatido, falta, recuperación y pérdida</b>.
+    Los dos modos rápidos identifican a cada jugador por <b>la camiseta del día</b>, así que fijate que los dorsales del partido estén bien.</p>
+    <div class="nota">
+      <p><b>El modo queda guardado en el partido.</b> Si lo continuás más tarde, sigue en el mismo. Se puede cambiar desde el menú de la toma.</p>
+    </div>
+    <div class="nota ojo">
+      <p><b>La voz necesita Chrome.</b> Si el navegador no puede escuchar (o no le diste permiso al micrófono), la app pasa sola a la carga simplificada.</p>
+    </div>
+
     <div class="nota">
       <p><b>Si se corta el partido</b> —se cierra la app, se queda sin batería— entrás por
       <b>CONTINUAR PARTIDO</b> y seguís donde estabas. No se pierde nada.</p>
@@ -539,6 +578,44 @@
       <p><b>En TODAS se mira, no se escribe.</b> Mezclar el scouting de Primera con el de Cuarta pisaría datos,
       así que para cargar hay que elegir una categoría. Lo que sí suma esa vista es el
       <b>historial cruzado</b>: cómo te fue contra ese rival en todas las divisiones, con el desglose de cada una.</p>
+    </div>
+  </section>
+
+  <section id="otras">
+    <h2>Otras competencias <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">COMPETICIÓN → <b>OTRAS COMPETENCIAS</b> · en el Kiosco: <b>AFA STATS</b></p>
+    <p>La liga entera, no sólo tus categorías: Primera A, B, C y D, y de 1ra a 8va. Sirve para mirar al próximo rival
+    en su tabla, seguir a los clubes de tu zona o ver cómo viene la otra división.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="otras-pc.jpg" alt="Tabla de posiciones de la liga con la forma de los últimos partidos; el club propio resaltado." loading="lazy">
+        <figcaption><b>En la compu.</b> La tabla con la forma de los últimos cinco; tu club, resaltado. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="otras-cel.jpg" alt="Tabla de goleadores en el celular, con buscador." loading="lazy">
+        <figcaption><b>En el celular.</b> Goleadores, con buscador. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
+    <h3>Qué hay en cada pestaña</h3>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Pestaña</th><th>Qué muestra</th></tr></thead>
+      <tbody>
+        <tr><td>Tabla</td><td>Posiciones general, de local y de visitante, con la forma de los últimos partidos. Tocá un equipo para ver sus partidos.</td></tr>
+        <tr><td>Fixture</td><td>Fecha por fecha, con resultados y goleadores de cada partido.</td></tr>
+        <tr><td>Goleadores</td><td>El ranking de la división, con partidos con gol. Sólo en 1ra, que es donde la AFA los publica.</td></tr>
+        <tr><td>Reportes</td><td>Los números de la división: partidos y goles, mejor ataque, valla menos y más vencida, la goleada más grande y el partido con más goles.</td></tr>
+        <tr><td>Playoffs, triangulares, Copa Futuro</td><td>Aparece una pestaña por etapa cuando la categoría la tiene, con sus cruces y resultados.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="nota">
+      <p><b>De dónde salen los datos.</b> De la página de AFA Futsal. El cuerpo técnico los trae con
+      <b>ACTUALIZAR DATOS DE AFA FUTSAL</b> (arriba dice cuándo fue la última vez); los jugadores sólo los miran.
+      Si AFA todavía no cargó una fecha, acá tampoco va a estar.</p>
     </div>
   </section>
 
@@ -915,6 +992,39 @@
     </div>
   </section>
 
+  <section id="anotador">
+    <h2>Anotador y mis notas <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">El botón redondo de abajo a la derecha, en todas las pantallas del staff · <b>TODAS</b> abre Mis notas</p>
+    <p>Para anotar una idea en el momento sin salir de lo que estás haciendo: mirando un video, armando el microciclo o
+    leyendo el informe de un rival.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="notas-pc.jpg" alt="Mis notas: filtros por espacio, buscador y la lista de notas con su vínculo." loading="lazy">
+        <figcaption><b>Mis notas.</b> Todas juntas, filtradas por dónde se tomaron. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="anotador-cel.jpg" alt="El anotador abierto desde abajo en el celular." loading="lazy">
+        <figcaption><b>En el celular.</b> El anotador sube desde abajo. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
+    <h3>La nota se engancha a lo que estás mirando</h3>
+    <p>Arriba del cuadro dice <b>"Se guarda en …"</b>. Si tenés abierto un video, la nota queda en ese video <b>con el minuto</b>;
+    si estás en un rival, en ese rival; en el microciclo, en la semana o la sesión; en un partido, en el partido. Si no estás en
+    ninguno, va a <b>General</b>.</p>
+    <ul class="lista">
+      <li>En la compu es una ventana que podés mover; en el celular sube desde abajo.</li>
+      <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd> guarda. Si cerrás sin guardar, el borrador queda en el navegador.</li>
+      <li>Por defecto es <b>privada</b>. Tildá <b>Compartir con el cuerpo técnico</b> para que la vea el resto del staff.</li>
+    </ul>
+
+    <h3>Mis notas</h3>
+    <p>Todas las notas en una lista, filtradas por espacio (General, Videoanálisis, Rival, Microciclo, Sesión, Partido),
+    con buscador y el tilde <b>Sólo las mías</b>. Cada una tiene un <b>Ir a …</b> que te lleva al video en ese minuto, al
+    rival o a la sesión. Las importantes se pueden fijar arriba.</p>
+  </section>
+
   <section id="novedades">
     <h2>Novedades</h2>
     <p class="ruta">PLANIFICACIÓN → <b>NOVEDADES</b></p>
@@ -1086,6 +1196,17 @@
     el club define. La decisión final la toma siempre el DT.</p>
     <p>Todo funciona <b>dentro de una categoría</b>. Nunca se mezclan candidatos, pruebas ni resultados de categorías distintas.</p>
 
+    <div class="modos">
+      <figure>
+        <img src="pruebas-pc.jpg" alt="Cierre de un candidato: radar por bloque, puntajes y recomendación." loading="lazy">
+        <figcaption><b>En la compu.</b> El cierre: radar, puntaje por bloque y la recomendación. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="pruebas-cel.jpg" alt="Evaluación desde el celular, bloque por bloque, con botones del 1 al 5." loading="lazy">
+        <figcaption><b>En el celular.</b> Se evalúa en la cancha, con botones del 1 al 5. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
     <h3>Qué analizamos</h3>
     <p>La prueba mira al jugador en situaciones que van de lo más simple (sin oposición) a lo más real (el partido).
     Así se separa lo que sabe hacer de lo que puede hacer bajo presión.</p>
@@ -1204,6 +1325,11 @@
       las evaluaciones que vengan.</p>
     </div>
 
+    <figure>
+      <img src="pruebas-config-pc.jpg" alt="El configurador: peso de cada bloque por puesto, con sus valores de fábrica." loading="lazy">
+      <figcaption><b>El configurador.</b> El peso de cada bloque por puesto; en dorado, lo que cambiaste respecto del valor de fábrica. Datos de ejemplo.</figcaption>
+    </figure>
+
     <h3>Quién puede qué</h3>
     <div class="tabla-wrap">
     <table>
@@ -1224,6 +1350,39 @@
       <li>Si hay divergencia, hablen antes de decidir: muchas veces uno vio una acción que el otro no.</li>
       <li>Calibrá los pesos con las primeras pruebas reales usando la simulación, y recién ahí guardá.</li>
     </ul>
+  </section>
+
+  <section id="reportes">
+    <h2>Reportes de cierre de año <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">PLANTEL → <b>REPORTES</b></p>
+    <p>Documentos listos para presentar o mandar: el año de un jugador, de una categoría o del club, en formato de informe,
+    con los números de la temporada, la evolución y la lectura del cuerpo técnico.</p>
+
+    <div class="modos">
+      <figure>
+        <img src="reportes-pc.jpg" alt="Reporte de jugador: filtros arriba, portada del informe y la temporada en números." loading="lazy">
+        <figcaption><b>En la compu.</b> Filtros arriba, el informe abajo. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="reportes-cel.jpg" alt="El mismo reporte en el celular." loading="lazy">
+        <figcaption><b>En el celular.</b> El mismo informe. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
+    <ol class="pasos">
+      <li><div><b>Elegí el tipo.</b> Jugador, Categoría, Club, Torneo o Jugador vs jugador (dos jugadores lado a lado).</div></li>
+      <li><div><b>Elegí la temporada, la categoría</b> y, según el tipo, el jugador o el torneo.</div></li>
+      <li><div><b>Elegí para quién es.</b> Cambia el tono y cuánto detalle muestra:
+        <b>Cuerpo técnico</b> (todo, con lenguaje técnico), <b>Jugador y familia</b> (en positivo y sin comparar con compañeros)
+        o <b>Comisión directiva</b> (resultados, presencia y lo institucional).</div></li>
+      <li><div><b>PRESENTAR</b> lo abre a pantalla completa para proyectarlo en una reunión.
+        <b>DESCARGAR PDF</b> arma el documento de varias páginas para mandar.</div></li>
+    </ol>
+
+    <div class="nota ojo">
+      <p><b>El reporte es tan bueno como lo cargado.</b> Sale de los partidos con toma de datos, el presentismo, el wellness y
+      enfermería. Si una categoría cargó pocos partidos, el reporte lo dice en vez de inventar promedios.</p>
+    </div>
   </section>
 
   <section id="presentismo">
@@ -1493,6 +1652,218 @@
     </div>
   </section>
 
+  <section id="juegos">
+    <h2>El menú de juegos <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta"><b>JUEGOS</b> en el menú del staff · en el Kiosco: <b>JUEGOS · SOBRES, V-DRAFT Y PENALES</b></p>
+    <p>Un juego de cartas con <b>el plantel real del club</b>: cada jugador tiene su carta, y su media sale de lo que hace en los
+    partidos cargados. Sirve para que los chicos entren todos los días a la app (y de paso carguen el wellness).</p>
+
+    <div class="modos">
+      <figure>
+        <img src="juegos-pc.jpg" alt="El menú de juegos en la compu: V-Draft, sobres, duelos, penales y MySquad, con la mejor carta al centro." loading="lazy">
+        <figcaption><b>En la compu.</b> Los juegos alrededor de tu mejor carta; abajo, las misiones del día. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="juegos-cel.jpg" alt="El menú de juegos en el celular: la mejor carta arriba y un carrusel con los juegos." loading="lazy">
+        <figcaption><b>En el celular.</b> Los juegos en un carrusel. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
+    <h3>V-Coins, racha y misiones</h3>
+    <div class="tarjetas">
+      <div class="tarjeta"><h4>V-Coins</h4><p>La moneda del juego. Se ganan con las cartas repetidas, los penales, el V-Draft, los duelos y las misiones. Se gastan en sobres y en el torneo semanal.</p></div>
+      <div class="tarjeta"><h4>Racha</h4><p>Los días seguidos que entraste. Al llegar a 7 se abre el Sobre de la semana.</p></div>
+      <div class="tarjeta"><h4>Misiones del día</h4><p>Dos o tres tareas cortas (abrir un sobre, ganar un duelo…) que pagan V-Coins. Se renuevan a medianoche y se cobran con un toque.</p></div>
+      <div class="tarjeta"><h4>V-Coins x2</h4><p>Cuando el club arma un evento multiplicador, aparece un cartel arriba y los premios valen el doble en los juegos elegidos.</p></div>
+    </div>
+
+    <div class="nota ojo">
+      <p><b>Cada uno juega con su colección.</b> Las cartas, las V-Coins y la racha son de cada persona. El superusuario ve
+      además <b>MODO GOD</b> para probar, pero no compite ni aparece en los rankings.</p>
+    </div>
+  </section>
+
+  <section id="sobres">
+    <h2>Sobres y colección <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">JUEGOS → <b>SOBRES</b></p>
+    <div class="modos">
+      <figure>
+        <img src="sobres-pc.jpg" alt="Los sobres disponibles para abrir y los bloqueados." loading="lazy">
+        <figcaption><b>Sobres.</b> Los que podés abrir hoy y los bloqueados, con lo que falta para cada uno. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="sobres-cel.jpg" alt="La colección: cuántas cartas tenés, filtros por rareza y posición." loading="lazy">
+        <figcaption><b>Colección.</b> El álbum, con la silueta de las que faltan. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Sobre</th><th>Cartas</th><th>Cómo se consigue</th></tr></thead>
+      <tbody>
+        <tr><td>Diario</td><td class="num">3</td><td>Uno por día. Si no lo abrís hoy, se pierde.</td></tr>
+        <tr><td>Wellness</td><td class="num">3</td><td>Al completar el wellness del día. Siempre trae una carta que no tenés.</td></tr>
+        <tr><td>De la semana</td><td class="num">4</td><td>Entrando 7 días seguidos.</td></tr>
+        <tr><td>Por V-Coins</td><td class="num">3</td><td>Cuesta 50 V-Coins.</td></tr>
+        <tr><td>Mega sobre especial</td><td class="num">10</td><td>Todas especiales (TOTW, POTW, TOTM, POTM, TOTY). Cuesta 500 V-Coins.</td></tr>
+        <tr><td>De campeón / Especial V-Draft</td><td class="num">3 / 5</td><td>Se ganan en el V-Draft y quedan guardados hasta que los abrís.</td></tr>
+        <tr><td>De evento</td><td class="num">—</td><td>Por tiempo limitado (Halloween, Héroes, Copa Futuro…), con su propia escena.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><b>Las rarezas</b>, de más común a más difícil: bronce, plata, oro, TOTW, POTW, TOTM, POTM y TOTY.
+    Una carta <b>repetida</b> se convierte en V-Coins: de 5 (bronce) a 100 (TOTY).</p>
+  </section>
+
+  <section id="vdraft">
+    <h2>V-Draft <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">JUEGOS → <b>V-DRAFT</b></p>
+    <p>Armás un equipo eligiendo carta por carta y salís a ganarle a la liga.</p>
+    <div class="modos">
+      <figure>
+        <img src="vdraft-pc.jpg" alt="Inicio del V-Draft: los tres modos y la elección de la formación." loading="lazy">
+        <figcaption><b>En la compu.</b> El modo, la formación y el camino de premios. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="vdraft-cel.jpg" alt="El Desafío del día con la regla de hoy." loading="lazy">
+        <figcaption><b>Desafío del día.</b> Con la regla del día. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+    <ol class="pasos">
+      <li><div><b>Elegí la formación:</b> 2-2 cuadrado, 1-2-1 rombo, 3-1 con pivot o 4-0 en línea.</div></li>
+      <li><div><b>Elegí el capitán</b> entre 5 cartas especiales. Después, cada lugar entre 4 cartas de su puesto (el último, el comodín, trae una especial) y 2 suplentes.</div></li>
+      <li><div><b>Jugá 4 partidos contra la liga:</b> Primera D, C, B y A. Si perdés, se termina.</div></li>
+    </ol>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Modo</th><th>Cómo es</th><th>Premio</th></tr></thead>
+      <tbody>
+        <tr><td>V-Draft</td><td>El de siempre: una partida gratis por día.</td><td>25 / 75 / 150 / 300 V-Coins según las victorias, y sobres de campeón.</td></tr>
+        <tr><td>Desafío del día</td><td>Las mismas cartas y la misma regla para todos. Una vez por día; se arma un ranking.</td><td>Al cerrar el día: 1000 al 1º, 750 al 2º, 500 al 3º y 150 a los demás que jugaron.</td></tr>
+        <tr><td>Torneo semanal</td><td>Pagás la entrada (1000 V-Coins) y tenés 5 partidas en la semana. Suman las victorias; si empatan, la diferencia de gol.</td><td>El lunes se reparte el pozo: 50 % al 1º, 30 % al 2º y 20 % al 3º.</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <section id="penales">
+    <h2>Penales y duelos <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">JUEGOS → <b>PENALES</b> · JUEGOS → <b>DUELOS</b></p>
+    <div class="cels">
+      <figure>
+        <img src="penales-cel.jpg" alt="Penales: elegir pateador y arquero de tu colección." loading="lazy">
+        <figcaption><b>Penales.</b> Tu pateador y tu arquero, de tu colección. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="duelos-cel.jpg" alt="Duelos: buscar a otro del club y retarlo." loading="lazy">
+        <figcaption><b>Duelos.</b> Retás a otro del club. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+    <h3>Penales</h3>
+    <p>Elegís un pateador y un arquero de tu colección y jugás una tanda contra la CPU. Hay 9 zonas para patear y para atajar,
+    y <b>5 segundos por tiro</b>. Cuanto más difícil el nivel de la CPU, más paga: 20, 35, 50 u 80 V-Coins (Amateur, Primera C, B y A).
+    Hasta <b>3 tandas con premio por día</b>; después se puede seguir jugando sin premio.</p>
+    <h3>Duelos</h3>
+    <p>Retás a otro del club con <b>5 cartas</b> de tu colección; el que arma mejor equipo, gana. Se puede apostar hasta 1000 V-Coins:
+    los dos ponen lo mismo y el ganador se lleva todo. Además, el ganador cobra 20 V-Coins (hasta 3 duelos por día).
+    Si el otro no contesta en 48 horas, se devuelve la apuesta.</p>
+  </section>
+
+  <section id="mysquad">
+    <h2>MySquad <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">JUEGOS → <b>MYSQUAD</b> · sólo para el staff</p>
+    <p>El plantel en cartas, sobre la cancha. No es un juego: es para que el cuerpo técnico vea el quinteto en formato carta,
+    pruebe formaciones y lo comparta.</p>
+    <div class="modos">
+      <figure>
+        <img src="mysquad-pc.jpg" alt="MySquad: el quinteto en cartas sobre la cancha, con media y química." loading="lazy">
+        <figcaption><b>En la compu.</b> El quinteto con su media, su química y las líneas entre parejas. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="mysquad-cel.jpg" alt="MySquad en el celular." loading="lazy">
+        <figcaption><b>En el celular.</b> Los suplentes abajo, para arrastrar. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+    <ul class="lista">
+      <li><b>Arrastrá</b> un suplente sobre una carta para cambiarlo, o dos cartas de la cancha para intercambiarlas.</li>
+      <li><b>QUINTETO IDEAL</b> arma el mejor cinco posible; <b>EL MÁS USADO</b>, el que más jugó junto de verdad.</li>
+      <li><b>La química</b> sale de los partidos: verde si esos dos jugaron mucho juntos y con +/- a favor; roja si les fue mal juntos.
+        Un jugador fuera de su puesto le baja la química al equipo.</li>
+      <li>Se filtra por categoría y por temporada (o un torneo).</li>
+    </ul>
+    <div class="nota">
+      <p>Las cartas de premio, las fotos y las placas para redes que antes se hacían desde acá ahora están en el
+      <a href="#god">Configurador GOD</a>.</p>
+    </div>
+  </section>
+
+  <section id="hinchas">
+    <h2>Gmail e hinchas <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta">En el Kiosco: <b>ENTRÁ CON TU GMAIL</b> · CONFIGURADOR GOD → <b>GMAIL · HINCHAS</b></p>
+    <h3>El jugador, con su Gmail</h3>
+    <p>Desde su menú del Kiosco, el jugador puede vincular su Gmail. Después entra con Google desde cualquier celular y va
+    <b>directo a los juegos</b>, con su misma colección, sus V-Coins y su racha. Para el wellness y sus datos sigue entrando con el PIN.</p>
+    <div class="nota ojo">
+      <p><b>Que lo haga desde su celular</b>, no en la tablet del club: si no, su Gmail queda abierto para el que venga después.</p>
+    </div>
+    <h3>Los hinchas, por invitación</h3>
+    <ol class="pasos">
+      <li><div><b>Creá un link de invitación</b> con nombre, vencimiento y cantidad máxima de usos.</div></li>
+      <li><div><b>Compartilo</b> por WhatsApp o mostrá el QR en la cancha.</div></li>
+      <li><div><b>El hincha entra con Google</b> y juega con su propia colección. No ve nada más del club.</div></li>
+    </ol>
+    <p>El link se puede pausar cuando quieras. La lista <b>CON GMAIL</b> muestra quién juega con Google (jugadores que lo vincularon
+    y hinchas) y permite desvincular a cualquiera; el jugador desvinculado no pierde su colección.</p>
+  </section>
+
+  <section id="god">
+    <h2>Configurador GOD <span class="nuevo">NUEVO</span></h2>
+    <p class="ruta"><b>CONFIGURADOR GOD</b> en el menú · para el superusuario y el manager</p>
+    <p>Todo lo que se administra de los juegos, en un solo lugar.</p>
+    <div class="modos">
+      <figure>
+        <img src="god-pc.jpg" alt="Configurador GOD: el menú de secciones y las misiones diarias." loading="lazy">
+        <figcaption><b>Misiones.</b> Qué hay que hacer, cuánto paga y qué días sale. Datos de ejemplo.</figcaption>
+      </figure>
+      <figure>
+        <img src="god-cel.jpg" alt="Alta de cartas en el celular." loading="lazy">
+        <figcaption><b>Alta de cartas.</b> En el celular. Datos de ejemplo.</figcaption>
+      </figure>
+    </div>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr><th>Sección</th><th>Para qué</th><th>Quién</th></tr></thead>
+      <tbody>
+        <tr><td>Probar</td><td>Abrir cualquier sobre o cinemática sin gastar nada.</td><td>Superusuario</td></tr>
+        <tr><td>Alta de cartas</td><td>Básicas (salen de los partidos) y de premio. Las ediciones especiales (TOTY, Copa Futuro, Héroes, Halloween), sólo el superusuario.</td><td>Ambos</td></tr>
+        <tr><td>Modificar y baja</td><td>Foto, media, suspender o eliminar cartas.</td><td>Ambos</td></tr>
+        <tr><td>Placas</td><td>Placas con cartas para publicar en redes.</td><td>Ambos</td></tr>
+        <tr><td>Eventos</td><td>Sobres de evento con fechas, reglas y escena.</td><td>Superusuario</td></tr>
+        <tr><td>Sobres</td><td>Qué trae cada sobre, cuánto cuesta y cómo se ve.</td><td>Superusuario</td></tr>
+        <tr><td>Usuarios</td><td>Suspender, dar V-Coins y armar eventos V-Coins x2.</td><td>Superusuario</td></tr>
+        <tr><td>Misiones</td><td>Las misiones diarias: acción, veces, premio y días.</td><td>Superusuario</td></tr>
+        <tr><td>V-Coins</td><td>Lo que paga cada juego: penales, V-Draft, desafío, duelos y repetidas.</td><td>Superusuario</td></tr>
+        <tr><td>Torneo V-Draft</td><td>Entrada, partidas y premio extra del torneo semanal.</td><td>Superusuario</td></tr>
+        <tr><td>Gmail · Hinchas</td><td>Las invitaciones a hinchas y quién juega con Gmail.</td><td>Superusuario</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <figure>
+      <img src="god-vcoins-pc.jpg" alt="V-Coins: lo que paga cada juego, con el valor de siempre al lado." loading="lazy">
+      <figcaption><b>V-Coins.</b> Cada premio con su valor de siempre al lado; en dorado, lo que cambiaste. Datos de ejemplo.</figcaption>
+    </figure>
+
+    <h3>Las cartas básicas, temporada a temporada</h3>
+    <p>Al principio de la temporada se publica la <b>carta básica</b> de cada jugador: es la inicial, y no se pisa nunca.
+    Lo que el jugador mejora llega después como <b>cartas nuevas</b> (POTW, TOTW, TOTM, una segunda tirada…). En Alta de cartas →
+    Básicas se ven separadas en <b>NUEVAS, YA PUBLICADAS, ELIMINADAS</b> y <b>SIN CARTA</b>: elegís cuáles publicar y se publican
+    con un botón, viendo antes los cambios.</p>
+    <div class="nota stop">
+      <p><b>Cambiar un premio o una misión no es retroactivo.</b> Lo que ya se cobró queda como estaba. Y el V-Coins x2 de un evento se aplica encima de estos valores.</p>
+    </div>
+  </section>
+
   <section id="kiosco">
     <h2>El acceso del jugador</h2>
     <p class="ruta">El <b>Kiosco</b>: los jugadores entran con un PIN, sin usuario ni contraseña.</p>
@@ -1567,6 +1938,9 @@
       <div class="tarjeta"><h4>Temporada</h4><p>El resumen del año, fijo en su categoría.</p></div>
       <div class="tarjeta"><h4>Videos</h4><p>Las listas de video que el cuerpo técnico le compartió.</p></div>
       <div class="tarjeta"><h4>Libro táctico</h4><p>Las jugadas de su categoría, animadas.</p></div>
+      <div class="tarjeta"><h4>Juegos <span class="nuevo">NUEVO</span></h4><p>Sobres, V-Draft, penales y duelos con las cartas del plantel. Ver <a href="#juegos">el menú de juegos</a>.</p></div>
+      <div class="tarjeta"><h4>AFA Stats <span class="nuevo">NUEVO</span></h4><p>Tablas, fixture y goleadores de toda la liga. Ver <a href="#otras">Otras competencias</a>.</p></div>
+      <div class="tarjeta"><h4>Entrá con tu Gmail <span class="nuevo">NUEVO</span></h4><p>Vincula su Gmail para entrar a los juegos sin PIN desde su celular. Ver <a href="#hinchas">Gmail e hinchas</a>.</p></div>
     </div>
     <p>En cada pantalla, el botón <b>← MI MENÚ</b> lo trae de vuelta acá.</p>
   </section>
@@ -1700,6 +2074,27 @@
 
     <h3>Una novedad sigue apareciendo después de vencer</h3>
     <p>Desde el 24/09 las vencidas desaparecen solas de todos lados. Si ves una, recargá la página.</p>
+
+    <h3>Elegí la carga por voz y no me entiende</h3>
+    <p>Usá Chrome y dale permiso al micrófono. Decí primero el dorsal y después la acción ("7 remate desviado"). Si el navegador no
+    puede escuchar, la app pasa sola a la carga simplificada.</p>
+
+    <h3>Un jugador no tiene carta en los juegos</h3>
+    <p>Las cartas básicas las publica el club al principio de la temporada. Si un jugador llegó después, aparece en
+    CONFIGURADOR GOD → Alta de cartas → Básicas, en <b>SIN CARTA</b> o <b>NUEVAS</b>: elegilo y publicalo.</p>
+
+    <h3>Un jugador perdió su racha o su sobre diario</h3>
+    <p>El sobre diario y el de wellness se pierden si no se abren ese día, y la racha se corta si pasa un día sin entrar. Es a propósito:
+    es lo que hace que vuelvan todos los días.</p>
+
+    <h3>Un hincha no puede entrar con el link</h3>
+    <p>Fijate en GMAIL · HINCHAS que el link no esté pausado, vencido o sin usos disponibles. Si hace falta, creá uno nuevo.</p>
+
+    <h3>Otras competencias muestra datos viejos</h3>
+    <p>Tocá <b>ACTUALIZAR DATOS DE AFA FUTSAL</b>. Si la fecha tampoco está en la página de la AFA, todavía no la cargaron.</p>
+
+    <h3>No encuentro una nota que tomé</h3>
+    <p>Abrí el anotador y tocá <b>TODAS</b>: en Mis notas está todo, con buscador. Si la tomó otro del staff y no la compartió, es privada y no la vas a ver.</p>
 
     <h3>El video no muestra los clips en el momento justo</h3>
     <p>Falta sincronizarlo: hay que marcar en qué segundo del video arranca cada tiempo. Se hace una vez y queda guardado.</p>
