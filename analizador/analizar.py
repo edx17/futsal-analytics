@@ -139,11 +139,31 @@ def color_torso(img, caja, piso):
     return np.median(lab, axis=0)
 
 
-def procesar(ruta, desde, duracion, H, fps_an, lote, modelo_nombre):
+def zonas_pelota(H, alto, ancho, lado=576, solape=96):
+    """Recortes del tamaño nativo del modelo que cubren la cancha (con 2 m de margen).
+    La pelota en el lado lejano mide pocos píxeles: achicando el cuadro entero desaparece;
+    mirándolo por partes a tamaño real, se ve."""
+    Hinv = np.linalg.inv(H)
+    borde = np.float32([[-2, -2], [C.LARGO + 2, -2], [C.LARGO + 2, C.ANCHO + 2], [-2, C.ANCHO + 2]])
+    px = cv2.perspectiveTransform(borde.reshape(-1, 1, 2), Hinv).reshape(-1, 2)
+    x0, y0 = np.clip(px.min(0), 0, [ancho - 1, alto - 1]).astype(int)
+    x1, y1 = np.clip(px.max(0), 0, [ancho, alto]).astype(int)
+    zonas = []
+    paso = lado - solape
+    for y in range(y0, max(y0 + 1, y1 - solape), paso):
+        for x in range(x0, max(x0 + 1, x1 - solape), paso):
+            xa, ya = min(x, max(0, ancho - lado)), min(y, max(0, alto - lado))
+            zonas.append((xa, ya, min(ancho, xa + lado), min(alto, ya + lado)))
+    return sorted(set(zonas))
+
+
+def detectar(ruta, desde, duracion, H, fps_an, lote, modelo_nombre, pelota_fina):
+    """Pasada 1: personas, color de camiseta y pelota en cada cuadro (sin seguir todavía)."""
     import torch
     from rfdetr import RFDETRMedium, RFDETRNano, RFDETRSmall
     clases = {'nano': RFDETRNano, 'small': RFDETRSmall, 'medium': RFDETRMedium}
-    log('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no (se usa el procesador, va a ser lento)')
+    gpu = torch.cuda.is_available()
+    log('GPU:', torch.cuda.get_device_name(0) if gpu else 'no (se usa el procesador, va a ser lento)')
     modelo = clases[modelo_nombre]()
     try:
         modelo.optimize_for_inference()
@@ -153,62 +173,75 @@ def procesar(ruta, desde, duracion, H, fps_an, lote, modelo_nombre):
     cap = cv2.VideoCapture(ruta)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    alto, ancho = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     ini = int(desde * fps)
     fin = min(total, int((desde + duracion) * fps)) if duracion else total
     cap.set(cv2.CAP_PROP_POS_FRAMES, ini)
     paso = max(1, round(fps / fps_an))
     fps_real = fps / paso
-    from trackers import ByteTrackTracker
-    tracker = ByteTrackTracker(lost_track_buffer=int(fps_real * 2), frame_rate=fps_real,
-                               track_activation_threshold=0.45, high_conf_det_threshold=0.5)
-    cuadros, colores = [], {}
-    pts_piso = puntos_piso(H, int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
+    pts_piso = puntos_piso(H, alto, ancho)
+    zonas = zonas_pelota(H, alto, ancho) if pelota_fina else []
     n_total = (fin - ini) // paso
-    log(f'Video: {fps:.0f} cuadros/s · analizo {fps_real:.1f} por segundo · {n_total} cuadros')
+    log(f'Video: {fps:.0f} cuadros/s · analizo {fps_real:.1f} por segundo · {n_total} cuadros'
+        + (f' · pelota en {len(zonas)} recortes por cuadro' if zonas else ''))
 
+    cuadros = []
     t0 = time.time()
-    f = ini
-    pendientes = []
+
+    def pelota_de(dets_ball, offset=(0, 0)):
+        if len(dets_ball) == 0:
+            return None
+        k = int(np.argmax(dets_ball.confidence))
+        x1, y1, x2, y2 = dets_ball.xyxy[k]
+        ox, oy = offset
+        return float(dets_ball.confidence[k]), [x1 + ox, y1 + oy, x2 + ox, y2 + oy]
 
     def correr(lote_imgs):
         imgs = [im[:, :, ::-1].copy() for _, im in lote_imgs]
         dets = modelo.predict(imgs if len(imgs) > 1 else imgs[0], threshold=UMBRAL_PELOTA, include_source_image=False)
         if not isinstance(dets, list):
             dets = [dets]
-        for (fr, img), det in zip(lote_imgs, dets):
+        for (fr, img), rgb, det in zip(lote_imgs, imgs, dets):
             t = (fr - ini) / fps
             pers = det[(det.class_id == PERSONA) & (det.confidence >= UMBRAL_PERSONA)]
             pies = C.a_cancha(H, pers.get_anchors_coordinates(sv.Position.BOTTOM_CENTER))
-            if len(pers):
-                m = MARGEN_CANCHA
-                dentro = (pies[:, 0] > -m) & (pies[:, 0] < C.LARGO + m) & (pies[:, 1] > -m) & (pies[:, 1] < C.ANCHO + m)
-                pers = pers[dentro]
             piso = color_piso(img, pts_piso)
-            pers = tracker.update(pers)
-            if len(pers):
-                pers = pers[pers.tracker_id >= 0]
-            pies = C.a_cancha(H, pers.get_anchors_coordinates(sv.Position.BOTTOM_CENTER))
-            jugadores = []
-            for caja, tid, (X, Y) in zip(pers.xyxy, pers.tracker_id, pies):
+            personas = []
+            for caja, conf, (X, Y) in zip(pers.xyxy, pers.confidence, pies):
+                m = MARGEN_CANCHA
+                if not (-m < X < C.LARGO + m and -m < Y < C.ANCHO + m):
+                    continue
                 c = color_torso(img, caja, piso)
-                if c is not None:
-                    colores.setdefault(int(tid), []).append(c)
-                jugadores.append({'id': int(tid), 'x': round(float(X), 2), 'y': round(float(Y), 2),
-                                  'caja': [int(v) for v in caja]})
-            bal = det[det.class_id == PELOTA]
+                personas.append({'caja': [int(v) for v in caja], 'conf': float(conf), 'x': float(X), 'y': float(Y),
+                                 'color': None if c is None else [float(v) for v in c]})
+            # pelota: la mejor entre el cuadro entero y los recortes a tamaño real
+            cands = []
+            p = pelota_de(det[det.class_id == PELOTA])
+            if p:
+                cands.append(p)
+            if zonas:
+                recortes = [rgb[y0:y1, x0:x1] for x0, y0, x1, y1 in zonas]
+                dz = modelo.predict(recortes if len(recortes) > 1 else recortes[0], threshold=UMBRAL_PELOTA,
+                                    include_source_image=False)
+                if not isinstance(dz, list):
+                    dz = [dz]
+                for (x0, y0, _, _), d in zip(zonas, dz):
+                    p = pelota_de(d[d.class_id == PELOTA], (x0, y0))
+                    if p:
+                        cands.append(p)
             pelota = None
-            if len(bal):
-                k = int(np.argmax(bal.confidence))
-                bx, by = bal.get_anchors_coordinates(sv.Position.CENTER)[k]
-                P = C.a_cancha(H, [[bx, by]])[0]
+            for conf, caja in sorted(cands, key=lambda c: -c[0]):
+                cx, cy = (caja[0] + caja[2]) / 2, (caja[1] + caja[3]) / 2
+                P = C.a_cancha(H, [[cx, cy]])[0]
                 if -2 < P[0] < C.LARGO + 2 and -2 < P[1] < C.ANCHO + 2:
-                    pelota = {'x': round(float(P[0]), 2), 'y': round(float(P[1]), 2), 'conf': round(float(bal.confidence[k]), 2),
-                              'caja': [int(v) for v in bal.xyxy[k]]}
-            cuadros.append({'t': round(t, 3), 'frame': fr, 'jugadores': jugadores, 'pelota': pelota})
+                    pelota = {'x': round(float(P[0]), 2), 'y': round(float(P[1]), 2), 'conf': round(conf, 2),
+                              'caja': [int(v) for v in caja]}
+                    break
+            cuadros.append({'t': round(t, 3), 'frame': fr, 'personas': personas, 'pelota': pelota})
 
+    f, pendientes = ini, []
     while f < fin:
-        ok = cap.grab()
-        if not ok:
+        if not cap.grab():
             break
         if (f - ini) % paso == 0:
             _, img = cap.retrieve()
@@ -225,30 +258,156 @@ def procesar(ruta, desde, duracion, H, fps_an, lote, modelo_nombre):
     if pendientes:
         correr(pendientes)
     cap.release()
-    return cuadros, colores, fps_real, time.time() - t0
+    return cuadros, fps_real, time.time() - t0
 
 
 # ── 3. EQUIPOS ──────────────────────────────────────────────────────────────
-def separar_equipos(colores):
-    """KMeans de 3 grupos sobre el color de cada seguimiento: los 2 más grandes son los equipos;
-    el tercero junta árbitros y arqueros con colores distintos."""
-    ids = [k for k, v in colores.items() if len(v) >= 5]
-    if len(ids) < 3:
-        return {k: 'otros' for k in colores}
-    X = np.array([np.median(colores[k], axis=0) for k in ids])
-    X[:, 0] *= 0.5  # la luz cambia el brillo más que el tono: le damos menos peso
-    peso = np.array([len(colores[k]) for k in ids])
-    km = KMeans(n_clusters=3, n_init=10, random_state=0).fit(X, sample_weight=peso)
-    tam = [peso[km.labels_ == g].sum() for g in range(3)]
+def asignar_equipos(cuadros):
+    """Pasada 2: el equipo de CADA detección, cuadro por cuadro, por el color de la camiseta.
+    KMeans de 3 grupos: los 2 más grandes son los equipos; el tercero junta árbitros y arqueros."""
+    feats = np.array([p['color'] for c in cuadros for p in c['personas'] if p['color'] is not None], dtype=np.float32)
+    if len(feats) < 30:
+        for c in cuadros:
+            for p in c['personas']:
+                p['equipo'] = 'otros'
+        return
+    escala = np.array([0.5, 1, 1], np.float32)  # la luz cambia el brillo más que el tono
+    muestra = feats[np.random.default_rng(0).choice(len(feats), min(len(feats), 20000), replace=False)]
+    km = KMeans(n_clusters=3, n_init=10, random_state=0).fit(muestra * escala)
+    tam = np.bincount(km.labels_, minlength=3)
     orden = np.argsort(tam)[::-1]
-    nombre = {orden[0]: 'A', orden[1]: 'B', orden[2]: 'otros'}
-    eq = {k: nombre[g] for k, g in zip(ids, km.labels_)}
-    for k in colores:
-        eq.setdefault(k, 'otros')
-    return eq
+    nombre = {int(orden[0]): 'A', int(orden[1]): 'B', int(orden[2]): 'otros'}
+    for c in cuadros:
+        for p in c['personas']:
+            p['equipo'] = 'otros' if p['color'] is None else nombre[int(km.predict(np.array([p['color']], np.float32) * escala)[0])]
 
 
-# ── 4. MÉTRICAS ─────────────────────────────────────────────────────────────
+# ── 4. SEGUIMIENTO ──────────────────────────────────────────────────────────
+def seguir(cuadros, fps_real):
+    """Pasada 3: un seguimiento por equipo. Así dos jugadores de distinto equipo que se cruzan
+    no pueden intercambiar el número."""
+    from trackers import ByteTrackTracker
+    trackers = {eq: ByteTrackTracker(lost_track_buffer=int(fps_real * 3), frame_rate=fps_real,
+                                     track_activation_threshold=0.45, high_conf_det_threshold=0.5)
+                for eq in ('A', 'B', 'otros')}
+    base = {'A': 1000, 'B': 2000, 'otros': 3000}
+    for c in cuadros:
+        jugadores = []
+        for eq, trk in trackers.items():
+            ps = [p for p in c['personas'] if p.get('equipo') == eq]
+            if ps:
+                det = sv.Detections(xyxy=np.array([p['caja'] for p in ps], np.float32),
+                                    confidence=np.array([p['conf'] for p in ps], np.float32),
+                                    class_id=np.zeros(len(ps), int))
+            else:
+                det = sv.Detections.empty()
+            out = trk.update(det)
+            if len(out) == 0:
+                continue
+            for caja, tid in zip(out.xyxy, out.tracker_id):
+                if tid < 0:
+                    continue
+                # la posición en metros de la detección original más parecida a la caja seguida
+                d = min(ps, key=lambda p: sum(abs(a - b) for a, b in zip(p['caja'], caja)))
+                jugadores.append({'id': base[eq] + int(tid), 'equipo': eq, 'x': round(d['x'], 2), 'y': round(d['y'], 2),
+                                  'caja': [int(v) for v in caja]})
+        c['jugadores'] = jugadores
+
+
+def unir_seguimientos(cuadros, vel_max=7.0, hueco_max=4.0):
+    """Une los pedazos: si un seguimiento termina y otro del MISMO equipo empieza poco después,
+    cerca y a una distancia que se puede correr en ese tiempo, son el mismo jugador."""
+    tramos = {}
+    for c in cuadros:
+        for j in c['jugadores']:
+            tr = tramos.setdefault(j['id'], {'eq': j['equipo'], 'ini': c['t'], 'fin': c['t'], 'p_ini': (j['x'], j['y'])})
+            tr['fin'], tr['p_fin'] = c['t'], (j['x'], j['y'])
+    antes = len(tramos)
+    padre = {k: k for k in tramos}
+
+    def raiz(k):
+        while padre[k] != k:
+            padre[k] = padre[padre[k]]
+            k = padre[k]
+        return k
+
+    intervalos = {k: [(tramos[k]['ini'], tramos[k]['fin'])] for k in tramos}  # por raíz
+    pares = []
+    ids = sorted(tramos, key=lambda k: tramos[k]['ini'])
+    for b in ids:
+        tb = tramos[b]
+        for a in ids:
+            ta = tramos[a]
+            if a == b or ta['eq'] != tb['eq']:
+                continue
+            hueco = tb['ini'] - ta['fin']
+            if 0 < hueco <= hueco_max:
+                d = float(np.hypot(tb['p_ini'][0] - ta['p_fin'][0], tb['p_ini'][1] - ta['p_fin'][1]))
+                if d <= vel_max * hueco + 1.5:
+                    pares.append((d + 2 * hueco, a, b))
+    usados_a, usados_b = set(), set()
+    for _, a, b in sorted(pares):
+        if a in usados_a or b in usados_b:
+            continue
+        ra, rb = raiz(a), raiz(b)
+        if ra == rb:
+            continue
+        # nunca unir dos cadenas que estuvieron en cancha al mismo tiempo
+        if any(i1 <= f2 and i2 <= f1 for i1, f1 in intervalos[ra] for i2, f2 in intervalos[rb]):
+            continue
+        padre[rb] = ra
+        intervalos[ra] += intervalos.pop(rb)
+        usados_a.add(a)
+        usados_b.add(b)
+    nuevo = {}
+    for c in cuadros:
+        vistos = set()
+        jugs = []
+        for j in c['jugadores']:
+            r = raiz(j['id'])
+            if r in vistos:
+                continue
+            vistos.add(r)
+            j['id'] = nuevo.setdefault(r, len(nuevo) + 1)
+            jugs.append(j)
+        c['jugadores'] = jugs
+    return antes, len(nuevo)
+
+
+def sacar_quietos_afuera(cuadros, fps_real):
+    """Gente que está casi siempre fuera de las líneas y casi no se mueve: banco, cuerpo técnico, público."""
+    pos = {}
+    for c in cuadros:
+        for j in c['jugadores']:
+            pos.setdefault(j['id'], []).append((j['x'], j['y']))
+    fuera = set()
+    for k, ps in pos.items():
+        ps = np.array(ps)
+        afuera = ((ps[:, 0] < 0) | (ps[:, 0] > C.LARGO) | (ps[:, 1] < 0) | (ps[:, 1] > C.ANCHO)).mean()
+        rango = float(np.ptp(ps[:, 0]) + np.ptp(ps[:, 1]))
+        if afuera > 0.6 or (rango < 2.0 and len(ps) > fps_real * 10):
+            fuera.add(k)
+    for c in cuadros:
+        c['jugadores'] = [j for j in c['jugadores'] if j['id'] not in fuera]
+    return len(fuera)
+
+
+def interpolar_pelota(cuadros, hueco_max_s=0.6):
+    """Completa la pelota en huecos cortos (en metros, en línea recta). Marca las interpoladas."""
+    idx = [i for i, c in enumerate(cuadros) if c['pelota']]
+    for a, b in zip(idx, idx[1:]):
+        ta, tb = cuadros[a]['t'], cuadros[b]['t']
+        if b - a < 2 or tb - ta > hueco_max_s:
+            continue
+        pa, pb = cuadros[a]['pelota'], cuadros[b]['pelota']
+        for i in range(a + 1, b):
+            r = (cuadros[i]['t'] - ta) / (tb - ta)
+            cuadros[i]['pelota'] = {'x': round(pa['x'] + r * (pb['x'] - pa['x']), 2),
+                                    'y': round(pa['y'] + r * (pb['y'] - pa['y']), 2),
+                                    'conf': 0, 'caja': None, 'interpolada': True}
+
+
+# ── 5. MÉTRICAS ─────────────────────────────────────────────────────────────
 def suavizar(v, n):
     if len(v) < n or n < 2:
         return v
@@ -299,17 +458,17 @@ def metricas(cuadros, equipos, fps_real):
     return filas
 
 
-def resumen(cuadros, filas, segundos_proceso, duracion_video):
+def resumen(cuadros, filas, segundos_proceso, duracion_video, limpieza):
     n = len(cuadros)
     por_eq = {'A': [], 'B': [], 'otros': []}
-    equipos = {r['id']: r['equipo'] for r in filas}
     for c in cuadros:
         cuenta = {'A': 0, 'B': 0, 'otros': 0}
         for j in c['jugadores']:
-            cuenta[equipos.get(j['id'], 'otros')] += 1
+            cuenta[j['equipo']] += 1
         for k in cuenta:
             por_eq[k].append(cuenta[k])
-    con_pelota = sum(1 for c in cuadros if c['pelota'])
+    con_pelota = sum(1 for c in cuadros if c['pelota'] and not c['pelota'].get('interpolada'))
+    con_pelota_int = sum(1 for c in cuadros if c['pelota'])
     largos = [r for r in filas if r['segundos'] >= TRACK_MIN_S]
     return {
         'cuadros_analizados': n,
@@ -318,13 +477,16 @@ def resumen(cuadros, filas, segundos_proceso, duracion_video):
         'velocidad_proceso': f'{n / max(segundos_proceso, 1e-6):.1f} cuadros/s',
         'personas_por_cuadro': {k: round(float(np.mean(v)), 1) if v else 0 for k, v in por_eq.items()},
         'pelota_vista_pct': round(100 * con_pelota / max(n, 1), 1),
+        'pelota_con_huecos_completados_pct': round(100 * con_pelota_int / max(n, 1), 1),
+        'seguimientos_antes_de_unir': limpieza['antes'],
         'seguimientos_totales': len(filas),
+        'descartados_fuera_de_cancha': limpieza['sacados'],
         'seguimientos_de_3s_o_mas': len(largos),
         'distancia_total_m': {k: round(sum(r['distancia_m'] for r in filas if r['equipo'] == k), 0) for k in ('A', 'B')},
     }
 
 
-# ── 5. SALIDAS ──────────────────────────────────────────────────────────────
+# ── 6. SALIDAS ──────────────────────────────────────────────────────────────
 def mapa_calor(puntos, ruta, titulo):
     radar = C.Radar(1000)
     acum = np.zeros((radar.h, radar.w), np.float32)
@@ -358,7 +520,7 @@ def video_resultado(ruta_video, cuadros, equipos, fps_real, salida):
             break
         lienzo = radar.lienzo()
         for j in c['jugadores']:
-            col = COLORES_EQUIPO[equipos.get(j['id'], 'otros')]
+            col = COLORES_EQUIPO[j['equipo']]
             x1, y1, x2, y2 = j['caja']
             cv2.rectangle(img, (x1, y1), (x2, y2), col, 2)
             cv2.putText(img, str(j['id']), (x1, y1 - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.7, col, 2)
@@ -371,10 +533,13 @@ def video_resultado(ruta_video, cuadros, equipos, fps_real, salida):
             cv2.circle(lienzo, tuple(p), 11, col, -1, cv2.LINE_AA)
             cv2.putText(lienzo, str(j['id']), (p[0] - 8, p[1] + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 0), 1)
         if c['pelota']:
-            x1, y1, x2, y2 = c['pelota']['caja']
-            cv2.rectangle(img, (x1 - 4, y1 - 4), (x2 + 4, y2 + 4), (0, 255, 255), 2)
             p = radar.px([(c['pelota']['x'], c['pelota']['y'])])[0]
-            cv2.circle(lienzo, tuple(p), 6, (255, 255, 255), -1, cv2.LINE_AA)
+            if c['pelota'].get('caja'):
+                x1, y1, x2, y2 = c['pelota']['caja']
+                cv2.rectangle(img, (x1 - 6, y1 - 6), (x2 + 6, y2 + 6), (0, 255, 255), 2)
+                cv2.circle(lienzo, tuple(p), 6, (255, 255, 255), -1, cv2.LINE_AA)
+            else:  # interpolada: hueca
+                cv2.circle(lienzo, tuple(p), 6, (255, 255, 255), 1, cv2.LINE_AA)
         arriba = cv2.resize(img, (1280, 720))
         cv2.putText(arriba, f"{c['t']:.1f}s", (12, 34), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         vw.write(np.vstack([arriba, lienzo]))
@@ -412,8 +577,9 @@ td:first-child,th:first-child{{text-align:left}} img,video{{max-width:100%;borde
 <div class="kpis">
 <div class="k"><b>{ppc['A']} / {ppc['B']}</b>Jugadores detectados por cuadro (equipo A / B). Lo ideal: 5 / 5</div>
 <div class="k"><b>{ppc['otros']}</b>Otros por cuadro (árbitros, arqueros de otro color)</div>
-<div class="k"><b>{res['pelota_vista_pct']}%</b>Cuadros con la pelota detectada</div>
-<div class="k"><b>{res['seguimientos_de_3s_o_mas']}</b>Seguimientos de 3 s o más (de {res['seguimientos_totales']}). Lo ideal: ~12</div>
+<div class="k"><b>{res['pelota_vista_pct']}%</b>Cuadros con la pelota detectada ({res['pelota_con_huecos_completados_pct']}% completando huecos cortos)</div>
+<div class="k"><b>{res['seguimientos_totales']}</b>Seguimientos después de unir tramos (antes: {res['seguimientos_antes_de_unir']}; {res['seguimientos_de_3s_o_mas']} de 3 s o más). Lo ideal: ~14</div>
+<div class="k"><b>{res['descartados_fuera_de_cancha']}</b>Descartados por estar fuera de las líneas y quietos (banco, público)</div>
 <div class="k"><b>{res['minutos_de_proceso']} min</b>Tiempo de proceso ({res['velocidad_proceso']})</div>
 </div>
 <h2>Video con el radar</h2><video src="resultado.mp4" controls muted></video>
@@ -436,6 +602,8 @@ def main():
     ap.add_argument('--fps', type=float, default=10, help='Cuadros por segundo a analizar (10 alcanza; 25 para la pelota)')
     ap.add_argument('--modelo', choices=['nano', 'small', 'medium'], default='medium')
     ap.add_argument('--lote', type=int, default=0, help='Cuadros por tanda (0 = automático)')
+    ap.add_argument('--pelota-fina', choices=['auto', 'si', 'no'], default='auto',
+                    help='Buscar la pelota también en recortes a tamaño real (más lento; auto = sí con GPU)')
     ap.add_argument('--no-abrir', action='store_true', help='No abrir el informe al terminar')
     args = ap.parse_args()
 
@@ -458,12 +626,27 @@ def main():
 
     import torch
     lote = args.lote or (8 if torch.cuda.is_available() else 1)
-    cuadros, colores, fps_real, seg = procesar(ruta, desde, duracion, H, args.fps, lote, args.modelo)
+    fina = args.pelota_fina == 'si' or (args.pelota_fina == 'auto' and torch.cuda.is_available())
+    cuadros, fps_real, seg = detectar(ruta, desde, duracion, H, args.fps, lote, args.modelo, fina)
     if not cuadros:
         sys.exit('No se analizó ningún cuadro.')
-    equipos = separar_equipos(colores)
+    log('Separando equipos, siguiendo jugadores y uniendo tramos …')
+    asignar_equipos(cuadros)
+    seguir(cuadros, fps_real)
+    sacados = sacar_quietos_afuera(cuadros, fps_real)
+    antes, _ = unir_seguimientos(cuadros)
+    interpolar_pelota(cuadros)
+    # el equipo de cada seguimiento final: el que más veces tuvo
+    votos = {}
+    for c in cuadros:
+        for j in c['jugadores']:
+            votos.setdefault(j['id'], []).append(j['equipo'])
+    equipos = {k: max(set(v), key=v.count) for k, v in votos.items()}
+    for c in cuadros:
+        for j in c['jugadores']:
+            j['equipo'] = equipos[j['id']]
     filas = metricas(cuadros, equipos, fps_real)
-    res = resumen(cuadros, filas, seg, cuadros[-1]['t'] - cuadros[0]['t'])
+    res = resumen(cuadros, filas, seg, cuadros[-1]['t'] - cuadros[0]['t'], {'antes': antes, 'sacados': sacados})
     log(json.dumps(res, ensure_ascii=False, indent=1))
 
     log('Armando el video y los mapas …')
@@ -471,7 +654,8 @@ def main():
         pts = [(j['x'], j['y']) for c in cuadros for j in c['jugadores'] if equipos.get(j['id']) == eq]
         C_titulo = 'Equipo A (verde)' if eq == 'A' else 'Equipo B (rojo)'
         mapa_calor(np.array(pts), os.path.join(args.salida, f'calor_{eq}.png'), C_titulo)
-    mapa_calor(np.array([(c['pelota']['x'], c['pelota']['y']) for c in cuadros if c['pelota']]),
+    mapa_calor(np.array([(c['pelota']['x'], c['pelota']['y']) for c in cuadros
+                         if c['pelota'] and not c['pelota'].get('interpolada')]),
                os.path.join(args.salida, 'calor_pelota.png'), 'Pelota')
     video_resultado(ruta, cuadros, equipos, fps_real, os.path.join(args.salida, 'resultado.mp4'))
 
@@ -480,6 +664,8 @@ def main():
         fh.write(','.join(cols) + '\n')
         for r in filas:
             fh.write(','.join(str(r[c]) for c in cols) + '\n')
+    for c in cuadros:
+        c.pop('personas', None)
     json.dump({'resumen': res, 'equipos': {str(k): v for k, v in equipos.items()}, 'cuadros': cuadros},
               open(os.path.join(args.salida, 'datos.json'), 'w'))
     informe_html(args.salida, res, filas, args)

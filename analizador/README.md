@@ -127,6 +127,22 @@ Al terminar se abre `informe.html`. Arriba hay cinco números:
 3. Si podés, subí `resultado.mp4` a Drive y pasame el link.
 4. Qué compu usaste y si tiene placa NVIDIA.
 
+## Cómo trabaja (versión 2)
+
+1. **Detecta** personas y pelota en cada cuadro. La pelota se busca además en recortes a tamaño
+   real del video (el modelo achica la imagen a 576 px y del lado lejano la pelota desaparece).
+   Con GPU está prendido; se controla con `--pelota-fina si|no|auto`.
+2. **Separa equipos en cada cuadro** por el color de la camiseta, sin el color del piso.
+3. **Sigue a los jugadores dentro de su equipo**: dos jugadores de distinto color que se cruzan
+   no pueden intercambiar el número.
+4. **Descarta** a quien está casi siempre fuera de las líneas y quieto (banco, público).
+5. **Une los tramos** del mismo equipo: si uno termina y otro empieza dentro de 4 s, cerca y a una
+   distancia que se puede correr, es el mismo jugador (nunca une dos que estuvieron a la vez).
+6. **Completa la pelota** en huecos de hasta 0,6 s (en el radar se ve hueca).
+
+El informe muestra cuántos seguimientos había antes y después de unir, y el % de pelota real y
+con los huecos completados.
+
 ## Lo que esta prueba todavía NO hace (y está previsto)
 
 - Saber **quién es quién**: cada número es un seguimiento, no un jugador. Se corta cuando dos
