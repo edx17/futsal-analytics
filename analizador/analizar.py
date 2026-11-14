@@ -26,7 +26,7 @@ def _chequear_instalacion():
     faltan = []
     for modulo, paquete in (('torch', 'torch (ver README, paso 5)'), ('cv2', 'opencv-python'), ('numpy', 'numpy'),
                             ('supervision', 'supervision'), ('sklearn', 'scikit-learn'), ('rfdetr', 'rfdetr'),
-                            ('trackers', 'trackers'), ('yt_dlp', 'yt-dlp')):
+                            ('trackers', 'trackers'), ('yt_dlp', 'yt-dlp'), ('imageio_ffmpeg', 'imageio-ffmpeg')):
         try:
             __import__(modulo)
         except ImportError:
@@ -64,11 +64,23 @@ def log(*a):
 
 
 # ── 1. VIDEO ────────────────────────────────────────────────────────────────
+def ruta_ffmpeg():
+    """El ffmpeg del sistema o, si no hay, el que trae el paquete imageio-ffmpeg."""
+    if shutil.which('ffmpeg'):
+        return shutil.which('ffmpeg')
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def conseguir_video(fuente, desde, duracion, carpeta):
     if os.path.exists(fuente):
         return fuente, desde
-    if not shutil.which('ffmpeg'):
-        sys.exit('Falta ffmpeg (ver README: winget install Gyan.FFmpeg) para bajar un tramo del video.')
+    ffmpeg = ruta_ffmpeg()
+    if not ffmpeg:
+        sys.exit('Falta ffmpeg. Corré:  pip install imageio-ffmpeg')
     destino = os.path.join(carpeta, 'tramo.mp4')
     if os.path.exists(destino):
         log('Uso el tramo ya bajado:', destino)
@@ -76,7 +88,7 @@ def conseguir_video(fuente, desde, duracion, carpeta):
     hasta = desde + duracion
     log(f'Bajando el tramo {desde}s → {hasta}s …')
     cmd = [sys.executable, '-m', 'yt_dlp', '-f', 'bv*[height<=1080][ext=mp4]/bv*[height<=1080]/b',
-           '--download-sections', f'*{desde}-{hasta}', '--force-keyframes-at-cuts',
+           '--download-sections', f'*{desde}-{hasta}', '--force-keyframes-at-cuts', '--ffmpeg-location', ffmpeg,
            '-o', destino, fuente]
     r = subprocess.run(cmd)
     if r.returncode != 0 or not os.path.exists(destino):
@@ -368,8 +380,9 @@ def video_resultado(ruta_video, cuadros, equipos, fps_real, salida):
         vw.write(np.vstack([arriba, lienzo]))
     vw.release()
     cap.release()
-    if shutil.which('ffmpeg'):
-        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', tmp, '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+    ffmpeg = ruta_ffmpeg()
+    if ffmpeg:
+        subprocess.run([ffmpeg, '-y', '-loglevel', 'error', '-i', tmp, '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
                         '-crf', '23', salida])
         os.remove(tmp)
     else:

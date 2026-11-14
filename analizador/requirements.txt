@@ -7,3 +7,4 @@ opencv-python>=4.10
 scikit-learn>=1.5
 numpy>=1.26
 yt-dlp
+imageio-ffmpeg

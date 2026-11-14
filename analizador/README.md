@@ -17,11 +17,7 @@ Todavía no escribe nada en la app ni en la base: es para ver si con nuestras c�
 ## 1. Instalar (una sola vez, en Windows)
 
 1. **Python 3.11 o 3.12** desde https://www.python.org/downloads/. En el instalador tildá **"Add python.exe to PATH"**.
-2. **ffmpeg** (para cortar el video). En una terminal:
-   ```
-   winget install Gyan.FFmpeg
-   ```
-   Cerrá y volvé a abrir VS Code después.
+2. **ffmpeg** ya no hace falta instalarlo aparte: viene con los paquetes de Python (`imageio-ffmpeg`).
 3. **Traer el código.** En VS Code, con la carpeta del repo abierta, abrí la terminal (`Ctrl` + `ñ`) y:
    ```
    git fetch origin
