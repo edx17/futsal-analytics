@@ -22,10 +22,30 @@ import sys
 import time
 import webbrowser
 
-import cv2
-import numpy as np
-import supervision as sv
-from sklearn.cluster import KMeans
+def _chequear_instalacion():
+    faltan = []
+    for modulo, paquete in (('torch', 'torch (ver README, paso 5)'), ('cv2', 'opencv-python'), ('numpy', 'numpy'),
+                            ('supervision', 'supervision'), ('sklearn', 'scikit-learn'), ('rfdetr', 'rfdetr'),
+                            ('trackers', 'trackers'), ('yt_dlp', 'yt-dlp')):
+        try:
+            __import__(modulo)
+        except ImportError:
+            faltan.append(paquete)
+    if faltan:
+        print('Faltan paquetes en este entorno de Python:', ', '.join(faltan))
+        print(f'Python {sys.version.split()[0]} en {sys.executable}')
+        if sys.version_info >= (3, 13):
+            print('Ojo: con Python 3.13 o más nuevo torch puede no instalarse. Usá Python 3.11 o 3.12 (ver README).')
+        print('Con el entorno activado (.venv), corré:  pip install -r requirements.txt  y mirá si da algún error.')
+        sys.exit(1)
+
+
+_chequear_instalacion()
+
+import cv2  # noqa: E402
+import numpy as np  # noqa: E402
+import supervision as sv  # noqa: E402
+from sklearn.cluster import KMeans  # noqa: E402
 
 import cancha as C
 

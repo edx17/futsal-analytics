@@ -35,6 +35,11 @@ Todavía no escribe nada en la app ni en la base: es para ver si con nuestras c�
    python -m venv .venv
    .venv\Scripts\activate
    ```
+   Fijate la versión con `python --version`. Si es **3.13 o más nueva**, torch puede no instalarse:
+   instalá además Python 3.12 y creá el entorno con esa versión:
+   ```
+   py -3.12 -m venv .venv
+   ```
    Si PowerShell dice que no puede ejecutar scripts, corré una vez
    `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` y repetí la última línea.
 5. **Instalar torch.** Para saber si tenés placa NVIDIA: corré `nvidia-smi`. Si muestra una tabla, tenés.
@@ -52,6 +57,11 @@ Todavía no escribe nada en la app ni en la base: es para ver si con nuestras c�
    ```
 
 La primera vez que corre baja el modelo (unos 130 MB).
+
+**Para verificar que quedó todo instalado** (con el entorno activado; tiene que imprimir dos versiones, sin errores):
+```
+python -c "import torch, cv2; print(torch.__version__, cv2.__version__)"
+```
 
 ## 2. Correr la prueba con el partido vs 25 de Mayo (Tercera, 22/09)
 
