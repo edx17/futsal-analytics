@@ -1,0 +1,9 @@
+# Instalá PRIMERO torch (ver README: con o sin placa NVIDIA) y después:
+#   pip install -r requirements.txt
+rfdetr==1.12.1
+trackers==2.7.0
+supervision==0.31.7
+opencv-python>=4.10
+scikit-learn>=1.5
+numpy>=1.26
+yt-dlp

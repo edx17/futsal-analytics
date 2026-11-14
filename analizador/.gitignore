@@ -1,0 +1,6 @@
+.venv/
+resultados/
+videos/
+__pycache__/
+*.mp4
+*.pth

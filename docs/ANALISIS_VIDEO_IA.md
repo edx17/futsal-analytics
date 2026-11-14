@@ -170,7 +170,7 @@ cuadro por cuadro (detectando las líneas de la cancha): queda para la fase 3.
 
 | Etapa | Qué se entrega | Para validar |
 |---|---|---|
-| **0. Prueba con un video real** | 5 minutos de un partido del club: jugadores detectados y seguidos, radar 2D, velocidades. Un informe con lo que anda y lo que no. | Que con tu cámara la calidad alcance. |
+| **0. Prueba con un video real** (`analizador/`, se corre en la compu: ver su README) | 5 minutos de un partido del club: jugadores detectados y seguidos, radar 2D, velocidades. Un informe con lo que anda y lo que no. | Que con tu cámara la calidad alcance. |
 | **1. El circuito completo** | Subir/pegar link, calibrar en la app, cola, Analizador para la compu, aviso a la mañana. Datos: posicionamiento, mapa de calor, distancias, velocidades, sprints, foto de cada gol. Revisión de identidades. | Un partido entero procesado de noche. |
 | **2. La pelota** | Posesión, contactos, pases, cadenas, pérdidas y recuperaciones, toques del arquero, remates. Todo con confianza y revisión. | Comparar contra un partido cargado a mano en Análisis Offline. |
 | **3. Más automático** | Lectura de dorsales, cámara que se mueve, detector entrenado con las correcciones del club. | Menos revisión a la mañana. |
