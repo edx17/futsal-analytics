@@ -68,10 +68,39 @@ recorridos de cada ficha, la línea de la pelota y el mapa de calor. La IA pasa 
 La **toma en vivo** ayuda mucho: da los minutos de los goles y los cambios. Con eso se
 sabe quiénes estaban en cancha en cada momento.
 
+## De dónde sale el video: el link del resumen
+
+Cada partido ya guarda en el **Resumen** el link de YouTube (`partidos.video_url`) y los
+segundos en que arranca cada tiempo en el video (`video_offset_pt`, `video_offset_st`,
+los campos SEGUNDO INICIO PT / ST). Con eso no hace falta subir nada:
+
+- **El disparador es guardar el link.** Cuando un partido tiene link y los dos segundos de
+  inicio cargados, entra solo a la cola de la noche. Si falta algún segundo de inicio, queda
+  esperando y el resumen lo avisa.
+- **Los segundos de inicio sincronizan el video con el reloj del partido.** Así el minuto de
+  cada gol y cada cambio de la toma en vivo cae en el cuadro justo del video. Es lo que
+  permite la foto de cada gol y saber quién estaba en cancha.
+- **La temporada ya grabada se puede procesar hacia atrás.** Todos los partidos con link
+  entran a la cola de a uno por noche, o de a varios si la compu da.
+- Si se cambia el link, el análisis anterior se descarta y se vuelve a hacer.
+
+### Las cámaras que hay hoy (por las capturas de los resúmenes)
+
+- **3ra vs Ci.De.Co.:** cámara de acción con lente gran angular, en una esquina detrás del arco
+  y baja. Se deforma mucho (las líneas rectas se ven curvas) y del otro lado de la cancha los
+  jugadores quedan chiquitos. Sirve, pero hay que corregir la deformación del lente y la
+  precisión baja en el arco de enfrente.
+- **3ra vs 25 de Mayo:** desde la tribuna, a la altura de la mitad de la cancha y con la cancha
+  entera en el cuadro. Es la mejor de las dos. Tapa algo la gente de adelante sobre la línea de
+  banda más cercana.
+- Las dos son **fijas**, que es lo importante. Como cada estadio es distinto, la calibración
+  (marcar las esquinas y la mitad de la cancha) se hace una vez por video, y se puede guardar
+  por cancha para reutilizarla cuando la cámara se pone siempre en el mismo lugar.
+
 ## Cómo funciona (arquitectura)
 
 ```
-App (subir video o pegar link) ──► Supabase: cola "video_analisis"
+Resumen (link de YouTube + segundos de inicio) ──► Supabase: cola "video_analisis"
                                           │
         Compu del club (de noche) ◄───────┘  pregunta cada minuto si hay trabajo
         "Analizador VirtualClub" (Python)
@@ -141,7 +170,7 @@ cuadro por cuadro (detectando las líneas de la cancha): queda para la fase 3.
 
 | Etapa | Qué se entrega | Para validar |
 |---|---|---|
-| **0. Prueba con un video real** | 5 minutos de un partido del club: jugadores detectados y seguidos, radar 2D, velocidades. Un informe con lo que anda y lo que no. | Que con tu cámara la calidad alcance. |
+| **0. Prueba con un video real** (`analizador/`, se corre en la compu: ver su README) | 5 minutos de un partido del club: jugadores detectados y seguidos, radar 2D, velocidades. Un informe con lo que anda y lo que no. | Que con tu cámara la calidad alcance. |
 | **1. El circuito completo** | Subir/pegar link, calibrar en la app, cola, Analizador para la compu, aviso a la mañana. Datos: posicionamiento, mapa de calor, distancias, velocidades, sprints, foto de cada gol. Revisión de identidades. | Un partido entero procesado de noche. |
 | **2. La pelota** | Posesión, contactos, pases, cadenas, pérdidas y recuperaciones, toques del arquero, remates. Todo con confianza y revisión. | Comparar contra un partido cargado a mano en Análisis Offline. |
 | **3. Más automático** | Lectura de dorsales, cámara que se mueve, detector entrenado con las correcciones del club. | Menos revisión a la mañana. |
