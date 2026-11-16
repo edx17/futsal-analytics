@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import VisorManual from '../components/VisorManual';
 import { linkManualAbsoluto } from '../utils/manual';
 import { Icono } from '../iconos';
+import ConfiguradorClub from '../components/club/ConfiguradorClub';
 
 function Configuracion() {
   const navigate = useNavigate();
@@ -196,6 +197,9 @@ function Configuracion() {
           GUARDAR Y ENTRAR AL SISTEMA
         </button>
       </div>
+
+      {/* Ramas, país, ligas y categorías: lo que el resto de la app ofrece. */}
+      <ConfiguradorClub clubId={localStorage.getItem('club_id') || ''} />
 
       {/* El manual es una página pública del mismo dominio: se puede ver acá,
           pasar por link a alguien sin usuario o guardar como PDF. */}

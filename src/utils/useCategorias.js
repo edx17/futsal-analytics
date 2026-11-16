@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
-import { categoriasDelClub, categoriasVisiblesPara, LISTA_BASE } from './categorias';
+import { categoriasDelClub, categoriasVisiblesPara, LISTA_BASE, unirCategorias, normCat } from './categorias';
+import { normalizarConfig, hayConfig, categoriasActivas } from '../club/configClub';
 
 /* Las categorías del club, para cualquier pantalla que tenga que ofrecerlas.
  *
@@ -14,6 +15,11 @@ import { categoriasDelClub, categoriasVisiblesPara, LISTA_BASE } from './categor
  *
  * Devuelve también `cargando`, para que una pantalla no muestre el respaldo
  * como si fuera la lista real mientras llega la consulta.
+ *
+ * Si el club armó sus categorías en el configurador general (CONFIG. DE CLUB),
+ * mandan ésas: `activas` son las activas del configurador, en su orden, y lo
+ * que aparece en los datos sin estar configurado queda como histórico.
+ * `config` trae ramas, ligas y categorías (con rama y ligas de cada una).
  */
 export function useCategorias({ incluirHistoricas = false, asignadas } = {}) {
   /* Las pantallas suelen pasar `perfil?.categorias_asignadas || []`, que es un
@@ -34,14 +40,16 @@ export function useCategorias({ incluirHistoricas = false, asignadas } = {}) {
         if (!cancelado) setCargando(false);
         return;
       }
-      const [{ data: jug }, { data: par }] = await Promise.all([
+      const [{ data: jug }, { data: par }, { data: club }] = await Promise.all([
         supabase.from('jugadores').select('categoria, activo').eq('club_id', clubId),
         supabase.from('partidos').select('categoria').eq('club_id', clubId),
+        // '*' y no las columnas nuevas: sin la migración del configurador no tiene que fallar.
+        supabase.from('clubes').select('*').eq('id', clubId).maybeSingle(),
       ]);
       if (cancelado) return;
       /* Si falta la columna `activo` (migración de bajas sin correr) la
          consulta devuelve null: mejor seguir con lo que haya que romper. */
-      setFilas({ jugadores: jug || [], partidos: par || [] });
+      setFilas({ jugadores: jug || [], partidos: par || [], config: normalizarConfig(club || {}) });
       setCargando(false);
     })().catch(() => { if (!cancelado) setCargando(false); });
 
@@ -49,15 +57,24 @@ export function useCategorias({ incluirHistoricas = false, asignadas } = {}) {
   }, [clubId]);
 
   return useMemo(() => {
-    const { activas, historicas, todas } = categoriasDelClub(
-      filas?.jugadores || [], filas?.partidos || []
-    );
+    const deDatos = categoriasDelClub(filas?.jugadores || [], filas?.partidos || []);
+    const config = filas?.config || normalizarConfig({});
+    const configurado = hayConfig(config);
+    let { activas, historicas, todas } = deDatos;
+    if (configurado) {
+      activas = categoriasActivas(config);
+      const enConfig = new Set(config.categorias.map((c) => normCat(c.nombre)));
+      const inactivas = config.categorias.filter((c) => !c.activa).map((c) => c.nombre);
+      historicas = unirCategorias(inactivas, deDatos.todas.filter((c) => !enConfig.has(normCat(c))));
+      todas = [...activas, ...historicas];
+    }
     const base = incluirHistoricas ? todas : activas;
     const fuente = base.length > 0 ? base : LISTA_BASE;
     return {
-      categorias: categoriasVisiblesPara(fuente, JSON.parse(claveAsignadas)),
+      categorias: categoriasVisiblesPara(fuente, JSON.parse(claveAsignadas), { mantenerOrden: configurado }),
       activas, historicas, todas,
       cargando,
+      config, configurado,
       /* true cuando todavía no hay nada cargado y se está mostrando el
          respaldo, no las categorías reales del club. */
       esRespaldo: base.length === 0,
