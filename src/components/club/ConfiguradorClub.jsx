@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../ToastContext';
 import { categoriasDelClub } from '../../utils/categorias';
 import { limiteDelClub } from '../../utils/planes';
+import { invalidarConfigClub } from '../../club/useConfigClub';
 import {
   RAMAS, TIPOS, PAISES, MODELOS, paisPorId, normalizarConfig, erroresConfig, sumarModelo, sinConfigurar, parecida, idDeLiga,
 } from '../../club/configClub';
@@ -93,6 +94,7 @@ export default function ConfiguradorClub({ clubId }) {
       }).eq('id', clubId);
       if (error) throw (['42703', 'PGRST204'].includes(error.code) ? new Error(MENSAJE_SIN_MIGRACION) : error);
       showToast('Configuración del club guardada.', 'success');
+      invalidarConfigClub(clubId);   // el resto de las pantallas toma la configuración nueva
       await cargar();
     } catch (err) { showToast(err?.message || 'No se pudo guardar.', 'error'); } finally { setOcupado(false); }
   };
@@ -107,6 +109,7 @@ export default function ConfiguradorClub({ clubId }) {
       if (error) throw (['PGRST202', '42883'].includes(error.code) ? new Error(MENSAJE_SIN_MIGRACION) : error);
       const total = Object.values(data || {}).reduce((s, n) => s + Number(n), 0);
       showToast(`"${desde}" unificada con "${hacia}": ${total} registros actualizados.`, 'success');
+      invalidarConfigClub(clubId);
       await cargar();
     } catch (err) { showToast(err?.message || 'No se pudo unificar.', 'error'); } finally { setOcupado(false); }
   };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
@@ -163,13 +164,14 @@ export default function Agenda() {
     };
   }, [raw, esCT, misCategorias]);
 
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categorias = useMemo(() => {
     const s = new Set();
     datos.jugadores.forEach((j) => j.categoria && s.add(j.categoria));
     datos.partidos.forEach((p) => p.categoria && s.add(p.categoria));
     datos.sesiones.forEach((x) => x.categoria_equipo && s.add(x.categoria_equipo));
-    return ordenarCategorias([...s]);
-  }, [datos]);
+    return segunClub(ordenarCategorias([...s]), configClub, { soloLasDeDatos: true });
+  }, [datos, configClub]);
 
   /* La ventana visible sale del rango elegido y del corrimiento. Se calcula
      acá adentro, junto con la agenda, para no dejar sueltos dos strings que

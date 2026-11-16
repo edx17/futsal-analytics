@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { leerConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -101,8 +102,9 @@ function Tesoreria() {
   // Las categorías salen de los jugadores del club, no de una lista fija.
   useEffect(() => {
     if (!clubId || !accesoPermitido) return;
-    supabase.from('jugadores').select('categoria').eq('club_id', clubId).then(({ data }) => {
-      const lista = [...new Set((data || []).map((j) => j.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+    Promise.all([supabase.from('jugadores').select('categoria').eq('club_id', clubId), leerConfigClub(clubId)]).then(([{ data }, cfgClub]) => {
+      // Con el configurador del club: sus categorías en su orden (más las que tengan jugadores sin configurar).
+      const lista = segunClub([...new Set((data || []).map((j) => j.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')), cfgClub);
       setCategorias(lista);
       if (lista.length && !lista.includes(categoria)) setCategoria(lista.includes('Primera') ? 'Primera' : lista[0]);
     });

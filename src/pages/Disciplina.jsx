@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { TablaResponsive } from '../components/TablaResponsive';
@@ -211,10 +212,11 @@ export default function Disciplina() {
   }, [partidosDelFiltro]);
 
   // Categorías disponibles (de los partidos)
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categorias = useMemo(() => {
     const set = new Set(partidos.map(p => p.categoria).filter(Boolean));
-    return [...set].sort();
-  }, [partidos]);
+    return segunClub([...set].sort(), configClub, { soloLasDeDatos: true });
+  }, [partidos, configClub]);
 
   // Torneos filtrados por categoría
   const torneosFiltrados = useMemo(() => {

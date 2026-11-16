@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import NotasDe from '../components/notas/NotasDe';
 import { useVincularNotas } from '../utils/anotadorContexto';
 import { supabase } from '../supabase';
@@ -70,10 +71,12 @@ function ScoutingRivales() {
    * partidos jugados (una categoría puede tener fixture y todavía no plantel)
    * y las claves ya guardadas en datos_tacticos (si alguien cargó scouting de
    * una división que después se vació, no queremos que desaparezca). */
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categoriasVisibles = useMemo(() => {
     const deRivales = rivales.flatMap(r => Object.keys(r.datos_tacticos || {}));
-    return categoriasVisiblesPara(unirCategorias(categoriasClub, deRivales), misCategorias);
-  }, [categoriasClub, rivales, misCategorias]);
+    const lista = categoriasVisiblesPara(unirCategorias(categoriasClub, deRivales), misCategorias);
+    return segunClub(lista, configClub, { soloLasDeDatos: misCategorias.length > 0 });
+  }, [categoriasClub, rivales, misCategorias, configClub]);
 
   const categoriaPorDefecto = categoriasVisibles[0] || 'Primera';
   const catVista = categoriaVista ?? categoriaPorDefecto;
@@ -286,9 +289,9 @@ function ScoutingRivales() {
       if (!grupos.has(cat)) grupos.set(cat, []);
       grupos.get(cat).push(p);
     });
-    return ordenarCategorias([...grupos.keys()])
+    return segunClub(ordenarCategorias([...grupos.keys()]), configClub, { soloLasDeDatos: true })
       .map(cat => ({ cat, ...acumularH2H(grupos.get(cat)) }));
-  }, [editandoTodas, historialRival]);
+  }, [editandoTodas, historialRival, configClub]);
 
   const extractYoutubeId = (url) => {
     if (!url) return null;

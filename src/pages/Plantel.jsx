@@ -6,6 +6,7 @@ import { puedeUsarCategoria, categoriasDe } from '../utils/planes';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext'; // <-- IMPORTAMOS EL CONTEXTO DE AUTENTICACIÓN
 import { estaActivo, textoBaja } from '../utils/plantelActivo';
+import { segunClub } from '../club/configClub';
 import { useCategorias } from '../utils/useCategorias';
 import { unirCategorias, LISTA_BASE } from '../utils/categorias';
 import TutoresJugador from '../components/TutoresJugador';
@@ -77,7 +78,7 @@ function Plantel() {
      se evalúa durante el render, así que declararlo más arriba lo lee antes
      de que exista y la pantalla entera se cae con un ReferenceError. */
   const [categoriaLibre, setCategoriaLibre] = useState(false);
-  const { todas: categoriasClub, configurado: hayConfigClub } = useCategorias({ incluirHistoricas: true });
+  const { todas: categoriasClub, configurado: hayConfigClub, config: configClub } = useCategorias({ incluirHistoricas: true });
   const opcionesCategoria = useMemo(
     // Con el configurador del club, se ofrecen las del club (no la lista de siempre).
     () => (hayConfigClub ? [...new Set([...categoriasClub, ...(formData?.categoria ? [formData.categoria] : [])])]
@@ -396,7 +397,7 @@ function Plantel() {
   };
 
   // Extraemos categorías únicas para los botones de filtro
-  const categoriasExistentes = ['Todas', ...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
+  const categoriasExistentes = ['Todas', ...segunClub([...new Set(jugadores.map(j => j.categoria).filter(Boolean))], configClub, { soloLasDeDatos: true })];
 
   const cantidadBajas = jugadores.filter(j => !estaActivo(j)).length;
 

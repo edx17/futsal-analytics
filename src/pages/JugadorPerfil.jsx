@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
 import { tablaJugadores } from '../utils/kiosco';
@@ -638,10 +639,11 @@ function JugadorPerfil() {
 
   const jugadorSeleccionado = useMemo(() => jugadores.find(j => j.id == jugadorId), [jugadores, jugadorId]);
 
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categoriasUnicas = useMemo(() => {
     const cats = jugadores.map(j => j.categoria).filter(Boolean);
-    return [...new Set(cats)];
-  }, [jugadores]);
+    return segunClub([...new Set(cats)], configClub, { soloLasDeDatos: true });
+  }, [jugadores, configClub]);
 
   const jugadoresGrid = useMemo(() => {
     if (filtroCategoriaGrid === 'Todas') return jugadores;

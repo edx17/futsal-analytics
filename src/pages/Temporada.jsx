@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { useEsMovil } from '../utils/useEsMovil';
 import DiasDeLaSemana from '../components/DiasDeLaSemana';
 import CargandoTemporada, { FalloTemporada } from '../components/CargandoTemporada';
@@ -451,9 +452,10 @@ function Temporada() {
   // =========================================================================
   // LISTAS DESPLEGABLES ÚNICAS PARA LOS FILTROS
   // =========================================================================
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categoriasUnicas = useMemo(() => {
-    return [...new Set(partidos.map(p => p.categoria).filter(Boolean).map(c => String(c).trim()))];
-  }, [partidos]);
+    return segunClub([...new Set(partidos.map(p => p.categoria).filter(Boolean).map(c => String(c).trim()))], configClub, { soloLasDeDatos: true });
+  }, [partidos, configClub]);
 
   const competicionesUnicas = useMemo(() => {
     return [...new Set(partidos.map(p => p.competicion).filter(Boolean).map(c => String(c).trim()))];

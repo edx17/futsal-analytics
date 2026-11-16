@@ -3,6 +3,7 @@ import NotasDe from '../components/notas/NotasDe';
 import { useVincularNotas } from '../utils/anotadorContexto';
 import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import simpleheat from 'simpleheat';
 import { 
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
@@ -592,11 +593,13 @@ return 'Todas';
     setFiltroVideoAcciones(prev => prev.includes(accion) ? prev.filter(a => a !== accion) : [...prev, accion]);
   };
 
+  const configClub = useConfigClub();
   const categoriasUnicas = useMemo(() => {
     const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
-    if (esCT && misCategorias.length > 0) return catPartidos.filter(c => misCategorias.includes(c));
-    return catPartidos;
-  }, [partidos, esCT, misCategorias]);
+    const lista = esCT && misCategorias.length > 0 ? catPartidos.filter(c => misCategorias.includes(c)) : catPartidos;
+    // Filtro de consulta: las que tienen partidos, en el orden del configurador del club.
+    return segunClub(lista, configClub, { soloLasDeDatos: true });
+  }, [partidos, esCT, misCategorias, configClub]);
 
   const competicionesUnicas = useMemo(() => {
     const filtradosPorCategoria = partidos.filter(p => filtroCategoriaGrid === 'Todas' || p.categoria === filtroCategoriaGrid);
