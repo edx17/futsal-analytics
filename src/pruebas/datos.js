@@ -11,6 +11,7 @@ import { reducirImagen } from '../utils/cartasFotos';
  */
 
 export const MENSAJE_SIN_PRUEBAS = 'Falta la migración 20261117120000_pruebas_jugadores.sql en Supabase (Pruebas de jugadores).';
+export const MENSAJE_SIN_ENTREGAS = 'Falta la migración 20261118120000_pruebas_entregas_ligas.sql en Supabase (guardar evaluación, ligas y evaluador por puesto).';
 const falta = (e) => ['42P01', 'PGRST205', '42703', 'PGRST204', 'PGRST202'].includes(e?.code);
 const lanzar = (error) => { if (falta(error)) throw new Error(MENSAJE_SIN_PRUEBAS); throw error; };
 
@@ -96,12 +97,15 @@ export async function cerrarCarga({ clubId, categoria, candidatoId, etapa }) {
 }
 
 /** La decisión final: queda congelada con la configuración usada (snapshot y versión). */
-export async function decidir(cierreId, { resultado, recomendacion, decision, comentario, config, configVersion, rubricaVersion }) {
-  const { data, error } = await supabase.from('pruebas_cierres').update({
+export async function decidir(cierreId, { resultado, recomendacion, decision, comentario, config, configVersion, rubricaVersion, ligas = [] }) {
+  const cambios = {
     estado: 'decidido', resultado, recomendacion, decision, comentario_dt: comentario || null,
     config_snapshot: config, config_version: configVersion, rubrica_version: rubricaVersion,
-  }).eq('id', cierreId).eq('estado', 'revision').select().single();
-  if (error) lanzar(error);
+  };
+  if (ligas.length) cambios.ligas = ligas;   // sin la migración nueva, se puede decidir igual (sin ligas)
+  const { data, error } = await supabase.from('pruebas_cierres').update(cambios)
+    .eq('id', cierreId).eq('estado', 'revision').select().single();
+  if (error) { if (falta(error) && ligas.length) throw new Error(MENSAJE_SIN_ENTREGAS); lanzar(error); }
   return data;
 }
 
@@ -120,18 +124,49 @@ export async function leerConfigs(clubId) {
 
 /** Guarda la configuración del club (categoria null) o de una categoría. La versión la sube la base. */
 export async function guardarConfig({ clubId, categoria = null, config, filaActual = null }) {
-  const cuerpo = { ponderaciones: config.ponderaciones, umbrales: config.umbrales, bloques_clave: config.bloques_clave };
+  const cuerpo = { ponderaciones: config.ponderaciones, umbrales: config.umbrales, bloques_clave: config.bloques_clave,
+    ligas: config.ligas || [], evaluadores_puesto: config.evaluadores_puesto || {} };
   const q = filaActual?.id
     ? supabase.from('pruebas_config').update(cuerpo).eq('id', filaActual.id)
     : supabase.from('pruebas_config').insert({ club_id: clubId, categoria, ...cuerpo });
   const { data, error } = await q.select().single();
-  if (error) lanzar(error);
+  if (error) { if (falta(error)) throw new Error(MENSAJE_SIN_ENTREGAS); throw error; }
   return data;
 }
 
 export async function borrarConfig(id) {
   const { error } = await supabase.from('pruebas_config').delete().eq('id', id);
   if (error) lanzar(error);
+}
+
+// ── Evaluación guardada (entregas): sin puntajes, la ve todo el cuerpo técnico ──
+/** null si falta la migración (la pantalla funciona como antes, sin GUARDAR). */
+export async function listarEntregas(clubId, categoria) {
+  const { data, error } = await supabase.from('pruebas_entregas').select('id, candidato_id, etapa, evaluador_id, sesion_id, entregado_at')
+    .eq('club_id', clubId).eq('categoria', categoria);
+  if (error) { if (falta(error)) return null; throw error; }
+  return data || [];
+}
+
+export async function guardarEntrega({ candidatoId, etapa, sesionId }) {
+  const { data, error } = await supabase.from('pruebas_entregas')
+    .insert({ candidato_id: candidatoId, etapa, sesion_id: sesionId }).select().single();
+  if (error) { if (falta(error)) throw new Error(MENSAJE_SIN_ENTREGAS); throw error; }
+  return data;
+}
+
+/** CORREGIR: borra la entrega propia (la base sólo lo deja con la carga abierta). */
+export async function borrarEntrega(id) {
+  const { error } = await supabase.from('pruebas_entregas').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** El cuerpo técnico del club que puede evaluar (para asignar un puesto). */
+export async function listarStaffEvaluador(clubId) {
+  const { data, error } = await supabase.from('perfiles').select('id, nombre_completo, rol')
+    .eq('club_id', clubId).in('rol', ['manager', 'ct']).order('nombre_completo');
+  if (error) return [];
+  return data || [];
 }
 
 // ── Nombres de los evaluadores (perfiles) ──

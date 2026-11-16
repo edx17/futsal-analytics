@@ -25,7 +25,7 @@ const UMBRALES = [
 ];
 const clon = (x) => JSON.parse(JSON.stringify(x));
 
-export default function ConfiguradorPruebas({ clubId, categoria, filas, candidatos, evaluaciones, sesiones, cierres, puedeEditar, recargar, avisar, esMovil }) {
+export default function ConfiguradorPruebas({ clubId, categoria, filas, candidatos, evaluaciones, sesiones, cierres, staff = [], puedeEditar, recargar, avisar, esMovil }) {
   const [alcance, setAlcance] = useState(() => (filas.some((f) => f.categoria === categoria) ? 'categoria' : 'club'));
   const filaActual = alcance === 'club' ? filas.find((f) => f.categoria == null) || null : filas.find((f) => f.categoria === categoria) || null;
   const base = useMemo(() => (alcance === 'club' ? resolverConfig(filas.filter((f) => f.categoria == null), null) : resolverConfig(filas, categoria)).config,
@@ -64,6 +64,10 @@ export default function ConfiguradorPruebas({ clubId, categoria, filas, candidat
   const setPeso = (p, b, v) => setBorrador((c) => { const n = clon(c); n.ponderaciones[p][b] = aPaso(Math.max(RANGO_PESO.min, Math.min(RANGO_PESO.max, v))); return n; });
   const setUmbral = (k, v) => setBorrador((c) => ({ ...c, umbrales: { ...c.umbrales, [k]: v === '' ? '' : Number(v) } }));
   const setClave = (p, b) => setBorrador((c) => ({ ...c, bloques_clave: { ...c.bloques_clave, [p]: b } }));
+  const setLiga = (i, cambios) => setBorrador((c) => ({ ...c, ligas: c.ligas.map((l, k) => (k === i ? { ...l, ...cambios } : l)) }));
+  const agregarLiga = () => setBorrador((c) => ({ ...c, ligas: [...(c.ligas || []), { nombre: '', minimo: Number(c.umbrales.incorporar) || 3.8 }] }));
+  const quitarLiga = (i) => setBorrador((c) => ({ ...c, ligas: c.ligas.filter((_, k) => k !== i) }));
+  const setEval = (p, cambios) => setBorrador((c) => ({ ...c, evaluadores_puesto: { ...c.evaluadores_puesto, [p]: { ...(c.evaluadores_puesto?.[p] || {}), ...cambios } } }));
 
   const guardar = async () => {
     if (hayErrores) return;
@@ -149,6 +153,47 @@ export default function ConfiguradorPruebas({ clubId, categoria, filas, candidat
             </label>
           ))}
           <div style={dim}>Debajo de "seguir observando" → No incorporar. El bloque clave flojo limita "Incorporar" a "Seguir observando".</div>
+        </section>
+
+        <section className="bento-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <b style={{ letterSpacing: '.08em' }}>LIGAS DEL CLUB</b>
+          <div style={dim}>En el cierre, la app sugiere las ligas que alcanza el candidato con su puntaje final; el DT tilda las que crea.</div>
+          {(borrador.ligas || []).length === 0 && <div style={dim}>Todavía no hay ligas cargadas.</div>}
+          {(borrador.ligas || []).map((l, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 82px 36px', gap: 6, alignItems: 'center' }}>
+              <input style={{ ...input, ...(errores[`liga.${i}`] ? { borderColor: '#ef4444' } : {}) }} placeholder="AFA, Futsala, LAMBA…" value={l.nombre} disabled={!puedeEditar}
+                onChange={(e) => setLiga(i, { nombre: e.target.value })} aria-label="Nombre de la liga" />
+              <input type="number" step={0.1} min={1} max={5} style={{ ...input, fontFamily: MONO, fontWeight: 900 }} value={l.minimo} disabled={!puedeEditar}
+                onChange={(e) => setLiga(i, { minimo: e.target.value === '' ? '' : Number(e.target.value) })} aria-label="Puntaje mínimo" title="Puntaje final mínimo para sugerirla" />
+              {puedeEditar && <button style={{ ...chip(false), minHeight: 36, padding: 0 }} onClick={() => quitarLiga(i)} aria-label={`Quitar ${l.nombre || 'liga'}`}>×</button>}
+              {errorDe(`liga.${i}`) && <span style={{ gridColumn: '1 / -1' }}>{errorDe(`liga.${i}`)}</span>}
+            </div>
+          ))}
+          {puedeEditar && <button style={{ ...botonSec, alignSelf: 'flex-start' }} onClick={agregarLiga}>+ AGREGAR LIGA</button>}
+          <div style={dim}>El número es el puntaje final (1 a 5) desde el que se sugiere.</div>
+        </section>
+
+        <section className="bento-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <b style={{ letterSpacing: '.08em' }}>EVALUADORES POR PUESTO</b>
+          <div style={dim}>Si asignás a alguien (por ejemplo, el entrenador de arqueros), sólo esa persona evalúa ese puesto y alcanza con su evaluación. Mínimo vacío = el general ({borrador.umbrales.evaluadores_min}).</div>
+          {PUESTOS.map((p) => {
+            const e = borrador.evaluadores_puesto?.[p] || {};
+            return (
+              <div key={p} style={{ display: 'grid', gridTemplateColumns: '70px 64px minmax(0,1fr)', gap: 6, alignItems: 'center', fontSize: 12 }}>
+                <b>{p}</b>
+                <input type="number" min={1} max={5} step={1} placeholder="—" value={e.min ?? ''} disabled={!puedeEditar} aria-label={`Mínimo de evaluadores para ${p}`}
+                  onChange={(ev) => setEval(p, { min: ev.target.value === '' ? null : Number(ev.target.value) })}
+                  style={{ ...input, fontFamily: MONO, fontWeight: 900, ...marca(`evaluadores.${p}`), ...(errores[`evaluadores.${p}`] ? { borderColor: '#ef4444' } : {}) }} />
+                <select style={{ ...input, ...marca(`evaluadores.${p}`) }} value={e.asignado || ''} disabled={!puedeEditar} aria-label={`Quién evalúa ${p}`}
+                  onChange={(ev) => setEval(p, { asignado: ev.target.value || null })}>
+                  <option value="">Cualquiera del cuerpo técnico</option>
+                  {staff.map((s) => <option key={s.id} value={s.id}>Sólo {s.nombre_completo || 'sin nombre'}</option>)}
+                  {e.asignado && !staff.some((s) => s.id === e.asignado) && <option value={e.asignado}>Sólo (perfil que ya no está)</option>}
+                </select>
+                {errorDe(`evaluadores.${p}`) && <span style={{ gridColumn: '1 / -1' }}>{errorDe(`evaluadores.${p}`)}</span>}
+              </div>
+            );
+          })}
         </section>
       </div>
 

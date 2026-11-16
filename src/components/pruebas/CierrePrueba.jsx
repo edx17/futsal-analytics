@@ -3,6 +3,7 @@ import RadarBloques from './RadarBloques';
 import { Senas } from './CargaPrueba';
 import { evaluarCandidato, RECOMENDACIONES, ejesRadar, minimoEvaluadores } from '../../pruebas/evaluacionPrueba';
 import { VERSION_RUBRICA } from '../../pruebas/rubrica';
+import { asignadoDelPuesto, ligasSugeridas } from '../../pruebas/configDefault';
 import { edadRelativa } from '../../pruebas/edadRelativa';
 import { cerrarCarga, decidir, reabrirCierre, incorporarCandidato } from '../../pruebas/datos';
 import { exportarPlaca } from '../../placas/exportar';
@@ -20,7 +21,7 @@ import { MONO, ACENTO, dim, rotulo, input, boton, botonSec, chip, campo, ESTADOS
  *                    configuración). Exportar a PNG e Incorporar.
  */
 
-export default function CierrePrueba({ clubId, categoria, candidatos, sesiones, evaluaciones, cierres, resumen, vigente, recargar, puedeCargar, esSuper, avisar }) {
+export default function CierrePrueba({ clubId, categoria, candidatos, sesiones, evaluaciones, cierres, resumen, vigente, entregas = null, staff = [], recargar, puedeCargar, esSuper, avisar }) {
   const [candidatoId, setCandidatoId] = useState(candidatos[0]?.id || '');
   const candidato = candidatos.find((c) => c.id === candidatoId) || null;
   const etapaDeSesion = useMemo(() => new Map(sesiones.map((s) => [s.id, s.etapa])), [sesiones]);
@@ -52,26 +53,38 @@ export default function CierrePrueba({ clubId, categoria, candidatos, sesiones, 
       {candidato && (
         <PanelCandidato key={candidato.id} candidato={candidato} clubId={clubId} categoria={categoria} cierres={cierresDe(candidato.id)}
           evaluaciones={evaluaciones.filter((e) => e.candidato_id === candidato.id)} etapaDeSesion={etapaDeSesion}
-          resumen={resumen} vigente={vigente} recargar={recargar} puedeCargar={puedeCargar} esSuper={esSuper} avisar={avisar} />
+          resumen={resumen} vigente={vigente} entregas={entregas === null ? null : entregas.filter((e) => e.candidato_id === candidato.id)} staff={staff} recargar={recargar} puedeCargar={puedeCargar} esSuper={esSuper} avisar={avisar} />
       )}
     </div>
   );
 }
 
-function PanelCandidato({ candidato, clubId, categoria, cierres, evaluaciones, etapaDeSesion, resumen, vigente, recargar, puedeCargar, esSuper, avisar }) {
+function PanelCandidato({ candidato, clubId, categoria, cierres, evaluaciones, etapaDeSesion, resumen, vigente, entregas, staff, recargar, puedeCargar, esSuper, avisar }) {
   const c1 = cierres.find((c) => c.etapa === 1) || null;
   const habilitada2 = c1?.estado === 'decidido' && c1.decision !== 'no_incorporar';
   const [etapa, setEtapa] = useState(habilitada2 ? 2 : 1);
   const cierre = cierres.find((c) => c.etapa === etapa) || null;
   const carga = resumen.get(`${candidato.id}|${etapa}`) || { evaluadores: 0, puntajes: 0 };
   const [ocupado, setOcupado] = useState(false);
-  const minimo = minimoEvaluadores(vigente.config);
+  const minimo = minimoEvaluadores(vigente.config, candidato.puesto_principal);
+  const asignado = asignadoDelPuesto(vigente.config, candidato.puesto_principal);
+  const nombreDe = (id) => staff.find((p) => p.id === id)?.nombre_completo || 'Sin nombre';
 
-  // Etapa 1: lo cargado en sesiones de etapa 1. Etapa 2: todo.
-  const evs = evaluaciones.filter((e) => etapa === 2 || etapaDeSesion.get(e.sesion_id) === 1);
+  /* Cuentan las evaluaciones GUARDADAS (con la migración de entregas). Sin ella, como antes:
+     cualquiera que haya cargado puntajes. */
+  const conEntregas = entregas !== null;
+  const guardadas = conEntregas ? entregas.filter((e) => e.etapa === etapa) : [];
+  const listos = conEntregas ? guardadas.length : carga.evaluadores;
+  const enCurso = conEntregas ? Math.max(0, carga.evaluadores - guardadas.length) : 0;
+  const faltaAsignado = conEntregas && asignado && !guardadas.some((e) => e.evaluador_id === asignado);
+  const puedeCerrar = listos >= minimo && !faltaAsignado;
+  const entrego = (e) => !conEntregas || entregas.some((x) => x.etapa === etapaDeSesion.get(e.sesion_id) && x.evaluador_id === e.evaluador_id);
+
+  // Etapa 1: lo cargado en sesiones de etapa 1. Etapa 2: todo. Sólo de evaluaciones guardadas.
+  const evs = evaluaciones.filter((e) => (etapa === 2 || etapaDeSesion.get(e.sesion_id) === 1) && entrego(e));
   const enVivo = useMemo(() => evaluarCandidato({ evaluaciones: evs, puesto: candidato.puesto_principal, config: vigente.config, etapa }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [evaluaciones, etapa, vigente, candidato.puesto_principal]);
+    [evaluaciones, entregas, etapa, vigente, candidato.puesto_principal]);
 
   const accion = async (fn, ok) => {
     setOcupado(true);
@@ -90,12 +103,17 @@ function PanelCandidato({ candidato, clubId, categoria, cierres, evaluaciones, e
         <div className="bento-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={rotulo}>CARGA ABIERTA · ETAPA {etapa}</div>
           <div style={{ fontSize: 14 }}>
-            Cargaron <b style={{ fontFamily: MONO, color: carga.evaluadores >= minimo ? ACENTO : '#fbbf24' }}>{carga.evaluadores}</b> {carga.evaluadores === 1 ? 'evaluador' : 'evaluadores'}
-            ({carga.puntajes} puntajes). {minimo === 1 ? 'Alcanza con uno (así está en el configurador).' : `Hacen falta al menos ${minimo}, cada uno por su lado.`}
+            {conEntregas ? 'Guardaron su evaluación' : 'Cargaron'} <b style={{ fontFamily: MONO, color: listos >= minimo ? ACENTO : '#fbbf24' }}>{listos}</b> {listos === 1 ? 'evaluador' : 'evaluadores'}
+            {conEntregas && guardadas.length > 0 && <> ({guardadas.map((e) => nombreDe(e.evaluador_id)).join(', ')})</>}
+            {enCurso > 0 && <> · <span style={{ color: '#fbbf24' }}>{enCurso} todavía sin guardar</span></>}.{' '}
+            {minimo === 1 ? 'Alcanza con uno (así está en el configurador).' : `Hacen falta al menos ${minimo}, cada uno por su lado.`}
           </div>
+          {asignado && <div style={{ fontSize: 13, color: faltaAsignado ? '#fbbf24' : ACENTO }}>
+            Los {candidato.puesto_principal.toLowerCase()}s los evalúa {nombreDe(asignado)}{faltaAsignado ? ': falta que guarde su evaluación.' : ' ✓'}
+          </div>}
           <div style={dim}>Mientras la carga está abierta nadie ve los puntajes del otro. Al cerrarla, todo el cuerpo técnico ve el resultado y no se cargan más puntajes en esta etapa.</div>
           {puedeCargar && (
-            <button style={{ ...boton, alignSelf: 'flex-start', opacity: carga.evaluadores >= minimo ? 1 : 0.5 }} disabled={ocupado || carga.evaluadores < minimo}
+            <button style={{ ...boton, alignSelf: 'flex-start', opacity: puedeCerrar ? 1 : 0.5 }} disabled={ocupado || !puedeCerrar}
               onClick={() => window.confirm('¿Cerrar la carga? Ya no se van a poder cargar ni corregir puntajes de esta etapa.')
                 && accion(() => cerrarCarga({ clubId, categoria, candidatoId: candidato.id, etapa }), 'Carga cerrada. Ya se ve el resultado.')}>
               CERRAR CARGA Y VER RESULTADO
@@ -106,10 +124,10 @@ function PanelCandidato({ candidato, clubId, categoria, cierres, evaluaciones, e
 
       {cierre?.estado === 'revision' && (
         <>
-          <Ficha candidato={candidato} resultado={enVivo} etapa={etapa} nota={`Calculado con la configuración vigente (v${vigente.version}, ${vigente.fuente === 'default' ? 'defaults' : vigente.fuente === 'club' ? 'del club' : 'de la categoría'}).`} />
-          {puedeCargar && <Decision resultado={enVivo} ocupado={ocupado}
-            confirmar={({ decision, comentario }) => accion(() => decidir(cierre.id, {
-              resultado: enVivo, recomendacion: enVivo.recomendacion, decision, comentario,
+          <Ficha candidato={candidato} resultado={enVivo} etapa={etapa} ligas={ligasSugeridas(vigente.config, enVivo)} ligasTitulo="LA APP SUGIERE PARA" nota={`Calculado con la configuración vigente (v${vigente.version}, ${vigente.fuente === 'default' ? 'defaults' : vigente.fuente === 'club' ? 'del club' : 'de la categoría'}).`} />
+          {puedeCargar && <Decision resultado={enVivo} ocupado={ocupado} ligas={vigente.config.ligas || []} sugeridas={ligasSugeridas(vigente.config, enVivo)}
+            confirmar={({ decision, comentario, ligas }) => accion(() => decidir(cierre.id, {
+              resultado: enVivo, recomendacion: enVivo.recomendacion, decision, comentario, ligas,
               config: { ...vigente.config, fuente: vigente.fuente }, configVersion: vigente.version, rubricaVersion: VERSION_RUBRICA,
             }), 'Decisión guardada. Queda congelada con esta configuración.')} />}
           {esSuper && <button style={{ ...botonSec, alignSelf: 'flex-start' }} disabled={ocupado} onClick={() => window.confirm('¿Reabrir la carga? Se borra el cierre de esta etapa.') && accion(() => reabrirCierre(cierre.id), 'Carga reabierta.')}>REABRIR CARGA (SUPERUSUARIO)</button>}
@@ -126,15 +144,17 @@ function PanelCandidato({ candidato, clubId, categoria, cierres, evaluaciones, e
   );
 }
 
-function Decision({ resultado, confirmar, ocupado }) {
+function Decision({ resultado, confirmar, ocupado, ligas = [], sugeridas = [] }) {
   const [decision, setDecision] = useState(resultado.recomendacion || 'observar');
   const [comentario, setComentario] = useState('');
+  const [tildadas, setTildadas] = useState(() => new Set(sugeridas));
+  const tildar = (n) => setTildadas((s) => { const x = new Set(s); if (x.has(n)) x.delete(n); else x.add(n); return x; });
   const cambia = resultado.recomendacion && decision !== resultado.recomendacion;
   const falta = cambia && !comentario.trim();
   return (
     <div className="bento-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={rotulo}>DECISIÓN DEL DT</div>
-      {!resultado.suficiente && <div style={{ color: '#fbbf24', fontSize: 13 }}>Ojo: hay menos de {resultado.minimoEvaluadores} evaluadores con puntajes.</div>}
+      {!resultado.suficiente && <div style={{ color: '#fbbf24', fontSize: 13 }}>Ojo: hay menos de {resultado.minimoEvaluadores} evaluaciones guardadas.</div>}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {Object.values(RECOMENDACIONES).map((r) => (
           <button key={r.id} onClick={() => setDecision(r.id)} aria-pressed={decision === r.id}
@@ -143,11 +163,25 @@ function Decision({ resultado, confirmar, ocupado }) {
           </button>
         ))}
       </div>
+      {ligas.length > 0 && decision !== 'no_incorporar' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={rotulo}>¿PARA QUÉ LIGA NOS SIRVE?</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {ligas.map((l) => (
+              <button key={l.nombre} onClick={() => tildar(l.nombre)} aria-pressed={tildadas.has(l.nombre)} style={chip(tildadas.has(l.nombre))}
+                title={`La app la sugiere desde ${Number(l.minimo).toFixed(1)} de puntaje final`}>
+                {tildadas.has(l.nombre) ? '✓ ' : ''}{l.nombre}{sugeridas.includes(l.nombre) ? ' · sugerida' : ''}
+              </button>
+            ))}
+          </div>
+          <div style={dim}>Sugeridas: las que alcanza con su puntaje final ({resultado.puntaje != null ? Number(resultado.puntaje).toFixed(2) : '—'}) según el mínimo de cada liga en el configurador. Tildá o destildá lo que creas.</div>
+        </div>
+      )}
       <label style={campo}>{cambia ? 'POR QUÉ CAMBIÁS LA RECOMENDACIÓN (OBLIGATORIO)' : 'COMENTARIO DEL DT (OPCIONAL)'}
         <textarea style={{ ...input, minHeight: 70, borderColor: falta ? '#ef4444' : 'var(--border)' }} value={comentario} onChange={(e) => setComentario(e.target.value)} />
       </label>
       <button style={{ ...boton, alignSelf: 'flex-start', opacity: falta || !resultado.recomendacion ? 0.5 : 1 }} disabled={ocupado || falta || !resultado.recomendacion}
-        onClick={() => confirmar({ decision, comentario: comentario.trim() })}>CONFIRMAR DECISIÓN</button>
+        onClick={() => confirmar({ decision, comentario: comentario.trim(), ligas: decision === 'no_incorporar' ? [] : ligas.map((l) => l.nombre).filter((n) => tildadas.has(n)) })}>CONFIRMAR DECISIÓN</button>
       <div style={dim}>Al confirmar, la decisión se guarda con la configuración usada y no cambia aunque después se modifique el configurador.</div>
     </div>
   );
@@ -164,7 +198,7 @@ function Decidido({ candidato, cierre, etapa, puedeCargar, esSuper, ocupado, inc
   return (
     <>
       <div ref={ref}>
-        <Ficha candidato={candidato} resultado={r} etapa={etapa} decision={cierre} nota={`Congelado con la configuración v${cierre.config_version ?? 0} (rúbrica v${cierre.rubrica_version ?? 1}) · ${cierre.decidido_at ? new Date(cierre.decidido_at).toLocaleDateString('es-AR') : ''}`} />
+        <Ficha candidato={candidato} resultado={r} etapa={etapa} decision={cierre} ligas={cierre.ligas || []} ligasTitulo="NOS SIRVE PARA" nota={`Congelado con la configuración v${cierre.config_version ?? 0} (rúbrica v${cierre.rubrica_version ?? 1}) · ${cierre.decidido_at ? new Date(cierre.decidido_at).toLocaleDateString('es-AR') : ''}`} />
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button style={botonSec} onClick={exportar} disabled={exportando}>{exportando ? 'EXPORTANDO…' : 'EXPORTAR PNG'}</button>
@@ -179,7 +213,7 @@ function Decidido({ candidato, cierre, etapa, puedeCargar, esSuper, ocupado, inc
 }
 
 /* La ficha de cierre (lo que se exporta a PNG). */
-function Ficha({ candidato, resultado, etapa, decision = null, nota }) {
+function Ficha({ candidato, resultado, etapa, decision = null, nota, ligas = [], ligasTitulo = '' }) {
   const rec = RECOMENDACIONES[resultado.recomendacion] || null;
   const dec = decision ? RECOMENDACIONES[decision.decision] : null;
   const edad = edadRelativa(candidato.fecha_nacimiento);
@@ -230,6 +264,12 @@ function Ficha({ candidato, resultado, etapa, decision = null, nota }) {
         <div><div style={rotulo}>FORTALEZAS</div>{(resultado.fortalezas || []).map((f) => <div key={f.id} style={{ fontSize: 13, color: ACENTO }}>▲ {f.nombre} · {f.puntaje}</div>)}</div>
         <div><div style={rotulo}>A MEJORAR</div>{(resultado.aMejorar || []).map((f) => <div key={f.id} style={{ fontSize: 13, color: '#f97316' }}>▼ {f.nombre} · {f.puntaje}</div>)}</div>
       </div>
+      {ligas.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={rotulo}>{ligasTitulo}</span>
+          {ligas.map((l) => <span key={l} style={etiqueta(ACENTO)}>{l}</span>)}
+        </div>
+      )}
       {decision?.comentario_dt && <div style={{ fontSize: 13 }}><span style={rotulo}>COMENTARIO DEL DT · </span>{decision.comentario_dt}</div>}
       <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{nota} · {resultado.evaluadores ?? 0} evaluadores</div>
     </div>

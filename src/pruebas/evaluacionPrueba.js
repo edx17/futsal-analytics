@@ -1,4 +1,5 @@
 import { bloquesParaCierre, bloquePorId, TRANSVERSALES } from './rubrica';
+import { minimoDelPuesto } from './configDefault';
 
 /* PRUEBAS · EL MOTOR DEL CIERRE (al estilo de analytics/rating.js)
  *
@@ -27,7 +28,9 @@ export const RECOMENDACIONES = {
 
 /** El valor de siempre (si la configuración no lo trae). */
 export const MINIMO_EVALUADORES = 2;
-export const minimoEvaluadores = (config) => {
+/** Con puesto: lo que diga evaluadores_puesto para ese puesto (ver configDefault.minimoDelPuesto). */
+export const minimoEvaluadores = (config, puesto = null) => {
+  if (puesto) return minimoDelPuesto(config, puesto);
   const n = Number(config?.umbrales?.evaluadores_min);
   return Number.isInteger(n) && n >= 1 ? n : MINIMO_EVALUADORES;
 };
@@ -130,8 +133,8 @@ export function evaluarCandidato({ evaluaciones = [], puesto, config, etapa = 1 
   return {
     puesto, etapa,
     evaluadores: evaluadores.length,
-    minimoEvaluadores: minimoEvaluadores(config),
-    suficiente: evaluadores.length >= minimoEvaluadores(config),
+    minimoEvaluadores: minimoEvaluadores(config, puesto),
+    suficiente: evaluadores.length >= minimoEvaluadores(config, puesto),
     bloques,
     transversales: bloques.filter((b) => b.transversal),
     divergencias: bloques.filter((b) => b.divergencia).map((b) => ({ id: b.id, nombre: b.nombre, diferencia: b.diferencia })),
