@@ -1,0 +1,50 @@
+/* LIBRO TÁCTICO → PDF. En pantalla no se ve; al imprimir se oculta todo lo
+   demás y queda el playbook en blanco, una jugada por hoja.
+   Las reglas de impresión sólo valen con body.imprimiendo-playbook (se pone
+   justo antes de imprimir y se saca después): si no, una vez cargada esta hoja
+   ocultaría también el PDF de los Reportes. */
+.lt-impresion { display: none; }
+
+@media print {
+  body.imprimiendo-playbook, body.imprimiendo-playbook #root, html:has(body.imprimiendo-playbook) { height: auto !important; min-height: 0 !important; overflow: visible !important; background: #fff !important; }
+  body.imprimiendo-playbook > *:not(.lt-impresion) { display: none !important; }
+  body.imprimiendo-playbook .lt-impresion {
+    display: block !important; position: static; width: 100%;
+    background: #fff; color: #14161a; font-family: 'Outfit', system-ui, sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  @page { size: A4; margin: 12mm 12mm; }
+
+  .lt-portada { min-height: 260mm; display: flex; flex-direction: column; justify-content: center; break-after: page; page-break-after: always; }
+  .lt-escudo { width: 28mm; height: 28mm; object-fit: contain; margin-bottom: 6mm; }
+  .lt-club { font-size: 0.85rem; letter-spacing: 0.18em; text-transform: uppercase; color: #5b6170; font-weight: 700; }
+  .lt-titulo { font-size: 2.6rem; line-height: 1.05; margin: 4mm 0 2mm; font-weight: 900; text-transform: uppercase; color: #1e3a8a; }
+  .lt-subtitulo { margin: 0 0 10mm; color: #3c4250; font-size: 1rem; }
+  .lt-indice { margin: 0; padding-left: 5mm; columns: 2; column-gap: 10mm; font-size: 0.82rem; }
+  .lt-indice > li { break-inside: avoid; margin-bottom: 4mm; }
+  .lt-indice ul { margin: 1mm 0 0; padding-left: 4mm; color: #3c4250; }
+  .lt-fecha { margin-top: 10mm; font-size: 0.75rem; color: #5b6170; }
+
+  .lt-jugada { break-before: page; page-break-before: always; }
+  .lt-portada + .lt-jugada { break-before: auto; page-break-before: auto; }
+  .lt-jugada:first-child { break-before: auto; page-break-before: auto; }
+  .lt-cabeza { display: flex; justify-content: space-between; gap: 8mm; align-items: flex-start;
+    border-bottom: 2px solid #1e3a8a; padding-bottom: 3mm; margin-bottom: 4mm; }
+  .lt-cabeza h2 { margin: 2mm 0 1mm; font-size: 1.45rem; font-weight: 900; text-transform: uppercase; color: #14161a; }
+  .lt-chip { display: inline-block; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+    background: #1e3a8a; color: #fff; padding: 1mm 2.5mm; border-radius: 1.5mm; }
+  .lt-objetivo { margin: 0; color: #1e40af; font-weight: 700; font-size: 0.9rem; }
+  .lt-marca { font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: #5b6170; white-space: nowrap; }
+
+  .lt-pasos { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .lt-pasos-uno { grid-template-columns: 1fr; }
+  .lt-paso { margin: 0; break-inside: avoid; page-break-inside: avoid; }
+  .lt-paso img { width: 100%; display: block; border-radius: 2mm; border: 1px solid #d5d8de; }
+  .lt-paso figcaption { font-size: 0.72rem; color: #3c4250; margin-top: 1mm; }
+  .lt-leyenda { font-size: 0.68rem; color: #5b6170; margin: 2mm 0 0; }
+  .lt-vacio { color: #5b6170; font-style: italic; }
+
+  .lt-jugada h3 { font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: #1e3a8a; margin: 5mm 0 1.5mm; break-after: avoid; }
+  .lt-texto { white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5; color: #14161a; }
+  .lt-video, .lt-pie-jugada { font-size: 0.72rem; color: #5b6170; margin: 2mm 0 0; word-break: break-all; }
+}

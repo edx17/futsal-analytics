@@ -4,12 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { leerFase, subfasesDe } from '../utils/taxonomiaTareas';
-import { BASE_W, getBaseH, renderBoard, getDPR, convertOldEl, convertOldLine } from '../tactica/pizarra';
+import { BASE_W, getBaseH, renderBoard, getDPR } from '../tactica/pizarra';
+import { normalizarJugada, armarPlaybookJugada } from '../tactica/playbook';
 import { puntoEnTrayecto } from '../utils/trayectoria';
 import { volverDesde, esModoKiosco } from '../utils/kiosco';
 import { mismaCategoria } from '../utils/categorias';
 import { Icono } from '../iconos';
 import PortadaVideo from '../components/PortadaVideo';
+import PlaybookPDF from '../components/libroTactico/PlaybookPDF';
 
 // =======================================================
 // REPRODUCTOR DE JUGADAS
@@ -27,28 +29,8 @@ const ReproductorLoop = ({ editorData }) => {
   const vivoRef = useRef(true);
   const [tam, setTam] = useState({ w: 0, h: 0 });
 
-  /* Normaliza los dos formatos a uno solo, una vez. */
-  const { frames, pitchCfg } = useMemo(() => {
-    const crudos = editorData?.frames?.length
-      ? editorData.frames
-      : [{ elements: editorData?.elements, elementos: editorData?.elementos,
-           arrows: editorData?.arrows, lineas: editorData?.lineas }];
-    const normalizados = crudos.map((f, i) => ({
-      id: f.id || `f${i}`,
-      elements: f.elements || (f.elementos || []).map(convertOldEl),
-      arrows:   f.arrows   || (f.lineas   || []).map(convertOldLine),
-      duracion: f.duracion,
-    }));
-    const cancha = editorData?.cancha || {};
-    return {
-      frames: normalizados,
-      pitchCfg: {
-        variant: cancha.tamaño || cancha.variant || '40x20',
-        material: cancha.material || 'azul',
-        showZones: true, showGrid: false, goals: 'both', lineColor: '#ffffff',
-      },
-    };
-  }, [editorData]);
+  /* Normaliza los dos formatos a uno solo, una vez (src/tactica/playbook.js). */
+  const { frames, pitchCfg } = useMemo(() => normalizarJugada(editorData), [editorData]);
 
   const baseH = getBaseH(pitchCfg.variant);
 
@@ -164,6 +146,8 @@ export default function LibroTactico() {
   const [cargando, setCargando] = useState(true);
   const [tabActivo, setTabActivo] = useState(SITUACIONES[0]);
   const [jugadaSeleccionada, setJugadaSeleccionada] = useState(null);
+  const [impresion, setImpresion] = useState(null);   // { titulo, subtitulo, jugadas } mientras se imprime
+  const [preparando, setPreparando] = useState(false);
   
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -218,6 +202,44 @@ export default function LibroTactico() {
 
   const jugadasVisibles = tacticas.filter(t => situacionDe(t) === tabActivo);
 
+  /* ── PDF: el playbook en papel ──
+     Arma las imágenes de cada paso, monta el documento, espera a que carguen
+     las imágenes y abre la ventana de imprimir (ahí se elige "Guardar como PDF"). */
+  const club = {
+    nombre: perfil?.clubes?.nombre || localStorage.getItem('mi_club') || '',
+    escudo: perfil?.clubes?.escudo_url || localStorage.getItem('escudo_url') || null,
+  };
+  const imprimir = (lista, titulo, subtitulo) => {
+    if (!lista.length || preparando) return;
+    setPreparando(true);
+    setTimeout(() => {  // deja pintar el "PREPARANDO…" antes de dibujar los pasos
+      const jugadas = [];
+      lista.forEach((t) => {
+        try { jugadas.push(armarPlaybookJugada(t)); }
+        catch (e) { console.error('No se pudo dibujar la jugada', t.titulo, e); jugadas.push({ tarea: t, pasos: [], imagenSuelta: t.url_grafico || null }); }
+      });
+      setImpresion({ titulo, subtitulo, jugadas });
+    }, 30);
+  };
+  useEffect(() => {
+    if (!impresion) return undefined;
+    let cancelado = false;
+    const terminar = () => {
+      document.body.classList.remove('imprimiendo-playbook');
+      window.removeEventListener('afterprint', terminar);
+      setImpresion(null);
+      setPreparando(false);
+    };
+    const imgs = [...document.querySelectorAll('.lt-impresion img')];
+    Promise.all(imgs.map((im) => (im.decode ? im.decode().catch(() => {}) : Promise.resolve()))).then(() => {
+      if (cancelado) return;
+      document.body.classList.add('imprimiendo-playbook');
+      window.addEventListener('afterprint', terminar);
+      window.print();
+    });
+    return () => { cancelado = true; window.removeEventListener('afterprint', terminar); document.body.classList.remove('imprimiendo-playbook'); };
+  }, [impresion]);
+
   return (
     <div className="fade-in" style={{ padding: '20px', paddingBottom: '80px', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box' }}>
       
@@ -251,11 +273,25 @@ export default function LibroTactico() {
             <h1 className="stat-label" style={{ color: '#3b82f6', fontSize: '1.5rem', margin: 0 }}>LIBRO TÁCTICO</h1>
             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Playbook oficial del equipo: ABP, presiones y situaciones especiales.</p>
           </div>
-          {esStaff && (
-            <button onClick={() => navigate('/banco-tareas')} className="btn-action" style={{ background: '#3b82f6', color: '#ffffff', fontSize: '0.85rem' }}>
-              + AGREGAR DESDE BANCO
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={() => imprimir(jugadasVisibles, tabActivo, `Libro Táctico · ${jugadasVisibles.length} ${jugadasVisibles.length === 1 ? 'jugada' : 'jugadas'}`)}
+                    disabled={!jugadasVisibles.length || preparando} className="btn-action"
+                    title="Las jugadas de esta situación, en PDF"
+                    style={{ background: 'transparent', color: '#93c5fd', border: '1px solid #3b82f6', fontSize: '0.8rem', opacity: jugadasVisibles.length ? 1 : 0.5 }}>
+              <Icono nombre="descargar" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />{preparando ? 'PREPARANDO…' : 'PDF · ESTA SITUACIÓN'}
             </button>
-          )}
+            <button onClick={() => imprimir(tacticas, 'Libro Táctico', `Playbook oficial · ${tacticas.length} jugadas`)}
+                    disabled={!tacticas.length || preparando} className="btn-action"
+                    title="Todas las jugadas del libro, con portada e índice"
+                    style={{ background: 'transparent', color: '#93c5fd', border: '1px solid #3b82f6', fontSize: '0.8rem', opacity: tacticas.length ? 1 : 0.5 }}>
+              <Icono nombre="descargar" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />{preparando ? 'PREPARANDO…' : 'PDF · TODO EL LIBRO'}
+            </button>
+            {esStaff && (
+              <button onClick={() => navigate('/banco-tareas')} className="btn-action" style={{ background: '#3b82f6', color: '#ffffff', fontSize: '0.85rem' }}>
+                + AGREGAR DESDE BANCO
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -381,6 +417,12 @@ export default function LibroTactico() {
                   </a>
                 )}
 
+                <button onClick={() => imprimir([jugadaSeleccionada], jugadaSeleccionada.titulo, situacionDe(jugadaSeleccionada) || '')}
+                        disabled={preparando}
+                        style={{ background: 'transparent', border: '1px solid #3b82f6', color: '#93c5fd', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  <Icono nombre="descargar" size="1.1em" relleno="propio" style={{ marginRight: 6 }} />{preparando ? 'PREPARANDO…' : 'DESCARGAR PDF'}
+                </button>
+
                 {esStaff && (
                   <div style={{ marginTop: 'auto', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <button onClick={() => eliminarJugada(jugadaSeleccionada.id)} style={{ flex: '1 1 100px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>
@@ -397,6 +439,10 @@ export default function LibroTactico() {
         </div>
       )}
 
+      {impresion && (
+        <PlaybookPDF club={club} titulo={impresion.titulo} subtitulo={impresion.subtitulo}
+                     jugadas={impresion.jugadas} situacionDe={situacionDe} />
+      )}
     </div>
   );
 }
