@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
 import { useCategorias } from '../utils/useCategorias';
 import { resolverConfig } from '../pruebas/configDefault';
-import { listarCandidatos, listarSesiones, listarEvaluaciones, listarCierres, leerConfigs, resumenCarga } from '../pruebas/datos';
+import { listarCandidatos, listarSesiones, listarEvaluaciones, listarCierres, leerConfigs, resumenCarga, listarEntregas, listarStaffEvaluador } from '../pruebas/datos';
 import CandidatosPruebas from '../components/pruebas/CandidatosPruebas';
 import CargaPrueba from '../components/pruebas/CargaPrueba';
 import CierrePrueba from '../components/pruebas/CierrePrueba';
@@ -60,15 +60,16 @@ export default function Pruebas() {
   const recargar = useCallback(async () => {
     if (!clubId || !categoria) return;
     try {
-      const [candidatos, sesiones, evaluaciones, cierres, configs, resumen] = await Promise.all([
+      const [candidatos, sesiones, evaluaciones, cierres, configs, resumen, entregas, staff] = await Promise.all([
         listarCandidatos(clubId, categoria), listarSesiones(clubId, categoria), listarEvaluaciones(clubId, categoria),
         listarCierres(clubId, categoria), leerConfigs(clubId), resumenCarga(clubId, categoria),
+        listarEntregas(clubId, categoria), listarStaffEvaluador(clubId),
       ]);
-      setDatos({ candidatos, sesiones, evaluaciones, cierres, configs, resumen, categoria });
+      setDatos({ candidatos, sesiones, evaluaciones, cierres, configs, resumen, entregas, staff, categoria });
       setError(null);
     } catch (err) {
       setError(err?.message || 'No se pudieron leer las pruebas.');
-      setDatos((d) => d || { candidatos: [], sesiones: [], evaluaciones: [], cierres: [], configs: [], resumen: new Map(), categoria });
+      setDatos((d) => d || { candidatos: [], sesiones: [], evaluaciones: [], cierres: [], configs: [], resumen: new Map(), entregas: null, staff: [], categoria });
     }
   }, [clubId, categoria]);
   useEffect(() => {
@@ -116,17 +117,19 @@ export default function Pruebas() {
           puedeCargar={puedeCargar} puedeBorrar={puedeBorrar} esMovil={esMovil} avisar={avisar} />
       )}
       {listo && pestana === 'evaluar' && (
-        <CargaPrueba key={categoria} clubId={clubId} categoria={categoria} yo={user?.id} sesiones={datos.sesiones} candidatos={datos.candidatos}
-          evaluaciones={datos.evaluaciones} cierres={datos.cierres} recargar={recargar} puedeCargar={puedeCargar} avisar={avisar} />
+        <CargaPrueba key={categoria} clubId={clubId} categoria={categoria} yo={user?.id} esSuper={esSuper} sesiones={datos.sesiones} candidatos={datos.candidatos}
+          evaluaciones={datos.evaluaciones} cierres={datos.cierres} entregas={datos.entregas} config={vigente.config} staff={datos.staff}
+          esMovil={esMovil} recargar={recargar} puedeCargar={puedeCargar} avisar={avisar} />
       )}
       {listo && pestana === 'cierre' && (
         <CierrePrueba key={categoria} clubId={clubId} categoria={categoria} candidatos={datos.candidatos} sesiones={datos.sesiones}
           evaluaciones={datos.evaluaciones} cierres={datos.cierres} resumen={datos.resumen} vigente={vigente}
+          entregas={datos.entregas} staff={datos.staff}
           recargar={recargar} puedeCargar={puedeCargar} esSuper={esSuper} avisar={avisar} />
       )}
       {listo && pestana === 'config' && (
         <ConfiguradorPruebas key={categoria} clubId={clubId} categoria={categoria} filas={datos.configs} candidatos={datos.candidatos}
-          evaluaciones={datos.evaluaciones} sesiones={datos.sesiones} cierres={datos.cierres}
+          evaluaciones={datos.evaluaciones} sesiones={datos.sesiones} cierres={datos.cierres} staff={datos.staff}
           puedeEditar={puedeCargar} recargar={recargar} avisar={avisar} esMovil={esMovil} />
       )}
       {verManual && <VisorManual seccion="pruebas" titulo="Manual: Pruebas de jugadores" onCerrar={() => setVerManual(false)} />}

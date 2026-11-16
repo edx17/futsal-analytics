@@ -9,6 +9,12 @@ import { PUESTOS, bloquesDePuesto } from './rubrica';
  * Resolución: la de la categoría > la del club (categoria null) > estos.
  * Los transversales (inteligencia_juego, actitud) entran en el puntaje final
  * con su peso, igual que los bloques (por defecto 1.0).
+ *
+ * ligas: las ligas del club con el puntaje mínimo para sugerirlas en el cierre
+ *        ([{ nombre: 'AFA', minimo: 3.8 }]). Si la categoría tiene su lista, manda la suya.
+ * evaluadores_puesto: por puesto, { min, asignado }. `min` pisa a
+ *        umbrales.evaluadores_min para ese puesto; `asignado` (id de perfil) es el
+ *        único que evalúa ese puesto (con asignado y sin min, alcanza con 1).
  */
 
 export const RANGO_PESO = { min: 0, max: 2, paso: 0.1 };
@@ -31,6 +37,8 @@ export const CONFIG_DEFAULT = Object.freeze({
   // evaluadores_min: cuántos evaluadores hacen falta para cerrar la carga (1 = alcanza con el DT).
   umbrales: { incorporar: 3.8, seguir_observando: 3.0, bloque_clave_max: 2, divergencia_min: 2, evaluadores_min: 2 },
   bloques_clave: { Cierre: 'transiciones', Ala: 'con_pelota', Pivot: 'finalizacion', Arquero: 'arq_paradas' },
+  ligas: [],
+  evaluadores_puesto: { Cierre: { min: null, asignado: null }, Ala: { min: null, asignado: null }, Pivot: { min: null, asignado: null }, Arquero: { min: null, asignado: null } },
 });
 
 const clon = (x) => JSON.parse(JSON.stringify(x));
@@ -54,6 +62,16 @@ function sobre(base, fila) {
   Object.keys(r.umbrales).forEach((k) => {
     const v = Number(fila.umbrales?.[k]);
     if (Number.isFinite(v)) r.umbrales[k] = v;
+  });
+  if (Array.isArray(fila.ligas) && fila.ligas.length) {
+    r.ligas = fila.ligas.filter((l) => l && String(l.nombre || '').trim())
+      .map((l) => ({ nombre: String(l.nombre).trim(), minimo: Number(l.minimo) }));
+  }
+  PUESTOS.forEach((p) => {
+    const e = fila.evaluadores_puesto?.[p];
+    if (!e) return;
+    const min = e.min === '' || e.min == null ? null : Number(e.min);
+    r.evaluadores_puesto[p] = { min: Number.isFinite(min) ? min : null, asignado: e.asignado || null };
   });
   return r;
 }
@@ -89,6 +107,19 @@ export function erroresDeConfig(config) {
   if (!e['umbrales.incorporar'] && !e['umbrales.seguir_observando'] && Number(u.incorporar) <= Number(u.seguir_observando)) {
     e['umbrales.incorporar'] = 'Tiene que ser mayor que el umbral de seguir observando.';
   }
+  const vistas = new Set();
+  (config?.ligas || []).forEach((l, i) => {
+    const nombre = String(l?.nombre || '').trim();
+    if (!nombre) e[`liga.${i}`] = 'Poné el nombre de la liga.';
+    else if (vistas.has(nombre.toLowerCase())) e[`liga.${i}`] = 'Esa liga ya está.';
+    vistas.add(nombre.toLowerCase());
+    const m = Number(l?.minimo);
+    if (!e[`liga.${i}`] && (!Number.isFinite(m) || m < 1 || m > 5)) e[`liga.${i}`] = 'El mínimo va de 1 a 5.';
+  });
+  PUESTOS.forEach((p) => {
+    const min = config?.evaluadores_puesto?.[p]?.min;
+    if (min != null && min !== '' && (!Number.isInteger(Number(min)) || Number(min) < 1 || Number(min) > 5)) e[`evaluadores.${p}`] = 'Entre 1 y 5 (vacío = el general).';
+  });
   return e;
 }
 
@@ -100,12 +131,17 @@ export function distintosDelDefault(config) {
     if (config.bloques_clave[p] !== CONFIG_DEFAULT.bloques_clave[p]) r.add(`clave.${p}`);
   });
   Object.entries(CONFIG_DEFAULT.umbrales).forEach(([k, v]) => { if (Number(config.umbrales[k]) !== v) r.add(`umbrales.${k}`); });
+  PUESTOS.forEach((p) => {
+    const e = config.evaluadores_puesto?.[p] || {};
+    if (e.min != null || e.asignado) r.add(`evaluadores.${p}`);
+  });
   return r;
 }
 
 /** Restaurar defaults: todo, o sólo un puesto (sus pesos y su bloque clave). */
 export function restaurar(config, puesto = null) {
-  if (!puesto) return clon(CONFIG_DEFAULT);
+  // Las ligas y los evaluadores por puesto son datos del club, no pesos: no se restauran.
+  if (!puesto) return { ...clon(CONFIG_DEFAULT), ligas: clon(config.ligas || []), evaluadores_puesto: clon(config.evaluadores_puesto || CONFIG_DEFAULT.evaluadores_puesto) };
   const r = clon(config);
   r.ponderaciones[puesto] = clon(CONFIG_DEFAULT.ponderaciones[puesto]);
   r.bloques_clave[puesto] = CONFIG_DEFAULT.bloques_clave[puesto];
@@ -114,3 +150,23 @@ export function restaurar(config, puesto = null) {
 
 /** Redondea a un decimal (los sliders van de a 0.1). */
 export const aPaso = (v) => Math.round(Number(v) * 10) / 10;
+
+/** Cuántos evaluadores hacen falta para cerrar un candidato de ese puesto. */
+export function minimoDelPuesto(config, puesto) {
+  const e = config?.evaluadores_puesto?.[puesto] || {};
+  const min = Number(e.min);
+  if (e.min != null && e.min !== '' && Number.isInteger(min) && min >= 1) return min;
+  if (e.asignado) return 1;
+  const n = Number(config?.umbrales?.evaluadores_min);
+  return Number.isInteger(n) && n >= 1 ? n : 2;
+}
+
+/** Quién tiene asignado el puesto (id de perfil) o null si evalúa cualquiera. */
+export const asignadoDelPuesto = (config, puesto) => config?.evaluadores_puesto?.[puesto]?.asignado || null;
+
+/** Las ligas que la app sugiere para un resultado: las que alcanza con el puntaje final
+ *  (nunca si la recomendación es "No incorporar"). */
+export function ligasSugeridas(config, resultado) {
+  if (!resultado || resultado.puntaje == null || resultado.recomendacion === 'no_incorporar') return [];
+  return (config?.ligas || []).filter((l) => Number(resultado.puntaje) >= Number(l.minimo)).map((l) => l.nombre);
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BLOQUES, BLOQUES_ARQUERO, TRANSVERSALES, bloquesDeEtapa, bloquesParaCierre, bloquesDePuesto, transversalesDe, VERSION_RUBRICA, PUESTOS } from '../rubrica';
 import { CONFIG_DEFAULT, resolverConfig, erroresDeConfig, distintosDelDefault, restaurar, aPaso } from '../configDefault';
+import * as configMod from '../configDefault';
 import { edadRelativa } from '../edadRelativa';
 import { evaluarCandidato, semaforo, simular, ejesRadar } from '../evaluacionPrueba';
 
@@ -154,5 +155,48 @@ describe('pruebas: el motor', () => {
     expect(s[0]).toMatchObject({ actual: { recomendacion: 'incorporar' }, nueva: { recomendacion: 'observar' }, cambia: true });
     expect(ejesRadar(evaluarCandidato({ evaluaciones: ev, puesto: 'Ala', config, etapa: 1 })).map((e) => e.id))
       .toEqual(['sin_pelota', 'con_pelota', 'finalizacion', 'transiciones', 'tarea_jugada']);
+  });
+});
+
+describe('pruebas: ligas y evaluadores por puesto', () => {
+  const { minimoDelPuesto, asignadoDelPuesto, ligasSugeridas } = configMod;
+
+  it('la lista de ligas de la categoría pisa a la del club; sin lista propia, vale la del club', () => {
+    const club = { categoria: null, ligas: [{ nombre: 'AFA', minimo: 3.8 }, { nombre: 'Futsala', minimo: 3.2 }] };
+    const cat = { categoria: 'Tercera', ligas: [{ nombre: 'LAMBA', minimo: 3 }] };
+    expect(resolverConfig([club], 'Primera').config.ligas.map((l) => l.nombre)).toEqual(['AFA', 'Futsala']);
+    expect(resolverConfig([club, cat], 'Tercera').config.ligas.map((l) => l.nombre)).toEqual(['LAMBA']);
+    expect(resolverConfig([club, { categoria: 'Tercera', ligas: [] }], 'Tercera').config.ligas).toHaveLength(2);
+  });
+
+  it('sugiere las ligas que alcanza el puntaje, nunca con "No incorporar"', () => {
+    const config = { ligas: [{ nombre: 'AFA', minimo: 3.8 }, { nombre: 'Futsala', minimo: 3.2 }, { nombre: 'LAMBA', minimo: 2.5 }] };
+    expect(ligasSugeridas(config, { puntaje: 3.5, recomendacion: 'observar' })).toEqual(['Futsala', 'LAMBA']);
+    expect(ligasSugeridas(config, { puntaje: 4.1, recomendacion: 'incorporar' })).toEqual(['AFA', 'Futsala', 'LAMBA']);
+    expect(ligasSugeridas(config, { puntaje: 2.8, recomendacion: 'no_incorporar' })).toEqual([]);
+    expect(ligasSugeridas(config, { puntaje: null })).toEqual([]);
+  });
+
+  it('el mínimo de evaluadores se puede fijar por puesto; con asignado y sin mínimo alcanza con 1', () => {
+    const base = resolverConfig([], 'Primera').config;
+    expect(minimoDelPuesto(base, 'Arquero')).toBe(2);
+    const c = resolverConfig([{ categoria: null, evaluadores_puesto: { Arquero: { min: null, asignado: 'ent-arq' }, Pivot: { min: 3 } } }], 'Primera').config;
+    expect(minimoDelPuesto(c, 'Arquero')).toBe(1);
+    expect(asignadoDelPuesto(c, 'Arquero')).toBe('ent-arq');
+    expect(minimoDelPuesto(c, 'Pivot')).toBe(3);
+    expect(minimoDelPuesto(c, 'Ala')).toBe(2);
+    expect(asignadoDelPuesto(c, 'Ala')).toBeNull();
+  });
+
+  it('valida ligas y mínimos, y restaurar defaults no borra ligas ni asignados', () => {
+    const c = resolverConfig([], 'Primera').config;
+    c.ligas = [{ nombre: 'AFA', minimo: 3.8 }, { nombre: 'afa', minimo: 3 }, { nombre: '', minimo: 3 }, { nombre: 'X', minimo: 9 }];
+    c.evaluadores_puesto.Arquero = { min: 7, asignado: 'ent-arq' };
+    const e = erroresDeConfig(c);
+    expect(Object.keys(e).sort()).toEqual(['evaluadores.Arquero', 'liga.1', 'liga.2', 'liga.3']);
+    const r = restaurar(c);
+    expect(r.ligas).toHaveLength(4);
+    expect(r.evaluadores_puesto.Arquero.asignado).toBe('ent-arq');
+    expect(r.ponderaciones).toEqual(CONFIG_DEFAULT.ponderaciones);
   });
 });
