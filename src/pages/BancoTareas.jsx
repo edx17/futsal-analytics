@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
@@ -304,7 +305,8 @@ const BancoTareas = () => {
   };
 
   const misCategorias = perfil?.categorias_asignadas || [];
-  const categoriasDisponibles = [...new Set([...misCategorias, ...categoriasClub])].sort();
+  const configClub = useConfigClub();   // orden y lista del configurador del club
+  const categoriasDisponibles = segunClub([...new Set([...misCategorias, ...categoriasClub])].sort(), configClub, { soloLasDeDatos: misCategorias.length > 0 });
 
   const eliminarTarea = async (id) => {
     const confirmar = window.confirm("¿Estás seguro de que querés eliminar esta tarea definitivamente? Esta acción no se puede deshacer.");

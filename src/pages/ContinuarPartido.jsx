@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { useEsMovil } from '../utils/useEsMovil';
@@ -39,9 +40,10 @@ function ContinuarPartido() {
     fetchPartidos();
   }, [clubId]);
 
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categoriasUnicas = useMemo(() => {
-    return [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
-  }, [partidos]);
+    return segunClub([...new Set(partidos.map(p => p.categoria).filter(Boolean))], configClub, { soloLasDeDatos: true });
+  }, [partidos, configClub]);
 
   const competicionesUnicas = useMemo(() => {
     return [...new Set(partidos.map(p => p.competicion).filter(Boolean))];

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { disponibilidadDe } from '../utils/disponibilidad';
@@ -332,10 +333,8 @@ function NuevoPartido() {
     return <span style={{ color: 'var(--accent)', marginLeft: '5px', fontSize: '0.7rem' }}><Icono nombre={ordenDireccion === 'asc' ? 'contraer' : 'expandir'} size="1em" /></span>;
   };
 
-  const categoriasDisponibles = useMemo(() => {
-    const cats = new Set(jugadoresBD.map(j => j.categoria).filter(Boolean));
-    return ['TODOS', ...Array.from(cats)];
-  }, [jugadoresBD]);
+  const configClub = useConfigClub();   // orden y lista del configurador del club
+  const categoriasDisponibles = ['TODOS', ...segunClub([...new Set(jugadoresBD.map(j => j.categoria).filter(Boolean))], configClub, { soloLasDeDatos: true })];
 
   /* El estado físico se evalúa A LA FECHA DEL PARTIDO, no a hoy: al que le
      dan el alta el sábado se lo puede convocar para el domingo. */

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext'; 
 import { calcularXGEvento } from '../analytics/xg'; 
@@ -114,13 +115,12 @@ function OrigenGoles() {
     obtenerDatos();
   }, [clubId]);
 
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categoriasUnicas = useMemo(() => {
     const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
-    if (esCT && misCategorias.length > 0) {
-      return catPartidos.filter(c => misCategorias.includes(c));
-    }
-    return catPartidos;
-  }, [partidos, esCT, misCategorias]);
+    const lista = esCT && misCategorias.length > 0 ? catPartidos.filter(c => misCategorias.includes(c)) : catPartidos;
+    return segunClub(lista, configClub, { soloLasDeDatos: true });
+  }, [partidos, esCT, misCategorias, configClub]);
 
   const torneosFiltrados = useMemo(() => {
     if (filtroCategoria === 'Todas') return torneos;

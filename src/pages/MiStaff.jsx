@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
 import { useEsMovil } from '../utils/useEsMovil';
@@ -26,6 +27,7 @@ export default function MiStaff() {
   
   const [staff, setStaff] = useState([]);
   const [categoriasClub, setCategoriasClub] = useState([]);
+  const configClub = useConfigClub();   // con el configurador, se asignan las categorías del club
   const [loading, setLoading] = useState(true);
   
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -170,7 +172,7 @@ export default function MiStaff() {
           <div style={modalContent}>
             <h3 style={{ margin: '0 0 20px 0', color: 'var(--accent)' }}>Permisos: {usuarioEditando?.nombre_completo}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(110px, 100%), 1fr))', gap: '10px' }}>
-              {categoriasClub.map(cat => (
+              {segunClub(categoriasClub, configClub).map(cat => (
                 <button key={cat} onClick={() => toggleCategoria(cat)} style={categoriasSeleccionadas.includes(cat) ? catActive : catInactive}>
                   {cat}
                 </button>

@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useEffect, useReducer, useCallback, useMemo } from 'react'
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { useEsMovil } from '../utils/useEsMovil'
 import { supabase } from '../supabase'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -262,7 +263,8 @@ const CreadorTareas = () => {
     fetchCategorias()
   }, [])
 
-  const categoriasDisponibles = [...new Set([...misCategorias, ...categoriasClub])].sort()
+  const configClub = useConfigClub();   // orden y lista del configurador del club
+  const categoriasDisponibles = segunClub([...new Set([...misCategorias, ...categoriasClub])].sort(), configClub, { soloLasDeDatos: misCategorias.length > 0 })
 
   const [veniaDePlanificar, setVeniaDePlanificar] = useState(false)
   useEffect(() => {

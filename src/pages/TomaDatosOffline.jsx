@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { useNavigate } from 'react-router-dom';
 import simpleheat from 'simpleheat';
 import { supabase } from '../supabase';
@@ -326,9 +327,10 @@ function SelectorPartido({ clubId, onAbrir, onVolver, showToast }) {
      `competicion`, así el filtro coincide con lo que ves en Torneos.
      `Sin torneo` sólo aparece si de verdad hay partidos sueltos. */
   const haySueltos = useMemo(() => remotos.some(p => !p.torneo_id), [remotos]);
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categorias = useMemo(
-    () => [...new Set(remotos.map(p => p.categoria).filter(Boolean))].sort(),
-    [remotos]
+    () => segunClub([...new Set(remotos.map(p => p.categoria).filter(Boolean))].sort(), configClub, { soloLasDeDatos: true }),
+    [remotos, configClub]
   );
   const cantidadPropios = useMemo(() => remotos.filter(p => p._propio).length, [remotos]);
 

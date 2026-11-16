@@ -3,6 +3,7 @@ import NotasDe from '../components/notas/NotasDe';
 import { useVincularNotas } from '../utils/anotadorContexto';
 import { useEsMovil } from '../utils/useEsMovil';
 import { supabase } from '../supabase';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { mapaDisponibilidad } from '../utils/disponibilidad';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
@@ -484,7 +485,9 @@ const PlanificadorSemanal = () => {
     fetchCategorias();
   }, []);
 
-  const categoriasMostrar = misCategorias.length > 0 ? misCategorias : categoriasExtraidas;
+  // Con el configurador del club: sus categorías activas en su orden (al CT, sólo las suyas).
+  const configClub = useConfigClub();
+  const categoriasMostrar = misCategorias.length > 0 ? segunClub(misCategorias, configClub, { soloLasDeDatos: true }) : segunClub(categoriasExtraidas, configClub);
   const [filtroCategoria, setFiltroCategoria] = useState(misCategorias.length === 1 ? misCategorias[0] : 'Todas');
 
   const [fechaReferencia, setFechaReferencia] = useState(new Date());

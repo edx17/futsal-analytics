@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { mismaCategoria as mismaCategoriaTexto } from '../utils/categorias';
 import { useAuth } from '../context/AuthContext';
@@ -361,12 +362,13 @@ function Citacion() {
   const mismaCategoria = (j) =>
     !partido?.categoria || String(j.categoria || '').trim() === String(partido.categoria).trim();
 
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   /* Las otras categorías del club, para poder traer refuerzos. */
   const otrasCategorias = useMemo(() => {
     const cats = new Set(jugadores.map(j => String(j.categoria || '').trim()).filter(Boolean));
     if (partido?.categoria) cats.delete(String(partido.categoria).trim());
-    return [...cats].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [jugadores, partido?.categoria]);
+    return segunClub([...cats].sort((a, b) => a.localeCompare(b, 'es')), configClub, { soloLasDeDatos: true });
+  }, [jugadores, partido?.categoria, configClub]);
 
   /* Se ven: los de la categoría del partido, los de las categorías que el
      técnico haya sumado, y SIEMPRE los que ya están tildados — si no, apagar

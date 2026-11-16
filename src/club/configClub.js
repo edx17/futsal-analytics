@@ -148,3 +148,26 @@ export function categoriaPorEdad(config, fechaNacimiento, anioJuego = new Date()
   const subs = cats.filter((c) => c.tipo === 'sub' && edad <= Number(c.edad_max)).sort((a, b) => a.edad_max - b.edad_max);
   return subs[0]?.nombre || null;
 }
+
+/**
+ * La regla única para cualquier lista de categorías que muestre la app:
+ * sin configurador, la lista tal cual (como siempre); con configurador, las
+ * activas del club en su orden y, al final, las que aparezcan en `deDatos`
+ * sin estar configuradas (para no esconder datos viejos).
+ * `soloLasDeDatos`: para filtros de consulta, sólo las que tienen datos
+ * (en el orden del club).
+ */
+export function segunClub(deDatos = [], config, { soloLasDeDatos = false } = {}) {
+  const lista = (deDatos || []).filter(Boolean);
+  if (!hayConfig(config)) return lista;
+  const conDatos = new Set(lista.map(normCat));
+  const activas = categoriasActivas(config).filter((c) => !soloLasDeDatos || conDatos.has(normCat(c)));
+  const vistas = new Set(activas.map(normCat));
+  // Lo que tiene datos y no está entre las activas: primero las inactivas del club (en su orden), después las desconocidas.
+  const orden = config.categorias.map((c) => normCat(c.nombre));
+  const extra = [...new Map(lista.map((c) => [normCat(c), c])).entries()]
+    .filter(([k]) => !vistas.has(k))
+    .sort(([a], [b]) => (orden.indexOf(a) === -1 ? 999 : orden.indexOf(a)) - (orden.indexOf(b) === -1 ? 999 : orden.indexOf(b)))
+    .map(([, c]) => c);
+  return [...activas, ...extra];
+}

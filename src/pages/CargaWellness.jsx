@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -254,9 +255,10 @@ const CargaWellness = () => {
   // --- OPCIONES DEL SELECTOR DE CATEGORÍAS ---
   // Si es CT, armamos la lista solo con sus categorías. Si es Admin/Manager, usamos las extraídas de la DB + 'Todas'
   const categoriasExtraidas = [...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categoriasMostrar = (esCT && misCategorias.length > 0)
-    ? misCategorias
-    : ['Todas', ...categoriasExtraidas];
+    ? segunClub(misCategorias, configClub, { soloLasDeDatos: true })
+    : ['Todas', ...segunClub(categoriasExtraidas, configClub, { soloLasDeDatos: true })];
 
   const jugadoresFiltrados = filtroCategoria === 'Todas' ? jugadores : jugadores.filter(j => j.categoria === filtroCategoria);
 

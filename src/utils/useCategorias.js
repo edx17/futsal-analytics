@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { categoriasDelClub, categoriasVisiblesPara, LISTA_BASE, unirCategorias, normCat } from './categorias';
-import { normalizarConfig, hayConfig, categoriasActivas } from '../club/configClub';
+import { hayConfig, categoriasActivas } from '../club/configClub';
+import { useConfigClub } from '../club/useConfigClub';
 
 /* Las categorías del club, para cualquier pantalla que tenga que ofrecerlas.
  *
@@ -29,6 +30,8 @@ export function useCategorias({ incluirHistoricas = false, asignadas } = {}) {
   const [filas, setFilas] = useState(null);
   const [cargando, setCargando] = useState(true);
   const clubId = typeof window !== 'undefined' ? localStorage.getItem('club_id') : null;
+  // La configuración del club sale de la caché compartida: al guardar el configurador se actualiza sola.
+  const config = useConfigClub();
 
   useEffect(() => {
     let cancelado = false;
@@ -40,16 +43,14 @@ export function useCategorias({ incluirHistoricas = false, asignadas } = {}) {
         if (!cancelado) setCargando(false);
         return;
       }
-      const [{ data: jug }, { data: par }, { data: club }] = await Promise.all([
+      const [{ data: jug }, { data: par }] = await Promise.all([
         supabase.from('jugadores').select('categoria, activo').eq('club_id', clubId),
         supabase.from('partidos').select('categoria').eq('club_id', clubId),
-        // '*' y no las columnas nuevas: sin la migración del configurador no tiene que fallar.
-        supabase.from('clubes').select('*').eq('id', clubId).maybeSingle(),
       ]);
       if (cancelado) return;
       /* Si falta la columna `activo` (migración de bajas sin correr) la
          consulta devuelve null: mejor seguir con lo que haya que romper. */
-      setFilas({ jugadores: jug || [], partidos: par || [], config: normalizarConfig(club || {}) });
+      setFilas({ jugadores: jug || [], partidos: par || [] });
       setCargando(false);
     })().catch(() => { if (!cancelado) setCargando(false); });
 
@@ -58,7 +59,6 @@ export function useCategorias({ incluirHistoricas = false, asignadas } = {}) {
 
   return useMemo(() => {
     const deDatos = categoriasDelClub(filas?.jugadores || [], filas?.partidos || []);
-    const config = filas?.config || normalizarConfig({});
     const configurado = hayConfig(config);
     let { activas, historicas, todas } = deDatos;
     if (configurado) {
@@ -80,5 +80,5 @@ export function useCategorias({ incluirHistoricas = false, asignadas } = {}) {
       esRespaldo: base.length === 0,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filas, incluirHistoricas, claveAsignadas, cargando]);
+  }, [filas, config, incluirHistoricas, claveAsignadas, cargando]);
 }

@@ -55,3 +55,14 @@ describe('configurador del club', () => {
     expect(categoriasVisiblesPara(['Tercera', 'Primera'], [])).toEqual(['Primera', 'Tercera']);
   });
 });
+
+describe('segunClub: la regla única de las listas de categorías', () => {
+  it('sin configurador deja la lista como está; con configurador manda el club y no esconde datos', async () => {
+    const { segunClub } = await import('../configClub');
+    const sin = normalizarConfig({});
+    expect(segunClub(['Tercera', 'Primera'], sin)).toEqual(['Tercera', 'Primera']);
+    const c = normalizarConfig({ categorias: [{ nombre: 'Primera' }, { nombre: 'Tercera' }, { nombre: 'Cuarta' }, { nombre: 'Quinta', activa: false }] });
+    expect(segunClub(['Cuarta', 'Primera', '3ra'], c)).toEqual(['Primera', 'Tercera', 'Cuarta', '3ra']);
+    expect(segunClub(['Cuarta', 'Primera', 'Quinta', '3ra'], c, { soloLasDeDatos: true })).toEqual(['Primera', 'Cuarta', 'Quinta', '3ra']);
+  });
+});

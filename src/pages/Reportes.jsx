@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
@@ -110,10 +111,11 @@ export default function Reportes() {
   const anio = temporada || temporadas[0] || String(new Date().getFullYear());
 
   const partidosAnio = useMemo(() => raw.partidos.filter((p) => anioDe(p.fecha) === anio), [raw.partidos, anio]);
+  const configClub = useConfigClub();   // orden y lista del configurador del club
   const categorias = useMemo(() => {
     const cs = [...new Set(partidosAnio.map((p) => p.categoria).filter(Boolean))].sort();
-    return misCategorias.length ? cs.filter((c) => misCategorias.includes(c)) : cs;
-  }, [partidosAnio, misCategorias]);
+    return segunClub(misCategorias.length ? cs.filter((c) => misCategorias.includes(c)) : cs, configClub, { soloLasDeDatos: true });
+  }, [partidosAnio, misCategorias, configClub]);
   const cat = categoria && categorias.includes(categoria) ? categoria : categorias[0] || '';
 
   const partidosScope = useMemo(() => partidosAnio.filter((p) => p.categoria === cat), [partidosAnio, cat]);

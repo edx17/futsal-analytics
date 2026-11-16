@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { tablaJugadores } from '../utils/kiosco';
 import { useAuth } from '../context/AuthContext';
@@ -793,13 +794,14 @@ export default function Videoanalisis() {
     setJugadoresClub(data || []);
   }, [clubId]);
 
-  const categoriasClub = useMemo(() => [...new Set(jugadoresClub.map(j => j.categoria).filter(Boolean))].sort(), [jugadoresClub]);
+  const configClub = useConfigClub();   // orden y lista del configurador del club
+  const categoriasClub = useMemo(() => segunClub([...new Set(jugadoresClub.map(j => j.categoria).filter(Boolean))].sort(), configClub), [jugadoresClub, configClub]);
 
   // Categorias que aparecen en el fixture: es la lista que se ofrece al cargar
   // un video suelto de scouting, que no hereda categoria de ningun partido.
   const categoriasPartidos = useMemo(
-    () => [...new Set(partidos.map(p => p.categoria).filter(Boolean))].sort(),
-    [partidos]
+    () => segunClub([...new Set(partidos.map(p => p.categoria).filter(Boolean))].sort(), configClub),
+    [partidos, configClub]
   );
 
   // ── Modal "compartir con jugadores" ──

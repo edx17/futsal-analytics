@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useConfigClub, segunClub } from '../../club/useConfigClub';
 import { supabase } from '../../supabase';
 import { gruposFamiliares, faltaTabla, rpcInexistente, mensajeError, formatoPesos } from '../../analytics/tesoreria';
 import { Icono } from '../../iconos';
@@ -49,10 +50,11 @@ export default function ConfigCuotas({ clubId, periodo, showToast, onGeneradas }
   useEffect(() => { if (clubId) cargar(); }, [clubId]);
   useEffect(() => { setPrevia(null); }, [periodo]);
 
+  const configClub = useConfigClub();   // las categorías del configurador, en su orden
   const categorias = useMemo(() => {
     const s = new Set([...jugadores.map((j) => j.categoria).filter(Boolean), ...Object.keys(tarifas)]);
-    return [...s].sort((a, b) => a.localeCompare(b, 'es'));
-  }, [jugadores, tarifas]);
+    return segunClub([...s].sort((a, b) => a.localeCompare(b, 'es')), configClub);
+  }, [jugadores, tarifas, configClub]);
   const cuantosPorCategoria = useMemo(() => {
     const m = {};
     jugadores.forEach((j) => { m[j.categoria] = (m[j.categoria] || 0) + 1; });

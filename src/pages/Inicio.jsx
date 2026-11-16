@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
+import { leerConfigClub, segunClub } from '../club/useConfigClub';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
@@ -452,10 +453,12 @@ export default function Inicio() {
         // Categorías disponibles (siempre del club elegido)
         let catsClub = [];
         if (club) {
-          if (esCT && misCategorias.length > 0) catsClub = misCategorias;
+          const cfgClub = await leerConfigClub(club);
+          if (esCT && misCategorias.length > 0) catsClub = segunClub(misCategorias, cfgClub, { soloLasDeDatos: true });
           else {
             const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', club);
-            catsClub = cats ? [...new Set(cats.map((x) => x.categoria).filter(Boolean))] : [];
+            // Con el configurador del club: sus categorías activas, en su orden (más las que tengan partidos sin configurar).
+            catsClub = segunClub(cats ? [...new Set(cats.map((x) => x.categoria).filter(Boolean))] : [], cfgClub);
           }
           setCategoriasDisponibles(catsClub);
         } else setCategoriasDisponibles([]);
