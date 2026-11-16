@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useConfigClub, segunClub } from '../../club/useConfigClub';
 import { Premio } from './PanelPremios';
 import { ModalPlacaPremio } from '../../placas/PlacaPremio';
 import { listarHistorial, quitarRegistro } from '../../utils/cartasDestacadas';
@@ -43,7 +44,8 @@ export default function HistorialPremios({ clubId, club, esMovil }) {
 
   useEffect(() => { if (clubId) cargar(); else setCargando(false); }, [clubId, cargar]);
 
-  const categorias = useMemo(() => [...new Set(registros.map((r) => r.categoria).filter(Boolean))].sort(), [registros]);
+  const configClub = useConfigClub(clubId);   // orden del configurador del club
+  const categorias = useMemo(() => segunClub([...new Set(registros.map((r) => r.categoria).filter(Boolean))].sort(), configClub, { soloLasDeDatos: true }), [registros, configClub]);
 
   const visibles = useMemo(
     () => registros.filter((r) => (tipo === 'Todos' || r.tipo === tipo) && (categoria === 'Todas' || r.categoria === categoria)),

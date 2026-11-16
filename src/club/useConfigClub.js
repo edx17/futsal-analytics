@@ -36,9 +36,10 @@ export function invalidarConfigClub(clubId = clubActual()) {
   leerConfigClub(clubId).then(() => oyentes.forEach((f) => f()));
 }
 
-/** La configuración del club actual (vacía mientras llega o si no configuró nada). */
-export function useConfigClub() {
-  const clubId = clubActual();
+/** La configuración del club actual, o de `club` si se pasa (kiosco, paneles con club propio).
+ *  Vacía mientras llega o si no configuró nada. */
+export function useConfigClub(club) {
+  const clubId = club || clubActual();
   const [config, setConfig] = useState(() => cache.get(clubId) || VACIA);
   useEffect(() => {
     let vivo = true;

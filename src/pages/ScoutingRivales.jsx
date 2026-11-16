@@ -289,9 +289,9 @@ function ScoutingRivales() {
       if (!grupos.has(cat)) grupos.set(cat, []);
       grupos.get(cat).push(p);
     });
-    return ordenarCategorias([...grupos.keys()])
+    return segunClub(ordenarCategorias([...grupos.keys()]), configClub, { soloLasDeDatos: true })
       .map(cat => ({ cat, ...acumularH2H(grupos.get(cat)) }));
-  }, [editandoTodas, historialRival]);
+  }, [editandoTodas, historialRival, configClub]);
 
   const extractYoutubeId = (url) => {
     if (!url) return null;

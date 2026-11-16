@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
@@ -479,9 +480,10 @@ export default function LoginKiosco() {
     };
   }, [ficha]);
 
+  const configClub = useConfigClub(clubId);   // orden y lista del configurador del club
   const categoriasUnicas = useMemo(() => {
-    return [...new Set(jugadores.map(j => j.categoria).filter(Boolean))].sort();
-  }, [jugadores]);
+    return segunClub([...new Set(jugadores.map(j => j.categoria).filter(Boolean))].sort(), configClub, { soloLasDeDatos: true });
+  }, [jugadores, configClub]);
 
   const jugadoresFiltrados = useMemo(() => {
     if (filtroCategoria === 'Todas') return jugadores;

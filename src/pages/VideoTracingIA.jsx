@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useConfigClub, segunClub } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import axios from 'axios';
 import { Icono } from '../iconos';
 
 const VideoTracingIA = () => {
   const clubId = localStorage.getItem('club_id');
+  const configClub = useConfigClub();   // orden y lista del configurador del club
 
   const [partidos, setPartidos] = useState([]);
   const [jugadores, setJugadores] = useState([]);
@@ -43,7 +45,7 @@ const VideoTracingIA = () => {
     fetchContextData();
   }, [clubId]);
 
-  const categoriasUnicas = ['Todas', ...new Set(partidos.map(p => p.categoria).filter(Boolean))];
+  const categoriasUnicas = ['Todas', ...segunClub([...new Set(partidos.map(p => p.categoria).filter(Boolean))], configClub, { soloLasDeDatos: true })];
   const partidosFiltrados = selectedCategoria === 'Todas' ? partidos : partidos.filter(p => p.categoria === selectedCategoria);
 
   const handleFileChange = (e) => {

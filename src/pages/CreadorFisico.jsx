@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useCategorias } from '../utils/useCategorias';
 import { supabase } from '../supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../components/ToastContext';
@@ -15,6 +16,8 @@ const CreadorFisico = () => {
   // EXTRAEMOS CATEGORÍAS DEL PERFIL
   const { perfil } = useAuth();
   const misCategorias = perfil?.categorias_asignadas || [];
+  // Las del configurador del club (o las asignadas, si es del cuerpo técnico), en el orden del club.
+  const { categorias: categoriasClub } = useCategorias({ asignadas: misCategorias });
 
   const tareaAEditar = location.state?.editando;
   const [tareaIdEditando, setTareaIdEditando] = useState(tareaAEditar?.id || null);
@@ -202,7 +205,7 @@ const CreadorFisico = () => {
                 onChange={e => setFichaTecnica({ ...fichaTecnica, categoria_recomendada: e.target.value })}
               >
                 <option value="Todas">Todas las Categorías</option>
-                {misCategorias.map(c => <option key={c} value={c}>{c}</option>)}
+                {categoriasClub.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 
