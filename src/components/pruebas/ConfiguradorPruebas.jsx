@@ -25,7 +25,7 @@ const UMBRALES = [
 ];
 const clon = (x) => JSON.parse(JSON.stringify(x));
 
-export default function ConfiguradorPruebas({ clubId, categoria, filas, candidatos, evaluaciones, sesiones, cierres, staff = [], puedeEditar, recargar, avisar, esMovil }) {
+export default function ConfiguradorPruebas({ clubId, categoria, filas, candidatos, evaluaciones, sesiones, cierres, staff = [], ligasClub = [], puedeEditar, recargar, avisar, esMovil }) {
   const [alcance, setAlcance] = useState(() => (filas.some((f) => f.categoria === categoria) ? 'categoria' : 'club'));
   const filaActual = alcance === 'club' ? filas.find((f) => f.categoria == null) || null : filas.find((f) => f.categoria === categoria) || null;
   const base = useMemo(() => (alcance === 'club' ? resolverConfig(filas.filter((f) => f.categoria == null), null) : resolverConfig(filas, categoria)).config,
@@ -67,6 +67,9 @@ export default function ConfiguradorPruebas({ clubId, categoria, filas, candidat
   const setLiga = (i, cambios) => setBorrador((c) => ({ ...c, ligas: c.ligas.map((l, k) => (k === i ? { ...l, ...cambios } : l)) }));
   const agregarLiga = () => setBorrador((c) => ({ ...c, ligas: [...(c.ligas || []), { nombre: '', minimo: Number(c.umbrales.incorporar) || 3.8 }] }));
   const quitarLiga = (i) => setBorrador((c) => ({ ...c, ligas: c.ligas.filter((_, k) => k !== i) }));
+  /* Las ligas del configurador general del club (CONFIG. DE CLUB) que todavía no están acá. */
+  const ligasDelClubFaltan = ligasClub.filter((l) => !(borrador.ligas || []).some((x) => String(x.nombre).toLowerCase() === l.nombre.toLowerCase()));
+  const traerLigasDelClub = () => setBorrador((c) => ({ ...c, ligas: [...(c.ligas || []), ...ligasDelClubFaltan.map((l) => ({ nombre: l.nombre, minimo: Number(c.umbrales.incorporar) || 3.8 }))] }));
   const setEval = (p, cambios) => setBorrador((c) => ({ ...c, evaluadores_puesto: { ...c.evaluadores_puesto, [p]: { ...(c.evaluadores_puesto?.[p] || {}), ...cambios } } }));
 
   const guardar = async () => {
@@ -169,7 +172,12 @@ export default function ConfiguradorPruebas({ clubId, categoria, filas, candidat
               {errorDe(`liga.${i}`) && <span style={{ gridColumn: '1 / -1' }}>{errorDe(`liga.${i}`)}</span>}
             </div>
           ))}
-          {puedeEditar && <button style={{ ...botonSec, alignSelf: 'flex-start' }} onClick={agregarLiga}>+ AGREGAR LIGA</button>}
+          {puedeEditar && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button style={botonSec} onClick={agregarLiga}>+ AGREGAR LIGA</button>
+              {ligasDelClubFaltan.length > 0 && <button style={botonSec} onClick={traerLigasDelClub} title="Las cargadas en CONFIG. DE CLUB">TRAER LAS DEL CLUB ({ligasDelClubFaltan.map((l) => l.nombre).join(', ')})</button>}
+            </div>
+          )}
           <div style={dim}>El número es el puntaje final (1 a 5) desde el que se sugiere.</div>
         </section>
 

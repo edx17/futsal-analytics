@@ -38,7 +38,7 @@ export default function Pruebas() {
   const puedeCargar = ROLES_CARGA.includes(rol);
   const puedeBorrar = ['superuser', 'manager'].includes(rol);
   const asignadas = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
-  const { categorias } = useCategorias({ asignadas });
+  const { categorias, config: configClub } = useCategorias({ asignadas });
 
   // La elegida si es una de las del usuario; si no, la primera (nunca "todas": no se mezclan categorías).
   const [elegida, setElegida] = useState(() => leerLS('vc_pruebas_categoria') || '');
@@ -129,7 +129,7 @@ export default function Pruebas() {
       )}
       {listo && pestana === 'config' && (
         <ConfiguradorPruebas key={categoria} clubId={clubId} categoria={categoria} filas={datos.configs} candidatos={datos.candidatos}
-          evaluaciones={datos.evaluaciones} sesiones={datos.sesiones} cierres={datos.cierres} staff={datos.staff}
+          evaluaciones={datos.evaluaciones} sesiones={datos.sesiones} cierres={datos.cierres} staff={datos.staff} ligasClub={configClub?.ligas || []}
           puedeEditar={puedeCargar} recargar={recargar} avisar={avisar} esMovil={esMovil} />
       )}
       {verManual && <VisorManual seccion="pruebas" titulo="Manual: Pruebas de jugadores" onCerrar={() => setVerManual(false)} />}

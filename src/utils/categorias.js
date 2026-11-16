@@ -46,13 +46,14 @@ export const unirCategorias = (...listas) => {
  * las del club. Se intersecta por forma normalizada para que una diferencia
  * de acento no le deje la pantalla vacía; si la intersección da vacía se
  * respetan las asignadas, que es lo que el club configuró a mano. */
-export const categoriasVisiblesPara = (categoriasClub, asignadas) => {
-  const club = ordenarCategorias(categoriasClub);
+export const categoriasVisiblesPara = (categoriasClub, asignadas, { mantenerOrden = false } = {}) => {
+  /* Con el configurador del club, el orden lo define el club: no se reordena. */
+  const club = mantenerOrden ? [...(categoriasClub || [])] : ordenarCategorias(categoriasClub);
   const mias = (asignadas || []).filter(Boolean);
   if (mias.length === 0) return club;
   const permitidas = new Set(mias.map(normCat));
   const interseccion = club.filter((c) => permitidas.has(normCat(c)));
-  return interseccion.length > 0 ? interseccion : ordenarCategorias(mias);
+  return interseccion.length > 0 ? interseccion : (mantenerOrden ? mias : ordenarCategorias(mias));
 };
 
 /* ── LAS CATEGORÍAS REALES DEL CLUB ────────────────────────────────────────

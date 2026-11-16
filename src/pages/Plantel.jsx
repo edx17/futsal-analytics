@@ -77,10 +77,12 @@ function Plantel() {
      se evalúa durante el render, así que declararlo más arriba lo lee antes
      de que exista y la pantalla entera se cae con un ReferenceError. */
   const [categoriaLibre, setCategoriaLibre] = useState(false);
-  const { todas: categoriasClub } = useCategorias({ incluirHistoricas: true });
+  const { todas: categoriasClub, configurado: hayConfigClub } = useCategorias({ incluirHistoricas: true });
   const opcionesCategoria = useMemo(
-    () => unirCategorias(categoriasClub, LISTA_BASE, [formData?.categoria]),
-    [categoriasClub, formData?.categoria]
+    // Con el configurador del club, se ofrecen las del club (no la lista de siempre).
+    () => (hayConfigClub ? [...new Set([...categoriasClub, ...(formData?.categoria ? [formData.categoria] : [])])]
+      : unirCategorias(categoriasClub, LISTA_BASE, [formData?.categoria])),
+    [categoriasClub, hayConfigClub, formData?.categoria]
   );
 
   useEffect(() => {
