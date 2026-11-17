@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { leerConfigClub, segunClub } from '../club/useConfigClub';
+import { leerConfigClub, segunClub, useConfigClub, soloRama } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ToastContext';
@@ -39,7 +39,9 @@ export default function Novedades() {
   const [mensaje, setMensaje] = useState('');
   const [publico, setPublico] = useState('Ambos');
   const [categoriasDestino, setCategoriasDestino] = useState([]);
-  const [categoriasDisponibles, setCategoriasDisponibles] = useState([]);
+  const [categoriasTodasRamas, setCategoriasDisponibles] = useState([]);
+  const configClub = useConfigClub();   // con la rama elegida
+  const categoriasDisponibles = soloRama(categoriasTodasRamas, configClub);
   const [diasVencimiento, setDiasVencimiento] = useState(null);
   const [loading, setLoading] = useState(false);
   const [historial, setHistorial] = useState([]);
@@ -73,7 +75,7 @@ export default function Novedades() {
     if (error) { console.error('fetchCategorias:', error); return; }
     let unicas = [...new Set((data || []).map(j => j.categoria).filter(Boolean))].sort();
     const cfgClub = await leerConfigClub(club_id);
-    if (esCT && misCategorias.length > 0) {
+    if (misCategorias.length > 0) {
       unicas = segunClub(unicas.filter(c => misCategorias.includes(c)), cfgClub, { soloLasDeDatos: true });
     } else {
       unicas = segunClub(unicas, cfgClub);   // con el configurador: las del club, en su orden
@@ -94,7 +96,7 @@ export default function Novedades() {
 
     let resultado = data || [];
 
-    if (esCT && misCategorias.length > 0) {
+    if (misCategorias.length > 0) {
       resultado = resultado.filter(h =>
         Array.isArray(h.categorias) &&
         h.categorias.some(c => misCategorias.includes(c))

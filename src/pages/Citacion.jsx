@@ -153,7 +153,7 @@ function Citacion() {
         const qWellness = supabase.from('wellness').select('*').eq('club_id', clubId).eq('fecha', hoy);
         const qClub = supabase.from('clubes').select('*').eq('id', clubId).maybeSingle();
 
-        if (esCT && misCategorias.length > 0) {
+        if (misCategorias.length > 0) {
           qPartidos = qPartidos.in('categoria', misCategorias);
           qJugadores = qJugadores.in('categoria', misCategorias);
           qAsistencias = qAsistencias.in('categoria', misCategorias);

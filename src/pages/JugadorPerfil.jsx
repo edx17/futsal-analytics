@@ -491,7 +491,7 @@ function JugadorPerfil() {
       let jFiltrados = j || [];
       let pFiltrados = p || [];
 
-      if (userRol === 'CT' && userCats.length > 0) {
+      if (userCats.length > 0 && String(userRol || '').toLowerCase() !== 'superuser') {
         jFiltrados = jFiltrados.filter(jug => 
           jug.categoria && userCats.includes(String(jug.categoria).trim().toLowerCase())
         );

@@ -158,7 +158,7 @@ export function categoriaPorEdad(config, fechaNacimiento, anioJuego = new Date()
  * (en el orden del club).
  */
 export function segunClub(deDatos = [], config, { soloLasDeDatos = false } = {}) {
-  const lista = (deDatos || []).filter(Boolean);
+  const lista = soloRama((deDatos || []).filter(Boolean), config);
   if (!hayConfig(config)) return lista;
   const conDatos = new Set(lista.map(normCat));
   const activas = categoriasActivas(config).filter((c) => !soloLasDeDatos || conDatos.has(normCat(c)));
@@ -171,3 +171,20 @@ export function segunClub(deDatos = [], config, { soloLasDeDatos = false } = {})
     .map(([, c]) => c);
   return [...activas, ...extra];
 }
+
+/** Saca de la lista las categorías de las otras ramas (config vista desde una rama: `excluir`). */
+export function soloRama(lista = [], config) {
+  const fuera = new Set((config?.excluir || []).map(normCat));
+  return fuera.size ? lista.filter((c) => !fuera.has(normCat(c))) : lista;
+}
+/** La configuración vista desde una rama: sólo sus categorías, y la lista de las de otras ramas para esconderlas. */
+export function vistaPorRama(config, rama) {
+  if (!rama || (config?.ramas || []).length < 2) return config;
+  return {
+    ...config,
+    rama,
+    categorias: config.categorias.filter((c) => c.rama === rama),
+    excluir: config.categorias.filter((c) => c.rama !== rama).map((c) => c.nombre),
+  };
+}
+

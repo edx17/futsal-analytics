@@ -64,7 +64,6 @@ export default function Agenda() {
   const esMovil = useEsMovil();
 
   const clubId = perfil?.club_id || localStorage.getItem('club_id') || '';
-  const esCT = perfil?.rol === 'ct';
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
 
   const [raw, setRaw] = useState({ partidos: [], sesiones: [], jugadores: [], deudas: [], lesiones: [] });
@@ -151,7 +150,7 @@ export default function Agenda() {
      las cuotas y las lesiones se filtran por la categoría del jugador, que
      recién se conoce con la tabla de jugadores al lado. */
   const datos = useMemo(() => {
-    if (!esCT || misCategorias.length === 0) return raw;
+    if (misCategorias.length === 0) return raw;
     const ok = new Set(misCategorias);
     const jugadores = raw.jugadores.filter((j) => ok.has(j.categoria));
     const ids = new Set(jugadores.map((j) => String(j.id)));
@@ -162,7 +161,7 @@ export default function Agenda() {
       deudas: raw.deudas.filter((d) => ids.has(String(d.jugador_id))),
       lesiones: raw.lesiones.filter((l) => ids.has(String(l.jugador_id))),
     };
-  }, [raw, esCT, misCategorias]);
+  }, [raw, misCategorias]);
 
   const configClub = useConfigClub();   // orden y lista del configurador del club
   const categorias = useMemo(() => {

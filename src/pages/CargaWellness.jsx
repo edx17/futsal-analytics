@@ -53,7 +53,7 @@ const CargaWellness = () => {
 
   // --- EFECTO DEL GRAN FILTRO: Auto-seleccionar categoría permitida ---
   useEffect(() => {
-    if (esCT && misCategorias.length > 0 && filtroCategoria === 'Todas') {
+    if (misCategorias.length > 0 && filtroCategoria === 'Todas') {
       setFiltroCategoria(misCategorias[0]); // Seleccionamos la primera por defecto
     }
   }, [esCT, misCategorias, filtroCategoria]);
@@ -73,7 +73,7 @@ const CargaWellness = () => {
         let query = supabase.from(tablaJugadores()).select('id, nombre, apellido, posicion, categoria').eq('club_id', club_id);
         
         // 2. ¡EL GRAN FILTRO EN LA BASE DE DATOS!
-        if (esCT && misCategorias.length > 0) {
+        if (misCategorias.length > 0) {
           query = query.in('categoria', misCategorias);
         }
 
@@ -256,7 +256,7 @@ const CargaWellness = () => {
   // Si es CT, armamos la lista solo con sus categorías. Si es Admin/Manager, usamos las extraídas de la DB + 'Todas'
   const categoriasExtraidas = [...new Set(jugadores.map(j => j.categoria).filter(Boolean))];
   const configClub = useConfigClub();   // orden y lista del configurador del club
-  const categoriasMostrar = (esCT && misCategorias.length > 0)
+  const categoriasMostrar = (misCategorias.length > 0)
     ? segunClub(misCategorias, configClub, { soloLasDeDatos: true })
     : ['Todas', ...segunClub(categoriasExtraidas, configClub, { soloLasDeDatos: true })];
 

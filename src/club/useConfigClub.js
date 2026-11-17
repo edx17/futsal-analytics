@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabase';
-import { normalizarConfig } from './configClub';
+import { normalizarConfig, vistaPorRama as vistaDeRama } from './configClub';
 
 /* LA CONFIGURACIÓN DEL CLUB, UNA SOLA VEZ PARA TODA LA APP
  *
@@ -36,11 +36,39 @@ export function invalidarConfigClub(clubId = clubActual()) {
   leerConfigClub(clubId).then(() => oyentes.forEach((f) => f()));
 }
 
-/** La configuración del club actual, o de `club` si se pasa (kiosco, paneles con club propio).
+/* ── RAMA ELEGIDA (Masculino / Femenino / todas) ─────────────────────────────
+ * Se elige una vez (selector en Inicio y en el menú) y queda guardada en el
+ * dispositivo. Todas las listas de categorías la respetan: useConfigClub
+ * devuelve la configuración ya recortada a esa rama, y segunClub saca las
+ * categorías de las otras ramas aunque tengan datos. */
+const LS_RAMA = 'rama_elegida';
+let ramaElegida = (() => { try { return localStorage.getItem(LS_RAMA) || ''; } catch { return ''; } })();
+const oyentesRama = new Set();
+
+export const ramaActual = () => ramaElegida;
+export function elegirRama(rama) {
+  ramaElegida = rama || '';
+  try { if (ramaElegida) localStorage.setItem(LS_RAMA, ramaElegida); else localStorage.removeItem(LS_RAMA); } catch { /* sin storage */ }
+  oyentesRama.forEach((f) => f(ramaElegida));
+}
+
+/** [rama elegida, elegirRama]. */
+export function useRama() {
+  const [rama, setRama] = useState(ramaElegida);
+  useEffect(() => {
+    oyentesRama.add(setRama);
+    return () => { oyentesRama.delete(setRama); };
+  }, []);
+  return [rama, elegirRama];
+}
+
+/** La configuración del club actual, o de `club` si se pasa (kiosco, paneles con club propio),
+ *  recortada a la rama elegida (`{ todasLasRamas: true }` para verla entera).
  *  Vacía mientras llega o si no configuró nada. */
-export function useConfigClub(club) {
+export function useConfigClub(club, { todasLasRamas = false } = {}) {
   const clubId = club || clubActual();
   const [config, setConfig] = useState(() => cache.get(clubId) || VACIA);
+  const [rama] = useRama();
   useEffect(() => {
     let vivo = true;
     const actualizar = () => leerConfigClub(clubId).then((c) => { if (vivo) setConfig(c); });
@@ -48,7 +76,9 @@ export function useConfigClub(club) {
     oyentes.add(actualizar);
     return () => { vivo = false; oyentes.delete(actualizar); };
   }, [clubId]);
-  return config;
+  return useMemo(() => (todasLasRamas ? config : vistaDeRama(config, rama)), [config, rama, todasLasRamas]);
 }
 
-export { segunClub } from './configClub';
+export { segunClub, soloRama } from './configClub';
+/** La configuración vista desde una rama (por defecto, la elegida). */
+export const vistaPorRama = (config, rama = ramaElegida) => vistaDeRama(config, rama);

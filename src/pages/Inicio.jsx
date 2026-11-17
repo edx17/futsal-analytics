@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
-import { leerConfigClub, segunClub } from '../club/useConfigClub';
+import { leerConfigClub, segunClub, useRama, vistaPorRama } from '../club/useConfigClub';
+import SelectorRama from '../components/club/SelectorRama';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useEsMovil } from '../utils/useEsMovil';
@@ -307,6 +308,7 @@ export default function Inicio() {
   const verPlata = ['superuser', 'manager', 'admin', 'tesorero'].includes(rol);
 
   const misCategorias = useMemo(() => perfil?.categorias_asignadas || [], [perfil?.categorias_asignadas]);
+  const [rama] = useRama();   // Masculino / Femenino elegida (o '' = todas)
 
   const [clubMaster, setClubMaster] = useState(localStorage.getItem('club_id') || '');
   const clubActivo = esSuperUser ? clubMaster : (perfil?.club_id || '');
@@ -338,7 +340,7 @@ export default function Inicio() {
   // CT: forzado a la categoría de mayor jerarquía entre sus asignadas (Primera antes que Tercera, etc.)
   // El CT no tiene opción "Todas" en el selector, así que siempre cae en una categoría concreta.
   useEffect(() => {
-    if (esCT && misCategorias.length > 0 && (!categoriaActiva || categoriaActiva === 'Todas' || !misCategorias.includes(categoriaActiva))) {
+    if (misCategorias.length > 0 && (!categoriaActiva || categoriaActiva === 'Todas' || !misCategorias.includes(categoriaActiva))) {
       const top = categoriaInicial(misCategorias);
       if (top && top !== categoriaActiva) { setCategoriaActiva(top); localStorage.setItem('dash_categoria', top); }
     }
@@ -348,13 +350,13 @@ export default function Inicio() {
   // Solo resolvemos a la categoría de mayor jerarquía cuando no hay una selección válida todavía
   // ('' = sin resolver, o una categoría que ya no existe). "Todas" cuenta como válida y se respeta.
   useEffect(() => {
-    if (esCT || categoriasDisponibles.length === 0) return;
+    if (misCategorias.length > 0 || categoriasDisponibles.length === 0) return;
     const valida = categoriaActiva === 'Todas' || categoriasDisponibles.includes(categoriaActiva);
     if (!valida) {
       const top = categoriaInicial(categoriasDisponibles);
       if (top) { setCategoriaActiva(top); localStorage.setItem('dash_categoria', top); }
     }
-  }, [categoriasDisponibles, categoriaActiva, esCT]);
+  }, [categoriasDisponibles, categoriaActiva, misCategorias.length]);
 
   /* ---- DATOS ---- */
   const [novedades, setNovedades] = useState([]);
@@ -453,8 +455,8 @@ export default function Inicio() {
         // Categorías disponibles (siempre del club elegido)
         let catsClub = [];
         if (club) {
-          const cfgClub = await leerConfigClub(club);
-          if (esCT && misCategorias.length > 0) catsClub = segunClub(misCategorias, cfgClub, { soloLasDeDatos: true });
+          const cfgClub = vistaPorRama(await leerConfigClub(club), rama);
+          if (misCategorias.length > 0) catsClub = segunClub(misCategorias, cfgClub, { soloLasDeDatos: true });
           else {
             const { data: cats } = await supabase.from('partidos').select('categoria').eq('club_id', club);
             // Con el configurador del club: sus categorías activas, en su orden (más las que tengan partidos sin configurar).
@@ -464,6 +466,8 @@ export default function Inicio() {
         } else setCategoriasDisponibles([]);
         // Solo filtramos por categoría si esa categoría existe para ESTE club (club sin categorías => no filtra)
         const catEq = !!club && categoriaActiva !== 'Todas' && !!categoriaActiva && catsClub.includes(categoriaActiva);
+        // "Todas" con una rama elegida: todas las categorías de esa rama, no las de la otra.
+        const catsRama = !catEq && !!club && !!rama && catsClub.length > 0 ? catsClub : null;
 
         // Novedades
         if (club && rol !== 'jugador') {
@@ -500,6 +504,7 @@ export default function Inicio() {
         let qMapPar = supabase.from('partidos').select('id, categoria, fecha');
         if (club) { qUlt = qUlt.eq('club_id', club); qPro = qPro.eq('club_id', club); qAnual = qAnual.eq('club_id', club); qJug = qJug.eq('club_id', club); qMapPar = qMapPar.eq('club_id', club); }
         if (catEq) { qUlt = qUlt.eq('categoria', categoriaActiva); qPro = qPro.eq('categoria', categoriaActiva); qAnual = qAnual.eq('categoria', categoriaActiva); qJug = qJug.eq('categoria', categoriaActiva); }
+        else if (catsRama) { qUlt = qUlt.in('categoria', catsRama); qPro = qPro.in('categoria', catsRama); qAnual = qAnual.in('categoria', catsRama); qJug = qJug.in('categoria', catsRama); }
 
         const [rUlt, rPro, rAnual, rJug, rMapPar] = await Promise.all([qUlt, qPro, qAnual, qJug, qMapPar]);
         // Solo MIS partidos: descarto los cruces del fixture entre otros equipos
@@ -654,6 +659,7 @@ export default function Inicio() {
           if (!partidosTemporada.has(t.id_partido)) return; // solo amarillas de la temporada en curso
           const cat = catDePartido[t.id_partido] || 'Sin categoría';
           if (catEq && cat !== categoriaActiva) return;
+          if (catsRama && !catsRama.includes(cat)) return;
           const key = `${t.id_jugador}|${cat}`;
           amarillasCat[key] = (amarillasCat[key] || 0) + 1;
         });
@@ -669,7 +675,7 @@ export default function Inicio() {
             bajasAcum[key] = (bajasAcum[key] || 0) + 1;
             return;
           }
-          if (catEq && !jugIdsCat.has(s.jugador_id)) return;
+          if ((catEq || catsRama) && !jugIdsCat.has(s.jugador_id)) return;
           const tot = (s.fechas_tribunal || 0) + (s.fechas_internas || 0);
           fechasRoja[s.jugador_id] = (fechasRoja[s.jugador_id] || 0) + Math.max(0, tot - (s.fechas_cumplidas || 0));
         });
@@ -692,7 +698,7 @@ export default function Inicio() {
         Object.entries(fechasRoja).forEach(([jid, f]) => { if (f > 0) { suspendidosIds.add(jid); alertas.push({ nivel: 'danger', ico: 'prohibido', titulo: `${nombreJug(jid)}: ${f} fecha${f > 1 ? 's' : ''} de sanción`, sub: 'Tribunal de disciplina', ruta: '/disciplina' }); } });
 
         /* ===== WELLNESS HOY ===== */
-        const wVentana = wellVentana.filter((r) => !catEq || jugIdsCat.has(r.jugador_id));
+        const wVentana = wellVentana.filter((r) => !(catEq || catsRama) || jugIdsCat.has(r.jugador_id));
         const wHoy = wVentana.filter((r) => String(r.fecha).slice(0, 10) === hoyStr);
         const enRojo = wHoy.filter(enRojoWell);
         if (enRojo.length > 0) alertas.unshift({ nivel: 'warning', ico: 'bateriaBaja', titulo: `${enRojo.length} ${enRojo.length === 1 ? 'jugador' : 'jugadores'} en rojo hoy`, sub: 'Fatiga, dolor o sueño en zona de alerta', ruta: '/wellness' });
@@ -801,7 +807,7 @@ export default function Inicio() {
       } catch (err) { console.error('Error cargando dashboard:', err); setCargando(false); }
     }
     cargar();
-  }, [clubActivo, esSuperUser, rol, categoriaActiva, esCT, verPlata, misCategorias, perfil?.id, perfil?.jugador_id]);
+  }, [clubActivo, esSuperUser, rol, categoriaActiva, esCT, verPlata, misCategorias, perfil?.id, perfil?.jugador_id, rama]);
 
   /* ---- Selectores ---- */
   const handleCambioCategoria = (e) => { setCategoriaActiva(e.target.value); localStorage.setItem('dash_categoria', e.target.value); };
@@ -1347,9 +1353,10 @@ export default function Inicio() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: esMovil ? 'column' : 'row', gap: 10, width: esMovil ? '100%' : 'auto' }}>
+          {rol !== 'jugador' && clubActivo && <SelectorRama />}
           {mostrarSelectorCat && (
             <select value={categoriaActiva} onChange={handleCambioCategoria} style={selStyle(esMovil)}>
-              {!(esCT && misCategorias.length > 0) && <option value="Todas">TODAS LAS CATEGORÍAS</option>}
+              {!(misCategorias.length > 0) && <option value="Todas">TODAS LAS CATEGORÍAS</option>}
               {categoriasDisponibles.map((c) => <option key={c} value={c}>{c.toUpperCase()}</option>)}
             </select>
           )}

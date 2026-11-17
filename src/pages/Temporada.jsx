@@ -325,7 +325,7 @@ function Temporada() {
       setFiltroCategoria(catKiosco);
       return;
     }
-    if (rolStr === 'CT' && cats.length === 1) {
+    if (rolStr !== 'SUPERUSER' && cats.length === 1) {
       setFiltroCategoria(cats[0]); 
     }
   }, [perfil, catKiosco]);
@@ -366,7 +366,9 @@ function Temporada() {
       
       const rolStr = typeof perfil?.rol === 'string' ? perfil.rol.trim().toUpperCase() : '';
       
-      if (rolStr === 'CT') {
+      // Con categorías asignadas (cualquier rol salvo superusuario) se ve sólo eso; el CT sin asignadas, nada.
+      const tieneAsignadas = Array.isArray(perfil?.categorias_asignadas) ? perfil.categorias_asignadas.length > 0 : !!perfil?.categorias_asignadas;
+      if (rolStr === 'CT' || (rolStr !== 'SUPERUSER' && tieneAsignadas)) {
         let catPermitidas = [];
         if (Array.isArray(perfil?.categorias_asignadas)) {
           catPermitidas = perfil.categorias_asignadas;

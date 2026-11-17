@@ -60,7 +60,7 @@ function OrigenGoles() {
   const [cargando, setCargando] = useState(true); 
   
   const [filtroCategoria, setFiltroCategoria] = useState(() => {
-    if (esCT && misCategorias.length > 0) return misCategorias[0];
+    if (misCategorias.length > 0) return misCategorias[0];
     return 'Todas';
   });
   
@@ -69,7 +69,7 @@ function OrigenGoles() {
   const [mostrarPlaca, setMostrarPlaca] = useState(false);
 
   useEffect(() => {
-    if (esCT && misCategorias.length > 0) {
+    if (misCategorias.length > 0) {
       if (filtroCategoria === 'Todas' || !misCategorias.includes(filtroCategoria)) {
         setFiltroCategoria(misCategorias[0]);
       }
@@ -118,9 +118,9 @@ function OrigenGoles() {
   const configClub = useConfigClub();   // orden y lista del configurador del club
   const categoriasUnicas = useMemo(() => {
     const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
-    const lista = esCT && misCategorias.length > 0 ? catPartidos.filter(c => misCategorias.includes(c)) : catPartidos;
+    const lista = misCategorias.length > 0 ? catPartidos.filter(c => misCategorias.includes(c)) : catPartidos;
     return segunClub(lista, configClub, { soloLasDeDatos: true });
-  }, [partidos, esCT, misCategorias, configClub]);
+  }, [partidos, misCategorias, configClub]);
 
   const torneosFiltrados = useMemo(() => {
     if (filtroCategoria === 'Todas') return torneos;
@@ -420,7 +420,7 @@ function OrigenGoles() {
           <div>
             <div className="stat-label">ORIGEN DE LOS GOLES</div>
             <select value={filtroCategoria} onChange={(e) => { setFiltroCategoria(e.target.value); setFiltroTorneo(''); }} style={selectStyle}>
-              {!(esCT && misCategorias.length > 0) && (
+              {!(misCategorias.length > 0) && (
                 <option value="Todas">TODAS LAS CATEGORÍAS</option>
               )}
               {categoriasUnicas.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}

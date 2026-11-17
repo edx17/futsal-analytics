@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ToastProvider } from './components/ToastContext';
+import SelectorRama from './components/club/SelectorRama';
 
 // ==========================================
 // PAGES
@@ -475,6 +476,8 @@ useEffect(() => {
 
     return (
       <>
+        {/* Rama (MASC / FEM): global, filtra las categorías de toda la app. Sólo si el club tiene las dos. */}
+        {!isCollapsed && !permisos.esJugador && <SelectorRama compacto style={{ margin: '4px 12px 10px' }} />}
         <NavLink to="/inicio" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} style={linkStyle} title={isCollapsed ? "Inicio" : ""}>
           <Icono nombre="inicio" size={22} /> {!isCollapsed && <span>{permisos.esJugador ? 'MI INICIO' : 'CENTRO DE MANDO'}</span>}
         </NavLink>
