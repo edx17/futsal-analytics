@@ -183,7 +183,10 @@ export default function CargaPrueba({ clubId, categoria, yo, esSuper = false, se
                 <button key={c.id} style={{ ...chip(seleccion.includes(c.id)), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 52,
                   ...(cuarteto && colorDe(c.id) ? { borderColor: colorDe(c.id), color: colorDe(c.id), background: tinte(colorDe(c.id), 0.12), borderWidth: 2 } : null) }}
                   onClick={() => elegir(c)} aria-pressed={seleccion.includes(c.id)}>
-                  <span>{c.apellido || c.nombre}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FotoCandidato c={c} tam={28} color={cuarteto ? colorDe(c.id) : null} />
+                    {c.apellido || c.nombre}
+                  </span>
                   {c.senas && <Senas texto={c.senas} />}
                   <small style={{ fontSize: 10, fontWeight: 700, opacity: 0.8 }}>{c.puesto_principal}{e ? ` · ${e.etiqueta}` : ''}{estado}</small>
                 </button>
@@ -201,6 +204,13 @@ export default function CargaPrueba({ clubId, categoria, yo, esSuper = false, se
         <>
           <PestanasBloques bloques={bloques} nBloque={nBloque} setNBloque={setNBloque} completo={(b) => completos(uno.id, b)} />
           <div className="bento-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 14, animation: 'fadeIn .2s' }} key={`${uno.id}|${bloque.id}`}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <FotoCandidato c={uno} tam={esMovil ? 52 : 64} color={ACENTO} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 900, fontSize: 16 }}>{[uno.nombre, uno.apellido].filter(Boolean).join(' ')}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{uno.puesto_principal}</div>
+              </div>
+            </div>
             <CabezaBloque bloque={bloque} />
             {bloque.criterios.map((c) => <Criterio key={c.id} criterio={c} actual={puntajeDe(uno.id, bloque.id, c.id)} marcar={(cambios) => marcar(uno.id, c, cambios)} />)}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -236,8 +246,11 @@ export default function CargaPrueba({ clubId, categoria, yo, esSuper = false, se
                 <div style={{ display: 'grid', gridTemplateColumns: columnas, gap: 10 }}>
                   {elegidos.map((c, i) => (
                     <div key={c.id} style={{ ...celda, paddingBottom: 8, borderBottom: `1px solid ${tinte(colorDe(c.id), 0.5)}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ width: 22, height: 22, borderRadius: '50%', background: colorDe(c.id), color: '#000', fontWeight: 900, fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ position: 'relative', flexShrink: 0 }}>
+                          <FotoCandidato c={c} tam={56} color={colorDe(c.id)} />
+                          <span style={{ position: 'absolute', right: -4, bottom: -4, width: 22, height: 22, borderRadius: '50%', background: colorDe(c.id), color: '#000', fontWeight: 900, fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--panel)' }}>{i + 1}</span>
+                        </span>
                         <span style={{ fontWeight: 900, fontSize: 16, color: colorDe(c.id), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.apellido || c.nombre}</span>
                       </div>
                       {c.senas && <Senas texto={c.senas} />}
@@ -298,6 +311,17 @@ export default function CargaPrueba({ clubId, categoria, yo, esSuper = false, se
    tiene su carril con recuadro y fondo de su color, de arriba a abajo. */
 const COLORES_CUARTETO = ['#38bdf8', '#f472b6', '#fbbf24', '#a78bfa'];
 const tinte = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${a})`;
+
+/* La foto del candidato (si se le sacó en CANDIDATOS); si no, sus iniciales. */
+function FotoCandidato({ c, tam = 40, color = null }) {
+  const iniciales = `${(c.nombre || '')[0] || ''}${(c.apellido || '')[0] || ''}`.toUpperCase() || '?';
+  return (
+    <span style={{ width: tam, height: tam, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--panel)', border: `2px solid ${color || 'var(--border)'}`, color: color || 'var(--text-dim)', fontWeight: 900, fontSize: Math.round(tam * 0.36) }}>
+      {c.foto_url ? <img src={c.foto_url} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : iniciales}
+    </span>
+  );
+}
 
 function PestanasBloques({ bloques, nBloque, setNBloque, completo }) {
   return (
