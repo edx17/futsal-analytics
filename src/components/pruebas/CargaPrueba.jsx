@@ -126,6 +126,9 @@ export default function CargaPrueba({ clubId, categoria, yo, esSuper = false, se
 
   const ultimo = nBloque >= bloques.length - 1;
   const uno = !cuarteto ? elegidos[0] || null : null;
+  const colorDe = (id) => { const i = elegidos.findIndex((c) => c.id === id); return i >= 0 ? COLORES_CUARTETO[i % COLORES_CUARTETO.length] : null; };
+  const columnas = `repeat(${elegidos.length}, minmax(0, 1fr))`;
+  const celda = { padding: '0 10px', minWidth: 0 };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -177,7 +180,8 @@ export default function CargaPrueba({ clubId, categoria, yo, esSuper = false, se
               const e = edadRelativa(c.fecha_nacimiento, sesion.fecha);
               const estado = cerrada(c) ? ' · CERRADA' : miEntrega(c.id) ? ' · ✓ GUARDADA' : bloqueado(c) ? ' · LO EVALÚA OTRO' : '';
               return (
-                <button key={c.id} style={{ ...chip(seleccion.includes(c.id)), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 52 }}
+                <button key={c.id} style={{ ...chip(seleccion.includes(c.id)), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 52,
+                  ...(cuarteto && colorDe(c.id) ? { borderColor: colorDe(c.id), color: colorDe(c.id), background: tinte(colorDe(c.id), 0.12), borderWidth: 2 } : null) }}
                   onClick={() => elegir(c)} aria-pressed={seleccion.includes(c.id)}>
                   <span>{c.apellido || c.nombre}</span>
                   {c.senas && <Senas texto={c.senas} />}
@@ -221,42 +225,63 @@ export default function CargaPrueba({ clubId, categoria, yo, esSuper = false, se
             completo={(b) => elegidos.filter(editable).every((c) => completos(c.id, b)) && elegidos.some(editable)} />
           <div className="bento-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12, animation: 'fadeIn .2s' }} key={`q|${bloque.id}`}>
             <CabezaBloque bloque={bloque} />
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${elegidos.length}, minmax(0, 1fr))`, gap: 10 }}>
-              {elegidos.map((c) => (
-                <div key={c.id} style={{ borderBottom: `2px solid ${miEntrega(c.id) ? ACENTO : 'var(--border)'}`, paddingBottom: 6 }}>
-                  <div style={{ fontWeight: 900, fontSize: 15 }}>{c.apellido || c.nombre}</div>
-                  {c.senas && <Senas texto={c.senas} />}
-                  <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{c.puesto_principal}{completos(c.id, bloque) ? ' · ✓ bloque completo' : ''}</div>
+            <div style={{ position: 'relative', padding: '10px 0' }}>
+              {/* Los carriles: recuadro y fondo del color de cada candidato, detrás de todo. */}
+              <div aria-hidden style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: columnas, gap: 10, pointerEvents: 'none' }}>
+                {elegidos.map((c) => (
+                  <div key={c.id} style={{ border: `2px solid ${colorDe(c.id)}`, background: tinte(colorDe(c.id), 0.07), borderRadius: 12 }} />
+                ))}
+              </div>
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: columnas, gap: 10 }}>
+                  {elegidos.map((c, i) => (
+                    <div key={c.id} style={{ ...celda, paddingBottom: 8, borderBottom: `1px solid ${tinte(colorDe(c.id), 0.5)}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 22, height: 22, borderRadius: '50%', background: colorDe(c.id), color: '#000', fontWeight: 900, fontSize: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                        <span style={{ fontWeight: 900, fontSize: 16, color: colorDe(c.id), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.apellido || c.nombre}</span>
+                      </div>
+                      {c.senas && <Senas texto={c.senas} />}
+                      <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{c.puesto_principal}{miEntrega(c.id) ? ' · ✓ guardada' : completos(c.id, bloque) ? ' · ✓ bloque completo' : ''}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            {bloque.criterios.map((crit) => (
-              <div key={crit.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ fontWeight: 800, fontSize: 13 }}>{crit.nombre}
-                  <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-dim)', marginLeft: 8 }}>1 · {crit.descriptores[1]} — 5 · {crit.descriptores[5]}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${elegidos.length}, minmax(0, 1fr))`, gap: 10 }}>
-                  {elegidos.map((c) => (editable(c)
-                    ? <Criterio key={c.id} compacto criterio={crit} actual={puntajeDe(c.id, bloque.id, crit.id)} marcar={(cambios) => marcar(c.id, crit, cambios)} />
-                    : <div key={c.id} style={{ ...dim, fontSize: 11, padding: 8, border: '1px dashed var(--border)', borderRadius: 8 }}>
-                        {cerrada(c) ? 'Carga cerrada.' : miEntrega(c.id) ? '✓ Guardada.' : `Lo evalúa ${nombreDe(asignado(c))}.`}
-                      </div>))}
+                {bloque.criterios.map((crit) => (
+                  <div key={crit.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {/* El nombre del criterio, una vez para todos, sobre una etiqueta para que se lea encima de los carriles. */}
+                    <div style={{ padding: '0 10px' }}>
+                      <span style={{ display: 'inline-block', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', fontWeight: 800, fontSize: 13 }}>
+                        {crit.nombre}
+                        <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-dim)', marginLeft: 8 }}>1 · {crit.descriptores[1]} — 5 · {crit.descriptores[5]}</span>
+                      </span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: columnas, gap: 10 }}>
+                      {elegidos.map((c) => (
+                        <div key={c.id} style={celda}>
+                          {editable(c)
+                            ? <Criterio compacto color={colorDe(c.id)} criterio={crit} actual={puntajeDe(c.id, bloque.id, crit.id)} marcar={(cambios) => marcar(c.id, crit, cambios)} />
+                            : <div style={{ ...dim, fontSize: 11, padding: 8, border: '1px dashed var(--border)', borderRadius: 8 }}>
+                                {cerrada(c) ? 'Carga cerrada.' : miEntrega(c.id) ? '✓ Guardada.' : `Lo evalúa ${nombreDe(asignado(c))}.`}
+                              </div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div style={{ display: 'grid', gridTemplateColumns: columnas, gap: 10 }}>
+                  {elegidos.map((c) => (
+                    <div key={c.id} style={celda}>
+                      {miEntrega(c.id) && !cerrada(c)
+                        ? <button style={{ ...botonSec, width: '100%' }} disabled={ocupado} onClick={() => corregir(c)}>✓ GUARDADA · CORREGIR</button>
+                        : editable(c) && entregas !== null && (
+                          <button style={{ ...boton, width: '100%', opacity: faltan(c).length ? 0.5 : 1 }} disabled={ocupado} onClick={() => guardar(c)}
+                            title={faltan(c).length ? `Falta: ${faltan(c).map((b) => b.nombre).join(', ')}` : ''}>
+                            {faltan(c).length ? `FALTAN ${faltan(c).length} BLOQUES` : `✓ GUARDAR ${String(c.apellido || c.nombre).toUpperCase()}`}
+                          </button>
+                        )}
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${elegidos.length}, minmax(0, 1fr))`, gap: 10 }}>
-              {elegidos.map((c) => (
-                <div key={c.id}>
-                  {miEntrega(c.id) && !cerrada(c)
-                    ? <button style={{ ...botonSec, width: '100%' }} disabled={ocupado} onClick={() => corregir(c)}>✓ GUARDADA · CORREGIR</button>
-                    : editable(c) && entregas !== null && (
-                      <button style={{ ...boton, width: '100%', opacity: faltan(c).length ? 0.5 : 1 }} disabled={ocupado} onClick={() => guardar(c)}
-                        title={faltan(c).length ? `Falta: ${faltan(c).map((b) => b.nombre).join(', ')}` : ''}>
-                        {faltan(c).length ? `FALTAN ${faltan(c).length} BLOQUES` : '✓ GUARDAR'}
-                      </button>
-                    )}
-                </div>
-              ))}
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
               <button style={botonSec} disabled={nBloque === 0} onClick={() => setNBloque((n) => n - 1)}>← ANTERIOR</button>
@@ -268,6 +293,11 @@ export default function CargaPrueba({ clubId, categoria, yo, esSuper = false, se
     </div>
   );
 }
+
+/* CUARTETO: un color por candidato (el verde queda para "guardada"). Cada uno
+   tiene su carril con recuadro y fondo de su color, de arriba a abajo. */
+const COLORES_CUARTETO = ['#38bdf8', '#f472b6', '#fbbf24', '#a78bfa'];
+const tinte = (hex, a) => `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${a})`;
 
 function PestanasBloques({ bloques, nBloque, setNBloque, completo }) {
   return (
@@ -310,19 +340,19 @@ function EstadoCandidato({ c, etapa, cerrada, entrega, bloqueadoPor, guardaron, 
 }
 
 /* compacto: para el cuarteto (el nombre del criterio va arriba, una vez para las 4 columnas). */
-function Criterio({ criterio, actual, marcar, compacto = false }) {
+function Criterio({ criterio, actual, marcar, compacto = false, color = ACENTO }) {
   const [abrirNota, setAbrirNota] = useState(!!actual?.comentario);
   const p = actual?.puntaje || null;
   const descriptor = p ? (criterio.descriptores[p] || DESCRIPTOR_INTERMEDIO[p]) : null;
   const obj = criterio.objetivo;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: compacto ? 6 : 8, paddingBottom: compacto ? 8 : 12, borderBottom: '1px solid var(--border)', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: compacto ? 6 : 8, paddingBottom: compacto ? 8 : 12, borderBottom: compacto ? 'none' : '1px solid var(--border)', minWidth: 0 }}>
       {!compacto && <div style={{ fontWeight: 800, fontSize: 14 }}>{criterio.nombre}</div>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: compacto ? 4 : 6 }} role="radiogroup" aria-label={criterio.nombre}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button key={n} role="radio" aria-checked={p === n} onClick={() => marcar({ puntaje: n })}
             style={{ minHeight: compacto ? 42 : 52, borderRadius: compacto ? 8 : 10, cursor: 'pointer', fontFamily: MONO, fontSize: compacto ? 16 : 20, fontWeight: 900, padding: 0,
-              border: `1px solid ${p === n ? ACENTO : 'var(--border)'}`, background: p === n ? 'rgba(0,230,118,.16)' : 'var(--panel)', color: p === n ? ACENTO : 'var(--text)' }}>
+              border: `${p === n ? 2 : 1}px solid ${p === n ? color : 'var(--border)'}`, background: p === n ? (color === ACENTO ? 'rgba(0,230,118,.16)' : tinte(color, 0.22)) : 'var(--panel)', color: p === n ? color : 'var(--text)' }}>
             {n}
           </button>
         ))}
