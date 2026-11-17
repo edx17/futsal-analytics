@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { leerConfigClub, segunClub } from '../club/useConfigClub';
+import { leerConfigClub, segunClub, useConfigClub, soloRama } from '../club/useConfigClub';
 import { supabase } from '../supabase';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../context/AuthContext';
@@ -44,7 +44,9 @@ function Tesoreria() {
   // Estados UI
   const [vista, setVista] = useState('cobros'); 
   const [categoria, setCategoria] = useState('Primera');
-  const [categorias, setCategorias] = useState([]);
+  const [categoriasTodasRamas, setCategorias] = useState([]);
+  const configClub = useConfigClub();   // con la rama elegida
+  const categorias = soloRama(categoriasTodasRamas, configClub);
   const [cargando, setCargando] = useState(false);
 
   // Datos

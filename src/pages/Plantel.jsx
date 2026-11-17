@@ -57,7 +57,6 @@ function Plantel() {
   const { showToast } = useToast(); 
 
   // --- VARIABLES DEL GRAN FILTRO ---
-  const esCT = perfil?.rol === 'ct';
   const misCategorias = perfil?.categorias_asignadas || [];
 
   const estadoInicial = {
@@ -95,7 +94,7 @@ function Plantel() {
     let query = supabase.from('jugadores').select('*').eq('club_id', clubId);
 
     // 2. ¡EL GRAN FILTRO DE CATEGORÍAS!
-    if (esCT && misCategorias.length > 0) {
+    if (misCategorias.length > 0) {
       query = query.in('categoria', misCategorias);
     }
 
@@ -768,7 +767,7 @@ function Plantel() {
             <TutoresJugador
               jugador={jugadorSeleccionado}
               clubId={clubId}
-              puedeEditar={!esCT || misCategorias.includes(jugadorSeleccionado.categoria)}
+              puedeEditar={misCategorias.length === 0 || misCategorias.includes(jugadorSeleccionado.categoria)}
               onCambioPermisos={fetchJugadores}
             />
 

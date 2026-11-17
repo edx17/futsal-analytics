@@ -380,7 +380,7 @@ function Resumen() {
 const [filtroCategoriaGrid, setFiltroCategoriaGrid] = useState(() => {
   const kioscoCat = localStorage.getItem('kiosco_categoria');
   if (kioscoCat) return kioscoCat;
-if (esCT && misCategorias.length > 0) return misCategorias[0];
+if (misCategorias.length > 0) return misCategorias[0];
 return 'Todas';
 });
   
@@ -399,7 +399,7 @@ return 'Todas';
   const [placaFigura, setPlacaFigura] = useState(false);
 
   useEffect(() => {
-    if (esCT && misCategorias.length > 0) {
+    if (misCategorias.length > 0) {
       if (filtroCategoriaGrid === 'Todas' || !misCategorias.includes(filtroCategoriaGrid)) {
         setFiltroCategoriaGrid(misCategorias[0]);
       }
@@ -596,10 +596,10 @@ return 'Todas';
   const configClub = useConfigClub();
   const categoriasUnicas = useMemo(() => {
     const catPartidos = [...new Set(partidos.map(p => p.categoria).filter(Boolean))];
-    const lista = esCT && misCategorias.length > 0 ? catPartidos.filter(c => misCategorias.includes(c)) : catPartidos;
+    const lista = misCategorias.length > 0 ? catPartidos.filter(c => misCategorias.includes(c)) : catPartidos;
     // Filtro de consulta: las que tienen partidos, en el orden del configurador del club.
     return segunClub(lista, configClub, { soloLasDeDatos: true });
-  }, [partidos, esCT, misCategorias, configClub]);
+  }, [partidos, misCategorias, configClub]);
 
   const competicionesUnicas = useMemo(() => {
     const filtradosPorCategoria = partidos.filter(p => filtroCategoriaGrid === 'Todas' || p.categoria === filtroCategoriaGrid);
@@ -1246,7 +1246,7 @@ return 'Todas';
             <div style={{ flex: esMovil ? '1 1 45%' : 'auto' }}>
               <div className="stat-label" style={{ fontSize: '0.7rem', marginBottom: '5px' }}>FILTRAR CATEGORÍA</div>
               <select value={filtroCategoriaGrid} onChange={(e) => setFiltroCategoriaGrid(e.target.value)} style={{ width: '100%', padding: '8px', background: 'var(--panel)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}>
-                {!(esCT && misCategorias.length > 0) && (
+                {!(misCategorias.length > 0) && (
                   <option value="Todas">TODAS</option>
                 )}
                 {categoriasUnicas.map(c => <option key={c} value={c}>{c}</option>)}

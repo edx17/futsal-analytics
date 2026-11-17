@@ -251,7 +251,7 @@ function Enfermeria() {
         .select('id, fecha, rival, categoria, condicion, nombre_propio, competicion')
         .eq('club_id', clubId).order('fecha', { ascending: false }).limit(80);
 
-      if (esCT && misCategorias.length > 0) qJug = qJug.in('categoria', misCategorias);
+      if (misCategorias.length > 0) qJug = qJug.in('categoria', misCategorias);
       if (esJugador && miJugadorId) qLes = qLes.eq('jugador_id', miJugadorId);
 
       const [rJug, rLes, rPar] = await Promise.all([qJug, qLes, qPar]);

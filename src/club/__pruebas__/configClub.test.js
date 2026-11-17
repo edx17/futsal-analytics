@@ -66,3 +66,21 @@ describe('segunClub: la regla única de las listas de categorías', () => {
     expect(segunClub(['Cuarta', 'Primera', 'Quinta', '3ra'], c, { soloLasDeDatos: true })).toEqual(['Primera', 'Cuarta', 'Quinta', '3ra']);
   });
 });
+
+describe('rama elegida: cada rama ve sólo sus categorías', () => {
+  it('vistaPorRama recorta el configurador y segunClub esconde las de la otra rama aunque tengan datos', async () => {
+    const { segunClub, vistaPorRama, soloRama } = await import('../configClub');
+    const c = normalizarConfig({
+      ramas: ['Masculino', 'Femenino'],
+      categorias: [{ nombre: 'Primera', rama: 'Masculino' }, { nombre: 'Tercera', rama: 'Masculino' },
+        { nombre: 'Primera Fem', rama: 'Femenino' }, { nombre: 'Reserva Fem', rama: 'Femenino' }],
+    });
+    expect(segunClub([], vistaPorRama(c, ''))).toEqual(['Primera', 'Tercera', 'Primera Fem', 'Reserva Fem']);
+    expect(segunClub([], vistaPorRama(c, 'Femenino'))).toEqual(['Primera Fem', 'Reserva Fem']);
+    expect(segunClub(['Primera', 'Primera Fem', 'Vieja'], vistaPorRama(c, 'Masculino'), { soloLasDeDatos: true })).toEqual(['Primera', 'Vieja']);
+    expect(soloRama(['Tercera', 'Reserva Fem'], vistaPorRama(c, 'Femenino'))).toEqual(['Reserva Fem']);
+    // Un club con una sola rama no se recorta.
+    const una = normalizarConfig({ ramas: ['Masculino'], categorias: [{ nombre: 'Primera' }] });
+    expect(vistaPorRama(una, 'Femenino')).toBe(una);
+  });
+});

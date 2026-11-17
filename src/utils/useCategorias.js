@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { categoriasDelClub, categoriasVisiblesPara, LISTA_BASE, unirCategorias, normCat } from './categorias';
-import { hayConfig, categoriasActivas } from '../club/configClub';
+import { hayConfig, categoriasActivas, soloRama } from '../club/configClub';
 import { useConfigClub } from '../club/useConfigClub';
 
 /* Las categorías del club, para cualquier pantalla que tenga que ofrecerlas.
@@ -68,6 +68,8 @@ export function useCategorias({ incluirHistoricas = false, asignadas } = {}) {
       historicas = unirCategorias(inactivas, deDatos.todas.filter((c) => !enConfig.has(normCat(c))));
       todas = [...activas, ...historicas];
     }
+    // Con una rama elegida, afuera las categorías de las otras ramas (aunque tengan datos).
+    activas = soloRama(activas, config); historicas = soloRama(historicas, config); todas = soloRama(todas, config);
     const base = incluirHistoricas ? todas : activas;
     const fuente = base.length > 0 ? base : LISTA_BASE;
     return {

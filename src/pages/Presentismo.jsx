@@ -49,7 +49,7 @@ function Presentismo() {
   /* Sólo las categorías con plantel hoy: acá se toma asistencia, y una
      división sin jugadores no tiene a quién pasarle lista. */
   const { categorias: categoriasMostrar } = useCategorias({
-    asignadas: esCT ? misCategorias : [],
+    asignadas: misCategorias,
   });
 
   /* Auto-seleccionar una categoría que exista de verdad. El estado arranca
