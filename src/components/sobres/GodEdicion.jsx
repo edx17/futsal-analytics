@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import CartaEspecial from '../quinteto/CartaEspecial';
 import { aplicarAjuste } from '../../analytics/god';
-import { jugadoresParaEdicion, filaEdicion } from '../../analytics/edicionesEspeciales';
+import { jugadoresParaEdicion, filaEdicion, partidosCopaFuturo, origenesCopaFuturo, cartasDePartidos, jugadoresDeOrigen } from '../../analytics/edicionesEspeciales';
+import { useDatosPlantel } from '../../utils/useDatosPlantel';
 import { publicarCatalogo } from '../../utils/sobres';
 import { activarCartas } from '../../utils/god';
 import { subirFotoEspecial, quitarFotoEspecial } from '../../utils/cartasFotos';
@@ -16,13 +17,52 @@ import { subirFotoEspecial, quitarFotoEspecial } from '../../utils/cartasFotos';
 
 const ANIO = new Date().getFullYear();
 
-export default function GodEdicion({ cfg, color = '#e9c46a', clubId, catalogo, ajustes, fotos, recargar, avisar }) {
+export default function GodEdicion(props) {
+  return props.cfg.desdePartidos ? <EdicionDesdePartidos {...props} /> : <EdicionDesdeCatalogo {...props} />;
+}
+
+/* TOTY: sale de la carta de la temporada de cada uno (más el plus). */
+function EdicionDesdeCatalogo(props) {
+  const { cfg, catalogo, fotos } = props;
+  const jugadores = useMemo(() => jugadoresParaEdicion(cfg, catalogo || [], fotos, ANIO), [cfg, catalogo, fotos]);
+  return <Edicion {...props} jugadores={jugadores} />;
+}
+
+/* COPA FUTURO: sale de los partidos del torneo Copa Futuro. Se elige el partido
+   (o el torneo entero) y cada jugador que jugó recibe la carta con la media y
+   los atributos calculados con lo cargado en ese partido. Nada inventado. */
+function EdicionDesdePartidos(props) {
+  const { cfg, clubId, catalogo, fotos } = props;
+  const { raw, loading } = useDatosPlantel(clubId);
+  const partidos = useMemo(() => partidosCopaFuturo(raw), [raw]);
+  const origenes = useMemo(() => origenesCopaFuturo(partidos), [partidos]);
+  const [elegido, setElegido] = useState('');
+  const origen = origenes.find((o) => o.id === elegido) || origenes[0] || null;
+  const jugadores = useMemo(
+    () => (origen ? jugadoresDeOrigen(cfg, cartasDePartidos(raw, origen.partidos), origen, catalogo || [], fotos) : []),
+    [cfg, raw, origen, catalogo, fotos],
+  );
+  const cabecera = (
+    <label style={{ ...etiqueta, flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+      PARTIDO DE LA COPA FUTURO
+      {loading ? <span style={dim}>Leyendo los partidos…</span>
+        : origenes.length === 0 ? <span style={dim}>No hay partidos de Copa Futuro con datos cargados. El torneo tiene que llamarse "Copa Futuro…" y el partido tener la toma de datos.</span>
+          : (
+            <select value={origen?.id || ''} onChange={(e) => setElegido(e.target.value)} style={{ ...campo, fontSize: 13 }}>
+              {origenes.map((o) => <option key={o.id} value={o.id}>{o.etiqueta}</option>)}
+            </select>
+          )}
+    </label>
+  );
+  return <Edicion key={origen?.id || 'sin'} {...props} jugadores={jugadores} cabecera={cabecera} />;
+}
+
+function Edicion({ cfg, color = '#e9c46a', clubId, catalogo, ajustes, fotos, recargar, avisar, jugadores, cabecera = null }) {
   const TIPO = cfg.tipo;
   const [busca, setBusca] = useState('');
   const [elegidos, setElegidos] = useState({});        // jugador_id → media
   const [ver, setVer] = useState(null);                // el jugador de la vista previa
   const [ocupado, setOcupado] = useState(null);
-  const jugadores = useMemo(() => jugadoresParaEdicion(cfg, catalogo || [], fotos, ANIO), [cfg, catalogo, fotos]);
   const creadas = useMemo(() => (catalogo || []).filter((k) => k.tipo === TIPO), [catalogo, TIPO]);
 
   const hacer = async (id, fn, ok) => {
@@ -59,6 +99,7 @@ export default function GodEdicion({ cfg, color = '#e9c46a', clubId, catalogo, a
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={dim}>{cfg.ayuda}</div>
+      {cabecera}
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 320px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -77,11 +118,13 @@ export default function GodEdicion({ cfg, color = '#e9c46a', clubId, catalogo, a
                     <span style={{ minWidth: 0 }}>
                       <b style={{ fontSize: 13 }}>{j.apellido}</b> <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{j.nombre}</span>
                       <span style={{ display: 'block', fontSize: 11, color: 'var(--text-dim)' }}>
-                        {j.rol}{j.categoria ? ` · ${j.categoria}` : ''} · temporada {j.ovr} → {j.sugerida}{!j.foto ? ' · sin foto' : ''}{!j.atributos.length ? ' · sin atributos' : ''}
+                        {j.rol}{j.categoria ? ` · ${j.categoria}` : ''} · {j.stats
+                          ? `en el partido: media ${j.ovr} · ${j.stats.min}' · ${j.stats.goles} G · ${j.stats.asist} A`
+                          : `temporada ${j.ovr} → ${j.sugerida}`}{!j.foto ? ' · sin foto' : ''}{!j.atributos.length ? ' · sin atributos' : ''}
                       </span>
                     </span>
                   </label>
-                  {j.tiene && <span style={{ ...tag, background: '#5b1a8a' }}>YA TIENE · SE ACTUALIZA</span>}
+                  {j.tiene && <span style={{ ...tag, background: '#5b1a8a' }}>{j.origen ? 'YA TIENE LA DE ESTE PARTIDO · SE ACTUALIZA' : 'YA TIENE · SE ACTUALIZA'}</span>}
                   {elegido && (
                     <label style={etiqueta}>MEDIA
                       <input type="number" min="1" max="99" value={elegidos[j.jugador_id]} style={{ ...campo, width: 64 }}
