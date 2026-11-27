@@ -5,12 +5,15 @@ import { AUDIENCIAS } from '../analytics/reporteJugador';
 /* EL DOCUMENTO DE UN REPORTE: en pantalla y, con `paraImprimir`, la copia
    que se imprime como PDF (ver src/pages/Reportes.jsx y reportes.css).
    Las secciones van numeradas (01, 02…); la portada no lleva número. */
+/* Las secciones que no entran en una hoja se dejan partir (por filas); el resto va entera. */
+const esLarga = (s) => s.larga || s.bloques.some((b) => (b.tipo === 'tabla' && (b.filas || []).length > 12) || (b.tipo === 'lista' && (b.items || []).length > 10));
+
 export default function DocumentoReporte({ reporte, paraImprimir = false }) {
   const pie = `${reporte.titulo} · ${reporte.subtitulo} · para ${AUDIENCIAS.find((a) => a.id === reporte.audiencia)?.nombre.toLowerCase()} · VirtualClub`;
   const cuerpo = (
     <div className="rp-imprimible" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {reporte.secciones.map((s, n) => (
-        <section key={s.id} className={`rp-seccion${s.id === 'portada' ? ' rp-seccion-portada' : ''}`}>
+        <section key={s.id} className={`rp-seccion rp-seccion-${s.id}${esLarga(s) ? ' rp-seccion-larga' : ''}`}>
           {s.id !== 'portada' && <h2 className="rp-seccion-titulo"><span className="rp-seccion-num">{String(n).padStart(2, '0')}</span>{s.titulo}</h2>}
           {s.bloques.map((b, k) => <Bloque key={`${s.id}-${k}`} b={b} />)}
         </section>

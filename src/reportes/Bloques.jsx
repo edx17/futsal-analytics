@@ -55,7 +55,7 @@ function Kpis({ b }) {
         <div key={k.rotulo} className={`rp-kpi${k.destacado ? ' rp-kpi-destacado' : ''}`}>
           <div className="rp-kpi-rotulo">{k.rotulo}</div>
           <div className="rp-kpi-valor">{k.valor}</div>
-          {k.detalle && <div className="rp-kpi-detalle">{k.detalle}</div>}
+          {k.detalle && <div className={`rp-kpi-detalle${k.tono ? ` rp-tono-${k.tono}` : ''}`}>{k.detalle}</div>}
         </div>
       ))}
     </div>
@@ -178,4 +178,48 @@ function Lista({ b }) {
 
 const Texto = ({ b }) => <p className="rp-texto">{b.texto}</p>;
 
-const TIPOS = { portada: Portada, kpis: Kpis, serie: Serie, barras: Barras, ranking: Ranking, tabla: Tabla, lista: Lista, texto: Texto };
+/* Ficha técnica: datos generales en una fila (puesto, perfil, nacimiento, condición). */
+function Ficha({ b }) {
+  return (
+    <div className="rp-ficha">
+      {b.titulo && <div className="rp-bloque-titulo">{b.titulo}</div>}
+      <dl className="rp-ficha-grilla">
+        {b.items.map((i) => <div key={i.rotulo}><dt>{i.rotulo}</dt><dd>{i.valor}</dd></div>)}
+      </dl>
+    </div>
+  );
+}
+
+/* Un dato que tiene que verse sí o sí (la asistencia): franja de lado a lado. */
+const Franja = ({ b }) => (
+  <div className="rp-franja">
+    <span className="rp-franja-rotulo">{b.rotulo}</span>
+    <span className="rp-franja-valor">{b.valor}</span>
+    {b.detalle && <span className="rp-franja-detalle">{b.detalle}</span>}
+  </div>
+);
+
+/* La devolución de cada área. `vacio`: cuadro con renglones para escribir a mano. */
+function Devolucion({ b }) {
+  return (
+    <div className="rp-devolucion">
+      {b.items.map((a) => (
+        <div key={a.titulo} className={`rp-area${a.vacio ? ' rp-area-vacia' : ''}`}>
+          <div className="rp-area-titulo">{a.titulo}</div>
+          {a.vacio
+            ? <div className="rp-renglones" aria-hidden="true">{Array.from({ length: 6 }, (_, k) => <span key={k} />)}</div>
+            : <div className="rp-area-texto">{a.texto.split(/\n+/).map((t, k) => <p key={k}>{t}</p>)}</div>}
+          {a.autor && <div className="rp-area-autor">{a.autor}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const Staff = ({ b }) => (
+  <dl className="rp-staff">
+    {b.items.map((x, k) => <div key={`${x.cargo}-${x.nombre}-${k}`}>{x.cargo && <dt>{x.cargo}</dt>}<dd>{x.nombre}</dd></div>)}
+  </dl>
+);
+
+const TIPOS = { portada: Portada, kpis: Kpis, serie: Serie, barras: Barras, ranking: Ranking, tabla: Tabla, lista: Lista, texto: Texto, ficha: Ficha, franja: Franja, devolucion: Devolucion, staff: Staff };
