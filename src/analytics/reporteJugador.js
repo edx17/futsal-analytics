@@ -30,6 +30,47 @@ export const AUDIENCIAS = [
 ];
 
 const TODAS = ['ct', 'jugador', 'directiva'];
+
+/* Las áreas de la devolución (lo que escribe cada una sobre el jugador; tabla reportes_devoluciones). */
+export const AREAS_DEVOLUCION = [
+  { id: 'tactico', nombre: 'Desempeño táctico-técnico' },
+  { id: 'fisico', nombre: 'Preparación física' },
+  { id: 'nutricion', nombre: 'Nutrición' },
+  { id: 'conductual', nombre: 'Desempeño conductual' },
+  { id: 'medico', nombre: 'Cuerpo médico' },
+  { id: 'datos', nombre: 'Análisis de datos' },
+];
+
+/* Las mediciones de Fisiología (tabla rendimiento) que van al reporte. `mas`: más es mejor. */
+const MEDICIONES = [
+  { id: 'cmj', rotulo: 'CMJ', unidad: 'cm', mas: true },
+  { id: 'yoyo', rotulo: 'Yo-Yo', unidad: '', mas: true, de: (m) => m.y26 ?? m.y25 },
+  { id: 'broad', rotulo: 'Salto horizontal', unidad: 'm', mas: true },
+  { id: 'peso', rotulo: 'Peso', unidad: 'kg', mas: null },
+  { id: 'musc', rotulo: 'Masa muscular', unidad: '%', mas: true },
+  { id: 'adip', rotulo: 'Masa adiposa', unidad: '%', mas: false },
+  { id: 'sum6', rotulo: 'Σ 6 pliegues', unidad: 'mm', mas: false },
+];
+const num = (v) => (v === null || v === undefined || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
+const fechaLarga = (f) => { const [y, m, d] = String(f || '').slice(0, 10).split('-'); return d ? `${d}/${m}/${y}` : ''; };
+
+/** Lo último de cada medición física y cuánto cambió desde la primera de la temporada. */
+export function fisicoDelJugador(mediciones = []) {
+  const orden = [...mediciones].filter((m) => m?.fecha_medicion).sort((a, b) => String(a.fecha_medicion).localeCompare(String(b.fecha_medicion)));
+  return MEDICIONES.map((def) => {
+    const valores = orden.map((m) => ({ f: m.fecha_medicion, v: num(def.de ? def.de(m) : m[def.id]) })).filter((x) => x.v != null);
+    if (!valores.length) return null;
+    const ult = valores[valores.length - 1];
+    const pri = valores[0];
+    const dif = valores.length > 1 ? Math.round((ult.v - pri.v) * 100) / 100 : null;
+    const mejora = dif == null || dif === 0 || def.mas == null ? null : (dif > 0) === def.mas;
+    return {
+      id: def.id, rotulo: def.rotulo, valor: `${ult.v}${def.unidad && def.unidad !== '%' ? ` ${def.unidad}` : def.unidad}`,
+      detalle: dif != null && dif !== 0 ? `${dif > 0 ? '+' : ''}${dif}${def.unidad === '%' ? ' pts' : def.unidad ? ` ${def.unidad}` : ''} desde el ${fechaCorta(pri.f)}` : `medido el ${fechaCorta(ult.f)}`,
+      mejora,
+    };
+  }).filter(Boolean);
+}
 const esGol = (ev) => ev?.accion === 'Gol' || ev?.accion === 'Remate - Gol';
 const r1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : null);
@@ -161,6 +202,33 @@ export function compromisoDelJugador({ jugadorId, asistencias = [], wellness = [
  *   hasta       fecha de corte (YYYY-MM-DD) para los días de baja
  * @returns {{ titulo, subtitulo, audiencia, secciones: Array<{ id, titulo, bloques }> }}
  */
+/* Ficha técnica: puesto, perfil, nacimiento y condición (propio / a préstamo). */
+function fichaTecnica(jugador, ficha = {}) {
+  const items = [
+    ['Posición', jugador.posicion],
+    ['Perfil', ficha.pierna || jugador.pierna],
+    ['Fecha de nacimiento', fechaLarga(jugador.fechanac)],
+    ['Condición', ficha.condicion],
+  ].filter(([, v]) => v);
+  return items.length ? { tipo: 'ficha', titulo: 'Ficha técnica', items: items.map(([rotulo, valor]) => ({ rotulo, valor: String(valor) })) } : null;
+}
+
+/* Lo que no sale de los números: preparación física, la devolución de cada área y el staff. */
+function sumarDevolucion(sumar, d) {
+  const fis = fisicoDelJugador(d.fisico || []);
+  if (fis.length) {
+    sumar('fisico', 'Preparación física', [{ tipo: 'kpis', items: fis.map((m) => ({ rotulo: m.rotulo, valor: m.valor, detalle: m.detalle, tono: m.mejora == null ? null : m.mejora ? 'bien' : 'trabajo' })) }]);
+  }
+  const textos = d.devolucion || {};
+  const areas = AREAS_DEVOLUCION.map((a) => ({ ...a, texto: String(textos[a.id]?.texto || '').trim(), autor: textos[a.id]?.autor_nombre || '' }))
+    .filter((a) => a.texto || d.aMano);
+  if (areas.length) {
+    sumar('devolucion', 'Devolución de la temporada', [{ tipo: 'devolucion', items: areas.map((a) => ({ titulo: a.nombre, texto: a.texto, autor: a.autor, vacio: !a.texto })) }]);
+  }
+  const staff = (d.staff || []).filter((x) => x && (x.nombre || '').trim());
+  if (staff.length) sumar('staff', 'Staff y cuerpo técnico', [{ tipo: 'staff', items: staff.map((x) => ({ cargo: String(x.cargo || '').trim(), nombre: String(x.nombre).trim() })) }]);
+}
+
 export function reporteJugador(d) {
   const { jugador, fila, companeros = [], partidos = [], eventos = [], temporada, club = {}, audiencia = 'ct' } = d;
   const arquero = esArquero(fila?.posicion || jugador?.posicion);
@@ -182,10 +250,11 @@ export function reporteJugador(d) {
     tipo: 'portada', nombre, dorsal: jugador.dorsal ?? null, posicion: jugador.posicion || '', categoria: jugador.categoria || '',
     foto: jugador.foto || null, temporada, club: club.nombre || '', escudo: club.escudo || null,
     titulo: `Temporada ${temporada}`,
-  }]);
+  }, fichaTecnica(jugador, d.ficha)]);
 
   if (!fila || !fila.jugados) {
     sumar('sin', 'La temporada', [{ tipo: 'texto', texto: `${nombre} todavía no tiene partidos con datos cargados en ${temporada}.` }]);
+    sumarDevolucion(sumar, d);
     return { titulo: `Reporte de ${nombre}`, subtitulo: `Temporada ${temporada}`, audiencia, secciones };
   }
 
@@ -226,7 +295,7 @@ export function reporteJugador(d) {
 
   // Sus mejores partidos.
   const mejores = [...conNota].sort((a, b) => b.rating - a.rating || b.goles - a.goles).slice(0, 5);
-  sumar('mejores', 'Sus mejores partidos', [{
+  sumar('mejores', 'Sus mejores partidos', [mejores.length > 0 && {
     tipo: 'tabla',
     columnas: arquero ? ['Fecha', 'Rival', 'Resultado', 'Rating'] : ['Fecha', 'Rival', 'Resultado', 'Goles', 'Asist.', 'Rating'],
     filas: mejores.map((p) => (arquero
@@ -250,7 +319,10 @@ export function reporteJugador(d) {
     { rotulo: 'Lesiones', valor: comprom.lesiones, detalle: comprom.lesiones ? `${comprom.diasDeBaja} días de baja` : 'ninguna en la temporada' },
     { rotulo: 'Tarjetas', valor: comprom.amarillas + comprom.rojas, detalle: `${comprom.amarillas} amarillas · ${comprom.rojas} rojas` },
   ];
-  sumar('compromiso', 'Compromiso y salud', [{ tipo: 'kpis', items: k2.filter(Boolean) }]);
+  sumar('compromiso', 'Compromiso y salud', [
+    comprom.presentismo != null ? { tipo: 'franja', rotulo: 'Asistencia', valor: `${comprom.presentismo}%`, detalle: `${comprom.presentes} de ${comprom.entrenamientos} entrenamientos` } : null,
+    { tipo: 'kpis', items: k2.filter(Boolean).filter((k) => k.rotulo !== 'Presentismo') },
+  ]);
   if (audiencia === 'ct' && comprom.wellnessCargados >= 5) {
     sumar('wellness', 'Wellness', [{
       tipo: 'barras', titulo: 'Promedios de la temporada (1 a 5)', escala: 5,
@@ -273,6 +345,8 @@ export function reporteJugador(d) {
     fuertes.length ? { tipo: 'lista', titulo: 'Lo mejor de su temporada', tono: 'bien', items: fuertes } : null,
     audiencia !== 'directiva' && flojos.length ? { tipo: 'lista', titulo: audiencia === 'ct' ? 'Para trabajar' : 'Para el año que viene', tono: 'trabajo', items: flojos } : null,
   ]);
+
+  sumarDevolucion(sumar, d);
 
   return { titulo: `Reporte de ${nombre}`, subtitulo: `Temporada ${temporada}${jugador.categoria ? ` · ${jugador.categoria}` : ''}`, audiencia, secciones };
 }

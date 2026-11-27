@@ -178,6 +178,45 @@
   .rp-doc .rp-linea { stroke-width: 3; }
 }
 
+/* ficha técnica, franja, devolución por área y staff */
+.rp-tono-bien { color: var(--rp-bien); }
+.rp-tono-trabajo { color: var(--rp-mal); }
+.rp-ficha-grilla { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); border-top: 2px solid var(--rp-texto); }
+.rp-ficha-grilla > div { padding: 10px 14px 10px 0; border-bottom: 1px solid var(--rp-borde); }
+.rp-ficha-grilla dt { font-family: var(--f-cond); font-size: 0.78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--rp-dim); }
+.rp-ficha-grilla dd { margin: 4px 0 0; font-family: var(--f-cond); font-size: 1.25rem; font-weight: 700; text-transform: uppercase; }
+.rp-franja { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; padding: 12px 18px; border-radius: 6px; background: var(--rp-acento); color: #111; }
+.rp-franja-rotulo { font-family: var(--f-cond); font-size: 1rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.rp-franja-valor { font-family: var(--f-cond); font-size: 2.2rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.rp-franja-detalle { font-size: 0.85rem; margin-left: auto; }
+.rp-devolucion { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.rp-area { border: 1px solid var(--rp-borde); border-top: 3px solid var(--rp-acento); border-radius: 4px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.rp-area-titulo { font-family: var(--f-cond); font-size: 0.95rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.rp-area-texto p { margin: 0 0 6px; font-size: 0.92rem; line-height: 1.5; }
+.rp-area-autor { margin-top: auto; font-size: 0.75rem; color: var(--rp-dim); text-align: right; }
+.rp-area-autor::before { content: "— "; }
+.rp-renglones { display: flex; flex-direction: column; }
+.rp-renglones span { height: 26px; border-bottom: 1px solid var(--rp-borde); }
+.rp-staff { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 18px; }
+.rp-staff > div { display: flex; gap: 6px; align-items: baseline; font-size: 0.9rem; }
+.rp-staff dt { font-family: var(--f-cond); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--rp-acento); }
+.rp-staff dt::after { content: ":"; }
+.rp-staff dd { margin: 0; }
+
+/* editor de la devolución (sólo pantalla) */
+.rp-editor { display: flex; flex-direction: column; gap: 10px; }
+.rp-editor > .rp-boton { align-self: flex-start; }
+.rp-editor-aviso { font-size: 0.8rem; color: var(--rp-medio); }
+.rp-editor-cuerpo { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid var(--rp-borde); border-radius: 10px; background: var(--rp-panel); }
+.rp-editor-ayuda { font-size: 0.8rem; color: var(--rp-dim); }
+.rp-editor-areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.rp-editor-area { display: flex; flex-direction: column; gap: 6px; }
+.rp-editor-area-titulo { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-cond); font-size: 0.85rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.rp-editor-area-titulo small { font-family: var(--f-body); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--rp-dim); }
+.rp-editor textarea, .rp-editor-staff input { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--rp-borde); background: var(--rp-fondo); color: var(--rp-texto); font: inherit; font-size: 0.88rem; resize: vertical; }
+.rp-editor-check { display: flex; gap: 8px; align-items: center; font-size: 0.82rem; }
+.rp-editor-staff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 8px; }
+
 /* PDF: "Descargar PDF" imprime la copia del reporte que cuelga del <body>
    (.rp-impresion), en blanco y en tantas hojas como haga falta. En pantalla
    esa copia no se ve; al imprimir, se oculta todo lo demás. */
@@ -192,8 +231,17 @@
     --rp-acento: oklch(0.62 0.19 45); --rp-acento-suave: oklch(0.7 0.19 45 / 0.12);
     background: var(--vf-paper); color: var(--vf-paper-ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .rp-impresion .rp-imprimible { gap: 10px !important; }
-  /* las secciones largas se parten entre hojas; lo que no se corta son las piezas chicas */
-  .rp-impresion .rp-seccion { break-inside: auto; padding: 10px 0 0; }
+  /* PAGINADO: cada sección va entera en una hoja (si no entra en lo que queda,
+     pasa a la siguiente; nunca queda un título o una lista colgando). Sólo se
+     parten las que no entran ni en una hoja entera (tablas largas, la
+     devolución), y ésas por piezas: una fila, un área. La devolución arranca
+     en hoja nueva, y el staff va siempre con ella. */
+  .rp-impresion .rp-seccion { break-inside: avoid; page-break-inside: avoid; padding: 10px 0 0; }
+  .rp-impresion .rp-seccion-larga, .rp-impresion .rp-seccion-devolucion { break-inside: auto; page-break-inside: auto; }
+  .rp-impresion .rp-seccion-devolucion { break-before: page; page-break-before: always; border-top: none; }
+  .rp-impresion .rp-area, .rp-impresion .rp-ficha, .rp-impresion .rp-franja, .rp-impresion .rp-staff, .rp-impresion .rp-kpis { break-inside: avoid; page-break-inside: avoid; }
+  .rp-impresion .rp-devolucion { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .rp-impresion .rp-area-texto p { font-size: 0.82rem; line-height: 1.45; }
   .rp-impresion .rp-seccion-titulo, .rp-impresion .rp-bloque-titulo { break-after: avoid; page-break-after: avoid; }
   .rp-impresion .rp-portada, .rp-impresion .rp-kpi, .rp-impresion .rp-serie, .rp-impresion .rp-barra,
   .rp-impresion .rp-rank, .rp-impresion .rp-lista li, .rp-impresion .rp-tabla tr, .rp-impresion .rp-texto { break-inside: avoid; page-break-inside: avoid; }
@@ -202,7 +250,8 @@
   .rp-impresion .rp-tabla td { white-space: normal; }
   /* logo y pie en cada hoja */
   .rp-hoja { width: 100%; border-collapse: collapse; }
-  .rp-hoja > thead > tr > td, .rp-hoja > tfoot > tr > td, .rp-hoja > tbody > tr > td { padding: 0; }
+  .rp-hoja > thead > tr > td, .rp-hoja > tfoot > tr > td, .rp-hoja > tbody > tr > td { padding: 0; border: 0 !important; background: transparent !important; }
+  .rp-hoja > thead > tr, .rp-hoja > tfoot > tr { border: 0 !important; }
   .rp-hoja-lugar-cabeza { height: 14mm; }
   .rp-hoja-lugar-pie { height: 9mm; }
   .rp-hoja-cabeza { position: fixed; top: 0; right: 0; height: 10mm; display: flex; align-items: center; }

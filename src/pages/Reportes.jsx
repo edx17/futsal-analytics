@@ -13,6 +13,8 @@ import { ordenarJornadas, ruedaDePartido, tieneRuedasConfiguradas } from '../uti
 import { esMiEquipo, categoriaLiga } from '../analytics/liga';
 import DocumentoReporte from '../reportes/Documento';
 import Presentacion from '../reportes/Presentacion';
+import EditorDevolucion from '../reportes/EditorDevolucion';
+import { leerDevolucionYStaff, leerFisicoYCondicion } from '../reportes/devolucion';
 import '../reportes/reportes.css';
 
 /* REPORTES DE CIERRE DE AÑO
@@ -156,6 +158,24 @@ export default function Reportes() {
   }), [perfil]);
   const hasta = anio === hoyISO().slice(0, 4) ? hoyISO() : `${anio}-12-31`;
 
+  /* Lo del jugador que no sale de los partidos: devolución por área, staff,
+     Fisiología y condición. Se relee al guardar en el editor. */
+  const puedeEscribir = ['ct', 'admin', 'manager', 'superuser'].includes(perfil?.rol);
+  const [aMano, setAMano] = useState(false);
+  const [versionExtras, setVersionExtras] = useState(0);
+  const claveExtras = tipo === 'jugador' && idElegido ? `${idElegido}|${anio}|${cat}` : '';
+  const [extras, setExtras] = useState({ clave: '', devolucion: {}, staff: [], sinMigracion: false, fisico: [], condicion: null });
+  useEffect(() => {
+    if (!claveExtras || !clubId) return undefined;
+    let vivo = true;
+    Promise.all([
+      leerDevolucionYStaff({ clubId, jugadorId: idElegido, temporada: anio, categoria: cat }).catch(() => ({ devolucion: {}, staff: [], sinMigracion: false })),
+      leerFisicoYCondicion({ clubId, jugadorId: idElegido, temporada: anio }).catch(() => ({ fisico: [], condicion: null })),
+    ]).then(([a, b]) => { if (vivo) setExtras({ clave: claveExtras, ...a, ...b }); });
+    return () => { vivo = false; };
+  }, [claveExtras, clubId, idElegido, anio, cat, versionExtras]);
+  const extrasJugador = extras.clave === claveExtras ? extras : null;
+
   const reporte = useMemo(() => {
     const evDe = (ps) => { const ids = new Set(ps.map((p) => p.id)); return raw.eventos.filter((e) => ids.has(e.id_partido)); };
     if (tipo === 'club') {
@@ -210,8 +230,13 @@ export default function Reportes() {
       sanciones: raw.sanciones.filter((s) => delAnio(s, 'fecha_sancion')),
       temporada: anio,
       club, audiencia, hasta,
+      ficha: { condicion: extrasJugador?.condicion },
+      fisico: extrasJugador?.fisico || [],
+      devolucion: extrasJugador?.devolucion || {},
+      staff: extrasJugador?.staff || [],
+      aMano,
     });
-  }, [tipo, idElegido, idB, raw, filas, partidosScope, partidosAnio, categorias, procesar, ligas, torneo, compromiso, anio, audiencia, club, hasta, liga, cat]);
+  }, [tipo, idElegido, idB, raw, filas, partidosScope, partidosAnio, categorias, procesar, ligas, torneo, compromiso, anio, audiencia, club, hasta, liga, cat, extrasJugador, aMano]);
 
   return (
     <div className="rp">
@@ -261,6 +286,12 @@ export default function Reportes() {
               </select>
             </label>
           </div>
+          {tipo === 'jugador' && puedeEscribir && extrasJugador && (
+            <EditorDevolucion key={claveExtras} clubId={clubId} jugadorId={idElegido} temporada={anio} categoria={cat}
+              jugadorNombre={(() => { const j = raw.jugadores.find((x) => String(x.id) === idElegido); return [j?.nombre, j?.apellido].filter(Boolean).join(' '); })()}
+              datos={extrasJugador} autorNombre={perfil?.nombre_completo || ''} aMano={aMano} setAMano={setAMano}
+              alGuardar={() => setVersionExtras((v) => v + 1)} />
+          )}
           {reporte && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" className="rp-boton rp-boton-primario" onClick={() => setPresentando(true)}>▶ PRESENTAR</button>
