@@ -21,6 +21,17 @@ import { ruedaDePartido } from '../utils/ruedas';
 
 const DUR_PARTIDO = 40; // minutos de un partido de futsal
 
+/* Si el reloj de la toma no se frenó (o no se reinició en el segundo tiempo),
+   un partido puede sumar 60 o 70 minutos y alguien termina con más del 100%
+   de los minutos posibles. Se lleva el partido a sus 40': el que más jugó
+   define la duración real y todos se escalan en la misma proporción. */
+export function normalizarA40(mins = {}) {
+  const max = Math.max(0, ...Object.values(mins).map(Number).filter(Number.isFinite));
+  if (max <= DUR_PARTIDO) return mins;
+  const f = DUR_PARTIDO / max;
+  return Object.fromEntries(Object.entries(mins).map(([id, m]) => [id, Math.round(Number(m) * f * 10) / 10]));
+}
+
 /* ---------- helpers puros ---------- */
 const mismoId = (a, b) => String(a) === String(b);
 
@@ -138,7 +149,7 @@ export function procesarPlantel({
       const evMatch = (evPorPartido.get(p.id) || []).slice().sort(ordenEv);
       const evPropio = evMatch.filter(e => e.equipo === 'Propio');
 
-      const minsMap = evMatch.length ? calcularMinutosPorJugador(evMatch) : {};
+      const minsMap = evMatch.length ? normalizarA40(calcularMinutosPorJugador(evMatch)) : {};
 
       /* Participación relativa: % de eventos del partido con el jugador en
          cancha. Es el criterio de "jugó", porque no depende del cronómetro

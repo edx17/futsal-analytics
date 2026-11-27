@@ -170,3 +170,12 @@ describe('minimoPartidosDestacado', () => {
     expect(minimoPartidosDestacado(0)).toBe(2);
   });
 });
+
+describe('minutos: un partido con el reloj sin frenar se lleva a 40', () => {
+  it('nadie pasa de 40 y se respeta la proporción', async () => {
+    const { normalizarA40 } = await import('../plantel');
+    expect(normalizarA40({ a: 60, b: 30 })).toEqual({ a: 40, b: 20 });
+    const igual = { a: 38, b: 12 };
+    expect(normalizarA40(igual)).toBe(igual);
+  });
+});
