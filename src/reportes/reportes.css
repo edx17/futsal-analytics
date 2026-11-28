@@ -234,11 +234,10 @@
   /* PAGINADO: cada sección va entera en una hoja (si no entra en lo que queda,
      pasa a la siguiente; nunca queda un título o una lista colgando). Sólo se
      parten las que no entran ni en una hoja entera (tablas largas, la
-     devolución), y ésas por piezas: una fila, un área. La devolución arranca
-     en hoja nueva, y el staff va siempre con ella. */
+     devolución), y ésas por piezas: una fila, un área. La devolución (01) y
+     el staff (02) van primero, después de la portada. */
   .rp-impresion .rp-seccion { break-inside: avoid; page-break-inside: avoid; padding: 10px 0 0; }
   .rp-impresion .rp-seccion-larga, .rp-impresion .rp-seccion-devolucion { break-inside: auto; page-break-inside: auto; }
-  .rp-impresion .rp-seccion-devolucion { break-before: page; page-break-before: always; border-top: none; }
   .rp-impresion .rp-area, .rp-impresion .rp-ficha, .rp-impresion .rp-franja, .rp-impresion .rp-staff, .rp-impresion .rp-kpis { break-inside: avoid; page-break-inside: avoid; }
   .rp-impresion .rp-devolucion { grid-template-columns: 1fr 1fr; gap: 10px; }
   .rp-impresion .rp-area-texto p { font-size: 0.82rem; line-height: 1.45; }

@@ -213,12 +213,16 @@ function fichaTecnica(jugador, ficha = {}) {
   return items.length ? { tipo: 'ficha', titulo: 'Ficha técnica', items: items.map(([rotulo, valor]) => ({ rotulo, valor: String(valor) })) } : null;
 }
 
-/* Lo que no sale de los números: preparación física, la devolución de cada área y el staff. */
-function sumarDevolucion(sumar, d) {
+/* Preparación física (Fisiología): lo último de cada medición y cuánto cambió. */
+function sumarFisico(sumar, d) {
   const fis = fisicoDelJugador(d.fisico || []);
   if (fis.length) {
     sumar('fisico', 'Preparación física', [{ tipo: 'kpis', items: fis.map((m) => ({ rotulo: m.rotulo, valor: m.valor, detalle: m.detalle, tono: m.mejora == null ? null : m.mejora ? 'bien' : 'trabajo' })) }]);
   }
+}
+
+/* Lo primero del reporte, después de la portada: 01 la devolución de cada área y 02 el staff. */
+function sumarDevolucion(sumar, d) {
   const textos = d.devolucion || {};
   const areas = AREAS_DEVOLUCION.map((a) => ({ ...a, texto: String(textos[a.id]?.texto || '').trim(), autor: textos[a.id]?.autor_nombre || '' }))
     .filter((a) => a.texto || d.aMano);
@@ -251,10 +255,11 @@ export function reporteJugador(d) {
     foto: jugador.foto || null, temporada, club: club.nombre || '', escudo: club.escudo || null,
     titulo: `Temporada ${temporada}`,
   }, fichaTecnica(jugador, d.ficha)]);
+  sumarDevolucion(sumar, d);
 
   if (!fila || !fila.jugados) {
     sumar('sin', 'La temporada', [{ tipo: 'texto', texto: `${nombre} todavía no tiene partidos con datos cargados en ${temporada}.` }]);
-    sumarDevolucion(sumar, d);
+    sumarFisico(sumar, d);
     return { titulo: `Reporte de ${nombre}`, subtitulo: `Temporada ${temporada}`, audiencia, secciones };
   }
 
@@ -346,7 +351,7 @@ export function reporteJugador(d) {
     audiencia !== 'directiva' && flojos.length ? { tipo: 'lista', titulo: audiencia === 'ct' ? 'Para trabajar' : 'Para el año que viene', tono: 'trabajo', items: flojos } : null,
   ]);
 
-  sumarDevolucion(sumar, d);
+  sumarFisico(sumar, d);
 
   return { titulo: `Reporte de ${nombre}`, subtitulo: `Temporada ${temporada}${jugador.categoria ? ` · ${jugador.categoria}` : ''}`, audiencia, secciones };
 }
