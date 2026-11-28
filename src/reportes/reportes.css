@@ -161,7 +161,7 @@
 
 /* celular: portada apilada, KPIs en 2 columnas, ejes del gráfico más grandes
    (el SVG se escala hacia abajo: 11px del viewBox serían ilegibles) */
-@media (max-width: 767px) {
+@media screen and (max-width: 767px) {
   .rp-doc .rp-portada:not(.rp-portada-doble) { flex-direction: column; align-items: flex-start; }
   .rp-portada-doble .rp-foto { width: 72px; height: 72px; }
   .rp-portada-doble .rp-nombre { font-size: clamp(2rem, 9vw, 3rem); }
@@ -214,6 +214,8 @@
 .rp-editor-area-titulo { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-cond); font-size: 0.85rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .rp-editor-area-titulo small { font-family: var(--f-body); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--rp-dim); }
 .rp-editor textarea, .rp-editor-staff input { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--rp-borde); background: var(--rp-fondo); color: var(--rp-texto); font: inherit; font-size: 0.88rem; resize: vertical; }
+.rp-editor-cuenta { align-self: flex-end; font-size: 0.7rem; color: var(--rp-dim); }
+.rp-editor-cuenta-pasada { color: var(--rp-medio); }
 .rp-editor-check { display: flex; gap: 8px; align-items: center; font-size: 0.82rem; }
 .rp-editor-staff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 8px; }
 
@@ -223,32 +225,85 @@
 .rp-serie + .rp-texto { margin-top: clamp(24px, 4vw, 36px); }
 .rp-pie { font-size: 0.68rem; color: var(--rp-dim); text-align: center; }
 .rp-impresion { display: none; }
+/* ═══ PAPEL: el PDF ═══════════════════════════════════════════════════════
+   La app arma las hojas A4 (Documento.jsx → HojasA4, paginar.js): mide cada
+   sección "en papel" fuera de la pantalla y decide qué va en cada hoja. Para
+   que lo medido sea lo impreso, en papel todo tiene tamaños fijos (nada en
+   vw, nada que dependa del ancho de la pantalla). */
+.rp-papel {
+  --rp-fondo: var(--vf-paper); --rp-panel: var(--vf-paper); --rp-texto: var(--vf-paper-ink); --rp-dim: var(--vf-paper-dim); --rp-borde: var(--vf-paper-line);
+  --rp-acento: oklch(0.62 0.19 45); --rp-acento-suave: oklch(0.7 0.19 45 / 0.12);
+  color: var(--vf-paper-ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.rp-medir { position: fixed; left: -12000px; top: 0; visibility: hidden; pointer-events: none; z-index: -1; background: var(--vf-paper); }
+.rp-medir-secciones { width: 186mm; }
+.rp-hoja-a4 { width: 186mm; height: 276.5mm; box-sizing: border-box; padding: 0; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--vf-paper); break-after: page; page-break-after: always; position: relative; }
+.rp-hoja-a4:last-child { break-after: auto; page-break-after: auto; }
+.rp-hoja-a4-cabeza { height: 10mm; flex: 0 0 auto; display: flex; justify-content: flex-end; align-items: center; border-bottom: 1px solid var(--rp-borde); margin-bottom: 4mm; padding-bottom: 2mm; box-sizing: content-box; }
+.rp-hoja-a4-cabeza img { height: 10mm; width: 10mm; border-radius: 2mm; }
+.rp-hoja-a4-cuerpo { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.rp-hoja-a4-cuerpo > :first-child > .rp-seccion, .rp-hoja-a4-cuerpo > .rp-seccion:first-child { border-top: none; padding-top: 0; }
+.rp-hoja-a4-pie { height: 6mm; flex: 0 0 auto; margin-top: 2mm; display: flex; align-items: center; justify-content: center; border-top: 1px solid var(--rp-borde); font-size: 0.62rem; color: var(--rp-dim); }
+
+/* tamaños fijos en papel */
+.rp-papel .rp-seccion { break-inside: avoid; padding-top: 10px; }
+.rp-papel .rp-seccion-portada { border-top: none; padding-top: 0; }
+.rp-papel .rp-seccion > * + * { margin-top: 14px; }
+.rp-papel .rp-seccion-titulo { font-size: 1.55rem; margin-bottom: 12px; }
+.rp-papel .rp-kpi-valor { font-size: 2.5rem; }
+.rp-papel .rp-kpi { padding: 2px 14px; }
+.rp-papel .rp-texto { font-size: 1.05rem; padding-left: 16px; }
+.rp-papel .rp-serie + .rp-texto { margin-top: 18px; }
+.rp-papel .rp-barra { grid-template-columns: minmax(110px, 34%) 1fr 104px; gap: 12px; padding: 6px 0; }
+.rp-papel .rp-barra-texto { white-space: nowrap; }
+.rp-papel .rp-barra-pista { grid-column: auto; grid-row: auto; }
+.rp-papel .rp-kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.rp-papel .rp-rank { padding: 7px 0; }
+.rp-papel .rp-rank-puesto { width: 34px; height: 34px; font-size: 1rem; }
+.rp-papel .rp-lista li { padding: 7px 0 7px 28px; }
+.rp-papel .rp-tabla td { padding: 7px 12px 7px 0; }
+.rp-papel .rp-tabla-caja { overflow: visible; }
+/* portada + ficha compactas (la hoja 1 lleva también la devolución y el staff) */
+.rp-papel .rp-portada { padding: 0 0 4px; gap: 18px; }
+.rp-papel .rp-foto { width: 84px; height: 84px; }
+.rp-papel .rp-foto-vacia { font-size: 2.6rem; }
+.rp-papel .rp-nombre { font-size: 2.5rem; margin: 4px 0 6px; }
+.rp-papel .rp-sub { font-size: 0.9rem; }
+.rp-papel .rp-portada-fondo { font-size: 9rem; right: 0; }
+.rp-papel .rp-escudo { top: 0; width: 44px; height: 44px; }
+.rp-papel .rp-seccion-portada > * + * { margin-top: 8px; }
+.rp-papel .rp-ficha .rp-bloque-titulo { display: none; }
+.rp-papel .rp-ficha-grilla > div { padding: 5px 10px 5px 0; }
+.rp-papel .rp-ficha-grilla dd { font-size: 0.95rem; margin-top: 2px; }
+.rp-papel .rp-seccion-devolucion .rp-seccion-titulo, .rp-papel .rp-seccion-staff .rp-seccion-titulo { font-size: 1.25rem; margin-bottom: 8px; }
+.rp-papel .rp-seccion-devolucion, .rp-papel .rp-seccion-staff { padding-top: 6px; }
+.rp-papel .rp-devolucion { grid-template-columns: 1fr 1fr; gap: 7px; }
+.rp-papel .rp-area { padding: 7px 10px; gap: 4px; border-top-width: 2px; break-inside: avoid; }
+.rp-papel .rp-area-titulo { font-size: 0.78rem; }
+.rp-papel .rp-area-texto p { font-size: 0.72rem; line-height: 1.35; margin-bottom: 3px; }
+.rp-papel .rp-area-autor { font-size: 0.62rem; }
+.rp-papel .rp-renglones span { height: 19px; }
+.rp-papel .rp-staff { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px 12px; }
+.rp-papel .rp-staff > div { font-size: 0.74rem; }
+
 @media print {
   html, body, #root { height: auto !important; min-height: 0 !important; overflow: visible !important; background: #fff !important; }
   body > *:not(.rp-impresion) { display: none !important; }
-  .rp-impresion { display: block; position: static; width: 100%;
-    --rp-fondo: var(--vf-paper); --rp-panel: var(--vf-paper); --rp-texto: var(--vf-paper-ink); --rp-dim: var(--vf-paper-dim); --rp-borde: var(--vf-paper-line);
-    --rp-acento: oklch(0.62 0.19 45); --rp-acento-suave: oklch(0.7 0.19 45 / 0.12);
-    background: var(--vf-paper); color: var(--vf-paper-ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .rp-impresion .rp-imprimible { gap: 10px !important; }
-  /* PAGINADO: cada sección va entera en una hoja (si no entra en lo que queda,
-     pasa a la siguiente; nunca queda un título o una lista colgando). Sólo se
-     parten las que no entran ni en una hoja entera (tablas largas, la
-     devolución), y ésas por piezas: una fila, un área. La devolución arranca
-     en hoja nueva, y el staff va siempre con ella. */
-  .rp-impresion .rp-seccion { break-inside: avoid; page-break-inside: avoid; padding: 10px 0 0; }
-  .rp-impresion .rp-seccion-larga, .rp-impresion .rp-seccion-devolucion { break-inside: auto; page-break-inside: auto; }
-  .rp-impresion .rp-seccion-devolucion { break-before: page; page-break-before: always; border-top: none; }
-  .rp-impresion .rp-area, .rp-impresion .rp-ficha, .rp-impresion .rp-franja, .rp-impresion .rp-staff, .rp-impresion .rp-kpis { break-inside: avoid; page-break-inside: avoid; }
-  .rp-impresion .rp-devolucion { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .rp-impresion .rp-area-texto p { font-size: 0.82rem; line-height: 1.45; }
-  .rp-impresion .rp-seccion-titulo, .rp-impresion .rp-bloque-titulo { break-after: avoid; page-break-after: avoid; }
-  .rp-impresion .rp-portada, .rp-impresion .rp-kpi, .rp-impresion .rp-serie, .rp-impresion .rp-barra,
-  .rp-impresion .rp-rank, .rp-impresion .rp-lista li, .rp-impresion .rp-tabla tr, .rp-impresion .rp-texto { break-inside: avoid; page-break-inside: avoid; }
-  .rp-impresion .rp-tabla-caja { overflow: visible; }
-  .rp-impresion .rp-tabla thead { display: table-header-group; }
-  .rp-impresion .rp-tabla td { white-space: normal; }
-  /* logo y pie en cada hoja */
+  .rp-impresion { display: block; position: static; width: 100%; background: var(--vf-paper); }
+  /* hojas armadas por la app: cada .rp-hoja-a4 ocupa justo el área imprimible
+     de una A4 con los márgenes de @page (10 × 12 mm): 186 × 277 mm. */
+
+  /* Respaldo (si no se pudo paginar): corta el navegador; logo y pie en cada hoja. */
+  .rp-flujo .rp-seccion { break-inside: avoid; page-break-inside: avoid; padding: 10px 0 0; }
+  .rp-flujo .rp-seccion-larga, .rp-flujo .rp-seccion-devolucion { break-inside: auto; page-break-inside: auto; }
+  .rp-flujo .rp-area, .rp-flujo .rp-ficha, .rp-flujo .rp-franja, .rp-flujo .rp-staff, .rp-flujo .rp-kpis { break-inside: avoid; page-break-inside: avoid; }
+  .rp-flujo .rp-seccion-staff + .rp-seccion,
+  .rp-flujo .rp-seccion-devolucion + .rp-seccion:not(.rp-seccion-staff) { break-before: page; page-break-before: always; border-top: none; }
+  .rp-flujo .rp-seccion-titulo, .rp-flujo .rp-bloque-titulo { break-after: avoid; page-break-after: avoid; }
+  .rp-flujo .rp-portada, .rp-flujo .rp-kpi, .rp-flujo .rp-serie, .rp-flujo .rp-barra,
+  .rp-flujo .rp-rank, .rp-flujo .rp-lista li, .rp-flujo .rp-tabla tr, .rp-flujo .rp-texto { break-inside: avoid; page-break-inside: avoid; }
+  .rp-flujo .rp-tabla thead { display: table-header-group; }
+  .rp-flujo .rp-tabla td { white-space: normal; }
   .rp-hoja { width: 100%; border-collapse: collapse; }
   .rp-hoja > thead > tr > td, .rp-hoja > tfoot > tr > td, .rp-hoja > tbody > tr > td { padding: 0; border: 0 !important; background: transparent !important; }
   .rp-hoja > thead > tr, .rp-hoja > tfoot > tr { border: 0 !important; }

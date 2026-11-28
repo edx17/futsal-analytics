@@ -28,3 +28,11 @@ describe('reporte del jugador: física, devolución, staff y ficha', () => {
     expect(aMano.items.filter((i) => i.vacio)).toHaveLength(AREAS_DEVOLUCION.length - 1);
   });
 });
+
+describe('orden del reporte', () => {
+  it('después de la portada: 01 devolución, 02 staff; la física al final', () => {
+    const r = reporteJugador({ jugador: { id: 1, nombre: 'A', apellido: 'B' }, fila: null, temporada: '2026',
+      devolucion: { tactico: { texto: 'x' } }, staff: [{ cargo: 'DT', nombre: 'Uno' }], fisico: [{ fecha_medicion: '2026-03-01', cmj: 40 }] });
+    expect(r.secciones.map((s) => s.id)).toEqual(['portada', 'devolucion', 'staff', 'sin', 'fisico']);
+  });
+});

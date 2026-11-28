@@ -156,6 +156,17 @@ function Plantel() {
     }
   };
 
+  /* Guarda; si la base todavía no tiene la columna `apodo`, vuelve a guardar sin el apodo y avisa. */
+  const sinApodoSiFalta = async (payload, guardar) => {
+    const r = await guardar(payload);
+    const faltaApodo = r.error && 'apodo' in payload && (['PGRST204', '42703'].includes(r.error.code) || /apodo/i.test(r.error.message || ''));
+    if (!faltaApodo) return r;
+    const { apodo, ...sinApodo } = payload;
+    const r2 = await guardar(sinApodo);
+    if (!r2.error && apodo) showToast('Se guardó sin el apodo: falta correr la migración 20260925130000 en Supabase.', 'warning');
+    return r2;
+  };
+
   const handleGuardarJugador = async () => {
     if (!formData.nombre || !formData.dorsal) {
       showToast("El nombre y el dorsal son obligatorios.", "warning");
@@ -181,16 +192,11 @@ function Plantel() {
 
     let payload = { ...formData, club_id: clubId };
 
-    /* `apodo` es de la migración 20260925130000. Si todavía no se corrió, la
-       columna no existe y mandarla (aunque vacía) rompería el guardado. */
-    const hayColumnaApodo = jugadores.some(j => 'apodo' in j);
-    if (!hayColumnaApodo) {
-      if (payload.apodo) {
-        showToast('Para guardar apodos falta correr la migración 20260925130000 en Supabase.', 'warning');
-        return;
-      }
-      delete payload.apodo;
-    }
+    /* `apodo` es de la migración 20260925130000. Antes se adivinaba si la
+       columna existía mirando los jugadores ya cargados, y eso fallaba (club
+       sin jugadores, página abierta de antes, caché de Supabase sin
+       refrescar): no dejaba dar de alta. Ahora se intenta guardar con el
+       apodo y, si la base no reconoce la columna, se guarda igual sin él. */
     if (payload.apodo === '') payload.apodo = null;
 
     const camposEstrictos = ['fechanac', 'dni', 'contacto', 'peso', 'altura', 'vencimiento_apto', 'talla_calzado', 'user_id'];
@@ -203,7 +209,7 @@ function Plantel() {
 
     if (formData.id) {
       // --- MODO EDICIÓN ---
-      const { error } = await supabase.from('jugadores').update(payload).eq('id', formData.id);
+      const { error } = await sinApodoSiFalta(payload, (p) => supabase.from('jugadores').update(p).eq('id', formData.id));
       if (!error) {
         showToast("Jugador actualizado con éxito", "success");
         setMostrarModalAlta(false);
@@ -228,7 +234,7 @@ function Plantel() {
         payload.user_id = null; // Aún no tiene cuenta de Auth asociada
 
         // 4. Guardamos la ficha en la tabla jugadores
-        const { error: dbError } = await supabase.from('jugadores').insert([payload]);
+        const { error: dbError } = await sinApodoSiFalta(payload, (p) => supabase.from('jugadores').insert([p]));
         
         if (dbError) throw new Error("Error guardando ficha técnica: " + dbError.message);
 
