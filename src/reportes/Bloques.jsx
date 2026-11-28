@@ -207,7 +207,7 @@ function Devolucion({ b }) {
         <div key={a.titulo} className={`rp-area${a.vacio ? ' rp-area-vacia' : ''}`}>
           <div className="rp-area-titulo">{a.titulo}</div>
           {a.vacio
-            ? <div className="rp-renglones" aria-hidden="true">{Array.from({ length: 6 }, (_, k) => <span key={k} />)}</div>
+            ? <div className="rp-renglones" aria-hidden="true">{Array.from({ length: 5 }, (_, k) => <span key={k} />)}</div>
             : <div className="rp-area-texto">{a.texto.split(/\n+/).map((t, k) => <p key={k}>{t}</p>)}</div>}
           {a.autor && <div className="rp-area-autor">{a.autor}</div>}
         </div>

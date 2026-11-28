@@ -9,6 +9,9 @@ import { guardarArea, guardarStaff, sugerirStaff } from './devolucion';
  * categoría para el pie del reporte (vale para todos los jugadores de la
  * categoría en esa temporada).
  */
+/* Con las seis áreas llenas hasta acá, la hoja 1 (portada + devolución + staff) entra en A4. */
+const TOPE = 450;
+
 export default function EditorDevolucion({ clubId, jugadorId, jugadorNombre, temporada, categoria, datos, autorNombre, aMano, setAMano, alGuardar }) {
   const [abierto, setAbierto] = useState(false);
   // Lo guardado, al abrir (el padre remonta el editor al cambiar de jugador o temporada).
@@ -47,7 +50,7 @@ export default function EditorDevolucion({ clubId, jugadorId, jugadorNombre, tem
       {datos.sinMigracion && <div className="rp-editor-aviso">Falta correr la migración 20261127120000_reportes_devoluciones.sql en Supabase para guardar la devolución y el staff.</div>}
       {abierto && (
         <div className="rp-editor-cuerpo">
-          <div className="rp-editor-ayuda">Lo que escribe cada área sobre {jugadorNombre} en {temporada}. Se guarda solo al salir del cuadro, con tu nombre. En el PDF va en una hoja aparte.</div>
+          <div className="rp-editor-ayuda">Lo que escribe cada área sobre {jugadorNombre} en {temporada}. Se guarda solo al salir del cuadro, con tu nombre. En el PDF va en la hoja 1, junto con el staff: para que entre, hasta unos {TOPE} caracteres por área.</div>
           <div className="rp-editor-areas">
             {AREAS_DEVOLUCION.map((a) => {
               const st = estado[a.id];
@@ -59,6 +62,9 @@ export default function EditorDevolucion({ clubId, jugadorId, jugadorNombre, tem
                   </span>
                   <textarea rows={5} value={textos[a.id] || ''} placeholder="Sin devolución de esta área."
                     onChange={(e) => setTextos((t) => ({ ...t, [a.id]: e.target.value }))} onBlur={() => guardar(a.id)} />
+                  <small className={`rp-editor-cuenta${(textos[a.id] || '').length > TOPE ? ' rp-editor-cuenta-pasada' : ''}`}>
+                    {(textos[a.id] || '').length} / {TOPE}{(textos[a.id] || '').length > TOPE ? ' · puede no entrar en la hoja 1' : ''}
+                  </small>
                 </label>
               );
             })}

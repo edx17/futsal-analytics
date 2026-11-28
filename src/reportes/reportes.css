@@ -214,6 +214,8 @@
 .rp-editor-area-titulo { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-cond); font-size: 0.85rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .rp-editor-area-titulo small { font-family: var(--f-body); font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--rp-dim); }
 .rp-editor textarea, .rp-editor-staff input { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--rp-borde); background: var(--rp-fondo); color: var(--rp-texto); font: inherit; font-size: 0.88rem; resize: vertical; }
+.rp-editor-cuenta { align-self: flex-end; font-size: 0.7rem; color: var(--rp-dim); }
+.rp-editor-cuenta-pasada { color: var(--rp-medio); }
 .rp-editor-check { display: flex; gap: 8px; align-items: center; font-size: 0.82rem; }
 .rp-editor-staff { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; gap: 8px; }
 
@@ -239,8 +241,29 @@
   .rp-impresion .rp-seccion { break-inside: avoid; page-break-inside: avoid; padding: 10px 0 0; }
   .rp-impresion .rp-seccion-larga, .rp-impresion .rp-seccion-devolucion { break-inside: auto; page-break-inside: auto; }
   .rp-impresion .rp-area, .rp-impresion .rp-ficha, .rp-impresion .rp-franja, .rp-impresion .rp-staff, .rp-impresion .rp-kpis { break-inside: avoid; page-break-inside: avoid; }
-  .rp-impresion .rp-devolucion { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .rp-impresion .rp-area-texto p { font-size: 0.82rem; line-height: 1.45; }
+  /* HOJA 1 = portada + 01 devolución + 02 staff, en tamaño compacto; el 03
+     (y todo lo que sigue) arranca siempre en la hoja 2. */
+  .rp-impresion .rp-seccion-portada .rp-portada { padding: 0 0 4px; gap: 18px; }
+  .rp-impresion .rp-seccion-portada .rp-foto { width: 84px; height: 84px; }
+  .rp-impresion .rp-seccion-portada .rp-nombre { font-size: 2.5rem; margin: 4px 0 6px; }
+  .rp-impresion .rp-seccion-portada .rp-sub { font-size: 0.9rem; }
+  .rp-impresion .rp-seccion-portada .rp-portada-fondo { font-size: 9rem; }
+  .rp-impresion .rp-seccion-portada > * + * { margin-top: 8px; }
+  .rp-impresion .rp-ficha .rp-bloque-titulo { display: none; }
+  .rp-impresion .rp-ficha-grilla > div { padding: 5px 10px 5px 0; }
+  .rp-impresion .rp-ficha-grilla dd { font-size: 0.95rem; margin-top: 2px; }
+  .rp-impresion .rp-seccion-devolucion .rp-seccion-titulo, .rp-impresion .rp-seccion-staff .rp-seccion-titulo { font-size: 1.25rem; margin-bottom: 8px; }
+  .rp-impresion .rp-seccion-devolucion, .rp-impresion .rp-seccion-staff { padding-top: 6px; }
+  .rp-impresion .rp-devolucion { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .rp-impresion .rp-area { padding: 7px 10px; gap: 4px; border-top-width: 2px; }
+  .rp-impresion .rp-area-titulo { font-size: 0.78rem; }
+  .rp-impresion .rp-area-texto p { font-size: 0.72rem; line-height: 1.35; margin-bottom: 3px; }
+  .rp-impresion .rp-area-autor { font-size: 0.62rem; }
+  .rp-impresion .rp-renglones span { height: 19px; }
+  .rp-impresion .rp-staff { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px 12px; }
+  .rp-impresion .rp-staff > div { font-size: 0.74rem; }
+  .rp-impresion .rp-seccion-staff + .rp-seccion,
+  .rp-impresion .rp-seccion-devolucion + .rp-seccion:not(.rp-seccion-staff) { break-before: page; page-break-before: always; border-top: none; }
   .rp-impresion .rp-seccion-titulo, .rp-impresion .rp-bloque-titulo { break-after: avoid; page-break-after: avoid; }
   .rp-impresion .rp-portada, .rp-impresion .rp-kpi, .rp-impresion .rp-serie, .rp-impresion .rp-barra,
   .rp-impresion .rp-rank, .rp-impresion .rp-lista li, .rp-impresion .rp-tabla tr, .rp-impresion .rp-texto { break-inside: avoid; page-break-inside: avoid; }
