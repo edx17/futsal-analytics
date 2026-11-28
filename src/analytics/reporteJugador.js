@@ -299,7 +299,8 @@ export function reporteJugador(d) {
   ]);
 
   // Sus mejores partidos.
-  const mejores = [...conNota].sort((a, b) => b.rating - a.rating || b.goles - a.goles).slice(0, 5);
+  // Hasta 10: en el PDF se muestran las que entren en la hoja (al menos 5; ver filasMin y paginar.js).
+  const mejores = [...conNota].sort((a, b) => b.rating - a.rating || b.goles - a.goles).slice(0, 10);
   sumar('mejores', 'Sus mejores partidos', [mejores.length > 0 && {
     tipo: 'tabla',
     columnas: arquero ? ['Fecha', 'Rival', 'Resultado', 'Rating'] : ['Fecha', 'Rival', 'Resultado', 'Goles', 'Asist.', 'Rating'],
@@ -307,6 +308,7 @@ export function reporteJugador(d) {
       ? [fechaCorta(p.fecha), p.rival, p.marcador, p.rating]
       : [fechaCorta(p.fecha), p.rival, p.marcador, p.goles || '–', p.asistencias || '–', p.rating])),
     resaltarUltima: true,
+    filasMin: 5,
   }]);
 
   // Cómo juega (en barras, contra el promedio de su categoría).
